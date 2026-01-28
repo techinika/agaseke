@@ -1,10 +1,10 @@
-import PublicProfile from "@/components/pages/PublicProfile";
+import SupporterSpace from "@/components/pages/Dashboards/SupporterSpace";
 import React from "react";
 
 function page() {
   return (
     <div>
-      <PublicProfile />
+      <SupporterSpace />
     </div>
   );
 }

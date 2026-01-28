@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import React from "react";
 import { motion } from "framer-motion";
@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 const Loading = () => {
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-50/40 via-transparent to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-orange-50/40 via-transparent to-transparent pointer-events-none" />
 
       <div className="relative flex flex-col items-center">
         {/* Animated Logo Container */}
@@ -26,11 +26,11 @@ const Loading = () => {
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="absolute -inset-4 bg-indigo-500 rounded-[2.5rem] blur-xl"
+            className="absolute -inset-4 bg-orange-500 rounded-[2.5rem] blur-xl"
           />
 
           {/* Main Logo Box */}
-          <div className="relative w-20 h-20 bg-indigo-600 rounded-[2rem] flex items-center justify-center shadow-2xl shadow-indigo-200 overflow-hidden">
+          <div className="relative w-20 h-20 bg-orange-600 rounded-[2rem] flex items-center justify-center shadow-2xl shadow-orange-200 overflow-hidden">
             <span className="text-white text-4xl font-black">n</span>
             {/* Shimmer Effect over the logo */}
             <motion.div
@@ -66,16 +66,15 @@ const Loading = () => {
                 delay: index * 0.2,
                 ease: "easeInOut",
               }}
-              className="w-2 h-2 rounded-full bg-indigo-600"
+              className="w-2 h-2 rounded-full bg-orange-600"
             />
           ))}
         </div>
       </div>
 
-      {/* Footer Branding */}
       <div className="absolute bottom-10">
         <p className="text-xs font-bold text-slate-300 uppercase tracking-[0.2em]">
-          ndafana Secure Cloud
+          Agaseke for Creators
         </p>
       </div>
     </div>

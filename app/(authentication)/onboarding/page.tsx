@@ -1,10 +1,10 @@
-import PublicProfile from "@/components/pages/PublicProfile";
+import CreatorOnboarding from "@/components/pages/StartPage";
 import React from "react";
 
 function page() {
   return (
     <div>
-      <PublicProfile />
+      <CreatorOnboarding />
     </div>
   );
 }

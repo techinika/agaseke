@@ -1,10 +1,10 @@
-import SpaceSwitcher from "@/components/pages/Dashboards/SpaceSwitcher";
+import ContentManager from "@/components/pages/Dashboards/ContentPage";
 import React from "react";
 
 function page() {
   return (
     <div>
-      <SpaceSwitcher />
+      <ContentManager />
     </div>
   );
 }

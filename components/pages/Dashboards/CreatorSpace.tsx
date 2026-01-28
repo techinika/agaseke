@@ -1,216 +1,265 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Wallet,
+  Plus,
   Users,
+  BarChart3,
+  MessageSquare,
+  Calendar,
+  Eye,
   TrendingUp,
-  ArrowUpRight,
-  Clock,
+  MoreHorizontal,
+  Share2,
   ExternalLink,
+  ShieldCheck,
+  AlertCircle,
   Copy,
+  Check,
 } from "lucide-react";
-import { useAuth } from "@/auth/AuthContext";
 
-const CreatorSpace = () => {
-  const { profile, loading } = useAuth();
+export default function CreatorDashboard() {
+  const [balance] = useState(45200);
+  const [isVerified] = useState(false); // Link this to your verification logic
+  const [copied, setCopied] = useState(false);
 
-  if (loading)
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-
-  const publicLink = `ndafana.rw/${profile?.username}`;
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(publicLink);
-    alert("Link copied to clipboard!");
+  const copyLink = () => {
+    navigator.clipboard.writeText("ags.ke/gisa");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-20">
-      <div className="bg-white border-b border-slate-200 pt-12 pb-8">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div>
-              <h1 className="text-3xl font-black text-slate-900 mb-2">
-                My Space
-              </h1>
-              <p className="text-slate-500 font-medium">
-                Welcome back, {profile?.displayName?.split(" ")[0]}
-              </p>
+    <div className="min-h-screen bg-[#F9FAFB] flex font-sans text-slate-900">
+      {/* --- Sidebar (Workspace Style) --- */}
+      <aside className="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col">
+        <div className="p-6">
+          <div className="flex items-center gap-2 mb-8">
+            <div className="w-7 h-7 bg-orange-600 rounded flex items-center justify-center text-white font-bold text-xs">
+              A
             </div>
-
-            <div className="flex items-center gap-3">
-              <div className="bg-indigo-50 px-4 py-2 rounded-2xl border border-indigo-100 flex items-center gap-3">
-                <span className="text-sm font-bold text-indigo-600">
-                  {publicLink}
-                </span>
-                <button
-                  onClick={copyToClipboard}
-                  className="p-1.5 hover:bg-indigo-100 rounded-lg transition-colors text-indigo-600"
-                >
-                  <Copy size={16} />
-                </button>
-              </div>
-              <a
-                href={`/${profile?.username}`}
-                className="p-2.5 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all"
-              >
-                <ExternalLink size={20} />
-              </a>
-            </div>
+            <span className="font-bold tracking-tight">agaseke.me</span>
           </div>
+
+          <nav className="space-y-1">
+            <NavItem icon={<BarChart3 size={18} />} label="Overview" active />
+            <NavItem icon={<Plus size={18} />} label="Content" />
+            <NavItem icon={<Calendar size={18} />} label="Gatherings" />
+            <NavItem icon={<MessageSquare size={18} />} label="Messages" />
+            <NavItem icon={<Wallet size={18} />} label="Payouts" />
+          </nav>
         </div>
-      </div>
-      <main className="max-w-6xl mx-auto px-6 mt-6">
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* LEFT: Wallet & Stats */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Wallet Card */}
-            <div className="bg-indigo-600 rounded-[2.5rem] p-8 text-white relative overflow-hidden shadow-2xl shadow-indigo-200">
-              <div className="relative z-10 flex justify-between items-start mb-12">
-                <div>
-                  <p className="text-indigo-100 font-bold mb-1 opacity-80 uppercase tracking-widest text-xs">
-                    Available Balance
-                  </p>
-                  <h2 className="text-5xl font-black">
-                    {profile?.balance?.toLocaleString() || 0}{" "}
-                    <span className="text-2xl font-medium">RWF</span>
-                  </h2>
-                </div>
-                <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md">
-                  <Wallet size={24} />
-                </div>
-              </div>
 
-              <div className="relative z-10 flex gap-4">
-                <button className="flex-1 bg-white text-indigo-600 py-4 rounded-2xl font-black hover:bg-indigo-50 transition-all shadow-lg">
-                  Withdraw to MoMo
-                </button>
-                <button className="px-6 py-4 bg-indigo-500 text-white rounded-2xl font-bold hover:bg-indigo-400 transition-all border border-indigo-400">
-                  History
-                </button>
-              </div>
+        <div className="mt-auto p-4 m-4 bg-slate-50 border border-slate-200 rounded-xl">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              Your Page
+            </span>
+            {copied ? (
+              <Check size={12} className="text-green-500" />
+            ) : (
+              <button onClick={copyLink}>
+                <Copy
+                  size={12}
+                  className="text-slate-400 hover:text-orange-600"
+                />
+              </button>
+            )}
+          </div>
+          <p className="text-xs font-medium text-slate-600 truncate mb-3">
+            ags.ke/gisa
+          </p>
+          <button className="w-full py-2 bg-white border border-slate-200 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition">
+            Share Page <Share2 size={12} />
+          </button>
+        </div>
+      </aside>
 
-              {/* Decorative circle */}
-              <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-3xl" />
-            </div>
-
-            {/* Quick Stats Grid */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-                <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mb-4">
-                  <TrendingUp size={20} />
-                </div>
-                <p className="text-slate-400 text-sm font-bold uppercase tracking-wider">
-                  Total Earned
-                </p>
-                <p className="text-2xl font-black text-slate-900">
-                  120,400 RWF
-                </p>
-              </div>
-              <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-                <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-4">
-                  <Users size={20} />
-                </div>
-                <p className="text-slate-400 text-sm font-bold uppercase tracking-wider">
-                  Supporters
-                </p>
-                <p className="text-2xl font-black text-slate-900">42</p>
-              </div>
-            </div>
-
-            {/* Recent Activity Feed */}
-            <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm">
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-xl font-black text-slate-900">
-                  Recent Supporters
-                </h3>
-                <button className="text-indigo-600 font-bold text-sm">
-                  View all
-                </button>
-              </div>
-
-              <div className="space-y-6">
-                {[1, 2, 3].map((_, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between py-4 border-b border-slate-50 last:border-0"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-slate-100 rounded-2xl overflow-hidden" />
-                      <div>
-                        <p className="font-bold text-slate-900">Fan Name</p>
-                        <p className="text-xs text-slate-400 font-medium italic">
-                          {`"Keep up the great work!"`}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-black text-slate-900">+ 5,000 RWF</p>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter flex items-center gap-1 justify-end">
-                        <Clock size={10} /> 2h ago
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+      {/* --- Main Content --- */}
+      <main className="flex-1 overflow-y-auto">
+        {/* Top Navbar */}
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-10">
+          <h2 className="text-sm font-semibold text-slate-600">Dashboard</h2>
+          <div className="flex items-center gap-4">
+            <button className="bg-orange-600 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-orange-700 transition shadow-sm">
+              <Plus size={16} /> Create New
+            </button>
+            <div className="w-8 h-8 bg-slate-100 rounded-full border border-slate-200 flex items-center justify-center text-xs font-bold">
+              G
             </div>
           </div>
+        </header>
 
-          {/* RIGHT: Sidebar / Tips */}
-          <div className="space-y-8">
-            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-              <h4 className="font-black text-slate-900 mb-4">Creator Tips</h4>
-              <div className="space-y-4">
-                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
-                  <p className="text-xs font-bold text-amber-700 mb-1 flex items-center gap-1">
-                    <ArrowUpRight size={14} /> Boost Earnings
-                  </p>
-                  <p className="text-sm text-amber-900 font-medium">
-                    Creators who share their link on Instagram stories earn 4x
-                    more.
-                  </p>
-                </div>
-                <div className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100">
-                  <p className="text-xs font-bold text-indigo-700 mb-1 flex items-center gap-1">
-                    <TrendingUp size={14} /> New Feature
-                  </p>
-                  <p className="text-sm text-indigo-900 font-medium">
-                    You can now lock exclusive content for supporters only.
-                  </p>
-                </div>
+        <div className="p-8 max-w-6xl mx-auto">
+          {/* Status Banner */}
+          {!isVerified && (
+            <div className="mb-8 p-4 bg-amber-50 border border-amber-100 rounded-xl flex items-center justify-between">
+              <div className="flex items-center gap-3 text-amber-800">
+                <AlertCircle size={18} />
+                <span className="text-sm font-medium">
+                  Verification required to withdraw funds.
+                </span>
+              </div>
+              <button className="text-xs font-bold bg-amber-200/50 hover:bg-amber-200 text-amber-900 px-3 py-1.5 rounded-lg transition">
+                Verify Now
+              </button>
+            </div>
+          )}
+
+          {/* Stats Row */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  Available
+                </p>
+                <Wallet size={16} className="text-slate-400" />
+              </div>
+              <h3 className="text-3xl font-black">
+                {balance.toLocaleString()}{" "}
+                <span className="text-sm font-normal text-slate-400">RWF</span>
+              </h3>
+              <div className="mt-4 pt-4 border-t border-slate-50 flex items-center justify-between">
+                <button className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1">
+                  Withdraw <ExternalLink size={12} />
+                </button>
+                <span className="text-[10px] text-slate-400">
+                  MoMo: 078****231
+                </span>
               </div>
             </div>
 
-            {/* Payout Information */}
-            <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white">
-              <h4 className="font-black mb-4">Payout Method</h4>
-              <div className="flex items-center gap-3 mb-6 bg-white/10 p-4 rounded-2xl border border-white/10">
-                <div className="w-10 h-10 bg-yellow-400 rounded-lg flex items-center justify-center font-black text-slate-900 text-xs text-center leading-none">
-                  MTN
-                  <br />
-                  MOMO
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-400">
-                    Primary Number
-                  </p>
-                  <p className="text-sm font-bold">078****892</p>
-                </div>
+            <StatTile title="Profile Views" value="1,240" change="+12%" />
+            <StatTile title="Supporters" value="84" change="+5" />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Recent Activity */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-bold flex items-center gap-2">
+                  <TrendingUp size={16} className="text-orange-500" /> Recent
+                  Support
+                </h4>
+                <button className="text-xs font-bold text-slate-400 hover:text-orange-600 transition">
+                  View All
+                </button>
               </div>
-              <button className="w-full py-3 bg-white text-slate-900 rounded-xl font-bold text-sm hover:bg-slate-100 transition-all">
-                Change Number
-              </button>
+
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                <ActivityRow name="Innocent K." amount="2,000" time="2m ago" />
+                <ActivityRow name="Anonymous" amount="5,000" time="1h ago" />
+                <ActivityRow
+                  name="Marie-Rose U."
+                  amount="10,000"
+                  time="3h ago"
+                  msg="Love your work!"
+                />
+                <ActivityRow name="David B." amount="500" time="5h ago" />
+              </div>
+            </div>
+
+            {/* Past Content Sidebar */}
+            <div className="space-y-6">
+              <h4 className="text-sm font-bold">Past Activity</h4>
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+                <HistoryItem
+                  type="Gathering"
+                  title="Street Art Walk"
+                  meta="12 people"
+                />
+                <HistoryItem
+                  type="Post"
+                  title="Sketchbook V4"
+                  meta="45 views"
+                />
+                <HistoryItem
+                  type="Digital"
+                  title="Asset Pack"
+                  meta="12 sales"
+                />
+              </div>
             </div>
           </div>
         </div>
       </main>
     </div>
   );
-};
+}
 
-export default CreatorSpace;
+// --- Minimal Components ---
+
+function NavItem({ icon, label, active = false }) {
+  return (
+    <a
+      href="#"
+      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${active ? "bg-orange-50 text-orange-600" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"}`}
+    >
+      {icon}
+      {label}
+    </a>
+  );
+}
+
+function StatTile({ title, value, change }) {
+  return (
+    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+          {title}
+        </p>
+        <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded uppercase">
+          {change}
+        </span>
+      </div>
+      <h3 className="text-3xl font-black text-slate-900">{value}</h3>
+    </div>
+  );
+}
+
+function ActivityRow({ name, amount, time, msg }) {
+  return (
+    <div className="p-4 flex items-center gap-4 hover:bg-slate-50 transition border-b border-slate-100 last:border-0">
+      <div className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center text-xs font-bold text-slate-600 shrink-0">
+        {name[0]}
+      </div>
+      <div className="flex-1">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-bold">
+            {name}{" "}
+            <span className="font-normal text-slate-400 text-xs tracking-tight">
+              supported you
+            </span>
+          </p>
+          <span className="text-[10px] text-slate-400">{time}</span>
+        </div>
+        <p className="text-xs font-bold text-orange-600 mt-0.5">{amount} RWF</p>
+        {msg && (
+          <p className="text-[11px] text-slate-500 mt-2 bg-slate-50 p-2 rounded-md border border-slate-100">
+            "{msg}"
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function HistoryItem({ type, title, meta }) {
+  return (
+    <div className="flex items-center gap-3 group cursor-pointer">
+      <div className="w-1.5 h-1.5 rounded-full bg-slate-300 group-hover:bg-orange-500 transition shadow-sm"></div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-bold text-slate-800 truncate group-hover:text-orange-600 transition">
+          {title}
+        </p>
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] text-slate-400 uppercase font-bold tracking-tighter">
+            {type}
+          </span>
+          <span className="text-[10px] text-slate-400">{meta}</span>
+        </div>
+      </div>
+    </div>
+  );
+}

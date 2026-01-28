@@ -1,64 +1,102 @@
 "use client";
 
-import React from "react";
-import { Smartphone, Lock, Globe, Code } from "lucide-react"; // Basic icons
+import React, { useState } from "react";
+import {
+  Smartphone,
+  Lock,
+  Globe,
+  Code,
+  CheckCircle2,
+  Sparkles,
+  ChevronDown,
+  Heart,
+  ArrowRight,
+  Zap,
+  Coffee,
+} from "lucide-react";
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans">      
+    <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-orange-100">
+      {/* --- Refined Hero Section --- */}
+      <header className="px-6 py-20 md:py-32 max-w-6xl mx-auto text-center">
+        <div className="inline-flex items-center gap-2 bg-orange-50 text-orange-700 px-4 py-2 rounded-full text-xs font-bold mb-8 animate-fade-in">
+          <Sparkles size={14} />{" "}
+          <span>The first creator platform for Rwanda</span>
+        </div>
 
-      {/* --- Hero Section --- */}
-      <header className="px-6 py-16 md:py-28 max-w-5xl mx-auto text-center">
-        <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6">
-          From your fans' hearts <br />
-          <span className="text-orange-600">to your MoMo wallet.</span>
+        <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-8 leading-[1.1]">
+          Fuel your craft with <br />
+          <span className="text-orange-600">local support.</span>
         </h1>
-        <p className="text-lg md:text-xl text-slate-600 mb-10 max-w-2xl mx-auto">
-          The first platform built specifically for Rwandan creators. Get
-          supported, share exclusive content, and withdraw instantly to your
-          mobile money.
+
+        <p className="text-lg md:text-xl text-slate-500 mb-12 max-w-2xl mx-auto leading-relaxed">
+          Agaseke makes it easy for your community to support your work. Receive
+          contributions, share exclusives, and withdraw to MoMo instantly.
         </p>
-        <div className="flex flex-col md:flex-row justify-center gap-4">
-          <div className="flex items-center bg-slate-100 p-2 rounded-lg border border-slate-200">
-            <span className="px-3 text-slate-500">agaseke.me/</span>
+
+        <div className="flex flex-col items-center gap-4">
+          <div className="flex items-center bg-white p-2 rounded-2xl border-2 border-slate-100 focus-within:border-orange-500 focus-within:ring-4 focus-within:ring-orange-50 transition-all w-full max-w-md shadow-sm">
+            <span className="pl-4 pr-1 text-slate-400 font-medium">
+              agaseke.me/
+            </span>
             <input
               type="text"
               placeholder="yourname"
-              className="bg-transparent outline-none font-medium w-32"
+              className="bg-transparent outline-none font-bold text-slate-800 flex-1 py-3"
             />
+            <button className="bg-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-700 transition-all active:scale-95 whitespace-nowrap">
+              Get Started
+            </button>
           </div>
-          <button className="bg-orange-600 text-white px-8 py-4 rounded-lg font-bold hover:bg-orange-700 shadow-lg shadow-orange-200 transition">
-            Claim Your Link
-          </button>
+          <p className="text-xs text-slate-400 font-medium flex items-center gap-2">
+            <CheckCircle2 size={14} className="text-green-500" /> Free to start.
+            No monthly fees.
+          </p>
         </div>
       </header>
 
-      {/* --- Core Features --- */}
-      <section className="bg-slate-50 py-20 px-6">
+      {/* --- Features: More "Relational" --- */}
+      <section className="bg-slate-50 py-24 px-6 border-y border-slate-100">
         <div className="max-w-7xl mx-auto grid md:grid-cols-2 lg:grid-cols-4 gap-8">
           <FeatureCard
-            icon={<Smartphone className="text-orange-600" />}
-            title="MoMo Payouts"
-            desc="No more PayPal hurdles. Withdraw your earnings directly to MTN or Airtel MoMo instantly."
+            icon={<Coffee className="text-orange-600" />}
+            title="Fan Support"
+            desc="Let your fans buy you a 'virtual coffee.' A simple way for your community to say thank you."
           />
-
+          <FeatureCard
+            icon={<Smartphone className="text-orange-600" />}
+            title="Native MoMo"
+            desc="The only platform integrated with MTN & Airtel Rwanda. No foreign bank accounts required."
+          />
           <FeatureCard
             icon={<Lock className="text-orange-600" />}
-            title="Private Content"
-            desc="Share BTS, early access, or digital files only with your verified supporters."
+            title="Exclusive Space"
+            desc="Offer private gatherings, digital assets, or early access to your most loyal supporters."
           />
-
           <FeatureCard
-            icon={<Globe className="text-orange-600" />}
-            title="Short Links"
-            desc="Share your ags.ke/name link in your Instagram or X bio. It's clean and professional."
+            icon={<Zap className="text-orange-600" />}
+            title="Instant Payouts"
+            desc="Your balance is your money. Withdraw any time and see it hit your phone in seconds."
           />
+        </div>
+      </section>
 
-          <FeatureCard
-            icon={<Code className="text-orange-600" />}
-            title="Embeddable Widget"
-            desc="Add a 'Support me on Agaseke' button to your own website with a simple line of code."
-          />
+      {/* --- The Pricing: Bold & Simple --- */}
+      <section className="py-24 px-6">
+        <div className="max-w-4xl mx-auto bg-slate-950 rounded-[3rem] p-12 md:p-20 text-center text-white relative overflow-hidden shadow-2xl">
+          <div className="relative z-10">
+            <h2 className="text-orange-500 font-black uppercase tracking-[0.2em] text-sm mb-4">
+              Simple Pricing
+            </h2>
+            <div className="text-8xl font-black mb-6">5%</div>
+            <p className="text-xl text-slate-400 max-w-md mx-auto leading-relaxed">
+              We only make money when you do. No setup fees, no subscription,
+              just a flat platform fee.
+            </p>
+          </div>
+          {/* Background decoration */}
+          <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-orange-600/20 blur-[100px] rounded-full"></div>
         </div>
       </section>
     </div>
@@ -67,10 +105,12 @@ export default function LandingPage() {
 
 function FeatureCard({ icon, title, desc }) {
   return (
-    <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition">
-      <div className="mb-4">{icon}</div>
-      <h3 className="text-xl font-bold mb-2">{title}</h3>
-      <p className="text-slate-600 leading-relaxed">{desc}</p>
+    <div className="bg-white p-8 rounded-3xl border border-slate-200/60 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-900/5 transition-all duration-500 group">
+      <div className="mb-6 p-4 bg-slate-50 group-hover:bg-orange-50 w-fit rounded-2xl transition-colors">
+        {icon}
+      </div>
+      <h3 className="text-lg font-bold mb-3">{title}</h3>
+      <p className="text-slate-500 leading-relaxed text-sm">{desc}</p>
     </div>
   );
 }
