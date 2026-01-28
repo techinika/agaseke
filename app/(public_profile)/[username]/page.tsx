@@ -1,10 +1,10 @@
-import LandingPage from "@/components/pages/LandingPage";
+import PublicProfile from "@/components/pages/PublicProfile";
 import React from "react";
 
 function page() {
   return (
     <div>
-      <LandingPage />
+      <PublicProfile creator={"achille"} />
     </div>
   );
 }

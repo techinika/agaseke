@@ -1,10 +1,10 @@
-import LandingPage from "@/components/pages/LandingPage";
+import StartPage from "@/components/pages/StartPage";
 import React from "react";
 
 function page() {
   return (
     <div>
-      <LandingPage />
+      <StartPage />
     </div>
   );
 }

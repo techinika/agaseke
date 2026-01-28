@@ -1,10 +1,10 @@
-import LandingPage from "@/components/pages/LandingPage";
+import SpaceSwitcher from "@/components/pages/Dashboards/SpaceSwitcher";
 import React from "react";
 
 function page() {
   return (
     <div>
-      <LandingPage />
+      <SpaceSwitcher />
     </div>
   );
 }
