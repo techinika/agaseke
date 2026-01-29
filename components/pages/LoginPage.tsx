@@ -1,9 +1,16 @@
 "use client";
 
-import { Zap, Wallet, Star, UserPlus, ArrowLeft } from "lucide-react";
+import { Zap, Wallet, Star, UserPlus, ArrowLeft, Loader } from "lucide-react";
 import Link from "next/link";
+import React from "react";
+import { handleGoogleLogin } from "../../db/functions/GoogleLogin";
+import { useSearchParams } from "next/navigation";
 
 export default function LoginPage() {
+  const [loading, setLoading] = React.useState(false);
+  const searchParams = useSearchParams();
+  const reservedUsername = searchParams.get("username") || null;
+
   return (
     <div className="min-h-screen bg-white flex flex-col md:flex-row">
       <div className="md:w-1/2 bg-slate-900 p-8 md:p-16 flex flex-col justify-between text-white relative overflow-hidden">
@@ -63,15 +70,21 @@ export default function LoginPage() {
 
           <button
             className="w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-100 py-4 px-6 rounded-2xl font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-200 transition-all active:scale-[0.98]"
-            onClick={() => {
-              console.log("Redirecting to Google Auth...");
+            onClick={async () => {
+              setLoading(true);
+              await handleGoogleLogin(reservedUsername ?? null);
+              setLoading(false);
             }}
           >
-            <img
-              src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-              className="w-5 h-5"
-              alt="Google"
-            />
+            {loading ? (
+              <Loader className="animate-spin" />
+            ) : (
+              <img
+                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                className="w-5 h-5"
+                alt="Google"
+              />
+            )}
             Continue with Google
           </button>
 

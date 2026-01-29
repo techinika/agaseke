@@ -3,32 +3,26 @@
 import React, { useState } from "react";
 import {
   User,
-  Settings,
   LayoutDashboard,
   LogOut,
   ChevronDown,
-  Sparkles,
-  ArrowUpRight,
   LogIn,
 } from "lucide-react";
 import Link from "next/link";
+import { useAuth } from "@/auth/AuthContext";
+import { handleLogout } from "@/db/functions/LogOut";
+import Loading from "@/app/loading";
 
 const Navbar = () => {
-  // Simulated Auth State for previewing
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const auth = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  // Simulated User Data
-  const user = {
-    displayName: "Gisa Patrick",
-    photoURL: null,
-    email: "gisa@example.com",
-  };
+  if (loggingOut) return <Loading />;
 
   return (
     <nav className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-slate-100">
       <div className="flex items-center justify-between px-6 py-3.5 mx-auto max-w-7xl">
-        {/* --- Logo --- */}
         <Link href="/" className="flex items-center gap-2 group">
           <div className="text-xl font-black tracking-tighter text-slate-900 uppercase">
             agaseke<span className="text-orange-600">.me</span>
@@ -36,23 +30,8 @@ const Navbar = () => {
         </Link>
 
         <div className="flex items-center gap-3">
-          {!isLoggedIn ? (
-            <button
-              onClick={() => setIsLoggedIn(true)}
-              className="group relative flex items-center gap-2 px-6 py-2.5 bg-orange-700 text-white rounded-2xl text-sm font-bold hover:bg-orange-800 transition-all active:scale-95 shadow-xl shadow-slate-200"
-            >
-              <LogIn className="h-4 w-4" />
-              <span>Sign In</span>
-            </button>
-          ) : (
+          {auth?.isLoggedIn ? (
             <div className="flex items-center gap-3">
-              <Link
-                href="/dashboard"
-                className="hidden md:flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-orange-100 transition-colors"
-              >
-                Go to Space <ArrowUpRight size={14} />
-              </Link>
-
               <div className="relative">
                 <button
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -60,15 +39,15 @@ const Navbar = () => {
                   className="flex items-center gap-2 p-1 pr-3 rounded-2xl border border-slate-200 hover:border-orange-200 hover:bg-white transition-all group"
                 >
                   <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden font-bold text-xs ring-2 ring-transparent group-hover:ring-orange-100 transition-all">
-                    {user?.photoURL ? (
+                    {auth?.profile?.photoURL ? (
                       <img
-                        src={user.photoURL}
+                        src={auth.profile.photoURL}
                         alt="Avatar"
                         className="w-full h-full object-cover"
                       />
                     ) : (
                       <span className="text-slate-600">
-                        {user.displayName[0]}
+                        {auth?.profile?.displayName?.[0]}
                       </span>
                     )}
                   </div>
@@ -77,7 +56,7 @@ const Navbar = () => {
                       Creator
                     </span>
                     <span className="text-xs font-black text-slate-800">
-                      {user.displayName}
+                      {auth?.profile?.displayName || "User"}
                     </span>
                   </div>
                   <ChevronDown
@@ -93,35 +72,33 @@ const Navbar = () => {
                         Your Account
                       </p>
                       <p className="text-xs font-bold text-slate-500 truncate">
-                        {user.email}
+                        {auth?.user?.email}
                       </p>
                     </div>
 
                     <div className="space-y-1">
                       <Link
-                        href="/dashboard"
+                        href={auth?.isCreator ? "/creator" : "/supporter"}
                         className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 rounded-2xl hover:bg-orange-50 hover:text-orange-600 transition-colors"
                       >
                         <LayoutDashboard size={18} /> My Space
                       </Link>
                       <Link
-                        href="/profile-settings"
+                        href="/profile"
                         className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 rounded-2xl hover:bg-orange-50 hover:text-orange-600 transition-colors"
                       >
                         <User size={18} /> Edit Profile
-                      </Link>
-                      <Link
-                        href="/settings"
-                        className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 rounded-2xl hover:bg-orange-50 hover:text-orange-600 transition-colors"
-                      >
-                        <Settings size={18} /> Payout Settings
                       </Link>
                     </div>
 
                     <div className="h-px bg-slate-50 my-2 mx-4" />
 
                     <button
-                      onClick={() => setIsLoggedIn(false)}
+                      onClick={async () => {
+                        setLoggingOut(true);
+                        await handleLogout();
+                        setLoggingOut(false);
+                      }}
                       className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-red-500 rounded-2xl hover:bg-red-50 transition-colors"
                     >
                       <LogOut size={18} /> Log out
@@ -130,6 +107,14 @@ const Navbar = () => {
                 )}
               </div>
             </div>
+          ) : (
+            <Link
+              href={"/login"}
+              className="group relative flex items-center gap-2 px-6 py-2.5 bg-orange-700 text-white rounded-2xl text-sm font-bold hover:bg-orange-800 transition-all active:scale-95 shadow-xl shadow-slate-200"
+            >
+              <LogIn className="h-4 w-4" />
+              <span>Sign In</span>
+            </Link>
           )}
         </div>
       </div>

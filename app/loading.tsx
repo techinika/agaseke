@@ -6,75 +6,115 @@ import { motion } from "framer-motion";
 const Loading = () => {
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-orange-50/40 via-transparent to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-orange-50/60 via-transparent to-transparent pointer-events-none" />
 
       <div className="relative flex flex-col items-center">
-        {/* Animated Logo Container */}
         <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
+          initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className="relative mb-8"
+          className="relative mb-12"
         >
+          {/* Pulsing Outer Glow */}
           <motion.div
             animate={{
-              scale: [1, 1.2, 1],
-              opacity: [0.3, 0.1, 0.3],
+              scale: [1, 1.4, 1],
+              opacity: [0.2, 0.05, 0.2],
             }}
             transition={{
-              duration: 2,
+              duration: 3,
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="absolute -inset-4 bg-orange-500 rounded-[2.5rem] blur-xl"
+            className="absolute -inset-8 bg-orange-400 rounded-full blur-3xl"
+          />
+
+          {/* Rotating "Basket Weave" Border */}
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+            className="absolute -inset-2 border-2 border-dashed border-orange-200 rounded-[2.5rem]"
           />
 
           {/* Main Logo Box */}
-          <div className="relative w-20 h-20 bg-orange-600 rounded-[2rem] flex items-center justify-center shadow-2xl shadow-orange-200 overflow-hidden">
-            <span className="text-white text-4xl font-black">n</span>
-            {/* Shimmer Effect over the logo */}
-            <motion.div
-              animate={{ x: ["-100%", "200%"] }}
-              transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"
-            />
-          </div>
-        </motion.div>
+          <motion.div
+            animate={{
+              y: [0, -10, 0],
+              rotate: [0, 5, -5, 0],
+            }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            className="relative w-24 h-24 bg-slate-900 rounded-[2.2rem] flex items-center justify-center shadow-2xl shadow-orange-200 overflow-hidden"
+          >
+            {/* The "a" from Agaseke */}
+            <span className="text-white text-5xl font-black italic tracking-tighter select-none">
+              a
+            </span>
 
-        {/* Loading Text */}
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="text-slate-900 font-bold tracking-tight text-lg mb-4"
-        >
-          Loading data...
-        </motion.p>
-
-        {/* Staggered Loading Dots */}
-        <div className="flex gap-1.5">
-          {[0, 1, 2].map((index) => (
+            {/* Liquid Fill Effect */}
             <motion.div
-              key={index}
               animate={{
-                scale: [1, 1.5, 1],
-                backgroundColor: ["#6366f1", "#a5b4fc", "#6366f1"],
+                top: ["100%", "30%", "100%"],
               }}
               transition={{
-                duration: 1,
+                duration: 4,
                 repeat: Infinity,
-                delay: index * 0.2,
                 ease: "easeInOut",
               }}
-              className="w-2 h-2 rounded-full bg-orange-600"
+              className="absolute inset-0 bg-orange-600/20"
             />
-          ))}
+
+            <motion.div
+              animate={{ x: ["-100%", "250%"] }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 1,
+              }}
+              className="absolute inset-0 bg-linear-to-r from-transparent via-white/10 to-transparent -skew-x-12"
+            />
+          </motion.div>
+        </motion.div>
+
+        <div className="flex flex-col items-center gap-2">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex gap-1"
+          >
+            {"agaseke".split("").map((char, i) => (
+              <motion.span
+                key={i}
+                animate={{
+                  y: [0, -5, 0],
+                  color: ["#0f172a", "#ea580c", "#0f172a"],
+                }}
+                transition={{
+                  duration: 1.5,
+                  repeat: Infinity,
+                  delay: i * 0.1,
+                  ease: "easeInOut",
+                }}
+                className="text-2xl font-black italic tracking-tighter text-slate-900"
+              >
+                {char}
+              </motion.span>
+            ))}
+          </motion.div>
+
+          <motion.p
+            animate={{ opacity: [0.4, 1, 0.4] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="text-[10px] font-black uppercase tracking-[0.4em] text-orange-600"
+          >
+            Murakoze Gutegereza
+          </motion.p>
         </div>
       </div>
 
-      <div className="absolute bottom-10">
-        <p className="text-xs font-bold text-slate-300 uppercase tracking-[0.2em]">
-          Agaseke for Creators
+      <div className="absolute bottom-12 text-center px-6">
+        <p className="text-xs font-bold text-slate-300 uppercase tracking-widest leading-loose">
+          Powering the creator economy <br />
+          <span className="text-slate-200">in the heart of Africa</span>
         </p>
       </div>
     </div>

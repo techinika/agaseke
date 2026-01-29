@@ -4,21 +4,27 @@ import React, { useState } from "react";
 import {
   Smartphone,
   Lock,
-  Globe,
-  Code,
   CheckCircle2,
   Sparkles,
-  ChevronDown,
-  Heart,
-  ArrowRight,
   Zap,
   Coffee,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export default function LandingPage() {
+  const router = useRouter();
+  const [username, setUsername] = useState("");
+
+  const handleClaim = () => {
+    if (username) {
+      router.push(`/login?username=${username}`);
+    } else {
+      toast.info("Please enter a valid username to continue.");
+    }
+  };
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-orange-100">
-      {/* --- Refined Hero Section --- */}
       <header className="px-6 py-20 md:py-32 max-w-6xl mx-auto text-center">
         <div className="inline-flex items-center gap-2 bg-orange-50 text-orange-700 px-4 py-2 rounded-full text-xs font-bold mb-8 animate-fade-in">
           <Sparkles size={14} />{" "}
@@ -26,7 +32,7 @@ export default function LandingPage() {
         </div>
 
         <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-8 leading-[1.1]">
-          Fuel your craft with <br />
+          Fuel your creativity with <br />
           <span className="text-orange-600">local support.</span>
         </h1>
 
@@ -36,19 +42,30 @@ export default function LandingPage() {
         </p>
 
         <div className="flex flex-col items-center gap-4">
-          <div className="flex items-center bg-white p-2 rounded-2xl border-2 border-slate-100 focus-within:border-orange-500 focus-within:ring-4 focus-within:ring-orange-50 transition-all w-full max-w-md shadow-sm">
-            <span className="pl-4 pr-1 text-slate-400 font-medium">
-              agaseke.me/
-            </span>
-            <input
-              type="text"
-              placeholder="yourname"
-              className="bg-transparent outline-none font-bold text-slate-800 flex-1 py-3"
-            />
-            <button className="bg-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-700 transition-all active:scale-95 whitespace-nowrap">
-              Get Started
+          <div className="flex flex-col sm:flex-row items-center bg-white p-2 rounded-2xl border-2 border-slate-100 focus-within:border-orange-500 focus-within:ring-4 focus-within:ring-orange-50 transition-all w-full max-w-lg shadow-xl">
+            <div className="flex items-center flex-1 w-full px-2">
+              <span className="pl-2 pr-1 text-slate-400 font-semibold select-none">
+                agaseke.me/
+              </span>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) =>
+                  setUsername(e.target.value.toLowerCase().replace(/\s/g, ""))
+                }
+                placeholder="yourname"
+                className="bg-transparent outline-none font-bold text-slate-800 flex-1 py-4 text-lg placeholder:text-slate-300 w-full"
+              />
+            </div>
+
+            <button
+              onClick={handleClaim}
+              className="w-full sm:w-auto bg-orange-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-orange-700 transition-all active:scale-95 whitespace-nowrap shadow-lg shadow-orange-200"
+            >
+              Claim your Agaseke
             </button>
           </div>
+
           <p className="text-xs text-slate-400 font-medium flex items-center gap-2">
             <CheckCircle2 size={14} className="text-green-500" /> Free to start.
             No monthly fees.
@@ -95,7 +112,6 @@ export default function LandingPage() {
               just a flat platform fee.
             </p>
           </div>
-          {/* Background decoration */}
           <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-orange-600/20 blur-[100px] rounded-full"></div>
         </div>
       </section>
@@ -103,7 +119,15 @@ export default function LandingPage() {
   );
 }
 
-function FeatureCard({ icon, title, desc }) {
+function FeatureCard({
+  icon,
+  title,
+  desc,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  desc: string;
+}) {
   return (
     <div className="bg-white p-8 rounded-3xl border border-slate-200/60 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-900/5 transition-all duration-500 group">
       <div className="mb-6 p-4 bg-slate-50 group-hover:bg-orange-50 w-fit rounded-2xl transition-colors">

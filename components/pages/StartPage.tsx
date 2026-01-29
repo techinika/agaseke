@@ -1,77 +1,148 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 import {
   Check,
   ArrowRight,
-  Camera,
   Smartphone,
+  ChevronLeft,
   Sparkles,
   ShieldCheck,
-  AlertCircle,
-  Lock,
 } from "lucide-react";
+import { toast } from "sonner";
+import { auth, db } from "@/db/firebase";
 
 export default function CreatorOnboarding() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const [step, setStep] = useState(1);
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
+  const [loading, setLoading] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
 
   const [formData, setFormData] = useState({
-    username: "",
+    username: searchParams.get("username") || "",
     fullName: "",
     bio: "",
     momoNumber: "",
     momoNetwork: "MTN",
   });
 
+  useEffect(() => {
+    const checkUserStatus = async () => {
+      const user = auth.currentUser;
+      if (user) {
+        const userRef = doc(db, "profiles", user.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists() && userSnap.data().role === "creator") {
+          router.push("/creator");
+        }
+      }
+    };
+    checkUserStatus();
+  }, [router]);
+
+  const handleFinish = async () => {
+    setLoading(true);
+    const user = auth.currentUser;
+
+    if (!user) {
+      toast.error("You must be logged in");
+      return;
+    }
+
+    try {
+      await setDoc(doc(db, "creators", formData.username), {
+        uid: user.uid,
+        name: formData.fullName,
+        bio: formData.bio,
+        handle: formData.username,
+        payoutNumber: formData.momoNumber,
+        network: formData.momoNetwork,
+        verified: isVerified,
+        totalEarnings: 0,
+        totalSupporters: 0,
+        socials: {
+          instagram: null,
+          twitter: null,
+          youtube: null,
+          tiktok: null,
+          web: null,
+        },
+        perks: [],
+        events: [],
+        createdAt: serverTimestamp(),
+      });
+
+      await updateDoc(doc(db, "profiles", user.uid), {
+        type: "creator",
+        username: formData.username,
+        onboarded: true,
+      });
+
+      toast.success("Welcome to the creator family!");
+      router.push("/creator");
+    } catch (error) {
+      console.error(error);
+      toast.error("Something went wrong saving your profile.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const skipOnboarding = () => {
+    router.push("/supporter");
+  };
+
   const nextStep = () => setStep(step + 1);
   const prevStep = () => setStep(step - 1);
 
-  const handleSendOtp = () => {
-    // Logic to trigger SMS via provider (e.g., Africa's Talking or Twilio)
-    setOtpSent(true);
-  };
-
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6">
-      {/* --- Progress Bar --- */}
-      <div className="w-full max-w-md mb-12 flex justify-between relative">
-        <div className="absolute top-1/2 left-0 w-full h-0.5 bg-slate-100 -translate-y-1/2 -z-10"></div>
-        {[1, 2, 3, 4, 5].map((i) => (
+    <div className="min-h-screen bg-[#FDFDFF] flex flex-col items-center justify-center p-6">
+      <div className="w-full max-w-sm mb-12 flex justify-between relative">
+        <div className="absolute top-1/2 left-0 w-full h-0.5 bg-slate-100 -translate-y-1/2 -z-10" />
+        {[1, 2, 3, 4].map((i) => (
           <div
             key={i}
-            className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-500 ${
-              step >= i
-                ? "bg-orange-600 text-white"
-                : "bg-slate-100 text-slate-400"
-            }`}
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all duration-500 ${step >= i ? "bg-orange-600 text-white shadow-lg shadow-orange-100" : "bg-white border-2 border-slate-100 text-slate-300"}`}
           >
-            {step > i ? <Check size={12} /> : i}
+            {step > i ? <Check size={14} strokeWidth={3} /> : i}
           </div>
         ))}
       </div>
 
-      <div className="w-full max-w-md">
-        {/* --- Step 1: Handle --- */}
+      <div className="w-full max-w-md bg-white p-8 md:p-10 rounded-[2.5rem] shadow-sm border border-slate-100">
+        {/* Step 1: Username */}
         {step === 1 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-            <header>
-              <h1 className="text-3xl font-black mb-2 text-slate-900">
+            <div className="text-center space-y-2">
+              <h1
+                className="text-3xl font-black 
+             tracking-tighter"
+              >
                 Claim your link
               </h1>
-              <p className="text-slate-500">How should fans find you?</p>
-            </header>
-            <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">
-                ags.ke/
+              <p className="text-slate-500 text-sm">
+                This is your permanent address on Agaseke.
+              </p>
+            </div>
+            <div className="relative group">
+              <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-bold tracking-tighter">
+                agaseke.me/
               </div>
               <input
                 autoFocus
                 type="text"
-                placeholder="username"
-                className="w-full p-4 pl-20 bg-slate-50 border-2 border-slate-100 rounded-2xl text-xl font-bold focus:border-orange-500 focus:bg-white outline-none transition-all"
+                className="w-full p-5 pl-28 bg-slate-50 border-2 border-transparent rounded-2xl text-xl font-black focus:border-orange-500 focus:bg-white outline-none transition-all"
                 value={formData.username}
                 onChange={(e) =>
                   setFormData({
@@ -84,35 +155,37 @@ export default function CreatorOnboarding() {
             <button
               onClick={nextStep}
               disabled={!formData.username}
-              className="w-full bg-slate-900 text-white py-5 rounded-2xl font-bold flex items-center justify-center gap-2"
+              className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-2 hover:bg-orange-600 transition-all active:scale-95"
             >
-              Continue <ArrowRight size={18} />
+              Continue <ArrowRight size={20} />
             </button>
           </div>
         )}
 
-        {/* --- Step 2: Identity --- */}
+        {/* Step 2: Bio */}
         {step === 2 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
-            <header>
-              <h1 className="text-3xl font-black mb-2 text-slate-900">
-                Tell your story
+            <div className="text-center space-y-2">
+              <h1 className="text-3xl font-black tracking-tighter">
+                The Creator
               </h1>
-              <p className="text-slate-500">Let people know who you are.</p>
-            </header>
+              <p className="text-slate-500 text-sm">
+                How should we introduce you?
+              </p>
+            </div>
             <div className="space-y-4">
               <input
                 type="text"
-                placeholder="Full Name"
-                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-orange-500"
+                placeholder="Display Name (e.g. Gisa Patrick)"
+                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none focus:border-orange-500"
                 value={formData.fullName}
                 onChange={(e) =>
                   setFormData({ ...formData, fullName: e.target.value })
                 }
               />
               <textarea
-                placeholder="Short bio..."
-                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl h-32 resize-none outline-none focus:border-orange-500"
+                placeholder="Tell your fans what you're creating..."
+                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl h-32 resize-none font-medium outline-none focus:border-orange-500"
                 value={formData.bio}
                 onChange={(e) =>
                   setFormData({ ...formData, bio: e.target.value })
@@ -122,13 +195,14 @@ export default function CreatorOnboarding() {
             <div className="flex gap-3">
               <button
                 onClick={prevStep}
-                className="flex-1 border border-slate-200 py-4 rounded-xl font-bold"
+                className="p-5 bg-slate-50 rounded-2xl text-slate-400 hover:text-slate-900 transition-colors"
               >
-                Back
+                <ChevronLeft size={24} />
               </button>
               <button
                 onClick={nextStep}
-                className="flex-[2] bg-slate-900 text-white py-4 rounded-xl font-bold"
+                disabled={!formData.fullName}
+                className="flex-1 bg-slate-900 text-white py-5 rounded-2xl font-black text-lg hover:bg-orange-600 transition-all"
               >
                 Continue
               </button>
@@ -136,15 +210,17 @@ export default function CreatorOnboarding() {
           </div>
         )}
 
-        {/* --- Step 3: Payout Info --- */}
+        {/* Step 3: MoMo */}
         {step === 3 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
-            <header>
-              <h1 className="text-3xl font-black mb-2 text-slate-900">
-                Get paid
+            <div className="text-center space-y-2">
+              <h1 className="text-3xl font-black tracking-tighter">
+                Payout Method
               </h1>
-              <p className="text-slate-500">Enter your Mobile Money details.</p>
-            </header>
+              <p className="text-slate-500 text-sm">
+                Where should we send your support?
+              </p>
+            </div>
             <div className="space-y-4">
               <div className="flex gap-2">
                 {["MTN", "Airtel"].map((net) => (
@@ -153,166 +229,98 @@ export default function CreatorOnboarding() {
                     onClick={() =>
                       setFormData({ ...formData, momoNetwork: net })
                     }
-                    className={`flex-1 py-3 rounded-xl border-2 font-bold ${
-                      formData.momoNetwork === net
-                        ? "border-orange-600 bg-orange-50 text-orange-600"
-                        : "border-slate-100 text-slate-400"
-                    }`}
+                    className={`flex-1 py-4 rounded-2xl border-2 font-black text-sm transition-all ${formData.momoNetwork === net ? "border-orange-600 bg-orange-50 text-orange-600" : "border-slate-50 text-slate-300"}`}
                   >
-                    {net}
+                    {net} Money
                   </button>
                 ))}
               </div>
-              <input
-                type="tel"
-                placeholder="078... or 073..."
-                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl outline-none text-center text-xl font-bold tracking-widest focus:border-orange-500"
-                value={formData.momoNumber}
-                onChange={(e) =>
-                  setFormData({ ...formData, momoNumber: e.target.value })
-                }
-              />
+              <div className="relative">
+                <Smartphone
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+                  size={20}
+                />
+                <input
+                  type="tel"
+                  placeholder="078..."
+                  className="w-full p-5 pl-12 bg-slate-50 border border-slate-100 rounded-2xl text-center text-xl font-black tracking-widest focus:border-orange-500 outline-none"
+                  value={formData.momoNumber}
+                  onChange={(e) =>
+                    setFormData({ ...formData, momoNumber: e.target.value })
+                  }
+                />
+              </div>
             </div>
             <div className="flex gap-3">
               <button
                 onClick={prevStep}
-                className="flex-1 border border-slate-200 py-4 rounded-xl font-bold text-slate-400"
+                className="p-5 bg-slate-50 rounded-2xl text-slate-400 transition-colors"
               >
-                Back
+                <ChevronLeft size={24} />
               </button>
               <button
                 onClick={nextStep}
                 disabled={!formData.momoNumber}
-                className="flex-[2] bg-slate-900 text-white py-4 rounded-xl font-bold"
+                className="flex-1 bg-slate-900 text-white py-5 rounded-2xl font-black text-lg hover:bg-orange-600 transition-all"
               >
-                Verify Number
+                Verify My Number
               </button>
             </div>
           </div>
         )}
 
-        {/* --- Step 4: OTP Verification --- */}
+        {/* Step 4: Final Confirmation */}
         {step === 4 && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
-            <header>
-              <h1 className="text-3xl font-black mb-2 text-slate-900 text-center">
-                Security Check
+          <div className="space-y-6 animate-in zoom-in-95">
+            <div className="text-center space-y-2">
+              <div className="w-16 h-16 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                <ShieldCheck size={32} />
+              </div>
+              <h1 className="text-3xl font-black tracking-tighter">
+                You are Ready!
               </h1>
-              <p className="text-slate-500 text-center">
-                Verify {formData.momoNumber} to enable future withdrawals.
-              </p>
-            </header>
-
-            {!otpSent ? (
-              <div className="text-center py-6">
-                <div className="w-16 h-16 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Smartphone size={32} />
-                </div>
-                <button
-                  onClick={handleSendOtp}
-                  className="bg-orange-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-orange-700 transition"
-                >
-                  Send OTP via SMS
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <input
-                  type="text"
-                  maxLength={6}
-                  placeholder="Enter 6-digit code"
-                  className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-xl text-center text-2xl font-black tracking-[0.5em] focus:border-orange-500 outline-none"
-                  value={otpCode}
-                  onChange={(e) => {
-                    setOtpCode(e.target.value);
-                    if (e.target.value === "123456") setIsVerified(true); // Mock verification
-                  }}
-                />
-                <p className="text-center text-xs text-slate-400">
-                  Didn&apos;t receive it?{" "}
-                  <button className="text-orange-600 font-bold underline">
-                    Resend
-                  </button>
-                </p>
-              </div>
-            )}
-
-            <div className="pt-4 border-t border-slate-100">
-              <button
-                onClick={nextStep}
-                className={`w-full py-4 rounded-xl font-bold transition ${isVerified ? "bg-green-600 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
-              >
-                {isVerified ? "Successfully Verified" : "Verify Later"}
-              </button>
-              <p className="text-[10px] text-center text-slate-400 mt-4 px-6">
-                Note: You can skip this now, but you must verify your number
-                before withdrawing funds.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* --- Step 5: Final Review --- */}
-        {step === 5 && (
-          <div className="space-y-8 animate-in zoom-in-95 duration-300">
-            <div className="text-center">
-              <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 font-black text-2xl">
-                {isVerified ? <Check size={40} /> : "!"}
-              </div>
-              <h1 className="text-3xl font-black">Final Look</h1>
-              <p className="text-slate-500 mt-2">
-                Ready to start receiving support?
+              <p className="text-slate-500 text-sm">
+                Confirm your details to launch.
               </p>
             </div>
 
-            <div className="bg-slate-50 p-6 rounded-3xl space-y-4 border border-slate-100">
+            <div className="bg-slate-50 p-6 rounded-4xl space-y-3 border border-slate-100">
               <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-slate-400 uppercase">
+                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
                   Public Link
                 </span>
-                <span className="font-bold text-orange-600">
-                  ags.ke/{formData.username}
+                <span className="font-black text-orange-600">
+                  agaseke.me/{formData.username}
                 </span>
               </div>
-              <div className="flex justify-between items-center border-t border-slate-200 pt-4">
-                <span className="text-xs font-bold text-slate-400 uppercase">
-                  Payout MoMo
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                  Payout
                 </span>
-                <div className="text-right">
-                  <span className="font-bold text-slate-700 block">
-                    {formData.momoNumber}
-                  </span>
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${isVerified ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}
-                  >
-                    {isVerified ? "Verified" : "Unverified"}
-                  </span>
-                </div>
+                <span className="font-black text-slate-700">
+                  {formData.momoNumber} ({formData.momoNetwork})
+                </span>
               </div>
             </div>
 
-            {!isVerified && (
-              <div className="flex items-start gap-3 p-4 bg-amber-50 rounded-2xl border border-amber-100">
-                <AlertCircle
-                  size={18}
-                  className="text-amber-600 shrink-0 mt-0.5"
-                />
-                <p className="text-xs text-amber-800 leading-relaxed">
-                  <strong>Verification Pending:</strong> Your profile will be
-                  public, but payout withdrawals will be locked until you verify
-                  this number.
-                </p>
-              </div>
-            )}
-
             <button
-              onClick={() => (window.location.href = `/${formData.username}`)}
-              className="w-full bg-orange-600 text-white py-5 rounded-2xl font-bold text-xl shadow-xl shadow-orange-100 hover:bg-orange-700 active:scale-95 transition-all"
+              onClick={handleFinish}
+              disabled={loading}
+              className="w-full bg-orange-600 text-white py-5 rounded-4xl font-black text-xl shadow-xl shadow-orange-100 hover:bg-orange-700 transition-all flex items-center justify-center gap-3"
             >
-              Launch My Agaseke
+              {loading ? "Creating Space..." : "Launch My Agaseke"}
             </button>
           </div>
         )}
+
+        <div className="mt-8 text-center">
+          <button
+            onClick={skipOnboarding}
+            className="text-xs font-black uppercase tracking-widest text-slate-300 hover:text-orange-600 transition-colors"
+          >
+            I&apos;ll set this up later — Skip
+          </button>
+        </div>
       </div>
     </div>
   );

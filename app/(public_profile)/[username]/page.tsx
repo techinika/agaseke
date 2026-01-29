@@ -1,10 +1,11 @@
 import PublicProfile from "@/components/pages/PublicProfile";
 import React from "react";
 
-function page() {
+async function page({ params }: { params: Promise<{ username: string }> }) {
+  const { username } = await params;
   return (
     <div>
-      <PublicProfile />
+      <PublicProfile username={username} />
     </div>
   );
 }

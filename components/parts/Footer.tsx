@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Footer() {
   return (
     <footer className="bg-slate-950 pt-20 pb-10 px-6 text-slate-400 border-t border-slate-900">
@@ -41,7 +43,7 @@ export default function Footer() {
   );
 }
 
-function FooterGroup({ title, links }) {
+function FooterGroup({ title, links }: { title: string; links: string[] }) {
   return (
     <div>
       <h4 className="font-bold text-white text-sm mb-6 uppercase tracking-widest">
@@ -50,9 +52,9 @@ function FooterGroup({ title, links }) {
       <ul className="space-y-4 text-sm">
         {links.map((link) => (
           <li key={link}>
-            <a href="#" className="hover:text-orange-500 transition-colors">
+            <Link href="#" className="hover:text-orange-500 transition-colors">
               {link}
-            </a>
+            </Link>
           </li>
         ))}
       </ul>
