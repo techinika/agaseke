@@ -10,12 +10,23 @@ import {
   Star,
   Clock,
   Loader,
+  ChevronRight,
+  User,
 } from "lucide-react";
 import Image from "next/image";
 import Navbar from "@/components/parts/Navigation";
 import { useAuth } from "@/auth/AuthContext";
 import Loading from "@/app/loading";
-import { collection, getDocs, limit, query } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  orderBy,
+  query,
+  where,
+} from "firebase/firestore";
 import { Creator } from "@/types/creator";
 import { db } from "@/db/firebase";
 import Link from "next/link";
@@ -26,7 +37,88 @@ export default function SupporterSpace() {
   const router = useRouter();
   const [creators, setCreators] = useState<Creator[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [favorites, setFavorites] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMyFavorites = async () => {
+      if (!auth.user?.uid) return;
+      setLoading(true);
+
+      try {
+        const supportRef = collection(db, "supportedCreators");
+        const q = query(
+          supportRef,
+          where("supporterId", "==", auth.user.uid),
+          orderBy("lastSupport", "desc"),
+        );
+        const supportSnap = await getDocs(q);
+
+        const favoritesData = await Promise.all(
+          supportSnap.docs.map(async (supportDoc) => {
+            const relationship = supportDoc.data();
+            const creatorId = relationship.creatorId;
+
+            const creatorRef = doc(db, "creators", creatorId);
+            const creatorSnap = await getDoc(creatorRef);
+            const creatorProfile = creatorSnap.exists()
+              ? creatorSnap.data()
+              : {};
+
+            const sevenDaysAgo = new Date();
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+            const contentQuery = query(
+              collection(db, "creatorContent"),
+              where("creatorId", "==", creatorId),
+              where("createdAt", ">=", sevenDaysAgo),
+              limit(1),
+            );
+
+            const gatheringQuery = query(
+              collection(db, "creatorGatherings"),
+              where("creatorId", "==", creatorId),
+              where("createdAt", ">=", sevenDaysAgo),
+              limit(1),
+            );
+
+            const [contentSnap, gatheringSnap] = await Promise.all([
+              getDocs(contentQuery),
+              getDocs(gatheringQuery),
+            ]);
+
+            const hasUpdates = !contentSnap.empty || !gatheringSnap.empty;
+
+            return {
+              id: creatorId,
+              name: creatorProfile.name || creatorId,
+              handle: creatorId,
+              photoURL: creatorProfile.photoURL,
+              lastPost: creatorProfile.bio || "No recent updates",
+              time:
+                relationship.lastSupport?.toDate().toLocaleDateString() ||
+                "Recently",
+              updates: hasUpdates ? 1 : 0,
+              lastSupportDate: relationship.lastSupport?.toDate(),
+            };
+          }),
+        );
+
+        const sorted = favoritesData.sort((a, b) => {
+          if (a.updates !== b.updates) return b.updates - a.updates;
+          return b.lastSupportDate - a.lastSupportDate;
+        });
+
+        setFavorites(sorted);
+      } catch (error) {
+        console.error("Error fetching favorites:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMyFavorites();
+  }, [auth.user]);
 
   useEffect(() => {
     const fetchCreators = async () => {
@@ -55,21 +147,6 @@ export default function SupporterSpace() {
       c.handle.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.name?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
-
-  const supportedCreators = [
-    {
-      name: "Gisa Ishimwe",
-      updates: 2,
-      lastPost: "New digital illustration process",
-      time: "2h ago",
-    },
-    {
-      name: "Angelic K.",
-      updates: 0,
-      lastPost: "Kigali Jazz night invitation",
-      time: "1d ago",
-    },
-  ];
 
   if (auth.loading || loading) return <Loading />;
 
@@ -143,36 +220,63 @@ export default function SupporterSpace() {
               </div>
 
               <div className="space-y-4">
-                {supportedCreators.map((creator, i) => (
-                  <div
-                    key={i}
-                    className="bg-white p-5 rounded-3xl border border-slate-100 hover:border-orange-200 transition-all group cursor-pointer shadow-sm"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 font-bold text-xl">
-                        {creator.name[0]}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-bold text-slate-900">
-                            {creator.name}
-                          </h4>
-                          <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                            <Clock size={10} /> {creator.time}
-                          </span>
+                {favorites.length > 0 ? (
+                  favorites.map((creator, i) => (
+                    <Link
+                      key={i}
+                      href={`/${creator.handle}`}
+                      className="block bg-white p-5 rounded-3xl border border-slate-100 hover:border-orange-200 transition-all group cursor-pointer shadow-sm"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center overflow-hidden shrink-0 border border-slate-50">
+                          {creator.photoURL ? (
+                            <img
+                              src={creator.photoURL}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-slate-400 font-bold text-xl">
+                              {creator.name[0]}
+                            </span>
+                          )}
                         </div>
-                        <p className="text-sm text-slate-500 line-clamp-1 mt-1">
-                          {creator.lastPost}
-                        </p>
-                      </div>
-                      {creator.updates > 0 && (
-                        <div className="bg-orange-600 text-white text-[10px] font-bold px-2 py-1 rounded-lg animate-bounce">
-                          {creator.updates} NEW
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-bold text-slate-900 truncate">
+                              {creator.name}
+                            </h4>
+                            <span className="text-[10px] text-slate-400 flex items-center gap-1 shrink-0">
+                              <Clock size={10} /> {creator.time}
+                            </span>
+                          </div>
+                          <p className="text-sm text-slate-500 line-clamp-1 mt-1">
+                            {creator.lastPost}
+                          </p>
                         </div>
-                      )}
-                    </div>
+
+                        {creator.updates > 0 && (
+                          <div className="bg-orange-600 text-white text-[10px] font-black px-2 py-1 rounded-lg animate-pulse shrink-0">
+                            NEW
+                          </div>
+                        )}
+
+                        <ChevronRight
+                          size={16}
+                          className="text-slate-300 group-hover:text-orange-500 group-hover:translate-x-1 transition-all"
+                        />
+                      </div>
+                    </Link>
+                  ))
+                ) : (
+                  <div className="p-10 text-center border-2 border-dashed border-slate-100 rounded-3xl">
+                    <User className="mx-auto text-slate-200 mb-2" size={32} />
+                    <p className="text-slate-400 text-sm font-medium">
+                      No favorites yet. Start supporting creators!
+                    </p>
                   </div>
-                ))}
+                )}
               </div>
             </section>
           </div>
