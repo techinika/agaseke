@@ -28,8 +28,8 @@ const AuthContext = createContext<AuthContextType>({
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<any | null>(null);
-  const [creator, setCreator] = useState<any | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [creator, setCreator] = useState<Creator | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const unsubscribeProfile = onSnapshot(userRef, (userSnap) => {
           if (userSnap.exists()) {
             const userData = userSnap.data();
-            setProfile(userData);
+            setProfile(userData as Profile);
 
             if (userData.type === "creator" && userData.username) {
               const creatorRef = doc(db, "creators", userData.username);
@@ -51,7 +51,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 creatorRef,
                 (creatorSnap) => {
                   if (creatorSnap.exists()) {
-                    setCreator(creatorSnap.data());
+                    setCreator(creatorSnap.data() as Creator);
                   }
                   setLoading(false);
                 },

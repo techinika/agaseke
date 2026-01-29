@@ -99,14 +99,13 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* --- The Pricing: Bold & Simple --- */}
       <section className="py-24 px-6">
         <div className="max-w-4xl mx-auto bg-slate-950 rounded-[3rem] p-12 md:p-20 text-center text-white relative overflow-hidden shadow-2xl">
           <div className="relative z-10">
             <h2 className="text-orange-500 font-black uppercase tracking-[0.2em] text-sm mb-4">
               Simple Pricing
             </h2>
-            <div className="text-8xl font-black mb-6">5%</div>
+            <div className="text-8xl font-black mb-6">10%</div>
             <p className="text-xl text-slate-400 max-w-md mx-auto leading-relaxed">
               We only make money when you do. No setup fees, no subscription,
               just a flat platform fee.

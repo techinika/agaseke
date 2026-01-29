@@ -30,7 +30,7 @@ const Navbar = () => {
         </Link>
 
         <div className="flex items-center gap-3">
-          {auth?.isLoggedIn ? (
+          {auth?.user && auth?.isLoggedIn ? (
             <div className="flex items-center gap-3">
               <div className="relative">
                 <button

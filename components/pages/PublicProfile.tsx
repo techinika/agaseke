@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, increment, updateDoc } from "firebase/firestore";
 import { db } from "@/db/firebase";
 import {
   Globe,
@@ -45,6 +45,9 @@ export default function PublicProfile({ username }: { username: string }) {
 
           if (userSnap.exists()) {
             setProfileData(userSnap.data());
+            await updateDoc(creatorRef, {
+              views: increment(1),
+            });
           }
         }
       } catch (error) {

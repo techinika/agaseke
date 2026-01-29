@@ -25,4 +25,5 @@ export interface Creator {
   };
   perks: Array<any>;
   events: Array<any>;
+  views: number;
 }

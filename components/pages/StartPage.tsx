@@ -14,7 +14,6 @@ import {
   ArrowRight,
   Smartphone,
   ChevronLeft,
-  Sparkles,
   ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -43,7 +42,7 @@ export default function CreatorOnboarding() {
       if (user) {
         const userRef = doc(db, "profiles", user.uid);
         const userSnap = await getDoc(userRef);
-        if (userSnap.exists() && userSnap.data().role === "creator") {
+        if (userSnap.exists() && userSnap.data().type === "creator") {
           router.push("/creator");
         }
       }
@@ -81,6 +80,7 @@ export default function CreatorOnboarding() {
         perks: [],
         events: [],
         createdAt: serverTimestamp(),
+        views: 0,
       });
 
       await updateDoc(doc(db, "profiles", user.uid), {

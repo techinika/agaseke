@@ -28,7 +28,7 @@ export const handleGoogleLogin = async (reservedUsername: string | null) => {
         email: user.email,
         displayName: user.displayName,
         photoURL: user.photoURL,
-        role: "supporter",
+        type: "supporter",
         onboarded: false,
         totalSupport: 0,
         totalSupportedCreators: 0,
@@ -54,10 +54,10 @@ export const handleGoogleLogin = async (reservedUsername: string | null) => {
         `Welcome back, ${user?.displayName ? user?.displayName.split(" ")[0] : "User"}!`,
       );
 
-      if (userData?.role === "creator") {
-        window.location.href = "/space";
+      if (userData?.type === "creator") {
+        window.location.href = "/creator";
       } else {
-        window.location.href = "/explore";
+        window.location.href = "/supporter";
       }
     }
   } catch (error: any) {
