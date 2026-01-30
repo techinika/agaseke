@@ -70,6 +70,7 @@ export default function CreatorOnboarding() {
         verified: isVerified,
         totalEarnings: 0,
         totalSupporters: 0,
+        pendingPayout: 0,
         socials: {
           instagram: null,
           twitter: null,

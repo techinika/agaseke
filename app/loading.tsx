@@ -45,7 +45,7 @@ const Loading = () => {
             className="relative w-24 h-24 bg-slate-900 rounded-[2.2rem] flex items-center justify-center shadow-2xl shadow-orange-200 overflow-hidden"
           >
             {/* The "a" from Agaseke */}
-            <span className="text-white text-5xl font-black italic tracking-tighter select-none">
+            <span className="text-white text-5xl font-black tracking-tighter select-none">
               a
             </span>
 
@@ -94,7 +94,7 @@ const Loading = () => {
                   delay: i * 0.1,
                   ease: "easeInOut",
                 }}
-                className="text-2xl font-black italic tracking-tighter text-slate-900"
+                className="text-2xl font-black tracking-tighter text-slate-900"
               >
                 {char}
               </motion.span>

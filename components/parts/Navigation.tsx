@@ -12,9 +12,11 @@ import Link from "next/link";
 import { useAuth } from "@/auth/AuthContext";
 import { handleLogout } from "@/db/functions/LogOut";
 import Loading from "@/app/loading";
+import { useRouter } from "next/navigation";
 
 const Navbar = () => {
   const auth = useAuth();
+  const router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -35,8 +37,8 @@ const Navbar = () => {
               <div className="relative">
                 <button
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
-                  className="flex items-center gap-2 p-1 pr-3 rounded-2xl border border-slate-200 hover:border-orange-200 hover:bg-white transition-all group"
+                  // REMOVED onBlur - it was closing the menu before the click registered
+                  className="flex items-center gap-2 p-1 pr-3 rounded-2xl border border-slate-200 hover:border-orange-200 hover:bg-white transition-all group relative z-50"
                 >
                   <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden font-bold text-xs ring-2 ring-transparent group-hover:ring-orange-100 transition-all">
                     {auth?.profile?.photoURL ? (
@@ -66,44 +68,61 @@ const Navbar = () => {
                 </button>
 
                 {isDropdownOpen && (
-                  <div className="absolute right-0 mt-3 w-60 bg-white rounded-4xl shadow-2xl border border-slate-100 p-2 animate-in fade-in slide-in-from-top-2">
-                    <div className="px-4 py-3 mb-2">
-                      <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">
-                        Your Account
-                      </p>
-                      <p className="text-xs font-bold text-slate-500 truncate">
-                        {auth?.user?.email}
-                      </p>
-                    </div>
+                  <>
+                    {/* FIXED: Transparent backdrop to catch clicks outside the menu */}
+                    <div
+                      className="fixed inset-0 z-40 cursor-default"
+                      onClick={() => setIsDropdownOpen(false)}
+                    />
 
-                    <div className="space-y-1">
-                      <Link
-                        href={auth?.isCreator ? "/creator" : "/supporter"}
-                        className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 rounded-2xl hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                    <div className="absolute right-0 mt-3 w-60 bg-white rounded-4xl shadow-2xl border border-slate-100 p-2 animate-in fade-in slide-in-from-top-2 z-50">
+                      <div className="px-4 py-3 mb-2">
+                        <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">
+                          Your Account
+                        </p>
+                        <p className="text-xs font-bold text-slate-500 truncate">
+                          {auth?.user?.email}
+                        </p>
+                      </div>
+
+                      <div className="space-y-1">
+                        <button
+                          onClick={() => {
+                            setIsDropdownOpen(false); // Close menu on click
+                            router.push(
+                              auth?.isCreator ? "/creator" : "/supporter",
+                            );
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 rounded-2xl hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                        >
+                          <LayoutDashboard size={18} /> My Space
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsDropdownOpen(false);
+                            router.push("/profile");
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 rounded-2xl hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                        >
+                          <User size={18} /> Edit Profile
+                        </button>
+                      </div>
+
+                      <div className="h-px bg-slate-50 my-2 mx-4" />
+
+                      <button
+                        onClick={async () => {
+                          setIsDropdownOpen(false);
+                          setLoggingOut(true);
+                          await handleLogout();
+                          setLoggingOut(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-red-500 rounded-2xl hover:bg-red-50 transition-colors"
                       >
-                        <LayoutDashboard size={18} /> My Space
-                      </Link>
-                      <Link
-                        href="/profile"
-                        className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 rounded-2xl hover:bg-orange-50 hover:text-orange-600 transition-colors"
-                      >
-                        <User size={18} /> Edit Profile
-                      </Link>
+                        <LogOut size={18} /> Log out
+                      </button>
                     </div>
-
-                    <div className="h-px bg-slate-50 my-2 mx-4" />
-
-                    <button
-                      onClick={async () => {
-                        setLoggingOut(true);
-                        await handleLogout();
-                        setLoggingOut(false);
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-red-500 rounded-2xl hover:bg-red-50 transition-colors"
-                    >
-                      <LogOut size={18} /> Log out
-                    </button>
-                  </div>
+                  </>
                 )}
               </div>
             </div>

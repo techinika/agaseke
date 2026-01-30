@@ -16,6 +16,7 @@ export interface Creator {
   photoURL?: string;
   totalEarnings: number;
   totalSupporters: number;
+  pendingPayout: number;
   socials: {
     instagram: string | null;
     twitter: string | null;
@@ -26,4 +27,5 @@ export interface Creator {
   perks: Array<any>;
   events: Array<any>;
   views: number;
+  lastPayoutAt?: any;
 }

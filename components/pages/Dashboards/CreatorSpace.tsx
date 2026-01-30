@@ -9,7 +9,7 @@ import {
   AlertCircle,
   Loader,
 } from "lucide-react";
-import { auth, db } from "@/db/firebase";
+import { db } from "@/db/firebase";
 import {
   collection,
   query,
@@ -20,9 +20,11 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export default function CreatorDashboard() {
   const { creator } = useAuth();
+  const router = useRouter();
   const [data, setData] = useState<any>({
     recentSupport: [],
     history: [],
@@ -97,7 +99,10 @@ export default function CreatorDashboard() {
               Verification required to withdraw funds.
             </span>
           </div>
-          <button className="text-xs font-bold bg-amber-200/50 hover:bg-amber-200 text-amber-900 px-3 py-1.5 rounded-lg transition">
+          <button
+            onClick={() => router.push("/creator/settings")}
+            className="text-xs font-bold bg-amber-200/50 hover:bg-amber-200 text-amber-900 px-3 py-1.5 rounded-lg transition"
+          >
             Verify Now
           </button>
         </div>

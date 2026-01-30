@@ -1,64 +1,108 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Calendar,
   MapPin,
-  Users,
   Plus,
   ArrowLeft,
-  MoreVertical,
-  CheckCircle2,
   ChevronRight,
-  Share2,
   QrCode,
-  Loader2,
+  Loader,
   X,
+  ShieldCheck,
+  Info,
+  Trash2,
 } from "lucide-react";
+import { db, auth } from "@/db/firebase";
+import {
+  collection,
+  addDoc,
+  query,
+  where,
+  onSnapshot,
+  deleteDoc,
+  doc,
+  serverTimestamp,
+  orderBy,
+} from "firebase/firestore";
+import { useAuth } from "@/auth/AuthContext";
 
 export default function GatheringsPage() {
+  const { creator } = useAuth();
   const [isCreating, setIsCreating] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState(0);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [selectedEventIndex, setSelectedEventIndex] = useState(0);
   const [isSimulating, setIsSimulating] = useState(false);
+  const [events, setEvents] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [events, setEvents] = useState([
-    {
-      id: "0",
-      title: "Kigali Street Art Walk",
-      date: "Feb 12, 2026",
-      time: "10:00 AM",
-      location: "Kacyiru, Kigali",
-      price: "5,000",
-      attendees: [
-        { name: "Innocent K.", status: "Paid" },
-        { name: "Marie-Rose U.", status: "Paid" },
-        { name: "David B.", status: "Pending" },
-      ],
-      status: "Upcoming",
-      capacity: 15,
-    },
-    {
-      id: "1",
-      title: "Digital Creators Meetup",
-      date: "Feb 28, 2026",
-      time: "6:00 PM",
-      location: "Norrsken House",
-      price: "Free",
-      attendees: [{ name: "Alice G.", status: "Paid" }],
-      status: "Upcoming",
-      capacity: 50,
-    },
-  ]);
+  const [formData, setFormData] = useState({
+    title: "",
+    date: "",
+    time: "",
+    location: "",
+    minSupportTier: 0,
+    capacity: 20,
+  });
+  useEffect(() => {
+    if (!creator) return;
 
-  const activeEvent = events[selectedEvent];
+    const q = query(
+      collection(db, "creatorGatherings"),
+      where("creatorId", "==", creator?.uid),
+      orderBy("createdAt", "desc"),
+    );
 
-  const handleCreate = () => {
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const gatheringData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setEvents(gatheringData);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [creator]);
+
+  const activeEvent = events[selectedEventIndex];
+
+  const handleCreate = async () => {
+    if (!creator || !formData.title) return;
+
     setIsSimulating(true);
-    setTimeout(() => {
-      setIsSimulating(false);
+    try {
+      await addDoc(collection(db, "creatorGatherings"), {
+        creatorId: creator.uid,
+        ...formData,
+        attendeesCount: 0,
+        status: "Upcoming",
+        createdAt: serverTimestamp(),
+      });
       setIsCreating(false);
-      // Logic to add event would go here
-    }, 1200);
+      setFormData({
+        title: "",
+        date: "",
+        time: "",
+        location: "",
+        minSupportTier: 0,
+        capacity: 20,
+      });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSimulating(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (isDeleting) {
+      await deleteDoc(doc(db, "creatorGatherings", isDeleting));
+      setIsDeleting(null);
+      setSelectedEventIndex(0);
+    }
   };
 
   return (
@@ -70,17 +114,16 @@ export default function GatheringsPage() {
         >
           <ArrowLeft size={16} /> Back
         </button>
-        <h2 className="text-xl font-black mb-6">Gatherings</h2>
+        <h2 className="text-xl font-black mb-6 uppercase">Gatherings</h2>
         <button
           onClick={() => setIsCreating(true)}
-          className="w-full bg-orange-600 text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-orange-700 transition shadow-lg shadow-orange-100 mb-8"
+          className="w-full bg-orange-600 text-white py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-orange-700 transition shadow-lg shadow-orange-100 mb-8"
         >
           <Plus size={18} /> Plan Event
         </button>
       </aside>
 
       <main className="flex-1 flex flex-col md:flex-row">
-        {/* --- Left Column: Event List --- */}
         <div className="flex-1 p-8 border-r border-slate-100 overflow-y-auto">
           <div className="flex justify-between items-center mb-8">
             <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">
@@ -92,110 +135,93 @@ export default function GatheringsPage() {
           </div>
 
           <div className="space-y-4">
-            {events.map((event, index) => (
-              <button
-                key={event.id}
-                onClick={() => setSelectedEvent(index)}
-                className={`w-full text-left p-6 rounded-[2rem] border transition-all ${
-                  selectedEvent === index
-                    ? "bg-white border-orange-500 shadow-xl shadow-slate-200/50 scale-[1.02]"
-                    : "bg-white border-slate-200 hover:border-slate-300"
-                }`}
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="p-3 bg-slate-50 rounded-2xl text-slate-900">
-                    <Calendar size={20} />
+            {loading ? (
+              <Loader className="animate-spin mx-auto text-slate-300" />
+            ) : (
+              events.map((event, index) => (
+                <button
+                  key={event.id}
+                  onClick={() => setSelectedEventIndex(index)}
+                  className={`w-full text-left p-6 rounded-[2.5rem] border transition-all ${
+                    selectedEventIndex === index
+                      ? "bg-white border-orange-500 shadow-xl scale-[1.01]"
+                      : "bg-white border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div
+                      className={`p-3 rounded-2xl ${event.minSupportTier > 0 ? "bg-amber-50 text-amber-600" : "bg-slate-50 text-slate-900"}`}
+                    >
+                      {event.minSupportTier > 0 ? (
+                        <ShieldCheck size={20} />
+                      ) : (
+                        <Calendar size={20} />
+                      )}
+                    </div>
+                    <span className="text-[10px] font-black px-2 py-1 rounded uppercase bg-green-50 text-green-600">
+                      {event.status}
+                    </span>
                   </div>
-                  <span
-                    className={`text-[10px] font-black px-2 py-1 rounded uppercase ${event.status === "Upcoming" ? "bg-green-50 text-green-600" : "bg-slate-100"}`}
-                  >
-                    {event.status}
-                  </span>
-                </div>
-                <h4 className="text-xl font-black mb-1">{event.title}</h4>
-                <p className="text-sm text-slate-500 flex items-center gap-2 mb-4">
-                  <MapPin size={14} className="text-slate-300" />{" "}
-                  {event.location}
-                </p>
-                <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                  <div className="flex items-center gap-1 text-xs font-bold text-slate-400">
-                    <Users size={14} /> {event.attendees.length}/
-                    {event.capacity} Joined
+                  <h4 className="text-xl font-black mb-1">{event.title}</h4>
+                  <p className="text-sm text-slate-500 flex items-center gap-2 mb-4">
+                    <MapPin size={14} className="text-slate-300" />{" "}
+                    {event.location}
+                  </p>
+                  <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+                    <div className="text-xs font-bold text-slate-400">
+                      {event.attendeesCount || 0} supporters willing to attend
+                    </div>
+                    <ChevronRight
+                      size={16}
+                      className={
+                        selectedEventIndex === index
+                          ? "text-orange-500"
+                          : "text-slate-300"
+                      }
+                    />
                   </div>
-                  <ChevronRight
-                    size={16}
-                    className={
-                      selectedEvent === index
-                        ? "text-orange-500"
-                        : "text-slate-300"
-                    }
-                  />
-                </div>
-              </button>
-            ))}
+                </button>
+              ))
+            )}
           </div>
         </div>
 
-        {/* --- Right Column: Event Detail & Management --- */}
-        <div className="w-full md:w-96 bg-white p-8 overflow-y-auto hidden lg:block">
-          {activeEvent && (
+        <div className="w-full md:w-96 bg-white p-8 overflow-y-auto">
+          {activeEvent ? (
             <div className="animate-in fade-in slide-in-from-right-4">
               <div className="flex justify-between items-center mb-8">
-                <h3 className="font-black text-lg">Event Details</h3>
-                <div className="flex gap-2">
-                  <button className="p-2 bg-slate-50 rounded-lg text-slate-400 hover:text-slate-900 transition">
-                    <Share2 size={18} />
-                  </button>
-                  <button className="p-2 bg-slate-50 rounded-lg text-slate-400 hover:text-slate-900 transition">
-                    <MoreVertical size={18} />
-                  </button>
-                </div>
+                <h3 className="font-black text-lg">Management</h3>
+                <button
+                  onClick={() => setIsDeleting(activeEvent.id)}
+                  className="p-2 text-slate-300 hover:text-red-500 transition"
+                >
+                  <Trash2 size={18} />
+                </button>
               </div>
 
               <div className="space-y-6">
-                <div className="bg-orange-50 p-6 rounded-3xl border border-orange-100">
-                  <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-2">
-                    Total Earnings
+                <div className="bg-slate-900 p-6 rounded-4xl text-white">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                    Entry Requirement
                   </p>
-                  <h2 className="text-3xl font-black text-orange-900">
-                    {(
-                      activeEvent.attendees.filter((a) => a.status === "Paid")
-                        .length *
-                        parseInt(activeEvent.price.replace(",", "")) || 0
-                    ).toLocaleString()}
-                    <span className="text-xs font-normal ml-1">RWF</span>
+                  <h2 className="text-xl font-bold">
+                    {activeEvent.minSupportTier > 0
+                      ? `Min. Support: ${activeEvent.minSupportTier} RWF`
+                      : "Open to Everyone"}
                   </h2>
                 </div>
 
-                <div className="space-y-4">
-                  <h5 className="text-xs font-black uppercase text-slate-400 tracking-widest">
-                    Guest List
-                  </h5>
-                  <div className="space-y-2">
-                    {activeEvent.attendees.map((guest, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between p-3 bg-slate-50 rounded-xl"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-[10px] font-bold">
-                            {guest.name[0]}
-                          </div>
-                          <span className="text-sm font-bold">
-                            {guest.name}
-                          </span>
-                        </div>
-                        <CheckCircle2
-                          size={16}
-                          className={
-                            guest.status === "Paid"
-                              ? "text-green-500"
-                              : "text-slate-200"
-                          }
-                        />
-                      </div>
-                    ))}
+                <div className="p-6 bg-orange-50 rounded-4xl border border-orange-100">
+                  <div className="flex items-center gap-2 mb-4 text-orange-600">
+                    <Info size={16} />
+                    <span className="text-xs font-black uppercase">
+                      Supporter Note
+                    </span>
                   </div>
+                  <p className="text-sm text-orange-800 font-medium leading-relaxed">
+                    This gathering is free for your supporters. We are currently
+                    tracking how many people are interested in joining.
+                  </p>
                 </div>
 
                 <button className="w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold hover:border-orange-500 hover:text-orange-500 transition">
@@ -203,15 +229,22 @@ export default function GatheringsPage() {
                 </button>
               </div>
             </div>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-slate-300">
+              <Calendar size={48} className="mb-4 opacity-20" />
+              <p className="text-sm font-bold">Select an event to manage</p>
+            </div>
           )}
         </div>
 
         {/* --- Create Event Modal --- */}
         {isCreating && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-            <div className="bg-white w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in-95">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+            <div className="bg-white w-full max-w-lg rounded-[3rem] p-10 shadow-2xl animate-in zoom-in-95">
               <div className="flex justify-between items-center mb-8">
-                <h2 className="text-2xl font-black">Plan a Gathering</h2>
+                <h2 className="text-2xl font-black uppercase tracking-tighter">
+                  Plan Gathering
+                </h2>
                 <button
                   onClick={() => setIsCreating(false)}
                   className="p-2 hover:bg-slate-100 rounded-full transition"
@@ -224,51 +257,98 @@ export default function GatheringsPage() {
                 <input
                   type="text"
                   placeholder="Gathering Title"
-                  className="w-full text-xl font-bold outline-none border-b border-slate-100 pb-2 focus:border-orange-500 transition placeholder:text-slate-200"
+                  className="w-full text-xl font-bold outline-none border-b-2 border-slate-50 pb-2 focus:border-orange-500 transition placeholder:text-slate-200"
+                  onChange={(e) =>
+                    setFormData({ ...formData, title: e.target.value })
+                  }
                 />
+                <input
+                  type="text"
+                  placeholder="Location (Physical or Digital link)"
+                  className="w-full text-sm font-bold outline-none border-b border-slate-50 pb-2 focus:border-orange-500 transition"
+                  onChange={(e) =>
+                    setFormData({ ...formData, location: e.target.value })
+                  }
+                />
+
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-slate-400">
-                      Date
-                    </label>
-                    <input
-                      type="date"
-                      className="w-full bg-slate-50 p-3 rounded-xl text-sm outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black uppercase text-slate-400">
-                      Time
-                    </label>
-                    <input
-                      type="time"
-                      className="w-full bg-slate-50 p-3 rounded-xl text-sm outline-none"
-                    />
-                  </div>
+                  <input
+                    type="date"
+                    className="bg-slate-50 p-4 rounded-2xl text-sm outline-none font-bold"
+                    onChange={(e) =>
+                      setFormData({ ...formData, date: e.target.value })
+                    }
+                  />
+                  <input
+                    type="time"
+                    className="bg-slate-50 p-4 rounded-2xl text-sm outline-none font-bold"
+                    onChange={(e) =>
+                      setFormData({ ...formData, time: e.target.value })
+                    }
+                  />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black uppercase text-slate-400">
-                    Ticket Price (RWF)
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                    Entry Threshold (Support Amount)
                   </label>
                   <input
                     type="number"
-                    placeholder="0"
-                    className="w-full bg-slate-50 p-3 rounded-xl text-sm outline-none font-bold"
+                    placeholder="Min. RWF support to qualify (0 for all)"
+                    className="w-full bg-slate-50 p-4 rounded-2xl text-sm outline-none font-bold focus:ring-2 focus:ring-orange-100"
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        minSupportTier: parseInt(e.target.value) || 0,
+                      })
+                    }
                   />
                   <p className="text-[10px] text-slate-400">
-                    Set to 0 for free events
+                    If set, only supporters who have contributed this amount or
+                    more can see this.
                   </p>
                 </div>
 
                 <button
                   onClick={handleCreate}
-                  className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-lg flex items-center justify-center gap-2"
+                  disabled={!formData.title || isSimulating}
+                  className="w-full bg-slate-900 text-white py-5 rounded-4xl font-black text-lg shadow-xl hover:bg-orange-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {isSimulating ? (
-                    <Loader2 className="animate-spin" />
+                    <Loader className="animate-spin" />
                   ) : (
                     "Publish Gathering"
                   )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- Delete Confirmation Modal --- */}
+        {isDeleting && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] flex items-center justify-center p-6">
+            <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 text-center shadow-2xl">
+              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={32} />
+              </div>
+              <h3 className="text-xl font-black mb-2">Cancel Gathering?</h3>
+              <p className="text-sm text-slate-500 mb-8 font-medium">
+                This will remove the event for all supporters. This action
+                cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setIsDeleting(null)}
+                  className="flex-1 py-4 rounded-2xl font-bold text-slate-400 hover:bg-slate-50 transition"
+                >
+                  Keep it
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 transition"
+                >
+                  Yes, Cancel
                 </button>
               </div>
             </div>

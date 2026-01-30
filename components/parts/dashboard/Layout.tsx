@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   BarChart3,
   Plus,
@@ -11,19 +11,41 @@ import {
   Copy,
   Check,
   Share2,
+  Settings,
+  LogOut,
+  UserCircle,
+  ChevronDown,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/auth/AuthContext";
+import { handleLogout } from "@/db/functions/LogOut";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const {creator} = useAuth();
+  const { creator } = useAuth(); // Assuming logout exists in your AuthContext
   const [copied, setCopied] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const copyLink = () => {
     if (!creator?.handle) return;
@@ -40,7 +62,9 @@ export default function DashboardLayout({
             <div className="w-7 h-7 bg-orange-600 rounded flex items-center justify-center text-white font-bold text-xs">
               A
             </div>
-            <span className="font-bold tracking-tight uppercase">agaseke.me</span>
+            <span className="font-bold tracking-tight uppercase">
+              agaseke.me
+            </span>
           </Link>
 
           <nav className="space-y-1">
@@ -74,6 +98,12 @@ export default function DashboardLayout({
               label="Payouts"
               active={pathname === "/creator/payouts"}
             />
+            <NavItem
+              href="/creator/settings"
+              icon={<Settings size={18} />}
+              label="Settings"
+              active={pathname === "/creator/settings"}
+            />
           </nav>
         </div>
 
@@ -105,23 +135,93 @@ export default function DashboardLayout({
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-20">
           <h2 className="text-sm font-semibold text-slate-600 capitalize">
-            {pathname.split("/").pop() === "dashboard"
+            {pathname.split("/").pop() === "creator"
               ? "Overview"
-              : pathname.split("/").pop()}
+              : pathname.split("/").pop()?.replace("-", " ")}
           </h2>
-          <div className="flex items-center gap-4">
-            <button className="bg-orange-600 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-orange-700 transition shadow-sm">
+
+          <div className="flex items-center gap-6">
+            <button className="hidden sm:flex bg-orange-600 text-white px-4 py-2 rounded-lg text-xs font-bold items-center gap-2 hover:bg-orange-700 transition shadow-sm">
               <Plus size={16} /> Create New
             </button>
-            <div className="w-8 h-8 bg-slate-100 rounded-full border border-slate-200 flex items-center justify-center text-xs font-bold overflow-hidden">
-              {creator?.photoURL ? (
-                <img src={creator.photoURL} alt="" />
-              ) : (
-                creator?.name?.[0] || "G"
+
+            {/* Profile Dropdown Container */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setShowDropdown(!showDropdown)}
+                className="flex items-center gap-3 p-1 pr-2 hover:bg-slate-50 rounded-full transition-colors"
+              >
+                <div className="text-right hidden sm:block">
+                  <p className="text-xs font-bold text-slate-900 leading-tight">
+                    {creator?.name}
+                  </p>
+                  <p className="text-[10px] font-medium text-slate-400 leading-tight">
+                    @{creator?.handle}
+                  </p>
+                </div>
+
+                <div className="w-8 h-8 bg-slate-100 rounded-full border border-slate-200 flex items-center justify-center text-xs font-bold overflow-hidden">
+                  {creator?.photoURL ? (
+                    <img
+                      src={creator.photoURL}
+                      alt={creator.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    creator?.name?.[0] || "C"
+                  )}
+                </div>
+                <ChevronDown
+                  size={14}
+                  className={`text-slate-400 transition-transform ${showDropdown ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {/* Dropdown Menu */}
+              {showDropdown && (
+                <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 animate-in fade-in zoom-in-95 duration-100 z-50">
+                  <div className="px-4 py-2 border-b border-slate-50 mb-1 sm:hidden">
+                    <p className="text-xs font-bold text-slate-900">
+                      {creator?.name}
+                    </p>
+                    <p className="text-[10px] text-slate-400">
+                      @{creator?.handle}
+                    </p>
+                  </div>
+
+                  <Link
+                    href="/supporter"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-orange-600 transition-colors"
+                    onClick={() => setShowDropdown(false)}
+                  >
+                    <UserCircle size={18} />
+                    Supporter View
+                  </Link>
+
+                  <Link
+                    href="/creator/settings"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                    onClick={() => setShowDropdown(false)}
+                  >
+                    <Settings size={18} />
+                    Account Settings
+                  </Link>
+
+                  <div className="h-px bg-slate-100 my-1 mx-2" />
+
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
+                  >
+                    <LogOut size={18} />
+                    Logout
+                  </button>
+                </div>
               )}
             </div>
           </div>
         </header>
+
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
     </div>

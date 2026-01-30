@@ -14,7 +14,7 @@ import {
   Save,
   ExternalLink,
   CheckCircle2,
-  Loader2,
+  Loader,
   X,
 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
@@ -201,7 +201,7 @@ export default function ProfileEditPage() {
               className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors disabled:opacity-50"
             >
               {saving ? (
-                <Loader2 className="animate-spin" />
+                <Loader className="animate-spin" />
               ) : (
                 <Save size={18} />
               )}{" "}
