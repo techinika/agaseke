@@ -23,8 +23,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 export default function CreatorDashboard() {
-  const router = useRouter();
-  const { user, creator, profile, isCreator } = useAuth();
+  const { creator } = useAuth();
   const [data, setData] = useState<any>({
     recentSupport: [],
     history: [],
