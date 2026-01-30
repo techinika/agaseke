@@ -5,9 +5,7 @@ import {
   Calendar,
   MapPin,
   Users,
-  Ticket,
   Plus,
-  Clock,
   ArrowLeft,
   MoreVertical,
   CheckCircle2,
@@ -23,10 +21,9 @@ export default function GatheringsPage() {
   const [selectedEvent, setSelectedEvent] = useState(0);
   const [isSimulating, setIsSimulating] = useState(false);
 
-  // Simulated Data
   const [events, setEvents] = useState([
     {
-      id: 0,
+      id: "0",
       title: "Kigali Street Art Walk",
       date: "Feb 12, 2026",
       time: "10:00 AM",
@@ -41,7 +38,7 @@ export default function GatheringsPage() {
       capacity: 15,
     },
     {
-      id: 1,
+      id: "1",
       title: "Digital Creators Meetup",
       date: "Feb 28, 2026",
       time: "6:00 PM",

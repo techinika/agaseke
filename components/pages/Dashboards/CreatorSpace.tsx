@@ -19,7 +19,6 @@ import {
   orderBy,
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 export default function CreatorDashboard() {

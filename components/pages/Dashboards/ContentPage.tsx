@@ -6,14 +6,11 @@ import {
   Video,
   Image as ImageIcon,
   FileText,
-  Youtube,
-  MoreHorizontal,
   Lock,
   Globe,
   Search,
   Trash2,
   Clock,
-  Play,
   ArrowLeft,
   X,
   Loader2,
@@ -24,10 +21,9 @@ export default function ContentManager() {
   const [isCreating, setIsCreating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Initial Simulated Content
   const [posts, setPosts] = useState([
     {
-      id: 1,
+      id: "1",
       type: "video",
       title: "Behind the Scenes: Kigali Jazz Night",
       description:
@@ -38,7 +34,7 @@ export default function ContentManager() {
       thumbnail: "VJ",
     },
     {
-      id: 2,
+      id: "2",
       type: "image",
       title: "Digital Illustration Pack (Preview)",
       description: "Working on some new brushes for the Agaseke community.",
@@ -58,11 +54,10 @@ export default function ContentManager() {
 
   const handleAddContent = () => {
     setIsUploading(true);
-    // Simulate network delay
     setTimeout(() => {
       const post = {
         ...newPost,
-        id: Date.now(),
+        id: Date.now().toString(),
         date: "Just now",
         stats: { views: 0, likes: 0 },
         thumbnail: newPost.title[0],
@@ -74,7 +69,7 @@ export default function ContentManager() {
     }, 1500);
   };
 
-  const deletePost = (id) => {
+  const deletePost = (id: string) => {
     setPosts(posts.filter((p) => p.id !== id));
   };
 
@@ -111,9 +106,7 @@ export default function ContentManager() {
         {/* --- Top Header --- */}
         <header className="flex justify-between items-center mb-10">
           <div>
-            <h1 className="text-3xl font-black tracking-tight">
-              Your Content
-            </h1>
+            <h1 className="text-3xl font-black tracking-tight">Your Content</h1>
             <p className="text-slate-500 text-sm mt-1">
               Manage what your supporters see.
             </p>
@@ -180,7 +173,7 @@ export default function ContentManager() {
                     </div>
                   </div>
                   <button
-                    onClick={() => deletePost(post.id)}
+                    onClick={() => deletePost(post?.id)}
                     className="p-2 text-slate-300 hover:text-red-500 transition"
                   >
                     <Trash2 size={18} />

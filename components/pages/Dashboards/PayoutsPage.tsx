@@ -192,7 +192,7 @@ export default function PayoutsPage() {
                   <Smartphone size={32} />
                 </div>
                 <header className="text-center">
-                  <h2 className="text-2xl font-black">Verify it's you</h2>
+                  <h2 className="text-2xl font-black">Verify it&apos;s you</h2>
                   <p className="text-slate-500 text-sm mt-1">We sent a 6-digit code to your phone.</p>
                 </header>
                 <input 
@@ -218,7 +218,7 @@ export default function PayoutsPage() {
                 <header>
                   <h2 className="text-3xl font-black">Money on its way!</h2>
                   <p className="text-slate-500 text-sm mt-2 leading-relaxed">
-                    We've processed your withdrawal of <b>{parseInt(amount).toLocaleString()} RWF</b>. 
+                    We&apos;ve processed your withdrawal of <b>{parseInt(amount).toLocaleString()} RWF</b>. 
                     You should receive it on your phone in less than a minute.
                   </p>
                 </header>
