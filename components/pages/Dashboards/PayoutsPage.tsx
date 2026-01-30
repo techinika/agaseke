@@ -55,8 +55,7 @@ export default function PayoutsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] flex font-sans text-slate-900">
-      {/* Sidebar Placeholder (Matching previous dashboard style) */}
+    <div className="min-h-screen bg-[#F9FAFB] flex text-slate-900">
       <aside className="w-64 bg-white border-r border-slate-200 hidden md:block p-6">
          <button onClick={() => window.history.back()} className="flex items-center gap-2 text-slate-400 hover:text-slate-900 mb-8 transition">
             <ArrowLeft size={16} /> <span className="text-xs font-bold">Back to Dashboard</span>

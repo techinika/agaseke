@@ -5,6 +5,10 @@
   --foreground: #171717;
 }
 
+* {
+  font-family: var(--font-rubik);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

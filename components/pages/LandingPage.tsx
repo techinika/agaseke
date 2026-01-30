@@ -24,7 +24,7 @@ export default function LandingPage() {
     }
   };
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans selection:bg-orange-100">
+    <div className="min-h-screen bg-white text-slate-900 selection:bg-orange-100">
       <header className="px-6 py-20 md:py-32 max-w-6xl mx-auto text-center">
         <div className="inline-flex items-center gap-2 bg-orange-50 text-orange-700 px-4 py-2 rounded-full text-xs font-bold mb-8 animate-fade-in">
           <Sparkles size={14} />{" "}

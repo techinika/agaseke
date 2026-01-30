@@ -151,7 +151,7 @@ export default function SupporterSpace() {
   if (auth.loading || loading) return <Loading />;
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] text-slate-900 pb-20 font-sans">
+    <div className="min-h-screen bg-[#FAFAFA] text-slate-900 pb-20">
       <Navbar />
 
       <main className="max-w-4xl mx-auto px-6 pt-10">

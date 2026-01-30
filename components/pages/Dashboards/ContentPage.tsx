@@ -74,7 +74,7 @@ export default function ContentManager() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] flex font-sans text-slate-900">
+    <div className="min-h-screen bg-[#F9FAFB] flex text-slate-900">
       <aside className="w-64 bg-white border-r border-slate-200 hidden md:block p-6">
         <button
           onClick={() => window.history.back()}

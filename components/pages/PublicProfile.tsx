@@ -89,7 +89,7 @@ export default function PublicProfile({ username }: { username: string }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#FBFBFC] text-slate-900 pb-32 font-sans selection:bg-orange-100">
+    <div className="min-h-screen bg-[#FBFBFC] text-slate-900 pb-32 selection:bg-orange-100">
       <Navbar />
 
       <div className="relative">
