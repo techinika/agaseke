@@ -2,7 +2,15 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { doc, getDoc, increment, updateDoc } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  increment,
+  updateDoc,
+  collection,
+  addDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 import { db } from "@/db/firebase";
 import {
   Globe,
@@ -17,16 +25,22 @@ import {
   ShieldCheck,
   Heart,
   Youtube,
+  Zap,
+  Star,
+  MessageCircle,
+  LogIn,
 } from "lucide-react";
 import Navbar from "../parts/Navigation";
 import Loading from "@/app/loading";
 import NotFound from "@/app/not-found";
 import { Creator } from "@/types/creator";
+import { useAuth } from "@/auth/AuthContext"; // Assuming this exists
+import Link from "next/link";
 
 export default function PublicProfile({ username }: { username: string }) {
+  const { user: currentUser } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-
   const [creatorData, setCreatorData] = useState<Creator | null>(null);
   const [profileData, setProfileData] = useState<any>(null);
 
@@ -45,9 +59,7 @@ export default function PublicProfile({ username }: { username: string }) {
 
           if (userSnap.exists()) {
             setProfileData(userSnap.data());
-            await updateDoc(creatorRef, {
-              views: increment(1),
-            });
+            await updateDoc(creatorRef, { views: increment(1) });
           }
         }
       } catch (error) {
@@ -56,7 +68,6 @@ export default function PublicProfile({ username }: { username: string }) {
         setLoading(false);
       }
     };
-
     if (username) fetchData();
   }, [username]);
 
@@ -64,27 +75,26 @@ export default function PublicProfile({ username }: { username: string }) {
   if (!creatorData) return <NotFound />;
 
   const creator = {
+    uid: creatorData.uid,
     name: profileData?.displayName || creatorData.name || "Creator",
     handle: username,
     bio: creatorData.bio || "No bio available yet.",
-    location: creatorData.location || "Rwanda",
     photoURL: profileData?.photoURL,
     socials: {
-      twitter: creatorData.socials.twitter
+      twitter: creatorData.socials?.twitter
         ? `https://twitter.com/${creatorData.socials.twitter}`
         : null,
-      instagram: creatorData.socials.instagram
+      instagram: creatorData.socials?.instagram
         ? `https://instagram.com/${creatorData.socials.instagram}`
         : null,
-      youtube: creatorData.socials.youtube
+      youtube: creatorData.socials?.youtube
         ? `${creatorData.socials.youtube}`
         : null,
-      tiktok: creatorData.socials.tiktok
+      tiktok: creatorData.socials?.tiktok
         ? `${creatorData.socials.tiktok}`
         : null,
-      web: creatorData.socials.web || null,
+      web: creatorData.socials?.web || null,
     },
-    perks: creatorData.perks || [],
     events: creatorData.events || [],
   };
 
@@ -94,7 +104,6 @@ export default function PublicProfile({ username }: { username: string }) {
 
       <div className="relative">
         <div className="h-48 w-full bg-linear-to-r from-orange-100 via-orange-50 to-orange-100" />
-
         <div className="max-w-2xl mx-auto px-6 -mt-16 text-center">
           <div className="relative inline-block">
             <div className="w-32 h-32 bg-white rounded-[2.5rem] p-1 shadow-2xl mx-auto">
@@ -116,7 +125,7 @@ export default function PublicProfile({ username }: { username: string }) {
           </div>
 
           <h1 className="mt-6 text-4xl font-black tracking-tight text-slate-900 flex items-center justify-center gap-2">
-            {creator.name}
+            {creator.name}{" "}
             {creatorData.verified && (
               <CheckCircle2 size={20} className="text-orange-600" />
             )}
@@ -129,40 +138,16 @@ export default function PublicProfile({ username }: { username: string }) {
           </p>
 
           <div className="flex flex-wrap justify-center gap-3 mb-10">
-            {creator.socials.instagram && (
-              <SocialPill
-                icon={<Instagram size={16} />}
-                label="Instagram"
-                link={creator.socials.instagram}
-              />
-            )}
-            {creator.socials.twitter && (
-              <SocialPill
-                icon={<Twitter size={16} />}
-                label="Twitter"
-                link={creator.socials.twitter}
-              />
-            )}
-            {creator.socials.youtube && (
-              <SocialPill
-                icon={<Youtube size={16} />}
-                label="YouTube"
-                link={creator.socials.youtube}
-              />
-            )}
-            {creator.socials.tiktok && (
-              <SocialPill
-                icon={<Globe size={16} />}
-                label="TikTok"
-                link={creator.socials.tiktok}
-              />
-            )}
-            {creator.socials.web && (
-              <SocialPill
-                icon={<Globe size={16} />}
-                label="Portfolio"
-                link={creator.socials.web}
-              />
+            {Object.entries(creator.socials).map(
+              ([key, link]) =>
+                link && (
+                  <SocialPill
+                    key={key}
+                    icon={getIcon(key)}
+                    label={key}
+                    link={link}
+                  />
+                ),
             )}
           </div>
 
@@ -186,10 +171,53 @@ export default function PublicProfile({ username }: { username: string }) {
               Send Support
             </div>
           </button>
+
+          {/* Login Reminder for Guests */}
+          {!currentUser && (
+            <div className="mt-6 p-4 bg-orange-50 border border-orange-100 rounded-3xl flex items-center justify-center gap-3 text-orange-800 animate-pulse">
+              <LogIn size={18} />
+              <p className="text-sm font-bold">
+                <Link href="/login" className="underline decoration-2">
+                  Log in
+                </Link>{" "}
+                to stay in touch and track your support.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
       <div className="max-w-2xl mx-auto px-6 mt-16 space-y-12">
+        {/* SUPPORT PERKS SECTION */}
+        <section className="bg-white border border-slate-100 p-8 rounded-[3rem] shadow-sm">
+          <h3 className="text-xs font-black uppercase tracking-[0.2em] text-orange-600 mb-8 flex items-center gap-2">
+            <Star size={14} fill="currentColor" /> Why Support{" "}
+            {creator.name.split(" ")[0]}?
+          </h3>
+          <div className="space-y-6">
+            <PerkRow
+              icon={<Lock className="text-orange-500" />}
+              title="Private Contents"
+              desc="Access daily life updates and exclusive behind-the-scenes footage."
+            />
+            <PerkRow
+              icon={<Zap className="text-orange-500" />}
+              title="Early Access"
+              desc="Be the first to see new content before it hits the public feed."
+            />
+            <PerkRow
+              icon={<Calendar className="text-orange-500" />}
+              title="Private Gatherings"
+              desc="Get exclusive invites to intimate meetups and private events."
+            />
+            <PerkRow
+              icon={<MessageCircle className="text-orange-500" />}
+              title="Direct Connection"
+              desc="Top supporters get direct messaging access to the creator."
+            />
+          </div>
+        </section>
+
         {creator.events.length > 0 && (
           <section>
             <div className="flex justify-between items-center mb-6">
@@ -223,54 +251,54 @@ export default function PublicProfile({ username }: { username: string }) {
             ))}
           </section>
         )}
-
-        {creator.perks.length > 0 && (
-          <section>
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">
-                Member Exclusives
-              </h3>
-              <div className="h-px bg-slate-100 flex-1 ml-6" />
-            </div>
-            <div className="grid md:grid-cols-2 gap-4">
-              {creator.perks.map((perk: any) => (
-                <div
-                  key={perk.id}
-                  className="bg-white p-6 rounded-4xl border border-slate-100 hover:shadow-xl hover:shadow-orange-900/5 transition group"
-                >
-                  <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center mb-4 font-black text-[10px] uppercase">
-                    {perk.type}
-                  </div>
-                  <h4 className="font-black mb-1">{perk.title}</h4>
-                  <p className="text-sm text-slate-500 leading-relaxed mb-6">
-                    {perk.desc}
-                  </p>
-                  <div className="flex items-center gap-2 text-[10px] font-black text-slate-300 uppercase tracking-widest group-hover:text-orange-600 transition">
-                    <Lock size={12} /> Unlock with Support
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <div className="pt-20 text-center opacity-30 hover:opacity-100 transition-opacity">
-          <p className="text-[10px] font-black uppercase tracking-[0.4em] mb-4 text-slate-400">
-            Proudly Powered By
-          </p>
-          <div className="text-2xl font-black tracking-tighter grayscale">
-            agaseke<span className="text-orange-600">.me</span>
-          </div>
-        </div>
       </div>
 
       <SupportModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         creatorName={creator.name}
+        creatorId={creator.handle}
+        uid={creator.uid}
       />
     </div>
   );
+}
+
+function PerkRow({
+  icon,
+  title,
+  desc,
+}: {
+  icon: any;
+  title: string;
+  desc: string;
+}) {
+  return (
+    <div className="flex items-start gap-4">
+      <div className="mt-1 w-10 h-10 bg-orange-50 rounded-2xl flex items-center justify-center shrink-0">
+        {icon}
+      </div>
+      <div>
+        <h4 className="font-black text-slate-900">{title}</h4>
+        <p className="text-sm text-slate-500 leading-relaxed font-medium">
+          {desc}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function getIcon(key: string) {
+  switch (key) {
+    case "instagram":
+      return <Instagram size={16} />;
+    case "twitter":
+      return <Twitter size={16} />;
+    case "youtube":
+      return <Youtube size={16} />;
+    default:
+      return <Globe size={16} />;
+  }
 }
 
 function SocialPill({
@@ -287,40 +315,60 @@ function SocialPill({
       href={link}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-xs font-bold text-slate-500 hover:border-orange-500 hover:text-orange-600 hover:shadow-md transition-all"
+      className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-xs font-bold text-slate-500 hover:border-orange-500 hover:text-orange-600 hover:shadow-md transition-all capitalize"
     >
       {icon} <span>{label}</span>
     </a>
   );
 }
 
-function SupportModal({
-  isOpen,
-  onClose,
-  creatorName,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  creatorName: string;
-}) {
+function SupportModal({ isOpen, onClose, creatorName, creatorId, uid }: any) {
+  const { user: currentUser } = useAuth();
   const [amount, setAmount] = useState("");
+  const [phone, setPhone] = useState("");
   const [step, setStep] = useState("input");
 
   if (!isOpen) return null;
 
-  const handleSupport = () => {
+  const handleSupport = async () => {
     setStep("processing");
-    setTimeout(() => setStep("success"), 2500);
+
+    try {
+      // Simulate Payment Record in 'supportedCreators'
+      await addDoc(collection(db, "supportedCreators"), {
+        creatorId: creatorId, // handle
+        creatorUid: uid,
+        amount: Number(amount),
+        supporterId: currentUser?.uid || null,
+        supporterPhoneNumber: phone,
+        supporterName: currentUser?.displayName || "Anonymous",
+        status: "Completed",
+        createdAt: serverTimestamp(),
+      });
+
+      // Update creator total earnings
+      await updateDoc(doc(db, "creators", creatorId), {
+        totalEarnings: increment(Number(amount)),
+      });
+
+      setTimeout(() => setStep("success"), 2000);
+    } catch (error) {
+      console.error(error);
+      setStep("input");
+      alert("Payment simulation failed.");
+    }
   };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-6">
       <div className="bg-white w-full max-w-lg rounded-[3rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
         <div className="p-8 pb-0 flex justify-between items-center">
-          <h3 className="text-3xl font-black tracking-tight">Support Art.</h3>
+          <h3 className="text-3xl font-black tracking-tight italic">
+            Support {creatorName}
+          </h3>
           <button
             onClick={onClose}
-            className="p-3 bg-slate-50 rounded-full text-slate-400 hover:text-slate-900"
+            className="p-3 bg-slate-50 rounded-full text-slate-400 hover:text-slate-900 transition-colors"
           >
             <X size={20} />
           </button>
@@ -328,58 +376,61 @@ function SupportModal({
 
         <div className="p-10">
           {step === "input" && (
-            <div className="space-y-8 text-center">
-              <p className="text-slate-500 text-sm font-medium">
-                How much would you like to gift {creatorName}?
-              </p>
-
-              <div className="relative">
-                <input
-                  type="number"
-                  autoFocus
-                  placeholder="0"
-                  className="w-full text-center text-7xl font-black text-slate-900 outline-none placeholder:text-slate-100"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                />
-                <span className="block text-xs font-black text-slate-300 mt-4 uppercase tracking-[0.3em]">
-                  Rwandan Francs (RWF)
-                </span>
+            <div className="space-y-8">
+              <div className="text-center">
+                <p className="text-slate-500 text-sm font-medium mb-4">
+                  How much would you like to gift {creatorName}?
+                </p>
+                <div className="relative">
+                  <input
+                    type="number"
+                    placeholder="0"
+                    className="w-full text-center text-7xl font-black text-slate-900 outline-none placeholder:text-slate-100"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                  />
+                  <span className="block text-[10px] font-black text-slate-300 mt-2 uppercase tracking-[0.3em]">
+                    Rwandan Francs (RWF)
+                  </span>
+                </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
-                {["1000", "5000", "10000"].map((val) => (
-                  <button
-                    key={val}
-                    onClick={() => setAmount(val)}
-                    className="py-3 bg-slate-50 rounded-2xl text-xs font-black hover:bg-orange-50 hover:text-orange-600 transition"
-                  >
-                    +{val}
-                  </button>
-                ))}
+              <div className="space-y-4">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  MoMo Phone Number
+                </label>
+                <div className="relative">
+                  <Smartphone
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+                    size={18}
+                  />
+                  <input
+                    type="tel"
+                    placeholder="078 000 0000"
+                    className="w-full bg-slate-50 border-2 border-slate-50 p-4 pl-12 rounded-2xl font-bold focus:border-orange-500 outline-none transition-all"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  />
+                </div>
               </div>
 
               <button
                 onClick={handleSupport}
-                disabled={!amount || parseInt(amount) < 100}
-                className="w-full bg-orange-600 text-white py-6 rounded-3xl font-black text-xl shadow-xl shadow-orange-100 hover:bg-orange-700 transition-all flex items-center justify-center gap-4"
+                disabled={!amount || parseInt(amount) < 100 || !phone}
+                className="w-full bg-orange-600 text-white py-6 rounded-3xl font-black text-xl shadow-xl shadow-orange-100 hover:bg-orange-700 transition-all flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
               >
-                <Smartphone size={24} /> Pay with MoMo
+                Pay with MoMo
               </button>
-
-              <div className="flex items-center justify-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                <ShieldCheck size={12} /> Secure Payment via MTN & Airtel
-              </div>
             </div>
           )}
 
           {step === "processing" && (
             <div className="py-12 text-center space-y-6">
               <div className="w-16 h-16 border-4 border-slate-100 border-t-orange-600 rounded-full animate-spin mx-auto" />
-              <h4 className="text-xl font-black">Check your phone...</h4>
-              <p className="text-slate-500 font-medium">
-                We&apos;ve sent a MoMo prompt to your device to authorize the
-                payment.
+              <h4 className="text-xl font-black italic">Check your phone...</h4>
+              <p className="text-slate-500 font-medium leading-relaxed">
+                We&apos;ve sent a MoMo prompt to <b>{phone}</b>. Please enter
+                your PIN to authorize the support.
               </p>
             </div>
           )}
@@ -389,14 +440,14 @@ function SupportModal({
               <div className="w-24 h-24 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Heart size={48} fill="currentColor" />
               </div>
-              <h4 className="text-3xl font-black">Murakoze Cyane!</h4>
-              <p className="text-slate-500 font-medium">
-                Your support means the world. A message has been sent to the
-                creator.
+              <h4 className="text-3xl font-black italic">Murakoze Cyane!</h4>
+              <p className="text-slate-500 font-medium leading-relaxed">
+                Your support of <b>{amount} RWF</b> was successful.{" "}
+                {creatorName} has been notified!
               </p>
               <button
                 onClick={onClose}
-                className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black"
+                className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black hover:bg-orange-600 transition-colors"
               >
                 Finish
               </button>
