@@ -1,11 +1,11 @@
+import AuthGuard from "@/auth/AuthGuard";
 import ProfileEditPage from "@/components/pages/ProfilePage";
-import React from "react";
 
 function page() {
   return (
-    <div>
+    <AuthGuard>
       <ProfileEditPage />
-    </div>
+    </AuthGuard>
   );
 }
 

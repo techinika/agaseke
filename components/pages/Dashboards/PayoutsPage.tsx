@@ -114,7 +114,6 @@ export default function PayoutsPage() {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] flex text-slate-900">
-
       <main className="flex-1 p-8 max-w-5xl mx-auto">
         {view === "overview" ? (
           <div className="animate-in fade-in duration-500">
@@ -130,7 +129,7 @@ export default function PayoutsPage() {
               <div className="flex gap-3">
                 <button
                   onClick={handleWithdrawClick}
-                  className={`px-8 py-4 rounded-2xl font-black text-sm transition shadow-xl flex items-center gap-2 ${
+                  className={`px-8 py-4 rounded-lg font-black text-sm transition shadow-xl flex items-center gap-2 ${
                     isVerified
                       ? "bg-slate-900 text-white hover:bg-orange-600"
                       : "bg-slate-200 text-slate-400 cursor-pointer"
@@ -143,9 +142,9 @@ export default function PayoutsPage() {
             </header>
 
             {!isVerified && (
-              <div className="mb-8 p-6 bg-slate-900 rounded-3xl flex items-center justify-between shadow-2xl">
+              <div className="mb-8 p-6 bg-slate-900 rounded-lg flex items-center justify-between shadow-2xl">
                 <div className="flex items-center gap-4 text-white">
-                  <div className="w-12 h-12 bg-orange-500 text-white rounded-2xl flex items-center justify-center">
+                  <div className="w-12 h-12 bg-orange-500 text-white rounded-lg flex items-center justify-center">
                     <AlertCircle size={24} />
                   </div>
                   <div>
@@ -157,7 +156,7 @@ export default function PayoutsPage() {
                 </div>
                 <button
                   onClick={() => router.push("/creator/settings")}
-                  className="bg-white text-slate-900 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-orange-500 hover:text-white transition"
+                  className="bg-white text-slate-900 px-6 py-3 rounded-lg text-xs font-black uppercase tracking-widest hover:bg-orange-500 hover:text-white transition"
                 >
                   Verify Now
                 </button>
@@ -165,7 +164,7 @@ export default function PayoutsPage() {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-              <div className="bg-white p-8 rounded-4xl border border-slate-100 shadow-sm">
+              <div className="bg-white p-8 rounded-lg border border-slate-100 shadow-sm">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
                   Total Balance
                 </p>
@@ -174,7 +173,7 @@ export default function PayoutsPage() {
                   <span className="text-sm font-bold text-slate-300">RWF</span>
                 </h2>
               </div>
-              <div className="bg-white p-8 rounded-4xl border border-slate-100 shadow-sm">
+              <div className="bg-white p-8 rounded-lg border border-slate-100 shadow-sm">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
                   Next Pending
                 </p>
@@ -183,12 +182,12 @@ export default function PayoutsPage() {
                   <span className="text-sm font-bold text-slate-200">RWF</span>
                 </h2>
               </div>
-              <div className="bg-white p-8 rounded-4xl border border-slate-100 shadow-sm">
+              <div className="bg-white p-8 rounded-lg border border-slate-100 shadow-sm">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
                   Destination
                 </p>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center font-black text-xs">
+                  <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center font-black text-xs">
                     {creator?.network || "MTN"}
                   </div>
                   <span className="text-sm font-black text-slate-700">
@@ -198,7 +197,7 @@ export default function PayoutsPage() {
               </div>
             </div>
 
-            <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+            <div className="bg-white rounded-lg border border-slate-100 shadow-sm overflow-hidden">
               <div className="p-8 border-b border-slate-50 flex items-center justify-between">
                 <h3 className="font-black uppercase tracking-tighter">
                   Transaction History
@@ -223,7 +222,7 @@ export default function PayoutsPage() {
                       className="p-6 flex items-center justify-between hover:bg-slate-50 transition cursor-default"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-green-50 text-green-600 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-lg bg-green-50 text-green-600 flex items-center justify-center">
                           <CheckCircle2 size={20} />
                         </div>
                         <div>
@@ -259,7 +258,7 @@ export default function PayoutsPage() {
             </button>
 
             {withdrawStep === 1 && (
-              <div className="space-y-8 bg-white p-10 rounded-[3rem] shadow-2xl border border-slate-100">
+              <div className="space-y-8 bg-white p-10 rounded-lg shadow-2xl border border-slate-100">
                 <header>
                   <h2 className="text-4xl font-black uppercase tracking-tighter">
                     Confirm Payout
@@ -283,7 +282,7 @@ export default function PayoutsPage() {
                 <button
                   onClick={simulateWithdraw}
                   disabled={totalPaidOut <= 0 || isWithdrawing}
-                  className="w-full bg-slate-900 text-white py-6 rounded-4xl font-black text-xl flex items-center justify-center gap-3 shadow-xl hover:bg-orange-600 transition active:scale-95 disabled:opacity-50"
+                  className="w-full bg-slate-900 text-white py-6 rounded-lg font-black text-xl flex items-center justify-center gap-3 shadow-xl hover:bg-orange-600 transition active:scale-95 disabled:opacity-50"
                 >
                   {isWithdrawing ? (
                     <Loader className="animate-spin" />
@@ -295,8 +294,8 @@ export default function PayoutsPage() {
             )}
 
             {withdrawStep === 2 && (
-              <div className="space-y-6 animate-in zoom-in-95 bg-white p-10 rounded-[3rem] shadow-2xl">
-                <div className="w-20 h-20 bg-orange-50 text-orange-600 rounded-4xl flex items-center justify-center mx-auto mb-4">
+              <div className="space-y-6 animate-in zoom-in-95 bg-white p-10 rounded-lg shadow-2xl">
+                <div className="w-20 h-20 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center mx-auto mb-4">
                   <Smartphone size={40} />
                 </div>
                 <header className="text-center">
@@ -311,7 +310,7 @@ export default function PayoutsPage() {
                   type="text"
                   maxLength={6}
                   placeholder="000000"
-                  className="w-full bg-slate-50 border-2 border-slate-100 p-6 rounded-3xl text-center text-4xl font-black tracking-[0.5em] focus:border-orange-500 outline-none"
+                  className="w-full bg-slate-50 border-2 border-slate-100 p-6 rounded-lg text-center text-4xl font-black tracking-[0.5em] focus:border-orange-500 outline-none"
                   onChange={(e) => {
                     if (e.target.value.length === 6) finalConfirm();
                   }}
@@ -323,7 +322,7 @@ export default function PayoutsPage() {
             )}
 
             {withdrawStep === 3 && (
-              <div className="text-center space-y-8 animate-in zoom-in-95 bg-slate-900 p-12 rounded-[3rem] shadow-2xl text-white">
+              <div className="text-center space-y-8 animate-in zoom-in-95 bg-slate-900 p-12 rounded-lg shadow-2xl text-white">
                 <div className="w-28 h-28 bg-green-500 text-white rounded-full flex items-center justify-center mx-auto shadow-xl shadow-green-500/20">
                   <CheckCircle2 size={56} />
                 </div>
@@ -342,7 +341,7 @@ export default function PayoutsPage() {
                     setView("overview");
                     setWithdrawStep(1);
                   }}
-                  className="w-full bg-white text-slate-900 py-5 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-orange-500 hover:text-white transition"
+                  className="w-full bg-white text-slate-900 py-5 rounded-lg font-black uppercase tracking-widest text-sm hover:bg-orange-500 hover:text-white transition"
                 >
                   Return to Payouts
                 </button>

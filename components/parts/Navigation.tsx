@@ -38,9 +38,9 @@ const Navbar = () => {
                 <button
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                   // REMOVED onBlur - it was closing the menu before the click registered
-                  className="flex items-center gap-2 p-1 pr-3 rounded-2xl border border-slate-200 hover:border-orange-200 hover:bg-white transition-all group relative z-50"
+                  className="flex items-center gap-2 p-1 pr-3 rounded-lg border border-slate-200 hover:border-orange-200 hover:bg-white transition-all group relative z-50"
                 >
-                  <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden font-bold text-xs ring-2 ring-transparent group-hover:ring-orange-100 transition-all">
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden font-bold text-xs ring-2 ring-transparent group-hover:ring-orange-100 transition-all">
                     {auth?.profile?.photoURL ? (
                       <img
                         src={auth.profile.photoURL}
@@ -75,7 +75,7 @@ const Navbar = () => {
                       onClick={() => setIsDropdownOpen(false)}
                     />
 
-                    <div className="absolute right-0 mt-3 w-60 bg-white rounded-4xl shadow-2xl border border-slate-100 p-2 animate-in fade-in slide-in-from-top-2 z-50">
+                    <div className="absolute right-0 mt-3 w-60 bg-white rounded-lg shadow-2xl border border-slate-100 p-2 animate-in fade-in slide-in-from-top-2 z-50">
                       <div className="px-4 py-3 mb-2">
                         <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">
                           Your Account
@@ -93,7 +93,7 @@ const Navbar = () => {
                               auth?.isCreator ? "/creator" : "/supporter",
                             );
                           }}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 rounded-2xl hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 rounded-lg hover:bg-orange-50 hover:text-orange-600 transition-colors"
                         >
                           <LayoutDashboard size={18} /> My Space
                         </button>
@@ -102,7 +102,7 @@ const Navbar = () => {
                             setIsDropdownOpen(false);
                             router.push("/profile");
                           }}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 rounded-2xl hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 rounded-lg hover:bg-orange-50 hover:text-orange-600 transition-colors"
                         >
                           <User size={18} /> Edit Profile
                         </button>
@@ -117,7 +117,7 @@ const Navbar = () => {
                           await handleLogout();
                           setLoggingOut(false);
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-red-500 rounded-2xl hover:bg-red-50 transition-colors"
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-red-500 rounded-lg hover:bg-red-50 transition-colors"
                       >
                         <LogOut size={18} /> Log out
                       </button>
@@ -129,7 +129,7 @@ const Navbar = () => {
           ) : (
             <Link
               href={"/login"}
-              className="group relative flex items-center gap-2 px-6 py-2.5 bg-orange-700 text-white rounded-2xl text-sm font-bold hover:bg-orange-800 transition-all active:scale-95 shadow-xl shadow-slate-200"
+              className="group relative flex items-center gap-2 px-6 py-2.5 bg-orange-700 text-white rounded-lg text-sm font-bold hover:bg-orange-800 transition-all active:scale-95 shadow-xl shadow-slate-200"
             >
               <LogIn className="h-4 w-4" />
               <span>Sign In</span>

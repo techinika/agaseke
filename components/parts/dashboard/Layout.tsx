@@ -59,7 +59,7 @@ export default function DashboardLayout({
       <aside className="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col sticky top-0 h-screen">
         <div className="p-6">
           <Link href="/" className="flex items-center gap-2 mb-8">
-            <div className="w-7 h-7 bg-orange-600 rounded flex items-center justify-center text-white font-bold text-xs">
+            <div className="w-7 h-7 bg-orange-600 rounded-lg flex items-center justify-center text-white font-bold text-xs">
               A
             </div>
             <span className="font-bold tracking-tight uppercase">
@@ -107,7 +107,7 @@ export default function DashboardLayout({
           </nav>
         </div>
 
-        <div className="mt-auto p-4 m-4 bg-slate-50 border border-slate-200 rounded-xl">
+        <div className="mt-auto p-4 m-4 bg-slate-50 border border-slate-200 rounded-lg">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
               Your Page
@@ -179,7 +179,7 @@ export default function DashboardLayout({
 
               {/* Dropdown Menu */}
               {showDropdown && (
-                <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-2xl shadow-xl py-2 animate-in fade-in zoom-in-95 duration-100 z-50">
+                <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-lg shadow-xl py-2 animate-in fade-in zoom-in-95 duration-100 z-50">
                   <div className="px-4 py-2 border-b border-slate-50 mb-1 sm:hidden">
                     <p className="text-xs font-bold text-slate-900">
                       {creator?.name}

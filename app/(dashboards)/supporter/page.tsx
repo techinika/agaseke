@@ -1,11 +1,12 @@
+import AuthGuard from "@/auth/AuthGuard";
 import SupporterSpace from "@/components/pages/Dashboards/SupporterSpace";
 import React from "react";
 
 function page() {
   return (
-    <div>
+    <AuthGuard>
       <SupporterSpace />
-    </div>
+    </AuthGuard>
   );
 }
 

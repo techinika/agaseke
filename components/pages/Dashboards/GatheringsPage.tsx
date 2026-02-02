@@ -117,7 +117,7 @@ export default function GatheringsPage() {
         <h2 className="text-xl font-black mb-6 uppercase">Gatherings</h2>
         <button
           onClick={() => setIsCreating(true)}
-          className="w-full bg-orange-600 text-white py-3 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-orange-700 transition shadow-lg shadow-orange-100 mb-8"
+          className="w-full bg-orange-600 text-white py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:bg-orange-700 transition shadow-lg shadow-orange-100 mb-8"
         >
           <Plus size={18} /> Plan Event
         </button>
@@ -142,7 +142,7 @@ export default function GatheringsPage() {
                 <button
                   key={event.id}
                   onClick={() => setSelectedEventIndex(index)}
-                  className={`w-full text-left p-6 rounded-[2.5rem] border transition-all ${
+                  className={`w-full text-left p-6 rounded-lg border transition-all ${
                     selectedEventIndex === index
                       ? "bg-white border-orange-500 shadow-xl scale-[1.01]"
                       : "bg-white border-slate-200 hover:border-slate-300"
@@ -150,7 +150,7 @@ export default function GatheringsPage() {
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div
-                      className={`p-3 rounded-2xl ${event.minSupportTier > 0 ? "bg-amber-50 text-amber-600" : "bg-slate-50 text-slate-900"}`}
+                      className={`p-3 rounded-lg ${event.minSupportTier > 0 ? "bg-amber-50 text-amber-600" : "bg-slate-50 text-slate-900"}`}
                     >
                       {event.minSupportTier > 0 ? (
                         <ShieldCheck size={20} />
@@ -158,7 +158,7 @@ export default function GatheringsPage() {
                         <Calendar size={20} />
                       )}
                     </div>
-                    <span className="text-[10px] font-black px-2 py-1 rounded uppercase bg-green-50 text-green-600">
+                    <span className="text-[10px] font-black px-2 py-1 rounded-lg uppercase bg-green-50 text-green-600">
                       {event.status}
                     </span>
                   </div>
@@ -200,7 +200,7 @@ export default function GatheringsPage() {
               </div>
 
               <div className="space-y-6">
-                <div className="bg-slate-900 p-6 rounded-4xl text-white">
+                <div className="bg-slate-900 p-6 rounded-lg text-white">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
                     Entry Requirement
                   </p>
@@ -211,7 +211,7 @@ export default function GatheringsPage() {
                   </h2>
                 </div>
 
-                <div className="p-6 bg-orange-50 rounded-4xl border border-orange-100">
+                <div className="p-6 bg-orange-50 rounded-lg border border-orange-100">
                   <div className="flex items-center gap-2 mb-4 text-orange-600">
                     <Info size={16} />
                     <span className="text-xs font-black uppercase">
@@ -224,7 +224,7 @@ export default function GatheringsPage() {
                   </p>
                 </div>
 
-                <button className="w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold hover:border-orange-500 hover:text-orange-500 transition">
+                <button className="w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-slate-200 rounded-lg text-slate-400 font-bold hover:border-orange-500 hover:text-orange-500 transition">
                   <QrCode size={20} /> Check-in Guests
                 </button>
               </div>
@@ -240,7 +240,7 @@ export default function GatheringsPage() {
         {/* --- Create Event Modal --- */}
         {isCreating && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-            <div className="bg-white w-full max-w-lg rounded-[3rem] p-10 shadow-2xl animate-in zoom-in-95">
+            <div className="bg-white w-full max-w-lg rounded-lg p-10 shadow-2xl animate-in zoom-in-95">
               <div className="flex justify-between items-center mb-8">
                 <h2 className="text-2xl font-black uppercase tracking-tighter">
                   Plan Gathering
@@ -274,14 +274,14 @@ export default function GatheringsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <input
                     type="date"
-                    className="bg-slate-50 p-4 rounded-2xl text-sm outline-none font-bold"
+                    className="bg-slate-50 p-4 rounded-lg text-sm outline-none font-bold"
                     onChange={(e) =>
                       setFormData({ ...formData, date: e.target.value })
                     }
                   />
                   <input
                     type="time"
-                    className="bg-slate-50 p-4 rounded-2xl text-sm outline-none font-bold"
+                    className="bg-slate-50 p-4 rounded-lg text-sm outline-none font-bold"
                     onChange={(e) =>
                       setFormData({ ...formData, time: e.target.value })
                     }
@@ -295,7 +295,7 @@ export default function GatheringsPage() {
                   <input
                     type="number"
                     placeholder="Min. RWF support to qualify (0 for all)"
-                    className="w-full bg-slate-50 p-4 rounded-2xl text-sm outline-none font-bold focus:ring-2 focus:ring-orange-100"
+                    className="w-full bg-slate-50 p-4 rounded-lg text-sm outline-none font-bold focus:ring-2 focus:ring-orange-100"
                     onChange={(e) =>
                       setFormData({
                         ...formData,
@@ -312,7 +312,7 @@ export default function GatheringsPage() {
                 <button
                   onClick={handleCreate}
                   disabled={!formData.title || isSimulating}
-                  className="w-full bg-slate-900 text-white py-5 rounded-4xl font-black text-lg shadow-xl hover:bg-orange-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full bg-slate-900 text-white py-5 rounded-lg font-black text-lg shadow-xl hover:bg-orange-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {isSimulating ? (
                     <Loader className="animate-spin" />
@@ -328,7 +328,7 @@ export default function GatheringsPage() {
         {/* --- Delete Confirmation Modal --- */}
         {isDeleting && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] flex items-center justify-center p-6">
-            <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 text-center shadow-2xl">
+            <div className="bg-white w-full max-w-sm rounded-lg p-8 text-center shadow-2xl">
               <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Trash2 size={32} />
               </div>
@@ -340,13 +340,13 @@ export default function GatheringsPage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setIsDeleting(null)}
-                  className="flex-1 py-4 rounded-2xl font-bold text-slate-400 hover:bg-slate-50 transition"
+                  className="flex-1 py-4 rounded-lg font-bold text-slate-400 hover:bg-slate-50 transition"
                 >
                   Keep it
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-bold hover:bg-red-600 transition"
+                  className="flex-1 py-4 bg-red-500 text-white rounded-lg font-bold hover:bg-red-600 transition"
                 >
                   Yes, Cancel
                 </button>

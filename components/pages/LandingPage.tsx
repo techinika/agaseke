@@ -42,7 +42,7 @@ export default function LandingPage() {
         </p>
 
         <div className="flex flex-col items-center gap-4">
-          <div className="flex flex-col sm:flex-row items-center bg-white p-2 rounded-2xl border-2 border-slate-100 focus-within:border-orange-500 focus-within:ring-4 focus-within:ring-orange-50 transition-all w-full max-w-lg shadow-xl">
+          <div className="flex flex-col sm:flex-row items-center bg-white p-2 rounded-lg border-2 border-slate-100 focus-within:border-orange-500 focus-within:ring-4 focus-within:ring-orange-50 transition-all w-full max-w-lg shadow-xl">
             <div className="flex items-center flex-1 w-full px-2">
               <span className="pl-2 pr-1 text-slate-400 font-semibold select-none">
                 agaseke.me/
@@ -60,7 +60,7 @@ export default function LandingPage() {
 
             <button
               onClick={handleClaim}
-              className="w-full sm:w-auto bg-orange-600 text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-orange-700 transition-all active:scale-95 whitespace-nowrap shadow-lg shadow-orange-200"
+              className="w-full sm:w-auto bg-orange-600 text-white px-8 py-4 rounded-lg font-bold text-lg hover:bg-orange-700 transition-all active:scale-95 whitespace-nowrap shadow-lg shadow-orange-200"
             >
               Claim your Agaseke
             </button>
@@ -100,7 +100,7 @@ export default function LandingPage() {
       </section>
 
       <section className="py-24 px-6">
-        <div className="max-w-4xl mx-auto bg-slate-950 rounded-[3rem] p-12 md:p-20 text-center text-white relative overflow-hidden shadow-2xl">
+        <div className="max-w-4xl mx-auto bg-slate-950 rounded-lg p-12 md:p-20 text-center text-white relative overflow-hidden shadow-2xl">
           <div className="relative z-10">
             <h2 className="text-orange-500 font-black uppercase tracking-[0.2em] text-sm mb-4">
               Simple Pricing
@@ -128,8 +128,8 @@ function FeatureCard({
   desc: string;
 }) {
   return (
-    <div className="bg-white p-8 rounded-3xl border border-slate-200/60 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-900/5 transition-all duration-500 group">
-      <div className="mb-6 p-4 bg-slate-50 group-hover:bg-orange-50 w-fit rounded-2xl transition-colors">
+    <div className="bg-white p-8 rounded-lg border border-slate-200/60 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-900/5 transition-all duration-500 group">
+      <div className="mb-6 p-4 bg-slate-50 group-hover:bg-orange-50 w-fit rounded-lg transition-colors">
         {icon}
       </div>
       <h3 className="text-lg font-bold mb-3">{title}</h3>

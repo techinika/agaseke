@@ -1,5 +1,4 @@
 import PublicProfile from "@/components/pages/PublicProfile";
-import React from "react";
 
 async function page({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;

@@ -121,7 +121,7 @@ export default function CreatorOnboarding() {
         ))}
       </div>
 
-      <div className="w-full max-w-md bg-white p-8 md:p-10 rounded-[2.5rem] shadow-sm border border-slate-100">
+      <div className="w-full max-w-md bg-white p-8 md:p-10 rounded-lg shadow-sm border border-slate-100">
         {/* Step 1: Username */}
         {step === 1 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
@@ -143,7 +143,7 @@ export default function CreatorOnboarding() {
               <input
                 autoFocus
                 type="text"
-                className="w-full p-5 pl-28 bg-slate-50 border-2 border-transparent rounded-2xl text-xl font-black focus:border-orange-500 focus:bg-white outline-none transition-all"
+                className="w-full p-5 pl-28 bg-slate-50 border-2 border-transparent rounded-lg text-xl font-black focus:border-orange-500 focus:bg-white outline-none transition-all"
                 value={formData.username}
                 onChange={(e) =>
                   setFormData({
@@ -156,7 +156,7 @@ export default function CreatorOnboarding() {
             <button
               onClick={nextStep}
               disabled={!formData.username}
-              className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-lg flex items-center justify-center gap-2 hover:bg-orange-600 transition-all active:scale-95"
+              className="w-full bg-slate-900 text-white py-5 rounded-lg font-black text-lg flex items-center justify-center gap-2 hover:bg-orange-600 transition-all active:scale-95"
             >
               Continue <ArrowRight size={20} />
             </button>
@@ -178,7 +178,7 @@ export default function CreatorOnboarding() {
               <input
                 type="text"
                 placeholder="Display Name (e.g. Gisa Patrick)"
-                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none focus:border-orange-500"
+                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-lg font-bold outline-none focus:border-orange-500"
                 value={formData.fullName}
                 onChange={(e) =>
                   setFormData({ ...formData, fullName: e.target.value })
@@ -186,7 +186,7 @@ export default function CreatorOnboarding() {
               />
               <textarea
                 placeholder="Tell your fans what you're creating..."
-                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl h-32 resize-none font-medium outline-none focus:border-orange-500"
+                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-lg h-32 resize-none font-medium outline-none focus:border-orange-500"
                 value={formData.bio}
                 onChange={(e) =>
                   setFormData({ ...formData, bio: e.target.value })
@@ -196,14 +196,14 @@ export default function CreatorOnboarding() {
             <div className="flex gap-3">
               <button
                 onClick={prevStep}
-                className="p-5 bg-slate-50 rounded-2xl text-slate-400 hover:text-slate-900 transition-colors"
+                className="p-5 bg-slate-50 rounded-lg text-slate-400 hover:text-slate-900 transition-colors"
               >
                 <ChevronLeft size={24} />
               </button>
               <button
                 onClick={nextStep}
                 disabled={!formData.fullName}
-                className="flex-1 bg-slate-900 text-white py-5 rounded-2xl font-black text-lg hover:bg-orange-600 transition-all"
+                className="flex-1 bg-slate-900 text-white py-5 rounded-lg font-black text-lg hover:bg-orange-600 transition-all"
               >
                 Continue
               </button>
@@ -230,7 +230,7 @@ export default function CreatorOnboarding() {
                     onClick={() =>
                       setFormData({ ...formData, momoNetwork: net })
                     }
-                    className={`flex-1 py-4 rounded-2xl border-2 font-black text-sm transition-all ${formData.momoNetwork === net ? "border-orange-600 bg-orange-50 text-orange-600" : "border-slate-50 text-slate-300"}`}
+                    className={`flex-1 py-4 rounded-lg border-2 font-black text-sm transition-all ${formData.momoNetwork === net ? "border-orange-600 bg-orange-50 text-orange-600" : "border-slate-50 text-slate-300"}`}
                   >
                     {net} Money
                   </button>
@@ -244,7 +244,7 @@ export default function CreatorOnboarding() {
                 <input
                   type="tel"
                   placeholder="078..."
-                  className="w-full p-5 pl-12 bg-slate-50 border border-slate-100 rounded-2xl text-center text-xl font-black tracking-widest focus:border-orange-500 outline-none"
+                  className="w-full p-5 pl-12 bg-slate-50 border border-slate-100 rounded-lg text-center text-xl font-black tracking-widest focus:border-orange-500 outline-none"
                   value={formData.momoNumber}
                   onChange={(e) =>
                     setFormData({ ...formData, momoNumber: e.target.value })
@@ -255,14 +255,14 @@ export default function CreatorOnboarding() {
             <div className="flex gap-3">
               <button
                 onClick={prevStep}
-                className="p-5 bg-slate-50 rounded-2xl text-slate-400 transition-colors"
+                className="p-5 bg-slate-50 rounded-lg text-slate-400 transition-colors"
               >
                 <ChevronLeft size={24} />
               </button>
               <button
                 onClick={nextStep}
                 disabled={!formData.momoNumber}
-                className="flex-1 bg-slate-900 text-white py-5 rounded-2xl font-black text-lg hover:bg-orange-600 transition-all"
+                className="flex-1 bg-slate-900 text-white py-5 rounded-lg font-black text-lg hover:bg-orange-600 transition-all"
               >
                 Verify My Number
               </button>
@@ -285,7 +285,7 @@ export default function CreatorOnboarding() {
               </p>
             </div>
 
-            <div className="bg-slate-50 p-6 rounded-4xl space-y-3 border border-slate-100">
+            <div className="bg-slate-50 p-6 rounded-lg space-y-3 border border-slate-100">
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
                   Public Link
@@ -307,7 +307,7 @@ export default function CreatorOnboarding() {
             <button
               onClick={handleFinish}
               disabled={loading}
-              className="w-full bg-orange-600 text-white py-5 rounded-4xl font-black text-xl shadow-xl shadow-orange-100 hover:bg-orange-700 transition-all flex items-center justify-center gap-3"
+              className="w-full bg-orange-600 text-white py-5 rounded-lg font-black text-xl shadow-xl shadow-orange-100 hover:bg-orange-700 transition-all flex items-center justify-center gap-3"
             >
               {loading ? "Creating Space..." : "Launch My Agaseke"}
             </button>

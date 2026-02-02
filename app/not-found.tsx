@@ -32,7 +32,7 @@ const NotFound = () => {
             transition={{ delay: 0.3, duration: 0.5 }}
             className="absolute inset-0 flex items-center justify-center"
           >
-            <div className="bg-white p-8 rounded-[3rem] shadow-2xl shadow-orange-100 border border-orange-50 relative">
+            <div className="bg-white p-8 rounded-lg shadow-2xl shadow-orange-100 border border-orange-50 relative">
               <motion.div
                 animate={{
                   rotate: [0, 10, -10, 0],
@@ -43,7 +43,7 @@ const NotFound = () => {
                   duration: 4,
                   ease: "easeInOut",
                 }}
-                className="w-20 h-20 bg-orange-600 rounded-[1.8rem] flex items-center justify-center text-white"
+                className="w-20 h-20 bg-orange-600 rounded-lg flex items-center justify-center text-white"
               >
                 <Search size={40} strokeWidth={3} />
               </motion.div>
@@ -73,14 +73,14 @@ const NotFound = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/"
-              className="flex items-center justify-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-2xl font-black transition-all hover:bg-orange-600 active:scale-95 shadow-xl shadow-slate-200"
+              className="flex items-center justify-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-lg font-black transition-all hover:bg-orange-600 active:scale-95 shadow-xl shadow-slate-200"
             >
               <Home size={18} /> Go To Home
             </Link>
 
             <button
               onClick={() => router.refresh()}
-              className="flex items-center justify-center gap-3 bg-white border border-slate-200 text-slate-600 px-8 py-4 rounded-2xl font-black transition-all hover:border-slate-900 hover:text-slate-900 active:scale-95"
+              className="flex items-center justify-center gap-3 bg-white border border-slate-200 text-slate-600 px-8 py-4 rounded-lg font-black transition-all hover:border-slate-900 hover:text-slate-900 active:scale-95"
             >
               <ArrowLeft size={18} /> Try Again
             </button>

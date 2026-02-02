@@ -25,14 +25,14 @@ const Loading = () => {
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="absolute -inset-8 bg-orange-400 rounded-full blur-3xl"
+            className="absolute -inset-8 bg-orange-400 rounded-lg blur-3xl"
           />
 
           {/* Rotating "Basket Weave" Border */}
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-            className="absolute -inset-2 border-2 border-dashed border-orange-200 rounded-[2.5rem]"
+            className="absolute -inset-2 border-2 border-dashed border-orange-200 rounded-lg"
           />
 
           {/* Main Logo Box */}
@@ -42,7 +42,7 @@ const Loading = () => {
               rotate: [0, 5, -5, 0],
             }}
             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            className="relative w-24 h-24 bg-slate-900 rounded-[2.2rem] flex items-center justify-center shadow-2xl shadow-orange-200 overflow-hidden"
+            className="relative w-24 h-24 bg-slate-900 rounded-lg flex items-center justify-center shadow-2xl shadow-orange-200 overflow-hidden"
           >
             {/* The "a" from Agaseke */}
             <span className="text-white text-5xl font-black tracking-tighter select-none">

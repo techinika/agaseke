@@ -57,9 +57,9 @@ export default function LoginPage() {
       </div>
 
       <div className="md:w-1/2 flex items-center justify-center p-8 bg-slate-50">
-        <div className="w-full max-w-sm bg-white p-10 rounded-[2.5rem] shadow-xl shadow-slate-200/50 text-center">
+        <div className="w-full max-w-sm bg-white p-10 rounded-lg shadow-xl shadow-slate-200/50 text-center">
           <div className="mb-8">
-            <div className="w-16 h-16 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center mx-auto mb-4">
               <Zap size={32} fill="currentColor" />
             </div>
             <h2 className="text-2xl font-bold text-slate-900">Welcome Back</h2>
@@ -69,7 +69,7 @@ export default function LoginPage() {
           </div>
 
           <button
-            className="w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-100 py-4 px-6 rounded-2xl font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-200 transition-all active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-100 py-4 px-6 rounded-lg font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-200 transition-all active:scale-[0.98]"
             onClick={async () => {
               setLoading(true);
               await handleGoogleLogin(reservedUsername ?? null);

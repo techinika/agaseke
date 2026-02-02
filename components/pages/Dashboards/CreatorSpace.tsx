@@ -92,7 +92,7 @@ export default function CreatorDashboard() {
   return (
     <div className="p-8 max-w-6xl mx-auto">
       {!creator?.verified && (
-        <div className="mb-8 p-4 bg-amber-50 border border-amber-100 rounded-xl flex items-center justify-between">
+        <div className="mb-8 p-4 bg-amber-50 border border-amber-100 rounded-lg flex items-center justify-between">
           <div className="flex items-center gap-3 text-amber-800">
             <AlertCircle size={18} />
             <span className="text-sm font-medium">
@@ -109,7 +109,7 @@ export default function CreatorDashboard() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
               Available
@@ -148,7 +148,7 @@ export default function CreatorDashboard() {
             </h4>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+          <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-sm">
             {data.recentSupport.length > 0 ? (
               data.recentSupport.map((sup: any) => (
                 <ActivityRow
@@ -169,7 +169,7 @@ export default function CreatorDashboard() {
 
         <div className="space-y-6">
           <h4 className="text-sm font-bold">Past Activity</h4>
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+          <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm space-y-5">
             {data.history.map((item: any) => (
               <HistoryItem key={item.id} {...item} />
             ))}
@@ -190,12 +190,12 @@ function StatTile({
   change: string;
 }) {
   return (
-    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+    <div className="bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
           {title}
         </p>
-        <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded uppercase">
+        <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-lg uppercase">
           {change}
         </span>
       </div>
@@ -232,7 +232,7 @@ function ActivityRow({
         </div>
         <p className="text-xs font-bold text-orange-600 mt-0.5">{amount} RWF</p>
         {msg && (
-          <p className="text-[11px] text-slate-500 mt-2 bg-slate-50 p-2 rounded-md border border-slate-100">
+          <p className="text-[11px] text-slate-500 mt-2 bg-slate-50 p-2 rounded-lg border border-slate-100">
             &quot;{msg}&quot;
           </p>
         )}

@@ -59,8 +59,8 @@ export default function MessagesPage() {
     <div className="relative min-h-[calc(100vh-70px)] bg-white flex overflow-hidden">
       {/* --- UNDER DEVELOPMENT OVERLAY --- */}
       <div className="absolute inset-0 z-[100] backdrop-blur-[2px] bg-slate-900/10 flex items-center justify-center p-6">
-        <div className="bg-white border-2 border-slate-900 shadow-[20px_20px_0px_0px_rgba(15,23,42,1)] rounded-[2.5rem] p-10 max-w-md text-center animate-in zoom-in-95 duration-300">
-          <div className="w-20 h-20 bg-orange-100 text-orange-600 rounded-3xl flex items-center justify-center mx-auto mb-6 rotate-3">
+        <div className="bg-white border-2 border-slate-900 shadow-[20px_20px_0px_0px_rgba(15,23,42,1)] rounded-lg p-10 max-w-md text-center animate-in zoom-in-95 duration-300">
+          <div className="w-20 h-20 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center mx-auto mb-6 rotate-3">
             <Construction size={40} />
           </div>
           <h2 className="text-3xl font-black uppercase tracking-tighter mb-4">
@@ -80,9 +80,7 @@ export default function MessagesPage() {
       {/* --- Sidebar: Chat List --- */}
       <aside className="w-full md:w-80 lg:w-96 border-r border-slate-100 flex flex-col bg-slate-50/50">
         <div className="p-6">
-          <h1 className="text-2xl font-black uppercase mb-6">
-            Messages
-          </h1>
+          <h1 className="text-2xl font-black uppercase mb-6">Messages</h1>
           <div className="relative">
             <Search
               className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
@@ -91,7 +89,7 @@ export default function MessagesPage() {
             <input
               type="text"
               placeholder="Search supporters..."
-              className="w-full bg-white border border-slate-200 rounded-2xl py-3 pl-12 pr-4 text-sm outline-none focus:ring-2 focus:ring-orange-100 transition"
+              className="w-full bg-white border border-slate-200 rounded-lg py-3 pl-12 pr-4 text-sm outline-none focus:ring-2 focus:ring-orange-100 transition"
               disabled
             />
           </div>
@@ -102,14 +100,14 @@ export default function MessagesPage() {
             <button
               key={chat.id}
               onClick={() => setSelectedChat(chat.id)}
-              className={`w-full flex items-center gap-4 p-4 rounded-[1.5rem] transition-all ${
+              className={`w-full flex items-center gap-4 p-4 rounded-lg transition-all ${
                 selectedChat === chat.id
                   ? "bg-white shadow-sm border border-slate-100"
                   : "hover:bg-slate-100"
               }`}
             >
               <div className="relative">
-                <div className="w-12 h-12 bg-slate-200 rounded-2xl flex items-center justify-center font-black text-slate-500">
+                <div className="w-12 h-12 bg-slate-200 rounded-lg flex items-center justify-center font-black text-slate-500">
                   {chat.avatar}
                 </div>
                 {chat.unread && (
@@ -141,7 +139,7 @@ export default function MessagesPage() {
             {/* Chat Header */}
             <header className="p-6 border-b border-slate-50 flex justify-between items-center">
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center font-bold">
+                <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center font-bold">
                   {chats.find((c) => c.id === selectedChat)?.avatar}
                 </div>
                 <div>
@@ -174,10 +172,10 @@ export default function MessagesPage() {
                   className={`flex ${m.sender === "creator" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[70%] p-4 rounded-[1.5rem] text-sm font-medium leading-relaxed ${
+                    className={`max-w-[70%] p-4 rounded-lg text-sm font-medium leading-relaxed ${
                       m.sender === "creator"
-                        ? "bg-slate-900 text-white rounded-tr-none"
-                        : "bg-white border border-slate-100 text-slate-700 rounded-tl-none shadow-sm"
+                        ? "bg-slate-900 text-white rounded-lg"
+                        : "bg-white border border-slate-100 text-slate-700 rounded-lg shadow-sm"
                     }`}
                   >
                     {m.text}
@@ -193,14 +191,14 @@ export default function MessagesPage() {
 
             {/* Input Area */}
             <footer className="p-6 bg-white border-t border-slate-50">
-              <div className="flex items-center gap-4 bg-slate-50 p-2 pl-6 rounded-2xl border border-transparent focus-within:bg-white focus-within:border-slate-200 transition-all">
+              <div className="flex items-center gap-4 bg-slate-50 p-2 pl-6 rounded-lg border border-transparent focus-within:bg-white focus-within:border-slate-200 transition-all">
                 <input
                   type="text"
                   placeholder="Type your reply..."
                   className="flex-1 bg-transparent outline-none text-sm font-medium"
                   disabled
                 />
-                <button className="bg-slate-900 text-white p-3 rounded-xl opacity-50 cursor-not-allowed">
+                <button className="bg-slate-900 text-white p-3 rounded-lg opacity-50 cursor-not-allowed">
                   <Send size={18} />
                 </button>
               </div>
@@ -208,7 +206,7 @@ export default function MessagesPage() {
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-slate-300 p-12 text-center">
-            <div className="w-20 h-20 bg-slate-50 rounded-4xl flex items-center justify-center mb-6">
+            <div className="w-20 h-20 bg-slate-50 rounded-lg flex items-center justify-center mb-6">
               <MessageSquare size={40} className="opacity-20" />
             </div>
             <h3 className="text-xl font-black uppercase mb-2">

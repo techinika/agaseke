@@ -156,7 +156,7 @@ export default function SupporterSpace() {
 
       <main className="max-w-4xl mx-auto px-6 pt-10">
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
-          <div className="md:col-span-2 bg-white p-8 rounded-4xl border border-slate-100 shadow-sm flex flex-col justify-between">
+          <div className="md:col-span-2 bg-white p-8 rounded-lg border border-slate-100 shadow-sm flex flex-col justify-between">
             <div>
               <h1 className="text-3xl font-black mb-2">
                 Amahoro,{" "}
@@ -190,10 +190,10 @@ export default function SupporterSpace() {
           </div>
 
           <button
-            className="bg-slate-900 rounded-4xl p-8 text-white flex flex-col justify-between group hover:bg-slate-800 transition-all text-left"
+            className="bg-slate-900 rounded-lg p-8 text-white flex flex-col justify-between group hover:bg-slate-800 transition-all text-left"
             onClick={() => (globalThis.location.href = "/onboarding")}
           >
-            <div className="bg-orange-600 w-10 h-10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+            <div className="bg-orange-600 w-10 h-10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <Zap size={20} fill="white" />
             </div>
             <div>
@@ -225,10 +225,10 @@ export default function SupporterSpace() {
                     <Link
                       key={i}
                       href={`/${creator.handle}`}
-                      className="block bg-white p-5 rounded-3xl border border-slate-100 hover:border-orange-200 transition-all group cursor-pointer shadow-sm"
+                      className="block bg-white p-5 rounded-lg border border-slate-100 hover:border-orange-200 transition-all group cursor-pointer shadow-sm"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center overflow-hidden shrink-0 border border-slate-50">
+                        <div className="w-14 h-14 bg-slate-100 rounded-lg flex items-center justify-center overflow-hidden shrink-0 border border-slate-50">
                           {creator.photoURL ? (
                             <img
                               src={creator.photoURL}
@@ -270,7 +270,7 @@ export default function SupporterSpace() {
                     </Link>
                   ))
                 ) : (
-                  <div className="p-10 text-center border-2 border-dashed border-slate-100 rounded-3xl">
+                  <div className="p-10 text-center border-2 border-dashed border-slate-100 rounded-lg">
                     <User className="mx-auto text-slate-200 mb-2" size={32} />
                     <p className="text-slate-400 text-sm font-medium">
                       No favorites yet. Start supporting creators!
@@ -282,7 +282,7 @@ export default function SupporterSpace() {
           </div>
 
           <div className="lg:col-span-2 space-y-8">
-            <section className="bg-white p-6 rounded-4xl border border-slate-100 shadow-sm">
+            <section className="bg-white p-6 rounded-lg border border-slate-100 shadow-sm">
               <h3 className="font-bold mb-6 flex items-center gap-2 text-slate-800">
                 Discover Creators
               </h3>
@@ -297,7 +297,7 @@ export default function SupporterSpace() {
                   placeholder="Search by name..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-slate-50 border-none rounded-xl py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-orange-100 outline-none transition"
+                  className="w-full bg-slate-50 border-none rounded-lg py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-orange-100 outline-none transition"
                 />
               </div>
 
@@ -354,14 +354,14 @@ export default function SupporterSpace() {
 
                 <button
                   onClick={() => router.push("/explore")}
-                  className="w-full py-3 text-xs font-bold text-slate-400 border-2 border-dashed border-slate-100 rounded-xl hover:bg-slate-50 transition"
+                  className="w-full py-3 text-xs font-bold text-slate-400 border-2 border-dashed border-slate-100 rounded-lg hover:bg-slate-50 transition"
                 >
                   View More Creators
                 </button>
               </div>
             </section>
 
-            <div className="p-6 bg-slate-50 rounded-4xl text-center border border-slate-100">
+            <div className="p-6 bg-slate-50 rounded-lg text-center border border-slate-100">
               <Lock size={24} className="mx-auto text-slate-300 mb-2" />
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                 Premium Space

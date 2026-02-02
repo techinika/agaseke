@@ -1,3 +1,4 @@
+import AuthGuard from "@/auth/AuthGuard";
 import DashboardLayout from "@/components/parts/dashboard/Layout";
 
 export default function RootLayout({
@@ -5,5 +6,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <DashboardLayout>{children}</DashboardLayout>;
+  return (
+    <AuthGuard>
+      <DashboardLayout>{children}</DashboardLayout>
+    </AuthGuard>
+  );
 }

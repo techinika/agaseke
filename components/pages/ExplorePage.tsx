@@ -120,7 +120,7 @@ export default function ExplorePage() {
               placeholder="Search by name, handle, or bio keywords..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-white border border-slate-100 shadow-xl shadow-slate-200/50 rounded-4xl py-6 pl-14 pr-6 text-lg outline-none focus:ring-4 focus:ring-orange-50 transition-all font-medium"
+              className="w-full bg-white border border-slate-100 shadow-xl shadow-slate-200/50 rounded-lg py-6 pl-14 pr-6 text-lg outline-none focus:ring-4 focus:ring-orange-50 transition-all font-medium"
             />
           </div>
         </div>
@@ -132,7 +132,7 @@ export default function ExplorePage() {
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div
                 key={i}
-                className="h-80 bg-slate-100 animate-pulse rounded-[3rem]"
+                className="h-80 bg-slate-100 animate-pulse rounded-lg"
               />
             ))}
           </div>
@@ -153,13 +153,13 @@ export default function ExplorePage() {
                 <Link
                   key={creator.handle}
                   href={`/${creator.handle}`}
-                  className="group bg-white border border-slate-50 p-8 rounded-[3rem] shadow-sm hover:shadow-2xl hover:shadow-orange-900/5 hover:-translate-y-1 transition-all duration-500 relative overflow-hidden"
+                  className="group bg-white border border-slate-50 p-8 rounded-lg shadow-sm hover:shadow-2xl hover:shadow-orange-900/5 hover:-translate-y-1 transition-all duration-500 relative overflow-hidden"
                 >
                   <div className="absolute -top-10 -right-10 w-32 h-32 bg-orange-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
 
                   <div className="flex items-start justify-between mb-6">
-                    <div className="w-20 h-20 bg-slate-50 rounded-4xl p-1 border border-slate-100">
-                      <div className="w-full h-full bg-slate-200 rounded-[1.8rem] overflow-hidden flex items-center justify-center">
+                    <div className="w-20 h-20 bg-slate-50 rounded-lg p-1 border border-slate-100">
+                      <div className="w-full h-full bg-slate-200 rounded-lg overflow-hidden flex items-center justify-center">
                         {creator.photoURL ? (
                           <img
                             src={creator.photoURL}
@@ -172,7 +172,7 @@ export default function ExplorePage() {
                       </div>
                     </div>
                     {creator.verified && (
-                      <div className="bg-orange-50 text-orange-600 p-2 rounded-xl">
+                      <div className="bg-orange-50 text-orange-600 p-2 rounded-lg">
                         <Sparkles size={16} fill="currentColor" />
                       </div>
                     )}
@@ -210,7 +210,7 @@ export default function ExplorePage() {
                 <button
                   onClick={() => fetchCreators()}
                   disabled={loadingMore}
-                  className="group relative inline-flex items-center gap-3 bg-white border border-slate-200 px-12 py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:border-orange-600 hover:text-orange-600 transition-all disabled:opacity-50 shadow-sm overflow-hidden"
+                  className="group relative inline-flex items-center gap-3 bg-white border border-slate-200 px-12 py-5 rounded-lg font-black text-xs uppercase tracking-[0.2em] hover:border-orange-600 hover:text-orange-600 transition-all disabled:opacity-50 shadow-sm overflow-hidden"
                 >
                   {loadingMore ? (
                     <Loader
@@ -232,7 +232,7 @@ export default function ExplorePage() {
 
             {filteredCreators.length === 0 && (
               <div className="py-24 text-center">
-                <div className="w-24 h-24 bg-slate-50 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 border border-slate-100">
+                <div className="w-24 h-24 bg-slate-50 rounded-lg flex items-center justify-center mx-auto mb-8 border border-slate-100">
                   <Search size={32} className="text-slate-300" />
                 </div>
                 <h3 className="text-3xl font-black tracking-tighter">

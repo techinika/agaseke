@@ -1,11 +1,11 @@
+import AuthGuard from "@/auth/AuthGuard";
 import CreatorOnboarding from "@/components/pages/StartPage";
-import React from "react";
 
 function page() {
   return (
-    <div>
+    <AuthGuard>
       <CreatorOnboarding />
-    </div>
+    </AuthGuard>
   );
 }
 

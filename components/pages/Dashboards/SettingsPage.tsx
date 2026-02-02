@@ -101,7 +101,7 @@ export default function CreatorSettings() {
           <button
             onClick={saveSettings}
             disabled={saving}
-            className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-orange-600 transition-all shadow-xl shadow-slate-200 disabled:opacity-50"
+            className="bg-slate-900 text-white px-8 py-3 rounded-lg font-bold flex items-center gap-2 hover:bg-orange-600 transition-all shadow-xl shadow-slate-200 disabled:opacity-50"
           >
             {saving ? (
               <Loader className="animate-spin" size={18} />
@@ -123,7 +123,7 @@ export default function CreatorSettings() {
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-3 px-5 py-4 rounded-2xl font-bold text-sm transition-all ${
+                className={`w-full flex items-center gap-3 px-5 py-4 rounded-lg font-bold text-sm transition-all ${
                   activeTab === item.id
                     ? "bg-white text-orange-600 shadow-sm border border-slate-100"
                     : "text-slate-400 hover:text-slate-600"
@@ -137,7 +137,7 @@ export default function CreatorSettings() {
 
           <main className="flex-1 space-y-8">
             {activeTab === "profile" && (
-              <section className="bg-white border border-slate-100 rounded-[2.5rem] p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4">
+              <section className="bg-white border border-slate-100 rounded-lg p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">
@@ -148,14 +148,14 @@ export default function CreatorSettings() {
                       defaultValue={creator?.name}
                       value={creatorData?.name}
                       onChange={(e) => handleUpdate("name", e.target.value)}
-                      className="w-full bg-slate-50 p-4 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-white transition-all"
+                      className="w-full bg-slate-50 p-4 rounded-lg text-sm font-bold focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-white transition-all"
                     />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">
                       Username (Permanent)
                     </label>
-                    <div className="w-full bg-slate-100 p-4 rounded-2xl text-sm font-bold text-slate-400 cursor-not-allowed">
+                    <div className="w-full bg-slate-100 p-4 rounded-lg text-sm font-bold text-slate-400 cursor-not-allowed">
                       @{creator?.handle}
                     </div>
                   </div>
@@ -169,14 +169,14 @@ export default function CreatorSettings() {
                     value={creator?.bio}
                     onChange={(e) => handleUpdate("bio", e.target.value)}
                     placeholder="Tell your supporters who you are..."
-                    className="w-full h-32 bg-slate-50 p-4 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none resize-none"
+                    className="w-full h-32 bg-slate-50 p-4 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none resize-none"
                   />
                 </div>
 
-                <div className="p-6 bg-slate-900 rounded-4xl text-white flex items-center justify-between">
+                <div className="p-6 bg-slate-900 rounded-lg text-white flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div
-                      className={`p-3 rounded-2xl ${creator?.verified ? "bg-green-500" : "bg-slate-700"}`}
+                      className={`p-3 rounded-lg ${creator?.verified ? "bg-green-500" : "bg-slate-700"}`}
                     >
                       {creator?.verified ? (
                         <Check size={24} />
@@ -199,7 +199,7 @@ export default function CreatorSettings() {
                     <button
                       onClick={simulateVerification}
                       disabled={isVerifying}
-                      className="bg-white text-slate-900 px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-orange-500 hover:text-white transition-all"
+                      className="bg-white text-slate-900 px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest hover:bg-orange-500 hover:text-white transition-all"
                     >
                       {isVerifying ? "Verifying..." : "Verify Now"}
                     </button>
@@ -209,7 +209,7 @@ export default function CreatorSettings() {
             )}
 
             {activeTab === "socials" && (
-              <section className="bg-white border border-slate-100 rounded-[2.5rem] p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4">
+              <section className="bg-white border border-slate-100 rounded-lg p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4">
                 <h3 className="text-lg font-black uppercase">
                   Connected Networks
                 </h3>
@@ -242,10 +242,10 @@ export default function CreatorSettings() {
                   ].map((social) => (
                     <div
                       key={social.id}
-                      className="flex items-center gap-4 bg-slate-50 p-2 rounded-2xl border border-transparent focus-within:border-slate-200 focus-within:bg-white transition-all"
+                      className="flex items-center gap-4 bg-slate-50 p-2 rounded-lg border border-transparent focus-within:border-slate-200 focus-within:bg-white transition-all"
                     >
                       <div
-                        className={`p-3 bg-white rounded-xl shadow-sm ${social.color}`}
+                        className={`p-3 bg-white rounded-lg shadow-sm ${social.color}`}
                       >
                         <social.icon size={20} />
                       </div>
@@ -274,7 +274,7 @@ export default function CreatorSettings() {
             )}
 
             {activeTab === "perks" && (
-              <section className="bg-white border border-slate-100 rounded-[2.5rem] p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4">
+              <section className="bg-white border border-slate-100 rounded-lg p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4">
                 <div className="flex justify-between items-center">
                   <h3 className="text-lg font-black uppercase">
                     Supporter Perks
@@ -308,7 +308,7 @@ export default function CreatorSettings() {
                   ].map((perk, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between p-6 bg-slate-50 rounded-4xl border border-slate-100"
+                      className="flex items-center justify-between p-6 bg-slate-50 rounded-lg border border-slate-100"
                     >
                       <div>
                         <p className="font-bold text-slate-900">{perk.title}</p>
@@ -328,8 +328,8 @@ export default function CreatorSettings() {
             )}
 
             {activeTab === "messaging" && (
-              <section className="bg-slate-100 border-2 border-dashed border-slate-200 rounded-[2.5rem] p-12 text-center animate-in fade-in slide-in-from-bottom-4">
-                <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm text-slate-300">
+              <section className="bg-slate-100 border-2 border-dashed border-slate-200 rounded-lg p-12 text-center animate-in fade-in slide-in-from-bottom-4">
+                <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center mx-auto mb-6 shadow-sm text-slate-300">
                   <MessageSquare size={32} />
                 </div>
                 <h3 className="text-xl font-black uppercase mb-2">

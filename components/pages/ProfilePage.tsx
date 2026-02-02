@@ -101,7 +101,7 @@ export default function ProfileEditPage() {
         </div>
 
         {profile?.type !== "creator" && (
-          <div className="bg-orange-600 rounded-4xl p-8 mb-8 text-white relative overflow-hidden group">
+          <div className="bg-orange-600 rounded-lg p-8 mb-8 text-white relative overflow-hidden group">
             <div className="relative z-10">
               <h3 className="text-2xl font-black mb-2">Want a public page?</h3>
               <p className="text-orange-100 font-medium mb-6 max-w-md">
@@ -110,7 +110,7 @@ export default function ProfileEditPage() {
               </p>
               <Link
                 href="/onboarding"
-                className="inline-flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-xl font-black text-sm transition-transform active:scale-95"
+                className="inline-flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-lg font-black text-sm transition-transform active:scale-95"
               >
                 Setup Creator Page <ExternalLink size={16} />
               </Link>
@@ -121,9 +121,9 @@ export default function ProfileEditPage() {
 
         <div className="space-y-6">
           {/* Identity Section */}
-          <section className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
+          <section className="bg-white p-8 rounded-lg border border-slate-100 shadow-sm space-y-6">
             <div className="flex items-center gap-4 mb-4">
-              <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center overflow-hidden">
+              <div className="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center overflow-hidden">
                 {profile?.photoURL ? (
                   <img
                     src={profile.photoURL}
@@ -158,7 +158,7 @@ export default function ProfileEditPage() {
                     type="email"
                     value={profile?.email || ""}
                     disabled
-                    className="w-full bg-slate-50 border-none rounded-2xl py-4 pl-12 pr-4 text-slate-400 cursor-not-allowed font-medium"
+                    className="w-full bg-slate-50 border-none rounded-lg py-4 pl-12 pr-4 text-slate-400 cursor-not-allowed font-medium"
                   />
                 </div>
               </div>
@@ -171,7 +171,7 @@ export default function ProfileEditPage() {
                   type="text"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  className="w-full bg-slate-50 border-none focus:ring-2 focus:ring-orange-100 rounded-2xl py-4 px-6 font-bold transition-all"
+                  className="w-full bg-slate-50 border-none focus:ring-2 focus:ring-orange-100 rounded-lg py-4 px-6 font-bold transition-all"
                 />
               </div>
 
@@ -189,7 +189,7 @@ export default function ProfileEditPage() {
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                     placeholder="e.g. Kigali, Rwanda"
-                    className="w-full bg-slate-50 border-none focus:ring-2 focus:ring-orange-100 rounded-2xl py-4 pl-12 pr-6 font-bold transition-all"
+                    className="w-full bg-slate-50 border-none focus:ring-2 focus:ring-orange-100 rounded-lg py-4 pl-12 pr-6 font-bold transition-all"
                   />
                 </div>
               </div>
@@ -198,7 +198,7 @@ export default function ProfileEditPage() {
             <button
               onClick={handleUpdate}
               disabled={saving}
-              className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors disabled:opacity-50"
+              className="w-full bg-slate-900 text-white py-5 rounded-lg font-black flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors disabled:opacity-50"
             >
               {saving ? (
                 <Loader className="animate-spin" />
@@ -210,7 +210,7 @@ export default function ProfileEditPage() {
           </section>
 
           {/* Danger Zone */}
-          <section className="bg-red-50/50 p-8 rounded-[2.5rem] border border-red-100 space-y-4">
+          <section className="bg-red-50/50 p-8 rounded-lg border border-red-100 space-y-4">
             <h3 className="font-black text-red-600 flex items-center gap-2">
               <AlertTriangle size={18} /> Danger Zone
             </h3>
@@ -220,7 +220,7 @@ export default function ProfileEditPage() {
             </p>
             <button
               onClick={() => setIsDeleteModalOpen(true)}
-              className="bg-white border border-red-200 text-red-600 px-6 py-3 rounded-xl font-black text-sm hover:bg-red-600 hover:text-white transition-all flex items-center gap-2"
+              className="bg-white border border-red-200 text-red-600 px-6 py-3 rounded-lg font-black text-sm hover:bg-red-600 hover:text-white transition-all flex items-center gap-2"
             >
               <Trash2 size={16} /> Delete My Account
             </button>
@@ -231,9 +231,9 @@ export default function ProfileEditPage() {
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-6">
-          <div className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl animate-in zoom-in-95 duration-300">
+          <div className="bg-white w-full max-w-md rounded-lg p-10 shadow-2xl animate-in zoom-in-95 duration-300">
             <div className="flex justify-between items-start mb-6">
-              <div className="w-14 h-14 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center">
+              <div className="w-14 h-14 bg-red-50 text-red-600 rounded-lg flex items-center justify-center">
                 <AlertTriangle size={28} />
               </div>
               <button
@@ -260,7 +260,7 @@ export default function ProfileEditPage() {
                 type="text"
                 autoComplete="off"
                 placeholder="Type your email address"
-                className="w-full bg-slate-50 border-none focus:ring-2 focus:ring-red-100 rounded-2xl py-4 px-6 font-bold text-center"
+                className="w-full bg-slate-50 border-none focus:ring-2 focus:ring-red-100 rounded-lg py-4 px-6 font-bold text-center"
                 value={confirmEmail}
                 onChange={(e) => setConfirmEmail(e.target.value)}
               />
@@ -268,7 +268,7 @@ export default function ProfileEditPage() {
               <button
                 onClick={handleDeleteAccount}
                 disabled={confirmEmail !== profile?.email}
-                className="w-full bg-red-600 text-white py-5 rounded-2xl font-black disabled:opacity-20 transition-all hover:bg-red-700"
+                className="w-full bg-red-600 text-white py-5 rounded-lg font-black disabled:opacity-20 transition-all hover:bg-red-700"
               >
                 Permanently Delete Account
               </button>

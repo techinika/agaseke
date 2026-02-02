@@ -137,7 +137,7 @@ export default function ContentManager() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${
+              className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
                 activeTab === tab
                   ? "bg-orange-50 text-orange-600 shadow-sm"
                   : "text-slate-500 hover:bg-slate-50"
@@ -161,7 +161,7 @@ export default function ContentManager() {
           </div>
           <button
             onClick={() => setIsCreating(true)}
-            className="bg-orange-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-orange-700 transition shadow-lg shadow-orange-100"
+            className="bg-orange-600 text-white px-5 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-orange-700 transition shadow-lg shadow-orange-100"
           >
             <Plus size={18} /> New Post
           </button>
@@ -178,7 +178,7 @@ export default function ContentManager() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search your library..."
-            className="w-full bg-white border border-slate-200 rounded-2xl py-4 pl-12 pr-4 text-sm focus:ring-2 focus:ring-orange-100 outline-none transition shadow-sm font-medium"
+            className="w-full bg-white border border-slate-200 rounded-lg py-4 pl-12 pr-4 text-sm focus:ring-2 focus:ring-orange-100 outline-none transition shadow-sm font-medium"
           />
         </div>
 
@@ -192,12 +192,12 @@ export default function ContentManager() {
             filteredPosts.map((post) => (
               <div
                 key={post.id}
-                className="bg-white border border-slate-200 rounded-4xl overflow-hidden hover:border-orange-200 transition-all shadow-sm group"
+                className="bg-white border border-slate-200 rounded-lg overflow-hidden hover:border-orange-200 transition-all shadow-sm group"
               >
                 <div className="p-6">
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:text-orange-500 transition-colors">
+                      <div className="w-12 h-12 bg-slate-50 rounded-lg flex items-center justify-center text-slate-400 group-hover:text-orange-500 transition-colors">
                         {post.type === "video" ? (
                           <Video size={20} />
                         ) : post.type === "image" ? (
@@ -220,7 +220,7 @@ export default function ContentManager() {
                               : "Just now"}
                           </span>
                           <span
-                            className={`text-[10px] font-black px-2 py-0.5 rounded flex items-center gap-1 uppercase ${post.isPrivate ? "bg-amber-50 text-amber-600" : "bg-green-50 text-green-600"}`}
+                            className={`text-[10px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1 uppercase ${post.isPrivate ? "bg-amber-50 text-amber-600" : "bg-green-50 text-green-600"}`}
                           >
                             {post.isPrivate ? (
                               <Lock size={10} />
@@ -246,7 +246,7 @@ export default function ContentManager() {
               </div>
             ))
           ) : (
-            <div className="bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200 p-20 flex flex-col items-center text-center">
+            <div className="bg-slate-50 rounded-lg border-2 border-dashed border-slate-200 p-20 flex flex-col items-center text-center">
               <Inbox size={48} className="text-slate-200 mb-4" />
               <h3 className="text-xl font-black text-slate-400">
                 No content found
@@ -261,7 +261,7 @@ export default function ContentManager() {
 
         {isCreating && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-6">
-            <div className="bg-white w-full max-w-lg rounded-[3rem] p-10 shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="bg-white w-full max-w-lg rounded-lg p-10 shadow-2xl animate-in zoom-in-95 duration-300">
               <div className="flex justify-between items-center mb-8">
                 <h2 className="text-2xl font-black uppercase tracking-tighter">
                   New Post
@@ -275,12 +275,12 @@ export default function ContentManager() {
               </div>
 
               <div className="space-y-6">
-                <div className="flex gap-2 p-1.5 bg-slate-100 rounded-2xl">
+                <div className="flex gap-2 p-1.5 bg-slate-100 rounded-lg">
                   {["text", "video", "image", "link"].map((t) => (
                     <button
                       key={t}
                       onClick={() => setNewPost({ ...newPost, type: t })}
-                      className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${newPost.type === t ? "bg-white text-orange-600 shadow-sm" : "text-slate-400"}`}
+                      className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${newPost.type === t ? "bg-white text-orange-600 shadow-sm" : "text-slate-400"}`}
                     >
                       {t}
                     </button>
@@ -299,7 +299,7 @@ export default function ContentManager() {
 
                 <div className="space-y-2">
                   {newPost.type !== "text" && (
-                    <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl text-blue-700 text-[11px] font-bold flex items-center gap-2">
+                    <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg text-blue-700 text-[11px] font-bold flex items-center gap-2">
                       <Plus size={14} /> Note: Uploading is coming soon. Please
                       paste the URL to your {newPost.type} below.
                     </div>
@@ -310,7 +310,7 @@ export default function ContentManager() {
                         ? "Share the story behind this..."
                         : `Paste the link to your ${newPost.type} here...`
                     }
-                    className="w-full h-32 text-sm outline-none resize-none placeholder:text-slate-300 font-medium bg-slate-50 p-4 rounded-2xl focus:bg-white border border-transparent focus:border-slate-100 transition"
+                    className="w-full h-32 text-sm outline-none resize-none placeholder:text-slate-300 font-medium bg-slate-50 p-4 rounded-lg focus:bg-white border border-transparent focus:border-slate-100 transition"
                     value={newPost.description}
                     onChange={(e) =>
                       setNewPost({ ...newPost, description: e.target.value })
@@ -318,10 +318,10 @@ export default function ContentManager() {
                   />
                 </div>
 
-                <div className="flex items-center justify-between p-5 bg-slate-50 rounded-4xl border border-slate-100">
+                <div className="flex items-center justify-between p-5 bg-slate-50 rounded-lg border border-slate-100">
                   <div className="flex items-center gap-3">
                     <div
-                      className={`p-2.5 rounded-2xl ${newPost.isPrivate ? "bg-amber-100 text-amber-600" : "bg-green-100 text-green-600"}`}
+                      className={`p-2.5 rounded-lg ${newPost.isPrivate ? "bg-amber-100 text-amber-600" : "bg-green-100 text-green-600"}`}
                     >
                       {newPost.isPrivate ? (
                         <Lock size={18} />
@@ -342,7 +342,7 @@ export default function ContentManager() {
                     onClick={() =>
                       setNewPost({ ...newPost, isPrivate: !newPost.isPrivate })
                     }
-                    className="text-[10px] font-black text-orange-600 uppercase tracking-widest bg-white px-4 py-2 rounded-xl border border-orange-100 shadow-sm transition active:scale-95"
+                    className="text-[10px] font-black text-orange-600 uppercase tracking-widest bg-white px-4 py-2 rounded-lg border border-orange-100 shadow-sm transition active:scale-95"
                   >
                     Change
                   </button>
@@ -351,7 +351,7 @@ export default function ContentManager() {
                 <button
                   onClick={handleAddContent}
                   disabled={!newPost.title || isUploading}
-                  className="w-full bg-slate-900 text-white py-5 rounded-4xl font-black text-lg shadow-xl shadow-slate-200 hover:bg-orange-600 transition-all flex items-center justify-center gap-2 disabled:opacity-30"
+                  className="w-full bg-slate-900 text-white py-5 rounded-lg font-black text-lg shadow-xl shadow-slate-200 hover:bg-orange-600 transition-all flex items-center justify-center gap-2 disabled:opacity-30"
                 >
                   {isUploading ? (
                     <Loader className="animate-spin" size={20} />
