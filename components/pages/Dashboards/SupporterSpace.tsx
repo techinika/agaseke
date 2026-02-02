@@ -10,8 +10,11 @@ import {
   Star,
   Clock,
   Loader,
-  ChevronRight,
   User,
+  MapPin,
+  X,
+  CheckCircle2,
+  Eye,
 } from "lucide-react";
 import Image from "next/image";
 import Navbar from "@/components/parts/Navigation";
@@ -26,353 +29,443 @@ import {
   orderBy,
   query,
   where,
+  addDoc,
+  updateDoc,
+  increment,
+  serverTimestamp,
 } from "firebase/firestore";
-import { Creator } from "@/types/creator";
 import { db } from "@/db/firebase";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 export default function SupporterSpace() {
   const auth = useAuth();
   const router = useRouter();
-  const [creators, setCreators] = useState<Creator[]>([]);
+  const [creators, setCreators] = useState<any[]>([]); // For Discovery Sidebar
   const [searchTerm, setSearchTerm] = useState("");
   const [favorites, setFavorites] = useState<any[]>([]);
+  const [feed, setFeed] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Modal State
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [isRSVPing, setIsRSVPing] = useState(false);
+
   useEffect(() => {
-    const fetchMyFavorites = async () => {
+    const fetchSupporterData = async () => {
       if (!auth.user?.uid) return;
       setLoading(true);
 
       try {
+        // 1. Get Supported Creators (stored by handle)
         const supportRef = collection(db, "supportedCreators");
-        const q = query(
+        const qSupport = query(
           supportRef,
           where("supporterId", "==", auth.user.uid),
-          orderBy("lastSupport", "desc"),
         );
-        const supportSnap = await getDocs(q);
+        const supportSnap = await getDocs(qSupport);
 
-        const favoritesData = await Promise.all(
-          supportSnap.docs.map(async (supportDoc) => {
-            const relationship = supportDoc.data();
-            const creatorId = relationship.creatorId;
+        const supportedHandles = [
+          ...new Set(supportSnap.docs.map((d) => d.data().creatorId)),
+        ];
 
-            const creatorRef = doc(db, "creators", creatorId);
-            const creatorSnap = await getDoc(creatorRef);
-            const creatorProfile = creatorSnap.exists()
-              ? creatorSnap.data()
-              : {};
+        if (supportedHandles.length === 0) {
+          setLoading(false);
+          return;
+        }
 
-            const sevenDaysAgo = new Date();
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const favoritesData: any[] = [];
+        let allFeedItems: any[] = [];
 
-            const contentQuery = query(
+        // 2. Resolve Handles to UIDs and Fetch Content
+        for (const handle of supportedHandles) {
+          const creatorRef = doc(db, "creators", handle);
+          const creatorSnap = await getDoc(creatorRef);
+
+          if (creatorSnap.exists()) {
+            const creatorData = creatorSnap.data();
+            const creatorUid = creatorData.uid; // This is the ID used in content/gatherings
+
+            // Fetch Recent Content & Gatherings using UID
+            const contentQ = query(
               collection(db, "creatorContent"),
-              where("creatorId", "==", creatorId),
-              where("createdAt", ">=", sevenDaysAgo),
-              limit(1),
+              where("creatorId", "==", creatorUid),
+              orderBy("createdAt", "desc"),
+              limit(3),
             );
-
-            const gatheringQuery = query(
+            const gatheringQ = query(
               collection(db, "creatorGatherings"),
-              where("creatorId", "==", creatorId),
-              where("createdAt", ">=", sevenDaysAgo),
-              limit(1),
+              where("creatorId", "==", creatorUid),
+              orderBy("createdAt", "desc"),
+              limit(3),
             );
 
-            const [contentSnap, gatheringSnap] = await Promise.all([
-              getDocs(contentQuery),
-              getDocs(gatheringQuery),
+            const [cSnap, gSnap] = await Promise.all([
+              getDocs(contentQ),
+              getDocs(gatheringQ),
             ]);
 
-            const hasUpdates = !contentSnap.empty || !gatheringSnap.empty;
+            const contents = cSnap.docs.map((d) => ({
+              id: d.id,
+              ...d.data(),
+              type: "content",
+              creatorName: creatorData.name,
+              creatorHandle: handle,
+            }));
 
-            return {
-              id: creatorId,
-              name: creatorProfile.name || creatorId,
-              handle: creatorId,
-              photoURL: creatorProfile.photoURL,
-              lastPost: creatorProfile.bio || "No recent updates",
-              time:
-                relationship.lastSupport?.toDate().toLocaleDateString() ||
-                "Recently",
-              updates: hasUpdates ? 1 : 0,
-              lastSupportDate: relationship.lastSupport?.toDate(),
-            };
-          }),
+            const gatherings = gSnap.docs.map((d) => ({
+              id: d.id,
+              ...d.data(),
+              type: "gathering",
+              creatorName: creatorData.name,
+              creatorHandle: handle,
+            }));
+
+            allFeedItems = [...allFeedItems, ...contents, ...gatherings];
+            favoritesData.push({
+              id: handle,
+              name: creatorData.name,
+              photoURL: creatorData.photoURL,
+              handle: handle,
+              updates: cSnap.size + gSnap.size > 0 ? 1 : 0,
+            });
+          }
+        }
+
+        setFavorites(favoritesData);
+        setFeed(
+          allFeedItems.sort(
+            (a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis(),
+          ),
         );
 
-        const sorted = favoritesData.sort((a, b) => {
-          if (a.updates !== b.updates) return b.updates - a.updates;
-          return b.lastSupportDate - a.lastSupportDate;
-        });
-
-        setFavorites(sorted);
+        // 3. Fetch Discovery Creators (the ones the user doesn't follow yet)
+        const creatorsSnap = await getDocs(
+          query(collection(db, "creators"), limit(20)),
+        );
+        const discoveryList = creatorsSnap.docs
+          .map((d) => ({ handle: d.id, ...d.data() }))
+          .filter((c) => !supportedHandles.includes(c.handle));
+        setCreators(discoveryList);
       } catch (error) {
-        console.error("Error fetching favorites:", error);
+        console.error("Fetch Error:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchMyFavorites();
+    fetchSupporterData();
   }, [auth.user]);
-
-  useEffect(() => {
-    const fetchCreators = async () => {
-      try {
-        const q = query(collection(db, "creators"), limit(100));
-        const querySnapshot = await getDocs(q);
-
-        const fetchedCreators = querySnapshot.docs.map((doc) => ({
-          handle: doc.id,
-          ...doc.data(),
-        }));
-
-        setCreators(fetchedCreators as any[]);
-      } catch (error) {
-        console.error("Error fetching creators:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCreators();
-  }, []);
 
   const filteredCreators = creators.filter(
     (c) =>
       c.handle.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.name?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+  const openDetails = async (item: any) => {
+    setSelectedItem(item);
+
+    setFeed((prevFeed) =>
+      prevFeed.map((feedItem) =>
+        feedItem.id === item.id
+          ? { ...feedItem, views: (feedItem.views || 0) + 1 }
+          : feedItem,
+      ),
+    );
+
+    const collectionName =
+      item.type === "content" ? "creatorContent" : "creatorGatherings";
+    try {
+      const docRef = doc(db, collectionName, item.id);
+      await updateDoc(docRef, {
+        views: increment(1),
+      });
+    } catch (e) {
+      console.error("View count error", e);
+    }
+  };
+
+  const handleRSVP = async () => {
+    if (!auth.user) return toast.error("Please login to RSVP");
+    setIsRSVPing(true);
+    try {
+      await addDoc(collection(db, "gatheringAttendees"), {
+        gatheringId: selectedItem.id,
+        supporterId: auth.user.uid,
+        supporterName: auth.profile?.displayName || "Anonymous",
+        supporterPhone: auth.profile?.phoneNumber || "No phone provided",
+        createdAt: serverTimestamp(),
+      });
+      toast.success("RSVP Sent! The creator can now see your interest.");
+      setSelectedItem(null);
+    } catch (e) {
+      toast.error("Failed to RSVP");
+    } finally {
+      setIsRSVPing(false);
+    }
+  };
 
   if (auth.loading || loading) return <Loading />;
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] text-slate-900 pb-20">
+    <div className="min-h-screen bg-[#FDFDFD] text-slate-900 pb-20">
       <Navbar />
-
-      <main className="max-w-4xl mx-auto px-6 pt-10">
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
-          <div className="md:col-span-2 bg-white p-8 rounded-lg border border-slate-100 shadow-sm flex flex-col justify-between">
+      <main className="max-w-6xl mx-auto px-6 pt-10">
+        {/* Header Stats */}
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          <div className="md:col-span-2 bg-white p-8 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
             <div>
               <h1 className="text-3xl font-black mb-2">
                 Amahoro,{" "}
                 {auth.profile?.displayName?.split(" ")[0] || "Supporter"}!
               </h1>
-              <p className="text-slate-500">
-                Your contribution is fueling Rwandan creativity.
+              <p className="text-slate-500 italic">
+                "Ubumuntu bugirwa n'abantu."
               </p>
             </div>
-            <div className="mt-8 flex gap-8">
+            <div className="mt-8 flex gap-10">
               <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                  Total Support
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                  Impact
                 </p>
                 <p className="text-2xl font-black text-orange-600">
-                  {auth?.profile?.totalSupport || 0}
-                  <span className="text-sm font-normal text-slate-400">
-                    RWF
-                  </span>
+                  {auth?.profile?.totalSupport || 0}{" "}
+                  <span className="text-sm font-normal">RWF</span>
                 </p>
               </div>
               <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                  Creators Helped
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                  Supports
                 </p>
-                <p className="text-2xl font-black text-slate-900">
-                  {auth?.profile?.totalSupportedCreators || 0}
-                </p>
+                <p className="text-2xl font-black">{favorites.length} Times</p>
               </div>
             </div>
           </div>
-
-          <button
-            className="bg-slate-900 rounded-lg p-8 text-white flex flex-col justify-between group hover:bg-slate-800 transition-all text-left"
-            onClick={() => (globalThis.location.href = "/onboarding")}
+          <Link
+            href={auth?.isCreator ? "/creator" : "/onboarding"}
+            className="bg-slate-900 rounded-2xl p-8 text-white flex flex-col justify-between group hover:bg-black transition-all"
           >
-            <div className="bg-orange-600 w-10 h-10 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-              <Zap size={20} fill="white" />
-            </div>
+            <Zap size={24} className="text-orange-500 fill-orange-500 mb-4" />
             <div>
-              <h3 className="text-xl font-bold mb-2">Open your Agaseke</h3>
-              <p className="text-slate-400 text-xs leading-relaxed mb-4">
-                Start receiving support from your people via MoMo. Claim your
-                Agaseke today.
+              <h3 className="text-xl font-bold mb-1">
+                {auth?.isCreator
+                  ? "You are already a Creator"
+                  : "Become a Creator"}
+              </h3>
+              <p className="text-slate-400 text-xs mb-4">
+                {auth?.isCreator
+                  ? "Continue Managing your Agaseke."
+                  : "Start your own Agaseke."}
               </p>
-              <div className="flex items-center gap-2 text-orange-500 text-sm font-bold">
-                Get Started <ArrowRight size={14} />
+              <div className="text-orange-500 text-sm font-bold flex items-center gap-2">
+                {auth?.isCreator ? "Continue" : "Launch"}
+                <ArrowRight size={14} />
               </div>
             </div>
-          </button>
+          </Link>
         </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-10">
-          <div className="lg:col-span-3 space-y-8">
-            <section>
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="font-bold text-xl flex items-center gap-2">
-                  <Star size={20} className="text-orange-500 fill-orange-500" />{" "}
-                  My Favorites
-                </h3>
-              </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          <div className="lg:col-span-8 space-y-8">
+            <h3 className="font-black text-xl flex items-center gap-2">
+              <Star size={20} className="text-orange-500 fill-orange-500" />{" "}
+              Recent Activity
+            </h3>
 
-              <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {feed.length > 0 ? (
+                feed.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => openDetails(item)}
+                    className="bg-white rounded-2xl border border-slate-100 p-6 cursor-pointer hover:border-orange-200 transition-all shadow-sm"
+                  >
+                    <div className="flex justify-between mb-4">
+                      <span
+                        className={`text-[9px] font-black px-2 py-1 rounded uppercase ${item.type === "gathering" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}
+                      >
+                        {item.type}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-bold">
+                        {item.createdAt?.toDate().toLocaleDateString()}
+                      </span>
+                    </div>
+                    <h4 className="font-bold text-lg mb-2 line-clamp-1">
+                      {item.title}
+                    </h4>
+                    <p className="text-slate-500 text-sm line-clamp-2 mb-4">
+                      {item.description}
+                    </p>
+                    <div className="pt-4 border-t border-slate-50 flex justify-between items-center text-xs font-bold text-slate-400">
+                      <span>@{item.creatorHandle}</span>
+                      <span className="flex items-center gap-1">
+                        <Eye size={12} /> {item.views || 0}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-2 py-20 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                  <User className="mx-auto text-slate-300 mb-2" size={40} />
+                  <p className="text-slate-400 font-medium">
+                    No updates found from your creators.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Sidebar: Following & Discover */}
+          <div className="lg:col-span-4 space-y-8">
+            <section className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+              <h3 className="font-bold mb-4">Following</h3>
+              <div className="space-y-3">
                 {favorites.length > 0 ? (
-                  favorites.map((creator, i) => (
+                  favorites.map((c) => (
                     <Link
-                      key={i}
-                      href={`/${creator.handle}`}
-                      className="block bg-white p-5 rounded-lg border border-slate-100 hover:border-orange-200 transition-all group cursor-pointer shadow-sm"
+                      key={c.id}
+                      href={`/${c.handle}`}
+                      className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-xl transition"
                     >
-                      <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 bg-slate-100 rounded-lg flex items-center justify-center overflow-hidden shrink-0 border border-slate-50">
-                          {creator.photoURL ? (
-                            <img
-                              src={creator.photoURL}
-                              alt=""
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <span className="text-slate-400 font-bold text-xl">
-                              {creator.name[0]}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-bold text-slate-900 truncate">
-                              {creator.name}
-                            </h4>
-                            <span className="text-[10px] text-slate-400 flex items-center gap-1 shrink-0">
-                              <Clock size={10} /> {creator.time}
-                            </span>
-                          </div>
-                          <p className="text-sm text-slate-500 line-clamp-1 mt-1">
-                            {creator.lastPost}
-                          </p>
-                        </div>
-
-                        {creator.updates > 0 && (
-                          <div className="bg-orange-600 text-white text-[10px] font-black px-2 py-1 rounded-lg animate-pulse shrink-0">
-                            NEW
-                          </div>
+                      <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center font-black text-orange-600 text-xs overflow-hidden">
+                        {c.photoURL ? (
+                          <img
+                            src={c.photoURL}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          c.name[0]
                         )}
-
-                        <ChevronRight
-                          size={16}
-                          className="text-slate-300 group-hover:text-orange-500 group-hover:translate-x-1 transition-all"
-                        />
                       </div>
+                      <span className="text-sm font-bold truncate">
+                        {c.name}
+                      </span>
+                      {c.updates > 0 && (
+                        <div className="ml-auto w-2 h-2 bg-orange-600 rounded-full" />
+                      )}
                     </Link>
                   ))
                 ) : (
-                  <div className="p-10 text-center border-2 border-dashed border-slate-100 rounded-lg">
-                    <User className="mx-auto text-slate-200 mb-2" size={32} />
-                    <p className="text-slate-400 text-sm font-medium">
-                      No favorites yet. Start supporting creators!
-                    </p>
-                  </div>
+                  <p className="text-xs text-slate-400">
+                    Not following anyone yet.
+                  </p>
                 )}
               </div>
             </section>
-          </div>
 
-          <div className="lg:col-span-2 space-y-8">
-            <section className="bg-white p-6 rounded-lg border border-slate-100 shadow-sm">
-              <h3 className="font-bold mb-6 flex items-center gap-2 text-slate-800">
-                Discover Creators
-              </h3>
-
-              <div className="relative mb-6">
+            <section className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+              <h3 className="font-bold mb-4">Discover</h3>
+              <div className="relative mb-4">
                 <Search
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300"
                   size={14}
                 />
                 <input
-                  type="text"
-                  placeholder="Search by name..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-slate-50 border-none rounded-lg py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-orange-100 outline-none transition"
+                  placeholder="Find creators..."
+                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border-none rounded-lg text-sm focus:ring-1 focus:ring-orange-200 outline-none"
                 />
               </div>
-
-              <div className="space-y-6">
-                {loading ? (
-                  <p className="flex items-center justify-center text-xs text-slate-400 py-4">
-                    <Loader className="animate-spin mr-2 inline-block" />
-                    Loading creators...
-                  </p>
-                ) : (
-                  <>
-                    {filteredCreators.length > 0 ? (
-                      filteredCreators.slice(0, 5).map((c) => (
-                        <Link
-                          key={c.handle}
-                          href={`/${c.handle}`}
-                          className="block group"
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center text-orange-600 font-bold text-xs shrink-0 overflow-hidden border border-orange-100">
-                              {c.photoURL ? (
-                                <Image
-                                  src={c.photoURL}
-                                  alt={c.handle}
-                                  width={40}
-                                  height={40}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <span>{c.name ? c.name[0] : c.handle[0]}</span>
-                              )}
-                            </div>
-                            <div>
-                              <h4 className="font-bold text-sm group-hover:text-orange-600 transition flex items-center gap-1">
-                                @{c.handle}
-                                {c.verified && (
-                                  <div className="w-2 h-2 bg-green-500 rounded-full" />
-                                )}
-                              </h4>
-                              <p className="text-xs text-slate-500 leading-relaxed mt-1 line-clamp-2">
-                                {c.bio || "No bio yet."}
-                              </p>
-                            </div>
-                          </div>
-                        </Link>
-                      ))
-                    ) : (
-                      <p className="text-center text-xs text-slate-400 py-4">
-                        No creators found.
+              <div className="space-y-4">
+                {filteredCreators.slice(0, 4).map((c) => (
+                  <Link
+                    key={c.handle}
+                    href={`/${c.handle}`}
+                    className="flex items-center gap-3 group"
+                  >
+                    <div className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-400 text-xs overflow-hidden shrink-0">
+                      {c.photoURL ? (
+                        <img
+                          src={c.photoURL}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        c.handle[0]
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold truncate group-hover:text-orange-600 transition">
+                        @{c.handle}
                       </p>
-                    )}
-                  </>
-                )}
-
+                      <p className="text-[10px] text-slate-400 truncate">
+                        {c.bio || "New Creator"}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
                 <button
                   onClick={() => router.push("/explore")}
-                  className="w-full py-3 text-xs font-bold text-slate-400 border-2 border-dashed border-slate-100 rounded-lg hover:bg-slate-50 transition"
+                  className="w-full py-2 mt-2 text-xs font-bold text-orange-600 bg-orange-50 rounded-lg hover:bg-orange-100 transition"
                 >
-                  View More Creators
+                  Explore More
                 </button>
               </div>
             </section>
-
-            <div className="p-6 bg-slate-50 rounded-lg text-center border border-slate-100">
-              <Lock size={24} className="mx-auto text-slate-300 mb-2" />
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                Premium Space
-              </p>
-              <p className="text-xs text-slate-500 mt-2">
-                Support more creators to unlock their private libraries.
-              </p>
-            </div>
           </div>
         </div>
       </main>
+
+      {/* Detail Modal */}
+      {selectedItem && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-8">
+              <div className="flex justify-between items-start mb-6">
+                <span className="bg-orange-100 text-orange-700 text-[10px] font-black px-2 py-1 rounded tracking-tighter uppercase">
+                  {selectedItem.type}
+                </span>
+                <button
+                  onClick={() => setSelectedItem(null)}
+                  className="text-slate-300 hover:text-slate-600"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+              <h2 className="text-2xl font-black mb-2">{selectedItem.title}</h2>
+              <p className="text-xs font-bold text-slate-400 mb-6 flex items-center gap-4">
+                <span className="flex items-center gap-1">
+                  <Clock size={14} />{" "}
+                  {selectedItem.createdAt?.toDate().toLocaleDateString()}
+                </span>
+                {selectedItem.type === "gathering" && (
+                  <span className="flex items-center gap-1 text-orange-600">
+                    <MapPin size={14} /> {selectedItem.location}
+                  </span>
+                )}
+              </p>
+              <div className="bg-slate-50 p-6 rounded-2xl mb-8 max-h-60 overflow-y-auto">
+                <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">
+                  {selectedItem.description || selectedItem.content}
+                </p>
+              </div>
+              {selectedItem.type === "gathering" ? (
+                <button
+                  disabled={isRSVPing}
+                  onClick={handleRSVP}
+                  className="w-full bg-slate-900 text-white py-4 rounded-xl font-black flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors disabled:opacity-50"
+                >
+                  {isRSVPing ? (
+                    <Loader className="animate-spin" />
+                  ) : (
+                    <>
+                      <CheckCircle2 size={18} /> I'M INTERESTED TO ATTEND
+                    </>
+                  )}
+                </button>
+              ) : (
+                <button
+                  onClick={() => setSelectedItem(null)}
+                  className="w-full bg-slate-100 text-slate-900 py-4 rounded-xl font-black"
+                >
+                  CLOSE
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

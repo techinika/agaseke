@@ -16,4 +16,5 @@ export interface Profile {
   totalSupport: number;
   totalSupportedCreators: number;
   isAdmin: boolean;
+  phoneNumber: string;
 }
