@@ -13,6 +13,10 @@ import {
   increment,
 } from "firebase/firestore";
 
+export async function HEAD() {
+  return new Response(null, { status: 200 });
+}
+
 export async function POST(req: Request) {
   const body = await req.text();
   const signature = req.headers.get("x-paypack-signature");
