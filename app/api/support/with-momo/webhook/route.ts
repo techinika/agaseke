@@ -1,17 +1,19 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { db } from "@/db/firebase";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  updateDoc,
-  doc,
-  addDoc,
-  serverTimestamp,
-  increment,
-} from "firebase/firestore";
+import admin from "firebase-admin";
+
+// 1. Initialize Admin SDK
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+    }),
+  });
+}
+
+const adminDb = admin.firestore();
 
 export async function HEAD() {
   return new Response(null, { status: 200 });
@@ -22,32 +24,36 @@ export async function POST(req: Request) {
   const signature = req.headers.get("x-paypack-signature");
   const secret = process.env.PAYPACK_WEBHOOK_SECRET!;
 
+  // 2. Signature Verification
   const hash = crypto
     .createHmac("sha256", secret)
     .update(body)
     .digest("base64");
 
-  if (req.method === "HEAD") return new Response(null, { status: 200 });
-  if (hash !== signature)
+  if (hash !== signature) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  }
 
   const payload = JSON.parse(body);
   const { ref, status, client } = payload.data;
 
-  const txRef = collection(db, "transactions");
-  const q = query(txRef, where("ref", "==", ref));
-  const querySnapshot = await getDocs(q);
+  // 3. Find Transaction using Admin Syntax
+  const txQuery = await adminDb
+    .collection("transactions")
+    .where("ref", "==", ref)
+    .limit(1)
+    .get();
 
-  if (querySnapshot.empty)
+  if (txQuery.empty) {
     return NextResponse.json({ error: "Tx not found" }, { status: 404 });
+  }
 
-  const txDoc = querySnapshot.docs[0];
+  const txDoc = txQuery.docs[0];
   const txData = txDoc.data();
 
+  // 4. Idempotency Check (Don't process twice)
   if (txData.status === "successful") {
-    console.log(
-      `Transaction ${ref} already processed. Ignoring duplicate webhook.`,
-    );
+    console.log(`Transaction ${ref} already processed.`);
     return NextResponse.json({ received: true, note: "Already processed" });
   }
 
@@ -56,46 +62,63 @@ export async function POST(req: Request) {
     const platformShare = totalAmount * 0.1; // 10%
     const creatorShare = totalAmount * 0.9; // 90%
 
-    await updateDoc(doc(db, "transactions", txDoc.id), {
+    // 5. Atomic Batch or Sequential Updates using Admin SDK
+    const batch = adminDb.batch();
+
+    // Update Transaction Status
+    batch.update(txDoc.ref, {
       status: "successful",
-      successfulAt: serverTimestamp(),
+      successfulAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    await addDoc(collection(db, "platformIncome"), {
+    // Log Platform Income
+    const platformRef = adminDb.collection("platformIncome").doc();
+    batch.set(platformRef, {
       amount: platformShare,
       txRef: ref,
-      createdAt: serverTimestamp(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    await addDoc(collection(db, "creatorIncome"), {
+    // Log Creator Income
+    const incomeRef = adminDb.collection("creatorIncome").doc();
+    batch.set(incomeRef, {
       creatorUid: txData.creatorUid,
       amount: creatorShare,
       txRef: ref,
-      createdAt: serverTimestamp(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    await addDoc(collection(db, "supportedCreators"), {
+    // Log Support Relationship
+    const supportRef = adminDb.collection("supportedCreators").doc();
+    batch.set(supportRef, {
       creatorId: txData.creatorId,
       amount: totalAmount,
-      supporterId: txData.supporterId,
+      supporterId: txData.supporterId || null,
       supporterPhoneNumber: client,
       txRef: ref,
-      createdAt: serverTimestamp(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    await updateDoc(doc(db, "creators", txData.creatorId), {
-      totalEarnings: increment(creatorShare),
-      totalSupporters: increment(1),
-      pendingPayout: increment(creatorShare),
+    // Update Creator Stats
+    const creatorRef = adminDb.collection("creators").doc(txData.creatorId);
+    batch.update(creatorRef, {
+      totalEarnings: admin.firestore.FieldValue.increment(creatorShare),
+      totalSupporters: admin.firestore.FieldValue.increment(1),
+      pendingPayout: admin.firestore.FieldValue.increment(creatorShare),
     });
+
     if (txData.supporterId) {
-      await updateDoc(doc(db, "profiles", txData.supporterId), {
-        totalSupport: increment(totalAmount),
-        totalSupportedCreators: increment(1),
+      const profileRef = adminDb.collection("profiles").doc(txData.supporterId);
+      batch.update(profileRef, {
+        totalSupport: admin.firestore.FieldValue.increment(totalAmount),
+        totalSupportedCreators: admin.firestore.FieldValue.increment(1),
       });
     }
+
+    await batch.commit();
   } else {
-    await updateDoc(doc(db, "transactions", txDoc.id), { status: "failed" });
+    // Handle Failed Payment
+    await txDoc.ref.update({ status: "failed" });
   }
 
   return NextResponse.json({ received: true });
