@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { adminDb } from "@/db/firebase";
 import admin from "firebase-admin";
+import { adminDb } from "@/db/firebaseAdmin";
 
 export async function HEAD() {
   return new Response(null, { status: 200 });
