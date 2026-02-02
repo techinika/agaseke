@@ -31,6 +31,7 @@ export const handleGoogleLogin = async (reservedUsername: string | null) => {
         type: "supporter",
         onboarded: false,
         totalSupport: 0,
+        isAdmin: false,
         totalSupportedCreators: 0,
         createdAt: serverTimestamp(),
         lastLogin: serverTimestamp(),

@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
 
   const payload = JSON.parse(body);
-  const { ref, status, amount, client } = payload.data;
+  const { ref, status, client } = payload.data;
 
   const txRef = collection(db, "transactions");
   const q = query(txRef, where("ref", "==", ref));
@@ -44,13 +44,21 @@ export async function POST(req: Request) {
   const txDoc = querySnapshot.docs[0];
   const txData = txDoc.data();
 
+  if (txData.status === "successful") {
+    console.log(
+      `Transaction ${ref} already processed. Ignoring duplicate webhook.`,
+    );
+    return NextResponse.json({ received: true, note: "Already processed" });
+  }
+
   if (status === "successful") {
-    const totalAmount = Number(amount);
+    const totalAmount = Number(txData.amount);
     const platformShare = totalAmount * 0.1; // 10%
     const creatorShare = totalAmount * 0.9; // 90%
 
     await updateDoc(doc(db, "transactions", txDoc.id), {
       status: "successful",
+      successfulAt: serverTimestamp(),
     });
 
     await addDoc(collection(db, "platformIncome"), {

@@ -15,4 +15,5 @@ export interface Profile {
   lastLogin: any;
   totalSupport: number;
   totalSupportedCreators: number;
+  isAdmin: boolean;
 }

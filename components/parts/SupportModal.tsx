@@ -2,9 +2,16 @@
 
 import { useAuth } from "@/auth/AuthContext";
 import { db } from "@/db/firebase";
-import { query, where, getDocs, collection } from "firebase/firestore";
+import {
+  doc,
+  onSnapshot,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
 import { ShieldCheck, Smartphone, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
 export function SupportModal({
@@ -20,6 +27,16 @@ export function SupportModal({
   const [step, setStep] = useState("input");
   const [errorMessage, setErrorMessage] = useState("");
 
+  // Use a ref to track the listener so we can kill it anytime
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+
+  // Clean up listener if the modal is closed or component unmounts
+  useEffect(() => {
+    return () => {
+      if (unsubscribeRef.current) unsubscribeRef.current();
+    };
+  }, []);
+
   if (!isOpen) return null;
 
   const handleSupport = async () => {
@@ -33,8 +50,8 @@ export function SupportModal({
         body: JSON.stringify({
           amount: Number(amount),
           phone: phone,
-          creatorId: creatorId, // handle
-          creatorUid: uid, // firebase uid
+          creatorId: creatorId,
+          creatorUid: uid,
           supporterId: currentUser?.uid || "anonymous",
         }),
       });
@@ -45,42 +62,47 @@ export function SupportModal({
         throw new Error(data.error || "Failed to initiate payment");
       }
 
-      const checkStatus = setInterval(async () => {
-        const q = query(
-          collection(db, "transactions"),
-          where("ref", "==", data.ref),
-        );
+      // --- REAL-TIME LISTENER (Faster than Interval) ---
+      const q = query(
+        collection(db, "transactions"),
+        where("ref", "==", data.ref),
+      );
 
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-          const txData = querySnapshot.docs[0].data();
+      unsubscribeRef.current = onSnapshot(q, (snapshot) => {
+        if (!snapshot.empty) {
+          const txData = snapshot.docs[0].data();
 
           if (txData.status === "successful") {
-            clearInterval(checkStatus);
+            if (unsubscribeRef.current) unsubscribeRef.current();
             setStep("success");
+            toast.success("Payment received!");
           } else if (txData.status === "failed") {
-            clearInterval(checkStatus);
+            if (unsubscribeRef.current) unsubscribeRef.current();
             setStep("error");
-            setErrorMessage("The transaction was declined or failed.");
-            toast.error("The transaction was declined or failed.");
+            setErrorMessage("The transaction was declined.");
           }
         }
-      }, 3000);
+      });
 
+      // Timeout Safety: 2 minutes
       setTimeout(() => {
-        clearInterval(checkStatus);
-        if (step === "processing") {
+        if (unsubscribeRef.current) {
+          unsubscribeRef.current();
           setStep("error");
-          setErrorMessage("Payment timed out. Please check your MoMo balance.");
-          toast.error("Payment timed out. Please check your MoMo balance.");
+          setErrorMessage("Payment timed out. Please check your phone.");
         }
       }, 120000);
     } catch (error: any) {
-      console.error("Payment Error:", error);
       setStep("error");
       setErrorMessage(error.message || "An unexpected error occurred.");
       toast.error(error.message || "An unexpected error occurred.");
     }
+  };
+
+  // Wrapped Close to ensure cleanup
+  const handleClose = () => {
+    if (unsubscribeRef.current) unsubscribeRef.current();
+    onClose();
   };
 
   return (
@@ -91,7 +113,7 @@ export function SupportModal({
             Support {creatorName}
           </h3>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-3 bg-slate-50 rounded-full text-slate-400 hover:text-slate-900 transition-colors"
           >
             <X size={20} />
@@ -159,7 +181,7 @@ export function SupportModal({
               </h4>
               <p className="text-slate-500 font-medium leading-relaxed">
                 We sent a MoMo prompt to <b>{phone}</b>.<br />
-                Please enter your PIN. <b>Do not close this window.</b>
+                Enter your PIN on your phone to finish.
               </p>
             </div>
           )}
@@ -173,11 +195,10 @@ export function SupportModal({
                 Payment Verified!
               </h4>
               <p className="text-slate-500 font-medium leading-relaxed">
-                Your gift of <b>{amount} RWF</b> has been delivered.{" "}
-                {creatorName} is extremely grateful!
+                Your gift of <b>{amount} RWF</b> was delivered.
               </p>
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="w-full bg-slate-900 text-white py-4 rounded-lg font-black hover:bg-orange-600 transition-colors"
               >
                 Back to Profile
@@ -193,9 +214,7 @@ export function SupportModal({
               <h4 className="text-2xl font-black text-slate-900">
                 Payment Failed
               </h4>
-              <p className="text-slate-500 font-medium leading-relaxed">
-                {errorMessage}
-              </p>
+              <p className="text-slate-500 font-medium">{errorMessage}</p>
               <button
                 onClick={() => setStep("input")}
                 className="w-full bg-slate-100 text-slate-900 py-4 rounded-lg font-black hover:bg-slate-200 transition-colors"
@@ -209,5 +228,3 @@ export function SupportModal({
     </div>
   );
 }
-
-// Add these imports at the top of your file

@@ -14,6 +14,7 @@ interface AuthContextType {
   creator: Creator | null;
   loading: boolean;
   isLoggedIn: boolean;
+  isAdmin: boolean;
   isCreator: boolean;
 }
 
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextType>({
   creator: null,
   loading: true,
   isLoggedIn: false,
+  isAdmin: false,
   isCreator: false,
 });
 
@@ -88,6 +90,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         creator,
         loading,
         isLoggedIn: !!user,
+        isAdmin: profile?.isAdmin ?? false,
         isCreator: profile?.type === "creator",
       }}
     >

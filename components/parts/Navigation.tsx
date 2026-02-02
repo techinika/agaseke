@@ -7,6 +7,7 @@ import {
   LogOut,
   ChevronDown,
   LogIn,
+  Briefcase,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/auth/AuthContext";
@@ -86,6 +87,19 @@ const Navbar = () => {
                       </div>
 
                       <div className="space-y-1">
+                        {auth?.isAdmin && (
+                          <button
+                            onClick={() => {
+                              setIsDropdownOpen(false);
+                              router.push(
+                                auth?.isAdmin ? "/admin" : "/supporter",
+                              );
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 rounded-lg hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                          >
+                            <Briefcase size={18} /> Admin Space
+                          </button>
+                        )}
                         <button
                           onClick={() => {
                             setIsDropdownOpen(false); // Close menu on click
