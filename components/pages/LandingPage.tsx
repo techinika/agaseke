@@ -33,7 +33,7 @@ export default function LandingPage() {
 
         <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-8 leading-[1.1]">
           Fuel your creativity with <br />
-          <span className="text-orange-600">local support.</span>
+          <span className="text-orange-600">community support.</span>
         </h1>
 
         <p className="text-lg md:text-xl text-slate-500 mb-12 max-w-2xl mx-auto leading-relaxed">
