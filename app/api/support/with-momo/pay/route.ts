@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
-import { db } from "@/db/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import admin from "firebase-admin";
+import { adminDb } from "@/db/firebase";
 
 export async function POST(req: Request) {
   try {
     const { amount, phone, creatorId, creatorUid, supporterId } =
       await req.json();
 
+    // 1. Authorize with Paypack
     const authRes = await fetch(
       "https://payments.paypack.rw/api/auth/agents/authorize",
       {
@@ -21,8 +22,10 @@ export async function POST(req: Request) {
         }),
       },
     );
+
     const { access } = await authRes.json();
 
+    // 2. Initiate Cashin
     const payRes = await fetch(
       "https://payments.paypack.rw/api/transactions/cashin",
       {
@@ -41,8 +44,10 @@ export async function POST(req: Request) {
 
     const payData = await payRes.json();
 
+    // 3. Record Transaction using Admin SDK
     if (payData.ref) {
-      await addDoc(collection(db, "transactions"), {
+      // Note: We use .collection().add() which is the Admin equivalent of addDoc(collection())
+      await adminDb.collection("transactions").add({
         ref: payData.ref,
         amount: Number(amount),
         phone,
@@ -51,7 +56,7 @@ export async function POST(req: Request) {
         supporterId: supporterId || "anonymous",
         status: "pending",
         type: "support",
-        createdAt: serverTimestamp(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
       return NextResponse.json({ ref: payData.ref });
@@ -61,7 +66,8 @@ export async function POST(req: Request) {
       { error: "Payment failed to initiate" },
       { status: 400 },
     );
-  } catch (error) {
+  } catch (error: any) {
+    console.error("Payment Initiation Error:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 },
