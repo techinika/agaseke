@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Creator } from "@/types/creator";
+import ExploreSchema from "../seo/ExploreSchema";
 
 export default function ExplorePage() {
   const [creators, setCreators] = useState<Creator[]>([]);
@@ -97,6 +98,7 @@ export default function ExplorePage() {
 
   return (
     <div className="min-h-screen bg-[#FBFBFC] text-slate-900 pb-20">
+      <ExploreSchema creators={creators} />
       <header className="pt-20 pb-12 px-6">
         <div className="max-w-6xl mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-black tracking-tighter mb-6">
