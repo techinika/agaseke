@@ -17,7 +17,7 @@ export function SupportModal({
   const { user: currentUser } = useAuth();
   const [amount, setAmount] = useState("");
   const [phone, setPhone] = useState("");
-  const [step, setStep] = useState("input"); // input, processing, success, error
+  const [step, setStep] = useState("input");
   const [errorMessage, setErrorMessage] = useState("");
 
   if (!isOpen) return null;

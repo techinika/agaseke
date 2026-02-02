@@ -14,7 +14,6 @@ const Loading = () => {
           animate={{ scale: 1, opacity: 1 }}
           className="relative mb-12"
         >
-          {/* Pulsing Outer Glow */}
           <motion.div
             animate={{
               scale: [1, 1.4, 1],
