@@ -5,6 +5,7 @@ import { db } from "@/db/firebase";
 import { query, where, getDocs, collection } from "firebase/firestore";
 import { ShieldCheck, Smartphone, X } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export function SupportModal({
   isOpen,
@@ -26,7 +27,6 @@ export function SupportModal({
     setErrorMessage("");
 
     try {
-      // 1. Call your Next.js API Route to initiate Paypack Cashin
       const response = await fetch("/api/support/with-momo/pay", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -62,6 +62,7 @@ export function SupportModal({
             clearInterval(checkStatus);
             setStep("error");
             setErrorMessage("The transaction was declined or failed.");
+            toast.error("The transaction was declined or failed.");
           }
         }
       }, 3000);
@@ -71,12 +72,14 @@ export function SupportModal({
         if (step === "processing") {
           setStep("error");
           setErrorMessage("Payment timed out. Please check your MoMo balance.");
+          toast.error("Payment timed out. Please check your MoMo balance.");
         }
       }, 120000);
     } catch (error: any) {
       console.error("Payment Error:", error);
       setStep("error");
       setErrorMessage(error.message || "An unexpected error occurred.");
+      toast.error(error.message || "An unexpected error occurred.");
     }
   };
 
