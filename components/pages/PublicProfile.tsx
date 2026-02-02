@@ -7,9 +7,6 @@ import {
   getDoc,
   increment,
   updateDoc,
-  collection,
-  addDoc,
-  serverTimestamp,
 } from "firebase/firestore";
 import { db } from "@/db/firebase";
 import {
@@ -20,9 +17,6 @@ import {
   Calendar,
   User,
   CheckCircle2,
-  X,
-  Smartphone,
-  ShieldCheck,
   Heart,
   Youtube,
   Zap,
@@ -34,9 +28,10 @@ import Navbar from "../parts/Navigation";
 import Loading from "@/app/loading";
 import NotFound from "@/app/not-found";
 import { Creator } from "@/types/creator";
-import { useAuth } from "@/auth/AuthContext"; // Assuming this exists
+import { useAuth } from "@/auth/AuthContext";
 import Link from "next/link";
 import { SupportModal } from "../parts/SupportModal";
+import CreatorSchema from "../seo/CreatorSchma";
 
 export default function PublicProfile({ username }: { username: string }) {
   const { user: currentUser } = useAuth();
@@ -102,6 +97,7 @@ export default function PublicProfile({ username }: { username: string }) {
   return (
     <div className="min-h-screen bg-[#FBFBFC] text-slate-900 pb-32 selection:bg-orange-100">
       <Navbar />
+      <CreatorSchema creator={creatorData} handle={username} />
 
       <div className="relative">
         <div className="h-48 w-full bg-linear-to-r from-orange-100 via-orange-50 to-orange-100" />

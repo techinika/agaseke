@@ -1,11 +1,12 @@
 import LandingPage from "@/components/pages/LandingPage";
-import React from "react";
+import HomeSchema from "@/components/seo/HomeSchema";
 
 function page() {
   return (
-    <div>
+    <>
+      <HomeSchema />
       <LandingPage />
-    </div>
+    </>
   );
 }
 
