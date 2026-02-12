@@ -56,7 +56,7 @@ const Navbar = () => {
                   </div>
                   <div className="hidden sm:flex flex-col items-start leading-tight">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                      Creator
+                      {auth?.profile?.type}
                     </span>
                     <span className="text-xs font-bold text-slate-800">
                       {auth?.profile?.displayName || "User"}
