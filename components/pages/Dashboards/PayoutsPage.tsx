@@ -119,7 +119,7 @@ export default function PayoutsPage() {
           <div className="animate-in fade-in duration-500">
             <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-4">
               <div>
-                <h1 className="text-4xl font-black tracking-tight uppercase">
+                <h1 className="text-4xl font-bold tracking-tight uppercase">
                   Payouts
                 </h1>
                 <p className="text-slate-500 text-sm mt-1">
@@ -129,7 +129,7 @@ export default function PayoutsPage() {
               <div className="flex gap-3">
                 <button
                   onClick={handleWithdrawClick}
-                  className={`px-8 py-4 rounded-lg font-black text-sm transition shadow-xl flex items-center gap-2 ${
+                  className={`px-8 py-4 rounded-lg font-bold text-sm transition shadow-xl flex items-center gap-2 ${
                     isVerified
                       ? "bg-slate-900 text-white hover:bg-orange-600"
                       : "bg-slate-200 text-slate-400 cursor-pointer"
@@ -155,8 +155,8 @@ export default function PayoutsPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => router.push("/creator/settings")}
-                  className="bg-white text-slate-900 px-6 py-3 rounded-lg text-xs font-black uppercase tracking-widest hover:bg-orange-500 hover:text-white transition"
+                  onClick={() => router.push("/creator/verify")}
+                  className="bg-white text-slate-900 px-6 py-3 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-orange-500 hover:text-white transition"
                 >
                   Verify Now
                 </button>
@@ -165,32 +165,32 @@ export default function PayoutsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
               <div className="bg-white p-8 rounded-lg border border-slate-100 shadow-sm">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">
                   Total Balance
                 </p>
-                <h2 className="text-4xl font-black">
+                <h2 className="text-4xl font-bold">
                   {totalPaidOut.toLocaleString()}{" "}
                   <span className="text-sm font-bold text-slate-300">RWF</span>
                 </h2>
               </div>
               <div className="bg-white p-8 rounded-lg border border-slate-100 shadow-sm">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">
                   Next Pending
                 </p>
-                <h2 className="text-4xl font-black text-slate-200">
+                <h2 className="text-4xl font-bold text-slate-200">
                   {pendingAmount.toLocaleString()}{" "}
                   <span className="text-sm font-bold text-slate-200">RWF</span>
                 </h2>
               </div>
               <div className="bg-white p-8 rounded-lg border border-slate-100 shadow-sm">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">
                   Destination
                 </p>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center font-black text-xs">
+                  <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center font-bold text-xs">
                     {creator?.network || "MTN"}
                   </div>
-                  <span className="text-sm font-black text-slate-700">
+                  <span className="text-sm font-bold text-slate-700">
                     {momoNumber}
                   </span>
                 </div>
@@ -199,7 +199,7 @@ export default function PayoutsPage() {
 
             <div className="bg-white rounded-lg border border-slate-100 shadow-sm overflow-hidden">
               <div className="p-8 border-b border-slate-50 flex items-center justify-between">
-                <h3 className="font-black uppercase tracking-tighter">
+                <h3 className="font-bold uppercase tracking-tighter">
                   Transaction History
                 </h3>
                 <History className="text-slate-200" size={20} />
@@ -226,8 +226,8 @@ export default function PayoutsPage() {
                           <CheckCircle2 size={20} />
                         </div>
                         <div>
-                          <p className="text-sm font-black">Transfer to MoMo</p>
-                          <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">
+                          <p className="text-sm font-bold">Transfer to MoMo</p>
+                          <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">
                             {tx.recipient} •{" "}
                             {tx.createdAt?.toDate().toLocaleDateString() ||
                               "Recently"}
@@ -235,10 +235,10 @@ export default function PayoutsPage() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-black text-slate-900">
+                        <p className="text-sm font-bold text-slate-900">
                           -{tx.amount.toLocaleString()} RWF
                         </p>
-                        <p className="text-[10px] text-green-500 font-black uppercase tracking-widest">
+                        <p className="text-[10px] text-green-500 font-bold uppercase tracking-widest">
                           {tx.status}
                         </p>
                       </div>
@@ -252,7 +252,7 @@ export default function PayoutsPage() {
           <div className="max-w-md mx-auto py-10 animate-in slide-in-from-bottom-8 duration-500">
             <button
               onClick={() => setView("overview")}
-              className="mb-8 flex items-center gap-2 text-slate-400 hover:text-slate-900 font-black text-xs uppercase tracking-widest transition"
+              className="mb-8 flex items-center gap-2 text-slate-400 hover:text-slate-900 font-bold text-xs uppercase tracking-widest transition"
             >
               <ArrowLeft size={16} /> Go Back
             </button>
@@ -260,7 +260,7 @@ export default function PayoutsPage() {
             {withdrawStep === 1 && (
               <div className="space-y-8 bg-white p-10 rounded-lg shadow-2xl border border-slate-100">
                 <header>
-                  <h2 className="text-4xl font-black uppercase tracking-tighter">
+                  <h2 className="text-4xl font-bold uppercase tracking-tighter">
                     Confirm Payout
                   </h2>
                   <p className="text-slate-500 text-sm mt-2">
@@ -270,10 +270,10 @@ export default function PayoutsPage() {
                 </header>
 
                 <div className="py-8 border-y border-slate-50">
-                  <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em] mb-2 text-center">
+                  <p className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.3em] mb-2 text-center">
                     Transfer Amount
                   </p>
-                  <h3 className="text-5xl font-black text-center text-slate-900">
+                  <h3 className="text-5xl font-bold text-center text-slate-900">
                     {totalPaidOut.toLocaleString()}{" "}
                     <span className="text-lg text-slate-300">RWF</span>
                   </h3>
@@ -282,7 +282,7 @@ export default function PayoutsPage() {
                 <button
                   onClick={simulateWithdraw}
                   disabled={totalPaidOut <= 0 || isWithdrawing}
-                  className="w-full bg-slate-900 text-white py-6 rounded-lg font-black text-xl flex items-center justify-center gap-3 shadow-xl hover:bg-orange-600 transition active:scale-95 disabled:opacity-50"
+                  className="w-full bg-slate-900 text-white py-6 rounded-lg font-bold text-xl flex items-center justify-center gap-3 shadow-xl hover:bg-orange-600 transition active:scale-95 disabled:opacity-50"
                 >
                   {isWithdrawing ? (
                     <Loader className="animate-spin" />
@@ -299,7 +299,7 @@ export default function PayoutsPage() {
                   <Smartphone size={40} />
                 </div>
                 <header className="text-center">
-                  <h2 className="text-2xl font-black uppercase tracking-tighter">
+                  <h2 className="text-2xl font-bold uppercase tracking-tighter">
                     Security Check
                   </h2>
                   <p className="text-slate-500 text-sm mt-1">
@@ -310,12 +310,12 @@ export default function PayoutsPage() {
                   type="text"
                   maxLength={6}
                   placeholder="000000"
-                  className="w-full bg-slate-50 border-2 border-slate-100 p-6 rounded-lg text-center text-4xl font-black tracking-[0.5em] focus:border-orange-500 outline-none"
+                  className="w-full bg-slate-50 border-2 border-slate-100 p-6 rounded-lg text-center text-4xl font-bold tracking-[0.5em] focus:border-orange-500 outline-none"
                   onChange={(e) => {
                     if (e.target.value.length === 6) finalConfirm();
                   }}
                 />
-                <p className="text-center text-[10px] font-black text-slate-300 uppercase">
+                <p className="text-center text-[10px] font-bold text-slate-300 uppercase">
                   Wait 58s to resend
                 </p>
               </div>
@@ -327,7 +327,7 @@ export default function PayoutsPage() {
                   <CheckCircle2 size={56} />
                 </div>
                 <header>
-                  <h2 className="text-4xl font-black uppercase tracking-tighter">
+                  <h2 className="text-4xl font-bold uppercase tracking-tighter">
                     Paid Out!
                   </h2>
                   <p className="text-slate-400 text-sm mt-3 leading-relaxed">
@@ -341,7 +341,7 @@ export default function PayoutsPage() {
                     setView("overview");
                     setWithdrawStep(1);
                   }}
-                  className="w-full bg-white text-slate-900 py-5 rounded-lg font-black uppercase tracking-widest text-sm hover:bg-orange-500 hover:text-white transition"
+                  className="w-full bg-white text-slate-900 py-5 rounded-lg font-bold uppercase tracking-widest text-sm hover:bg-orange-500 hover:text-white transition"
                 >
                   Return to Payouts
                 </button>

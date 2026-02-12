@@ -21,13 +21,14 @@ import { db, auth } from "@/db/firebase";
 import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { Creator } from "@/types/creator";
 import { useAuth } from "@/auth/AuthContext";
+import { useRouter } from "next/navigation";
 
 export default function CreatorSettings() {
   const { creator } = useAuth();
+  const router = useRouter();
   const [creatorData, setCreatorData] = useState<Creator | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
 
   useEffect(() => {
@@ -71,14 +72,6 @@ export default function CreatorSettings() {
     }
   };
 
-  const simulateVerification = () => {
-    setIsVerifying(true);
-    setTimeout(() => {
-      handleUpdate("verified", true);
-      setIsVerifying(false);
-    }, 2000);
-  };
-
   if (loading)
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F9FAFB]">
@@ -91,7 +84,7 @@ export default function CreatorSettings() {
       <div className="max-w-5xl mx-auto px-6 pt-10">
         <header className="flex justify-between items-end mb-10">
           <div>
-            <h1 className="text-4xl font-black tracking-tighter uppercase">
+            <h1 className="text-4xl font-bold tracking-tighter uppercase">
               Settings
             </h1>
             <p className="text-slate-500 font-medium">
@@ -140,7 +133,7 @@ export default function CreatorSettings() {
               <section className="bg-white border border-slate-100 rounded-lg p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">
+                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest ml-1">
                       Creator Name
                     </label>
                     <input
@@ -152,7 +145,7 @@ export default function CreatorSettings() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">
+                    <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest ml-1">
                       Username (Permanent)
                     </label>
                     <div className="w-full bg-slate-100 p-4 rounded-lg text-sm font-bold text-slate-400 cursor-not-allowed">
@@ -162,7 +155,7 @@ export default function CreatorSettings() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">
+                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest ml-1">
                     Bio
                   </label>
                   <textarea
@@ -188,7 +181,7 @@ export default function CreatorSettings() {
                       <p className="font-bold">
                         {creator?.verified
                           ? "Identity Verified"
-                          : "Verify Phone Number"}
+                          : "Verify Identity"}
                       </p>
                       <p className="text-xs text-slate-400">
                         {creator?.payoutNumber || "No number linked"}
@@ -197,11 +190,10 @@ export default function CreatorSettings() {
                   </div>
                   {!creator?.verified && (
                     <button
-                      onClick={simulateVerification}
-                      disabled={isVerifying}
-                      className="bg-white text-slate-900 px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest hover:bg-orange-500 hover:text-white transition-all"
+                      onClick={() => router.push("/creator/verify")}
+                      className="bg-white text-slate-900 px-6 py-2 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-orange-500 hover:text-white transition-all"
                     >
-                      {isVerifying ? "Verifying..." : "Verify Now"}
+                      Verify Now
                     </button>
                   )}
                 </div>
@@ -210,7 +202,7 @@ export default function CreatorSettings() {
 
             {activeTab === "socials" && (
               <section className="bg-white border border-slate-100 rounded-lg p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                <h3 className="text-lg font-black uppercase">
+                <h3 className="text-lg font-bold uppercase">
                   Connected Networks
                 </h3>
                 <div className="space-y-4">
@@ -276,10 +268,10 @@ export default function CreatorSettings() {
             {activeTab === "perks" && (
               <section className="bg-white border border-slate-100 rounded-lg p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-black uppercase">
+                  <h3 className="text-lg font-bold uppercase">
                     Supporter Perks
                   </h3>
-                  <button className="text-[10px] font-black uppercase text-orange-600 tracking-tighter bg-orange-50 px-3 py-1 rounded-lg">
+                  <button className="text-[10px] font-bold uppercase text-orange-600 tracking-tighter bg-orange-50 px-3 py-1 rounded-lg">
                     Coming Soon
                   </button>
                 </div>
@@ -332,14 +324,14 @@ export default function CreatorSettings() {
                 <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center mx-auto mb-6 shadow-sm text-slate-300">
                   <MessageSquare size={32} />
                 </div>
-                <h3 className="text-xl font-black uppercase mb-2">
+                <h3 className="text-xl font-bold uppercase mb-2">
                   Direct Messaging
                 </h3>
                 <p className="text-sm text-slate-500 max-w-sm mx-auto mb-8 font-medium">
                   We are building a way for you to chat with your top
                   supporters. This feature is currently in development.
                 </p>
-                <div className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full text-[10px] font-black uppercase text-slate-400 tracking-widest border border-slate-200">
+                <div className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full text-[10px] font-bold uppercase text-slate-400 tracking-widest border border-slate-200">
                   <AlertCircle size={12} /> Feature Disabled
                 </div>
               </section>

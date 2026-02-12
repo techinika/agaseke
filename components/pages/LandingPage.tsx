@@ -8,6 +8,8 @@ import {
   Sparkles,
   Zap,
   Coffee,
+  BanknoteArrowDown,
+  HandCoins,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -31,14 +33,14 @@ export default function LandingPage() {
           <span>The first creator platform for Rwanda</span>
         </div>
 
-        <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-8 leading-[1.1]">
+        <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-8 leading-[1.1]">
           Fuel your creativity with <br />
           <span className="text-orange-600">community support.</span>
         </h1>
 
         <p className="text-lg md:text-xl text-slate-500 mb-12 max-w-2xl mx-auto leading-relaxed">
-          Agaseke makes it easy for your community to support your work. Receive
-          contributions, share exclusives, and withdraw to MoMo instantly.
+          Agaseke makes it easy for your community and fans to support your
+          work. Receive contributions, tips, gifts, and offer unique incentives.
         </p>
 
         <div className="flex flex-col items-center gap-4">
@@ -75,16 +77,16 @@ export default function LandingPage() {
 
       {/* --- Features: More "Relational" --- */}
       <section className="bg-slate-50 py-24 px-6 border-y border-slate-100">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="max-w-7xl mx-auto grid md:grid-cols-2 lg:grid-cols-2 gap-8">
           <FeatureCard
             icon={<Coffee className="text-orange-600" />}
             title="Fan Support"
             desc="Let your fans buy you a 'virtual coffee.' A simple way for your community to say thank you."
           />
           <FeatureCard
-            icon={<Smartphone className="text-orange-600" />}
-            title="Native MoMo"
-            desc="The only platform integrated with MTN & Airtel Rwanda. No foreign bank accounts required."
+            icon={<HandCoins className="text-orange-600" />}
+            title="Local Payments"
+            desc="We enable your supporters to pay you using their local payment methods."
           />
           <FeatureCard
             icon={<Lock className="text-orange-600" />}
@@ -92,9 +94,9 @@ export default function LandingPage() {
             desc="Offer private gatherings, digital assets, or early access to your most loyal supporters."
           />
           <FeatureCard
-            icon={<Zap className="text-orange-600" />}
-            title="Instant Payouts"
-            desc="Your balance is your money. Withdraw any time and see it hit your phone in seconds."
+            icon={<BanknoteArrowDown className="text-orange-600" />}
+            title="Monthly Payouts"
+            desc="We pay out your earnings to your bank or MoMo account every month. You can also request to withdraw anytime."
           />
         </div>
       </section>
@@ -102,10 +104,10 @@ export default function LandingPage() {
       <section className="py-24 px-6">
         <div className="max-w-4xl mx-auto bg-slate-950 rounded-lg p-12 md:p-20 text-center text-white relative overflow-hidden shadow-2xl">
           <div className="relative z-10">
-            <h2 className="text-orange-500 font-black uppercase tracking-[0.2em] text-sm mb-4">
+            <h2 className="text-orange-500 font-bold uppercase tracking-[0.2em] text-sm mb-4">
               Simple Pricing
             </h2>
-            <div className="text-8xl font-black mb-6">10%</div>
+            <div className="text-8xl font-bold mb-6">10%</div>
             <p className="text-xl text-slate-400 max-w-md mx-auto leading-relaxed">
               We only make money when you do. No setup fees, no subscription,
               just a flat platform fee.
@@ -129,10 +131,12 @@ function FeatureCard({
 }) {
   return (
     <div className="bg-white p-8 rounded-lg border border-slate-200/60 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-900/5 transition-all duration-500 group">
-      <div className="mb-6 p-4 bg-slate-50 group-hover:bg-orange-50 w-fit rounded-lg transition-colors">
-        {icon}
+      <div className="flex items-center gap-4 mb-4 flex-wrap">
+        <div className="p-4 bg-slate-50 group-hover:bg-orange-50 w-fit rounded-lg transition-colors">
+          {icon}
+        </div>
+        <h3 className="text-lg font-bold">{title}</h3>
       </div>
-      <h3 className="text-lg font-bold mb-3">{title}</h3>
       <p className="text-slate-500 leading-relaxed text-sm">{desc}</p>
     </div>
   );

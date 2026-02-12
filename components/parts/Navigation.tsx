@@ -27,7 +27,7 @@ const Navbar = () => {
     <nav className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-slate-100">
       <div className="flex items-center justify-between px-6 py-3.5 mx-auto max-w-7xl">
         <Link href="/" className="flex items-center gap-2 group">
-          <div className="text-xl font-black tracking-tighter text-slate-900 uppercase">
+          <div className="text-xl font-bold tracking-tighter text-slate-900 uppercase">
             agaseke<span className="text-orange-600">.me</span>
           </div>
         </Link>
@@ -58,7 +58,7 @@ const Navbar = () => {
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
                       Creator
                     </span>
-                    <span className="text-xs font-black text-slate-800">
+                    <span className="text-xs font-bold text-slate-800">
                       {auth?.profile?.displayName || "User"}
                     </span>
                   </div>
@@ -78,7 +78,7 @@ const Navbar = () => {
 
                     <div className="absolute right-0 mt-3 w-60 bg-white rounded-lg shadow-2xl border border-slate-100 p-2 animate-in fade-in slide-in-from-top-2 z-50">
                       <div className="px-4 py-3 mb-2">
-                        <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1">
+                        <p className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] mb-1">
                           Your Account
                         </p>
                         <p className="text-xs font-bold text-slate-500 truncate">

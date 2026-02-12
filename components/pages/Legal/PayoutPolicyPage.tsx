@@ -17,10 +17,10 @@ export default function PayoutPolicy() {
 
       <main className="max-w-3xl mx-auto px-6 py-16">
         <header className="mb-12">
-          <div className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center text-green-600 mb-6">
+          <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center text-green-600 mb-6">
             <Wallet size={28} />
           </div>
-          <h1 className="text-4xl font-black mb-4">Payout Policy</h1>
+          <h1 className="text-4xl font-bold mb-4">Payout Policy</h1>
           <p className="text-slate-500 font-medium">
             Ensuring transparent and timely transfers for our creators.
           </p>
@@ -28,7 +28,7 @@ export default function PayoutPolicy() {
 
         <div className="space-y-12">
           {/* Standard Schedule */}
-          <section className="bg-slate-50 p-8 rounded-3xl border border-slate-100">
+          <section className="bg-slate-50 p-8 rounded-lg border border-slate-100">
             <div className="flex items-center gap-3 mb-4 text-slate-900">
               <Calendar size={24} />
               <h2 className="text-2xl font-bold m-0">
@@ -73,7 +73,7 @@ export default function PayoutPolicy() {
           </section>
 
           {/* Verification Warning */}
-          <section className="bg-red-50 p-8 rounded-3xl border border-red-100">
+          <section className="bg-red-50 p-8 rounded-lg border border-red-100">
             <div className="flex items-center gap-3 mb-4 text-red-900">
               <ShieldCheck size={24} />
               <h2 className="text-2xl font-bold m-0">
@@ -124,7 +124,7 @@ export default function PayoutPolicy() {
             </p>
             <a
               href="mailto:agasekeforcreators@gmail.com"
-              className="text-orange-600 font-black hover:underline"
+              className="text-orange-600 font-bold hover:underline"
             >
               agasekeforcreators@gmail.com
             </a>

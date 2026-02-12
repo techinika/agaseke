@@ -15,6 +15,8 @@ import {
   LogOut,
   UserCircle,
   ChevronDown,
+  CheckCheck,
+  CheckCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -26,14 +28,13 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { creator } = useAuth(); // Assuming logout exists in your AuthContext
+  const { creator } = useAuth();
   const [copied, setCopied] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -97,6 +98,12 @@ export default function DashboardLayout({
               icon={<Wallet size={18} />}
               label="Payouts"
               active={pathname === "/creator/payouts"}
+            />
+            <NavItem
+              href="/creator/verify"
+              icon={<CheckCircle size={18} />}
+              label="Verify"
+              active={pathname === "/creator/verify"}
             />
             <NavItem
               href="/creator/settings"

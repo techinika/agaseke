@@ -129,7 +129,7 @@ export default function CreatorDashboard() {
     <div className="p-8 max-w-6xl mx-auto pb-24">
       {/* Verification Alert */}
       {!creator?.verified && (
-        <div className="mb-8 p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-center justify-between shadow-sm">
+        <div className="mb-8 p-4 bg-amber-50 border border-amber-100 rounded-lg flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-3 text-amber-800">
             <AlertCircle size={18} className="shrink-0" />
             <span className="text-sm font-bold">
@@ -137,8 +137,8 @@ export default function CreatorDashboard() {
             </span>
           </div>
           <button
-            onClick={() => router.push("/creator/settings")}
-            className="text-xs font-black bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition"
+            onClick={() => router.push("/creator/verify")}
+            className="text-xs font-bold bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition"
           >
             VERIFY NOW
           </button>
@@ -147,18 +147,18 @@ export default function CreatorDashboard() {
 
       {/* Stats Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <div className="bg-slate-900 text-white p-8 rounded-3xl shadow-xl shadow-slate-200">
+        <div className="bg-slate-900 text-white p-8 rounded-lg shadow-xl shadow-slate-200">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
               Available Balance
             </p>
             <Wallet size={18} className="text-orange-500" />
           </div>
-          <h3 className="text-4xl font-black">
+          <h3 className="text-4xl font-bold">
             {creator?.pendingPayout?.toLocaleString() || 0}
             <span className="text-sm font-medium text-slate-500 ml-2">RWF</span>
           </h3>
-          <button className="mt-6 w-full py-3 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-black transition flex items-center justify-center gap-2">
+          <button className="mt-6 w-full py-3 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2">
             WITHDRAW FUNDS <ExternalLink size={12} />
           </button>
         </div>
@@ -178,11 +178,11 @@ export default function CreatorDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         {/* Support Activity */}
         <div className="lg:col-span-2 space-y-6">
-          <h4 className="text-lg font-black tracking-tight flex items-center gap-2">
+          <h4 className="text-lg font-bold tracking-tight flex items-center gap-2">
             Recent Support
           </h4>
 
-          <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm">
+          <div className="bg-white rounded-lg border border-slate-100 overflow-hidden shadow-sm">
             {data.recentSupport.length > 0 ? (
               data.recentSupport.map((sup: any) => (
                 <ActivityRow
@@ -217,8 +217,8 @@ export default function CreatorDashboard() {
 
         {/* Content History */}
         <div className="space-y-6">
-          <h4 className="text-lg font-black tracking-tight">Your Activity</h4>
-          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-6">
+          <h4 className="text-lg font-bold tracking-tight">Your Activity</h4>
+          <div className="bg-white p-6 rounded-lg border border-slate-100 shadow-sm space-y-6">
             {data.history.length > 0 ? (
               data.history.map((item: any) => (
                 <HistoryItem key={item.id} {...item} />
@@ -239,14 +239,14 @@ export default function CreatorDashboard() {
 
 function StatTile({ title, value, icon }: any) {
   return (
-    <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+    <div className="bg-white p-8 rounded-lg border border-slate-100 shadow-sm">
       <div className="flex items-center justify-between mb-4">
-        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
           {title}
         </p>
         <div className="text-orange-500">{icon}</div>
       </div>
-      <h3 className="text-4xl font-black text-slate-900">{value}</h3>
+      <h3 className="text-4xl font-bold text-slate-900">{value}</h3>
     </div>
   );
 }
@@ -254,7 +254,7 @@ function StatTile({ title, value, icon }: any) {
 function ActivityRow({ name, amount, time }: any) {
   return (
     <div className="p-6 flex items-center gap-4 hover:bg-slate-50 transition border-b border-slate-50 last:border-0">
-      <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center text-lg font-black shrink-0">
+      <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center text-lg font-bold shrink-0">
         {name[0]}
       </div>
       <div className="flex-1">
@@ -267,7 +267,7 @@ function ActivityRow({ name, amount, time }: any) {
             {time}
           </span>
         </div>
-        <p className="text-lg font-black text-orange-600 tracking-tight">
+        <p className="text-lg font-bold text-orange-600 tracking-tight">
           {amount} RWF
         </p>
       </div>
@@ -286,7 +286,7 @@ function HistoryItem({ type, title, meta, icon }: any) {
           {title}
         </p>
         <div className="flex items-center gap-2">
-          <span className="text-[9px] font-black text-slate-300 uppercase tracking-tighter">
+          <span className="text-[9px] font-bold text-slate-300 uppercase tracking-tighter">
             {type}
           </span>
           <span className="w-1 h-1 bg-slate-200 rounded-full"></span>

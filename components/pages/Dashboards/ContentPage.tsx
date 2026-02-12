@@ -152,7 +152,7 @@ export default function ContentManager() {
       <main className="flex-1 p-8 max-w-4xl mx-auto">
         <header className="flex justify-between items-center mb-10">
           <div>
-            <h1 className="text-3xl font-black tracking-tight uppercase">
+            <h1 className="text-3xl font-bold tracking-tight uppercase">
               Library
             </h1>
             <p className="text-slate-500 text-sm mt-1 font-medium">
@@ -213,14 +213,14 @@ export default function ContentManager() {
                           {post.title}
                         </h3>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] font-black uppercase text-slate-400 flex items-center gap-1">
+                          <span className="text-[10px] font-bold uppercase text-slate-400 flex items-center gap-1">
                             <Clock size={10} />{" "}
                             {post.createdAt?.toDate
                               ? post.createdAt.toDate().toLocaleDateString()
                               : "Just now"}
                           </span>
                           <span
-                            className={`text-[10px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1 uppercase ${post.isPrivate ? "bg-amber-50 text-amber-600" : "bg-green-50 text-green-600"}`}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-lg flex items-center gap-1 uppercase ${post.isPrivate ? "bg-amber-50 text-amber-600" : "bg-green-50 text-green-600"}`}
                           >
                             {post.isPrivate ? (
                               <Lock size={10} />
@@ -248,7 +248,7 @@ export default function ContentManager() {
           ) : (
             <div className="bg-slate-50 rounded-lg border-2 border-dashed border-slate-200 p-20 flex flex-col items-center text-center">
               <Inbox size={48} className="text-slate-200 mb-4" />
-              <h3 className="text-xl font-black text-slate-400">
+              <h3 className="text-xl font-bold text-slate-400">
                 No content found
               </h3>
               <p className="text-sm text-slate-400 max-w-xs mt-2 font-medium">
@@ -263,7 +263,7 @@ export default function ContentManager() {
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-6">
             <div className="bg-white w-full max-w-lg rounded-lg p-10 shadow-2xl animate-in zoom-in-95 duration-300">
               <div className="flex justify-between items-center mb-8">
-                <h2 className="text-2xl font-black uppercase tracking-tighter">
+                <h2 className="text-2xl font-bold uppercase tracking-tighter">
                   New Post
                 </h2>
                 <button
@@ -280,7 +280,7 @@ export default function ContentManager() {
                     <button
                       key={t}
                       onClick={() => setNewPost({ ...newPost, type: t })}
-                      className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${newPost.type === t ? "bg-white text-orange-600 shadow-sm" : "text-slate-400"}`}
+                      className={`flex-1 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${newPost.type === t ? "bg-white text-orange-600 shadow-sm" : "text-slate-400"}`}
                     >
                       {t}
                     </button>
@@ -330,7 +330,7 @@ export default function ContentManager() {
                       )}
                     </div>
                     <div>
-                      <p className="text-xs font-black uppercase tracking-tight">
+                      <p className="text-xs font-bold uppercase tracking-tight">
                         {newPost.isPrivate ? "Supporters Only" : "Everyone"}
                       </p>
                       <p className="text-[10px] font-bold text-slate-400">
@@ -342,7 +342,7 @@ export default function ContentManager() {
                     onClick={() =>
                       setNewPost({ ...newPost, isPrivate: !newPost.isPrivate })
                     }
-                    className="text-[10px] font-black text-orange-600 uppercase tracking-widest bg-white px-4 py-2 rounded-lg border border-orange-100 shadow-sm transition active:scale-95"
+                    className="text-[10px] font-bold text-orange-600 uppercase tracking-widest bg-white px-4 py-2 rounded-lg border border-orange-100 shadow-sm transition active:scale-95"
                   >
                     Change
                   </button>
@@ -351,7 +351,7 @@ export default function ContentManager() {
                 <button
                   onClick={handleAddContent}
                   disabled={!newPost.title || isUploading}
-                  className="w-full bg-slate-900 text-white py-5 rounded-lg font-black text-lg shadow-xl shadow-slate-200 hover:bg-orange-600 transition-all flex items-center justify-center gap-2 disabled:opacity-30"
+                  className="w-full bg-slate-900 text-white py-5 rounded-lg font-bold text-lg shadow-xl shadow-slate-200 hover:bg-orange-600 transition-all flex items-center justify-center gap-2 disabled:opacity-30"
                 >
                   {isUploading ? (
                     <Loader className="animate-spin" size={20} />

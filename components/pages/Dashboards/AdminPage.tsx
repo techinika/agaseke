@@ -93,7 +93,7 @@ export default function AdminDashboard() {
 
       <main className="max-w-7xl mx-auto px-6 mt-12">
         <header className="mb-10">
-          <h1 className="text-4xl font-black tracking-tight text-slate-900">
+          <h1 className="text-4xl font-bold tracking-tight text-slate-900">
             Platform Analytics
           </h1>
           <p className="text-slate-500 font-medium">
@@ -131,12 +131,12 @@ export default function AdminDashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* TOP EARNERS TABLE */}
-          <section className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm">
+          <section className="bg-white p-8 rounded-lg border border-slate-100 shadow-sm">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-slate-900 rounded-lg text-white">
                 <BarChart3 size={20} />
               </div>
-              <h2 className="text-xl font-black">Top Earners</h2>
+              <h2 className="text-xl font-bold">Top Earners</h2>
             </div>
             <div className="space-y-4">
               {topEarners.map((creator, i) => (
@@ -151,12 +151,12 @@ export default function AdminDashboard() {
           </section>
 
           {/* TOP VIEWED TABLE */}
-          <section className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm">
+          <section className="bg-white p-8 rounded-lg border border-slate-100 shadow-sm">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-orange-600 rounded-lg text-white">
                 <Eye size={20} />
               </div>
-              <h2 className="text-xl font-black">Most Profile Views</h2>
+              <h2 className="text-xl font-bold">Most Profile Views</h2>
             </div>
             <div className="space-y-4">
               {topViewed.map((creator, i) => (
@@ -177,30 +177,30 @@ export default function AdminDashboard() {
 
 function StatCard({ label, value, icon, color }: any) {
   return (
-    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-white p-6 rounded-lg border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
       <div
-        className={`w-12 h-12 ${color} rounded-xl flex items-center justify-center mb-4`}
+        className={`w-12 h-12 ${color} rounded-lg flex items-center justify-center mb-4`}
       >
         {icon}
       </div>
-      <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">
+      <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">
         {label}
       </p>
-      <h3 className="text-2xl font-black text-slate-900">{value}</h3>
+      <h3 className="text-2xl font-bold text-slate-900">{value}</h3>
     </div>
   );
 }
 
 function RankRow({ rank, name, subText }: any) {
   return (
-    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
       <div className="flex items-center gap-4">
-        <span className="text-lg font-black text-slate-300 w-6">#{rank}</span>
+        <span className="text-lg font-bold text-slate-300 w-6">#{rank}</span>
         <div>
           <p className="font-bold text-slate-900">{name}</p>
         </div>
       </div>
-      <p className="font-black text-orange-600 text-sm">{subText}</p>
+      <p className="font-bold text-orange-600 text-sm">{subText}</p>
     </div>
   );
 }

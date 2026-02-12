@@ -28,4 +28,7 @@ export interface Creator {
   events: Array<any>;
   views: number;
   lastPayoutAt?: any;
+  verificationStatus: "pending" | "approved" | "rejected";
+  phoneVerified: boolean;
+  foundingMember: boolean;
 }

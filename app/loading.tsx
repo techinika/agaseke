@@ -44,7 +44,7 @@ const Loading = () => {
             className="relative w-24 h-24 bg-slate-900 rounded-lg flex items-center justify-center shadow-2xl shadow-orange-200 overflow-hidden"
           >
             {/* The "a" from Agaseke */}
-            <span className="text-white text-5xl font-black tracking-tighter select-none">
+            <span className="text-white text-5xl font-bold tracking-tighter select-none">
               a
             </span>
 
@@ -93,7 +93,7 @@ const Loading = () => {
                   delay: i * 0.1,
                   ease: "easeInOut",
                 }}
-                className="text-2xl font-black tracking-tighter text-slate-900"
+                className="text-2xl font-bold tracking-tighter text-slate-900"
               >
                 {char}
               </motion.span>
@@ -103,7 +103,7 @@ const Loading = () => {
           <motion.p
             animate={{ opacity: [0.4, 1, 0.4] }}
             transition={{ duration: 2, repeat: Infinity }}
-            className="text-[10px] font-black uppercase tracking-[0.4em] text-orange-600"
+            className="text-[10px] font-bold uppercase tracking-[0.4em] text-orange-600"
           >
             Murakoze Gutegereza
           </motion.p>

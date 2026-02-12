@@ -114,7 +114,7 @@ export default function GatheringsPage() {
         >
           <ArrowLeft size={16} /> Back
         </button>
-        <h2 className="text-xl font-black mb-6 uppercase">Gatherings</h2>
+        <h2 className="text-xl font-bold mb-6 uppercase">Gatherings</h2>
         <button
           onClick={() => setIsCreating(true)}
           className="w-full bg-orange-600 text-white py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:bg-orange-700 transition shadow-lg shadow-orange-100 mb-8"
@@ -126,7 +126,7 @@ export default function GatheringsPage() {
       <main className="flex-1 flex flex-col md:flex-row">
         <div className="flex-1 p-8 border-r border-slate-100 overflow-y-auto">
           <div className="flex justify-between items-center mb-8">
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400">
               Scheduled
             </h3>
             <span className="text-xs font-bold text-orange-600">
@@ -158,11 +158,11 @@ export default function GatheringsPage() {
                         <Calendar size={20} />
                       )}
                     </div>
-                    <span className="text-[10px] font-black px-2 py-1 rounded-lg uppercase bg-green-50 text-green-600">
+                    <span className="text-[10px] font-bold px-2 py-1 rounded-lg uppercase bg-green-50 text-green-600">
                       {event.status}
                     </span>
                   </div>
-                  <h4 className="text-xl font-black mb-1">{event.title}</h4>
+                  <h4 className="text-xl font-bold mb-1">{event.title}</h4>
                   <p className="text-sm text-slate-500 flex items-center gap-2 mb-4">
                     <MapPin size={14} className="text-slate-300" />{" "}
                     {event.location}
@@ -190,7 +190,7 @@ export default function GatheringsPage() {
           {activeEvent ? (
             <div className="animate-in fade-in slide-in-from-right-4">
               <div className="flex justify-between items-center mb-8">
-                <h3 className="font-black text-lg">Management</h3>
+                <h3 className="font-bold text-lg">Management</h3>
                 <button
                   onClick={() => setIsDeleting(activeEvent.id)}
                   className="p-2 text-slate-300 hover:text-red-500 transition"
@@ -201,7 +201,7 @@ export default function GatheringsPage() {
 
               <div className="space-y-6">
                 <div className="bg-slate-900 p-6 rounded-lg text-white">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
                     Entry Requirement
                   </p>
                   <h2 className="text-xl font-bold">
@@ -214,7 +214,7 @@ export default function GatheringsPage() {
                 <div className="p-6 bg-orange-50 rounded-lg border border-orange-100">
                   <div className="flex items-center gap-2 mb-4 text-orange-600">
                     <Info size={16} />
-                    <span className="text-xs font-black uppercase">
+                    <span className="text-xs font-bold uppercase">
                       Supporter Note
                     </span>
                   </div>
@@ -242,7 +242,7 @@ export default function GatheringsPage() {
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
             <div className="bg-white w-full max-w-lg rounded-lg p-10 shadow-2xl animate-in zoom-in-95">
               <div className="flex justify-between items-center mb-8">
-                <h2 className="text-2xl font-black uppercase tracking-tighter">
+                <h2 className="text-2xl font-bold uppercase tracking-tighter">
                   Plan Gathering
                 </h2>
                 <button
@@ -289,7 +289,7 @@ export default function GatheringsPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
                     Entry Threshold (Support Amount)
                   </label>
                   <input
@@ -312,7 +312,7 @@ export default function GatheringsPage() {
                 <button
                   onClick={handleCreate}
                   disabled={!formData.title || isSimulating}
-                  className="w-full bg-slate-900 text-white py-5 rounded-lg font-black text-lg shadow-xl hover:bg-orange-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full bg-slate-900 text-white py-5 rounded-lg font-bold text-lg shadow-xl hover:bg-orange-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {isSimulating ? (
                     <Loader className="animate-spin" />
@@ -332,7 +332,7 @@ export default function GatheringsPage() {
               <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Trash2 size={32} />
               </div>
-              <h3 className="text-xl font-black mb-2">Cancel Gathering?</h3>
+              <h3 className="text-xl font-bold mb-2">Cancel Gathering?</h3>
               <p className="text-sm text-slate-500 mb-8 font-medium">
                 This will remove the event for all supporters. This action
                 cannot be undone.

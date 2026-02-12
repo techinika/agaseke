@@ -52,7 +52,7 @@ export default function HelpCenter() {
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
       <div className="bg-orange-600 pt-20 pb-32 px-6">
         <div className="max-w-3xl mx-auto text-center">
-          <h1 className="text-4xl md:text-5xl font-black text-white mb-6">
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
             How can we help?
           </h1>
         </div>
@@ -60,7 +60,7 @@ export default function HelpCenter() {
 
       <main className="max-w-5xl mx-auto px-6 -mt-16">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-          <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
+          <div className="bg-white p-8 rounded-lg shadow-sm border border-slate-100 flex flex-col items-center text-center">
             <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-4">
               <Mail size={24} />
             </div>
@@ -76,7 +76,7 @@ export default function HelpCenter() {
             </a>
           </div>
 
-          <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
+          <div className="bg-white p-8 rounded-lg shadow-sm border border-slate-100 flex flex-col items-center text-center">
             <div className="w-12 h-12 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center mb-4">
               <Instagram size={24} />
             </div>
@@ -90,7 +90,7 @@ export default function HelpCenter() {
             </a>
           </div>
 
-          <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center text-center">
+          <div className="bg-white p-8 rounded-lg shadow-sm border border-slate-100 flex flex-col items-center text-center">
             <div className="w-12 h-12 bg-slate-100 text-slate-900 rounded-full flex items-center justify-center mb-4">
               <Twitter size={24} />
             </div>
@@ -107,7 +107,7 @@ export default function HelpCenter() {
 
         {/* FAQs */}
         <div className="max-w-3xl mx-auto">
-          <h2 className="text-3xl font-black mb-10 flex items-center gap-3">
+          <h2 className="text-3xl font-bold mb-10 flex items-center gap-3">
             <HelpCircle className="text-orange-600" size={32} /> Frequently
             Asked Questions
           </h2>
@@ -115,14 +115,14 @@ export default function HelpCenter() {
           <div className="space-y-12">
             {faqs.map((section) => (
               <div key={section.category}>
-                <h3 className="text-sm uppercase tracking-widest font-black text-slate-400 mb-6">
+                <h3 className="text-sm uppercase tracking-widest font-bold text-slate-400 mb-6">
                   {section.category}
                 </h3>
                 <div className="space-y-4">
                   {section.questions.map((item, i) => (
                     <details
                       key={i}
-                      className="group bg-white rounded-2xl border border-slate-200 overflow-hidden"
+                      className="group bg-white rounded-lg border border-slate-200 overflow-hidden"
                     >
                       <summary className="flex items-center justify-between p-6 cursor-pointer list-none font-bold text-slate-800">
                         {item.q}

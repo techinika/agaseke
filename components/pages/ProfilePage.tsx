@@ -92,7 +92,7 @@ export default function ProfileEditPage() {
     <div className="min-h-screen bg-[#FBFBFC] text-slate-900 pb-20">
       <main className="max-w-3xl mx-auto px-6 pt-20">
         <div className="mb-10">
-          <h1 className="text-4xl font-black tracking-tighter">
+          <h1 className="text-4xl font-bold tracking-tighter">
             Profile Settings
           </h1>
           <p className="text-slate-500 font-medium">
@@ -103,14 +103,14 @@ export default function ProfileEditPage() {
         {profile?.type !== "creator" && (
           <div className="bg-orange-600 rounded-lg p-8 mb-8 text-white relative overflow-hidden group">
             <div className="relative z-10">
-              <h3 className="text-2xl font-black mb-2">Want a public page?</h3>
+              <h3 className="text-2xl font-bold mb-2">Want a public page?</h3>
               <p className="text-orange-100 font-medium mb-6 max-w-md">
                 Create an Agaseke to get your unique link and start receiving
                 support from your fans.
               </p>
               <Link
                 href="/onboarding"
-                className="inline-flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-lg font-black text-sm transition-transform active:scale-95"
+                className="inline-flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-lg font-bold text-sm transition-transform active:scale-95"
               >
                 Setup Creator Page <ExternalLink size={16} />
               </Link>
@@ -135,7 +135,7 @@ export default function ProfileEditPage() {
                 )}
               </div>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
                   Account Type
                 </p>
                 <div className="flex items-center gap-2 font-bold text-orange-600 capitalize">
@@ -146,7 +146,7 @@ export default function ProfileEditPage() {
 
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">
+                <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">
                   Email Address
                 </label>
                 <div className="relative">
@@ -164,7 +164,7 @@ export default function ProfileEditPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">
+                <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">
                   Display Name
                 </label>
                 <input
@@ -176,7 +176,7 @@ export default function ProfileEditPage() {
               </div>
 
               <div className="space-y-2 md:col-span-2">
-                <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">
+                <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">
                   Location
                 </label>
                 <div className="relative">
@@ -198,7 +198,7 @@ export default function ProfileEditPage() {
             <button
               onClick={handleUpdate}
               disabled={saving}
-              className="w-full bg-slate-900 text-white py-5 rounded-lg font-black flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors disabled:opacity-50"
+              className="w-full bg-slate-900 text-white py-5 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors disabled:opacity-50"
             >
               {saving ? (
                 <Loader className="animate-spin" />
@@ -211,7 +211,7 @@ export default function ProfileEditPage() {
 
           {/* Danger Zone */}
           <section className="bg-red-50/50 p-8 rounded-lg border border-red-100 space-y-4">
-            <h3 className="font-black text-red-600 flex items-center gap-2">
+            <h3 className="font-bold text-red-600 flex items-center gap-2">
               <AlertTriangle size={18} /> Danger Zone
             </h3>
             <p className="text-sm text-red-700 font-medium">
@@ -220,7 +220,7 @@ export default function ProfileEditPage() {
             </p>
             <button
               onClick={() => setIsDeleteModalOpen(true)}
-              className="bg-white border border-red-200 text-red-600 px-6 py-3 rounded-lg font-black text-sm hover:bg-red-600 hover:text-white transition-all flex items-center gap-2"
+              className="bg-white border border-red-200 text-red-600 px-6 py-3 rounded-lg font-bold text-sm hover:bg-red-600 hover:text-white transition-all flex items-center gap-2"
             >
               <Trash2 size={16} /> Delete My Account
             </button>
@@ -244,7 +244,7 @@ export default function ProfileEditPage() {
               </button>
             </div>
 
-            <h3 className="text-2xl font-black tracking-tighter mb-2">
+            <h3 className="text-2xl font-bold tracking-tighter mb-2">
               Are you sure?
             </h3>
             <p className="text-slate-500 text-sm font-medium mb-8">
@@ -268,7 +268,7 @@ export default function ProfileEditPage() {
               <button
                 onClick={handleDeleteAccount}
                 disabled={confirmEmail !== profile?.email}
-                className="w-full bg-red-600 text-white py-5 rounded-lg font-black disabled:opacity-20 transition-all hover:bg-red-700"
+                className="w-full bg-red-600 text-white py-5 rounded-lg font-bold disabled:opacity-20 transition-all hover:bg-red-700"
               >
                 Permanently Delete Account
               </button>

@@ -46,7 +46,7 @@ export default function LoginPage() {
             <PerkItem
               icon={<UserPlus className="text-orange-400" />}
               title="Create your Agaseke"
-              desc="Set up your own ags.ke/name and start receiving support instantly."
+              desc="Set up your own agaseke.me/name and start receiving support instantly."
             />
           </div>
         </div>
