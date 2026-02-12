@@ -27,6 +27,7 @@ import { useAuth } from "@/auth/AuthContext";
 import Link from "next/link";
 import { SupportModal } from "../parts/SupportModal";
 import CreatorSchema from "../seo/CreatorSchma";
+import { FaTiktok } from "react-icons/fa";
 
 export default function PublicProfile({ username }: { username: string }) {
   const { user: currentUser } = useAuth();
@@ -67,10 +68,12 @@ export default function PublicProfile({ username }: { username: string }) {
 
   const creator = {
     uid: creatorData.uid,
-    name: profileData?.displayName || creatorData.name || "Creator",
+    name: creatorData.name || profileData?.displayName || "Creator",
     handle: username,
     bio: creatorData.bio || "No bio available yet.",
-    photoURL: profileData?.photoURL,
+    photoURL: creatorData?.profilePicture
+      ? creatorData?.profilePicture
+      : profileData?.photoURL,
     socials: {
       twitter: creatorData.socials?.twitter
         ? `https://twitter.com/${creatorData.socials.twitter}`
@@ -112,7 +115,7 @@ export default function PublicProfile({ username }: { username: string }) {
               </div>
             </div>
             {creatorData.verified && (
-              <div className="absolute bottom-1 right-1 bg-green-500 w-6 h-6 border-4 border-white rounded-full shadow-lg" />
+              <div className="absolute bottom-0 right-0 bg-green-500 w-6 h-6 border-4 border-white rounded-full shadow-lg" />
             )}
           </div>
 
@@ -288,6 +291,8 @@ function getIcon(key: string) {
       return <Twitter size={16} />;
     case "youtube":
       return <Youtube size={16} />;
+    case "tiktok":
+      return <FaTiktok size={15} />;
     default:
       return <Globe size={16} />;
   }

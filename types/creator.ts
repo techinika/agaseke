@@ -31,4 +31,5 @@ export interface Creator {
   verificationStatus: "pending" | "approved" | "rejected";
   phoneVerified: boolean;
   foundingMember: boolean;
+  profilePicture: string;
 }
