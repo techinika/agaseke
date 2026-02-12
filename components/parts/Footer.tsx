@@ -6,7 +6,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto">
         <div className="w-full flex flex-wrap gap-12 mb-20 justify-between">
           <div className="md:col-span-1">
-            <div className="text-xl font-black tracking-tight text-white mb-6 uppercase">
+            <div className="text-xl font-bold tracking-tight text-white mb-6 uppercase">
               agaseke<span className="text-orange-600">.me</span>
             </div>
             <p className="text-sm leading-relaxed pr-8">

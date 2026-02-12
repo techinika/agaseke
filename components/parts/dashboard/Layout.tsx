@@ -15,25 +15,28 @@ import {
   LogOut,
   UserCircle,
   ChevronDown,
+  CheckCheck,
+  CheckCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/auth/AuthContext";
 import { handleLogout } from "@/db/functions/LogOut";
+import SharePageModal from "../SharePage";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { creator } = useAuth(); // Assuming logout exists in your AuthContext
+  const { creator } = useAuth();
   const [copied, setCopied] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -99,6 +102,12 @@ export default function DashboardLayout({
               active={pathname === "/creator/payouts"}
             />
             <NavItem
+              href="/creator/verify"
+              icon={<CheckCircle size={18} />}
+              label="Verify"
+              active={pathname === "/creator/verify"}
+            />
+            <NavItem
               href="/creator/settings"
               icon={<Settings size={18} />}
               label="Settings"
@@ -126,7 +135,10 @@ export default function DashboardLayout({
           <p className="text-xs font-medium text-slate-600 truncate mb-3">
             agaseke.me/{creator?.handle || "..."}
           </p>
-          <button className="w-full py-2 bg-white border border-slate-200 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition">
+          <button
+            onClick={() => setShowShareModal(true)}
+            className="w-full py-2 bg-white border border-slate-200 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition"
+          >
             Share Page <Share2 size={12} />
           </button>
         </div>
@@ -224,6 +236,11 @@ export default function DashboardLayout({
 
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
+
+      <SharePageModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+      />
     </div>
   );
 }

@@ -63,7 +63,7 @@ export default function MessagesPage() {
           <div className="w-20 h-20 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center mx-auto mb-6 rotate-3">
             <Construction size={40} />
           </div>
-          <h2 className="text-3xl font-black uppercase tracking-tighter mb-4">
+          <h2 className="text-3xl font-bold uppercase tracking-tighter mb-4">
             Under Development
           </h2>
           <p className="text-slate-500 font-medium leading-relaxed mb-8">
@@ -80,7 +80,7 @@ export default function MessagesPage() {
       {/* --- Sidebar: Chat List --- */}
       <aside className="w-full md:w-80 lg:w-96 border-r border-slate-100 flex flex-col bg-slate-50/50">
         <div className="p-6">
-          <h1 className="text-2xl font-black uppercase mb-6">Messages</h1>
+          <h1 className="text-2xl font-bold uppercase mb-6">Messages</h1>
           <div className="relative">
             <Search
               className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
@@ -107,7 +107,7 @@ export default function MessagesPage() {
               }`}
             >
               <div className="relative">
-                <div className="w-12 h-12 bg-slate-200 rounded-lg flex items-center justify-center font-black text-slate-500">
+                <div className="w-12 h-12 bg-slate-200 rounded-lg flex items-center justify-center font-bold text-slate-500">
                   {chat.avatar}
                 </div>
                 {chat.unread && (
@@ -162,7 +162,7 @@ export default function MessagesPage() {
             {/* Messages Content */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/30">
               <div className="flex justify-center">
-                <span className="text-[10px] font-black uppercase text-slate-300 tracking-[0.2em] bg-white px-4 py-1 rounded-full border border-slate-100">
+                <span className="text-[10px] font-bold uppercase text-slate-300 tracking-[0.2em] bg-white px-4 py-1 rounded-full border border-slate-100">
                   Today
                 </span>
               </div>
@@ -209,7 +209,7 @@ export default function MessagesPage() {
             <div className="w-20 h-20 bg-slate-50 rounded-lg flex items-center justify-center mb-6">
               <MessageSquare size={40} className="opacity-20" />
             </div>
-            <h3 className="text-xl font-black uppercase mb-2">
+            <h3 className="text-xl font-bold uppercase mb-2">
               Your Conversations
             </h3>
             <p className="text-sm font-medium max-w-xs text-slate-400">

@@ -14,7 +14,7 @@ export default function TermsPage() {
 
       <main className="max-w-3xl mx-auto px-6 py-16">
         <header className="mb-12">
-          <h1 className="text-4xl font-black mb-4">Terms of Service</h1>
+          <h1 className="text-4xl font-bold mb-4">Terms of Service</h1>
           <p className="text-slate-500 font-medium">
             Last updated: {lastUpdated}
           </p>
@@ -83,7 +83,7 @@ export default function TermsPage() {
             </p>
           </section>
 
-          <section className="bg-orange-50 p-8 rounded-3xl border border-orange-100">
+          <section className="bg-orange-50 p-8 rounded-lg border border-orange-100">
             <h2 className="text-2xl font-bold mb-4 text-orange-950">
               6. Support & Contact
             </h2>

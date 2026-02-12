@@ -101,7 +101,7 @@ export default function ExplorePage() {
       <ExploreSchema creators={creators} />
       <header className="pt-20 pb-12 px-6">
         <div className="max-w-6xl mx-auto text-center">
-          <h1 className="text-5xl md:text-6xl font-black tracking-tighter mb-6">
+          <h1 className="text-5xl md:text-6xl font-bold tracking-tighter mb-6">
             Discover{" "}
             <span className="text-orange-600 underline decoration-orange-100">
               Creators
@@ -142,7 +142,7 @@ export default function ExplorePage() {
           <>
             {/* Results Info */}
             <div className="flex items-center justify-between mb-8 px-2">
-              <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-400">
+              <h3 className="text-xs font-bold uppercase tracking-[0.3em] text-slate-400">
                 {searchTerm
                   ? `Searching for "${searchTerm}"`
                   : "Community Spotlight"}
@@ -181,7 +181,7 @@ export default function ExplorePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <h2 className="text-2xl font-black tracking-tight group-hover:text-orange-600 transition-colors flex items-center gap-2">
+                    <h2 className="text-2xl font-bold tracking-tight group-hover:text-orange-600 transition-colors flex items-center gap-2">
                       {creator.name || creator.handle}
                       {creator.verified && (
                         <CheckCircle2 size={18} className="text-orange-600" />
@@ -196,7 +196,7 @@ export default function ExplorePage() {
                   </div>
 
                   <div className="mt-8 pt-6 border-t border-slate-50 flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300">
                       View Profile
                     </span>
                     <div className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center group-hover:bg-orange-600 transition-colors">
@@ -212,7 +212,7 @@ export default function ExplorePage() {
                 <button
                   onClick={() => fetchCreators()}
                   disabled={loadingMore}
-                  className="group relative inline-flex items-center gap-3 bg-white border border-slate-200 px-12 py-5 rounded-lg font-black text-xs uppercase tracking-[0.2em] hover:border-orange-600 hover:text-orange-600 transition-all disabled:opacity-50 shadow-sm overflow-hidden"
+                  className="group relative inline-flex items-center gap-3 bg-white border border-slate-200 px-12 py-5 rounded-lg font-bold text-xs uppercase tracking-[0.2em] hover:border-orange-600 hover:text-orange-600 transition-all disabled:opacity-50 shadow-sm overflow-hidden"
                 >
                   {loadingMore ? (
                     <Loader
@@ -237,7 +237,7 @@ export default function ExplorePage() {
                 <div className="w-24 h-24 bg-slate-50 rounded-lg flex items-center justify-center mx-auto mb-8 border border-slate-100">
                   <Search size={32} className="text-slate-300" />
                 </div>
-                <h3 className="text-3xl font-black tracking-tighter">
+                <h3 className="text-3xl font-bold tracking-tighter">
                   No creators found
                 </h3>
                 <p className="text-slate-500 mt-2 font-medium">

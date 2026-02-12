@@ -109,7 +109,7 @@ export function SupportModal({
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-6">
       <div className="bg-white w-full max-w-lg rounded-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
         <div className="p-8 pb-0 flex justify-between items-center">
-          <h3 className="text-3xl font-black tracking-tight">
+          <h3 className="text-3xl font-bold tracking-tight">
             Support {creatorName}
           </h3>
           <button
@@ -130,19 +130,19 @@ export function SupportModal({
                 <div className="relative">
                   <input
                     type="number"
-                    placeholder="0"
-                    className="w-full text-center text-7xl font-black text-slate-900 outline-none placeholder:text-slate-100"
+                    placeholder="1000"
+                    className="w-full text-center text-7xl font-bold text-slate-900 outline-none placeholder:text-slate-100"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                   />
-                  <span className="block text-[10px] font-black text-slate-300 mt-2 uppercase tracking-[0.3em]">
+                  <span className="block text-[10px] font-bold text-slate-300 mt-2 uppercase tracking-[0.3em]">
                     Rwandan Francs (RWF)
                   </span>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
                   MoMo Phone Number
                 </label>
                 <div className="relative">
@@ -163,7 +163,7 @@ export function SupportModal({
               <button
                 onClick={handleSupport}
                 disabled={!amount || parseInt(amount) < 100 || !phone}
-                className="w-full bg-orange-600 text-white py-6 rounded-lg font-black text-xl shadow-xl shadow-orange-100 hover:bg-orange-700 transition-all flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
+                className="w-full bg-orange-600 text-white py-6 rounded-lg font-bold text-xl shadow-xl shadow-orange-100 hover:bg-orange-700 transition-all flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
               >
                 Pay with MoMo
               </button>
@@ -176,9 +176,7 @@ export function SupportModal({
                 <div className="absolute inset-0 border-4 border-slate-100 rounded-full" />
                 <div className="absolute inset-0 border-4 border-t-orange-600 rounded-full animate-spin" />
               </div>
-              <h4 className="text-xl font-black">
-                Waiting for Confirmation...
-              </h4>
+              <h4 className="text-xl font-bold">Waiting for Confirmation...</h4>
               <p className="text-slate-500 font-medium leading-relaxed">
                 We sent a MoMo prompt to <b>{phone}</b>.<br />
                 Enter your PIN on your phone to finish.
@@ -191,7 +189,7 @@ export function SupportModal({
               <div className="w-24 h-24 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
                 <ShieldCheck size={48} />
               </div>
-              <h4 className="text-3xl font-black text-slate-900">
+              <h4 className="text-3xl font-bold text-slate-900">
                 Payment Verified!
               </h4>
               <p className="text-slate-500 font-medium leading-relaxed">
@@ -199,7 +197,7 @@ export function SupportModal({
               </p>
               <button
                 onClick={handleClose}
-                className="w-full bg-slate-900 text-white py-4 rounded-lg font-black hover:bg-orange-600 transition-colors"
+                className="w-full bg-slate-900 text-white py-4 rounded-lg font-bold hover:bg-orange-600 transition-colors"
               >
                 Back to Profile
               </button>
@@ -211,13 +209,13 @@ export function SupportModal({
               <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
                 <X size={40} />
               </div>
-              <h4 className="text-2xl font-black text-slate-900">
+              <h4 className="text-2xl font-bold text-slate-900">
                 Payment Failed
               </h4>
               <p className="text-slate-500 font-medium">{errorMessage}</p>
               <button
                 onClick={() => setStep("input")}
-                className="w-full bg-slate-100 text-slate-900 py-4 rounded-lg font-black hover:bg-slate-200 transition-colors"
+                className="w-full bg-slate-100 text-slate-900 py-4 rounded-lg font-bold hover:bg-slate-200 transition-colors"
               >
                 Try Again
               </button>

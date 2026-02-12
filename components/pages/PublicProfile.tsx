@@ -2,12 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import {
-  doc,
-  getDoc,
-  increment,
-  updateDoc,
-} from "firebase/firestore";
+import { doc, getDoc, increment, updateDoc } from "firebase/firestore";
 import { db } from "@/db/firebase";
 import {
   Globe,
@@ -32,6 +27,7 @@ import { useAuth } from "@/auth/AuthContext";
 import Link from "next/link";
 import { SupportModal } from "../parts/SupportModal";
 import CreatorSchema from "../seo/CreatorSchma";
+import { FaTiktok } from "react-icons/fa";
 
 export default function PublicProfile({ username }: { username: string }) {
   const { user: currentUser } = useAuth();
@@ -72,10 +68,12 @@ export default function PublicProfile({ username }: { username: string }) {
 
   const creator = {
     uid: creatorData.uid,
-    name: profileData?.displayName || creatorData.name || "Creator",
+    name: creatorData.name || profileData?.displayName || "Creator",
     handle: username,
     bio: creatorData.bio || "No bio available yet.",
-    photoURL: profileData?.photoURL,
+    photoURL: creatorData?.profilePicture
+      ? creatorData?.profilePicture
+      : profileData?.photoURL,
     socials: {
       twitter: creatorData.socials?.twitter
         ? `https://twitter.com/${creatorData.socials.twitter}`
@@ -117,11 +115,11 @@ export default function PublicProfile({ username }: { username: string }) {
               </div>
             </div>
             {creatorData.verified && (
-              <div className="absolute bottom-1 right-1 bg-green-500 w-6 h-6 border-4 border-white rounded-full shadow-lg" />
+              <div className="absolute bottom-0 right-0 bg-green-500 w-6 h-6 border-4 border-white rounded-full shadow-lg" />
             )}
           </div>
 
-          <h1 className="mt-6 text-4xl font-black tracking-tight text-slate-900 flex items-center justify-center gap-2">
+          <h1 className="mt-6 text-4xl font-bold tracking-tight text-slate-900 flex items-center justify-center gap-2">
             {creator.name}{" "}
             {creatorData.verified && (
               <CheckCircle2 size={20} className="text-orange-600" />
@@ -160,11 +158,11 @@ export default function PublicProfile({ username }: { username: string }) {
                   className="group-hover:animate-pulse"
                 />
               </div>
-              <span className="text-xl font-black tracking-tight">
+              <span className="text-xl font-bold tracking-tight">
                 Support {creator.name.split(" ")[0]}
               </span>
             </div>
-            <div className="bg-white/10 group-hover:bg-white text-white group-hover:text-orange-600 px-6 py-4 rounded-lg font-black text-sm transition-all uppercase tracking-widest">
+            <div className="bg-white/10 group-hover:bg-white text-white group-hover:text-orange-600 px-6 py-4 rounded-lg font-bold text-sm transition-all uppercase tracking-widest">
               Send Support
             </div>
           </button>
@@ -187,7 +185,7 @@ export default function PublicProfile({ username }: { username: string }) {
       <div className="max-w-2xl mx-auto px-6 mt-16 space-y-12">
         {/* SUPPORT PERKS SECTION */}
         <section className="bg-white border border-slate-100 p-8 rounded-lg shadow-sm">
-          <h3 className="text-xs font-black uppercase tracking-[0.2em] text-orange-600 mb-8 flex items-center gap-2">
+          <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-orange-600 mb-8 flex items-center gap-2">
             <Star size={14} fill="currentColor" /> Why Support{" "}
             {creator.name.split(" ")[0]}?
           </h3>
@@ -218,7 +216,7 @@ export default function PublicProfile({ username }: { username: string }) {
         {creator.events.length > 0 && (
           <section>
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">
+              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
                 Next Gathering
               </h3>
               <div className="h-px bg-slate-100 flex-1 ml-6" />
@@ -233,7 +231,7 @@ export default function PublicProfile({ username }: { username: string }) {
                     <Calendar size={24} />
                   </div>
                   <div>
-                    <h4 className="font-black text-lg">{event.title}</h4>
+                    <h4 className="font-bold text-lg">{event.title}</h4>
                     <p className="text-sm text-slate-500 font-bold uppercase tracking-widest flex items-center gap-2">
                       {event.date}{" "}
                       <span className="w-1 h-1 bg-slate-300 rounded-full" />{" "}
@@ -241,7 +239,7 @@ export default function PublicProfile({ username }: { username: string }) {
                     </p>
                   </div>
                 </div>
-                <button className="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-black uppercase group-hover:bg-orange-600 transition-colors">
+                <button className="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase group-hover:bg-orange-600 transition-colors">
                   Join
                 </button>
               </div>
@@ -276,7 +274,7 @@ function PerkRow({
         {icon}
       </div>
       <div>
-        <h4 className="font-black text-slate-900">{title}</h4>
+        <h4 className="font-bold text-slate-900">{title}</h4>
         <p className="text-sm text-slate-500 leading-relaxed font-medium">
           {desc}
         </p>
@@ -293,6 +291,8 @@ function getIcon(key: string) {
       return <Twitter size={16} />;
     case "youtube":
       return <Youtube size={16} />;
+    case "tiktok":
+      return <FaTiktok size={15} />;
     default:
       return <Globe size={16} />;
   }

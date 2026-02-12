@@ -12,10 +12,10 @@ export default function PrivacyPage() {
 
       <main className="max-w-3xl mx-auto px-6 py-16">
         <header className="mb-12">
-          <div className="w-12 h-12 bg-orange-100 rounded-2xl flex items-center justify-center text-orange-600 mb-6">
+          <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600 mb-6">
             <ShieldCheck size={28} />
           </div>
-          <h1 className="text-4xl font-black mb-4">Privacy Policy</h1>
+          <h1 className="text-4xl font-bold mb-4">Privacy Policy</h1>
           <p className="text-slate-500 font-medium">
             Last updated: {lastUpdated}
           </p>
@@ -94,7 +94,7 @@ export default function PrivacyPage() {
             </p>
           </section>
 
-          <section className="bg-slate-900 text-white p-8 rounded-3xl">
+          <section className="bg-slate-900 text-white p-8 rounded-lg">
             <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
               Contact Privacy Team
             </h2>

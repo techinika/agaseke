@@ -214,9 +214,9 @@ export default function SupporterSpace() {
       <main className="max-w-6xl mx-auto px-6 pt-10">
         {/* Header Stats */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="md:col-span-2 bg-white p-8 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
+          <div className="md:col-span-2 bg-white p-8 rounded-lg border border-slate-100 shadow-sm flex flex-col justify-between">
             <div>
-              <h1 className="text-3xl font-black mb-2">
+              <h1 className="text-3xl font-bold mb-2">
                 Amahoro,{" "}
                 {auth.profile?.displayName?.split(" ")[0] || "Supporter"}!
               </h1>
@@ -226,25 +226,25 @@ export default function SupporterSpace() {
             </div>
             <div className="mt-8 flex gap-10">
               <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
                   Impact
                 </p>
-                <p className="text-2xl font-black text-orange-600">
+                <p className="text-2xl font-bold text-orange-600">
                   {auth?.profile?.totalSupport || 0}{" "}
                   <span className="text-sm font-normal">RWF</span>
                 </p>
               </div>
               <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
                   Supports
                 </p>
-                <p className="text-2xl font-black">{favorites.length} Times</p>
+                <p className="text-2xl font-bold">{favorites.length} Times</p>
               </div>
             </div>
           </div>
           <Link
             href={auth?.isCreator ? "/creator" : "/onboarding"}
-            className="bg-slate-900 rounded-2xl p-8 text-white flex flex-col justify-between group hover:bg-black transition-all"
+            className="bg-slate-900 rounded-lg p-8 text-white flex flex-col justify-between group hover:bg-black transition-all"
           >
             <Zap size={24} className="text-orange-500 fill-orange-500 mb-4" />
             <div>
@@ -268,7 +268,7 @@ export default function SupporterSpace() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           <div className="lg:col-span-8 space-y-8">
-            <h3 className="font-black text-xl flex items-center gap-2">
+            <h3 className="font-bold text-xl flex items-center gap-2">
               <Star size={20} className="text-orange-500 fill-orange-500" />{" "}
               Recent Activity
             </h3>
@@ -279,11 +279,11 @@ export default function SupporterSpace() {
                   <div
                     key={item.id}
                     onClick={() => openDetails(item)}
-                    className="bg-white rounded-2xl border border-slate-100 p-6 cursor-pointer hover:border-orange-200 transition-all shadow-sm"
+                    className="bg-white rounded-lg border border-slate-100 p-6 cursor-pointer hover:border-orange-200 transition-all shadow-sm"
                   >
                     <div className="flex justify-between mb-4">
                       <span
-                        className={`text-[9px] font-black px-2 py-1 rounded uppercase ${item.type === "gathering" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}
+                        className={`text-[9px] font-bold px-2 py-1 rounded uppercase ${item.type === "gathering" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}
                       >
                         {item.type}
                       </span>
@@ -306,7 +306,7 @@ export default function SupporterSpace() {
                   </div>
                 ))
               ) : (
-                <div className="col-span-2 py-20 text-center bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                <div className="col-span-2 py-20 text-center bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
                   <User className="mx-auto text-slate-300 mb-2" size={40} />
                   <p className="text-slate-400 font-medium">
                     No updates found from your creators.
@@ -318,7 +318,7 @@ export default function SupporterSpace() {
 
           {/* Sidebar: Following & Discover */}
           <div className="lg:col-span-4 space-y-8">
-            <section className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+            <section className="bg-white p-6 rounded-lg border border-slate-100 shadow-sm">
               <h3 className="font-bold mb-4">Following</h3>
               <div className="space-y-3">
                 {favorites.length > 0 ? (
@@ -326,9 +326,9 @@ export default function SupporterSpace() {
                     <Link
                       key={c.id}
                       href={`/${c.handle}`}
-                      className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-xl transition"
+                      className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg transition"
                     >
-                      <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center font-black text-orange-600 text-xs overflow-hidden">
+                      <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center font-bold text-orange-600 text-xs overflow-hidden">
                         {c.photoURL ? (
                           <img
                             src={c.photoURL}
@@ -354,7 +354,7 @@ export default function SupporterSpace() {
               </div>
             </section>
 
-            <section className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+            <section className="bg-white p-6 rounded-lg border border-slate-100 shadow-sm">
               <h3 className="font-bold mb-4">Discover</h3>
               <div className="relative mb-4">
                 <Search
@@ -410,10 +410,10 @@ export default function SupporterSpace() {
       {/* Detail Modal */}
       {selectedItem && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="bg-white w-full max-w-lg rounded-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-8">
               <div className="flex justify-between items-start mb-6">
-                <span className="bg-orange-100 text-orange-700 text-[10px] font-black px-2 py-1 rounded tracking-tighter uppercase">
+                <span className="bg-orange-100 text-orange-700 text-[10px] font-bold px-2 py-1 rounded tracking-tighter uppercase">
                   {selectedItem.type}
                 </span>
                 <button
@@ -423,7 +423,7 @@ export default function SupporterSpace() {
                   <X size={24} />
                 </button>
               </div>
-              <h2 className="text-2xl font-black mb-2">{selectedItem.title}</h2>
+              <h2 className="text-2xl font-bold mb-2">{selectedItem.title}</h2>
               <p className="text-xs font-bold text-slate-400 mb-6 flex items-center gap-4">
                 <span className="flex items-center gap-1">
                   <Clock size={14} />{" "}
@@ -435,7 +435,7 @@ export default function SupporterSpace() {
                   </span>
                 )}
               </p>
-              <div className="bg-slate-50 p-6 rounded-2xl mb-8 max-h-60 overflow-y-auto">
+              <div className="bg-slate-50 p-6 rounded-lg mb-8 max-h-60 overflow-y-auto">
                 <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">
                   {selectedItem.description || selectedItem.content}
                 </p>
@@ -444,7 +444,7 @@ export default function SupporterSpace() {
                 <button
                   disabled={isRSVPing}
                   onClick={handleRSVP}
-                  className="w-full bg-slate-900 text-white py-4 rounded-xl font-black flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors disabled:opacity-50"
+                  className="w-full bg-slate-900 text-white py-4 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors disabled:opacity-50"
                 >
                   {isRSVPing ? (
                     <Loader className="animate-spin" />
@@ -457,7 +457,7 @@ export default function SupporterSpace() {
               ) : (
                 <button
                   onClick={() => setSelectedItem(null)}
-                  className="w-full bg-slate-100 text-slate-900 py-4 rounded-xl font-black"
+                  className="w-full bg-slate-100 text-slate-900 py-4 rounded-lg font-bold"
                 >
                   CLOSE
                 </button>
