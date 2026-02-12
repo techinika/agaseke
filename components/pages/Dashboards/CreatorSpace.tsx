@@ -158,7 +158,10 @@ export default function CreatorDashboard() {
             {creator?.pendingPayout?.toLocaleString() || 0}
             <span className="text-sm font-medium text-slate-500 ml-2">RWF</span>
           </h3>
-          <button className="mt-6 w-full py-3 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2">
+          <button
+            onClick={() => router.push("/creator/payouts")}
+            className="mt-6 w-full py-3 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2"
+          >
             WITHDRAW FUNDS <ExternalLink size={12} />
           </button>
         </div>
