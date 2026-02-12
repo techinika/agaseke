@@ -130,7 +130,7 @@ export function SupportModal({
                 <div className="relative">
                   <input
                     type="number"
-                    placeholder="0"
+                    placeholder="1000"
                     className="w-full text-center text-7xl font-bold text-slate-900 outline-none placeholder:text-slate-100"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}

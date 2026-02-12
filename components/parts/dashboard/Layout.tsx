@@ -22,6 +22,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/auth/AuthContext";
 import { handleLogout } from "@/db/functions/LogOut";
+import SharePageModal from "../SharePage";
 
 export default function DashboardLayout({
   children,
@@ -34,6 +35,7 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -133,7 +135,10 @@ export default function DashboardLayout({
           <p className="text-xs font-medium text-slate-600 truncate mb-3">
             agaseke.me/{creator?.handle || "..."}
           </p>
-          <button className="w-full py-2 bg-white border border-slate-200 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition">
+          <button
+            onClick={() => setShowShareModal(true)}
+            className="w-full py-2 bg-white border border-slate-200 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition"
+          >
             Share Page <Share2 size={12} />
           </button>
         </div>
@@ -231,6 +236,11 @@ export default function DashboardLayout({
 
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
+
+      <SharePageModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+      />
     </div>
   );
 }

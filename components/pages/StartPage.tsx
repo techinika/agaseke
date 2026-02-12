@@ -63,7 +63,17 @@ export default function CreatorOnboarding() {
       try {
         const docRef = doc(db, "creators", formData.username);
         const docSnap = await getDoc(docRef);
-        setUsernameStatus(docSnap.exists() ? "taken" : "available");
+        setUsernameStatus(
+          docSnap.exists() ||
+            formData.username === "admin" ||
+            formData.username === "creator" ||
+            formData.username === "supporter" ||
+            formData.username === "explore" ||
+            formData.username === "login" ||
+            formData.username === "signup"
+            ? "taken"
+            : "available",
+        );
       } catch (err) {
         console.error(err);
       }
@@ -146,7 +156,6 @@ export default function CreatorOnboarding() {
 
   return (
     <div className="min-h-screen bg-[#FDFDFF] flex flex-col items-center justify-center p-6">
-      {/* Progress Bar */}
       <div className="w-full max-w-sm mb-12 flex justify-between relative">
         <div className="absolute top-1/2 left-0 w-full h-0.5 bg-slate-100 -translate-y-1/2 -z-10" />
         {[1, 2, 3, 4, 5].map((i) => (
@@ -160,7 +169,6 @@ export default function CreatorOnboarding() {
       </div>
 
       <div className="w-full max-w-md bg-white p-8 md:p-10 rounded-lg shadow-sm border border-slate-100">
-        {/* Step 1: Username & Real-time check */}
         {step === 1 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
             <div className="text-center space-y-2">
