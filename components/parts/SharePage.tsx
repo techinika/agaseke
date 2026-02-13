@@ -22,9 +22,11 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
   const shareUrl = `https://agaseke.me/${creator?.handle}`;
 
   // FIX: Using a proxy to bypass CORS issues for external images
-  const safeProfileImage = profile?.photoURL
-    ? `https://images.weserv.nl/?url=${encodeURIComponent(profile.photoURL)}&w=200&h=200&fit=cover&mask=circle`
-    : null;
+  const safeProfileImage = creator?.profilePicture
+    ? creator?.profilePicture
+    : profile?.photoURL
+      ? `https://images.weserv.nl/?url=${encodeURIComponent(profile.photoURL)}&w=200&h=200&fit=cover&mask=circle`
+      : null;
 
   const handleDownload = async () => {
     if (cardRef.current === null) return;
