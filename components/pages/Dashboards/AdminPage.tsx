@@ -131,7 +131,7 @@ export default function AdminDashboard() {
       } else {
         await updateDoc(doc(db, "creators", target.id), {
           verified: type === "approve",
-          verificationSubmitted: false,
+          verificationStatus: "approved",
         });
       }
       setModal(null);

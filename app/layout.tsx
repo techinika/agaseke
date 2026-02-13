@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/auth/AuthContext";
 import { Toaster } from "sonner";
 import { baseUrl } from "./sitemap";
+import { GoogleAnalytics } from "@next/third-parties/google";
 
 const rubik = Rubik({
   variable: "--font-rubik",
@@ -64,6 +65,7 @@ export default function RootLayout({
           {children}
         </AuthProvider>
       </body>
+      <GoogleAnalytics gaId="G-KCHNK2L43X" />
     </html>
   );
 }
