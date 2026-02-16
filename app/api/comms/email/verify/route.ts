@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import { v2 as cloudinary } from "cloudinary";
+
+cloudinary.config({
+  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,6 +31,23 @@ export async function POST(req: NextRequest) {
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+
+    const cloudinaryResponse: any = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: `agaseke/verifications/${country ?? "ANY"}`,
+          resource_type: "auto",
+          access_control: [{ access_type: "anonymous" }],
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        },
+      );
+      uploadStream.end(buffer);
+    });
+
+    const documentUrl = cloudinaryResponse.secure_url;
 
     const transporter = nodemailer.createTransport({
       service: "gmail",
@@ -64,6 +88,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       message: "Verification email sent",
+      documentUrl: documentUrl,
     });
   } catch (error: any) {
     console.error("Email API Error:", error);

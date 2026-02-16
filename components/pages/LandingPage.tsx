@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { BiMoney } from "react-icons/bi";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -29,8 +30,8 @@ export default function LandingPage() {
     <div className="min-h-screen bg-white text-slate-900 selection:bg-orange-100">
       <header className="px-6 py-20 md:py-32 max-w-6xl mx-auto text-center">
         <div className="inline-flex items-center gap-2 bg-orange-50 text-orange-700 px-4 py-2 rounded-full text-xs font-bold mb-8 animate-fade-in">
-          <Sparkles size={14} />{" "}
-          <span>The first creator platform for Rwanda</span>
+          <BiMoney size={14} />{" "}
+          <span>Creator Monetization Platform built for Rwanda</span>
         </div>
 
         <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-8 leading-[1.1]">

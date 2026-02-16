@@ -17,6 +17,7 @@ import {
   Phone,
   AlertCircle,
   Camera,
+  Linkedin,
 } from "lucide-react";
 import { db, auth } from "@/db/firebase";
 import { doc, onSnapshot, updateDoc } from "firebase/firestore";
@@ -287,13 +288,19 @@ export default function CreatorSettings() {
                       id: "instagram",
                       icon: Instagram,
                       color: "text-pink-500",
-                      label: "Instagram Handle",
+                      label: "Instagram Username",
+                    },
+                    {
+                      id: "linkedin",
+                      icon: Linkedin,
+                      color: "text-pink-500",
+                      label: "LinkedIn Link",
                     },
                     {
                       id: "twitter",
                       icon: Twitter,
                       color: "text-blue-400",
-                      label: "Twitter / X Handle",
+                      label: "Twitter / X Username",
                     },
                     {
                       id: "youtube",

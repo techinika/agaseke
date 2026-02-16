@@ -12,7 +12,7 @@ export default function LoginPage() {
   const reservedUsername = searchParams.get("username") || null;
 
   return (
-    <div className="min-h-screen bg-white flex flex-col md:flex-row">
+    <div className="min-h-screen bg-white flex flex-wrap-reverse md:flex-row">
       <div className="md:w-1/2 bg-slate-900 p-8 md:p-16 flex flex-col justify-between text-white relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600/10 rounded-full -mr-32 -mt-32 blur-3xl" />
 
@@ -90,11 +90,11 @@ export default function LoginPage() {
 
           <p className="mt-8 text-xs text-slate-400 leading-relaxed px-4">
             By continuing, you agree to Agaseke&apos;s
-            <Link href="#" className="underline mx-1">
+            <Link href="/terms" className="underline mx-1">
               Terms of Service
             </Link>
             and
-            <Link href="#" className="underline mx-1">
+            <Link href="/privacy" className="underline mx-1">
               Privacy Policy
             </Link>
             .

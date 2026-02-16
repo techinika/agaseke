@@ -19,6 +19,7 @@ export interface Creator {
   pendingPayout: number;
   socials: {
     instagram: string | null;
+    linkedin: string | null;
     twitter: string | null;
     youtube: string | null;
     tiktok: string | null;

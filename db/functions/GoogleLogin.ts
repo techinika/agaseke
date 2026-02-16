@@ -40,6 +40,19 @@ export const handleGoogleLogin = async (reservedUsername: string | null) => {
 
       await setDoc(userRef, initialProfile);
 
+      try {
+        await fetch("/api/comms/email/welcome/profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: user.email,
+            name: user.displayName || "Supporter",
+          }),
+        });
+      } catch (emailError) {
+        console.error("Welcome email failed to send:", emailError);
+      }
+
       if (reservedUsername) {
         window.location.href = `/onboarding?username=${encodeURIComponent(reservedUsername)}`;
       } else {

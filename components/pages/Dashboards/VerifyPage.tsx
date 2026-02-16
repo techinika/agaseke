@@ -80,6 +80,17 @@ export const VerificationPage = () => {
     formData.append("uid", String(creator?.uid));
 
     try {
+      const emailRes = await fetch("/api/comms/email/verify", {
+        method: "POST",
+        body: formData,
+      });
+
+      const emailData = await emailRes.json();
+
+      if (!emailRes.ok) console.error(emailData.error || "Email failed");
+
+      const idDocumentUrl = emailData.documentUrl ?? "";
+
       const payload = {
         uid: creator?.uid,
         country: formData.get("country"),
@@ -88,17 +99,14 @@ export const VerificationPage = () => {
         accountNumber: formData.get("accountNumber"),
         payoutPreference: formData.get("payoutPreference"),
         status: "pending",
+        idDocumentUrl: idDocumentUrl,
         createdAt: serverTimestamp(),
       };
 
       await addDoc(collection(db, "verificationRequests"), payload);
       await updateDoc(doc(db, "creators", String(creator?.handle)), {
         verificationStatus: "pending",
-      });
-
-      await fetch("/api/comms/email/verify", {
-        method: "POST",
-        body: formData,
+        verificationSubmitted: true,
       });
 
       toast.success("Submission Successful");

@@ -5,15 +5,11 @@ import React, { useState, useEffect } from "react";
 import { doc, getDoc, increment, updateDoc } from "firebase/firestore";
 import { db } from "@/db/firebase";
 import {
-  Globe,
-  Instagram,
-  Twitter,
   Lock,
   Calendar,
   User,
   CheckCircle2,
   Heart,
-  Youtube,
   Zap,
   Star,
   MessageCircle,
@@ -28,6 +24,9 @@ import Link from "next/link";
 import { SupportModal } from "../parts/SupportModal";
 import CreatorSchema from "../seo/CreatorSchma";
 import { FaTiktok } from "react-icons/fa";
+import { SocialPill } from "../parts/profile/SocialPill";
+import { getIcon } from "../parts/profile/GetLink";
+import { PerkRow } from "../parts/profile/PerkRow";
 
 export default function PublicProfile({ username }: { username: string }) {
   const { user: currentUser } = useAuth();
@@ -256,65 +255,5 @@ export default function PublicProfile({ username }: { username: string }) {
         uid={creator.uid}
       />
     </div>
-  );
-}
-
-function PerkRow({
-  icon,
-  title,
-  desc,
-}: {
-  icon: any;
-  title: string;
-  desc: string;
-}) {
-  return (
-    <div className="flex items-start gap-4">
-      <div className="mt-1 w-10 h-10 bg-orange-50 rounded-lg flex items-center justify-center shrink-0">
-        {icon}
-      </div>
-      <div>
-        <h4 className="font-bold text-slate-900">{title}</h4>
-        <p className="text-sm text-slate-500 leading-relaxed font-medium">
-          {desc}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function getIcon(key: string) {
-  switch (key) {
-    case "instagram":
-      return <Instagram size={16} />;
-    case "twitter":
-      return <Twitter size={16} />;
-    case "youtube":
-      return <Youtube size={16} />;
-    case "tiktok":
-      return <FaTiktok size={15} />;
-    default:
-      return <Globe size={16} />;
-  }
-}
-
-function SocialPill({
-  icon,
-  label,
-  link,
-}: {
-  icon: any;
-  label: string;
-  link: string;
-}) {
-  return (
-    <a
-      href={link}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-xs font-bold text-slate-500 hover:border-orange-500 hover:text-orange-600 hover:shadow-md transition-all capitalize"
-    >
-      {icon} <span>{label}</span>
-    </a>
   );
 }

@@ -4,7 +4,7 @@ import { adminDb } from "@/db/firebaseAdmin";
 
 export async function POST(req: Request) {
   try {
-    const { amount, phone, creatorId, creatorUid, supporterId } =
+    const { amount, phone, creatorId, creatorUid, supporterId, message } =
       await req.json();
 
     // 1. Authorize with Paypack
@@ -44,9 +44,7 @@ export async function POST(req: Request) {
 
     const payData = await payRes.json();
 
-    // 3. Record Transaction using Admin SDK
     if (payData.ref) {
-      // Note: We use .collection().add() which is the Admin equivalent of addDoc(collection())
       await adminDb.collection("transactions").add({
         ref: payData.ref,
         amount: Number(amount),
@@ -55,6 +53,7 @@ export async function POST(req: Request) {
         creatorUid,
         supporterId: supporterId || "anonymous",
         status: "pending",
+        message: message ?? "",
         type: "support",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   collection,
   query,
@@ -14,7 +14,6 @@ import {
 import { db } from "@/db/firebase";
 import {
   Search,
-  Sparkles,
   ArrowRight,
   User,
   CheckCircle2,
@@ -24,6 +23,7 @@ import {
 import Link from "next/link";
 import { Creator } from "@/types/creator";
 import ExploreSchema from "../seo/ExploreSchema";
+import { MdVerifiedUser } from "react-icons/md";
 
 export default function ExplorePage() {
   const [creators, setCreators] = useState<Creator[]>([]);
@@ -162,9 +162,9 @@ export default function ExplorePage() {
                   <div className="flex items-start justify-between mb-6">
                     <div className="w-20 h-20 bg-slate-50 rounded-lg p-1 border border-slate-100">
                       <div className="w-full h-full bg-slate-200 rounded-lg overflow-hidden flex items-center justify-center">
-                        {creator.photoURL ? (
+                        {creator.profilePicture ? (
                           <img
-                            src={creator.photoURL}
+                            src={creator.profilePicture}
                             alt=""
                             className="w-full h-full object-cover"
                           />
@@ -175,7 +175,7 @@ export default function ExplorePage() {
                     </div>
                     {creator.verified && (
                       <div className="bg-orange-50 text-orange-600 p-2 rounded-lg">
-                        <Sparkles size={16} fill="currentColor" />
+                        <MdVerifiedUser size={16} fill="currentColor" />
                       </div>
                     )}
                   </div>
