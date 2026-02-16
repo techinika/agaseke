@@ -101,7 +101,7 @@ export function SupportModal({
             setStep("success");
             sendSupportEmail(
               Number(
-                txData?.amount * Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE),
+                txData?.amount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE),
               ),
             );
             toast.success("Payment received!");

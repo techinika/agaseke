@@ -23,7 +23,6 @@ import { useAuth } from "@/auth/AuthContext";
 import Link from "next/link";
 import { SupportModal } from "../parts/SupportModal";
 import CreatorSchema from "../seo/CreatorSchma";
-import { FaTiktok } from "react-icons/fa";
 import { SocialPill } from "../parts/profile/SocialPill";
 import { getIcon } from "../parts/profile/GetLink";
 import { PerkRow } from "../parts/profile/PerkRow";
@@ -79,6 +78,9 @@ export default function PublicProfile({ username }: { username: string }) {
         : null,
       instagram: creatorData.socials?.instagram
         ? `https://instagram.com/${creatorData.socials.instagram}`
+        : null,
+      linkedin: creatorData.socials?.linkedin
+        ? `${creatorData.socials.linkedin}`
         : null,
       youtube: creatorData.socials?.youtube
         ? `${creatorData.socials.youtube}`
@@ -166,7 +168,6 @@ export default function PublicProfile({ username }: { username: string }) {
             </div>
           </button>
 
-          {/* Login Reminder for Guests */}
           {!currentUser && (
             <div className="mt-6 p-4 bg-orange-50 border border-orange-100 rounded-lg flex items-center justify-center gap-3 text-orange-800 animate-pulse">
               <LogIn size={18} />

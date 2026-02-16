@@ -332,7 +332,7 @@ export default function CreatorOnboarding() {
                 />
                 <input
                   placeholder="LinkedIn Profile Link"
-                  className="w-full p-4 pl-12 bg-slate-50 border border-slate-100 rounded-lg text-sm outline-none focus:border-orange-500"
+                  className="w-full p-4 pl-12 bg-slate-50 border border-slate-100 rounded-lg text-sm outline-none focus:border-blue-500"
                   value={formData.socials.linkedin}
                   onChange={(e) =>
                     setFormData({
