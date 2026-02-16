@@ -293,7 +293,7 @@ export default function CreatorSettings() {
                     {
                       id: "linkedin",
                       icon: Linkedin,
-                      color: "text-pink-500",
+                      color: "text-blue-500",
                       label: "LinkedIn Link",
                     },
                     {

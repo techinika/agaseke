@@ -24,8 +24,7 @@ export async function POST(req: Request) {
             ${
               message
                 ? `
-              <div style="margin-top: 30px; padding: 25px; background-color: #F1F5F9; border-radius: 16px; position: relative; text-align: left;">
-                <span style="font-size: 40px; color: #CBD5E1; position: absolute; top: 10px; left: 15px; font-family: Georgia, serif;">&ldquo;</span>
+              <div style="margin-top: 20px; padding: 20px; background-color: #F1F5F9; border-radius: 10px; position: relative; text-align: left;">
                 <p style="margin: 0; font-style: italic; color: #334155; font-size: 15px; padding-left: 20px; position: relative; z-index: 1;">
                   ${message}
                 </p>
@@ -41,18 +40,14 @@ export async function POST(req: Request) {
           </div>
           
           <div style="background-color: #F8FAFC; padding: 25px; text-align: center; border-top: 1px solid #F1F5F9;">
-            <p style="font-size: 12px; color: #94A3B8; margin: 0;">You're doing great! Join the creator community on WhatsApp for more tips.</p>
-          </div>
-
-          <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #f1f5f9;">
-            <p style="font-size: 12px; color: #94a3b8; margin: 0;">Sent with ❤️ from the Agaseke Team</p>
+            <p style="font-size: 12px; color: #94A3B8; margin: 0;">You're doing great! <a href="https://chat.whatsapp.com/DSLKCybSApGKrEmn0HvlLx" style="color: #EA580C; text-decoration: none; font-weight: 800;">Join the creator community</a> on WhatsApp for more tips.</p>
           </div>
         </div>
       </div>
     `;
 
     await transporter.sendMail({
-      from: `"Agaseke Alerts" <${process.env.NEXT_PUBLIC_BASE_URL}>`,
+      from: "Agaseke Alerts",
       to: creatorEmail,
       subject: `You just received ${amount} RWF on Agaseke!`,
       html: emailHtml,
