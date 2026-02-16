@@ -20,7 +20,7 @@ import {
   Twitter,
   Youtube,
   Video,
-  Loader2,
+  Loader,
   XCircle,
   Linkedin,
 } from "lucide-react";
@@ -220,7 +220,7 @@ export default function CreatorOnboarding() {
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2">
                 {usernameStatus === "checking" && (
-                  <Loader2 className="animate-spin text-slate-300" size={20} />
+                  <Loader className="animate-spin text-slate-300" size={20} />
                 )}
                 {usernameStatus === "available" && (
                   <Check className="text-green-500" size={20} />

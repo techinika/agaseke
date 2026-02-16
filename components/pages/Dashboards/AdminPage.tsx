@@ -23,11 +23,13 @@ import {
   XCircle,
   ShieldAlert,
   Wallet,
+  Send,
 } from "lucide-react";
 import Loading from "@/app/loading";
 import Navbar from "@/components/parts/Navigation";
 import { StatCard } from "@/components/parts/dashboard/StatCard";
 import { RankRow } from "@/components/parts/dashboard/RankRow";
+import Link from "next/link";
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
@@ -159,13 +161,22 @@ export default function AdminDashboard() {
       <Navbar />
 
       <main className="max-w-7xl mx-auto px-6 mt-12">
-        <header className="mb-10">
-          <h1 className="text-4xl font-bold tracking-tight text-slate-900 uppercase">
-            Platform Control
-          </h1>
-          <p className="text-slate-500 font-medium">
-            Manage growth, verify creators, and process payouts.
-          </p>
+        <header className="mb-10 flex justify-between items-center">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight text-slate-900 uppercase">
+              Platform Control
+            </h1>
+            <p className="text-slate-500 font-medium">
+              Manage growth, verify creators, and process payouts.
+            </p>
+          </div>
+          <Link
+            href="/admin/comms"
+            className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-lg font-bold text-sm hover:bg-orange-600 transition-all shadow-xl shadow-slate-200"
+          >
+            <Send size={18} />
+            Broadcast Message
+          </Link>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
