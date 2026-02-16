@@ -11,7 +11,6 @@ import {
   where,
   doc,
   updateDoc,
-  increment,
 } from "firebase/firestore";
 import {
   TrendingUp,
@@ -22,14 +21,15 @@ import {
   BarChart3,
   CheckCircle2,
   XCircle,
-  Clock,
   ShieldAlert,
   Wallet,
+  Send,
 } from "lucide-react";
 import Loading from "@/app/loading";
 import Navbar from "@/components/parts/Navigation";
 import { StatCard } from "@/components/parts/dashboard/StatCard";
 import { RankRow } from "@/components/parts/dashboard/RankRow";
+import Link from "next/link";
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
@@ -39,13 +39,13 @@ export default function AdminDashboard() {
     profileCount: 0,
     creatorCount: 0,
   });
+  const [rejectionReason, setRejectionReason] = useState("");
 
   const [topEarners, setTopEarners] = useState<any[]>([]);
   const [topViewed, setTopViewed] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [verifications, setVerifications] = useState<any[]>([]);
 
-  // Modal State
   const [modal, setModal] = useState<{
     show: boolean;
     type: "approve" | "reject";
@@ -55,7 +55,6 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     try {
-      // 1. Analytics & Stats
       const incomeSnap = await getDocs(collection(db, "platformIncome"));
       let totalIncome = 0;
       incomeSnap.forEach((doc) => {
@@ -79,7 +78,6 @@ export default function AdminDashboard() {
       );
       const viewsSnap = await getDocs(viewsQuery);
 
-      // 2. Pending Requests
       const withdrawalQuery = query(
         collection(db, "withdrawRequests"),
         where("status", "==", "pending"),
@@ -129,12 +127,25 @@ export default function AdminDashboard() {
           updatedAt: new Date(),
         });
       } else {
+        const isApprove = type == "approve" ? true : false;
         await updateDoc(doc(db, "creators", target.id), {
           verified: type === "approve",
           verificationStatus: "approved",
         });
+
+        await fetch("/api/comms/email/feedback/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: target.email,
+            name: target.name,
+            approved: isApprove,
+            reason: isApprove ? "" : rejectionReason,
+          }),
+        });
       }
       setModal(null);
+      setRejectionReason("");
       await fetchData();
     } catch (error) {
       console.error("Action failed:", error);
@@ -150,13 +161,22 @@ export default function AdminDashboard() {
       <Navbar />
 
       <main className="max-w-7xl mx-auto px-6 mt-12">
-        <header className="mb-10">
-          <h1 className="text-4xl font-bold tracking-tight text-slate-900 uppercase">
-            Platform Control
-          </h1>
-          <p className="text-slate-500 font-medium">
-            Manage growth, verify creators, and process payouts.
-          </p>
+        <header className="mb-10 flex justify-between items-center">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight text-slate-900 uppercase">
+              Platform Control
+            </h1>
+            <p className="text-slate-500 font-medium">
+              Manage growth, verify creators, and process payouts.
+            </p>
+          </div>
+          <Link
+            href="/admin/comms"
+            className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-lg font-bold text-sm hover:bg-orange-600 transition-all shadow-xl shadow-slate-200"
+          >
+            <Send size={18} />
+            Broadcast Message
+          </Link>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
@@ -372,7 +392,6 @@ export default function AdminDashboard() {
         </div>
       </main>
 
-      {/* CONFIRMATION MODAL */}
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl scale-in-center">
@@ -397,6 +416,19 @@ export default function AdminDashboard() {
               </span>
               ? This action cannot be undone.
             </p>
+            {modal.type === "reject" && (
+              <div className="mb-6 animate-in slide-in-from-top-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">
+                  Rejection Reason (Sent to Creator)
+                </label>
+                <textarea
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="e.g. ID document is too blurry to read."
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-red-500 outline-none transition-all h-28 resize-none"
+                />
+              </div>
+            )}
             <div className="flex gap-3">
               <button
                 onClick={() => setModal(null)}

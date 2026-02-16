@@ -20,8 +20,9 @@ import {
   Twitter,
   Youtube,
   Video,
-  Loader2,
+  Loader,
   XCircle,
+  Linkedin,
 } from "lucide-react";
 import { toast } from "sonner";
 import { auth, db } from "@/db/firebase";
@@ -44,6 +45,7 @@ export default function CreatorOnboarding() {
     momoNetwork: "MTN",
     socials: {
       instagram: "",
+      linkedin: "",
       twitter: "",
       youtube: "",
       tiktok: "",
@@ -120,6 +122,7 @@ export default function CreatorOnboarding() {
         pendingPayout: 0,
         socials: {
           instagram: formData.socials.instagram || null,
+          linkedin: formData.socials.linkedin || null,
           twitter: formData.socials.twitter || null,
           youtube: formData.socials.youtube || null,
           tiktok: formData.socials.tiktok || null,
@@ -139,6 +142,20 @@ export default function CreatorOnboarding() {
         username: formData.username,
         onboarded: true,
       });
+
+      try {
+        await fetch("/api/comms/email/welcome/creator", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: user.email,
+            name: formData.fullName,
+            handle: formData.username,
+          }),
+        });
+      } catch (emailError) {
+        console.error("Creator launch email failed:", emailError);
+      }
 
       toast.success("Welcome to the creator family!");
       router.push("/creator");
@@ -203,7 +220,7 @@ export default function CreatorOnboarding() {
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2">
                 {usernameStatus === "checking" && (
-                  <Loader2 className="animate-spin text-slate-300" size={20} />
+                  <Loader className="animate-spin text-slate-300" size={20} />
                 )}
                 {usernameStatus === "available" && (
                   <Check className="text-green-500" size={20} />
@@ -294,7 +311,7 @@ export default function CreatorOnboarding() {
                   className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
                 />
                 <input
-                  placeholder="Instagram handle"
+                  placeholder="Instagram Username"
                   className="w-full p-4 pl-12 bg-slate-50 border border-slate-100 rounded-lg text-sm outline-none focus:border-orange-500"
                   value={formData.socials.instagram}
                   onChange={(e) =>
@@ -309,12 +326,32 @@ export default function CreatorOnboarding() {
                 />
               </div>
               <div className="relative">
+                <Linkedin
+                  size={18}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+                />
+                <input
+                  placeholder="LinkedIn Profile Link"
+                  className="w-full p-4 pl-12 bg-slate-50 border border-slate-100 rounded-lg text-sm outline-none focus:border-orange-500"
+                  value={formData.socials.linkedin}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      socials: {
+                        ...formData.socials,
+                        linkedin: e.target.value,
+                      },
+                    })
+                  }
+                />
+              </div>
+              <div className="relative">
                 <Twitter
                   size={18}
                   className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
                 />
                 <input
-                  placeholder="Twitter handle"
+                  placeholder="Twitter Username"
                   className="w-full p-4 pl-12 bg-slate-50 border border-slate-100 rounded-lg text-sm outline-none focus:border-orange-500"
                   value={formData.socials.twitter}
                   onChange={(e) =>
@@ -331,7 +368,7 @@ export default function CreatorOnboarding() {
                   className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
                 />
                 <input
-                  placeholder="YouTube channel"
+                  placeholder="YouTube Channel Link"
                   className="w-full p-4 pl-12 bg-slate-50 border border-slate-100 rounded-lg text-sm outline-none focus:border-orange-500"
                   value={formData.socials.youtube}
                   onChange={(e) =>
@@ -348,7 +385,7 @@ export default function CreatorOnboarding() {
                   className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
                 />
                 <input
-                  placeholder="TikTok handle"
+                  placeholder="TikTok Profile Link"
                   className="w-full p-4 pl-12 bg-slate-50 border border-slate-100 rounded-lg text-sm outline-none focus:border-orange-500"
                   value={formData.socials.tiktok}
                   onChange={(e) =>

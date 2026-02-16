@@ -9,6 +9,7 @@ import {
   HelpCircle,
   ChevronRight,
 } from "lucide-react";
+import Link from "next/link";
 
 const faqs = [
   {
@@ -68,12 +69,13 @@ export default function HelpCenter() {
             <p className="text-sm text-slate-500 mb-4">
               Response within 24 hours
             </p>
-            <a
+            <Link
               href="mailto:agasekeforcreators@gmail.com"
+              target="_blank"
               className="text-orange-600 font-bold hover:underline text-sm"
             >
               agasekeforcreators@gmail.com
-            </a>
+            </Link>
           </div>
 
           <div className="bg-white p-8 rounded-lg shadow-sm border border-slate-100 flex flex-col items-center text-center">
@@ -82,12 +84,13 @@ export default function HelpCenter() {
             </div>
             <h3 className="font-bold mb-2">Instagram DM</h3>
             <p className="text-sm text-slate-500 mb-4">Quick community help</p>
-            <a
+            <Link
               href="https://instagram.com/agaseke_support"
+              target="_blank"
               className="text-orange-600 font-bold hover:underline text-sm"
             >
               @agaseke_support
-            </a>
+            </Link>
           </div>
 
           <div className="bg-white p-8 rounded-lg shadow-sm border border-slate-100 flex flex-col items-center text-center">
@@ -96,13 +99,38 @@ export default function HelpCenter() {
             </div>
             <h3 className="font-bold mb-2">X (Twitter)</h3>
             <p className="text-sm text-slate-500 mb-4">Real-time updates</p>
-            <a
+            <Link
               href="https://x.com/agaseke_support"
+              target="_blank"
               className="text-orange-600 font-bold hover:underline text-sm"
             >
               @agaseke_support
-            </a>
+            </Link>
           </div>
+        </div>
+
+        <div className="mb-16 bg-emerald-50 border border-emerald-100 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
+          <div className="flex items-center gap-5">
+            <div className="w-14 h-14 bg-emerald-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-200 shrink-0">
+              <MessageCircle size={32} />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-emerald-900">
+                Join our Community
+              </h3>
+              <p className="text-emerald-700 font-medium text-sm">
+                Get community support and quick assistance via WhatsApp.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="https://chat.whatsapp.com/DSLKCybSApGKrEmn0HvlLx"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full md:w-auto bg-emerald-600 text-white px-8 py-4 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-emerald-700 transition-all text-center shadow-lg shadow-emerald-100"
+          >
+            Join on WhatsApp
+          </Link>
         </div>
 
         {/* FAQs */}

@@ -15,6 +15,7 @@ import {
   X,
   CheckCircle2,
   Eye,
+  FileText,
 } from "lucide-react";
 import Image from "next/image";
 import Navbar from "@/components/parts/Navigation";
@@ -279,29 +280,69 @@ export default function SupporterSpace() {
                   <div
                     key={item.id}
                     onClick={() => openDetails(item)}
-                    className="bg-white rounded-lg border border-slate-100 p-6 cursor-pointer hover:border-orange-200 transition-all shadow-sm"
+                    className="bg-white rounded-2xl border border-slate-100 overflow-hidden cursor-pointer hover:border-orange-200 hover:shadow-xl hover:shadow-slate-200/50 transition-all group"
                   >
-                    <div className="flex justify-between mb-4">
-                      <span
-                        className={`text-[9px] font-bold px-2 py-1 rounded uppercase ${item.type === "gathering" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}
-                      >
-                        {item.type}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-bold">
-                        {item.createdAt?.toDate().toLocaleDateString()}
-                      </span>
+                    <div className="relative aspect-video bg-slate-100 overflow-hidden">
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          alt=""
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-slate-300">
+                          {item.type === "gathering" ? (
+                            <MapPin size={40} />
+                          ) : (
+                            <FileText size={40} />
+                          )}
+                        </div>
+                      )}
+
+                      {/* Access Badge */}
+                      <div className="absolute top-4 left-4 flex gap-2">
+                        <span
+                          className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${
+                            item.type === "gathering"
+                              ? "bg-purple-600 text-white"
+                              : "bg-blue-600 text-white"
+                          }`}
+                        >
+                          {item.type}
+                        </span>
+                      </div>
                     </div>
-                    <h4 className="font-bold text-lg mb-2 line-clamp-1">
-                      {item.title}
-                    </h4>
-                    <p className="text-slate-500 text-sm line-clamp-2 mb-4">
-                      {item.description}
-                    </p>
-                    <div className="pt-4 border-t border-slate-50 flex justify-between items-center text-xs font-bold text-slate-400">
-                      <span>@{item.creatorHandle}</span>
-                      <span className="flex items-center gap-1">
-                        <Eye size={12} /> {item.views || 0}
-                      </span>
+
+                    <div className="p-6">
+                      <div className="flex justify-between items-center mb-3">
+                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
+                          {item.createdAt?.toDate().toLocaleDateString()}
+                        </p>
+                        {!item.isPublic && (
+                          <div className="flex items-center gap-1 text-orange-600 text-[10px] font-black uppercase tracking-widest">
+                            <Lock size={10} /> Supporters Only
+                          </div>
+                        )}
+                      </div>
+
+                      <h4 className="font-bold text-lg mb-2 line-clamp-1 uppercase tracking-tight group-hover:text-orange-600 transition-colors">
+                        {item.title}
+                      </h4>
+                      <p className="text-slate-500 text-sm line-clamp-2 mb-6">
+                        {item.description}
+                      </p>
+
+                      <div className="pt-4 border-t border-slate-50 flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        <span className="flex items-center gap-2">
+                          <div className="w-5 h-5 rounded-full bg-slate-100 overflow-hidden">
+                            {/* You can add creator mini-avatar here if you pass it through the feed */}
+                          </div>
+                          @{item.creatorHandle}
+                        </span>
+                        <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded">
+                          <Eye size={12} /> {item.views || 0}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -407,24 +448,53 @@ export default function SupporterSpace() {
         </div>
       </main>
 
-      {/* Detail Modal */}
       {selectedItem && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-lg rounded-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-8">
-              <div className="flex justify-between items-start mb-6">
-                <span className="bg-orange-100 text-orange-700 text-[10px] font-bold px-2 py-1 rounded tracking-tighter uppercase">
-                  {selectedItem.type}
-                </span>
+          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
+            {(selectedItem.imageUrl || selectedItem.videoUrl) && (
+              <div className="relative w-full aspect-video bg-black">
+                {selectedItem.videoUrl ? (
+                  <video
+                    src={selectedItem.videoUrl}
+                    controls
+                    className="w-full h-full"
+                    poster={selectedItem.imageUrl}
+                  />
+                ) : (
+                  <img
+                    src={selectedItem.imageUrl}
+                    alt={selectedItem.title}
+                    className="w-full h-full object-contain"
+                  />
+                )}
+              </div>
+            )}
+
+            <div className="p-8 overflow-y-auto">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex gap-2">
+                  <span className="bg-orange-100 text-orange-700 text-[10px] font-bold px-2 py-1 rounded tracking-tighter uppercase">
+                    {selectedItem.type}
+                  </span>
+                  {selectedItem.isPublic && (
+                    <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded tracking-tighter uppercase">
+                      Public
+                    </span>
+                  )}
+                </div>
                 <button
                   onClick={() => setSelectedItem(null)}
-                  className="text-slate-300 hover:text-slate-600"
+                  className="text-slate-300 hover:text-slate-600 transition-colors"
                 >
-                  <X size={24} />
+                  <X size={28} />
                 </button>
               </div>
-              <h2 className="text-2xl font-bold mb-2">{selectedItem.title}</h2>
-              <p className="text-xs font-bold text-slate-400 mb-6 flex items-center gap-4">
+
+              <h2 className="text-2xl font-black mb-2 uppercase tracking-tight">
+                {selectedItem.title}
+              </h2>
+
+              <div className="text-xs font-bold text-slate-400 mb-6 flex flex-wrap gap-4">
                 <span className="flex items-center gap-1">
                   <Clock size={14} />{" "}
                   {selectedItem.createdAt?.toDate().toLocaleDateString()}
@@ -434,32 +504,59 @@ export default function SupporterSpace() {
                     <MapPin size={14} /> {selectedItem.location}
                   </span>
                 )}
-              </p>
-              <div className="bg-slate-50 p-6 rounded-lg mb-8 max-h-60 overflow-y-auto">
-                <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">
+                <span className="flex items-center gap-1">
+                  <Eye size={14} /> {selectedItem.views || 0} views
+                </span>
+              </div>
+
+              <div className="bg-slate-50 p-6 rounded-2xl mb-8">
+                <p className="text-slate-600 leading-relaxed whitespace-pre-wrap text-sm">
                   {selectedItem.description || selectedItem.content}
                 </p>
               </div>
+
+              {selectedItem.docUrl && (
+                <Link
+                  href={selectedItem.docUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between p-4 mb-8 bg-blue-50 border border-blue-100 rounded-2xl group hover:bg-blue-600 transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 rounded-lg text-blue-600 group-hover:bg-white transition-colors">
+                      <FileText size={20} />
+                    </div>
+                    <span className="text-sm font-bold text-blue-700 group-hover:text-white">
+                      View Attached Document
+                    </span>
+                  </div>
+                  <ArrowRight
+                    size={18}
+                    className="text-blue-400 group-hover:text-white"
+                  />
+                </Link>
+              )}
+
               {selectedItem.type === "gathering" ? (
                 <button
                   disabled={isRSVPing}
                   onClick={handleRSVP}
-                  className="w-full bg-slate-900 text-white py-4 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors disabled:opacity-50"
+                  className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-sm tracking-widest flex items-center justify-center gap-2 hover:bg-orange-600 transition-all shadow-lg active:scale-95 disabled:opacity-50"
                 >
                   {isRSVPing ? (
                     <Loader className="animate-spin" />
                   ) : (
                     <>
-                      <CheckCircle2 size={18} /> I'M INTERESTED TO ATTEND
+                      <CheckCircle2 size={18} /> I'm Interested to Attend
                     </>
                   )}
                 </button>
               ) : (
                 <button
                   onClick={() => setSelectedItem(null)}
-                  className="w-full bg-slate-100 text-slate-900 py-4 rounded-lg font-bold"
+                  className="w-full bg-slate-100 text-slate-900 py-4 rounded-2xl font-black uppercase text-sm tracking-widest hover:bg-slate-200 transition-all"
                 >
-                  CLOSE
+                  Back to Feed
                 </button>
               )}
             </div>

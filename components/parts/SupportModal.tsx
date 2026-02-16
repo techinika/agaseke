@@ -3,14 +3,14 @@
 import { useAuth } from "@/auth/AuthContext";
 import { db } from "@/db/firebase";
 import {
-  doc,
   onSnapshot,
   collection,
   query,
   where,
-  getDocs,
+  doc,
+  getDoc,
 } from "firebase/firestore";
-import { ShieldCheck, Smartphone, X } from "lucide-react";
+import { Heart, ShieldCheck, Smartphone, X } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
@@ -23,14 +23,13 @@ export function SupportModal({
 }: any) {
   const { user: currentUser } = useAuth();
   const [amount, setAmount] = useState("");
+  const [message, setMessage] = useState("");
   const [phone, setPhone] = useState("");
   const [step, setStep] = useState("input");
   const [errorMessage, setErrorMessage] = useState("");
 
-  // Use a ref to track the listener so we can kill it anytime
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
-  // Clean up listener if the modal is closed or component unmounts
   useEffect(() => {
     return () => {
       if (unsubscribeRef.current) unsubscribeRef.current();
@@ -38,6 +37,31 @@ export function SupportModal({
   }, []);
 
   if (!isOpen) return null;
+
+  const sendSupportEmail = async (txAmount: number) => {
+    try {
+      const creatorRef = doc(db, "profiles", uid);
+      const creatorSnap = await getDoc(creatorRef);
+
+      if (creatorSnap.exists()) {
+        const profileData = creatorSnap.data();
+
+        await fetch("/api/comms/email/support/received", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            creatorEmail: profileData.email || "",
+            creatorName: creatorName,
+            supporterName: currentUser?.displayName || "A generous supporter",
+            amount: txAmount,
+            message: message.trim() || null,
+          }),
+        });
+      }
+    } catch (error) {
+      console.error("Failed to trigger support email:", error);
+    }
+  };
 
   const handleSupport = async () => {
     setStep("processing");
@@ -52,6 +76,7 @@ export function SupportModal({
           phone: phone,
           creatorId: creatorId,
           creatorUid: uid,
+          message: message ?? "",
           supporterId: currentUser?.uid || "anonymous",
         }),
       });
@@ -62,7 +87,6 @@ export function SupportModal({
         throw new Error(data.error || "Failed to initiate payment");
       }
 
-      // --- REAL-TIME LISTENER (Faster than Interval) ---
       const q = query(
         collection(db, "transactions"),
         where("ref", "==", data.ref),
@@ -75,6 +99,11 @@ export function SupportModal({
           if (txData.status === "successful") {
             if (unsubscribeRef.current) unsubscribeRef.current();
             setStep("success");
+            sendSupportEmail(
+              Number(
+                txData?.amount * Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE),
+              ),
+            );
             toast.success("Payment received!");
           } else if (txData.status === "failed") {
             if (unsubscribeRef.current) unsubscribeRef.current();
@@ -84,7 +113,6 @@ export function SupportModal({
         }
       });
 
-      // Timeout Safety: 2 minutes
       setTimeout(() => {
         if (unsubscribeRef.current) {
           unsubscribeRef.current();
@@ -99,7 +127,6 @@ export function SupportModal({
     }
   };
 
-  // Wrapped Close to ensure cleanup
   const handleClose = () => {
     if (unsubscribeRef.current) unsubscribeRef.current();
     onClose();
@@ -131,7 +158,7 @@ export function SupportModal({
                   <input
                     type="number"
                     placeholder="1000"
-                    className="w-full text-center text-7xl font-bold text-slate-900 outline-none placeholder:text-slate-100"
+                    className="w-full text-center text-6xl font-bold text-slate-900 outline-none placeholder:text-slate-100"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                   />
@@ -156,6 +183,18 @@ export function SupportModal({
                     className="w-full bg-slate-50 border-2 border-slate-50 p-4 pl-12 rounded-lg font-bold focus:border-orange-500 outline-none transition-all"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                    Heartfelt Message{" "}
+                    <Heart size={10} className="text-pink-500" />
+                  </label>
+                  <textarea
+                    placeholder="Write a nice note to the creator..."
+                    className="w-full mt-1 bg-slate-50 border-2 border-slate-50 p-4 rounded-lg font-medium text-sm focus:border-orange-500 outline-none transition-all resize-none h-24"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
                   />
                 </div>
               </div>

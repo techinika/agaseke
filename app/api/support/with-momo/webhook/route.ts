@@ -47,8 +47,9 @@ export async function POST(req: Request) {
 
   if (status === "successful") {
     const totalAmount = Number(txData.amount);
-    const platformShare = totalAmount * 0.1; // 10%
-    const creatorShare = totalAmount * 0.9; // 90%
+    const platformShare =
+      totalAmount * Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE); 
+    const creatorShare = totalAmount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE); 
 
     // 5. Atomic Batch or Sequential Updates using Admin SDK
     const batch = adminDb.batch();
