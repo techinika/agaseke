@@ -15,8 +15,10 @@ import {
   LogOut,
   UserCircle,
   ChevronDown,
-  CheckCheck,
   CheckCircle,
+  Menu,
+  X,
+  Briefcase,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -29,14 +31,20 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { creator } = useAuth();
+  const { creator, isAdmin } = useAuth();
   const [copied, setCopied] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
-  const router = useRouter();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [showShareModal, setShowShareModal] = useState(false);
 
+  // Close sidebar when route changes (mobile)
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [pathname]);
+
+  // Handle dropdown click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -58,19 +66,44 @@ export default function DashboardLayout({
   };
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] flex text-slate-900">
-      <aside className="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col sticky top-0 h-screen">
-        <div className="p-6">
-          <Link href="/" className="flex items-center gap-2 mb-8">
-            <div className="w-7 h-7 bg-orange-600 rounded-lg flex items-center justify-center text-white font-bold text-xs">
-              A
-            </div>
-            <span className="font-bold tracking-tight uppercase">
-              agaseke.me
-            </span>
-          </Link>
+    // Changed "flex" to "block md:flex" to prevent the sidebar from taking space on mobile
+    <div className="min-h-screen bg-[#F9FAFB] block md:flex text-slate-900 overflow-x-hidden">
+      {/* 1. Mobile Overlay */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] md:hidden transition-opacity"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
 
-          <nav className="space-y-1">
+      {/* 2. Sidebar */}
+      <aside
+        className={`
+        fixed inset-y-0 left-0 z-[70] w-64 bg-white border-r border-slate-200 
+        transform transition-transform duration-300 ease-in-out
+        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
+        md:translate-x-0 md:static md:flex md:flex-col h-screen absolute top-0
+      `}
+      >
+        <div className="p-6 h-full flex flex-col">
+          <div className="flex items-center justify-between mb-8">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-orange-600 rounded-lg flex items-center justify-center text-white font-bold text-xs">
+                A
+              </div>
+              <span className="font-bold tracking-tight uppercase">
+                agaseke.me
+              </span>
+            </Link>
+            <button
+              onClick={() => setIsSidebarOpen(false)}
+              className="md:hidden text-slate-400 p-1"
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          <nav className="space-y-1 flex-1">
             <NavItem
               href="/creator"
               icon={<BarChart3 size={18} />}
@@ -114,54 +147,64 @@ export default function DashboardLayout({
               active={pathname === "/creator/settings"}
             />
           </nav>
-        </div>
 
-        <div className="mt-auto p-4 m-4 bg-slate-50 border border-slate-200 rounded-lg">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Your Page
-            </span>
-            {copied ? (
-              <Check size={12} className="text-green-500" />
-            ) : (
-              <button onClick={copyLink}>
-                <Copy
-                  size={12}
-                  className="text-slate-400 hover:text-orange-600"
-                />
-              </button>
-            )}
+          <div className="mt-auto p-4 bg-slate-50 border border-slate-200 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Your Page
+              </span>
+              {copied ? (
+                <Check size={12} className="text-green-500" />
+              ) : (
+                <button onClick={copyLink}>
+                  <Copy
+                    size={12}
+                    className="text-slate-400 hover:text-orange-600"
+                  />
+                </button>
+              )}
+            </div>
+            <p className="text-xs font-medium text-slate-600 truncate mb-3">
+              agaseke.me/{creator?.handle || "..."}
+            </p>
+            <button
+              onClick={() => setShowShareModal(true)}
+              className="w-full py-2 bg-white border border-slate-200 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition"
+            >
+              Share Page <Share2 size={12} />
+            </button>
           </div>
-          <p className="text-xs font-medium text-slate-600 truncate mb-3">
-            agaseke.me/{creator?.handle || "..."}
-          </p>
-          <button
-            onClick={() => setShowShareModal(true)}
-            className="w-full py-2 bg-white border border-slate-200 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition"
-          >
-            Share Page <Share2 size={12} />
-          </button>
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-20">
-          <h2 className="text-sm font-semibold text-slate-600 capitalize">
-            {pathname.split("/").pop() === "creator"
-              ? "Overview"
-              : pathname.split("/").pop()?.replace("-", " ")}
-          </h2>
+      {/* 3. Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 w-full">
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-20 w-full">
+          <div className="flex items-center gap-4">
+            {/* Mobile Toggle Button */}
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="md:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-50 rounded-lg transition"
+            >
+              <Menu size={20} />
+            </button>
 
-          <div className="flex items-center gap-6">
+            <h2 className="text-sm font-semibold text-slate-600 capitalize">
+              {pathname.split("/").pop() === "creator"
+                ? "Overview"
+                : pathname.split("/").pop()?.replace("-", " ")}
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-3 md:gap-6">
             <button className="hidden sm:flex bg-orange-600 text-white px-4 py-2 rounded-lg text-xs font-bold items-center gap-2 hover:bg-orange-700 transition shadow-sm">
               <Plus size={16} /> Create New
             </button>
 
-            {/* Profile Dropdown Container */}
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setShowDropdown(!showDropdown)}
-                className="flex items-center gap-3 p-1 pr-2 hover:bg-slate-50 rounded-full transition-colors"
+                className="flex items-center gap-2 md:gap-3 p-1 pr-2 hover:bg-slate-50 rounded-full transition-colors"
               >
                 <div className="text-right hidden sm:block">
                   <p className="text-xs font-bold text-slate-900 leading-tight">
@@ -173,9 +216,9 @@ export default function DashboardLayout({
                 </div>
 
                 <div className="w-8 h-8 bg-slate-100 rounded-full border border-slate-200 flex items-center justify-center text-xs font-bold overflow-hidden">
-                  {creator?.photoURL ? (
+                  {creator?.profilePicture ? (
                     <img
-                      src={creator.photoURL}
+                      src={creator.profilePicture}
                       alt={creator.name}
                       className="w-full h-full object-cover"
                     />
@@ -189,7 +232,6 @@ export default function DashboardLayout({
                 />
               </button>
 
-              {/* Dropdown Menu */}
               {showDropdown && (
                 <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-lg shadow-xl py-2 animate-in fade-in zoom-in-95 duration-100 z-50">
                   <div className="px-4 py-2 border-b border-slate-50 mb-1 sm:hidden">
@@ -200,33 +242,34 @@ export default function DashboardLayout({
                       @{creator?.handle}
                     </p>
                   </div>
-
+                  {isAdmin && (
+                    <Link
+                      href="/admin"
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 rounded-lg hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                    >
+                      <Briefcase size={18} /> Admin Space
+                    </Link>
+                  )}
                   <Link
                     href="/supporter"
                     className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-orange-600 transition-colors"
                     onClick={() => setShowDropdown(false)}
                   >
-                    <UserCircle size={18} />
-                    Supporter View
+                    <UserCircle size={18} /> Supporter View
                   </Link>
-
                   <Link
                     href="/creator/settings"
                     className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
                     onClick={() => setShowDropdown(false)}
                   >
-                    <Settings size={18} />
-                    Account Settings
+                    <Settings size={18} /> Account Settings
                   </Link>
-
                   <div className="h-px bg-slate-100 my-1 mx-2" />
-
                   <button
                     onClick={handleLogout}
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
                   >
-                    <LogOut size={18} />
-                    Logout
+                    <LogOut size={18} /> Logout
                   </button>
                 </div>
               )}
@@ -234,7 +277,7 @@ export default function DashboardLayout({
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <main className="flex-1 overflow-x-hidden w-full">{children}</main>
       </div>
 
       <SharePageModal

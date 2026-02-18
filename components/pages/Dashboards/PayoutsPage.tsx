@@ -199,7 +199,7 @@ export default function PayoutsPage() {
               </div>
               <div className="bg-white p-8 rounded-lg border border-slate-100 shadow-sm">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">
-                  Total Paid Out
+                  Total Earnings
                 </p>
                 <h2 className="text-4xl font-black">
                   {(creator?.totalEarnings || 0).toLocaleString()}{" "}
