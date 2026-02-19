@@ -12,7 +12,6 @@ export async function POST(req: Request) {
   const signature = req.headers.get("x-paypack-signature");
   const secret = process.env.PAYPACK_WEBHOOK_SECRET!;
 
-  // 2. Signature Verification
   const hash = crypto
     .createHmac("sha256", secret)
     .update(body)
@@ -25,7 +24,6 @@ export async function POST(req: Request) {
   const payload = JSON.parse(body);
   const { ref, status, client } = payload.data;
 
-  // 3. Find Transaction using Admin Syntax
   const txQuery = await adminDb
     .collection("transactions")
     .where("ref", "==", ref)
@@ -39,7 +37,6 @@ export async function POST(req: Request) {
   const txDoc = txQuery.docs[0];
   const txData = txDoc.data();
 
-  // 4. Idempotency Check (Don't process twice)
   if (txData.status === "successful") {
     console.log(`Transaction ${ref} already processed.`);
     return NextResponse.json({ received: true, note: "Already processed" });
@@ -48,19 +45,17 @@ export async function POST(req: Request) {
   if (status === "successful") {
     const totalAmount = Number(txData.amount);
     const platformShare =
-      totalAmount * Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE); 
-    const creatorShare = totalAmount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE); 
+      totalAmount * Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE);
+    const creatorShare =
+      totalAmount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE);
 
-    // 5. Atomic Batch or Sequential Updates using Admin SDK
     const batch = adminDb.batch();
 
-    // Update Transaction Status
     batch.update(txDoc.ref, {
       status: "successful",
       successfulAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    // Log Platform Income
     const platformRef = adminDb.collection("platformIncome").doc();
     batch.set(platformRef, {
       amount: platformShare,
@@ -77,7 +72,6 @@ export async function POST(req: Request) {
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    // Log Support Relationship
     const supportRef = adminDb.collection("supportedCreators").doc();
     batch.set(supportRef, {
       creatorId: txData.creatorId,
@@ -88,7 +82,6 @@ export async function POST(req: Request) {
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    // Update Creator Stats
     const creatorRef = adminDb.collection("creators").doc(txData.creatorId);
     batch.update(creatorRef, {
       totalEarnings: admin.firestore.FieldValue.increment(creatorShare),
@@ -96,7 +89,7 @@ export async function POST(req: Request) {
       pendingPayout: admin.firestore.FieldValue.increment(creatorShare),
     });
 
-    if (txData.supporterId) {
+    if (txData.supporterId && txData.supporterId !== "anonymous") {
       const profileRef = adminDb.collection("profiles").doc(txData.supporterId);
       batch.update(profileRef, {
         totalSupport: admin.firestore.FieldValue.increment(totalAmount),
