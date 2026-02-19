@@ -14,6 +14,7 @@ import {
   Star,
   MessageCircle,
   LogIn,
+  ArrowRight,
 } from "lucide-react";
 import Navbar from "../parts/Navigation";
 import Loading from "@/app/loading";
@@ -255,6 +256,28 @@ export default function PublicProfile({ username }: { username: string }) {
         creatorId={creator.handle}
         uid={creator.uid}
       />
+
+      <div className="fixed bottom-8 right-8 flex justify-center z-[100] pointer-events-none">
+        <Link
+          href="/onboarding"
+          className="pointer-events-auto flex items-center gap-3 bg-slate-900 text-white px-6 py-4 rounded-full shadow-2xl shadow-orange-500/20 hover:bg-orange-600 hover:-translate-y-1 transition-all duration-300 group"
+        >
+          <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center text-white font-bold text-xs group-hover:bg-white group-hover:text-orange-600 transition-colors">
+            a
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold uppercase tracking-widest leading-none text-orange-400">
+              Start yours
+            </span>
+            <span className="text-sm font-bold leading-tight">
+              Create an Agaseke
+            </span>
+          </div>
+          <div className="ml-2 bg-white/10 p-1 rounded-full group-hover:bg-white/20 transition-colors">
+            <ArrowRight size={16} />
+          </div>
+        </Link>
+      </div>
     </div>
   );
 }
