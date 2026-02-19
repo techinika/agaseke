@@ -222,7 +222,7 @@ export default function SupporterSpace() {
                 {auth.profile?.displayName?.split(" ")[0] || "Supporter"}!
               </h1>
               <p className="text-slate-500 italic">
-                "Ubumuntu bugirwa n'abantu."
+                {`"When you learn, teach. When you get, give."`}
               </p>
             </div>
             <div className="mt-8 flex gap-10">

@@ -31,11 +31,9 @@ export default function AdminComms() {
       let emails: string[] = [];
 
       if (target === "all") {
-        // Direct fetch from profiles
         const snap = await getDocs(collection(db, "profiles"));
         emails = snap.docs.map((doc) => doc.data().email).filter(Boolean);
       } else {
-        // 1. Get UIDs from the creators collection based on target
         let creatorQuery;
         if (target === "verified") {
           creatorQuery = query(
@@ -43,7 +41,6 @@ export default function AdminComms() {
             where("verified", "==", true),
           );
         } else {
-          // All creators (those with a creator profile regardless of verification)
           creatorQuery = collection(db, "creators");
         }
 
