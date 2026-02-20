@@ -45,9 +45,14 @@ export async function POST(req: Request) {
   if (status === "successful") {
     const totalAmount = Number(txData.amount);
     const platformShare =
-      totalAmount * Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE);
+      totalAmount * txData.includeReferral
+        ? Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL)
+        : Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE);
     const creatorShare =
       totalAmount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE);
+
+    const referralShare =
+      totalAmount * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE);
 
     const batch = adminDb.batch();
 
@@ -60,15 +65,16 @@ export async function POST(req: Request) {
     batch.set(platformRef, {
       amount: platformShare,
       txRef: ref,
+      reason: "flat_fee",
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    // Log Creator Income
     const incomeRef = adminDb.collection("creatorIncome").doc();
     batch.set(incomeRef, {
       creatorUid: txData.creatorUid,
       amount: creatorShare,
       txRef: ref,
+      reason: "support",
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
@@ -88,6 +94,24 @@ export async function POST(req: Request) {
       totalSupporters: admin.firestore.FieldValue.increment(1),
       pendingPayout: admin.firestore.FieldValue.increment(creatorShare),
     });
+
+    if (txData.includeReferral) {
+      const referralRef = adminDb.collection("creatorIncome").doc();
+      batch.set(referralRef, {
+        creatorUid: txData.referralUid,
+        amount: referralShare,
+        txRef: ref,
+        reason: "referral_commission",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      const referralCreatorRef = adminDb
+        .collection("creators")
+        .doc(txData.referralId);
+      batch.update(referralCreatorRef, {
+        totalEarnings: admin.firestore.FieldValue.increment(referralShare),
+        pendingPayout: admin.firestore.FieldValue.increment(referralShare),
+      });
+    }
 
     if (txData.supporterId && txData.supporterId !== "anonymous") {
       const profileRef = adminDb.collection("profiles").doc(txData.supporterId);

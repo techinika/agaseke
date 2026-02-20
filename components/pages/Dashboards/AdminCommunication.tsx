@@ -10,17 +10,18 @@ import {
   UserCheck,
   ShieldCheck,
   Loader,
+  ShieldAlert,
 } from "lucide-react";
 import { toast } from "sonner";
 import Navbar from "@/components/parts/Navigation";
 
 export default function AdminComms() {
-  const [target, setTarget] = useState<"all" | "creators" | "verified">("all");
+  const [target, setTarget] = useState<
+    "all" | "creators" | "verified" | "not-verified"
+  >("all");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
-
-  // Inside handleSend function in app/admin/comms/page.tsx
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +40,11 @@ export default function AdminComms() {
           creatorQuery = query(
             collection(db, "creators"),
             where("verified", "==", true),
+          );
+        } else if (target === "not-verified") {
+          creatorQuery = query(
+            collection(db, "creators"),
+            where("verified", "==", false),
           );
         } else {
           creatorQuery = collection(db, "creators");
@@ -132,6 +138,11 @@ export default function AdminComms() {
                   label: "Verified Only",
                   icon: <ShieldCheck size={18} />,
                 },
+                {
+                  id: "not-verified",
+                  label: "Unverified Only",
+                  icon: <ShieldAlert size={18} />,
+                },
               ].map((item) => (
                 <button
                   key={item.id}
@@ -149,7 +160,6 @@ export default function AdminComms() {
             </div>
           </div>
 
-          {/* Email Content */}
           <div className="space-y-4">
             <div>
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">

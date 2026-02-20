@@ -20,6 +20,9 @@ export function SupportModal({
   creatorName,
   creatorId,
   uid,
+  includeReferral,
+  referralUid = "",
+  referralId = "",
 }: any) {
   const { user: currentUser } = useAuth();
   const [amount, setAmount] = useState("");
@@ -77,7 +80,10 @@ export function SupportModal({
           creatorId: creatorId,
           creatorUid: uid,
           message: message ?? "",
+          referralUid: referralUid,
+          referralId: referralId,
           supporterId: currentUser?.uid || "anonymous",
+          includeReferral: includeReferral,
         }),
       });
 

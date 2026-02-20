@@ -4,10 +4,18 @@ import { adminDb } from "@/db/firebaseAdmin";
 
 export async function POST(req: Request) {
   try {
-    const { amount, phone, creatorId, creatorUid, supporterId, message } =
-      await req.json();
+    const {
+      amount,
+      phone,
+      creatorId,
+      creatorUid,
+      supporterId,
+      message,
+      includeReferral,
+      referralUid,
+      referralId,
+    } = await req.json();
 
-    // 1. Authorize with Paypack
     const authRes = await fetch(
       "https://payments.paypack.rw/api/auth/agents/authorize",
       {
@@ -25,7 +33,6 @@ export async function POST(req: Request) {
 
     const { access } = await authRes.json();
 
-    // 2. Initiate Cashin
     const payRes = await fetch(
       "https://payments.paypack.rw/api/transactions/cashin",
       {
@@ -52,8 +59,11 @@ export async function POST(req: Request) {
         creatorId,
         creatorUid,
         supporterId: supporterId || "anonymous",
+        includeReferral: includeReferral,
         status: "pending",
         message: message ?? "",
+        referralUid: referralUid ?? "",
+        referralId: referralId ?? "",
         type: "support",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
