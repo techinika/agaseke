@@ -35,7 +35,7 @@ export default function CreatorOnboarding() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<
-    "idle" | "checking" | "available" | "taken"
+    "idle" | "checking" | "available" | "taken" | "invalid"
   >("idle");
 
   const [formData, setFormData] = useState({
@@ -78,6 +78,9 @@ export default function CreatorOnboarding() {
         );
       } catch (err) {
         console.error(err);
+      }
+      if (formData.username.includes("@")) {
+        setUsernameStatus("invalid");
       }
     };
 
@@ -229,11 +232,20 @@ export default function CreatorOnboarding() {
                 {usernameStatus === "taken" && (
                   <XCircle className="text-red-500" size={20} />
                 )}
+                {usernameStatus === "invalid" && (
+                  <XCircle className="text-red-500" size={20} />
+                )}
               </div>
             </div>
             {usernameStatus === "taken" && (
               <p className="text-red-500 text-xs font-bold text-center">
                 Sorry, this username is already taken.
+              </p>
+            )}
+            {usernameStatus === "invalid" && (
+              <p className="text-red-500 text-xs font-bold text-center">
+                Sorry, this username is invalid. Username should not have
+                special characters like @ or !
               </p>
             )}
             <button
