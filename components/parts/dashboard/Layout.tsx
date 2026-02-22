@@ -25,6 +25,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/auth/AuthContext";
 import { handleLogout } from "@/db/functions/LogOut";
 import SharePageModal from "../SharePage";
+import FeedbackFAB from "../FeedbackFAB";
 
 export default function DashboardLayout({
   children,
@@ -75,6 +76,8 @@ export default function DashboardLayout({
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
+
+      <FeedbackFAB />
 
       {/* 2. Sidebar */}
       <aside

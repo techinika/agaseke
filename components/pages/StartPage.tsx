@@ -60,6 +60,12 @@ export default function CreatorOnboarding() {
       return;
     }
 
+    const validUsernameRegex = /^[a-z0-9_]+$/;
+    if (!validUsernameRegex.test(formData.username)) {
+      setUsernameStatus("invalid");
+      return;
+    }
+
     const checkUsername = async () => {
       setUsernameStatus("checking");
       try {
@@ -78,9 +84,6 @@ export default function CreatorOnboarding() {
         );
       } catch (err) {
         console.error(err);
-      }
-      if (formData.username.includes("@")) {
-        setUsernameStatus("invalid");
       }
     };
 
@@ -218,7 +221,9 @@ export default function CreatorOnboarding() {
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    username: e.target.value.toLowerCase().replace(/\s/g, ""),
+                    username: e.target.value
+                      .toLowerCase()
+                      .replace(/[^a-z0-9_]/g, ""),
                   })
                 }
               />
