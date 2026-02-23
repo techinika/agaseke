@@ -158,8 +158,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-[#FBFBFC] text-slate-900 pb-20 relative">
-      <Navbar />
-
       <main className="max-w-7xl mx-auto px-6 mt-12">
         <header className="mb-10 flex justify-between items-center">
           <div>

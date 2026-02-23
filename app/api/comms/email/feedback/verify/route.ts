@@ -1,7 +1,7 @@
 import { transporter } from "@/lib/emailTransporter";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const { email, name, approved, reason } = await req.json();
 

@@ -1,43 +1,64 @@
 import { transporter } from "@/lib/emailTransporter";
 import { NextRequest, NextResponse } from "next/server";
-import nodemailer from "nodemailer";
+import { db } from "@/db/firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 export async function POST(req: NextRequest) {
   try {
-    const { emails, subject, message, targetLabel } = await req.json();
+    const { recipients, subject, message, targetLabel } = await req.json();
+    let sentCount = 0;
+    let failedCount = 0;
 
-    const htmlTemplate = `
-      <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f4f7; padding: 40px 0;">
-        <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-          <div style="background-color: #ea580c; padding: 30px; text-align: center;">
-            <h1 style="color: #ffffff; margin: 0; text-transform: uppercase; letter-spacing: 2px; font-size: 24px;">Agaseke</h1>
-          </div>
-          <div style="padding: 40px; color: #334155;">
-            <div style="line-height: 1.6; font-size: 16px;">
-              ${message.replace(/\n/g, "<br/>")}
+    // Send emails individually for personalization
+    const emailPromises = recipients.map(async (user: any) => {
+      try {
+        // Replace placeholders with real data
+        const personalizedMessage = message
+          .replace(/\[NAME\]/g, user.name || "there")
+          .replace(/\[HANDLE\]/g, user.handle || "");
+
+        const htmlTemplate = `
+          <div style="font-family: sans-serif; background-color: #f4f4f7; padding: 40px 0;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden;">
+              <div style="background-color: #ea580c; padding: 20px; text-align: center;">
+                <h1 style="color: #ffffff; margin: 0; font-size: 20px;">AGASEKE</h1>
+              </div>
+              <div style="padding: 40px; color: #334155; line-height: 1.6;">
+                ${personalizedMessage.replace(/\n/g, "<br/>")}
+              </div>
             </div>
-
           </div>
-        </div>
-        <p style="font-size: 12px; color: #94a3b8; text-align: center;">
-              This update was sent to our ${targetLabel} community.<br/>
-              © 2026 Agaseke for Creators. All rights reserved.
-            </p>
-      </div>
-    `;
+        `;
 
-    // Sending emails in BCC to hide recipient list and for efficiency
-    await transporter.sendMail({
-      from: `"Agaseke Updates" <${process.env.SMTP_USER}>`,
-      to: process.env.SMTP_USER,
-      bcc: emails,
-      subject: subject,
-      html: htmlTemplate,
+        await transporter.sendMail({
+          from: `"Agaseke Updates" <${process.env.SMTP_USER}>`,
+          to: user.email,
+          subject: subject,
+          html: htmlTemplate,
+        });
+        sentCount++;
+      } catch (err) {
+        console.error(`Failed to send to ${user.email}:`, err);
+        failedCount++;
+      }
     });
 
-    return NextResponse.json({ success: true });
+    await Promise.all(emailPromises);
+
+    // LOG TO FIRESTORE
+    await addDoc(collection(db, "adminBroadcasts"), {
+      subject,
+      message,
+      targetLabel,
+      recipientsCount: recipients.length,
+      sentCount,
+      failedCount,
+      sentAt: serverTimestamp(),
+      status: failedCount === 0 ? "success" : "partial_failure",
+    });
+
+    return NextResponse.json({ success: true, sentCount, failedCount });
   } catch (error: any) {
-    console.error("Broadcast Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

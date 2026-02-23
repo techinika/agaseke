@@ -1,5 +1,5 @@
 import AuthGuard from "@/auth/AuthGuard";
-import AdminDashboard from "@/components/pages/Dashboards/AdminPage";
+import AdminDashboard from "@/components/pages/Dashboards/Admin/AdminPage";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -12,11 +12,7 @@ export const metadata: Metadata = {
 };
 
 function page() {
-  return (
-    <AuthGuard>
-      <AdminDashboard />
-    </AuthGuard>
-  );
+  return <AdminDashboard />;
 }
 
 export default page;
