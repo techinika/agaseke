@@ -57,8 +57,7 @@ export default function MessagesPage() {
 
   return (
     <div className="relative min-h-[calc(100vh-70px)] bg-white flex overflow-hidden">
-      {/* --- UNDER DEVELOPMENT OVERLAY --- */}
-      <div className="absolute inset-0 z-[100] backdrop-blur-[2px] bg-slate-900/10 flex items-center justify-center p-6">
+      <div className="absolute inset-0 z-[70] backdrop-blur-[2px] bg-slate-900/10 flex items-center justify-center p-6">
         <div className="bg-white border-2 border-slate-900 shadow-[20px_20px_0px_0px_rgba(15,23,42,1)] rounded-lg p-10 max-w-md text-center animate-in zoom-in-95 duration-300">
           <div className="w-20 h-20 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center mx-auto mb-6 rotate-3">
             <Construction size={40} />
