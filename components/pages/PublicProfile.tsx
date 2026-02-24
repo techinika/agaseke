@@ -14,6 +14,7 @@ import {
   Star,
   MessageCircle,
   LogIn,
+  ArrowRight,
 } from "lucide-react";
 import Navbar from "../parts/Navigation";
 import Loading from "@/app/loading";
@@ -28,11 +29,12 @@ import { getIcon } from "../parts/profile/GetLink";
 import { PerkRow } from "../parts/profile/PerkRow";
 
 export default function PublicProfile({ username }: { username: string }) {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, isLoggedIn, isCreator } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [creatorData, setCreatorData] = useState<Creator | null>(null);
   const [profileData, setProfileData] = useState<any>(null);
+  const [referralId, setReferralId] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -49,6 +51,17 @@ export default function PublicProfile({ username }: { username: string }) {
 
           if (userSnap.exists()) {
             setProfileData(userSnap.data());
+            if (userSnap.data().referralCreator != null) {
+              const referralRef = doc(
+                db,
+                "creators",
+                String(userSnap.data().referralCreator),
+              );
+              const referralSnap = await getDoc(referralRef);
+              if (referralSnap.exists()) {
+                setReferralId(referralSnap.data().uid);
+              }
+            }
             await updateDoc(creatorRef, { views: increment(1) });
           }
         }
@@ -254,7 +267,38 @@ export default function PublicProfile({ username }: { username: string }) {
         creatorName={creator.name}
         creatorId={creator.handle}
         uid={creator.uid}
+        includeReferral={profileData?.referralCreator != null}
+        referralUid={referralId}
+        referralId={profileData?.referralCreator}
       />
+
+      {!isCreator && (
+        <div className="fixed bottom-2 right-2 flex justify-center z-[100] pointer-events-none">
+          <Link
+            href={
+              isLoggedIn
+                ? `/onboarding?referral=${creator?.handle}`
+                : `/login?referral=${creator?.handle}`
+            }
+            className="pointer-events-auto flex items-center gap-3 bg-slate-900 text-white px-4 py-2 rounded-lg shadow-2xl shadow-orange-500/20 hover:bg-orange-600 hover:-translate-y-1 transition-all duration-300 group"
+          >
+            <div className="w-4 h-4 bg-orange-600 rounded-lg flex items-center justify-center text-white font-bold text-xs group-hover:bg-white group-hover:text-orange-600 transition-colors">
+              a
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold uppercase tracking-widest leading-none text-orange-400">
+                Start yours
+              </span>
+              <span className="text-sm font-bold leading-tight">
+                Create an Agaseke
+              </span>
+            </div>
+            <div className="ml-2 bg-white/10 p-1 rounded-full group-hover:bg-white/20 transition-colors">
+              <ArrowRight size={16} />
+            </div>
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

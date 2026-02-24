@@ -49,7 +49,6 @@ export default function SupporterSpace() {
   const [feed, setFeed] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Modal State
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [isRSVPing, setIsRSVPing] = useState(false);
 
@@ -59,7 +58,7 @@ export default function SupporterSpace() {
       setLoading(true);
 
       try {
-        // 1. Get Supported Creators (stored by handle)
+        // 1. Get IDs of creators this user currently supports
         const supportRef = collection(db, "supportedCreators");
         const qSupport = query(
           supportRef,
@@ -67,90 +66,90 @@ export default function SupporterSpace() {
         );
         const supportSnap = await getDocs(qSupport);
 
-        const supportedHandles = [
-          ...new Set(supportSnap.docs.map((d) => d.data().creatorId)),
-        ];
+        // Create a Set of creatorUids for O(1) lookup
+        const supportedCreatorUids = new Set(
+          supportSnap.docs.map((d) => d.data().creatorId),
+        );
 
-        if (supportedHandles.length === 0) {
-          setLoading(false);
-          return;
-        }
+        // 2. Fetch all Content and all Gatherings
+        // Note: For large scale, you'd filter these in the query,
+        // but for current scale, fetching and filtering in memory is fine.
+        const [contentSnap, gatheringSnap, creatorsSnap] = await Promise.all([
+          getDocs(collection(db, "creatorContent")),
+          getDocs(collection(db, "creatorGatherings")),
+          getDocs(collection(db, "creators")),
+        ]);
 
-        const favoritesData: any[] = [];
-        let allFeedItems: any[] = [];
+        // 3. Map creators for metadata lookup (Name, Handle, Photo)
+        const creatorMap = new Map();
+        creatorsSnap.docs.forEach((d) => {
+          const data = d.data();
+          creatorMap.set(data.uid, {
+            name: data.name,
+            handle: d.id, // The document ID is the handle
+            photoURL: data.photoURL,
+          });
+        });
 
-        // 2. Resolve Handles to UIDs and Fetch Content
-        for (const handle of supportedHandles) {
-          const creatorRef = doc(db, "creators", handle);
-          const creatorSnap = await getDoc(creatorRef);
+        // 4. Process Content: Show if Public OR User is a Supporter
+        const contents = contentSnap.docs
+          .map((d) => ({
+            id: d.id,
+            ...d.data(),
+            type: "content",
+          }))
+          .filter((item: any) => {
+            const isSupporter = supportedCreatorUids.has(item.creatorId);
+            return !item.isPrivate || isSupporter;
+          });
 
-          if (creatorSnap.exists()) {
-            const creatorData = creatorSnap.data();
-            const creatorUid = creatorData.uid; // This is the ID used in content/gatherings
+        // 5. Process Gatherings: STRICTLY only show if User is a Supporter
+        const gatherings = gatheringSnap.docs
+          .map((d) => ({
+            id: d.id,
+            ...d.data(),
+            type: "gathering",
+          }))
+          .filter((item: any) => supportedCreatorUids.has(item.creatorId));
 
-            // Fetch Recent Content & Gatherings using UID
-            const contentQ = query(
-              collection(db, "creatorContent"),
-              where("creatorId", "==", creatorUid),
-              orderBy("createdAt", "desc"),
-              limit(3),
-            );
-            const gatheringQ = query(
-              collection(db, "creatorGatherings"),
-              where("creatorId", "==", creatorUid),
-              orderBy("createdAt", "desc"),
-              limit(3),
-            );
+        // 6. Merge, Attach Creator Details, and Sort
+        const combinedFeed = [...contents, ...gatherings].map((item: any) => {
+          const creator = creatorMap.get(item.creatorId);
+          return {
+            ...item,
+            creatorName: creator?.name || "Unknown Creator",
+            creatorHandle: creator?.handle || "creator",
+            creatorPhoto: creator?.photoURL || null,
+          };
+        });
 
-            const [cSnap, gSnap] = await Promise.all([
-              getDocs(contentQ),
-              getDocs(gatheringQ),
-            ]);
-
-            const contents = cSnap.docs.map((d) => ({
-              id: d.id,
-              ...d.data(),
-              type: "content",
-              creatorName: creatorData.name,
-              creatorHandle: handle,
-            }));
-
-            const gatherings = gSnap.docs.map((d) => ({
-              id: d.id,
-              ...d.data(),
-              type: "gathering",
-              creatorName: creatorData.name,
-              creatorHandle: handle,
-            }));
-
-            allFeedItems = [...allFeedItems, ...contents, ...gatherings];
-            favoritesData.push({
-              id: handle,
-              name: creatorData.name,
-              photoURL: creatorData.photoURL,
-              handle: handle,
-              updates: cSnap.size + gSnap.size > 0 ? 1 : 0,
-            });
-          }
-        }
+        // 7. Update Favorites Sidebar (only the creators user supports)
+        const favoritesData = creatorsSnap.docs
+          .filter((d) => supportedCreatorUids.has(d.data().uid))
+          .map((d) => ({
+            id: d.id,
+            name: d.data().name,
+            photoURL: d.data().photoURL,
+            handle: d.id,
+            updates: 0, // You can add logic here to count new items if desired
+          }));
 
         setFavorites(favoritesData);
         setFeed(
-          allFeedItems.sort(
-            (a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis(),
+          combinedFeed.sort(
+            (a: any, b: any) =>
+              (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0),
           ),
         );
 
-        // 3. Fetch Discovery Creators (the ones the user doesn't follow yet)
-        const creatorsSnap = await getDocs(
-          query(collection(db, "creators"), limit(20)),
-        );
+        // 8. Discovery Creators (Not supported yet)
         const discoveryList = creatorsSnap.docs
           .map((d) => ({ handle: d.id, ...d.data() }))
-          .filter((c) => !supportedHandles.includes(c.handle));
+          .filter((c: any) => !supportedCreatorUids.has(c.uid));
         setCreators(discoveryList);
       } catch (error) {
-        console.error("Fetch Error:", error);
+        console.error("Fetch Supporter Space Error:", error);
+        toast.error("Failed to load your feed.");
       } finally {
         setLoading(false);
       }
@@ -189,16 +188,31 @@ export default function SupporterSpace() {
 
   const handleRSVP = async () => {
     if (!auth.user) return toast.error("Please login to RSVP");
+
+    // 1. Date and Time Validation
+    const now = new Date();
+    const gatheringDateTime = new Date(
+      `${selectedItem.date}T${selectedItem.time}`,
+    );
+
+    if (now > gatheringDateTime) {
+      return toast.error("This gathering has already passed.");
+    }
+
     setIsRSVPing(true);
     try {
-      await addDoc(collection(db, "gatheringAttendees"), {
+      await addDoc(collection(db, "gatheringsAttendance"), {
         gatheringId: selectedItem.id,
+        gatheringTitle: selectedItem.title,
+        gatheringDate: selectedItem.date,
         supporterId: auth.user.uid,
         supporterName: auth.profile?.displayName || "Anonymous",
-        supporterPhone: auth.profile?.phoneNumber || "No phone provided",
+        supporterEmail: auth.user.email,
+        status: "confirmed",
         createdAt: serverTimestamp(),
       });
-      toast.success("RSVP Sent! The creator can now see your interest.");
+
+      toast.success("RSVP Successful! See you there.");
       setSelectedItem(null);
     } catch (e) {
       toast.error("Failed to RSVP");
@@ -221,7 +235,7 @@ export default function SupporterSpace() {
                 Amahoro,{" "}
                 {auth.profile?.displayName?.split(" ")[0] || "Supporter"}!
               </h1>
-              <p className="text-slate-500 italic">
+              <p className="text-slate-500">
                 {`"When you learn, teach. When you get, give."`}
               </p>
             </div>
@@ -318,7 +332,7 @@ export default function SupporterSpace() {
                         <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
                           {item.createdAt?.toDate().toLocaleDateString()}
                         </p>
-                        {!item.isPublic && (
+                        {item.isPrivate && (
                           <div className="flex items-center gap-1 text-orange-600 text-[10px] font-black uppercase tracking-widest">
                             <Lock size={10} /> Supporters Only
                           </div>
@@ -476,7 +490,7 @@ export default function SupporterSpace() {
                   <span className="bg-orange-100 text-orange-700 text-[10px] font-bold px-2 py-1 rounded tracking-tighter uppercase">
                     {selectedItem.type}
                   </span>
-                  {selectedItem.isPublic && (
+                  {!selectedItem.isPrivate && (
                     <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded tracking-tighter uppercase">
                       Public
                     </span>

@@ -30,11 +30,12 @@ import { auth, db } from "@/db/firebase";
 export default function CreatorOnboarding() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const referralCreator = searchParams.get("referral") || null;
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<
-    "idle" | "checking" | "available" | "taken"
+    "idle" | "checking" | "available" | "taken" | "invalid"
   >("idle");
 
   const [formData, setFormData] = useState({
@@ -53,10 +54,15 @@ export default function CreatorOnboarding() {
     },
   });
 
-  // 1. Real-time Username Verification
   useEffect(() => {
     if (formData.username.length < 3) {
       setUsernameStatus("idle");
+      return;
+    }
+
+    const validUsernameRegex = /^[a-z0-9_]+$/;
+    if (!validUsernameRegex.test(formData.username)) {
+      setUsernameStatus("invalid");
       return;
     }
 
@@ -140,6 +146,7 @@ export default function CreatorOnboarding() {
       await updateDoc(doc(db, "profiles", user.uid), {
         type: "creator",
         username: formData.username,
+        referralCreator: referralCreator ?? null,
         onboarded: true,
       });
 
@@ -214,7 +221,9 @@ export default function CreatorOnboarding() {
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    username: e.target.value.toLowerCase().replace(/\s/g, ""),
+                    username: e.target.value
+                      .toLowerCase()
+                      .replace(/[^a-z0-9_]/g, ""),
                   })
                 }
               />
@@ -228,11 +237,20 @@ export default function CreatorOnboarding() {
                 {usernameStatus === "taken" && (
                   <XCircle className="text-red-500" size={20} />
                 )}
+                {usernameStatus === "invalid" && (
+                  <XCircle className="text-red-500" size={20} />
+                )}
               </div>
             </div>
             {usernameStatus === "taken" && (
               <p className="text-red-500 text-xs font-bold text-center">
                 Sorry, this username is already taken.
+              </p>
+            )}
+            {usernameStatus === "invalid" && (
+              <p className="text-red-500 text-xs font-bold text-center">
+                Sorry, this username is invalid. Username should not have
+                special characters like @ or !
               </p>
             )}
             <button

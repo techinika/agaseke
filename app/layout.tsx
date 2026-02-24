@@ -12,32 +12,39 @@ const rubik = Rubik({
 });
 
 export const metadata: Metadata = {
-  title: "Agaseke for Creators | Support Rwandan Creativity",
+  metadataBase: new URL("https://agaseke.me"),
+  title: {
+    default: "Agaseke: Monetize Content and Support Content Creators in Rwanda",
+    template: "%s | Agaseke",
+  },
   description:
-    "The premier platform to support Rwandan creators, artists, and innovators. Fueling the local creative economy one contribution at a time.",
+    "Empowering the next generation of Rwandan digital creators. Monetize your content, connect with your audience, and grow your brand in Kigali and beyond.",
   keywords: [
-    "Rwanda",
-    "Creators",
-    "Support",
-    "MoMo",
-    "Art",
-    "Kigali",
     "Agaseke",
-    "monetization in rwanda",
-    "content creators in rwanda",
+    "Rwandan creators",
+    "Monetize content Rwanda",
+    "Kigali influencers",
+    "Support African artists",
+    "Digital tips Rwanda",
+    "Agseke for Creators",
+    "Content Monetization in Rwanda",
+    "Exclusive Content from Creators",
   ],
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
-    title: "Agaseke for Creators | Empowering Rwandan Creators",
+    title: "Agaseke: Monetize Content and Support Content Creators in Rwanda'",
     description:
-      "Join the community supporting the next generation of Rwandan talent.",
-    url: baseUrl,
+      "The premier platform for Rwandan digital talent to monetize and grow.",
+    url: "https://agaseke.me",
     siteName: "Agaseke",
     images: [
       {
-        url: "/agaseke.png",
+        url: "/agaseke.png", // Ensure this exists in your public folder
         width: 1200,
         height: 630,
-        alt: "Agaseke for Creators Platform",
+        alt: "Agaseke Creator Platform",
       },
     ],
     locale: "en_RW",
@@ -45,10 +52,21 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Agaseke for Creators | Support Rwandan Creativity",
-    description:
-      "Empowering creators across Rwanda through direct community support.",
+    title: "Agaseke | Rwandan Creator Platform",
+    description: "Monetize your creative work in Rwanda.",
     images: ["/agaseke.png"],
+    creator: "@Agaseke_support",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
 };
 

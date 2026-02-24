@@ -17,4 +17,5 @@ export interface Profile {
   totalSupportedCreators: number;
   isAdmin: boolean;
   phoneNumber: string;
+  referralCreator: string | null;
 }

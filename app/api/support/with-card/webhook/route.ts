@@ -44,10 +44,10 @@ export async function POST(req: Request) {
 
   if (status === "successful") {
     const totalAmount = Number(txData.amount);
-    const platformSharePercentage = txData.includeReferral
-      ? Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL)
-      : Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE);
-    const platformShare = totalAmount * platformSharePercentage;
+    const platformShare =
+      totalAmount * txData.includeReferral
+        ? Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL)
+        : Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE);
     const creatorShare =
       totalAmount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE);
 

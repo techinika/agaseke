@@ -1,5 +1,6 @@
 import AuthGuard from "@/auth/AuthGuard";
 import SupporterSpace from "@/components/pages/Dashboards/SupporterSpace";
+import FeedbackFAB from "@/components/parts/FeedbackFAB";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -15,6 +16,7 @@ function page() {
   return (
     <AuthGuard>
       <SupporterSpace />
+      <FeedbackFAB />
     </AuthGuard>
   );
 }

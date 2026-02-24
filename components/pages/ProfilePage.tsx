@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   Loader,
   X,
+  Phone,
 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { Profile } from "@/types/profile";
@@ -33,6 +34,7 @@ export default function ProfileEditPage() {
 
   const [displayName, setDisplayName] = useState("");
   const [location, setLocation] = useState("");
+  const [phone, setPhone] = useState("");
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -45,6 +47,7 @@ export default function ProfileEditPage() {
           setProfile(data as Profile);
           setDisplayName(data.displayName || "");
           setLocation(data.location || "");
+          setPhone(data?.phoneNumber || "");
         }
       }
       setLoading(false);
@@ -60,6 +63,7 @@ export default function ProfileEditPage() {
       await updateDoc(userRef, {
         displayName,
         location,
+        phoneNumber: phone,
       });
       toast.success("Profile updated successfully!");
     } catch (error) {
@@ -75,7 +79,7 @@ export default function ProfileEditPage() {
     if (!user || confirmEmail !== user.email) return;
 
     try {
-      await deleteDoc(doc(db, "profiles", user.uid));
+      // await deleteDoc(doc(db, "profiles", user.uid));
       await deleteUser(user);
       window.location.href = "/";
     } catch (error) {
@@ -189,6 +193,19 @@ export default function ProfileEditPage() {
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                     placeholder="e.g. Kigali, Rwanda"
+                    className="w-full bg-slate-50 border-none focus:ring-2 focus:ring-orange-100 rounded-lg py-4 pl-12 pr-6 font-bold transition-all"
+                  />
+                </div>
+                <div className="relative">
+                  <Phone
+                    size={16}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+                  />
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="e.g. +250789999999"
                     className="w-full bg-slate-50 border-none focus:ring-2 focus:ring-orange-100 rounded-lg py-4 pl-12 pr-6 font-bold transition-all"
                   />
                 </div>

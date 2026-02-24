@@ -10,7 +10,10 @@ import {
   updateDoc,
 } from "firebase/firestore";
 
-export const handleGoogleLogin = async (reservedUsername: string | null) => {
+export const handleGoogleLogin = async (
+  reservedUsername: string | null,
+  referralCreator: string | null,
+) => {
   toast.info("Connecting to Google...");
 
   try {
@@ -33,6 +36,7 @@ export const handleGoogleLogin = async (reservedUsername: string | null) => {
         totalSupport: 0,
         isAdmin: false,
         phoneNumber: "",
+        referralCreator: referralCreator ?? null,
         totalSupportedCreators: 0,
         createdAt: serverTimestamp(),
         lastLogin: serverTimestamp(),

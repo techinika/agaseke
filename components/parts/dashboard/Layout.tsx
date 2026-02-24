@@ -25,6 +25,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/auth/AuthContext";
 import { handleLogout } from "@/db/functions/LogOut";
 import SharePageModal from "../SharePage";
+import FeedbackFAB from "../FeedbackFAB";
 
 export default function DashboardLayout({
   children,
@@ -76,10 +77,12 @@ export default function DashboardLayout({
         />
       )}
 
+      <FeedbackFAB />
+
       {/* 2. Sidebar */}
       <aside
         className={`
-        fixed inset-y-0 left-0 z-[70] w-64 bg-white border-r border-slate-200 
+        fixed inset-y-0 left-0 z-[100] w-64 bg-white border-r border-slate-200 
         transform transition-transform duration-300 ease-in-out
         ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
         md:translate-x-0 md:static md:flex md:flex-col h-screen absolute top-0

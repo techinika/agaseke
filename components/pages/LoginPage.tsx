@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [loading, setLoading] = React.useState(false);
   const searchParams = useSearchParams();
   const reservedUsername = searchParams.get("username") || null;
+  const referralCreator = searchParams.get("referral") || null;
 
   return (
     <div className="min-h-screen bg-white flex flex-wrap-reverse md:flex-row">
@@ -72,7 +73,7 @@ export default function LoginPage() {
             className="w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-100 py-4 px-6 rounded-lg font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-200 transition-all active:scale-[0.98]"
             onClick={async () => {
               setLoading(true);
-              await handleGoogleLogin(reservedUsername ?? null);
+              await handleGoogleLogin(reservedUsername ?? null, referralCreator ?? null);
               setLoading(false);
             }}
           >
