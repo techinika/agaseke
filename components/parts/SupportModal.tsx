@@ -42,10 +42,8 @@ export function SupportModal({
 
     if (orderTrackingId && merchantRef && merchantRef.includes("AGS-CARD")) {
       setStep("processing");
-      // Clear the URL parameters so they don't trigger again on refresh
       window.history.replaceState({}, document.title, window.location.pathname);
 
-      // Start listening to Firestore for this specific card transaction
       listenToTransaction(merchantRef);
     }
   }, [isOpen]);
@@ -180,7 +178,7 @@ export function SupportModal({
 
   const handlePesapalSupport = async () => {
     if (!amount || parseInt(amount) < 100) {
-      return toast.error("Minimum support amount is 100 RWF");
+      return toast.error("Minimum gift amount is 100 RWF");
     }
 
     setIsSubmitting(true);
