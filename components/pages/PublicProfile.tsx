@@ -173,11 +173,11 @@ export default function PublicProfile({ username }: { username: string }) {
                 />
               </div>
               <span className="text-xl font-bold tracking-tight">
-                Support {creator.name.split(" ")[0]}
+                Gift {creator.name.split(" ")[0]}
               </span>
             </div>
             <div className="bg-white/10 group-hover:bg-white text-white group-hover:text-orange-600 px-6 py-4 rounded-lg font-bold text-sm transition-all uppercase tracking-widest">
-              Send Support
+              Send a Gift
             </div>
           </button>
 
@@ -188,7 +188,7 @@ export default function PublicProfile({ username }: { username: string }) {
                 <Link href="/login" className="underline decoration-2">
                   Log in
                 </Link>{" "}
-                to stay in touch and track your support.
+                to stay in touch and track your gifts.
               </p>
             </div>
           )}
@@ -199,7 +199,7 @@ export default function PublicProfile({ username }: { username: string }) {
         {/* SUPPORT PERKS SECTION */}
         <section className="bg-white border border-slate-100 p-8 rounded-lg shadow-sm">
           <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-orange-600 mb-8 flex items-center gap-2">
-            <Star size={14} fill="currentColor" /> Why Support{" "}
+            <Star size={14} fill="currentColor" /> Why Send a Gift to{" "}
             {creator.name.split(" ")[0]}?
           </h3>
           <div className="space-y-6">
@@ -221,7 +221,7 @@ export default function PublicProfile({ username }: { username: string }) {
             <PerkRow
               icon={<MessageCircle className="text-orange-500" />}
               title="Direct Connection"
-              desc="Top supporters get direct messaging access to the creator."
+              desc="Top gifters get direct messaging access to the creator."
             />
           </div>
         </section>

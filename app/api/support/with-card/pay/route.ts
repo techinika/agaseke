@@ -4,9 +4,12 @@ import { adminDb } from "@/db/firebaseAdmin";
 
 export async function POST(req: Request) {
   try {
+    const body = await req.json();
     const {
       amount,
-      phone,
+      email,
+      firstName,
+      lastName,
       creatorId,
       creatorUid,
       supporterId,
@@ -14,10 +17,11 @@ export async function POST(req: Request) {
       includeReferral,
       referralUid,
       referralId,
-    } = await req.json();
+    } = body;
 
+    // 1. Get Token
     const authRes = await fetch(
-      "https://payments.paypack.rw/api/auth/agents/authorize",
+      `${process.env.PESAPAL_URL}/api/Auth/RequestToken`,
       {
         method: "POST",
         headers: {
@@ -25,58 +29,69 @@ export async function POST(req: Request) {
           Accept: "application/json",
         },
         body: JSON.stringify({
-          client_id: process.env.PAYPACK_CLIENT_ID,
-          client_secret: process.env.PAYPACK_CLIENT_SECRET,
+          consumer_key: process.env.PESAPAL_CONSUMER_KEY,
+          consumer_secret: process.env.PESAPAL_CONSUMER_SECRET,
         }),
       },
     );
+    const { token } = await authRes.json();
 
-    const { access } = await authRes.json();
+    const merchantRef = `AGS-CARD-${Date.now()}`;
 
+    // 2. Submit Order
     const payRes = await fetch(
-      "https://payments.paypack.rw/api/transactions/cashin",
+      `${process.env.PESAPAL_URL}/api/Transactions/SubmitOrderRequest`,
       {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
-          Authorization: `Bearer ${access}`,
-          "X-Webhook-Mode":
-            process.env.NODE_ENV === "production"
-              ? "production"
-              : "development",
         },
-        body: JSON.stringify({ amount, number: phone }),
+        body: JSON.stringify({
+          id: merchantRef,
+          currency: "RWF",
+          amount: Number(amount),
+          description: `Support for ${creatorId}`,
+          callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment-callback`,
+          notification_id: process.env.PESAPAL_IPN_ID,
+          billing_address: {
+            email_address: email,
+            first_name: firstName || "Supporter",
+            last_name: lastName || "Agaseke",
+            country_code: "RW",
+          },
+        }),
       },
     );
 
     const payData = await payRes.json();
 
-    if (payData.ref) {
-      await adminDb.collection("transactions").add({
-        ref: payData.ref,
-        amount: Number(amount),
-        phone,
-        creatorId,
-        creatorUid,
-        supporterId: supporterId || "anonymous",
-        includeReferral: includeReferral,
-        status: "pending",
-        message: message ?? "",
-        referralUid: referralUid ?? "",
-        referralId: referralId ?? "",
-        type: "support",
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+    if (payData.redirect_url) {
+      // 3. Save Pending Transaction
+      await adminDb
+        .collection("transactions")
+        .doc(merchantRef)
+        .set({
+          ref: merchantRef,
+          orderTrackingId: payData.order_tracking_id,
+          amount: Number(amount),
+          creatorUid,
+          creatorId,
+          supporterId: supporterId || "anonymous",
+          status: "pending",
+          message: message || "",
+          includeReferral: !!includeReferral,
+          referralUid: referralUid || "",
+          referralId: referralId || "",
+          type: "support",
+          paymentMethod: "card",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
 
-      return NextResponse.json({ ref: payData.ref });
+      return NextResponse.json({ redirect_url: payData.redirect_url });
     }
-
-    return NextResponse.json(
-      { error: "Payment failed to initiate" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Failed to initiate" }, { status: 400 });
   } catch (error: any) {
-    console.error("Payment Initiation Error:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 },
