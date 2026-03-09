@@ -17,7 +17,11 @@ export async function GET() {
       },
     );
 
+    console.log(authRes.json());
+
     const authData = await authRes.json();
+
+    console.log(authData);
 
     if (!authData.token) {
       return NextResponse.json(
