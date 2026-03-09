@@ -1,31 +1,30 @@
 import { NextResponse } from "next/server";
 
 export async function GET() {
+  console.log("--- PESAPAL SETUP START ---");
+
   try {
-    // 1. Check for missing environment variables first
     const config = {
-      url: process.env.PESAPAL_URL,
-      key: process.env.PESAPAL_CONSUMER_KEY,
-      secret: process.env.PESAPAL_CONSUMER_SECRET,
-      baseUrl: process.env.NEXT_PUBLIC_BASE_URL,
+      url: process.env.PESAPAL_URL?.trim(),
+      key: process.env.PESAPAL_CONSUMER_KEY?.trim(),
+      secret: process.env.PESAPAL_CONSUMER_SECRET?.trim(),
+      baseUrl: process.env.NEXT_PUBLIC_BASE_URL?.trim(),
     };
 
-    if (!config.url || !config.key || !config.secret || !config.baseUrl) {
-      return NextResponse.json(
-        {
-          error: "Missing Env Variables",
-          check: {
-            url: !!config.url,
-            key: !!config.key,
-            secret: !!config.secret,
-            baseUrl: !!config.baseUrl,
-          },
-        },
-        { status: 500 },
-      );
+    console.log("Environment Check:", {
+      url: config.url,
+      keyExists: !!config.key,
+      keyLength: config.key?.length,
+      baseUrl: config.baseUrl,
+    });
+
+    if (!config.url || !config.key || !config.secret) {
+      console.error("Critical Error: Missing environment variables.");
+      return NextResponse.json({ error: "Missing config" }, { status: 500 });
     }
 
-    // 2. Request Auth Token
+    // 1. Auth Request
+    console.log("Attempting Auth with Pesapal...");
     const authRes = await fetch(`${config.url}/api/Auth/RequestToken`, {
       method: "POST",
       headers: {
@@ -38,23 +37,22 @@ export async function GET() {
       }),
     });
 
-    // Safely parse JSON once
+    console.log("Auth Status Code:", authRes.status);
     const authData = await authRes.json();
-
-    console.log("AUTH Data", authData)
+    console.log("Auth Data Received:", JSON.stringify(authData, null, 2));
 
     if (!authData.token) {
+      console.error("Auth Failed. Stopping execution.");
       return NextResponse.json(
-        {
-          error: "Pesapal Auth Failed",
-          status: authRes.status,
-          details: authData,
-        },
+        { error: "Auth Failed", details: authData },
         { status: 401 },
       );
     }
 
-    // 3. Register IPN
+    // 2. IPN Registration
+    const ipnPath = `${config.baseUrl}/api/support/with-card/ipn`;
+    console.log("Attempting IPN Registration for URL:", ipnPath);
+
     const ipnRes = await fetch(`${config.url}/api/URLSetup/RegisterIPN`, {
       method: "POST",
       headers: {
@@ -63,40 +61,33 @@ export async function GET() {
         Accept: "application/json",
       },
       body: JSON.stringify({
-        url: `${config.baseUrl}/api/support/with-card/ipn`,
+        url: ipnPath,
         ipn_notification_type: "POST",
       }),
     });
 
+    console.log("IPN Status Code:", ipnRes.status);
     const ipnData = await ipnRes.json();
-
-    console.log("IPN Data", ipnData, "IPN ID", ipnData?.ipn_id);
+    console.log("IPN Data Received:", JSON.stringify(ipnData, null, 2));
 
     if (!ipnData.ipn_id) {
+      console.error("IPN Registration Failed.");
       return NextResponse.json(
-        {
-          error: "IPN Registration Failed",
-          status: ipnRes.status,
-          details: ipnData,
-          attempted_url: `${config.baseUrl}/api/support/with-card/ipn`,
-        },
+        { error: "IPN Failed", details: ipnData },
         { status: 400 },
       );
     }
 
-    // 4. Success
+    console.log("--- SETUP SUCCESSFUL: IPN ID GENERATED ---");
     return NextResponse.json({
-      message: "Success! Copy the ID below to your .env file",
+      message: "Success",
       PESAPAL_IPN_ID: ipnData.ipn_id,
+      debug: ipnData,
     });
   } catch (error: any) {
-    // Catch-all for network issues or code crashes
-    console.log(error);
+    console.error("CRITICAL FUNCTION CRASH:", error.message);
     return NextResponse.json(
-      {
-        error: "Internal Server Error",
-        message: error.message,
-      },
+      { error: "Internal Crash", message: error.message },
       { status: 500 },
     );
   }
