@@ -17,6 +17,8 @@ export async function GET() {
       },
     );
 
+    console.log(authRes);
+
     const { token } = await authRes.json();
     if (!token)
       return NextResponse.json({ error: "Auth Failed" }, { status: 401 });
