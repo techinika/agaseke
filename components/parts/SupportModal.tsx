@@ -278,7 +278,7 @@ export function SupportModal({
                   </span>
                 </button>
 
-                <button
+                {/* <button
                   onClick={() => setPaymentMethod("card")}
                   className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
                     paymentMethod === "card"
@@ -301,7 +301,7 @@ export function SupportModal({
                   >
                     Bank Cards
                   </span>
-                </button>
+                </button> */}
               </div>
 
               <div className="space-y-4">
