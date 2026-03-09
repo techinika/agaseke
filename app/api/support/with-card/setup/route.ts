@@ -52,6 +52,8 @@ export async function GET() {
 
     const ipnData = await ipnRes.json();
 
+    console.log(ipnData);
+
     if (!ipnData.ipn_id) {
       return NextResponse.json(
         {
