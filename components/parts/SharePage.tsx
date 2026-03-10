@@ -35,7 +35,7 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
     try {
       const dataUrl = await toPng(cardRef.current, {
         cacheBust: true,
-        pixelRatio: 3, // High-res export
+        pixelRatio: 3, 
         backgroundColor: "#ffffff",
       });
 

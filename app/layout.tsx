@@ -14,11 +14,11 @@ const rubik = Rubik({
 export const metadata: Metadata = {
   metadataBase: new URL("https://agaseke.me"),
   title: {
-    default: "Agaseke: Monetize Content and Support Content Creators in Rwanda",
+    default: "Agaseke | Fuel your creativity with community support",
     template: "%s | Agaseke",
   },
   description:
-    "Empowering the next generation of Rwandan digital creators. Monetize your content, connect with your audience, and grow your brand in Kigali and beyond.",
+    "The easiest way for fans in Rwanda to support creators. Claim your page and start receiving gifts via MoMo and Card.",
   keywords: [
     "Agaseke",
     "Rwandan creators",
@@ -34,14 +34,14 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   openGraph: {
-    title: "Agaseke: Monetize Content and Support Content Creators in Rwanda'",
+    title: "Agaseke | Fuel your creativity with community support",
     description:
       "The premier platform for Rwandan digital talent to monetize and grow.",
     url: "https://agaseke.me",
     siteName: "Agaseke",
     images: [
       {
-        url: "/agaseke.png", // Ensure this exists in your public folder
+        url: "/agaseke.png",
         width: 1200,
         height: 630,
         alt: "Agaseke Creator Platform",
