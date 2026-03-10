@@ -106,8 +106,46 @@ export default function PublicProfile({ username }: { username: string }) {
     events: creatorData.events || [],
   };
 
+  const schemaData = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: creator.name,
+    alternateName: creator?.handle,
+    url: `https://agaseke.me/${creator?.handle}`,
+    image: creator.photoURL || "https://agaseke.me/agaseke.png",
+    description: creator.bio || `Content creator on Agaseke`,
+    jobTitle: "Creator",
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": `https://agaseke.me/${creator?.handle}`,
+    },
+    sameAs: [
+      creator.socials?.twitter
+        ? `https://x.com/${creator.socials.twitter}`
+        : null,
+      creator.socials?.instagram
+        ? `https://instagram.com/${creator.socials.instagram}`
+        : null,
+      creator.socials?.linkedin ? creator.socials.linkedin : null,
+      creator.socials?.youtube ? creator.socials.youtube : null,
+      creator.socials?.tiktok ? creator.socials.tiktok : null,
+    ].filter(Boolean),
+    interactionStatistic: creatorData.views
+      ? {
+          "@type": "InteractionCounter",
+          interactionType: "https://schema.org/WatchAction",
+          userInteractionCount: creatorData.views,
+        }
+      : undefined,
+  };
+
   return (
     <div className="min-h-screen bg-[#FBFBFC] text-slate-900 pb-32 selection:bg-orange-100">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
+      />
+      
       <Navbar />
       <CreatorSchema creator={creatorData} handle={username} />
 

@@ -19,6 +19,35 @@ export default function LandingPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: "Agaseke",
+    url: "https://agaseke.me",
+    description:
+      "The creator monetization platform built for Rwanda. Receive fan support, tips, and gifts through local payment methods like MoMo.",
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "All",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "RWF",
+      description: "Free to start. 10% platform fee only when you earn.",
+    },
+    featureList: [
+      "Mobile Money (MoMo) Payments",
+      "Fan Support & Tips",
+      "Exclusive Creator Space",
+      "Monthly Payouts",
+      "Personalized Creator Profile",
+    ],
+    author: {
+      "@type": "Organization",
+      name: "Techinika Limited",
+      url: "https://techinika.co.rw",
+    },
+  };
+
   const handleClaim = () => {
     if (username) {
       router.push(`/login?username=${username}`);
@@ -28,6 +57,11 @@ export default function LandingPage() {
   };
   return (
     <div className="min-h-screen bg-white text-slate-900 selection:bg-orange-100">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       <header className="px-6 py-20 md:py-32 max-w-6xl mx-auto text-center">
         <div className="inline-flex items-center gap-2 bg-orange-50 text-orange-700 px-4 py-2 rounded-full text-xs font-bold mb-8 animate-fade-in">
           <BiMoney size={14} />{" "}
