@@ -4,7 +4,8 @@ import { adminDb } from "@/db/firebaseAdmin";
 
 export async function POST(req: Request) {
   try {
-    const { OrderTrackingId, OrderMerchantReference, OrderNotificationType } = await req.json();
+    const { OrderTrackingId, OrderMerchantReference, OrderNotificationType } =
+      await req.json();
 
     // Pesapal sends this to check if your endpoint is alive or if status changed
     if (OrderNotificationType !== "IPNCHANGE") {
@@ -17,27 +18,32 @@ export async function POST(req: Request) {
     }
 
     // 1. Get Auth Token
-    const authRes = await fetch(`${process.env.PESAPAL_URL}/api/Auth/RequestToken`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        consumer_key: process.env.PESAPAL_CONSUMER_KEY,
-        consumer_secret: process.env.PESAPAL_CONSUMER_SECRET,
-      }),
-    });
+    const authRes = await fetch(
+      `${process.env.PESAPAL_URL}/api/Auth/RequestToken`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          consumer_key: process.env.PESAPAL_CONSUMER_KEY,
+          consumer_secret: process.env.PESAPAL_CONSUMER_SECRET,
+        }),
+      },
+    );
     const { token } = await authRes.json();
 
     // 2. Verify Status with Pesapal
     const statusRes = await fetch(
       `${process.env.PESAPAL_URL}/api/Transactions/GetTransactionStatus?orderTrackingId=${OrderTrackingId}`,
-      { 
-        headers: { 
+      {
+        headers: {
           Authorization: `Bearer ${token}`,
-          Accept: "application/json"
-        } 
-      }
+          Accept: "application/json",
+        },
+      },
     );
     const statusData = await statusRes.json();
+
+    console.log(statusData);
 
     // 3. Locate the transaction in Firestore
     const txQuery = await adminDb
@@ -47,11 +53,16 @@ export async function POST(req: Request) {
       .get();
 
     if (txQuery.empty) {
-      return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Transaction not found" },
+        { status: 404 },
+      );
     }
 
     const txDoc = txQuery.docs[0];
     const txData = txDoc.data();
+
+    console.log(txData);
 
     // Prevent double-processing
     if (txData.status === "successful" || txData.status === "success") {
@@ -67,10 +78,12 @@ export async function POST(req: Request) {
       const platformSharePercentage = txData.includeReferral
         ? Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL)
         : Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE);
-      
+
       const platformShare = totalAmount * platformSharePercentage;
-      const creatorShare = totalAmount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE);
-      const referralShare = totalAmount * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE);
+      const creatorShare =
+        totalAmount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE);
+      const referralShare =
+        totalAmount * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE);
 
       batch.update(txDoc.ref, {
         status: "successful",
@@ -112,7 +125,7 @@ export async function POST(req: Request) {
           reason: "referral_commission",
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-        
+
         batch.update(adminDb.collection("creators").doc(txData.referralId), {
           totalEarnings: admin.firestore.FieldValue.increment(referralShare),
           pendingPayout: admin.firestore.FieldValue.increment(referralShare),
@@ -121,7 +134,9 @@ export async function POST(req: Request) {
 
       // Update Supporter Profile Stats
       if (txData.supporterId && txData.supporterId !== "anonymous") {
-        const profileRef = adminDb.collection("profiles").doc(txData.supporterId);
+        const profileRef = adminDb
+          .collection("profiles")
+          .doc(txData.supporterId);
         batch.update(profileRef, {
           totalSupport: admin.firestore.FieldValue.increment(totalAmount),
           totalSupportedCreators: admin.firestore.FieldValue.increment(1),
@@ -130,11 +145,10 @@ export async function POST(req: Request) {
 
       await batch.commit();
       console.log(`[PESAPAL IPN] Success for ${OrderMerchantReference}`);
-
-    } else if (statusData.payment_status_description === "Failed") {
-      await txDoc.ref.update({ 
-        status: "failed", 
-        updatedAt: admin.firestore.FieldValue.serverTimestamp() 
+    } else {
+      await txDoc.ref.update({
+        status: "failed",
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     }
 
@@ -145,9 +159,11 @@ export async function POST(req: Request) {
       orderMerchantReference: OrderMerchantReference,
       status: 200,
     });
-
   } catch (error: any) {
     console.error("CRITICAL_IPN_ERROR:", error.message);
-    return NextResponse.json({ error: "Internal processing error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal processing error" },
+      { status: 500 },
+    );
   }
 }
