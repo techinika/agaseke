@@ -379,8 +379,8 @@ export function SupportModal({
                 ) : (
                   <>
                     {paymentMethod === "momo"
-                      ? "Pay with MoMo"
-                      : "Pay with Card"}
+                      ? "Gift with MoMo"
+                      : "Gift with Card"}
                   </>
                 )}
               </button>
