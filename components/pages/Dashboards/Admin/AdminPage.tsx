@@ -159,7 +159,7 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-[#FBFBFC] text-slate-900 pb-20 relative">
       <main className="max-w-7xl mx-auto px-6 mt-12">
-        <header className="mb-10 flex justify-between items-center">
+        <header className="mb-10 flex">
           <div>
             <h1 className="text-4xl font-bold tracking-tight text-slate-900 uppercase">
               Platform Control
@@ -168,13 +168,6 @@ export default function AdminDashboard() {
               Manage growth, verify creators, and process payouts.
             </p>
           </div>
-          <Link
-            href="/admin/comms"
-            className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-lg font-bold text-sm hover:bg-orange-600 transition-all shadow-xl shadow-slate-200"
-          >
-            <Send size={18} />
-            Broadcast Message
-          </Link>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
