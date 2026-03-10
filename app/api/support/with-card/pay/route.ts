@@ -66,8 +66,9 @@ export async function POST(req: Request) {
 
     const payData = await payRes.json();
 
+    console.log(payData);
+
     if (payData.redirect_url) {
-      // 3. Save Pending Transaction
       await adminDb
         .collection("transactions")
         .doc(merchantRef)
@@ -92,6 +93,7 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ error: "Failed to initiate" }, { status: 400 });
   } catch (error: any) {
+    console.log(error);
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 },
