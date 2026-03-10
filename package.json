@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@next/third-parties": "^16.1.6",
+    "canvas-confetti": "^1.9.4",
     "cloudinary": "^2.9.0",
     "date-fns": "^4.1.0",
     "firebase": "^12.8.0",
@@ -28,6 +29,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/formidable": "^3.4.6",
     "@types/node": "^20",
     "@types/nodemailer": "^7.0.9",
