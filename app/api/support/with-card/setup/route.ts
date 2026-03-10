@@ -23,7 +23,6 @@ export async function GET() {
       return NextResponse.json({ error: "Missing config" }, { status: 500 });
     }
 
-    // 1. Auth Request
     console.log("Attempting Auth with Pesapal...");
     const authRes = await fetch(`${config.url}/api/Auth/RequestToken`, {
       method: "POST",
