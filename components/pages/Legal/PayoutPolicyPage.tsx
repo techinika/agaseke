@@ -119,7 +119,7 @@ export default function PayoutPolicy() {
 
           {/* Contact Support */}
           <section className="pt-10 border-t border-slate-100 text-center">
-            <p className="text-slate-500 text-sm mb-4 italic">
+            <p className="text-slate-500 text-sm mb-4">
               Questions about your specific payout?
             </p>
             <a

@@ -152,7 +152,7 @@ export default function PaymentCallback() {
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
             Powered by
           </span>
-          <span className="text-xs font-black text-slate-800 tracking-tighter italic">
+          <span className="text-xs font-bold text-slate-800 tracking-tighter">
             agaseke.me
           </span>
         </div>

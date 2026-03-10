@@ -3,6 +3,13 @@ import admin from "firebase-admin";
 import { adminDb } from "@/db/firebaseAdmin";
 
 export async function POST(req: Request) {
+  const config = {
+    url: process.env.PESAPAL_URL?.trim(),
+    key: process.env.PESAPAL_CONSUMER_KEY?.trim(),
+    secret: process.env.PESAPAL_CONSUMER_SECRET?.trim(),
+    baseUrl: process.env.NEXT_PUBLIC_BASE_URL?.trim(),
+  };
+
   try {
     const body = await req.json();
     const {
@@ -38,7 +45,23 @@ export async function POST(req: Request) {
 
     const merchantRef = `AGS-CARD-${Date.now()}`;
 
-    // 2. Submit Order
+    const ipnPath = `${config.baseUrl}/api/support/with-card/ipn`;
+
+    const ipnRes = await fetch(`${config.url}/api/URLSetup/RegisterIPN`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        url: ipnPath,
+        ipn_notification_type: "POST",
+      }),
+    });
+
+    const ipnData = await ipnRes.json();
+
     const payRes = await fetch(
       `${process.env.PESAPAL_URL}/api/Transactions/SubmitOrderRequest`,
       {
@@ -53,7 +76,7 @@ export async function POST(req: Request) {
           amount: Number(amount),
           description: `Support for ${creatorId}`,
           callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment`,
-          notification_id: process.env.PESAPAL_IPN_ID,
+          notification_id: ipnData.ipn_id ?? process.env.PESAPAL_IPN_ID,
           billing_address: {
             email_address: email,
             first_name: firstName || "Supporter",
