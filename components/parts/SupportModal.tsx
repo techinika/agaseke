@@ -34,6 +34,7 @@ export function SupportModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const unsubscribeRef = useRef<(() => void) | null>(null);
+  const popupRef = useRef<Window | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -198,19 +199,28 @@ export function SupportModal({
           includeReferral,
           referralUid,
           referralId,
-          callback_url: window.location.href,
+          callback_url: `${window.location.origin}/api/support/with-card/close-popup`,
         }),
       });
 
       const data = await res.json();
 
       if (data.redirect_url) {
-        // Redirect user to Pesapal
-        window.location.href = data.redirect_url;
+        setStep("processing");
+
+        listenToTransaction(data.merchant_reference);
+
+        popupRef.current = window.open(data.redirect_url, "_blank");
+
+        if (!popupRef.current) {
+          toast.error("Popup blocked! Please allow popups for this site.");
+        }
       } else {
         throw new Error(data.error || "Could not generate payment link.");
       }
     } catch (error: any) {
+      setStep("error");
+      setErrorMessage(error.message);
       toast.error(error.message || "An unexpected error occurred.");
     } finally {
       setIsSubmitting(false);
