@@ -7,7 +7,13 @@ export async function POST(req: Request) {
     const { OrderTrackingId, OrderMerchantReference, OrderNotificationType } =
       await req.json();
 
-    // Pesapal sends this to check if your endpoint is alive or if status changed
+    console.log(
+      "Request Details: ",
+      OrderNotificationType,
+      OrderMerchantReference,
+      OrderTrackingId,
+    );
+
     if (OrderNotificationType !== "IPNCHANGE") {
       return NextResponse.json({
         orderNotificationType: OrderNotificationType,
@@ -17,7 +23,6 @@ export async function POST(req: Request) {
       });
     }
 
-    // 1. Get Auth Token
     const authRes = await fetch(
       `${process.env.PESAPAL_URL}/api/Auth/RequestToken`,
       {
@@ -31,7 +36,6 @@ export async function POST(req: Request) {
     );
     const { token } = await authRes.json();
 
-    // 2. Verify Status with Pesapal
     const statusRes = await fetch(
       `${process.env.PESAPAL_URL}/api/Transactions/GetTransactionStatus?orderTrackingId=${OrderTrackingId}`,
       {
@@ -43,9 +47,6 @@ export async function POST(req: Request) {
     );
     const statusData = await statusRes.json();
 
-    console.log(statusData);
-
-    // 3. Locate the transaction in Firestore
     const txQuery = await adminDb
       .collection("transactions")
       .where("ref", "==", OrderMerchantReference)
@@ -64,12 +65,10 @@ export async function POST(req: Request) {
 
     console.log(txData);
 
-    // Prevent double-processing
     if (txData.status === "successful" || txData.status === "success") {
       return NextResponse.json({ status: 200, message: "Already processed" });
     }
 
-    // 4. If Successful, Run Allocation Logic
     if (statusData.payment_status_description === "Completed") {
       const totalAmount = Number(txData.amount);
       const batch = adminDb.batch();
@@ -105,6 +104,15 @@ export async function POST(req: Request) {
         amount: creatorShare,
         txRef: OrderMerchantReference,
         reason: "support",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      const supportRef = adminDb.collection("supportedCreators").doc();
+      batch.set(supportRef, {
+        creatorId: txData.creatorId,
+        amount: totalAmount,
+        supporterId: txData.supporterId || null,
+        txRef: OrderMerchantReference,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
@@ -152,7 +160,6 @@ export async function POST(req: Request) {
       });
     }
 
-    // Pesapal MUST receive this specific structure to stop retrying the IPN
     return NextResponse.json({
       orderNotificationType: OrderNotificationType,
       orderTrackingId: OrderTrackingId,
