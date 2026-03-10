@@ -11,6 +11,7 @@ import {
   getDoc,
 } from "firebase/firestore";
 import { Heart, Loader, ShieldCheck, Smartphone, X } from "lucide-react";
+import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 
@@ -32,6 +33,8 @@ export function SupportModal({
   const [errorMessage, setErrorMessage] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("momo");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [popupBlocked, setPopupBlocked] = useState(false);
+  const [redirectUrl, setRedirectUrl] = useState("");
 
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const popupRef = useRef<Window | null>(null);
@@ -207,13 +210,21 @@ export function SupportModal({
 
       if (data.redirect_url) {
         setStep("processing");
+        setRedirectUrl(data.redirect_url);
+        const newWindow = window.open(data.redirect_url, "_blank");
 
-        listenToTransaction(data.merchant_reference);
-
-        popupRef.current = window.open(data.redirect_url, "_blank");
-
-        if (!popupRef.current) {
-          toast.error("Popup blocked! Please allow popups for this site.");
+        if (
+          !newWindow ||
+          newWindow.closed ||
+          typeof newWindow.closed === "undefined"
+        ) {
+          setPopupBlocked(true);
+          setStep("error");
+          setErrorMessage(
+            "Your browser blocked the payment window. Please click the button below to continue.",
+          );
+        } else {
+          listenToTransaction(data.merchant_reference);
         }
       } else {
         throw new Error(data.error || "Could not generate payment link.");
@@ -428,6 +439,15 @@ export function SupportModal({
                 Payment Failed
               </h4>
               <p className="text-slate-500 font-medium">{errorMessage}</p>
+              {popupBlocked && (
+                <Link
+                  href={redirectUrl}
+                  target="_blank"
+                  className="w-full bg-orange-600 text-center text-white py-4 rounded-lg font-bold block"
+                >
+                  Open Payment Window
+                </Link>
+              )}
               <button
                 onClick={() => setStep("input")}
                 className="w-full bg-slate-100 text-slate-900 py-4 rounded-lg font-bold hover:bg-slate-200 transition-colors"
