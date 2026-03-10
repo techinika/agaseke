@@ -66,8 +66,6 @@ export async function POST(req: Request) {
 
     const payData = await payRes.json();
 
-    console.log(payData);
-
     if (payData.redirect_url) {
       await adminDb
         .collection("transactions")
