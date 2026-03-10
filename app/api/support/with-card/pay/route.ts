@@ -52,7 +52,7 @@ export async function POST(req: Request) {
           currency: "RWF",
           amount: Number(amount),
           description: `Support for ${creatorId}`,
-          callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment-callback`,
+          callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment`,
           notification_id: process.env.PESAPAL_IPN_ID,
           billing_address: {
             email_address: email,
@@ -65,6 +65,8 @@ export async function POST(req: Request) {
     );
 
     const payData = await payRes.json();
+
+    console.log(payData);
 
     if (payData.redirect_url) {
       await adminDb
@@ -87,7 +89,10 @@ export async function POST(req: Request) {
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-      return NextResponse.json({ redirect_url: payData.redirect_url });
+      return NextResponse.json({
+        redirect_url: payData.redirect_url,
+        merchant_reference: payData.merchant_reference,
+      });
     }
     return NextResponse.json({ error: "Failed to initiate" }, { status: 400 });
   } catch (error: any) {

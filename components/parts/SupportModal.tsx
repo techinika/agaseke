@@ -37,7 +37,6 @@ export function SupportModal({
   const [redirectUrl, setRedirectUrl] = useState("");
 
   const unsubscribeRef = useRef<(() => void) | null>(null);
-  const popupRef = useRef<Window | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -169,7 +168,7 @@ export function SupportModal({
         if (txData.status === "success" || txData.status === "successful") {
           if (unsubscribeRef.current) unsubscribeRef.current();
           setStep("success");
-          sendSupportEmail(Number(txData.amount * 0.9)); // Simplified share
+          sendSupportEmail(Number(txData.amount * 0.9));
           toast.success("Card payment verified!");
         } else if (txData.status === "failed") {
           if (unsubscribeRef.current) unsubscribeRef.current();
@@ -186,6 +185,8 @@ export function SupportModal({
     }
 
     setIsSubmitting(true);
+    setStep("processing");
+
     try {
       const res = await fetch("/api/support/with-card/pay", {
         method: "POST",
@@ -202,14 +203,13 @@ export function SupportModal({
           includeReferral,
           referralUid,
           referralId,
-          callback_url: `${window.location.origin}/api/support/with-card/close-popup`,
+          callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment`,
         }),
       });
 
       const data = await res.json();
 
       if (data.redirect_url) {
-        setStep("processing");
         setRedirectUrl(data.redirect_url);
         const newWindow = window.open(data.redirect_url, "_blank");
 
