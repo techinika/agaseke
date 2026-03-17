@@ -1,5 +1,5 @@
-import React from "react";
-import Navbar from "@/components/parts/Navigation";
+"use client";
+
 import {
   Search,
   Mail,
@@ -49,8 +49,28 @@ const faqs = [
 ];
 
 export default function HelpCenter() {
+  const allQuestions = faqs.flatMap((section) => section.questions);
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: allQuestions.map((item: any) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.a,
+      },
+    })),
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       <div className="bg-orange-600 pt-20 pb-32 px-6">
         <div className="max-w-3xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
@@ -133,7 +153,6 @@ export default function HelpCenter() {
           </Link>
         </div>
 
-        {/* FAQs */}
         <div className="max-w-3xl mx-auto">
           <h2 className="text-3xl font-bold mb-10 flex items-center gap-3">
             <HelpCircle className="text-orange-600" size={32} /> Frequently
