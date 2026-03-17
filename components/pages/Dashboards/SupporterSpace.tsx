@@ -17,7 +17,6 @@ import {
   Eye,
   FileText,
 } from "lucide-react";
-import Image from "next/image";
 import Navbar from "@/components/parts/Navigation";
 import { useAuth } from "@/auth/AuthContext";
 import Loading from "@/app/loading";
