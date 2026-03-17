@@ -32,6 +32,7 @@ import { CommunityTab } from "../parts/public/CommunityTab";
 import { StoreTab } from "../parts/public/StoreTab";
 import { GiveawayTab } from "../parts/public/GiveawayTab";
 import { MessageTab } from "../parts/public/MessageTab";
+import Footer from "../parts/Footer";
 
 export default function PublicProfile({ username }: { username: string }) {
   const { user: currentUser, isLoggedIn, isCreator } = useAuth();
@@ -191,7 +192,7 @@ export default function PublicProfile({ username }: { username: string }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#FBFBFC] text-slate-900 pb-32 selection:bg-orange-100">
+    <div className="min-h-screen bg-[#FBFBFC] text-slate-900 selection:bg-orange-100">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
@@ -263,6 +264,8 @@ export default function PublicProfile({ username }: { username: string }) {
           username={username}
         />
       )}
+
+      <Footer />
     </div>
   );
 }

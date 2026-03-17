@@ -64,7 +64,7 @@ export const SendGiftSection = ({
           agaseke.me/{handle}{" "}
           <button
             onClick={() => setIsShareModalOpen(true)}
-            className="p-1.5 rounded-full bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all border border-orange-100"
+            className="ml-3 p-1.5 rounded-full bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all border border-orange-100"
           >
             <Share2 size={14} />
           </button>
@@ -73,26 +73,19 @@ export const SendGiftSection = ({
           {bio}
         </p>
 
-        {socials?.instagram ||
-          socials?.linkedin ||
-          socials?.tiktok ||
-          socials?.twitter ||
-          socials?.web ||
-          (socials?.youtube && (
-            <div className="flex flex-wrap justify-center gap-3 mb-10">
-              {Object.entries(socials).map(
-                ([key, link]) =>
-                  link && (
-                    <SocialPill
-                      key={key}
-                      icon={getIcon(key)}
-                      label={key}
-                      link={link}
-                    />
-                  ),
-              )}
-            </div>
-          ))}
+        <div className="flex flex-wrap justify-center gap-3 mb-10">
+          {Object.entries(socials).map(
+            ([key, link]) =>
+              link && (
+                <SocialPill
+                  key={key}
+                  icon={getIcon(key)}
+                  label={key}
+                  link={link}
+                />
+              ),
+          )}
+        </div>
 
         <button
           onClick={() => setIsModalOpen(true)}
