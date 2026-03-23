@@ -1,4 +1,4 @@
-import { transporter } from "@/lib/emailTransporter";
+import { helloTransporter } from "@/lib/emailTransporter";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -48,8 +48,8 @@ export async function POST(req: Request) {
       </div>
     `;
 
-    await transporter.sendMail({
-      from: `"Agaseke for Creators" <${process.env.SMTP_USER}>`,
+    await helloTransporter.sendMail({
+      from: `"Agaseke for Creators" <${process.env.SMTP_HELLO}>`,
       to: email,
       subject: "Your creator profile is now live!",
       html: emailHtml,

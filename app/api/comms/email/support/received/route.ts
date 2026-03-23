@@ -1,6 +1,5 @@
-import { transporter } from "@/lib/emailTransporter";
+import { helloTransporter } from "@/lib/emailTransporter";
 import { NextResponse } from "next/server";
-import nodemailer from "nodemailer";
 
 export async function POST(req: Request) {
   try {
@@ -46,8 +45,8 @@ export async function POST(req: Request) {
       </div>
     `;
 
-    await transporter.sendMail({
-      from: "Agaseke Alerts",
+    await helloTransporter.sendMail({
+      from: `"Agaseke Alerts" <${process.env.SMTP_HELLO}>`,
       to: creatorEmail,
       subject: `You just received ${amount} RWF on Agaseke!`,
       html: emailHtml,

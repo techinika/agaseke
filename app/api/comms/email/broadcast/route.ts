@@ -1,4 +1,4 @@
-import { transporter } from "@/lib/emailTransporter";
+import {  updatesTransporter } from "@/lib/emailTransporter";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
@@ -30,8 +30,8 @@ export async function POST(req: NextRequest) {
           </div>
         `;
 
-        await transporter.sendMail({
-          from: `"Agaseke Updates" <${process.env.SMTP_USER}>`,
+        await updatesTransporter.sendMail({
+          from: `"Agaseke Updates" <${process.env.SMTP_UPDATES}>`,
           to: user.email,
           subject: subject,
           html: htmlTemplate,

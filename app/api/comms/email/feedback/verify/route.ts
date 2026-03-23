@@ -1,4 +1,4 @@
-import { transporter } from "@/lib/emailTransporter";
+import { helloTransporter } from "@/lib/emailTransporter";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -52,8 +52,8 @@ export async function POST(req: NextRequest) {
       </div>
     `;
 
-    await transporter.sendMail({
-      from: `"Agaseke Verification" <${process.env.SMTP_USER}>`,
+    await helloTransporter.sendMail({
+      from: `"Agaseke Verification" <${process.env.SMTP_HELLO}>`,
       to: email,
       subject: approved
         ? "✅ Agaseke Verification Successful"
