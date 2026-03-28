@@ -78,7 +78,16 @@ export default function CreatorOnboarding() {
             formData.username === "supporter" ||
             formData.username === "explore" ||
             formData.username === "login" ||
-            formData.username === "signup"
+            formData.username === "signup" ||
+            formData.username === "terms" ||
+            formData.username === "privacy" ||
+            formData.username === "auth" ||
+            formData.username === "help-center" ||
+            formData.username === "api" ||
+            formData.username === "profile" ||
+            formData.username === "payout" ||
+            formData.username === "payout-policy" ||
+            formData.username === "onboarding"
             ? "taken"
             : "available",
         );

@@ -65,7 +65,16 @@ export default function LandingPage() {
             username === "supporter" ||
             username === "explore" ||
             username === "login" ||
-            username === "signup"
+            username === "signup" ||
+            username === "terms" ||
+            username === "privacy" ||
+            username === "auth" ||
+            username === "help-center" ||
+            username === "api" ||
+            username === "profile" ||
+            username === "payout" ||
+            username === "payout-policy" ||
+            username === "onboarding"
             ? "taken"
             : "available",
         );
