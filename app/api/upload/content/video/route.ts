@@ -7,29 +7,28 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: "50mb",
-    },
-  },
-};
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export async function POST(req: Request) {
   try {
-    const { video, creatorHandle, isPublic } = await req.json();
+    const formData = await req.formData();
+    const file = formData.get("file") as File;
+    const creatorHandle = formData.get("creatorHandle") as string;
 
-    if (!video) {
-      return NextResponse.json({ error: "No video data" }, { status: 400 });
+    if (!file) {
+      return NextResponse.json({ error: "No video file provided" }, { status: 400 });
     }
 
-    const uploadResponse = (await new Promise((resolve, reject) => {
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    const base64 = buffer.toString("base64");
+    const dataUri = `data:${file.type};base64,${base64}`;
+
+    const uploadResponse = await new Promise((resolve, reject) => {
       cloudinary.uploader.upload_large(
-        video,
+        dataUri,
         {
           resource_type: "video",
           folder: `agaseke/videos/${creatorHandle}`,
-          type: isPublic ? "upload" : "authenticated",
           chunk_size: 6000000,
         },
         (error, result) => {
@@ -37,7 +36,7 @@ export async function POST(req: Request) {
           else resolve(result);
         },
       );
-    })) as any;
+    }) as any;
 
     return NextResponse.json(
       {
@@ -47,10 +46,9 @@ export async function POST(req: Request) {
       { status: 200 },
     );
   } catch (error: any) {
-    // This log will appear in your TERMINAL, not the browser
     console.error("CLOUDINARY_VIDEO_ERROR:", error);
     return NextResponse.json(
-      { error: "Video upload failed", details: error.message },
+      { error: error.message || "Video upload failed" },
       { status: 500 },
     );
   }

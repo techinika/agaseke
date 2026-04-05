@@ -1,7 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import {
-  Search,
   Mail,
   Instagram,
   Twitter,

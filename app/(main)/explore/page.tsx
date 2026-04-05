@@ -1,34 +1,66 @@
 import ExplorePage from "@/components/pages/ExplorePage";
+import ExploreSchema from "@/components/seo/ExploreSchema";
 import { Metadata } from "next";
 import { baseUrl } from "@/app/sitemap";
 
 export const metadata: Metadata = {
-  title: "Explore Rwandan Creators | Agaseke for Creators",
+  title: "Explore Rwandan Creators | Agaseke",
   description:
-    "Browse and discover the most talented artists, musicians, and thinkers in Rwanda. Support their journey.",
+    "Discover and support talented creators in Rwanda. Browse artists, musicians, content creators, and more. Your support helps fuel their creative journey.",
+  keywords: [
+    "Rwandan creators",
+    "support creators Rwanda",
+    "discover artists Rwanda",
+    "Kigali influencers",
+    "African content creators",
+    "Rwandan musicians",
+    "creator platform Rwanda",
+  ],
   alternates: {
     canonical: "/explore",
   },
   openGraph: {
-    title: "Discover the Best of Rwandan Creativity",
-    description: "Find and support creators across Kigali and beyond.",
-    url: baseUrl + "/explore",
+    title: "Explore Rwandan Creators | Agaseke",
+    description:
+      "Discover and support talented creators in Rwanda. Browse artists, musicians, content creators, and more.",
+    url: `${baseUrl}/explore`,
+    siteName: "Agaseke",
     images: [
       {
         url: "/agaseke.png",
         width: 1200,
         height: 630,
-        alt: "Discover Creators on Agaseke",
+        alt: "Explore Creators on Agaseke",
       },
     ],
+    locale: "en_RW",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Explore Rwandan Creators | Agaseke",
+    description:
+      "Discover and support talented creators in Rwanda.",
+    images: ["/agaseke.png"],
+    site: "@Agaseke_support",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+    },
   },
 };
 
 function page() {
   return (
-    <div>
+    <>
+      <ExploreSchema />
       <ExplorePage />
-    </div>
+    </>
   );
 }
 

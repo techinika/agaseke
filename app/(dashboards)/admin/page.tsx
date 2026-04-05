@@ -1,4 +1,3 @@
-import AuthGuard from "@/auth/AuthGuard";
 import AdminDashboard from "@/components/pages/Dashboards/Admin/AdminPage";
 import { Metadata } from "next";
 

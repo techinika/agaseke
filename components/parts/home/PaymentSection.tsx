@@ -1,6 +1,6 @@
 "use client"
 
-import { CreditCard, Smartphone, Plus } from "lucide-react";
+import { Smartphone, Plus } from "lucide-react";
 import { FaCcVisa, FaCcMastercard, FaCcAmex } from "react-icons/fa";
 
 export function PaymentMethods() {

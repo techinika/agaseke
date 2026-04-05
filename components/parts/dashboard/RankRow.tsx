@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export function RankRow({ rank, name, subText }: any) {
   return (
     <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export async function POST(req: NextRequest) {
   try {
     const { recipients, subject, message, targetLabel } = await req.json();
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
         `;
 
         await updatesTransporter.sendMail({
-          from: `"Agaseke Updates" <${process.env.SMTP_UPDATES}>`,
+          from: `"Agaseke Updates" <${process.env.SMTP_USER}>`,
           to: user.email,
           subject: subject,
           html: htmlTemplate,

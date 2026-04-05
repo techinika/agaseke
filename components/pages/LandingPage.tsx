@@ -1,11 +1,10 @@
 /* eslint-disable @next/next/no-img-element */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useEffect, useState } from "react";
 import {
   Lock,
-  CheckCircle2,
-  Coffee,
   BanknoteArrowDown,
   HandCoins,
   Zap,
@@ -43,6 +42,7 @@ export default function LandingPage() {
 
   useEffect(() => {
     if (username.length < 3) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUsernameStatus("idle");
       return;
     }

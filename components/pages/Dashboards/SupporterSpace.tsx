@@ -23,10 +23,7 @@ import Loading from "@/app/loading";
 import {
   collection,
   doc,
-  getDoc,
   getDocs,
-  limit,
-  orderBy,
   query,
   where,
   addDoc,
@@ -188,7 +185,6 @@ export default function SupporterSpace() {
   const handleRSVP = async () => {
     if (!auth.user) return toast.error("Please login to RSVP");
 
-    // 1. Date and Time Validation
     const now = new Date();
     const gatheringDateTime = new Date(
       `${selectedItem.date}T${selectedItem.time}`,
@@ -200,6 +196,29 @@ export default function SupporterSpace() {
 
     setIsRSVPing(true);
     try {
+      const attendanceRef = collection(db, "gatheringsAttendance");
+      const existingRSVP = await getDocs(
+        query(attendanceRef, where("gatheringId", "==", selectedItem.id), where("supporterId", "==", auth.user.uid))
+      );
+
+      if (!existingRSVP.empty) {
+        toast.error("You have already RSVP'd to this gathering.");
+        setIsRSVPing(false);
+        return;
+      }
+
+      if (selectedItem.capacity) {
+        const currentAttendees = await getDocs(
+          query(attendanceRef, where("gatheringId", "==", selectedItem.id))
+        );
+
+        if (currentAttendees.size >= selectedItem.capacity) {
+          toast.error("Sorry, this gathering is fully booked!");
+          setIsRSVPing(false);
+          return;
+        }
+      }
+
       await addDoc(collection(db, "gatheringsAttendance"), {
         gatheringId: selectedItem.id,
         gatheringTitle: selectedItem.title,
@@ -299,8 +318,8 @@ export default function SupporterSpace() {
                       {item.imageUrl ? (
                         <img
                           src={item.imageUrl}
+                          alt={item.title || "Content image"}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          alt=""
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-slate-300">
@@ -386,6 +405,7 @@ export default function SupporterSpace() {
                         {c.photoURL ? (
                           <img
                             src={c.photoURL}
+                            alt={c.name}
                             className="w-full h-full object-cover"
                           />
                         ) : (
@@ -433,6 +453,7 @@ export default function SupporterSpace() {
                       {c.photoURL ? (
                         <img
                           src={c.photoURL}
+                          alt={c.handle}
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -517,6 +538,11 @@ export default function SupporterSpace() {
                     <MapPin size={14} /> {selectedItem.location}
                   </span>
                 )}
+                {selectedItem.capacity && (
+                  <span className="flex items-center gap-1 text-amber-600">
+                    <User size={14} /> {selectedItem.capacity} spots available
+                  </span>
+                )}
                 <span className="flex items-center gap-1">
                   <Eye size={14} /> {selectedItem.views || 0} views
                 </span>
@@ -551,19 +577,42 @@ export default function SupporterSpace() {
               )}
 
               {selectedItem.type === "gathering" ? (
-                <button
-                  disabled={isRSVPing}
-                  onClick={handleRSVP}
-                  className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-sm tracking-widest flex items-center justify-center gap-2 hover:bg-orange-600 transition-all shadow-lg active:scale-95 disabled:opacity-50"
-                >
-                  {isRSVPing ? (
-                    <Loader className="animate-spin" />
-                  ) : (
-                    <>
-                      <CheckCircle2 size={18} /> I'm Interested to Attend
-                    </>
-                  )}
-                </button>
+                selectedItem.capacity ? (
+                  <div className="space-y-3">
+                    <div className="bg-amber-50 p-3 rounded-lg border border-amber-100">
+                      <p className="text-xs font-bold text-amber-800 text-center">
+                        Limited spots available - Reserve your spot now!
+                      </p>
+                    </div>
+                    <button
+                      disabled={isRSVPing}
+                      onClick={handleRSVP}
+                      className="w-full bg-orange-500 text-white py-4 rounded-2xl font-black uppercase text-sm tracking-widest flex items-center justify-center gap-2 hover:bg-orange-600 transition-all shadow-lg active:scale-95 disabled:opacity-50"
+                    >
+                      {isRSVPing ? (
+                        <Loader className="animate-spin" />
+                      ) : (
+                        <>
+                          <CheckCircle2 size={18} /> Reserve My Spot
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    disabled={isRSVPing}
+                    onClick={handleRSVP}
+                    className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-sm tracking-widest flex items-center justify-center gap-2 hover:bg-orange-600 transition-all shadow-lg active:scale-95 disabled:opacity-50"
+                  >
+                    {isRSVPing ? (
+                      <Loader className="animate-spin" />
+                    ) : (
+                      <>
+                        <CheckCircle2 size={18} /> I&apos;m Interested to Attend
+                      </>
+                    )}
+                  </button>
+                )
               ) : (
                 <button
                   onClick={() => setSelectedItem(null)}

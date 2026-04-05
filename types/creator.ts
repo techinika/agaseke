@@ -33,4 +33,14 @@ export interface Creator {
   phoneVerified: boolean;
   foundingMember: boolean;
   profilePicture: string;
+  messagingEnabled?: boolean;
+  messagingAllowAll?: boolean;
+  messagingMinAmount?: number;
+  storeEnabled?: boolean;
+  storePublic?: boolean;
+  giveawayEnabled?: boolean;
+  bookingEnabled?: boolean;
+  bookingAccess?: "public" | "supporters";
+  bookingAvailability?: import("./booking").BookingAvailability;
+  gatheringsEnabled?: boolean;
 }

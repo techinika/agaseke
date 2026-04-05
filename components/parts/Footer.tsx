@@ -4,7 +4,7 @@ import { RiMediumFill } from "react-icons/ri";
 
 export default function Footer() {
   return (
-    <footer className="bg-slate-950 pt-20 pb-10 px-6 text-slate-400 border-t border-slate-900">
+    <footer className="bg-slate-950 pt-20 pb-10 px-6 text-slate-400 border-t border-slate-900 mt-3">
       <div className="max-w-7xl mx-auto">
         <div className="w-full flex flex-wrap gap-12 mb-20 justify-between">
           <div className="max-w-xs">

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { CheckCircle2, Copy, X } from "lucide-react";
@@ -37,7 +38,7 @@ export const ShareModal = ({
         </div>
 
         <p className="text-sm text-slate-500 mb-4">
-          Copy this link to share {name.split(" ")[0]}'s Agaseke with your
+          Copy this link to share {name.split(" ")[0]}&apos;s Agaseke with your
           community.
         </p>
 

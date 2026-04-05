@@ -30,7 +30,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     if (pathname.startsWith("/admin") && !isAdmin) {
       router.push("/supporter");
     }
-  }, [isLoggedIn, isCreator, loading, router, pathname]);
+  }, [isLoggedIn, isCreator, isAdmin, loading, router, pathname]);
 
   if (loading) return <Loading />;
 

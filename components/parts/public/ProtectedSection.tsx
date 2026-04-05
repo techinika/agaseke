@@ -1,6 +1,7 @@
 import { Heart, Lock } from "lucide-react";
 import Link from "next/link";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export const ProtectedSection = ({
   isLoggedIn,
   hasGifted,

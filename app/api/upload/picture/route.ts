@@ -15,7 +15,7 @@ export async function POST(request: Request) {
       folder: "creator_profiles",
     });
     return NextResponse.json({ url: uploadResponse.secure_url });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
 }

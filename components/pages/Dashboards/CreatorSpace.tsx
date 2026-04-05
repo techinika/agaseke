@@ -45,7 +45,6 @@ export default function CreatorDashboard() {
           query(collection(db, "creators"), where("uid", "==", creator?.uid)),
         );
         const creatorDoc = creatorSnap.docs[0];
-        const creatorData = creatorDoc?.data();
         const cid = creatorDoc?.id;
 
         const supportQ = query(

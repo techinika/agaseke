@@ -16,11 +16,10 @@ import Link from "next/link";
 import { useAuth } from "@/auth/AuthContext";
 import { handleLogout } from "@/db/functions/LogOut";
 import Loading from "@/app/loading";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 const Navbar = () => {
   const auth = useAuth();
-  const router = useRouter();
   const pathname = usePathname();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);

@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { toPng } from "html-to-image";
-import { Download, X, Share2, Heart, Loader } from "lucide-react";
+import { Download, X, Share2, Heart, Loader, Palette, Type } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/auth/AuthContext";
 
@@ -12,16 +12,77 @@ interface ShareModalProps {
   onClose: () => void;
 }
 
+function getContrastColor(hexColor: string): string {
+  const hex = hexColor.replace("#", "");
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.5 ? "#000000" : "#ffffff";
+}
+
+function getLightVariant(hexColor: string, opacity: number = 0.2): string {
+  return hexColor + Math.round(opacity * 255).toString(16).padStart(2, "0");
+}
+
+const PRESET_COLORS = [
+  { name: "Orange", color: "#f97316" },
+  { name: "Red", color: "#ef4444" },
+  { name: "Pink", color: "#ec4899" },
+  { name: "Purple", color: "#a855f7" },
+  { name: "Blue", color: "#3b82f6" },
+  { name: "Teal", color: "#14b8a6" },
+  { name: "Green", color: "#22c55e" },
+  { name: "Yellow", color: "#eab308" },
+  { name: "Black", color: "#18181b" },
+  { name: "Slate", color: "#64748b" },
+];
+
 export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
   const { creator, profile } = useAuth();
   const cardRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [accentColor, setAccentColor] = useState("#f97316");
+  const [customColor, setCustomColor] = useState("");
+  const [headline, setHeadline] = useState("Support My Creative Journey");
+  const [showColorPicker, setShowColorPicker] = useState(false);
+
+  const textColor = getContrastColor(accentColor);
+  const lightVariant = getLightVariant(accentColor, 0.15);
+  const mediumVariant = getLightVariant(accentColor, 0.3);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setHeadline("Support My Creative Journey");
+      setAccentColor("#f97316");
+      setCustomColor("");
+    }
+  }, [isOpen]);
+
+  const handleColorSelect = (color: string) => {
+    setAccentColor(color);
+    setCustomColor(color);
+  };
+
+  const handleCustomColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setCustomColor(value);
+    if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+      setAccentColor(value);
+    }
+  };
+
+  const handleHeadlineChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (value.length <= 30) {
+      setHeadline(value);
+    }
+  };
 
   if (!isOpen) return null;
 
   const shareUrl = `https://agaseke.me/${creator?.handle}`;
 
-  // FIX: Using a proxy to bypass CORS issues for external images
   const safeProfileImage = creator?.profilePicture
     ? creator?.profilePicture
     : profile?.photoURL
@@ -35,7 +96,7 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
     try {
       const dataUrl = await toPng(cardRef.current, {
         cacheBust: true,
-        pixelRatio: 3, 
+        pixelRatio: 3,
         backgroundColor: "#ffffff",
       });
 
@@ -72,20 +133,29 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
           </button>
         </div>
 
-        <div className="p-8 flex flex-col items-center">
+        <div className="p-6 flex flex-col items-center">
           <div
             ref={cardRef}
             className="w-[360px] h-[480px] bg-white relative overflow-hidden border border-slate-100 shadow-xl flex flex-col"
           >
-            <div className="bg-orange-600 p-4 text-center relative">
-              <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-1 rounded-lg mb-3">
-                <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                <span className="text-[10px] font-black text-white uppercase tracking-widest">
+            <div className="p-4 text-center relative" style={{ backgroundColor: accentColor }}>
+              <div 
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-lg mb-3"
+                style={{ backgroundColor: lightVariant }}
+              >
+                <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: textColor }} />
+                <span 
+                  className="text-[10px] font-black uppercase tracking-widest"
+                  style={{ color: textColor }}
+                >
                   Live on Agaseke
                 </span>
               </div>
-              <h2 className="text-2xl font-black text-white leading-tight tracking-tighter">
-                Support My Creative Journey
+              <h2 
+                className="text-2xl font-black leading-tight tracking-tighter"
+                style={{ color: textColor }}
+              >
+                {headline || "Support Me"}
               </h2>
             </div>
 
@@ -109,7 +179,7 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
                 <h4 className="text-xl font-black text-slate-900 tracking-tighter">
                   {creator?.name}
                 </h4>
-                <p className="text-orange-600 font-bold text-sm">
+                <p className="font-bold text-sm" style={{ color: accentColor }}>
                   agaseke.me/{creator?.handle}
                 </p>
               </div>
@@ -125,22 +195,79 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
                   marginSize={1}
                 />
               </div>
-              <div className="mt-4 flex items-center gap-2 text-slate-400">
-                <Heart size={12} className="fill-orange-600 stroke-none" />
+              <div className="mt-4 flex items-center gap-2" style={{ color: accentColor }}>
+                <Heart size={12} fill={accentColor} stroke="none" />
                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">
                   Scan to support
                 </span>
               </div>
             </div>
 
-            <div className="py-2 border-t border-slate-50 text-center bg-slate-50/50">
-              <span className="text-lg font-bold text-orange-200">
+            <div className="py-2 border-t border-slate-50 text-center" style={{ backgroundColor: lightVariant }}>
+              <span className="text-lg font-bold" style={{ color: accentColor }}>
                 agaseke.me
               </span>
             </div>
           </div>
 
-          <div className="mt-8 grid grid-cols-2 gap-4 w-full">
+          <div className="mt-6 w-full space-y-4">
+            <div className="bg-slate-50 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Type size={16} className="text-slate-500" />
+                <span className="text-sm font-bold text-slate-700">Headline Text</span>
+                <span className="text-xs text-slate-400 ml-auto">{headline.length}/30</span>
+              </div>
+              <input
+                type="text"
+                value={headline}
+                onChange={handleHeadlineChange}
+                maxLength={30}
+                placeholder="Enter your headline..."
+                className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none"
+              />
+            </div>
+
+            <div className="bg-slate-50 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Palette size={16} className="text-slate-500" />
+                <span className="text-sm font-bold text-slate-700">Accent Color</span>
+              </div>
+              
+              <div className="grid grid-cols-5 gap-2 mb-3">
+                {PRESET_COLORS.map((preset) => (
+                  <button
+                    key={preset.color}
+                    onClick={() => handleColorSelect(preset.color)}
+                    className={`w-10 h-10 rounded-lg transition-all ${
+                      accentColor === preset.color
+                        ? "ring-2 ring-offset-2 ring-slate-400 scale-110"
+                        : "hover:scale-105"
+                    }`}
+                    style={{ backgroundColor: preset.color }}
+                    title={preset.name}
+                  />
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={customColor || accentColor}
+                  onChange={(e) => handleColorSelect(e.target.value)}
+                  className="w-10 h-10 rounded-lg cursor-pointer border border-slate-200"
+                />
+                <input
+                  type="text"
+                  value={customColor}
+                  onChange={handleCustomColorChange}
+                  placeholder="#f97316"
+                  className="flex-1 bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm font-mono focus:ring-2 focus:ring-orange-100 outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 grid grid-cols-2 gap-4 w-full">
             <button
               onClick={handleDownload}
               disabled={isDownloading}

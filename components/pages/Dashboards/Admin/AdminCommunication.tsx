@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -11,7 +12,6 @@ import {
   onSnapshot,
 } from "firebase/firestore";
 import {
-  ArrowLeft,
   Send,
   Users,
   UserCheck,
