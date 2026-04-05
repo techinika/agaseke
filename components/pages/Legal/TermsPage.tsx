@@ -32,7 +32,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold mb-4">2. The "Support" Model</h2>
+            <h2 className="text-2xl font-bold mb-4">2. The &quot;Support&quot; Model</h2>
             <p className="leading-relaxed text-slate-600">
               Agaseke facilitates direct support from Supporters to Creators.
               <strong>
@@ -55,7 +55,7 @@ export default function TermsPage() {
             </p>
             <ul className="list-disc pl-6 space-y-2 text-slate-600">
               <li>Provide accurate information on their profiles.</li>
-              <li>Fulfill any promises made during "Gatherings" (events).</li>
+              <li>Fulfill any promises made during &quot;Gatherings&quot; (events).</li>
               <li>
                 Ensure all content uploaded respects Rwandan laws and
                 intellectual property rights.

@@ -1,82 +1,211 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useAuth } from "@/auth/AuthContext";
+import { useSearchParams } from "next/navigation";
 import {
   Search,
   Send,
-  Lock,
   MessageSquare,
-  Construction,
   MoreVertical,
+  Loader,
+  ArrowLeft,
+  Phone,
+  Ban,
+  CheckCircle,
 } from "lucide-react";
+import { db } from "@/db/firebase";
+import {
+  collection,
+  doc,
+  addDoc,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+  updateDoc,
+  serverTimestamp,
+  getDoc,
+  Timestamp,
+} from "firebase/firestore";
+import { toast } from "sonner";
+
+interface Chatroom {
+  id: string;
+  supporterId: string;
+  supporterName: string;
+  supporterPhoto?: string;
+  lastMessage?: string;
+  lastMessageAt: Timestamp | null;
+  unreadCount: number;
+  createdAt: Timestamp | null;
+  enabled: boolean;
+}
+
+interface Message {
+  id: string;
+  senderId: string;
+  senderName: string;
+  senderType: "creator" | "supporter";
+  content: string;
+  createdAt: Timestamp | null;
+  read: boolean;
+}
 
 export default function MessagesPage() {
-  const [selectedChat, setSelectedChat] = useState<string | null>("1");
+  const { creator } = useAuth();
+  const searchParams = useSearchParams();
+  const initialChatId = searchParams.get("chat");
 
-  const chats = [
-    {
-      id: "1",
-      supporterName: "Innocent K.",
-      lastMessage: "I really loved the Street Art Walk! When is the next one?",
-      time: "2h ago",
-      unread: true,
-      avatar: "IK",
-      supportLevel: "VIP",
-    },
-    {
-      id: "2",
-      supporterName: "Marie-Rose U.",
-      lastMessage: "Sent you a small tip for the digital brushes. Keep it up!",
-      time: "1d ago",
-      unread: false,
-      avatar: "MU",
-      supportLevel: "Supporter",
-    },
-  ];
+  const [chatrooms, setChatrooms] = useState<Chatroom[]>([]);
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(initialChatId);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const messages = [
-    {
-      id: "m1",
-      sender: "supporter",
-      text: "Hello! I really loved the Street Art Walk! When is the next one?",
-      time: "10:15 AM",
-    },
-    {
-      id: "m2",
-      sender: "creator",
-      text: "Glad you enjoyed it! I am planning another one for late February.",
-      time: "10:20 AM",
-    },
-    {
-      id: "m3",
-      sender: "supporter",
-      text: "Perfect, I'll be there. Will it be the same location?",
-      time: "10:22 AM",
-    },
-  ];
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
+    if (!creator?.uid) return;
+
+    const chatroomsRef = collection(db, "chatrooms");
+    const q = query(
+      chatroomsRef,
+      where("creatorId", "==", creator.uid),
+      orderBy("updatedAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const rooms = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Chatroom[];
+      setChatrooms(rooms);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [creator?.uid]);
+
+  useEffect(() => {
+    if (!selectedChatId) return;
+
+    const messagesRef = collection(db, "chatrooms", selectedChatId, "messages");
+    const q = query(messagesRef, orderBy("createdAt", "asc"));
+
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const msgs = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Message[];
+      setMessages(msgs);
+      scrollToBottom();
+
+      const unreadMsgs = msgs.filter(
+        (m) => m.senderType === "supporter" && !m.read
+      );
+      if (unreadMsgs.length > 0) {
+        const batch: Promise<void>[] = [];
+        unreadMsgs.forEach((msg) => {
+          batch.push(
+            updateDoc(
+              doc(db, "chatrooms", selectedChatId, "messages", msg.id),
+              { read: true }
+            )
+          );
+        });
+        await Promise.all(batch);
+        await updateDoc(doc(db, "chatrooms", selectedChatId), {
+          unreadCount: 0,
+        });
+      }
+    });
+
+    return () => unsubscribe();
+  }, [selectedChatId]);
+
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !selectedChatId || !creator?.name) return;
+
+    setSending(true);
+    try {
+      const messagesRef = collection(db, "chatrooms", selectedChatId, "messages");
+      await addDoc(messagesRef, {
+        senderId: creator.uid,
+        senderName: creator.name,
+        senderType: "creator",
+        content: newMessage.trim(),
+        createdAt: serverTimestamp(),
+        read: false,
+      });
+
+      await updateDoc(doc(db, "chatrooms", selectedChatId), {
+        lastMessage: newMessage.trim(),
+        lastMessageAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      setNewMessage("");
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast.error("Failed to send message");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const selectedChatroom = chatrooms.find((c) => c.id === selectedChatId);
+
+  const toggleChatroomEnabled = async (chatroomId: string, currentEnabled: boolean) => {
+    try {
+      await updateDoc(doc(db, "chatrooms", chatroomId), {
+        enabled: !currentEnabled,
+        updatedAt: serverTimestamp(),
+      });
+      toast.success(!currentEnabled ? "Chatroom disabled" : "Chatroom enabled");
+    } catch (error) {
+      console.error("Error toggling chatroom:", error);
+      toast.error("Failed to update chatroom");
+    }
+  };
+
+  const filteredChatrooms = chatrooms.filter((chat) =>
+    chat.supporterName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const formatTime = (timestamp: Timestamp | null) => {
+    if (!timestamp) return "";
+    const date = timestamp.toDate();
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+
+    if (hours < 1) return "Just now";
+    if (hours < 24) return `${hours}h ago`;
+    if (hours < 48) return "Yesterday";
+    return date.toLocaleDateString();
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-[calc(100vh-70px)] flex items-center justify-center">
+        <Loader className="animate-spin text-orange-500" size={40} />
+      </div>
+    );
+  }
 
   return (
-    <div className="relative min-h-[calc(100vh-70px)] bg-white flex overflow-hidden">
-      <div className="absolute inset-0 z-[70] backdrop-blur-[2px] bg-slate-900/10 flex items-center justify-center p-6">
-        <div className="bg-white border-2 border-slate-900 shadow-[20px_20px_0px_0px_rgba(15,23,42,1)] rounded-lg p-10 max-w-md text-center animate-in zoom-in-95 duration-300">
-          <div className="w-20 h-20 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center mx-auto mb-6 rotate-3">
-            <Construction size={40} />
-          </div>
-          <h2 className="text-3xl font-bold uppercase tracking-tighter mb-4">
-            Under Development
-          </h2>
-          <p className="text-slate-500 font-medium leading-relaxed mb-8">
-            We are building a secure way for you to connect with your
-            supporters. Direct messaging will be available soon for creators
-            with verified phone numbers.
-          </p>
-          <div className="flex items-center justify-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-t border-slate-100 pt-6">
-            <Lock size={12} /> Interactions are currently disabled
-          </div>
-        </div>
-      </div>
-
-      {/* --- Sidebar: Chat List --- */}
+    <div className="min-h-[calc(100vh-70px)] bg-white flex overflow-hidden">
       <aside className="w-full md:w-80 lg:w-96 border-r border-slate-100 flex flex-col bg-slate-50/50">
         <div className="p-6">
           <h1 className="text-2xl font-bold uppercase mb-6">Messages</h1>
@@ -88,117 +217,215 @@ export default function MessagesPage() {
             <input
               type="text"
               placeholder="Search supporters..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-white border border-slate-200 rounded-lg py-3 pl-12 pr-4 text-sm outline-none focus:ring-2 focus:ring-orange-100 transition"
-              disabled
             />
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 space-y-1">
-          {chats.map((chat) => (
-            <button
-              key={chat.id}
-              onClick={() => setSelectedChat(chat.id)}
-              className={`w-full flex items-center gap-4 p-4 rounded-lg transition-all ${
-                selectedChat === chat.id
-                  ? "bg-white shadow-sm border border-slate-100"
-                  : "hover:bg-slate-100"
-              }`}
-            >
-              <div className="relative">
-                <div className="w-12 h-12 bg-slate-200 rounded-lg flex items-center justify-center font-bold text-slate-500">
-                  {chat.avatar}
+          {filteredChatrooms.length === 0 ? (
+            <div className="text-center py-12 px-4">
+              <MessageSquare size={40} className="mx-auto text-slate-200 mb-4" />
+              <p className="text-slate-500 font-medium">
+                {searchQuery ? "No conversations found" : "No messages yet"}
+              </p>
+              <p className="text-slate-400 text-sm mt-2">
+                {searchQuery
+                  ? "Try a different search term"
+                  : "Supporters will appear here once they message you"}
+              </p>
+            </div>
+          ) : (
+            filteredChatrooms.map((chat) => (
+              <button
+                key={chat.id}
+                onClick={() => setSelectedChatId(chat.id)}
+                className={`w-full flex items-center gap-4 p-4 rounded-lg transition-all ${
+                  selectedChatId === chat.id
+                    ? "bg-white shadow-sm border border-slate-100"
+                    : "hover:bg-slate-100"
+                }`}
+              >
+                <div className="relative">
+                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center font-bold text-orange-600 overflow-hidden">
+                    {chat.supporterPhoto ? (
+                      <img
+                        src={chat.supporterPhoto}
+                        alt={chat.supporterName}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      chat.supporterName[0]
+                    )}
+                  </div>
+                  {chat.unreadCount > 0 && (
+                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-orange-600 border-2 border-white rounded-full flex items-center justify-center">
+                      <span className="text-[10px] font-bold text-white">
+                        {chat.unreadCount > 9 ? "9+" : chat.unreadCount}
+                      </span>
+                    </div>
+                  )}
                 </div>
-                {chat.unread && (
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-orange-600 border-2 border-white rounded-full" />
-                )}
-              </div>
-              <div className="flex-1 text-left overflow-hidden">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="font-bold text-sm truncate">
-                    {chat.supporterName}
-                  </span>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">
-                    {chat.time}
-                  </span>
+                <div className="flex-1 text-left overflow-hidden">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="font-bold text-sm truncate">
+                      {chat.supporterName}
+                    </span>
+                    <span className="text-[10px] font-bold text-slate-400">
+                      {formatTime(chat.lastMessageAt)}
+                    </span>
+                  </div>
+                  <p
+                    className={`text-xs truncate ${
+                      chat.unreadCount > 0
+                        ? "text-slate-700 font-medium"
+                        : "text-slate-400"
+                    }`}
+                  >
+                    {chat.lastMessage || "No messages yet"}
+                  </p>
                 </div>
-                <p className="text-xs text-slate-400 truncate">
-                  {chat.lastMessage}
-                </p>
-              </div>
-            </button>
-          ))}
+              </button>
+            ))
+          )}
         </div>
       </aside>
 
-      {/* --- Main Chat Area --- */}
       <main className="flex-1 flex flex-col bg-white">
-        {selectedChat ? (
+        {selectedChatroom ? (
           <>
-            {/* Chat Header */}
-            <header className="p-6 border-b border-slate-50 flex justify-between items-center">
+            <header className="p-4 md:p-6 border-b border-slate-50 flex justify-between items-center bg-gradient-to-r from-slate-50 to-orange-50">
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center font-bold">
-                  {chats.find((c) => c.id === selectedChat)?.avatar}
+                <button
+                  onClick={() => setSelectedChatId(null)}
+                  className="md:hidden p-2 text-slate-400 hover:text-slate-900"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center font-bold text-orange-600 overflow-hidden">
+                  {selectedChatroom.supporterPhoto ? (
+                    <img
+                      src={selectedChatroom.supporterPhoto}
+                      alt={selectedChatroom.supporterName}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    selectedChatroom.supporterName[0]
+                  )}
                 </div>
                 <div>
                   <h3 className="font-bold text-sm">
-                    {chats.find((c) => c.id === selectedChat)?.supporterName}
+                    {selectedChatroom.supporterName}
                   </h3>
-                  <div className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                      Online
+                  <div className="flex items-center gap-1">
+                    <span
+                      className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                        selectedChatroom.enabled !== false
+                          ? "bg-green-50 text-green-600"
+                          : "bg-red-50 text-red-500"
+                      }`}
+                    >
+                      {selectedChatroom.enabled !== false ? "Active" : "Disabled"}
                     </span>
                   </div>
                 </div>
               </div>
-              <button className="p-2 text-slate-300 hover:text-slate-900 transition">
-                <MoreVertical size={20} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => toggleChatroomEnabled(selectedChatroom.id, selectedChatroom.enabled !== false)}
+                  className={`p-2 transition ${
+                    selectedChatroom.enabled !== false
+                      ? "text-slate-300 hover:text-red-500"
+                      : "text-red-500 hover:text-green-500"
+                  }`}
+                  title={selectedChatroom.enabled !== false ? "Disable messages from this supporter" : "Enable messages from this supporter"}
+                >
+                  {selectedChatroom.enabled !== false ? (
+                    <Ban size={20} />
+                  ) : (
+                    <CheckCircle size={20} />
+                  )}
+                </button>
+                <button className="p-2 text-slate-300 hover:text-slate-900 transition">
+                  <MoreVertical size={20} />
+                </button>
+              </div>
             </header>
 
-            {/* Messages Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/30">
-              <div className="flex justify-center">
-                <span className="text-[10px] font-bold uppercase text-slate-300 tracking-[0.2em] bg-white px-4 py-1 rounded-full border border-slate-100">
-                  Today
-                </span>
-              </div>
-              {messages.map((m) => (
-                <div
-                  key={m.id}
-                  className={`flex ${m.sender === "creator" ? "justify-end" : "justify-start"}`}
-                >
-                  <div
-                    className={`max-w-[70%] p-4 rounded-lg text-sm font-medium leading-relaxed ${
-                      m.sender === "creator"
-                        ? "bg-slate-900 text-white rounded-lg"
-                        : "bg-white border border-slate-100 text-slate-700 rounded-lg shadow-sm"
-                    }`}
-                  >
-                    {m.text}
-                    <div
-                      className={`text-[9px] mt-2 font-bold uppercase opacity-50 ${m.sender === "creator" ? "text-right" : "text-left"}`}
-                    >
-                      {m.time}
-                    </div>
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-slate-50/30">
+              {messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center">
+                  <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm">
+                    <MessageSquare size={24} className="text-slate-300" />
                   </div>
+                  <h4 className="font-bold text-slate-900">
+                    Start the conversation
+                  </h4>
+                  <p className="text-sm text-slate-500 max-w-[250px]">
+                    Send your first message to{" "}
+                    {selectedChatroom.supporterName.split(" ")[0]}!
+                  </p>
                 </div>
-              ))}
+              ) : (
+                <>
+                  {messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex ${msg.senderType === "creator" ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`max-w-[80%] px-4 py-3 rounded-2xl ${
+                          msg.senderType === "creator"
+                            ? "bg-orange-500 text-white rounded-br-md"
+                            : "bg-white border border-slate-100 text-slate-800 rounded-bl-md shadow-sm"
+                        }`}
+                      >
+                        <p className="text-sm whitespace-pre-wrap">
+                          {msg.content}
+                        </p>
+                        <p
+                          className={`text-[10px] mt-1 ${
+                            msg.senderType === "creator"
+                              ? "text-orange-100"
+                              : "text-slate-400"
+                          }`}
+                        >
+                          {msg.createdAt?.toDate?.().toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }) || "Sending..."}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                  <div ref={messagesEndRef} />
+                </>
+              )}
             </div>
 
-            {/* Input Area */}
-            <footer className="p-6 bg-white border-t border-slate-50">
-              <div className="flex items-center gap-4 bg-slate-50 p-2 pl-6 rounded-lg border border-transparent focus-within:bg-white focus-within:border-slate-200 transition-all">
+            <footer className="p-4 md:p-6 bg-white border-t border-slate-50">
+              <div className="flex items-center gap-3 bg-slate-100 p-2 pl-4 rounded-2xl">
                 <input
                   type="text"
                   placeholder="Type your reply..."
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
                   className="flex-1 bg-transparent outline-none text-sm font-medium"
-                  disabled
+                  disabled={sending}
                 />
-                <button className="bg-slate-900 text-white p-3 rounded-lg opacity-50 cursor-not-allowed">
-                  <Send size={18} />
+                <button
+                  onClick={sendMessage}
+                  disabled={!newMessage.trim() || sending}
+                  className="bg-orange-500 text-white p-3 rounded-xl hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {sending ? (
+                    <Loader size={18} className="animate-spin" />
+                  ) : (
+                    <Send size={18} />
+                  )}
                 </button>
               </div>
             </footer>
@@ -208,11 +435,9 @@ export default function MessagesPage() {
             <div className="w-20 h-20 bg-slate-50 rounded-lg flex items-center justify-center mb-6">
               <MessageSquare size={40} className="opacity-20" />
             </div>
-            <h3 className="text-xl font-bold uppercase mb-2">
-              Your Conversations
-            </h3>
+            <h3 className="text-xl font-bold uppercase mb-2">Your Messages</h3>
             <p className="text-sm font-medium max-w-xs text-slate-400">
-              Select a supporter from the left to view your message history.
+              Select a supporter from the left to view your conversation.
             </p>
           </div>
         )}

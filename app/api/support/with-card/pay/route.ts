@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/db/firebaseAdmin";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export async function POST(req: Request) {
   const config = {
     url: process.env.PESAPAL_URL?.trim(),

@@ -6,13 +6,10 @@ import {
   ArrowUpRight,
   CheckCircle2,
   AlertCircle,
-  Smartphone,
   ArrowLeft,
   Loader,
-  History,
   Wallet,
   Clock,
-  ShieldCheck,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { db } from "@/db/firebase";
@@ -51,13 +48,13 @@ export default function PayoutsPage() {
 
     const qPayouts = query(
       collection(db, "payouts"),
-      where("creatorId", "==", creator?.uid),
+      where("creatorId", "==", creator?.handle),
       orderBy("createdAt", "desc"),
     );
 
     const qRequests = query(
       collection(db, "withdrawRequests"),
-      where("creatorId", "==", creator?.uid),
+      where("creatorId", "==", creator?.handle),
       orderBy("createdAt", "desc"),
     );
 

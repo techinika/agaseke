@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { doc, getDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, getDocs, query, where, collection } from "firebase/firestore";
 import { db } from "@/db/firebase";
 import { deleteUser } from "firebase/auth";
 import {
@@ -17,12 +17,14 @@ import {
   Loader,
   X,
   Phone,
+  DollarSign,
 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { Profile } from "@/types/profile";
 import { toast } from "sonner";
 import Loading from "@/app/loading";
 import Link from "next/link";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 export default function ProfileEditPage() {
   const auth = useAuth();
@@ -30,7 +32,11 @@ export default function ProfileEditPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isCreator, setIsCreator] = useState(false);
+  const [hasPendingPayout, setHasPendingPayout] = useState(false);
+  const [pendingAmount, setPendingAmount] = useState(0);
   const [confirmEmail, setConfirmEmail] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   const [displayName, setDisplayName] = useState("");
   const [location, setLocation] = useState("");
@@ -48,6 +54,19 @@ export default function ProfileEditPage() {
           setDisplayName(data.displayName || "");
           setLocation(data.location || "");
           setPhone(data?.phoneNumber || "");
+        }
+
+        const userHandle = (user as any).handle || user.username;
+        if (user.type === "creator" && userHandle) {
+          setIsCreator(true);
+          const creatorRef = doc(db, "creators", userHandle);
+          const creatorSnap = await getDoc(creatorRef);
+          if (creatorSnap.exists()) {
+            const creatorData = creatorSnap.data();
+            const pending = creatorData.pendingPayout || 0;
+            setPendingAmount(pending);
+            setHasPendingPayout(pending > 0);
+          }
         }
       }
       setLoading(false);
@@ -78,15 +97,25 @@ export default function ProfileEditPage() {
     const user = auth?.user;
     if (!user || confirmEmail !== user.email) return;
 
+    setDeleting(true);
     try {
-      // await deleteDoc(doc(db, "profiles", user.uid));
+      await updateDoc(doc(db, "profiles", user.uid), {
+        status: "archived",
+        archivedAt: new Date().toISOString(),
+      });
       await deleteUser(user);
+      toast.success("Account deleted successfully");
       window.location.href = "/";
-    } catch (error) {
+    } catch (error: any) {
       console.error("Deletion error:", error);
-      toast.error(
-        "For security, please logout and log back in before deleting your account.",
-      );
+      if (error.code === "auth/requires-recent-login") {
+        toast.error("Please log out and log back in, then try again to delete your account.");
+      } else {
+        toast.error("Failed to delete account. Please try again.");
+      }
+    } finally {
+      setDeleting(false);
+      setIsDeleteModalOpen(false);
     }
   };
 
@@ -232,12 +261,25 @@ export default function ProfileEditPage() {
               <AlertTriangle size={18} /> Danger Zone
             </h3>
             <p className="text-sm text-red-700 font-medium">
-              Deleting your account is permanent. This will remove your access
-              and delete your profile from our database.
+              {hasPendingPayout ? (
+                <>
+                  You have <span className="font-bold">{pendingAmount.toLocaleString()} RWF</span> pending payout. 
+                  You must withdraw your funds before deleting your account.
+                </>
+              ) : (
+                "Deleting your account is permanent. Your auth account will be deleted and your profile will be archived."
+              )}
             </p>
             <button
-              onClick={() => setIsDeleteModalOpen(true)}
-              className="bg-white border border-red-200 text-red-600 px-6 py-3 rounded-lg font-bold text-sm hover:bg-red-600 hover:text-white transition-all flex items-center gap-2"
+              onClick={() => {
+                if (hasPendingPayout) {
+                  toast.error(`Please withdraw your ${pendingAmount.toLocaleString()} RWF first`);
+                } else {
+                  setIsDeleteModalOpen(true);
+                }
+              }}
+              disabled={hasPendingPayout}
+              className="bg-white border border-red-200 text-red-600 px-6 py-3 rounded-lg font-bold text-sm hover:bg-red-600 hover:text-white transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Trash2 size={16} /> Delete My Account
             </button>
@@ -246,50 +288,38 @@ export default function ProfileEditPage() {
       </main>
 
       {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setConfirmEmail("");
+        }}
+        onConfirm={handleDeleteAccount}
+        title="Delete Your Account?"
+        message={`This will permanently delete your auth account. Your profile data will be archived but your creator content will remain accessible. This action cannot be undone.
+
+To confirm, type your email address (${profile?.email}) below.`}
+        confirmText="Delete Account"
+        cancelText="Cancel"
+        loading={deleting}
+        variant="danger"
+      />
+
+      {/* Email Confirmation Input (rendered outside modal for styling) */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-6">
-          <div className="bg-white w-full max-w-md rounded-lg p-10 shadow-2xl animate-in zoom-in-95 duration-300">
-            <div className="flex justify-between items-start mb-6">
-              <div className="w-14 h-14 bg-red-50 text-red-600 rounded-lg flex items-center justify-center">
-                <AlertTriangle size={28} />
-              </div>
-              <button
-                onClick={() => setIsDeleteModalOpen(false)}
-                className="p-2 text-slate-400 hover:text-slate-900"
-              >
-                <X />
-              </button>
-            </div>
-
-            <h3 className="text-2xl font-bold tracking-tighter mb-2">
-              Are you sure?
-            </h3>
-            <p className="text-slate-500 text-sm font-medium mb-8">
-              This action cannot be undone. To confirm, please type your email{" "}
-              <span className="text-slate-900 font-bold underline">
-                {profile?.email}
-              </span>{" "}
-              below.
+        <div className="fixed inset-0 z-[101] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 pointer-events-none">
+          <div className="bg-white w-full max-w-md rounded-xl shadow-2xl p-6 pointer-events-auto">
+            <p className="text-sm text-slate-500 mb-4 font-medium">
+              Type your email to confirm deletion:
             </p>
-
-            <div className="space-y-6">
-              <input
-                type="text"
-                autoComplete="off"
-                placeholder="Type your email address"
-                className="w-full bg-slate-50 border-none focus:ring-2 focus:ring-red-100 rounded-lg py-4 px-6 font-bold text-center"
-                value={confirmEmail}
-                onChange={(e) => setConfirmEmail(e.target.value)}
-              />
-
-              <button
-                onClick={handleDeleteAccount}
-                disabled={confirmEmail !== profile?.email}
-                className="w-full bg-red-600 text-white py-5 rounded-lg font-bold disabled:opacity-20 transition-all hover:bg-red-700"
-              >
-                Permanently Delete Account
-              </button>
-            </div>
+            <input
+              type="text"
+              autoComplete="off"
+              placeholder="Type your email address"
+              className="w-full bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-red-100 rounded-lg py-4 px-6 font-bold text-center mb-4"
+              value={confirmEmail}
+              onChange={(e) => setConfirmEmail(e.target.value)}
+            />
           </div>
         </div>
       )}

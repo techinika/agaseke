@@ -11,11 +11,9 @@ import {
   Globe,
   Search,
   Trash2,
-  Clock,
   ArrowLeft,
   X,
   Loader,
-  Link as LinkIcon,
   Inbox,
   UploadCloud,
   Eye,
@@ -36,6 +34,7 @@ import {
 } from "firebase/firestore";
 import { toast } from "sonner";
 import { useAuth } from "@/auth/AuthContext";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 export default function ContentManager() {
   const { creator } = useAuth();
@@ -45,6 +44,8 @@ export default function ContentManager() {
   const [searchQuery, setSearchQuery] = useState("");
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletePostId, setDeletePostId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [uploadedUrl, setUploadedUrl] = useState("");
@@ -92,43 +93,39 @@ export default function ContentManager() {
     }
 
     setIsUploading(true);
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
+    setUploadedUrl("");
 
-    reader.onloadend = async () => {
-      const base64Data = reader.result;
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("creatorHandle", creator?.handle || "");
+      formData.append("type", newPost.type === "document" ? "perk_file" : newPost.type);
+
       let endpoint = "/api/upload/content/image";
       if (newPost.type === "video") endpoint = "/api/upload/content/video";
       if (newPost.type === "document") endpoint = "/api/upload/content/docs";
 
-      try {
-        const res = await fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            image: base64Data,
-            video: base64Data,
-            file: base64Data,
-            type: newPost.type === "document" ? "perk_file" : newPost.type,
-            isPublic: !newPost.isPrivate,
-            creatorHandle: creator?.handle,
-          }),
-        });
+      const res = await fetch(endpoint, {
+        method: "POST",
+        body: formData,
+      });
 
-        const data = await res.json();
-        if (data.url) {
-          setUploadedUrl(data.url);
-          toast.success("File ready!");
-        } else {
-          throw new Error("Upload failed");
-        }
-      } catch (err) {
-        toast.error("Failed to upload to server.");
-        setFilePreview(null);
-      } finally {
-        setIsUploading(false);
+      const data = await res.json();
+
+      if (data.url) {
+        setUploadedUrl(data.url);
+        toast.success("File uploaded successfully!");
+      } else {
+        throw new Error(data.error || "Upload failed");
       }
-    };
+    } catch (err: any) {
+      console.error("Upload error:", err);
+      toast.error(err.message || "Failed to upload file");
+      setFilePreview(null);
+      setUploadedUrl("");
+    } finally {
+      setIsUploading(false);
+    }
   };
   const handleAddContent = async () => {
     const user = auth.currentUser;
@@ -151,8 +148,34 @@ export default function ContentManager() {
         await updateDoc(doc(db, "creatorContent", editingPost.id), contentData);
         toast.success("Post updated!");
       } else {
-        await addDoc(collection(db, "creatorContent"), contentData);
+        const docRef = await addDoc(collection(db, "creatorContent"), contentData);
         toast.success("Content published!");
+
+        // Notify supporters
+        try {
+          const response = await fetch("/api/comms/email/content/new", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              creatorId: user.uid,
+              creatorName: creator?.name || "Creator",
+              creatorHandle: creator?.handle || user.uid,
+              contentTitle: newPost.title,
+              contentDescription: newPost.description,
+              contentType: newPost.isPrivate ? "private" : "public",
+              contentId: docRef.id,
+            }),
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.sentCount > 0) {
+              toast.success(`Notified ${data.sentCount} supporter(s) about your new content!`);
+            }
+          }
+        } catch (notifyError) {
+          console.error("Failed to notify supporters:", notifyError);
+        }
       }
 
       setIsCreating(false);
@@ -183,10 +206,23 @@ export default function ContentManager() {
     setUploadedUrl("");
   };
 
-  const deletePost = async (id: string) => {
-    if (confirm("Are you sure you want to delete this post?")) {
-      await deleteDoc(doc(db, "creatorContent", id));
+  const deletePost = async () => {
+    if (!deletePostId) return;
+    setDeleting(true);
+    try {
+      await deleteDoc(doc(db, "creatorContent", deletePostId));
+      toast.success("Post deleted successfully");
+      setDeletePostId(null);
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast.error("Failed to delete post");
+    } finally {
+      setDeleting(false);
     }
+  };
+
+  const handleDeletePost = (id: string) => {
+    setDeletePostId(id);
   };
 
   const filteredPosts = posts.filter((post) => {
@@ -323,7 +359,7 @@ export default function ContentManager() {
                         <Edit3 size={18} />
                       </button>
                       <button
-                        onClick={() => deletePost(post.id)}
+                        onClick={() => handleDeletePost(post.id)}
                         className="p-2 text-slate-400 hover:text-red-500 transition"
                       >
                         <Trash2 size={18} />
@@ -410,6 +446,7 @@ export default function ContentManager() {
                     ) : filePreview ? (
                       <img
                         src={filePreview}
+                        alt="File preview"
                         className="w-full h-32 object-cover rounded-lg"
                       />
                     ) : uploadedUrl ? (
@@ -504,6 +541,7 @@ export default function ContentManager() {
                 {previewPost.type === "image" && (
                   <img
                     src={previewPost.contentUrl}
+                    alt={previewPost.title}
                     className="w-full aspect-video object-cover"
                   />
                 )}
@@ -549,6 +587,17 @@ export default function ContentManager() {
           </div>
         )}
       </main>
+
+      <ConfirmModal
+        isOpen={deletePostId !== null}
+        onClose={() => setDeletePostId(null)}
+        onConfirm={deletePost}
+        title="Delete Post?"
+        message="This will permanently delete this post. This action cannot be undone."
+        confirmText="Delete"
+        loading={deleting}
+        variant="danger"
+      />
     </div>
   );
 }

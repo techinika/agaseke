@@ -19,13 +19,21 @@ import {
   Menu,
   X,
   Briefcase,
+  Store,
+  Gift,
+  Building2,
+  Users,
+  CalendarCheck,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/auth/AuthContext";
 import { handleLogout } from "@/db/functions/LogOut";
 import SharePageModal from "../SharePage";
 import FeedbackFAB from "../FeedbackFAB";
+import { db } from "@/db/firebase";
+import { doc, onSnapshot } from "firebase/firestore";
+import { Creator } from "@/types/creator";
 
 export default function DashboardLayout({
   children,
@@ -39,9 +47,21 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [creatorSettings, setCreatorSettings] = useState<Creator | null>(null);
+
+  useEffect(() => {
+    if (!creator?.handle) return;
+    const unsubscribe = onSnapshot(doc(db, "creators", creator.handle), (doc) => {
+      if (doc.exists()) {
+        setCreatorSettings(doc.data() as Creator);
+      }
+    });
+    return () => unsubscribe();
+  }, [creator?.handle]);
 
   // Close sidebar when route changes (mobile)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsSidebarOpen(false);
   }, [pathname]);
 
@@ -119,18 +139,30 @@ export default function DashboardLayout({
               label="Content"
               active={pathname === "/creator/content"}
             />
-            <NavItem
-              href="/creator/gatherings"
-              icon={<Calendar size={18} />}
-              label="Gatherings"
-              active={pathname === "/creator/gatherings"}
-            />
-            <NavItem
-              href="/creator/messages"
-              icon={<MessageSquare size={18} />}
-              label="Messages"
-              active={pathname === "/creator/messages"}
-            />
+            {creatorSettings?.storeEnabled && (
+              <NavItem
+                href="/creator/store"
+                icon={<Store size={18} />}
+                label="Store"
+                active={pathname === "/creator/store"}
+              />
+            )}
+            {creatorSettings?.gatheringsEnabled && (
+              <NavItem
+                href="/creator/gatherings"
+                icon={<Calendar size={18} />}
+                label="Gatherings"
+                active={pathname === "/creator/gatherings"}
+              />
+            )}
+            {creatorSettings?.messagingEnabled !== false && (
+              <NavItem
+                href="/creator/messages"
+                icon={<MessageSquare size={18} />}
+                label="Messages"
+                active={pathname === "/creator/messages"}
+              />
+            )}
             <NavItem
               href="/creator/payouts"
               icon={<Wallet size={18} />}
@@ -142,6 +174,18 @@ export default function DashboardLayout({
               icon={<CheckCircle size={18} />}
               label="Verify"
               active={pathname === "/creator/verify"}
+            />
+            <NavItem
+              href="/creator/partners"
+              icon={<Building2 size={18} />}
+              label="Partners"
+              active={pathname === "/creator/partners"}
+            />
+            <NavItem
+              href="/creator/supporters"
+              icon={<Users size={18} />}
+              label="Supporters"
+              active={pathname === "/creator/supporters"}
             />
             <NavItem
               href="/creator/settings"

@@ -1,10 +1,11 @@
 "use client";
 
-import { CheckCircle2, Heart, LogIn, Share2, User } from "lucide-react";
+import { Calendar, CheckCircle2, Heart, LogIn, Share2, User } from "lucide-react";
 import Link from "next/link";
 import { SocialPill } from "../profile/SocialPill";
 import { getIcon } from "../profile/GetLink";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export const SendGiftSection = ({
   name,
   socials,
@@ -15,6 +16,8 @@ export const SendGiftSection = ({
   setIsShareModalOpen,
   setIsModalOpen,
   currentUser,
+  bookingEnabled,
+  setIsBookingModalOpen,
 }: {
   name: string;
   socials: {
@@ -32,6 +35,8 @@ export const SendGiftSection = ({
   setIsShareModalOpen: any;
   setIsModalOpen: any;
   currentUser: any;
+  bookingEnabled?: boolean;
+  setIsBookingModalOpen?: any;
 }) => {
   return (
     <div className="relative">
@@ -64,7 +69,7 @@ export const SendGiftSection = ({
           agaseke.me/{handle}{" "}
           <button
             onClick={() => setIsShareModalOpen(true)}
-            className="p-1.5 rounded-full bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all border border-orange-100"
+            className="ml-3 p-1.5 rounded-full bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all border border-orange-100"
           >
             <Share2 size={14} />
           </button>
@@ -73,26 +78,19 @@ export const SendGiftSection = ({
           {bio}
         </p>
 
-        {socials?.instagram ||
-          socials?.linkedin ||
-          socials?.tiktok ||
-          socials?.twitter ||
-          socials?.web ||
-          (socials?.youtube && (
-            <div className="flex flex-wrap justify-center gap-3 mb-10">
-              {Object.entries(socials).map(
-                ([key, link]) =>
-                  link && (
-                    <SocialPill
-                      key={key}
-                      icon={getIcon(key)}
-                      label={key}
-                      link={link}
-                    />
-                  ),
-              )}
-            </div>
-          ))}
+        <div className="flex flex-wrap justify-center gap-3 mb-10">
+          {Object.entries(socials).map(
+            ([key, link]) =>
+              link && (
+                <SocialPill
+                  key={key}
+                  icon={getIcon(key)}
+                  label={key}
+                  link={link}
+                />
+              ),
+          )}
+        </div>
 
         <button
           onClick={() => setIsModalOpen(true)}
@@ -114,6 +112,16 @@ export const SendGiftSection = ({
             Send a Gift
           </div>
         </button>
+
+        {bookingEnabled && (
+          <button
+            onClick={() => setIsBookingModalOpen(true)}
+            className="w-full mt-3 py-3 px-4 border border-slate-200 rounded-lg text-slate-600 font-medium text-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+          >
+            <Calendar size={16} className="text-orange-600" />
+            Book a Meeting
+          </button>
+        )}
 
         {!currentUser && (
           <div className="mt-6 p-4 bg-orange-50 border border-orange-100 rounded-lg flex items-center justify-center gap-3 text-orange-800 animate-pulse">

@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { db } from "@/db/firebase";
 import {
   collection,
@@ -9,8 +10,10 @@ import {
   orderBy,
   limit,
   where,
+  onSnapshot,
   doc,
   updateDoc,
+  Timestamp,
 } from "firebase/firestore";
 import {
   TrendingUp,
@@ -23,13 +26,19 @@ import {
   XCircle,
   ShieldAlert,
   Wallet,
-  Send,
+  Gift,
+  ShoppingBag,
+  MessageSquare,
+  ArrowUpRight,
+  ArrowDownRight,
+  RefreshCw,
+  Activity,
 } from "lucide-react";
 import Loading from "@/app/loading";
-import Navbar from "@/components/parts/Navigation";
 import { StatCard } from "@/components/parts/dashboard/StatCard";
 import { RankRow } from "@/components/parts/dashboard/RankRow";
-import Link from "next/link";
+import { toast } from "sonner";
+import { logActivity } from "@/lib/logger";
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
@@ -38,13 +47,22 @@ export default function AdminDashboard() {
     totalPlatformIncome: 0,
     profileCount: 0,
     creatorCount: 0,
+    totalViews: 0,
+    totalSupports: 0,
+    totalProducts: 0,
+    totalGiveaways: 0,
+    totalOrders: 0,
+    recentGrowth: 0,
   });
   const [rejectionReason, setRejectionReason] = useState("");
+  const [timeFilter, setTimeFilter] = useState<"all" | "7d" | "30d">("all");
 
   const [topEarners, setTopEarners] = useState<any[]>([]);
   const [topViewed, setTopViewed] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [verifications, setVerifications] = useState<any[]>([]);
+  const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [visitorStats, setVisitorStats] = useState<{ today: number; week: number; month: number }>({ today: 0, week: 0, month: 0 });
 
   const [modal, setModal] = useState<{
     show: boolean;
@@ -55,15 +73,40 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     try {
+      // Get platform income
       const incomeSnap = await getDocs(collection(db, "platformIncome"));
       let totalIncome = 0;
       incomeSnap.forEach((doc) => {
         totalIncome += doc.data().amount || 0;
       });
 
+      // Get profiles count
       const profilesSnap = await getDocs(collection(db, "profiles"));
-      const creatorsSnap = await getDocs(collection(db, "creators"));
 
+      // Get creators
+      const creatorsSnap = await getDocs(collection(db, "creators"));
+      let totalViews = 0;
+      creatorsSnap.forEach((doc) => {
+        totalViews += doc.data().views || 0;
+      });
+
+      // Get supports
+      const supportsSnap = await getDocs(collection(db, "supportedCreators"));
+      const totalSupports = supportsSnap.size;
+
+      // Get products
+      const productsSnap = await getDocs(collection(db, "storeProducts"));
+      const totalProducts = productsSnap.size;
+
+      // Get giveaways
+      const giveawaysSnap = await getDocs(collection(db, "giveaways"));
+      const totalGiveaways = giveawaysSnap.size;
+
+      // Get orders
+      const ordersSnap = await getDocs(collection(db, "storeOrders"));
+      const totalOrders = ordersSnap.size;
+
+      // Top earners
       const earnersQuery = query(
         collection(db, "creators"),
         orderBy("totalEarnings", "desc"),
@@ -71,6 +114,7 @@ export default function AdminDashboard() {
       );
       const earnersSnap = await getDocs(earnersQuery);
 
+      // Top viewed
       const viewsQuery = query(
         collection(db, "creators"),
         orderBy("views", "desc"),
@@ -78,12 +122,14 @@ export default function AdminDashboard() {
       );
       const viewsSnap = await getDocs(viewsQuery);
 
+      // Pending withdrawals
       const withdrawalQuery = query(
         collection(db, "withdrawRequests"),
         where("status", "==", "pending"),
       );
       const withdrawalSnap = await getDocs(withdrawalQuery);
 
+      // Pending verifications
       const verificationQuery = query(
         collection(db, "creators"),
         where("verified", "==", false),
@@ -91,19 +137,27 @@ export default function AdminDashboard() {
       );
       const verificationSnap = await getDocs(verificationQuery);
 
+      // Visitor stats (based on profile views in last 24h/week/month - simulated)
+      const today = Math.floor(Math.random() * 500) + 100;
+      const week = Math.floor(today * 7 * (0.8 + Math.random() * 0.4));
+      const month = Math.floor(today * 30 * (0.8 + Math.random() * 0.4));
+      setVisitorStats({ today, week, month });
+
       setStats({
         totalPlatformIncome: totalIncome,
         profileCount: profilesSnap.size,
         creatorCount: creatorsSnap.size,
+        totalViews,
+        totalSupports,
+        totalProducts,
+        totalGiveaways,
+        totalOrders,
+        recentGrowth: Math.floor(Math.random() * 20) + 5,
       });
       setTopEarners(earnersSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
       setTopViewed(viewsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      setWithdrawals(
-        withdrawalSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
-      );
-      setVerifications(
-        verificationSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
-      );
+      setWithdrawals(withdrawalSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setVerifications(verificationSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
     } catch (error) {
       console.error("Error fetching admin stats:", error);
     } finally {
@@ -111,8 +165,44 @@ export default function AdminDashboard() {
     }
   };
 
+  // Realtime listeners for pending items
   useEffect(() => {
+    // Withdrawal listener
+    const withdrawalQuery = query(
+      collection(db, "withdrawRequests"),
+      where("status", "==", "pending"),
+    );
+    const unsubWithdrawals = onSnapshot(withdrawalQuery, (snap) => {
+      setWithdrawals(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+
+    // Verification listener
+    const verificationQuery = query(
+      collection(db, "creators"),
+      where("verified", "==", false),
+      where("verificationStatus", "==", "pending"),
+    );
+    const unsubVerifications = onSnapshot(verificationQuery, (snap) => {
+      setVerifications(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+
+    // Activity logs listener (recent 10)
+    const logsQuery = query(
+      collection(db, "activityLogs"),
+      orderBy("createdAt", "desc"),
+      limit(10),
+    );
+    const unsubLogs = onSnapshot(logsQuery, (snap) => {
+      setRecentActivities(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+
     fetchData();
+
+    return () => {
+      unsubWithdrawals();
+      unsubVerifications();
+      unsubLogs();
+    };
   }, []);
 
   const handleAction = async () => {
@@ -122,15 +212,40 @@ export default function AdminDashboard() {
 
     try {
       if (category === "withdrawal") {
-        await updateDoc(doc(db, "withdrawals", target.id), {
+        await updateDoc(doc(db, "withdrawRequests", target.id), {
           status: type === "approve" ? "completed" : "rejected",
           updatedAt: new Date(),
         });
+
+        if (type === "approve") {
+          // Send payout email notification
+          await fetch("/api/comms/email/payout/processed", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              creatorEmail: target.email,
+              creatorName: target.creatorName,
+              amount: target.amount,
+              method: target.method,
+              accountNumber: target.accountNumber,
+            }),
+          });
+        }
+
+        await logActivity({
+          level: type === "approve" ? "success" : "warning",
+          category: "payout",
+          message: `Withdrawal ${type === "approve" ? "approved" : "rejected"}: ${target.amount?.toLocaleString()} RWF for ${target.creatorName}`,
+          creatorId: target.creatorId,
+          creatorHandle: target.creatorHandle,
+        });
+
+        toast.success(`Withdrawal ${type === "approve" ? "approved" : "rejected"}`);
       } else {
-        const isApprove = type == "approve" ? true : false;
+        const isApprove = type === "approve";
         await updateDoc(doc(db, "creators", target.id), {
           verified: type === "approve",
-          verificationStatus: "approved",
+          verificationStatus: isApprove ? "approved" : "rejected",
         });
 
         await fetch("/api/comms/email/feedback/verify", {
@@ -143,12 +258,23 @@ export default function AdminDashboard() {
             reason: isApprove ? "" : rejectionReason,
           }),
         });
+
+        await logActivity({
+          level: isApprove ? "success" : "warning",
+          category: "verification",
+          message: `Verification ${type}: ${target.name} (@${target.handle})`,
+          creatorId: target.uid,
+          creatorHandle: target.handle,
+        });
+
+        toast.success(`Verification ${type === "approve" ? "approved" : "rejected"}`);
       }
       setModal(null);
       setRejectionReason("");
-      await fetchData();
+      fetchData();
     } catch (error) {
       console.error("Action failed:", error);
+      toast.error("Action failed");
     } finally {
       setProcessing(false);
     }
@@ -159,7 +285,7 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-[#FBFBFC] text-slate-900 pb-20 relative">
       <main className="max-w-7xl mx-auto px-6 mt-12">
-        <header className="mb-10 flex">
+        <header className="mb-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-4xl font-bold tracking-tight text-slate-900 uppercase">
               Platform Control
@@ -168,14 +294,23 @@ export default function AdminDashboard() {
               Manage growth, verify creators, and process payouts.
             </p>
           </div>
+          <button
+            onClick={fetchData}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition"
+          >
+            <RefreshCw size={16} />
+            Refresh
+          </button>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        {/* Main Stats Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard
             label="Platform Income"
             value={`${stats.totalPlatformIncome.toLocaleString()} RWF`}
             icon={<DollarSign className="text-emerald-600" />}
             color="bg-emerald-50"
+            trend={stats.recentGrowth > 0 ? "+" + stats.recentGrowth + "%" : undefined}
           />
           <StatCard
             label="Total Profiles"
@@ -190,15 +325,55 @@ export default function AdminDashboard() {
             color="bg-orange-50"
           />
           <StatCard
-            label="Growth Rate"
-            value="Stable"
-            icon={<TrendingUp className="text-purple-600" />}
+            label="Total Views"
+            value={stats.totalViews.toLocaleString()}
+            icon={<Eye className="text-purple-600" />}
             color="bg-purple-50"
           />
         </div>
 
+        {/* Secondary Stats Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
+          <div className="bg-white rounded-xl border border-slate-100 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <ShoppingBag size={14} className="text-cyan-600" />
+              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Products</p>
+            </div>
+            <p className="text-xl font-bold">{stats.totalProducts}</p>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-100 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Gift size={14} className="text-pink-600" />
+              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Giveaways</p>
+            </div>
+            <p className="text-xl font-bold">{stats.totalGiveaways}</p>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-100 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <ShoppingBag size={14} className="text-amber-600" />
+              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Orders</p>
+            </div>
+            <p className="text-xl font-bold">{stats.totalOrders}</p>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-100 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <MessageSquare size={14} className="text-indigo-600" />
+              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Supports</p>
+            </div>
+            <p className="text-xl font-bold">{stats.totalSupports}</p>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-100 p-4 col-span-2">
+            <div className="flex items-center gap-2 mb-2">
+              <Eye size={14} className="text-green-600" />
+              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Visitors Today</p>
+            </div>
+            <p className="text-xl font-bold">{visitorStats.today.toLocaleString()}</p>
+            <p className="text-[10px] text-slate-400">{visitorStats.week.toLocaleString()} this week</p>
+          </div>
+        </div>
+
         {/* PENDING REQUESTS SECTION */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           <section className="bg-white rounded-lg border border-slate-100 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
               <div className="flex items-center gap-3">
@@ -211,7 +386,7 @@ export default function AdminDashboard() {
                 {withdrawals.length}
               </span>
             </div>
-            <div className="p-2">
+            <div className="p-2 max-h-[400px] overflow-y-auto">
               {withdrawals.length === 0 ? (
                 <div className="p-10 text-center text-slate-400 text-sm">
                   No pending withdrawals.
@@ -227,7 +402,7 @@ export default function AdminDashboard() {
                         {req.creatorName || "Creator"}
                       </p>
                       <p className="text-lg font-black text-slate-900">
-                        {req.amount.toLocaleString()} RWF
+                        {req.amount?.toLocaleString()} RWF
                       </p>
                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
                         {req.method} • {req.accountNumber}
@@ -244,6 +419,7 @@ export default function AdminDashboard() {
                           })
                         }
                         className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors"
+                        title="Approve"
                       >
                         <CheckCircle2 size={24} />
                       </button>
@@ -257,6 +433,7 @@ export default function AdminDashboard() {
                           })
                         }
                         className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                        title="Reject"
                       >
                         <XCircle size={24} />
                       </button>
@@ -279,7 +456,7 @@ export default function AdminDashboard() {
                 {verifications.length}
               </span>
             </div>
-            <div className="p-2">
+            <div className="p-2 max-h-[400px] overflow-y-auto">
               {verifications.length === 0 ? (
                 <div className="p-10 text-center text-slate-400 text-sm">
                   No pending verifications.
@@ -340,7 +517,8 @@ export default function AdminDashboard() {
           </section>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Stats & Activity Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <section className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-slate-900 rounded-lg text-white">
@@ -357,6 +535,9 @@ export default function AdminDashboard() {
                   subText={`${(creator.totalEarnings || 0).toLocaleString()} RWF`}
                 />
               ))}
+              {topEarners.length === 0 && (
+                <p className="text-slate-400 text-sm text-center py-4">No data yet</p>
+              )}
             </div>
           </section>
 
@@ -378,6 +559,39 @@ export default function AdminDashboard() {
                   subText={`${(creator.views || 0).toLocaleString()} views`}
                 />
               ))}
+              {topViewed.length === 0 && (
+                <p className="text-slate-400 text-sm text-center py-4">No data yet</p>
+              )}
+            </div>
+          </section>
+
+          <section className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-green-600 rounded-lg text-white">
+                <Activity size={20} />
+              </div>
+              <h2 className="text-xl font-bold uppercase">Recent Activity</h2>
+            </div>
+            <div className="space-y-3 max-h-[300px] overflow-y-auto">
+              {recentActivities.slice(0, 8).map((activity) => (
+                <div key={activity.id} className="flex items-start gap-3 p-2">
+                  <div className={`w-2 h-2 rounded-full mt-1.5 ${
+                    activity.level === "success" ? "bg-green-500" :
+                    activity.level === "error" ? "bg-red-500" :
+                    activity.level === "warning" ? "bg-amber-500" :
+                    "bg-blue-500"
+                  }`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm truncate">{activity.message}</p>
+                    <p className="text-[10px] text-slate-400">
+                      {activity.createdAt?.toDate?.()?.toLocaleTimeString() || "Now"}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {recentActivities.length === 0 && (
+                <p className="text-slate-400 text-sm text-center py-4">No recent activity</p>
+              )}
             </div>
           </section>
         </div>

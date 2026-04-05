@@ -1,23 +1,26 @@
-import { baseUrl } from "@/app/sitemap";
+"use client";
 
-export default function ExploreSchema({ creators }: { creators: any[] }) {
+import { useEffect } from "react";
+import { getBreadcrumbSchema } from "@/lib/schemas";
 
-  const schema = {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    itemListElement: creators.map((creator, index) => ({
-      "@type": "ListItem",
-      position: index + 1,
-      url: `${baseUrl}/${creator.handle}`,
-      name: creator.name,
-      description: creator.bio,
-    })),
-  };
+export default function ExploreSchema() {
+  useEffect(() => {
+    const breadcrumbs = getBreadcrumbSchema([
+      { name: "Home", url: "/" },
+      { name: "Explore Creators", url: "/explore" },
+    ]);
 
-  return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-    />
-  );
+    const script = document.createElement("script");
+    script.type = "application/ld+json";
+    script.id = "explore-breadcrumb-schema";
+    script.innerHTML = JSON.stringify(breadcrumbs);
+    document.head.appendChild(script);
+
+    return () => {
+      const existing = document.getElementById("explore-breadcrumb-schema");
+      if (existing) existing.remove();
+    };
+  }, []);
+
+  return null;
 }

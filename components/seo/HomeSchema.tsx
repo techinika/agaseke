@@ -1,44 +1,51 @@
+"use client";
+
+import { useEffect } from "react";
+import { getOrganizationSchemaJsonLd, getWebsiteSchema, getFAQSchema } from "@/lib/schemas";
+
 export default function HomeSchema() {
-  const baseUrl = "https://yourdomain.rw";
-
-  const organizationSchema = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: "Agaseke",
-    url: baseUrl,
-    logo: `${baseUrl}/agaseke.png`,
-    sameAs: [
-      "https://x.com/agaseke_support",
-      "https://instagram.com/agaseke_support",
-    ],
-    description:
-      "A platform dedicated to supporting and fueling Rwandan creativity.",
-  };
-
-  const websiteSchema = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    url: baseUrl,
-    potentialAction: {
-      "@type": "SearchAction",
-      target: {
-        "@type": "EntryPoint",
-        urlTemplate: `${baseUrl}/explore?q={search_term_string}`,
+  useEffect(() => {
+    const organization = getOrganizationSchemaJsonLd();
+    const website = getWebsiteSchema();
+    const faq = getFAQSchema([
+      {
+        question: "What is Agaseke?",
+        answer:
+          "Agaseke is a platform that allows fans to support their favorite Rwandan creators through donations, purchases, and exclusive content. It helps creators monetize their work and build a sustainable community.",
       },
-      "query-input": "required name=search_term_string",
-    },
-  };
+      {
+        question: "How can I support a creator?",
+        answer:
+          "You can support creators by making one-time payments via Mobile Money (MTN or Airtel Money), purchasing their digital or physical products, or tipping them directly through the platform.",
+      },
+      {
+        question: "How do creators receive their earnings?",
+        answer:
+          "Creators can withdraw their earnings directly to their Mobile Money account (MTN or Airtel Money). Withdrawals are processed within 1-2 business days after approval.",
+      },
+      {
+        question: "Is Agaseke only for Rwandan creators?",
+        answer:
+          "While Agaseke was built specifically to support Rwandan creators, it's open to creators from anywhere. The platform supports Mobile Money payments which are popular in Rwanda.",
+      },
+    ]);
 
-  return (
-    <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
-      />
-    </>
-  );
+    const schemas = [organization, website, faq];
+    schemas.forEach((schema, index) => {
+      const script = document.createElement("script");
+      script.type = "application/ld+json";
+      script.id = `home-schema-${index}`;
+      script.innerHTML = JSON.stringify(schema);
+      document.head.appendChild(script);
+    });
+
+    return () => {
+      schemas.forEach((_, index) => {
+        const existing = document.getElementById(`home-schema-${index}`);
+        if (existing) existing.remove();
+      });
+    };
+  }, []);
+
+  return null;
 }

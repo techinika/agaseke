@@ -1,6 +1,6 @@
 import React from "react";
 import Navbar from "@/components/parts/Navigation";
-import { ShieldCheck, Eye, Share2, Lock, Mail } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import Footer from "@/components/parts/Footer";
 
 export default function PrivacyPage() {

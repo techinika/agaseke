@@ -4,7 +4,6 @@ import {
   Wallet,
   Calendar,
   ShieldCheck,
-  AlertCircle,
   Banknote,
   ArrowRight,
 } from "lucide-react";

@@ -1,6 +1,5 @@
-import { transporter } from "@/lib/emailTransporter";
+import { founderTransporter } from "@/lib/emailTransporter";
 import { NextResponse } from "next/server";
-import nodemailer from "nodemailer";
 
 export async function POST(req: Request) {
   try {
@@ -44,8 +43,8 @@ export async function POST(req: Request) {
       </div>
     `;
 
-    await transporter.sendMail({
-      from: `"Songa from Agaseke" <${process.env.SMTP_USER}>`,
+    await founderTransporter.sendMail({
+      from: `"Songa from Agaseke" <${process.env.SMTP_FOUNDER}>`,
       to: email,
       subject: "Welcome to Agaseke - Start Earning from Your Work! ",
       html: emailHtml,

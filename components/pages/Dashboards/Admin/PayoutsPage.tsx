@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -19,15 +20,17 @@ import {
   ArrowUpRight,
   AlertCircle,
   Loader2,
-  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 export default function AdminPayouts() {
   const [creators, setCreators] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [confirmPayout, setConfirmPayout] = useState<any>(null);
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     // We only want creators who have money waiting to be paid out
@@ -50,32 +53,25 @@ export default function AdminPayouts() {
     0,
   );
 
-  const handleApprovePayout = async (creator: any) => {
-    const amount = creator.pendingPayout;
-    if (
-      !confirm(
-        `Are you sure you want to approve a payout of ${amount} RWF for ${creator.name}?`,
-      )
-    )
-      return;
-
-    setProcessingId(creator.id);
+  const handleApprovePayout = async () => {
+    if (!confirmPayout) return;
+    const amount = confirmPayout.pendingPayout;
+    setProcessing(true);
+    setProcessingId(confirmPayout.id);
 
     try {
       await runTransaction(db, async (transaction) => {
-        const creatorRef = doc(db, "creators", creator.id);
-        const payoutRef = doc(collection(db, "payouts")); // Create a log
+        const creatorRef = doc(db, "creators", confirmPayout.id);
+        const payoutRef = doc(collection(db, "payouts"));
 
-        // 1. Reset pendingPayout to 0
         transaction.update(creatorRef, {
           pendingPayout: 0,
           lastPayoutAt: serverTimestamp(),
         });
 
-        // 2. Create a payout record for history
         transaction.set(payoutRef, {
-          creatorId: creator.id,
-          creatorUid: creator.uid,
+          creatorId: confirmPayout.id,
+          creatorUid: confirmPayout.uid,
           amount: amount,
           status: "completed",
           approvedAt: serverTimestamp(),
@@ -83,12 +79,14 @@ export default function AdminPayouts() {
         });
       });
 
-      toast.success(`Payout of ${amount} RWF for ${creator.name} recorded!`);
+      toast.success(`Payout of ${amount} RWF for ${confirmPayout.name} recorded!`);
+      setConfirmPayout(null);
     } catch (error) {
       console.error(error);
       toast.error("Failed to process payout.");
     } finally {
       setProcessingId(null);
+      setProcessing(false);
     }
   };
 
@@ -222,7 +220,7 @@ export default function AdminPayouts() {
                     </td>
                     <td className="px-6 py-5 text-right">
                       <button
-                        onClick={() => handleApprovePayout(creator)}
+                        onClick={() => setConfirmPayout(creator)}
                         disabled={processingId === creator.id}
                         className="bg-slate-900 text-white px-5 py-2.5 rounded-lg text-xs font-bold hover:bg-orange-600 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 ml-auto"
                       >
@@ -246,11 +244,22 @@ export default function AdminPayouts() {
         <div className="flex items-center gap-3 p-4 bg-slate-100/50 border border-slate-200 rounded-lg text-slate-500">
           <AlertCircle size={18} />
           <p className="text-xs font-medium italic">
-            Note: Approving a payout resets the creator's balance in Agaseke.
+            Note: Approving a payout resets the creator&apos;s balance in Agaseke.
             Ensure you have manually sent the MoMo transfer before confirming.
           </p>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={confirmPayout !== null}
+        onClose={() => setConfirmPayout(null)}
+        onConfirm={handleApprovePayout}
+        title="Approve Payout?"
+        message={confirmPayout ? `Are you sure you want to approve a payout of ${confirmPayout.pendingPayout?.toLocaleString()} RWF for ${confirmPayout.name}? Make sure you have sent the payment via MoMo before confirming.` : ""}
+        confirmText="Approve"
+        loading={processing}
+        variant="warning"
+      />
     </div>
   );
 }

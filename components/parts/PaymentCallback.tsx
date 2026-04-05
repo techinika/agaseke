@@ -1,12 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { db } from "@/db/firebase";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import {
-  CheckCircle2,
-  Loader2,
   XCircle,
   Heart,
   ArrowRight,
@@ -23,22 +22,18 @@ export default function PaymentCallback() {
   const [txData, setTxData] = useState<any>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
-  const orderTrackingId = searchParams.get("OrderTrackingId");
   const merchantRef = searchParams.get("OrderMerchantReference");
 
-  useEffect(() => {
-    if (merchantRef) {
-      listenToTransaction(merchantRef);
-    } else {
-      setStatus("error");
-    }
+  const triggerConfetti = useCallback(() => {
+    confetti({
+      particleCount: 150,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ["#ea580c", "#fb923c", "#fff"],
+    });
+  }, []);
 
-    return () => {
-      if (unsubscribeRef.current) unsubscribeRef.current();
-    };
-  }, [merchantRef]);
-
-  const listenToTransaction = (ref: string) => {
+  const listenToTransaction = useCallback((ref: string) => {
     const q = query(collection(db, "transactions"), where("ref", "==", ref));
 
     unsubscribeRef.current = onSnapshot(q, (snapshot) => {
@@ -56,16 +51,20 @@ export default function PaymentCallback() {
         }
       }
     });
-  };
+  }, [triggerConfetti]);
 
-  const triggerConfetti = () => {
-    confetti({
-      particleCount: 150,
-      spread: 70,
-      origin: { y: 0.6 },
-      colors: ["#ea580c", "#fb923c", "#fff"],
-    });
-  };
+  useEffect(() => {
+    if (merchantRef) {
+      listenToTransaction(merchantRef);
+    } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setStatus("error");
+    }
+
+    return () => {
+      if (unsubscribeRef.current) unsubscribeRef.current();
+    };
+  }, [merchantRef, listenToTransaction]);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
@@ -82,7 +81,7 @@ export default function PaymentCallback() {
                   Confirming your gift...
                 </h1>
                 <p className="text-slate-500 text-sm">
-                  We're verifying your transaction with the bank. This won't
+                  We&apos;re verifying your transaction with the bank. This won&apos;t
                   take long.
                 </p>
               </div>
@@ -134,7 +133,7 @@ export default function PaymentCallback() {
                   Payment Failed
                 </h1>
                 <p className="text-slate-500 text-sm">
-                  We couldn't verify this transaction. It might have been
+                  We couldn&apos;t verify this transaction. It might have been
                   cancelled or declined.
                 </p>
               </div>
