@@ -2,10 +2,10 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { 
-  Search, 
-  Users, 
-  Shield, 
+import {
+  Search,
+  Users,
+  Shield,
   ShieldCheck,
   ShieldOff,
   MoreVertical,
@@ -44,6 +44,7 @@ interface UserProfile {
   displayName: string | null;
   photoURL: string | null;
   type: "supporter" | "creator" | "admin";
+  username?: string;
   isAdmin: boolean;
   onboarded: boolean;
   totalSupport: number;
@@ -56,7 +57,9 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"all" | "creator" | "supporter" | "admin">("all");
+  const [typeFilter, setTypeFilter] = useState<
+    "all" | "creator" | "supporter" | "admin"
+  >("all");
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [makingAdmin, setMakingAdmin] = useState<string | null>(null);
 
@@ -94,9 +97,9 @@ export default function AdminUsersPage() {
   const stats = useMemo(() => {
     return {
       total: users.length,
-      creators: users.filter(u => u.type === "creator").length,
-      supporters: users.filter(u => u.type === "supporter").length,
-      admins: users.filter(u => u.isAdmin === true).length,
+      creators: users.filter((u) => u.type === "creator").length,
+      supporters: users.filter((u) => u.type === "supporter").length,
+      admins: users.filter((u) => u.isAdmin === true).length,
     };
   }, [users]);
 
@@ -107,7 +110,7 @@ export default function AdminUsersPage() {
       await updateDoc(doc(db, "profiles", user.id), {
         isAdmin: newIsAdmin,
       });
-      
+
       await logActivity({
         level: "info",
         category: "admin",
@@ -151,30 +154,46 @@ export default function AdminUsersPage() {
           <div className="bg-white rounded-xl border border-slate-100 p-4">
             <div className="flex items-center gap-2">
               <Users size={16} className="text-slate-400" />
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Total Users</p>
+              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                Total Users
+              </p>
             </div>
-            <p className="text-2xl font-bold text-slate-900 mt-1">{stats.total.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-slate-900 mt-1">
+              {stats.total.toLocaleString()}
+            </p>
           </div>
           <div className="bg-orange-50 rounded-xl border border-orange-100 p-4">
             <div className="flex items-center gap-2">
               <Shield size={16} className="text-orange-600" />
-              <p className="text-[10px] font-bold uppercase text-orange-600 tracking-wider">Creators</p>
+              <p className="text-[10px] font-bold uppercase text-orange-600 tracking-wider">
+                Creators
+              </p>
             </div>
-            <p className="text-2xl font-bold text-orange-700 mt-1">{stats.creators.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-orange-700 mt-1">
+              {stats.creators.toLocaleString()}
+            </p>
           </div>
           <div className="bg-blue-50 rounded-xl border border-blue-100 p-4">
             <div className="flex items-center gap-2">
               <DollarSign size={16} className="text-blue-600" />
-              <p className="text-[10px] font-bold uppercase text-blue-600 tracking-wider">Supporters</p>
+              <p className="text-[10px] font-bold uppercase text-blue-600 tracking-wider">
+                Supporters
+              </p>
             </div>
-            <p className="text-2xl font-bold text-blue-700 mt-1">{stats.supporters.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-blue-700 mt-1">
+              {stats.supporters.toLocaleString()}
+            </p>
           </div>
-          <div className="bg-purple-50 rounded-xl border border-purple-100 p-4">
+          <div className="bg-orange-50 rounded-xl border border-orange-100 p-4">
             <div className="flex items-center gap-2">
-              <ShieldCheck size={16} className="text-purple-600" />
-              <p className="text-[10px] font-bold uppercase text-purple-600 tracking-wider">Admins</p>
+              <ShieldCheck size={16} className="text-orange-600" />
+              <p className="text-[10px] font-bold uppercase text-orange-600 tracking-wider">
+                Admins
+              </p>
             </div>
-            <p className="text-2xl font-bold text-purple-700 mt-1">{stats.admins.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-orange-700 mt-1">
+              {stats.admins.toLocaleString()}
+            </p>
           </div>
         </div>
 
@@ -186,7 +205,10 @@ export default function AdminUsersPage() {
                 Search
               </label>
               <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
+                <Search
+                  size={16}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300"
+                />
                 <input
                   type="text"
                   placeholder="Search by name or email..."
@@ -250,32 +272,48 @@ export default function AdminUsersPage() {
                 </thead>
                 <tbody>
                   {filteredUsers.map((user) => (
-                    <tr key={user.id} className="border-b border-slate-50 hover:bg-slate-50 transition">
+                    <tr
+                      key={user.id}
+                      className="border-b border-slate-50 hover:bg-slate-50 transition"
+                    >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-sm font-bold overflow-hidden">
                             {user.photoURL ? (
-                              <img src={user.photoURL} alt={user.displayName || "User"} className="w-full h-full object-cover" />
+                              <img
+                                src={user.photoURL}
+                                alt={user.displayName || "User"}
+                                className="w-full h-full object-cover"
+                              />
                             ) : (
-                              (user.displayName || user.email || "?")[0].toUpperCase()
+                              (user.displayName ||
+                                user.email ||
+                                "?")[0].toUpperCase()
                             )}
                           </div>
                           <div>
-                            <p className="font-bold text-sm">{user.displayName || "No name"}</p>
-                            <p className="text-xs text-slate-400">{user.email || "No email"}</p>
+                            <p className="font-bold text-sm">
+                              {user.displayName || "No name"}
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              {user.email || "No email"}
+                            </p>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
-                            user.type === "creator" ? "bg-orange-100 text-orange-600" :
-                            "bg-blue-100 text-blue-600"
-                          }`}>
+                          <span
+                            className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
+                              user.type === "creator"
+                                ? "bg-orange-100 text-orange-600"
+                                : "bg-blue-100 text-blue-600"
+                            }`}
+                          >
                             {user.type}
                           </span>
                           {user.isAdmin && (
-                            <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-purple-100 text-purple-600">
+                            <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-orange-100 text-orange-600">
                               Admin
                             </span>
                           )}
@@ -283,12 +321,15 @@ export default function AdminUsersPage() {
                       </td>
                       <td className="px-6 py-4">
                         <p className="font-bold text-sm">
-                          {user.totalSupport > 0 ? `${user.totalSupport.toLocaleString()} RWF` : "-"}
+                          {user.totalSupport > 0
+                            ? `${user.totalSupport.toLocaleString()} RWF`
+                            : "-"}
                         </p>
                       </td>
                       <td className="px-6 py-4">
                         <p className="text-sm text-slate-500">
-                          {user.createdAt?.toDate().toLocaleDateString() || "Unknown"}
+                          {user.createdAt?.toDate().toLocaleDateString() ||
+                            "Unknown"}
                         </p>
                       </td>
                       <td className="px-6 py-4">
@@ -304,7 +345,7 @@ export default function AdminUsersPage() {
                             <button
                               onClick={() => toggleAdmin(user)}
                               disabled={makingAdmin === user.id}
-                              className="p-2 text-purple-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition"
+                              className="p-2 text-orange-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition"
                               title="Make Admin"
                             >
                               {makingAdmin === user.id ? (
@@ -355,7 +396,10 @@ export default function AdminUsersPage() {
           <div className="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center">
               <h2 className="text-xl font-bold">User Details</h2>
-              <button onClick={() => setSelectedUser(null)} className="p-2 hover:bg-slate-100 rounded-full">
+              <button
+                onClick={() => setSelectedUser(null)}
+                className="p-2 hover:bg-slate-100 rounded-full"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -363,23 +407,34 @@ export default function AdminUsersPage() {
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-2xl font-bold overflow-hidden">
                   {selectedUser.photoURL ? (
-                    <img src={selectedUser.photoURL} alt={selectedUser.displayName || "User"} className="w-full h-full object-cover" />
+                    <img
+                      src={selectedUser.photoURL}
+                      alt={selectedUser.displayName || "User"}
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
-                    (selectedUser.displayName || selectedUser.email || "?")[0].toUpperCase()
+                    (selectedUser.displayName ||
+                      selectedUser.email ||
+                      "?")[0].toUpperCase()
                   )}
                 </div>
                 <div>
-                  <p className="font-bold text-lg">{selectedUser.displayName || "No name"}</p>
+                  <p className="font-bold text-lg">
+                    {selectedUser.displayName || "No name"}
+                  </p>
                   <p className="text-sm text-slate-500">{selectedUser.email}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
-                      selectedUser.type === "creator" ? "bg-orange-100 text-orange-600" :
-                      "bg-blue-100 text-blue-600"
-                    }`}>
+                    <span
+                      className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
+                        selectedUser.type === "creator"
+                          ? "bg-orange-100 text-orange-600"
+                          : "bg-blue-100 text-blue-600"
+                      }`}
+                    >
                       {selectedUser.type}
                     </span>
                     {selectedUser.isAdmin && (
-                      <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-purple-100 text-purple-600">
+                      <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-orange-100 text-orange-600">
                         Admin
                       </span>
                     )}
@@ -389,17 +444,29 @@ export default function AdminUsersPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-slate-50 rounded-lg p-4">
-                    <p className="text-[10px] font-bold uppercase text-slate-400">Total Supported</p>
-                    <p className="text-xl font-bold mt-1">{selectedUser.totalSupport.toLocaleString()} RWF</p>
+                    <p className="text-[10px] font-bold uppercase text-slate-400">
+                      Total Supported
+                    </p>
+                    <p className="text-xl font-bold mt-1">
+                      {selectedUser.totalSupport.toLocaleString()} RWF
+                    </p>
                   </div>
                   <div className="bg-slate-50 rounded-lg p-4">
-                    <p className="text-[10px] font-bold uppercase text-slate-400">Creators Supported</p>
-                    <p className="text-xl font-bold mt-1">{selectedUser.totalSupportedCreators}</p>
+                    <p className="text-[10px] font-bold uppercase text-slate-400">
+                      Creators Supported
+                    </p>
+                    <p className="text-xl font-bold mt-1">
+                      {selectedUser.totalSupportedCreators}
+                    </p>
                   </div>
                 </div>
                 <div className="bg-slate-50 rounded-lg p-4">
-                  <p className="text-[10px] font-bold uppercase text-slate-400">User ID</p>
-                  <p className="text-sm font-mono mt-1 break-all">{selectedUser.id}</p>
+                  <p className="text-[10px] font-bold uppercase text-slate-400">
+                    User ID
+                  </p>
+                  <p className="text-sm font-mono mt-1 break-all">
+                    {selectedUser.id}
+                  </p>
                 </div>
                 <div className="flex gap-3">
                   {!selectedUser.isAdmin && (
@@ -409,7 +476,7 @@ export default function AdminUsersPage() {
                         setSelectedUser(null);
                       }}
                       disabled={makingAdmin === selectedUser.id}
-                      className="flex-1 py-3 bg-purple-600 text-white rounded-lg font-bold text-sm hover:bg-purple-700 transition"
+                      className="flex-1 py-3 bg-orange-600 text-white rounded-lg font-bold text-sm hover:bg-orange-700 transition"
                     >
                       Make Admin
                     </button>

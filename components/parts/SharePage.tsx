@@ -3,7 +3,15 @@
 import React, { useRef, useState, useEffect } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { toPng } from "html-to-image";
-import { Download, X, Share2, Heart, Loader, Palette, Type } from "lucide-react";
+import {
+  Download,
+  X,
+  Share2,
+  Heart,
+  Loader,
+  Palette,
+  Type,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/auth/AuthContext";
 
@@ -13,14 +21,19 @@ interface ShareModalProps {
 }
 
 function getLightVariant(hexColor: string, opacity: number = 0.2): string {
-  return hexColor + Math.round(opacity * 255).toString(16).padStart(2, "0");
+  return (
+    hexColor +
+    Math.round(opacity * 255)
+      .toString(16)
+      .padStart(2, "0")
+  );
 }
 
 const PRESET_COLORS = [
   { name: "Orange", color: "#f97316" },
   { name: "Red", color: "#ef4444" },
   { name: "Pink", color: "#ec4899" },
-  { name: "Purple", color: "#a855f7" },
+  { name: "orange", color: "#a855f7" },
   { name: "Blue", color: "#3b82f6" },
   { name: "Teal", color: "#14b8a6" },
   { name: "Green", color: "#22c55e" },
@@ -35,7 +48,7 @@ const PRESET_TEXT_COLORS = [
   { name: "Orange", color: "#f97316" },
   { name: "Red", color: "#ef4444" },
   { name: "Pink", color: "#ec4899" },
-  { name: "Purple", color: "#a855f7" },
+  { name: "orange", color: "#a855f7" },
   { name: "Blue", color: "#3b82f6" },
   { name: "Teal", color: "#14b8a6" },
   { name: "Green", color: "#22c55e" },
@@ -146,20 +159,26 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
               ref={cardRef}
               className="w-[320px] h-[420px] bg-white relative overflow-hidden border border-slate-200 shadow-2xl flex flex-col"
             >
-              <div className="p-4 text-center relative" style={{ backgroundColor: accentColor }}>
-                <div 
+              <div
+                className="p-4 text-center relative"
+                style={{ backgroundColor: accentColor }}
+              >
+                <div
                   className="inline-flex items-center gap-2 px-3 py-1 rounded-lg mb-3"
                   style={{ backgroundColor: lightVariant }}
                 >
-                  <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: textColor }} />
-                  <span 
+                  <div
+                    className="w-1.5 h-1.5 rounded-full animate-pulse"
+                    style={{ backgroundColor: textColor }}
+                  />
+                  <span
                     className="text-[10px] font-black uppercase tracking-widest"
                     style={{ color: textColor }}
                   >
                     Live on Agaseke
                   </span>
                 </div>
-                <h2 
+                <h2
                   className="text-2xl font-black leading-tight tracking-tighter"
                   style={{ color: textColor }}
                 >
@@ -187,7 +206,10 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
                   <h4 className="text-xl font-black text-slate-900 tracking-tighter">
                     {creator?.name}
                   </h4>
-                  <p className="font-bold text-sm" style={{ color: accentColor }}>
+                  <p
+                    className="font-bold text-sm"
+                    style={{ color: accentColor }}
+                  >
                     agaseke.me/{creator?.handle}
                   </p>
                 </div>
@@ -203,7 +225,10 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
                     marginSize={1}
                   />
                 </div>
-                <div className="mt-4 flex items-center gap-2" style={{ color: accentColor }}>
+                <div
+                  className="mt-4 flex items-center gap-2"
+                  style={{ color: accentColor }}
+                >
                   <Heart size={12} fill={accentColor} stroke="none" />
                   <span className="text-[10px] font-black uppercase tracking-[0.2em]">
                     Scan to support
@@ -211,8 +236,14 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
                 </div>
               </div>
 
-              <div className="py-2 border-t border-slate-50 text-center" style={{ backgroundColor: lightVariant }}>
-                <span className="text-lg font-bold" style={{ color: accentColor }}>
+              <div
+                className="py-2 border-t border-slate-50 text-center"
+                style={{ backgroundColor: lightVariant }}
+              >
+                <span
+                  className="text-lg font-bold"
+                  style={{ color: accentColor }}
+                >
                   agaseke.me
                 </span>
               </div>
@@ -223,8 +254,12 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
             <div className="bg-slate-50 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Type size={16} className="text-slate-500" />
-                <span className="text-sm font-bold text-slate-700">Headline Text</span>
-                <span className="text-xs text-slate-400 ml-auto">{headline.length}/30</span>
+                <span className="text-sm font-bold text-slate-700">
+                  Headline Text
+                </span>
+                <span className="text-xs text-slate-400 ml-auto">
+                  {headline.length}/30
+                </span>
               </div>
               <input
                 type="text"
@@ -238,7 +273,9 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
 
             <div className="bg-slate-50 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-sm font-bold text-slate-700">Text Color</span>
+                <span className="text-sm font-bold text-slate-700">
+                  Text Color
+                </span>
               </div>
               <div className="grid grid-cols-5 gap-2">
                 {PRESET_TEXT_COLORS.map((preset) => (
@@ -264,9 +301,11 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
             <div className="bg-slate-50 rounded-lg p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Palette size={16} className="text-slate-500" />
-                <span className="text-sm font-bold text-slate-700">Accent Color</span>
+                <span className="text-sm font-bold text-slate-700">
+                  Accent Color
+                </span>
               </div>
-              
+
               <div className="grid grid-cols-5 gap-2 mb-3">
                 {PRESET_COLORS.map((preset) => (
                   <button

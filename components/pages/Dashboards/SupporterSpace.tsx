@@ -198,7 +198,11 @@ export default function SupporterSpace() {
     try {
       const attendanceRef = collection(db, "gatheringsAttendance");
       const existingRSVP = await getDocs(
-        query(attendanceRef, where("gatheringId", "==", selectedItem.id), where("supporterId", "==", auth.user.uid))
+        query(
+          attendanceRef,
+          where("gatheringId", "==", selectedItem.id),
+          where("supporterId", "==", auth.user.uid),
+        ),
       );
 
       if (!existingRSVP.empty) {
@@ -209,7 +213,7 @@ export default function SupporterSpace() {
 
       if (selectedItem.capacity) {
         const currentAttendees = await getDocs(
-          query(attendanceRef, where("gatheringId", "==", selectedItem.id))
+          query(attendanceRef, where("gatheringId", "==", selectedItem.id)),
         );
 
         if (currentAttendees.size >= selectedItem.capacity) {
@@ -336,7 +340,7 @@ export default function SupporterSpace() {
                         <span
                           className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${
                             item.type === "gathering"
-                              ? "bg-purple-600 text-white"
+                              ? "bg-orange-600 text-white"
                               : "bg-blue-600 text-white"
                           }`}
                         >

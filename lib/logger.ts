@@ -90,7 +90,7 @@ export function getLogLevelColor(level: LogLevel): string {
 export function getCategoryColor(category: LogCategory): string {
   switch (category) {
     case "auth":
-      return "text-purple-600 bg-purple-50";
+      return "text-orange-600 bg-orange-50";
     case "payment":
       return "text-green-600 bg-green-50";
     case "payout":
