@@ -121,7 +121,7 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
+    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
       <div className="bg-white rounded-lg w-full max-w-5xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-300">
         <div className="p-4 border-b border-slate-200 border-shadow flex justify-between items-center bg-slate-50/50">
           <div className="flex items-center gap-3">
