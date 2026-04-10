@@ -18,7 +18,15 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - Size options for merchandise
   - Bulk pricing discounts
   - Coupon/discount codes
+  - Product-specific coupons
+  - Folders (product bundles) with bundle discounts
   - Order management and tracking
+  - **Order progress tracking**: Start Processing → Mark as Shipped → Mark as Delivered
+  - **Go back** to previous status if mistakes or delays
+  - **Email notifications** sent to customers when order status changes
+  - Platform fee payer option (buyer pays 10% extra or creator absorbs 10%)
+  - Reopen cancelled orders
+  - Create manual orders from dashboard
 - **Giveaways** (`/creator/giveaways`):
   - Create and edit contests with multiple prize types
   - Random draw or challenge-based selection
@@ -415,7 +423,10 @@ interface GiveawayReward {
 ### Email Notifications
 - `POST /api/comms/email/message` - New message notification
 - `POST /api/comms/email/store/order` - Order confirmation
+- `POST /api/comms/email/store/status` - Order status change notification
 - `POST /api/comms/email/gathering/checkin` - Check-in notification
+- `POST /api/comms/email/gathering/declined` - Gathering declined notification
+- `POST /api/comms/email/gathering/undo` - Gathering undo notification
 - `POST /api/comms/email/broadcast` - Broadcast email to supporters
 - `POST /api/comms/email/payout/processed` - Payout processed notification
 - `POST /api/comms/email/content/new` - Notify supporters of new content

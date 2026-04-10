@@ -36,7 +36,15 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
-import { Giveaway, GiveawayReward, GiveawayPartner, GiveawayEntry, GiveawayType, GiveawayAccess, RewardType } from "@/types/giveaway";
+import {
+  Giveaway,
+  GiveawayReward,
+  GiveawayPartner,
+  GiveawayEntry,
+  GiveawayType,
+  GiveawayAccess,
+  RewardType,
+} from "@/types/giveaway";
 import SpinningWheel from "./SpinningWheel";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
@@ -47,9 +55,13 @@ export default function GiveawaysPage() {
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [editingGiveaway, setEditingGiveaway] = useState<Giveaway | null>(null);
-  const [selectedGiveaway, setSelectedGiveaway] = useState<Giveaway | null>(null);
+  const [selectedGiveaway, setSelectedGiveaway] = useState<Giveaway | null>(
+    null,
+  );
   const [showWinners, setShowWinners] = useState(false);
-  const [showSpinningWheel, setShowSpinningWheel] = useState<Giveaway | null>(null);
+  const [showSpinningWheel, setShowSpinningWheel] = useState<Giveaway | null>(
+    null,
+  );
   const [deleteGiveawayId, setDeleteGiveawayId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -59,8 +71,8 @@ export default function GiveawaysPage() {
     const giveawaysRef = collection(db, "giveaways");
     const q = query(
       giveawaysRef,
-      where("creatorId", "==", creator.uid),
-      orderBy("createdAt", "desc")
+      where("creatorId", "==", creator.handle),
+      orderBy("createdAt", "desc"),
     );
 
     const unsub = onSnapshot(q, async (snapshot) => {
@@ -73,7 +85,7 @@ export default function GiveawaysPage() {
 
       // Update selected giveaway if it changed
       if (selectedGiveaway) {
-        const updated = giveawayData.find(g => g.id === selectedGiveaway.id);
+        const updated = giveawayData.find((g) => g.id === selectedGiveaway.id);
         if (updated) {
           setSelectedGiveaway(updated);
         }
@@ -83,7 +95,10 @@ export default function GiveawaysPage() {
       for (const giveaway of giveawayData) {
         try {
           const entriesRef = collection(db, "giveawayEntries");
-          const entriesQ = query(entriesRef, where("giveawayId", "==", giveaway.id));
+          const entriesQ = query(
+            entriesRef,
+            where("giveawayId", "==", giveaway.id),
+          );
           const entriesSnap = await getDocs(entriesQ);
           entriesData[giveaway.id] = entriesSnap.docs.map((doc) => ({
             id: doc.id,
@@ -135,9 +150,16 @@ export default function GiveawaysPage() {
     }
   };
 
-  const selectWinners = async (giveaway: Giveaway, giveawayEntries: GiveawayEntry[]) => {
+  const selectWinners = async (
+    giveaway: Giveaway,
+    giveawayEntries: GiveawayEntry[],
+  ) => {
     const shuffled = [...giveawayEntries].sort(() => Math.random() - 0.5);
-    const numWinners = Math.min(giveaway.maxWinners, shuffled.length, giveawayEntries.length);
+    const numWinners = Math.min(
+      giveaway.maxWinners,
+      shuffled.length,
+      giveawayEntries.length,
+    );
     const selected = shuffled.slice(0, numWinners);
 
     const winners = selected.map((entry, idx) => ({
@@ -146,7 +168,8 @@ export default function GiveawaysPage() {
       winnerPhoto: entry.participantPhoto || undefined,
       winnerEmail: entry.participantEmail || undefined,
       rewardId: giveaway.rewards[idx % giveaway.rewards.length]?.id || "",
-      rewardTitle: giveaway.rewards[idx % giveaway.rewards.length]?.title || "Prize",
+      rewardTitle:
+        giveaway.rewards[idx % giveaway.rewards.length]?.title || "Prize",
       wonAt: new Date(),
     }));
 
@@ -164,16 +187,21 @@ export default function GiveawaysPage() {
     }
   };
 
-  const handleWheelComplete = async (winners: Array<{ id: string; name: string; photo?: string }>, giveaway: Giveaway, allEntries: GiveawayEntry[]) => {
+  const handleWheelComplete = async (
+    winners: Array<{ id: string; name: string; photo?: string }>,
+    giveaway: Giveaway,
+    allEntries: GiveawayEntry[],
+  ) => {
     const winnerData = winners.map((winner, idx) => {
-      const entry = allEntries.find(e => e.participantId === winner.id);
+      const entry = allEntries.find((e) => e.participantId === winner.id);
       return {
         winnerId: winner.id,
         winnerName: winner.name,
         winnerPhoto: winner.photo || undefined,
         winnerEmail: entry?.participantEmail || undefined,
         rewardId: giveaway.rewards[idx % giveaway.rewards.length]?.id || "",
-        rewardTitle: giveaway.rewards[idx % giveaway.rewards.length]?.title || "Prize",
+        rewardTitle:
+          giveaway.rewards[idx % giveaway.rewards.length]?.title || "Prize",
         wonAt: new Date(),
       };
     });
@@ -220,7 +248,9 @@ export default function GiveawaysPage() {
   };
 
   const copyShareLink = (giveawayId: string) => {
-    navigator.clipboard.writeText(`${window.location.origin}/${creator?.handle}?giveaway=${giveawayId}`);
+    navigator.clipboard.writeText(
+      `${window.location.origin}/${creator?.handle}?giveaway=${giveawayId}`,
+    );
     toast.success("Link copied!");
   };
 
@@ -263,7 +293,9 @@ export default function GiveawaysPage() {
               <div className="bg-white rounded-xl border border-slate-100 p-12 text-center">
                 <Gift size={48} className="mx-auto text-slate-200 mb-4" />
                 <p className="text-slate-500 font-medium">No giveaways yet</p>
-                <p className="text-slate-400 text-sm mt-2">Create your first giveaway to engage your audience</p>
+                <p className="text-slate-400 text-sm mt-2">
+                  Create your first giveaway to engage your audience
+                </p>
                 <button
                   onClick={() => setIsCreating(true)}
                   className="mt-4 bg-orange-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-orange-700 transition"
@@ -275,10 +307,13 @@ export default function GiveawaysPage() {
               <div className="space-y-4">
                 {giveaways.map((giveaway) => {
                   const isActive = giveaway.status === "active";
-                  const isEnded = giveaway.status === "ended" || giveaway.status === "completed";
-                  const endDate = giveaway.endDate instanceof Timestamp 
-                    ? giveaway.endDate.toDate() 
-                    : new Date(giveaway.endDate as any);
+                  const isEnded =
+                    giveaway.status === "ended" ||
+                    giveaway.status === "completed";
+                  const endDate =
+                    giveaway.endDate instanceof Timestamp
+                      ? giveaway.endDate.toDate()
+                      : new Date(giveaway.endDate as any);
                   const isExpired = endDate < new Date();
 
                   return (
@@ -293,34 +328,53 @@ export default function GiveawaysPage() {
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-3">
-                          <div className={`p-3 rounded-lg ${isActive ? "bg-green-100 text-green-600" : "bg-slate-100 text-slate-600"}`}>
+                          <div
+                            className={`p-3 rounded-lg ${isActive ? "bg-green-100 text-green-600" : "bg-slate-100 text-slate-600"}`}
+                          >
                             <Gift size={20} />
                           </div>
                           <div>
                             <h4 className="font-bold">{giveaway.title}</h4>
                             <p className="text-xs text-slate-500">
-                              {isActive ? "Active" : isEnded ? "Ended" : isExpired ? "Expired" : "Draft"}
+                              {isActive
+                                ? "Active"
+                                : isEnded
+                                  ? "Ended"
+                                  : isExpired
+                                    ? "Expired"
+                                    : "Draft"}
                             </p>
                           </div>
                         </div>
-                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${
-                          giveaway.type === "random" ? "bg-blue-100 text-blue-600" : "bg-amber-100 text-amber-600"
-                        }`}>
-                          {giveaway.type === "random" ? "Lucky Draw" : "Challenge"}
+                        <span
+                          className={`text-[10px] font-bold px-2 py-1 rounded-full ${
+                            giveaway.type === "random"
+                              ? "bg-blue-100 text-blue-600"
+                              : "bg-amber-100 text-amber-600"
+                          }`}
+                        >
+                          {giveaway.type === "random"
+                            ? "Lucky Draw"
+                            : "Challenge"}
                         </span>
                       </div>
-                      
-                      <p className="text-sm text-slate-600 mb-4 line-clamp-2">{giveaway.description}</p>
-                      
+
+                      <p className="text-sm text-slate-600 mb-4 line-clamp-2">
+                        {giveaway.description}
+                      </p>
+
                       <div className="flex items-center gap-4 text-xs text-slate-400">
                         <span className="flex items-center gap-1">
-                          <Users size={14} /> {entries[giveaway.id]?.length || 0} participants
+                          <Users size={14} />{" "}
+                          {entries[giveaway.id]?.length || 0} participants
                         </span>
                         <span className="flex items-center gap-1">
-                          <Trophy size={14} /> {giveaway.winners.length}/{giveaway.maxWinners} winners
+                          <Trophy size={14} /> {giveaway.winners.length}/
+                          {giveaway.maxWinners} winners
                         </span>
                         <span className="flex items-center gap-1">
-                          <Clock size={14} /> Ends {endDate.toLocaleDateString()}
+                          <Clock size={14} /> Ends{" "}
+                          {endDate.toLocaleDateString()}
                         </span>
                       </div>
                     </div>
@@ -348,7 +402,9 @@ export default function GiveawaysPage() {
               <div className="bg-white rounded-xl border border-slate-100 p-8 text-center">
                 <Trophy size={40} className="mx-auto text-slate-200 mb-4" />
                 <p className="text-slate-500 font-medium">Select a giveaway</p>
-                <p className="text-slate-400 text-sm mt-2">Click on a giveaway to view details</p>
+                <p className="text-slate-400 text-sm mt-2">
+                  Click on a giveaway to view details
+                </p>
               </div>
             )}
           </div>
@@ -382,7 +438,13 @@ export default function GiveawaysPage() {
             photo: entry.participantPhoto,
           }))}
           numberOfWinners={showSpinningWheel.maxWinners}
-          onComplete={(winners) => handleWheelComplete(winners, showSpinningWheel, entries[showSpinningWheel.id] || [])}
+          onComplete={(winners) =>
+            handleWheelComplete(
+              winners,
+              showSpinningWheel,
+              entries[showSpinningWheel.id] || [],
+            )
+          }
           onClose={() => setShowSpinningWheel(null)}
         />
       )}
@@ -425,14 +487,18 @@ function GiveawayDetail({
   creatorHandle: string;
 }) {
   const isActive = giveaway.status === "active";
-  const isEnded = giveaway.status === "ended" || giveaway.status === "completed";
+  const isEnded =
+    giveaway.status === "ended" || giveaway.status === "completed";
   const hasWinners = giveaway.winners.length > 0;
 
   return (
     <div className="bg-white rounded-xl border border-slate-100 p-6 sticky top-8">
       <div className="flex justify-between items-start mb-6">
         <h3 className="font-bold text-lg">{giveaway.title}</h3>
-        <button onClick={onEdit} className="p-2 text-slate-400 hover:text-slate-600">
+        <button
+          onClick={onEdit}
+          className="p-2 text-slate-400 hover:text-slate-600"
+        >
           <Edit size={18} />
         </button>
       </div>
@@ -440,43 +506,76 @@ function GiveawayDetail({
       <div className="space-y-4 mb-6">
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-slate-50 p-4 rounded-lg">
-            <p className="text-[10px] font-bold text-slate-400 uppercase">Participants</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase">
+              Participants
+            </p>
             <p className="text-2xl font-bold">{entries.length}</p>
           </div>
           <div className="bg-slate-50 p-4 rounded-lg">
-            <p className="text-[10px] font-bold text-slate-400 uppercase">Winners</p>
-            <p className="text-2xl font-bold">{giveaway.winners.length}/{giveaway.maxWinners}</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase">
+              Winners
+            </p>
+            <p className="text-2xl font-bold">
+              {giveaway.winners.length}/{giveaway.maxWinners}
+            </p>
           </div>
         </div>
 
         <div className="bg-orange-50 p-4 rounded-lg">
-          <p className="text-[10px] font-bold text-orange-400 uppercase mb-2">Access</p>
+          <p className="text-[10px] font-bold text-orange-400 uppercase mb-2">
+            Access
+          </p>
           <p className="font-bold text-orange-800">
-            {giveaway.access === "public" ? "Public" : giveaway.access === "supporters" ? "Supporters Only" : `Supporters (${giveaway.minSupportAmount}+ RWF)`}
+            {giveaway.access === "public"
+              ? "Public"
+              : giveaway.access === "supporters"
+                ? "Supporters Only"
+                : `Supporters (${giveaway.minSupportAmount}+ RWF)`}
           </p>
         </div>
 
         <div className="space-y-2">
-          <p className="text-[10px] font-bold text-slate-400 uppercase">Rewards</p>
+          <p className="text-[10px] font-bold text-slate-400 uppercase">
+            Rewards
+          </p>
           {giveaway.rewards.map((reward) => (
             <div key={reward.id} className="flex items-center gap-2 text-sm">
-              {reward.type === "cash" && <DollarSign size={14} className="text-green-600" />}
-              {reward.type === "merchandise" && <Package size={14} className="text-blue-600" />}
-              {reward.type === "discount" && <Percent size={14} className="text-purple-600" />}
-              {reward.type === "service" && <Building size={14} className="text-amber-600" />}
-              <span>{reward.quantity}x {reward.title}</span>
+              {reward.type === "cash" && (
+                <DollarSign size={14} className="text-green-600" />
+              )}
+              {reward.type === "merchandise" && (
+                <Package size={14} className="text-blue-600" />
+              )}
+              {reward.type === "discount" && (
+                <Percent size={14} className="text-orange-600" />
+              )}
+              {reward.type === "service" && (
+                <Building size={14} className="text-amber-600" />
+              )}
+              <span>
+                {reward.quantity}x {reward.title}
+              </span>
             </div>
           ))}
         </div>
 
         {giveaway.partners.length > 0 && (
           <div className="space-y-2">
-            <p className="text-[10px] font-bold text-slate-400 uppercase">Partners</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase">
+              Partners
+            </p>
             <div className="flex flex-wrap gap-2">
               {giveaway.partners.map((partner) => (
-                <div key={partner.id} className="flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-full text-xs font-medium">
+                <div
+                  key={partner.id}
+                  className="flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-full text-xs font-medium"
+                >
                   {partner.logo && (
-                    <img src={partner.logo} alt={partner.name} className="w-4 h-4 rounded-full object-cover" />
+                    <img
+                      src={partner.logo}
+                      alt={partner.name}
+                      className="w-4 h-4 rounded-full object-cover"
+                    />
                   )}
                   <span>{partner.name}</span>
                 </div>
@@ -553,7 +652,10 @@ function WinnersModal({
       <div className="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl">
         <div className="p-6 border-b border-slate-100 flex justify-between items-center">
           <h2 className="text-xl font-bold">Winners</h2>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full">
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-slate-100 rounded-full"
+          >
             <X size={20} />
           </button>
         </div>
@@ -567,17 +669,26 @@ function WinnersModal({
           ) : (
             <div className="space-y-4">
               {giveaway.winners.map((winner, idx) => (
-                <div key={idx} className="flex items-center gap-4 p-4 bg-orange-50 rounded-xl border border-orange-100">
+                <div
+                  key={idx}
+                  className="flex items-center gap-4 p-4 bg-orange-50 rounded-xl border border-orange-100"
+                >
                   <div className="w-12 h-12 bg-orange-200 rounded-full flex items-center justify-center text-orange-700 font-bold">
                     {winner.winnerPhoto ? (
-                      <img src={winner.winnerPhoto} alt={winner.winnerName} className="w-full h-full rounded-full object-cover" />
+                      <img
+                        src={winner.winnerPhoto}
+                        alt={winner.winnerName}
+                        className="w-full h-full rounded-full object-cover"
+                      />
                     ) : (
                       <Trophy size={20} />
                     )}
                   </div>
                   <div className="flex-1">
                     <p className="font-bold">{winner.winnerName}</p>
-                    <p className="text-xs text-slate-500">Won: {winner.rewardTitle}</p>
+                    <p className="text-xs text-slate-500">
+                      Won: {winner.rewardTitle}
+                    </p>
                   </div>
                   <span className="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full">
                     #{idx + 1}
@@ -607,16 +718,29 @@ function GiveawayModal({
   const [formData, setFormData] = useState({
     title: giveaway?.title || "",
     description: giveaway?.description || "",
-    type: giveaway?.type || "random" as GiveawayType,
-    access: giveaway?.access || "public" as GiveawayAccess,
+    type: giveaway?.type || ("random" as GiveawayType),
+    access: giveaway?.access || ("public" as GiveawayAccess),
     minSupportAmount: giveaway?.minSupportAmount || 0,
     maxWinners: giveaway?.maxWinners || 1,
-    rewards: giveaway?.rewards || [{ id: "1", type: "cash" as RewardType, title: "", description: "", value: 0, quantity: 1 }],
-    partners: giveaway?.partners || [] as GiveawayPartner[],
+    rewards: giveaway?.rewards || [
+      {
+        id: "1",
+        type: "cash" as RewardType,
+        title: "",
+        description: "",
+        value: 0,
+        quantity: 1,
+      },
+    ],
+    partners: giveaway?.partners || ([] as GiveawayPartner[]),
     daysUntilEnd: 7,
   });
   const [saving, setSaving] = useState(false);
-  const [newPartner, setNewPartner] = useState({ name: "", website: "", description: "" });
+  const [newPartner, setNewPartner] = useState({
+    name: "",
+    website: "",
+    description: "",
+  });
   const [showPartnerForm, setShowPartnerForm] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -708,14 +832,26 @@ function GiveawayModal({
   const updateReward = (idx: number, field: string, value: any) => {
     setFormData((prev) => ({
       ...prev,
-      rewards: prev.rewards.map((r, i) => (i === idx ? { ...r, [field]: value } : r)),
+      rewards: prev.rewards.map((r, i) =>
+        i === idx ? { ...r, [field]: value } : r,
+      ),
     }));
   };
 
   const addReward = () => {
     setFormData((prev) => ({
       ...prev,
-      rewards: [...prev.rewards, { id: String(prev.rewards.length + 1), type: "cash" as RewardType, title: "", description: "", value: 0, quantity: 1 }],
+      rewards: [
+        ...prev.rewards,
+        {
+          id: String(prev.rewards.length + 1),
+          type: "cash" as RewardType,
+          title: "",
+          description: "",
+          value: 0,
+          quantity: 1,
+        },
+      ],
     }));
   };
 
@@ -785,28 +921,42 @@ function GiveawayModal({
           <h2 className="text-2xl font-bold uppercase tracking-tighter">
             {giveaway ? "Edit Giveaway" : "New Giveaway"}
           </h2>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full">
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-slate-100 rounded-full"
+          >
             <X size={20} />
           </button>
         </div>
 
         <div className="p-6 space-y-6 overflow-y-auto flex-1">
           <div>
-            <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Title *</label>
+            <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+              Title *
+            </label>
             <input
               type="text"
               value={formData.title}
-              onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, title: e.target.value }))
+              }
               className="w-full bg-slate-50 p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
               placeholder="Win a year's gym membership!"
             />
           </div>
 
           <div>
-            <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Description</label>
+            <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+              Description
+            </label>
             <textarea
               value={formData.description}
-              onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  description: e.target.value,
+                }))
+              }
               className="w-full bg-slate-50 p-4 rounded-lg text-sm outline-none resize-none h-24"
               placeholder="Tell people about this amazing opportunity..."
             />
@@ -814,10 +964,17 @@ function GiveawayModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Type</label>
+              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+                Type
+              </label>
               <select
                 value={formData.type}
-                onChange={(e) => setFormData((prev) => ({ ...prev, type: e.target.value as GiveawayType }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    type: e.target.value as GiveawayType,
+                  }))
+                }
                 className="w-full bg-slate-50 p-4 rounded-lg text-sm font-bold outline-none"
               >
                 <option value="random">Random Draw</option>
@@ -826,10 +983,17 @@ function GiveawayModal({
             </div>
 
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Access</label>
+              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+                Access
+              </label>
               <select
                 value={formData.access}
-                onChange={(e) => setFormData((prev) => ({ ...prev, access: e.target.value as GiveawayAccess }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    access: e.target.value as GiveawayAccess,
+                  }))
+                }
                 className="w-full bg-slate-50 p-4 rounded-lg text-sm font-bold outline-none"
               >
                 <option value="public">Public (Everyone)</option>
@@ -841,11 +1005,18 @@ function GiveawayModal({
 
           {formData.access === "tier" && (
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Minimum Support (RWF)</label>
+              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+                Minimum Support (RWF)
+              </label>
               <input
                 type="number"
                 value={formData.minSupportAmount}
-                onChange={(e) => setFormData((prev) => ({ ...prev, minSupportAmount: parseInt(e.target.value) || 0 }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    minSupportAmount: parseInt(e.target.value) || 0,
+                  }))
+                }
                 className="w-full bg-slate-50 p-4 rounded-lg text-sm font-bold outline-none"
                 placeholder="5000"
               />
@@ -854,21 +1025,35 @@ function GiveawayModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Max Winners</label>
+              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+                Max Winners
+              </label>
               <input
                 type="number"
                 value={formData.maxWinners}
-                onChange={(e) => setFormData((prev) => ({ ...prev, maxWinners: parseInt(e.target.value) || 1 }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    maxWinners: parseInt(e.target.value) || 1,
+                  }))
+                }
                 className="w-full bg-slate-50 p-4 rounded-lg text-sm font-bold outline-none"
                 min={1}
               />
             </div>
 
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Duration</label>
+              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+                Duration
+              </label>
               <select
                 value={formData.daysUntilEnd}
-                onChange={(e) => setFormData((prev) => ({ ...prev, daysUntilEnd: parseInt(e.target.value) }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    daysUntilEnd: parseInt(e.target.value),
+                  }))
+                }
                 className="w-full bg-slate-50 p-4 rounded-lg text-sm font-bold outline-none"
               >
                 <option value={1}>1 day</option>
@@ -882,8 +1067,13 @@ function GiveawayModal({
 
           <div>
             <div className="flex justify-between items-center mb-3">
-              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Rewards</label>
-              <button onClick={addReward} className="text-orange-600 text-xs font-bold hover:text-orange-700">
+              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+                Rewards
+              </label>
+              <button
+                onClick={addReward}
+                className="text-orange-600 text-xs font-bold hover:text-orange-700"
+              >
                 + Add Reward
               </button>
             </div>
@@ -893,7 +1083,10 @@ function GiveawayModal({
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-bold">Reward #{idx + 1}</span>
                     {formData.rewards.length > 1 && (
-                      <button onClick={() => removeReward(idx)} className="text-red-400 hover:text-red-600">
+                      <button
+                        onClick={() => removeReward(idx)}
+                        className="text-red-400 hover:text-red-600"
+                      >
                         <X size={16} />
                       </button>
                     )}
@@ -901,17 +1094,27 @@ function GiveawayModal({
                   <div className="grid grid-cols-2 gap-3">
                     <select
                       value={reward.type}
-                      onChange={(e) => updateReward(idx, "type", e.target.value)}
+                      onChange={(e) =>
+                        updateReward(idx, "type", e.target.value)
+                      }
                       className="bg-white p-3 rounded-lg text-sm outline-none"
                     >
                       {rewardTypes.map((t) => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
+                        <option key={t.value} value={t.value}>
+                          {t.label}
+                        </option>
                       ))}
                     </select>
                     <input
                       type="number"
                       value={reward.quantity}
-                      onChange={(e) => updateReward(idx, "quantity", parseInt(e.target.value) || 1)}
+                      onChange={(e) =>
+                        updateReward(
+                          idx,
+                          "quantity",
+                          parseInt(e.target.value) || 1,
+                        )
+                      }
                       className="bg-white p-3 rounded-lg text-sm outline-none w-20"
                       placeholder="Qty"
                       min={1}
@@ -931,9 +1134,11 @@ function GiveawayModal({
 
           <div>
             <div className="flex justify-between items-center mb-3">
-              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Partners / Sponsors</label>
-              <button 
-                onClick={() => setShowPartnerForm(!showPartnerForm)} 
+              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+                Partners / Sponsors
+              </label>
+              <button
+                onClick={() => setShowPartnerForm(!showPartnerForm)}
                 className="text-orange-600 text-xs font-bold hover:text-orange-700"
               >
                 {showPartnerForm ? "- Cancel" : "+ Create New Partner"}
@@ -942,23 +1147,31 @@ function GiveawayModal({
 
             {existingPartners.length > 0 && (
               <div className="mb-3">
-                <p className="text-xs text-slate-400 mb-2">Select from your partners:</p>
+                <p className="text-xs text-slate-400 mb-2">
+                  Select from your partners:
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {existingPartners.map((partner) => {
-                    const isAdded = formData.partners.some((p) => p.id === partner.id);
+                    const isAdded = formData.partners.some(
+                      (p) => p.id === partner.id,
+                    );
                     return (
                       <button
                         key={partner.id}
                         onClick={() => !isAdded && addExistingPartner(partner)}
                         disabled={isAdded}
                         className={`flex items-center gap-2 px-3 py-2 rounded-full text-xs font-medium transition ${
-                          isAdded 
-                            ? "bg-orange-100 text-orange-400 cursor-not-allowed" 
+                          isAdded
+                            ? "bg-orange-100 text-orange-400 cursor-not-allowed"
                             : "bg-slate-100 text-slate-600 hover:bg-orange-50 hover:text-orange-600"
                         }`}
                       >
                         {partner.logo && (
-                          <img src={partner.logo} alt={partner.name} className="w-4 h-4 rounded-full object-cover" />
+                          <img
+                            src={partner.logo}
+                            alt={partner.name}
+                            className="w-4 h-4 rounded-full object-cover"
+                          />
                         )}
                         <span>{partner.name}</span>
                         {isAdded && <span className="text-[10px]">Added</span>}
@@ -972,12 +1185,22 @@ function GiveawayModal({
             {formData.partners.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3">
                 {formData.partners.map((partner) => (
-                  <div key={partner.id} className="flex items-center gap-2 bg-orange-50 px-3 py-2 rounded-full">
+                  <div
+                    key={partner.id}
+                    className="flex items-center gap-2 bg-orange-50 px-3 py-2 rounded-full"
+                  >
                     {partner.logo && (
-                      <img src={partner.logo} alt={partner.name} className="w-5 h-5 rounded-full object-cover" />
+                      <img
+                        src={partner.logo}
+                        alt={partner.name}
+                        className="w-5 h-5 rounded-full object-cover"
+                      />
                     )}
                     <span className="text-sm font-medium">{partner.name}</span>
-                    <button onClick={() => removePartner(partner.id)} className="text-orange-400 hover:text-orange-600">
+                    <button
+                      onClick={() => removePartner(partner.id)}
+                      className="text-orange-400 hover:text-orange-600"
+                    >
                       <X size={14} />
                     </button>
                   </div>
@@ -986,11 +1209,16 @@ function GiveawayModal({
             )}
 
             {showPartnerForm && (
-              <form onSubmit={addPartner} className="bg-slate-50 p-4 rounded-lg space-y-3">
+              <form
+                onSubmit={addPartner}
+                className="bg-slate-50 p-4 rounded-lg space-y-3"
+              >
                 <input
                   type="text"
                   value={newPartner.name}
-                  onChange={(e) => setNewPartner((prev) => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) =>
+                    setNewPartner((prev) => ({ ...prev, name: e.target.value }))
+                  }
                   className="w-full bg-white p-3 rounded-lg text-sm outline-none"
                   placeholder="Partner name (e.g., Gym Master Rwanda)"
                   required
@@ -998,13 +1226,23 @@ function GiveawayModal({
                 <input
                   type="url"
                   value={newPartner.website}
-                  onChange={(e) => setNewPartner((prev) => ({ ...prev, website: e.target.value }))}
+                  onChange={(e) =>
+                    setNewPartner((prev) => ({
+                      ...prev,
+                      website: e.target.value,
+                    }))
+                  }
                   className="w-full bg-white p-3 rounded-lg text-sm outline-none"
                   placeholder="Website URL (optional)"
                 />
                 <textarea
                   value={newPartner.description}
-                  onChange={(e) => setNewPartner((prev) => ({ ...prev, description: e.target.value }))}
+                  onChange={(e) =>
+                    setNewPartner((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
                   className="w-full bg-white p-3 rounded-lg text-sm outline-none resize-none h-20"
                   placeholder="Description (optional)"
                 />
@@ -1025,7 +1263,11 @@ function GiveawayModal({
             disabled={saving}
             className="w-full py-4 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            {saving ? <Loader size={18} className="animate-spin" /> : <Check size={18} />}
+            {saving ? (
+              <Loader size={18} className="animate-spin" />
+            ) : (
+              <Check size={18} />
+            )}
             {giveaway ? "Update Giveaway" : "Create Giveaway"}
           </button>
         </div>

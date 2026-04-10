@@ -63,12 +63,11 @@ export default function ContentManager() {
 
   // 1. Fetch Content from Firestore
   useEffect(() => {
-    const user = auth.currentUser;
-    if (!user) return;
+    if (!creator?.handle) return;
 
     const q = query(
       collection(db, "creatorContent"),
-      where("creatorId", "==", user.uid),
+      where("creatorId", "==", creator.handle),
       orderBy("createdAt", "desc"),
     );
 
@@ -82,7 +81,7 @@ export default function ContentManager() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [creator?.handle]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -129,12 +128,12 @@ export default function ContentManager() {
   };
   const handleAddContent = async () => {
     const user = auth.currentUser;
-    if (!user || !newPost.title) return;
+    if (!user || !newPost.title || !creator?.handle) return;
 
     setIsUploading(true);
     try {
       const contentData = {
-        creatorId: user.uid,
+        creatorId: creator.handle,
         title: newPost.title,
         description: newPost.description,
         type: newPost.type,
@@ -157,9 +156,9 @@ export default function ContentManager() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              creatorId: user.uid,
+              creatorId: creator.handle,
               creatorName: creator?.name || "Creator",
-              creatorHandle: creator?.handle || user.uid,
+              creatorHandle: creator?.handle,
               contentTitle: newPost.title,
               contentDescription: newPost.description,
               contentType: newPost.isPrivate ? "private" : "public",

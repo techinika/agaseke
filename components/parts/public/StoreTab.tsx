@@ -17,6 +17,7 @@ import {
   Lock,
   AlertCircle,
 } from "lucide-react";
+import Link from "next/link";
 import { db } from "@/db/firebase";
 import {
   collection,
@@ -81,7 +82,7 @@ export const StoreTab = ({
           productsRef,
           where("creatorId", "==", creatorId),
           where("active", "==", true),
-          orderBy("createdAt", "desc")
+          orderBy("createdAt", "desc"),
         );
         const snapshot = await getDocs(q);
         const productData = snapshot.docs.map((doc) => ({
@@ -105,10 +106,7 @@ export const StoreTab = ({
     const fetchOrders = async () => {
       try {
         const ordersRef = collection(db, "storeOrders");
-        const q = query(
-          ordersRef,
-          where("buyerId", "==", currentUser.uid)
-        );
+        const q = query(ordersRef, where("buyerId", "==", currentUser.uid));
         const snapshot = await getDocs(q);
         const orderData = snapshot.docs.map((doc) => ({
           id: doc.id,
@@ -126,21 +124,24 @@ export const StoreTab = ({
   const filteredProducts = products.filter(
     (p) =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.description.toLowerCase().includes(searchQuery.toLowerCase())
+      p.description.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const addToCart = (product: Product, quantity: number = 1, selectedSize?: string) => {
+  const addToCart = (
+    product: Product,
+    quantity: number = 1,
+    selectedSize?: string,
+  ) => {
     setCart((prev) => {
       const existing = prev.find(
         (item) =>
-          item.product.id === product.id &&
-          item.selectedSize === selectedSize
+          item.product.id === product.id && item.selectedSize === selectedSize,
       );
       if (existing) {
         return prev.map((item) =>
           item.product.id === product.id && item.selectedSize === selectedSize
             ? { ...item, quantity: item.quantity + quantity }
-            : item
+            : item,
         );
       }
       return [...prev, { product, quantity, selectedSize }];
@@ -148,25 +149,36 @@ export const StoreTab = ({
     toast.success("Added to cart!");
   };
 
-  const updateQuantity = (productId: string, selectedSize: string | undefined, delta: number) => {
-    setCart((prev) =>
-      prev
-        .map((item) => {
-          if (item.product.id === productId && item.selectedSize === selectedSize) {
-            const newQty = item.quantity + delta;
-            return newQty > 0 ? { ...item, quantity: newQty } : null;
-          }
-          return item;
-        })
-        .filter(Boolean) as CartItem[]
+  const updateQuantity = (
+    productId: string,
+    selectedSize: string | undefined,
+    delta: number,
+  ) => {
+    setCart(
+      (prev) =>
+        prev
+          .map((item) => {
+            if (
+              item.product.id === productId &&
+              item.selectedSize === selectedSize
+            ) {
+              const newQty = item.quantity + delta;
+              return newQty > 0 ? { ...item, quantity: newQty } : null;
+            }
+            return item;
+          })
+          .filter(Boolean) as CartItem[],
     );
   };
 
   const removeFromCart = (productId: string, selectedSize?: string) => {
     setCart((prev) =>
       prev.filter(
-        (item) => !(item.product.id === productId && item.selectedSize === selectedSize)
-      )
+        (item) =>
+          !(
+            item.product.id === productId && item.selectedSize === selectedSize
+          ),
+      ),
     );
   };
 
@@ -180,7 +192,8 @@ export const StoreTab = ({
           .filter((b) => item.quantity >= b.minQuantity)
           .sort((a, b) => b.discountPercentage - a.discountPercentage)[0];
         if (applicableBulk) {
-          const discount = (itemPrice * applicableBulk.discountPercentage) / 100;
+          const discount =
+            (itemPrice * applicableBulk.discountPercentage) / 100;
           itemPrice -= discount;
         }
       }
@@ -282,7 +295,10 @@ export const StoreTab = ({
     <div className="animate-in fade-in duration-500">
       <div className="flex items-center justify-between mb-6">
         <div className="relative flex-1 max-w-md">
-          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+          <Search
+            size={18}
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+          />
           <input
             type="text"
             placeholder="Search products..."
@@ -321,7 +337,9 @@ export const StoreTab = ({
         <div className="text-center py-20 bg-white border border-slate-100 rounded-3xl">
           <Package size={48} className="mx-auto text-slate-200 mb-4" />
           <p className="text-slate-500 font-medium">No products available</p>
-          <p className="text-slate-400 text-sm mt-2">Check back later for new products</p>
+          <p className="text-slate-400 text-sm mt-2">
+            Check back later for new products
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -362,13 +380,18 @@ function ProductCard({
 }) {
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<string | undefined>(
-    product.sizes?.[0]
+    product.sizes?.[0],
   );
   const isOutOfStock = product.type === "physical" && product.stock <= 0;
 
   const handleAdd = () => {
     if (!isLoggedIn) return;
-    if (product.type === "physical" && product.sizes && product.sizes.length > 0 && !selectedSize) {
+    if (
+      product.type === "physical" &&
+      product.sizes &&
+      product.sizes.length > 0 &&
+      !selectedSize
+    ) {
       toast.error("Please select a size");
       return;
     }
@@ -417,7 +440,9 @@ function ProductCard({
           {product.description}
         </p>
         <div className="flex items-center justify-between mt-4">
-          <span className="text-xl font-bold">{product.price.toLocaleString()} RWF</span>
+          <span className="text-xl font-bold">
+            {product.price.toLocaleString()} RWF
+          </span>
           {product.discount?.enabled && (
             <span className="bg-orange-100 text-orange-600 text-[10px] font-bold px-2 py-1 rounded-full">
               {product.discount.percentage}% OFF
@@ -457,7 +482,9 @@ function ProductCard({
             >
               <Minus size={14} />
             </button>
-            <span className="w-8 text-center text-sm font-bold">{quantity}</span>
+            <span className="w-8 text-center text-sm font-bold">
+              {quantity}
+            </span>
             <button
               onClick={() => setQuantity(quantity + 1)}
               className="p-2 hover:bg-slate-200 rounded-r-lg transition"
@@ -499,11 +526,16 @@ function ProductDetailModal({
 }) {
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<string | undefined>(
-    product.sizes?.[0]
+    product.sizes?.[0],
   );
 
   const handleAdd = () => {
-    if (product.type === "physical" && product.sizes && product.sizes.length > 0 && !selectedSize) {
+    if (
+      product.type === "physical" &&
+      product.sizes &&
+      product.sizes.length > 0 &&
+      !selectedSize
+    ) {
       toast.error("Please select a size");
       return;
     }
@@ -515,7 +547,10 @@ function ProductDetailModal({
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
       <div className="bg-white w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95">
         <div className="flex justify-end p-4">
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition">
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-slate-100 rounded-full transition"
+          >
             <X size={20} />
           </button>
         </div>
@@ -523,7 +558,11 @@ function ProductDetailModal({
         <div className="md:flex">
           <div className="md:w-1/2 bg-slate-50 aspect-square">
             {product.imageUrl ? (
-              <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+              <img
+                src={product.imageUrl}
+                alt={product.name}
+                className="w-full h-full object-cover"
+              />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <Package size={64} className="text-slate-200" />
@@ -532,16 +571,24 @@ function ProductDetailModal({
           </div>
 
           <div className="md:w-1/2 p-6 space-y-4">
-            <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${
-              product.type === "digital" ? "bg-purple-100 text-purple-600" : "bg-blue-100 text-blue-600"
-            }`}>
-              {product.type === "digital" ? "Digital Product" : "Physical Product"}
+            <span
+              className={`text-[10px] font-bold px-2 py-1 rounded-full ${
+                product.type === "digital"
+                  ? "bg-purple-100 text-purple-600"
+                  : "bg-blue-100 text-blue-600"
+              }`}
+            >
+              {product.type === "digital"
+                ? "Digital Product"
+                : "Physical Product"}
             </span>
 
             <h2 className="text-2xl font-bold">{product.name}</h2>
             <p className="text-slate-600">{product.description}</p>
 
-            <div className="text-3xl font-bold">{product.price.toLocaleString()} RWF</div>
+            <div className="text-3xl font-bold">
+              {product.price.toLocaleString()} RWF
+            </div>
 
             {product.discount?.enabled && (
               <div className="bg-orange-50 text-orange-600 px-3 py-2 rounded-lg text-sm font-bold inline-block">
@@ -551,7 +598,9 @@ function ProductDetailModal({
 
             {product.bulkPricing && product.bulkPricing.length > 0 && (
               <div className="bg-green-50 rounded-lg p-3 space-y-1">
-                <p className="text-xs font-bold text-green-800 uppercase">Bulk Discounts</p>
+                <p className="text-xs font-bold text-green-800 uppercase">
+                  Bulk Discounts
+                </p>
                 {product.bulkPricing.map((bulk, idx) => (
                   <p key={idx} className="text-sm text-green-700">
                     Buy {bulk.minQuantity}+: {bulk.discountPercentage}% off
@@ -583,18 +632,27 @@ function ProductDetailModal({
 
             <div className="flex items-center gap-4">
               <div className="flex items-center bg-slate-100 rounded-lg">
-                <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-3 hover:bg-slate-200 rounded-l-lg transition">
+                <button
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  className="p-3 hover:bg-slate-200 rounded-l-lg transition"
+                >
                   <Minus size={16} />
                 </button>
                 <span className="w-12 text-center font-bold">{quantity}</span>
-                <button onClick={() => setQuantity(quantity + 1)} className="p-3 hover:bg-slate-200 rounded-r-lg transition">
+                <button
+                  onClick={() => setQuantity(quantity + 1)}
+                  className="p-3 hover:bg-slate-200 rounded-r-lg transition"
+                >
                   <Plus size={16} />
                 </button>
               </div>
 
               <button
                 onClick={handleAdd}
-                disabled={!isLoggedIn || (product.type === "physical" && product.stock <= 0)}
+                disabled={
+                  !isLoggedIn ||
+                  (product.type === "physical" && product.stock <= 0)
+                }
                 className="flex-1 py-3 bg-orange-500 text-white rounded-lg font-bold hover:bg-orange-600 transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <ShoppingCart size={18} />
@@ -620,7 +678,11 @@ function CartModal({
   cart: CartItem[];
   onClose: () => void;
   onCheckout: () => void;
-  onUpdateQuantity: (id: string, size: string | undefined, delta: number) => void;
+  onUpdateQuantity: (
+    id: string,
+    size: string | undefined,
+    delta: number,
+  ) => void;
   onRemove: (id: string, size?: string) => void;
   getItemPrice: (item: CartItem) => number;
   total: number;
@@ -630,7 +692,10 @@ function CartModal({
       <div className="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 max-h-[90vh] flex flex-col">
         <div className="p-6 border-b border-slate-100 flex justify-between items-center">
           <h2 className="text-xl font-bold">Your Cart</h2>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition">
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-slate-100 rounded-full transition"
+          >
             <X size={20} />
           </button>
         </div>
@@ -643,10 +708,17 @@ function CartModal({
             </div>
           ) : (
             cart.map((item) => (
-              <div key={`${item.product.id}-${item.selectedSize}`} className="flex gap-4 p-4 bg-slate-50 rounded-xl">
+              <div
+                key={`${item.product.id}-${item.selectedSize}`}
+                className="flex gap-4 p-4 bg-slate-50 rounded-xl"
+              >
                 <div className="w-20 h-20 bg-white rounded-lg overflow-hidden flex-shrink-0">
                   {item.product.imageUrl ? (
-                    <img src={item.product.imageUrl} alt={item.product.name} className="w-full h-full object-cover" />
+                    <img
+                      src={item.product.imageUrl}
+                      alt={item.product.name}
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Package size={24} className="text-slate-200" />
@@ -656,7 +728,9 @@ function CartModal({
                 <div className="flex-1 min-w-0">
                   <h4 className="font-bold truncate">{item.product.name}</h4>
                   {item.selectedSize && (
-                    <p className="text-xs text-slate-500">Size: {item.selectedSize}</p>
+                    <p className="text-xs text-slate-500">
+                      Size: {item.selectedSize}
+                    </p>
                   )}
                   <p className="text-sm text-orange-600 font-bold mt-1">
                     {getItemPrice(item).toLocaleString()} RWF
@@ -671,14 +745,20 @@ function CartModal({
                   </button>
                   <div className="flex items-center bg-white rounded-lg">
                     <button
-                      onClick={() => onUpdateQuantity(item.product.id, item.selectedSize, -1)}
+                      onClick={() =>
+                        onUpdateQuantity(item.product.id, item.selectedSize, -1)
+                      }
                       className="p-1 hover:bg-slate-100 rounded transition"
                     >
                       <Minus size={12} />
                     </button>
-                    <span className="w-6 text-center text-sm font-bold">{item.quantity}</span>
+                    <span className="w-6 text-center text-sm font-bold">
+                      {item.quantity}
+                    </span>
                     <button
-                      onClick={() => onUpdateQuantity(item.product.id, item.selectedSize, 1)}
+                      onClick={() =>
+                        onUpdateQuantity(item.product.id, item.selectedSize, 1)
+                      }
                       className="p-1 hover:bg-slate-100 rounded transition"
                     >
                       <Plus size={12} />
@@ -743,7 +823,9 @@ function CheckoutModal({
   const [processing, setProcessing] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
 
-  const hasPhysicalProducts = cart.some((item) => item.product.type === "physical");
+  const hasPhysicalProducts = cart.some(
+    (item) => item.product.type === "physical",
+  );
   const finalTotal = total - couponDiscount;
 
   const applyCoupon = async () => {
@@ -756,7 +838,7 @@ function CheckoutModal({
         couponsRef,
         where("creatorId", "==", creatorId),
         where("code", "==", couponCode.toUpperCase()),
-        where("active", "==", true)
+        where("active", "==", true),
       );
       const snapshot = await getDocs(q);
 
@@ -767,7 +849,9 @@ function CheckoutModal({
 
       const coupon = snapshot.docs[0].data();
       if (coupon.minPurchase && total < coupon.minPurchase) {
-        toast.error(`Minimum purchase of ${coupon.minPurchase.toLocaleString()} RWF required`);
+        toast.error(
+          `Minimum purchase of ${coupon.minPurchase.toLocaleString()} RWF required`,
+        );
         return;
       }
       if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
@@ -784,7 +868,9 @@ function CheckoutModal({
 
       setCouponDiscount(discount);
       setAppliedCoupon(coupon.code);
-      toast.success(`Coupon applied! You save ${discount.toLocaleString()} RWF`);
+      toast.success(
+        `Coupon applied! You save ${discount.toLocaleString()} RWF`,
+      );
     } catch (error) {
       toast.error("Failed to apply coupon");
     } finally {
@@ -794,7 +880,12 @@ function CheckoutModal({
 
   const placeOrder = async () => {
     if (hasPhysicalProducts) {
-      if (!shippingAddress.fullName || !shippingAddress.phone || !shippingAddress.address || !shippingAddress.city) {
+      if (
+        !shippingAddress.fullName ||
+        !shippingAddress.phone ||
+        !shippingAddress.address ||
+        !shippingAddress.city
+      ) {
         toast.error("Please fill in all shipping details");
         return;
       }
@@ -834,7 +925,7 @@ function CheckoutModal({
         const q = query(
           couponsRef,
           where("creatorId", "==", creatorId),
-          where("code", "==", appliedCoupon)
+          where("code", "==", appliedCoupon),
         );
         const snapshot = await getDocs(q);
         if (!snapshot.empty) {
@@ -881,19 +972,28 @@ function CheckoutModal({
       <div className="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 max-h-[90vh] flex flex-col">
         <div className="p-6 border-b border-slate-100 flex justify-between items-center">
           <h2 className="text-xl font-bold">Checkout</h2>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition">
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-slate-100 rounded-full transition"
+          >
             <X size={20} />
           </button>
         </div>
 
         <div className="p-6 space-y-6 overflow-y-auto flex-1">
           <div className="flex gap-2">
-            {["info", ...(hasPhysicalProducts ? ["shipping"] : []), "payment"].map((s) => (
+            {[
+              "info",
+              ...(hasPhysicalProducts ? ["shipping"] : []),
+              "payment",
+            ].map((s) => (
               <button
                 key={s}
                 onClick={() => setStep(s as any)}
                 className={`flex-1 py-2 text-xs font-bold rounded-lg transition capitalize ${
-                  step === s ? "bg-orange-500 text-white" : "bg-slate-100 text-slate-500"
+                  step === s
+                    ? "bg-orange-500 text-white"
+                    : "bg-slate-100 text-slate-500"
                 }`}
               >
                 {s}
@@ -906,8 +1006,13 @@ function CheckoutModal({
               <div className="bg-slate-50 rounded-xl p-4 space-y-2">
                 <h4 className="font-bold">Order Summary</h4>
                 {cart.map((item) => (
-                  <div key={`${item.product.id}-${item.selectedSize}`} className="flex justify-between text-sm">
-                    <span>{item.quantity}x {item.product.name}</span>
+                  <div
+                    key={`${item.product.id}-${item.selectedSize}`}
+                    className="flex justify-between text-sm"
+                  >
+                    <span>
+                      {item.quantity}x {item.product.name}
+                    </span>
                     <span>{getItemPrice(item).toLocaleString()} RWF</span>
                   </div>
                 ))}
@@ -923,7 +1028,9 @@ function CheckoutModal({
                   <input
                     type="text"
                     value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    onChange={(e) =>
+                      setCouponCode(e.target.value.toUpperCase())
+                    }
                     placeholder="Enter code"
                     className="flex-1 bg-slate-50 p-3 rounded-lg text-sm font-medium outline-none"
                     disabled={!!appliedCoupon}
@@ -933,13 +1040,18 @@ function CheckoutModal({
                     disabled={applyingCoupon || !!appliedCoupon}
                     className="bg-slate-900 text-white px-4 rounded-lg font-bold text-sm disabled:opacity-50"
                   >
-                    {applyingCoupon ? <Loader size={16} className="animate-spin" /> : "Apply"}
+                    {applyingCoupon ? (
+                      <Loader size={16} className="animate-spin" />
+                    ) : (
+                      "Apply"
+                    )}
                   </button>
                 </div>
                 {appliedCoupon && (
                   <div className="bg-green-50 text-green-700 p-3 rounded-lg text-sm font-medium flex items-center gap-2">
                     <Check size={16} />
-                    Coupon "{appliedCoupon}" applied! You save {couponDiscount.toLocaleString()} RWF
+                    Coupon "{appliedCoupon}" applied! You save{" "}
+                    {couponDiscount.toLocaleString()} RWF
                   </div>
                 )}
               </div>
@@ -959,21 +1071,36 @@ function CheckoutModal({
               <input
                 type="text"
                 value={shippingAddress.fullName}
-                onChange={(e) => setShippingAddress((prev) => ({ ...prev, fullName: e.target.value }))}
+                onChange={(e) =>
+                  setShippingAddress((prev) => ({
+                    ...prev,
+                    fullName: e.target.value,
+                  }))
+                }
                 placeholder="Full Name"
                 className="w-full bg-slate-50 p-4 rounded-lg text-sm font-medium outline-none"
               />
               <input
                 type="tel"
                 value={shippingAddress.phone}
-                onChange={(e) => setShippingAddress((prev) => ({ ...prev, phone: e.target.value }))}
+                onChange={(e) =>
+                  setShippingAddress((prev) => ({
+                    ...prev,
+                    phone: e.target.value,
+                  }))
+                }
                 placeholder="Phone Number"
                 className="w-full bg-slate-50 p-4 rounded-lg text-sm font-medium outline-none"
               />
               <input
                 type="text"
                 value={shippingAddress.address}
-                onChange={(e) => setShippingAddress((prev) => ({ ...prev, address: e.target.value }))}
+                onChange={(e) =>
+                  setShippingAddress((prev) => ({
+                    ...prev,
+                    address: e.target.value,
+                  }))
+                }
                 placeholder="Street Address"
                 className="w-full bg-slate-50 p-4 rounded-lg text-sm font-medium outline-none"
               />
@@ -981,14 +1108,24 @@ function CheckoutModal({
                 <input
                   type="text"
                   value={shippingAddress.city}
-                  onChange={(e) => setShippingAddress((prev) => ({ ...prev, city: e.target.value }))}
+                  onChange={(e) =>
+                    setShippingAddress((prev) => ({
+                      ...prev,
+                      city: e.target.value,
+                    }))
+                  }
                   placeholder="City"
                   className="w-full bg-slate-50 p-4 rounded-lg text-sm font-medium outline-none"
                 />
                 <input
                   type="text"
                   value={shippingAddress.country}
-                  onChange={(e) => setShippingAddress((prev) => ({ ...prev, country: e.target.value }))}
+                  onChange={(e) =>
+                    setShippingAddress((prev) => ({
+                      ...prev,
+                      country: e.target.value,
+                    }))
+                  }
                   placeholder="Country"
                   className="w-full bg-slate-50 p-4 rounded-lg text-sm font-medium outline-none"
                 />
@@ -1009,12 +1146,15 @@ function CheckoutModal({
               <div className="bg-amber-50 rounded-xl p-4 flex items-start gap-3">
                 <AlertCircle size={20} className="text-amber-600 mt-0.5" />
                 <p className="text-sm text-amber-800">
-                  Payment will be processed via Mobile Money. You will receive a prompt on your phone to complete the payment.
+                  Payment will be processed via Mobile Money. You will receive a
+                  prompt on your phone to complete the payment.
                 </p>
               </div>
 
               <div className="space-y-3">
-                <label className="text-sm font-bold">MTN Mobile Money Number</label>
+                <label className="text-sm font-bold">
+                  MTN Mobile Money Number
+                </label>
                 <input
                   type="tel"
                   placeholder="07X XXX XXXX"
@@ -1029,7 +1169,9 @@ function CheckoutModal({
           <div className="flex gap-3">
             {step !== "info" && (
               <button
-                onClick={() => setStep(step === "shipping" ? "info" : "shipping")}
+                onClick={() =>
+                  setStep(step === "shipping" ? "info" : "shipping")
+                }
                 className="flex-1 py-4 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition"
               >
                 Back
@@ -1037,7 +1179,9 @@ function CheckoutModal({
             )}
             {step !== "payment" ? (
               <button
-                onClick={() => setStep(step === "info" ? "shipping" : "payment")}
+                onClick={() =>
+                  setStep(step === "info" ? "shipping" : "payment")
+                }
                 className="flex-1 py-4 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition"
               >
                 Continue
@@ -1048,7 +1192,11 @@ function CheckoutModal({
                 disabled={processing}
                 className="flex-1 py-4 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                {processing ? <Loader size={18} className="animate-spin" /> : <Check size={18} />}
+                {processing ? (
+                  <Loader size={18} className="animate-spin" />
+                ) : (
+                  <Check size={18} />
+                )}
                 {processing ? "Processing..." : "Place Order"}
               </button>
             )}
@@ -1087,7 +1235,9 @@ function OrderTrackingModal({
 
   const getStatusIndex = (status: string) => statusSteps.indexOf(status);
 
-  const [downloadingProduct, setDownloadingProduct] = useState<string | null>(null);
+  const [downloadingProduct, setDownloadingProduct] = useState<string | null>(
+    null,
+  );
 
   const handleDownload = async (productId: string, fileUrl: string) => {
     setDownloadingProduct(productId);
@@ -1098,15 +1248,22 @@ function OrderTrackingModal({
     }
   };
 
-  const physicalOrders = orders.filter((o) => o.items.some((i) => !i.productId.startsWith("digital")));
-  const digitalOrders = orders.filter((o) => o.items.every((i) => i.productId.startsWith("digital")));
+  const physicalOrders = orders.filter((o) =>
+    o.items.some((i) => !i.productId.startsWith("digital")),
+  );
+  const digitalOrders = orders.filter((o) =>
+    o.items.every((i) => i.productId.startsWith("digital")),
+  );
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
       <div className="bg-white w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 max-h-[90vh] flex flex-col">
         <div className="p-6 border-b border-slate-100 flex justify-between items-center">
           <h2 className="text-xl font-bold">My Orders</h2>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition">
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-slate-100 rounded-full transition"
+          >
             <X size={20} />
           </button>
         </div>
@@ -1116,7 +1273,9 @@ function OrderTrackingModal({
             <div className="text-center py-12">
               <Truck size={48} className="mx-auto text-slate-200 mb-4" />
               <p className="text-slate-500 font-medium">No orders yet</p>
-              <p className="text-slate-400 text-sm mt-2">Your orders will appear here</p>
+              <p className="text-slate-400 text-sm mt-2">
+                Your orders will appear here
+              </p>
             </div>
           ) : (
             orders.map((order) => (
@@ -1132,7 +1291,9 @@ function OrderTrackingModal({
                         : new Date(order.createdAt as any).toLocaleDateString()}
                     </p>
                   </div>
-                  <span className={`text-xs font-bold px-3 py-1 rounded-full ${statusColors[order.status]}`}>
+                  <span
+                    className={`text-xs font-bold px-3 py-1 rounded-full ${statusColors[order.status]}`}
+                  >
                     {order.status.toUpperCase()}
                   </span>
                 </div>
@@ -1140,8 +1301,12 @@ function OrderTrackingModal({
                 <div className="space-y-2 mb-4">
                   {order.items.map((item, idx) => (
                     <div key={idx} className="flex justify-between text-sm">
-                      <span>{item.quantity}x {item.productName}</span>
-                      <span className="font-medium">{item.price.toLocaleString()} RWF</span>
+                      <span>
+                        {item.quantity}x {item.productName}
+                      </span>
+                      <span className="font-medium">
+                        {item.price.toLocaleString()} RWF
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -1186,14 +1351,28 @@ function OrderTrackingModal({
 
                 {order.trackingNumber && (
                   <div className="bg-blue-50 rounded-lg p-3 text-sm">
-                    <span className="text-blue-800 font-medium">Tracking: </span>
-                    <span className="text-blue-600">{order.trackingNumber}</span>
+                    <span className="text-blue-800 font-medium">
+                      Tracking:{" "}
+                    </span>
+                    <span className="text-blue-600">
+                      {order.trackingNumber}
+                    </span>
                   </div>
                 )}
 
-                <div className="flex justify-between font-bold mt-4 pt-4 border-t border-slate-200">
-                  <span>Total</span>
-                  <span>{order.total.toLocaleString()} RWF</span>
+                <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-200">
+                  <span className="font-bold">
+                    Total: {order.total.toLocaleString()} RWF
+                  </span>
+                  {order.status === "pending" && (
+                    <Link
+                      href={`/store/pay/${order.id}`}
+                      target="_blank"
+                      className="px-4 py-2 bg-green-500 text-white rounded-lg font-bold text-sm hover:bg-green-600 transition"
+                    >
+                      Pay Now
+                    </Link>
+                  )}
                 </div>
               </div>
             ))

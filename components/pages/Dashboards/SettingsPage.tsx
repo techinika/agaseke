@@ -390,7 +390,7 @@ export default function CreatorSettings() {
 
                 <div className="space-y-6">
                   <div className="p-6 bg-slate-50 rounded-lg border border-slate-100">
-                    <div className="flex justify-between items-start">
+                    <div className="flex flex-wrap justify-between items-start gap-4">
                       <div className="flex items-start gap-4">
                         <div className="p-3 bg-orange-100 rounded-lg">
                           <Store size={24} className="text-orange-600" />
@@ -481,10 +481,10 @@ export default function CreatorSettings() {
 
                 {/* Giveaways */}
                 <div className="p-6 bg-slate-50 rounded-lg border border-slate-100">
-                  <div className="flex justify-between items-start">
+                  <div className="flex flex-wrap justify-between items-start gap-4">
                     <div className="flex items-start gap-4">
-                      <div className="p-3 bg-purple-100 rounded-lg">
-                        <Gift size={24} className="text-purple-600" />
+                      <div className="p-3 bg-orange-100 rounded-lg">
+                        <Gift size={24} className="text-orange-600" />
                       </div>
                       <div>
                         <p className="font-black text-lg">Giveaways</p>
@@ -533,7 +533,7 @@ export default function CreatorSettings() {
 
                 {/* Booking */}
                 <div className="p-6 bg-slate-50 rounded-lg border border-slate-100">
-                  <div className="flex justify-between items-start">
+                  <div className="flex flex-wrap justify-between items-start gap-4">
                     <div className="flex items-start gap-4">
                       <div className="p-3 bg-blue-100 rounded-lg">
                         <Calendar size={24} className="text-blue-600" />
@@ -621,7 +621,7 @@ export default function CreatorSettings() {
 
                 {/* Gatherings */}
                 <div className="p-6 bg-slate-50 rounded-lg border border-slate-100">
-                  <div className="flex justify-between items-start">
+                  <div className="flex flex-wrap justify-between items-start gap-4">
                     <div className="flex items-start gap-4">
                       <div className="p-3 bg-green-100 rounded-lg">
                         <Calendar size={24} className="text-green-600" />
@@ -675,7 +675,7 @@ export default function CreatorSettings() {
 
             {activeTab === "messaging" && (
               <section className="bg-white border border-slate-100 rounded-lg p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                <div className="flex justify-between items-start">
+                <div className="flex flex-wrap justify-between items-start gap-4">
                   <div>
                     <h3 className="text-lg font-black uppercase mb-2">
                       Direct Messaging

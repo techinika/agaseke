@@ -327,8 +327,8 @@ export default function AdminDashboard() {
           <StatCard
             label="Total Views"
             value={stats.totalViews.toLocaleString()}
-            icon={<Eye className="text-purple-600" />}
-            color="bg-purple-50"
+            icon={<Eye className="text-orange-600" />}
+            color="bg-orange-50"
           />
         </div>
 
@@ -357,7 +357,7 @@ export default function AdminDashboard() {
           </div>
           <div className="bg-white rounded-xl border border-slate-100 p-4">
             <div className="flex items-center gap-2 mb-2">
-              <MessageSquare size={14} className="text-indigo-600" />
+              <MessageSquare size={14} className="text-orange-600" />
               <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Supports</p>
             </div>
             <p className="text-xl font-bold">{stats.totalSupports}</p>

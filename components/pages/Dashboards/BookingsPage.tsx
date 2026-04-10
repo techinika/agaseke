@@ -67,12 +67,12 @@ export default function BookingsPage() {
   const [newSlot, setNewSlot] = useState({ startTime: "09:00", endTime: "10:00" });
 
   useEffect(() => {
-    if (!creator?.uid) return;
+    if (!creator?.handle) return;
 
     const bookingsRef = collection(db, "bookingRequests");
     const q = query(
       bookingsRef,
-      where("creatorId", "==", creator.uid),
+      where("creatorHandle", "==", creator.handle),
       orderBy("createdAt", "desc")
     );
 
@@ -92,7 +92,7 @@ export default function BookingsPage() {
     });
 
     return () => unsub();
-  }, [creator?.uid]);
+  }, [creator?.handle]);
 
   const handleRespond = async (bookingId: string, status: "accepted" | "declined", note?: string) => {
     try {

@@ -33,8 +33,10 @@ export default function AdminPayouts() {
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
-    // We only want creators who have money waiting to be paid out
-    const q = query(collection(db, "creators"), where("pendingPayout", ">", 0));
+    const q = query(
+      collection(db, "creators"),
+      where("pendingPayout", ">", 5000),
+    );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const creatorList = snapshot.docs.map((doc) => ({
@@ -76,10 +78,13 @@ export default function AdminPayouts() {
           status: "completed",
           approvedAt: serverTimestamp(),
           method: "MoMo",
+          createdAt: serverTimestamp(),
         });
       });
 
-      toast.success(`Payout of ${amount} RWF for ${confirmPayout.name} recorded!`);
+      toast.success(
+        `Payout of ${amount} RWF for ${confirmPayout.name} recorded!`,
+      );
       setConfirmPayout(null);
     } catch (error) {
       console.error(error);
@@ -244,8 +249,9 @@ export default function AdminPayouts() {
         <div className="flex items-center gap-3 p-4 bg-slate-100/50 border border-slate-200 rounded-lg text-slate-500">
           <AlertCircle size={18} />
           <p className="text-xs font-medium italic">
-            Note: Approving a payout resets the creator&apos;s balance in Agaseke.
-            Ensure you have manually sent the MoMo transfer before confirming.
+            Note: Approving a payout resets the creator&apos;s balance in
+            Agaseke. Ensure you have manually sent the MoMo transfer before
+            confirming.
           </p>
         </div>
       </div>
@@ -255,7 +261,11 @@ export default function AdminPayouts() {
         onClose={() => setConfirmPayout(null)}
         onConfirm={handleApprovePayout}
         title="Approve Payout?"
-        message={confirmPayout ? `Are you sure you want to approve a payout of ${confirmPayout.pendingPayout?.toLocaleString()} RWF for ${confirmPayout.name}? Make sure you have sent the payment via MoMo before confirming.` : ""}
+        message={
+          confirmPayout
+            ? `Are you sure you want to approve a payout of ${confirmPayout.pendingPayout?.toLocaleString()} RWF for ${confirmPayout.name}? Make sure you have sent the payment via MoMo before confirming.`
+            : ""
+        }
         confirmText="Approve"
         loading={processing}
         variant="warning"

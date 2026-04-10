@@ -56,7 +56,7 @@ export default function PartnersPage() {
     const partnersRef = collection(db, "creatorPartners");
     const q = query(
       partnersRef,
-      where("creatorId", "==", creator.uid),
+      where("creatorId", "==", creator.handle),
       orderBy("createdAt", "desc")
     );
 
@@ -70,7 +70,7 @@ export default function PartnersPage() {
     });
 
     return () => unsub();
-  }, [creator?.uid]);
+  }, [creator?.handle]);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this partner?")) return;

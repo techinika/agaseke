@@ -62,12 +62,12 @@ export const GiveawayTab = ({
     const fetchGiveaways = async () => {
       try {
         const giveawaysRef = collection(db, "giveaways");
-        
+
         // Fetch all giveaways for this creator
         const q = query(
           giveawaysRef,
           where("creatorId", "==", creatorId),
-          orderBy("endDate", "desc")
+          orderBy("endDate", "desc"),
         );
         const snapshot = await getDocs(q);
         const giveawayData = snapshot.docs.map((doc) => ({
@@ -80,10 +80,11 @@ export const GiveawayTab = ({
         const ended: Giveaway[] = [];
 
         giveawayData.forEach((g) => {
-          const endDate = g.endDate instanceof Timestamp 
-            ? g.endDate.toDate() 
-            : new Date(g.endDate as any);
-          
+          const endDate =
+            g.endDate instanceof Timestamp
+              ? g.endDate.toDate()
+              : new Date(g.endDate as any);
+
           // Active = not ended OR ended but no winners yet
           if (endDate > new Date() && g.winners.length === 0) {
             active.push(g);
@@ -96,8 +97,14 @@ export const GiveawayTab = ({
 
         // Sort active giveaways by end date (earliest first)
         active.sort((a, b) => {
-          const aDate = a.endDate instanceof Timestamp ? a.endDate.toDate() : new Date(a.endDate as any);
-          const bDate = b.endDate instanceof Timestamp ? b.endDate.toDate() : new Date(b.endDate as any);
+          const aDate =
+            a.endDate instanceof Timestamp
+              ? a.endDate.toDate()
+              : new Date(a.endDate as any);
+          const bDate =
+            b.endDate instanceof Timestamp
+              ? b.endDate.toDate()
+              : new Date(b.endDate as any);
           return aDate.getTime() - bDate.getTime();
         });
 
@@ -106,10 +113,13 @@ export const GiveawayTab = ({
 
         if (currentUser?.uid) {
           const entriesRef = collection(db, "giveawayEntries");
-          const entriesQ = query(entriesRef, where("participantId", "==", currentUser.uid));
+          const entriesQ = query(
+            entriesRef,
+            where("participantId", "==", currentUser.uid),
+          );
           const entriesSnap = await getDocs(entriesQ);
           const participated = new Set(
-            entriesSnap.docs.map((doc) => doc.data().giveawayId)
+            entriesSnap.docs.map((doc) => doc.data().giveawayId),
           );
           setParticipating(participated);
         }
@@ -126,13 +136,15 @@ export const GiveawayTab = ({
   const getUserWonGiveaway = (giveaway: Giveaway): boolean => {
     const userId = currentUserId || currentUser?.uid;
     if (!userId) return false;
-    return giveaway.winners.some(w => w.winnerId === userId);
+    return giveaway.winners.some((w) => w.winnerId === userId);
   };
 
-  const isUserWinner = (giveaway: Giveaway): { won: boolean; reward?: string } => {
+  const isUserWinner = (
+    giveaway: Giveaway,
+  ): { won: boolean; reward?: string } => {
     const userId = currentUserId || currentUser?.uid;
     if (!userId) return { won: false };
-    const winner = giveaway.winners.find(w => w.winnerId === userId);
+    const winner = giveaway.winners.find((w) => w.winnerId === userId);
     return { won: !!winner, reward: winner?.rewardTitle };
   };
 
@@ -189,7 +201,7 @@ export const GiveawayTab = ({
   if (loading) {
     return (
       <div className="animate-in fade-in duration-500 flex items-center justify-center h-[400px]">
-        <Loader className="animate-spin text-purple-500" size={32} />
+        <Loader className="animate-spin text-orange-500" size={32} />
       </div>
     );
   }
@@ -208,7 +220,8 @@ export const GiveawayTab = ({
     );
   }
 
-  const hasAnyGiveaways = activeGiveaways.length > 0 || endedGiveaways.length > 0;
+  const hasAnyGiveaways =
+    activeGiveaways.length > 0 || endedGiveaways.length > 0;
 
   if (hasAnyGiveaways) {
     return (
@@ -219,18 +232,26 @@ export const GiveawayTab = ({
             {activeGiveaways.map((giveaway) => {
               const accessible = canAccess(giveaway);
               const hasParticipated = participating.has(giveaway.id);
-              const endDate = giveaway.endDate instanceof Timestamp 
-                ? giveaway.endDate.toDate() 
-                : new Date(giveaway.endDate as any);
-              const daysLeft = Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+              const endDate =
+                giveaway.endDate instanceof Timestamp
+                  ? giveaway.endDate.toDate()
+                  : new Date(giveaway.endDate as any);
+              const daysLeft = Math.ceil(
+                (endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+              );
 
               return (
-                <div key={giveaway.id} className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+                <div
+                  key={giveaway.id}
+                  className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm"
+                >
                   <div className="bg-gradient-to-r from-orange-600 to-amber-600 p-6 text-white">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
                         <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold">
-                          {giveaway.type === "random" ? "Lucky Draw" : "Challenge"}
+                          {giveaway.type === "random"
+                            ? "Lucky Draw"
+                            : "Challenge"}
                         </span>
                         <span className="bg-green-500/80 px-2 py-1 rounded-full text-xs font-bold">
                           Active
@@ -244,17 +265,30 @@ export const GiveawayTab = ({
                       </button>
                     </div>
                     <h3 className="text-xl font-bold mb-2">{giveaway.title}</h3>
-                    <p className="text-white/80 text-sm">{giveaway.description}</p>
-                    
+                    <p className="text-white/80 text-sm">
+                      {giveaway.description}
+                    </p>
+
                     {giveaway.partners.length > 0 && (
                       <div className="flex items-center gap-2 mt-4 flex-wrap">
-                        <span className="text-xs text-white/60">Sponsored by:</span>
+                        <span className="text-xs text-white/60">
+                          Sponsored by:
+                        </span>
                         {giveaway.partners.map((partner: any) => (
-                          <div key={partner.id} className="flex items-center gap-1.5 bg-white/20 px-2 py-1 rounded-full">
+                          <div
+                            key={partner.id}
+                            className="flex items-center gap-1.5 bg-white/20 px-2 py-1 rounded-full"
+                          >
                             {partner.logo && (
-                              <img src={partner.logo} alt={partner.name} className="w-4 h-4 rounded-full object-cover" />
+                              <img
+                                src={partner.logo}
+                                alt={partner.name}
+                                className="w-4 h-4 rounded-full object-cover"
+                              />
                             )}
-                            <span className="text-xs font-medium">{partner.name}</span>
+                            <span className="text-xs font-medium">
+                              {partner.name}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -264,40 +298,66 @@ export const GiveawayTab = ({
                   <div className="p-6">
                     <div className="grid grid-cols-3 gap-4 mb-6">
                       <div className="text-center p-3 bg-slate-50 rounded-xl">
-                        <Clock size={20} className="mx-auto text-orange-600 mb-1" />
+                        <Clock
+                          size={20}
+                          className="mx-auto text-orange-600 mb-1"
+                        />
                         <p className="text-xs text-slate-500">Time Left</p>
                         <p className="font-bold">{daysLeft} days</p>
                       </div>
                       <div className="text-center p-3 bg-slate-50 rounded-xl">
-                        <Users size={20} className="mx-auto text-orange-600 mb-1" />
+                        <Users
+                          size={20}
+                          className="mx-auto text-orange-600 mb-1"
+                        />
                         <p className="text-xs text-slate-500">Winners</p>
                         <p className="font-bold">{giveaway.maxWinners}</p>
                       </div>
                       <div className="text-center p-3 bg-slate-50 rounded-xl">
-                        <Trophy size={20} className="mx-auto text-orange-600 mb-1" />
+                        <Trophy
+                          size={20}
+                          className="mx-auto text-orange-600 mb-1"
+                        />
                         <p className="text-xs text-slate-500">Prizes</p>
                         <p className="font-bold">{giveaway.rewards.length}</p>
                       </div>
                     </div>
 
                     <div className="space-y-3 mb-6">
-                      <p className="text-xs font-bold text-slate-400 uppercase">Prizes</p>
+                      <p className="text-xs font-bold text-slate-400 uppercase">
+                        Prizes
+                      </p>
                       {giveaway.rewards.map((reward: any, idx: number) => (
-                        <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-                          <div className={`p-2 rounded-lg ${
-                            reward.type === "cash" ? "bg-green-100 text-green-600" :
-                            reward.type === "merchandise" ? "bg-blue-100 text-blue-600" :
-                            reward.type === "discount" ? "bg-orange-100 text-orange-600" :
-                            "bg-amber-100 text-amber-600"
-                          }`}>
+                        <div
+                          key={idx}
+                          className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl"
+                        >
+                          <div
+                            className={`p-2 rounded-lg ${
+                              reward.type === "cash"
+                                ? "bg-green-100 text-green-600"
+                                : reward.type === "merchandise"
+                                  ? "bg-blue-100 text-blue-600"
+                                  : reward.type === "discount"
+                                    ? "bg-orange-100 text-orange-600"
+                                    : "bg-amber-100 text-amber-600"
+                            }`}
+                          >
                             {reward.type === "cash" && <DollarSign size={18} />}
-                            {reward.type === "merchandise" && <Package size={18} />}
-                            {reward.type === "discount" && <Percent size={18} />}
-                            {(reward.type === "service" || reward.type === "other") && <Gift size={18} />}
+                            {reward.type === "merchandise" && (
+                              <Package size={18} />
+                            )}
+                            {reward.type === "discount" && (
+                              <Percent size={18} />
+                            )}
+                            {(reward.type === "service" ||
+                              reward.type === "other") && <Gift size={18} />}
                           </div>
                           <div className="flex-1">
                             <p className="font-bold text-sm">{reward.title}</p>
-                            <p className="text-xs text-slate-500">Quantity: {reward.quantity}</p>
+                            <p className="text-xs text-slate-500">
+                              Quantity: {reward.quantity}
+                            </p>
                           </div>
                         </div>
                       ))}
@@ -307,9 +367,11 @@ export const GiveawayTab = ({
                       <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex items-start gap-3">
                         <Lock size={20} className="text-amber-600 mt-0.5" />
                         <div>
-                          <p className="font-bold text-amber-800">Restricted Access</p>
+                          <p className="font-bold text-amber-800">
+                            Restricted Access
+                          </p>
                           <p className="text-xs text-amber-700 mt-1">
-                            {giveaway.access === "supporters" 
+                            {giveaway.access === "supporters"
                               ? "This giveaway is only for supporters."
                               : `You need to support with at least ${giveaway.minSupportAmount?.toLocaleString()} RWF to participate.`}
                           </p>
@@ -321,8 +383,12 @@ export const GiveawayTab = ({
                           <Check size={18} className="text-white" />
                         </div>
                         <div>
-                          <p className="font-bold text-green-800">You are Entered!</p>
-                          <p className="text-xs text-green-700 mt-1">Good luck! Winners will be announced soon.</p>
+                          <p className="font-bold text-green-800">
+                            You are Entered!
+                          </p>
+                          <p className="text-xs text-green-700 mt-1">
+                            Good luck! Winners will be announced soon.
+                          </p>
                         </div>
                       </div>
                     ) : (
@@ -347,17 +413,22 @@ export const GiveawayTab = ({
               <Star size={16} className="text-orange-500" />
               <h3 className="text-lg font-bold">Past Giveaways</h3>
             </div>
-            
+
             {endedGiveaways.map((giveaway) => {
               const { won, reward } = isUserWinner(giveaway);
 
               return (
-                <div key={giveaway.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                <div
+                  key={giveaway.id}
+                  className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm"
+                >
                   <div className="bg-gradient-to-r from-slate-600 to-slate-700 p-6 text-white">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
                         <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold">
-                          {giveaway.type === "random" ? "Lucky Draw" : "Challenge"}
+                          {giveaway.type === "random"
+                            ? "Lucky Draw"
+                            : "Challenge"}
                         </span>
                         <span className="bg-slate-500/80 px-2 py-1 rounded-full text-xs font-bold">
                           Ended
@@ -371,17 +442,30 @@ export const GiveawayTab = ({
                       </button>
                     </div>
                     <h3 className="text-xl font-bold mb-2">{giveaway.title}</h3>
-                    <p className="text-white/80 text-sm">{giveaway.description}</p>
-                    
+                    <p className="text-white/80 text-sm">
+                      {giveaway.description}
+                    </p>
+
                     {giveaway.partners.length > 0 && (
                       <div className="flex items-center gap-2 mt-4 flex-wrap">
-                        <span className="text-xs text-white/60">Sponsored by:</span>
+                        <span className="text-xs text-white/60">
+                          Sponsored by:
+                        </span>
                         {giveaway.partners.map((partner: any) => (
-                          <div key={partner.id} className="flex items-center gap-1.5 bg-white/20 px-2 py-1 rounded-full">
+                          <div
+                            key={partner.id}
+                            className="flex items-center gap-1.5 bg-white/20 px-2 py-1 rounded-full"
+                          >
                             {partner.logo && (
-                              <img src={partner.logo} alt={partner.name} className="w-4 h-4 rounded-full object-cover" />
+                              <img
+                                src={partner.logo}
+                                alt={partner.name}
+                                className="w-4 h-4 rounded-full object-cover"
+                              />
                             )}
-                            <span className="text-xs font-medium">{partner.name}</span>
+                            <span className="text-xs font-medium">
+                              {partner.name}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -394,7 +478,9 @@ export const GiveawayTab = ({
                         <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
                           <Sparkles size={32} className="text-white" />
                         </div>
-                        <h4 className="text-xl font-bold text-green-800 mb-2">Congratulations!</h4>
+                        <h4 className="text-xl font-bold text-green-800 mb-2">
+                          Congratulations!
+                        </h4>
                         <p className="text-green-700">
                           You won <span className="font-bold">{reward}</span>!
                         </p>
@@ -409,29 +495,45 @@ export const GiveawayTab = ({
                       <div className="space-y-4">
                         <div className="flex items-center gap-2 text-slate-600 mb-4">
                           <Trophy size={20} className="text-orange-500" />
-                          <span className="font-bold">{giveaway.winners.length} Winner{giveaway.winners.length !== 1 ? "s" : ""} Announced</span>
+                          <span className="font-bold">
+                            {giveaway.winners.length} Winner
+                            {giveaway.winners.length !== 1 ? "s" : ""} Announced
+                          </span>
                         </div>
                         <div className="space-y-2">
-                          {giveaway.winners.slice(0, 3).map((winner: any, idx: number) => (
-                            <div key={idx} className="flex items-center gap-3 bg-slate-50 rounded-xl p-3">
-                              <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center text-slate-600 font-bold overflow-hidden">
-                                {winner.winnerPhoto ? (
-                                  <img src={winner.winnerPhoto} alt={winner.winnerName} className="w-full h-full object-cover" />
-                                ) : (
-                                  winner.winnerName?.[0]?.toUpperCase() || "?"
+                          {giveaway.winners
+                            .slice(0, 3)
+                            .map((winner: any, idx: number) => (
+                              <div
+                                key={idx}
+                                className="flex items-center gap-3 bg-slate-50 rounded-xl p-3"
+                              >
+                                <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center text-slate-600 font-bold overflow-hidden">
+                                  {winner.winnerPhoto ? (
+                                    <img
+                                      src={winner.winnerPhoto}
+                                      alt={winner.winnerName}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    winner.winnerName?.[0]?.toUpperCase() || "?"
+                                  )}
+                                </div>
+                                <div className="flex-1">
+                                  <p className="font-bold text-sm">
+                                    {winner.winnerName}
+                                  </p>
+                                  <p className="text-xs text-slate-500">
+                                    Won: {winner.rewardTitle}
+                                  </p>
+                                </div>
+                                {idx === 0 && (
+                                  <span className="bg-orange-100 text-orange-600 text-[10px] font-bold px-2 py-1 rounded-full">
+                                    1st
+                                  </span>
                                 )}
                               </div>
-                              <div className="flex-1">
-                                <p className="font-bold text-sm">{winner.winnerName}</p>
-                                <p className="text-xs text-slate-500">Won: {winner.rewardTitle}</p>
-                              </div>
-                              {idx === 0 && (
-                                <span className="bg-orange-100 text-orange-600 text-[10px] font-bold px-2 py-1 rounded-full">
-                                  1st
-                                </span>
-                              )}
-                            </div>
-                          ))}
+                            ))}
                         </div>
                         {giveaway.winners.length > 3 && (
                           <button
@@ -451,8 +553,8 @@ export const GiveawayTab = ({
         )}
 
         {showWinners && (
-          <WinnersModal 
-            giveaway={showWinners} 
+          <WinnersModal
+            giveaway={showWinners}
             onClose={() => setShowWinners(null)}
             isWinner={isUserWinner(showWinners).won}
           />
@@ -493,11 +595,20 @@ function WinnersModal({
             <div className="flex items-center gap-2 mt-3 flex-wrap">
               <span className="text-xs text-white/60">Sponsored by:</span>
               {giveaway.partners.map((partner) => (
-                <div key={partner.id} className="flex items-center gap-1.5 bg-white/20 px-2 py-1 rounded-full">
+                <div
+                  key={partner.id}
+                  className="flex items-center gap-1.5 bg-white/20 px-2 py-1 rounded-full"
+                >
                   {partner.logo && (
-                    <img src={partner.logo} alt={partner.name} className="w-4 h-4 rounded-full object-cover" />
+                    <img
+                      src={partner.logo}
+                      alt={partner.name}
+                      className="w-4 h-4 rounded-full object-cover"
+                    />
                   )}
-                  <span className="text-xs font-medium text-white">{partner.name}</span>
+                  <span className="text-xs font-medium text-white">
+                    {partner.name}
+                  </span>
                 </div>
               ))}
             </div>
@@ -521,18 +632,28 @@ function WinnersModal({
                       : "bg-slate-50"
                   }`}
                 >
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold ${
-                    idx === 0 ? "bg-orange-500 text-white" : "bg-slate-200 text-slate-600"
-                  }`}>
+                  <div
+                    className={`w-12 h-12 rounded-full flex items-center justify-center font-bold ${
+                      idx === 0
+                        ? "bg-orange-500 text-white"
+                        : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
                     {winner.winnerPhoto ? (
-                      <img src={winner.winnerPhoto} alt={winner.winnerName} className="w-full h-full rounded-full object-cover" />
+                      <img
+                        src={winner.winnerPhoto}
+                        alt={winner.winnerName}
+                        className="w-full h-full rounded-full object-cover"
+                      />
                     ) : (
                       winner.winnerName?.[0] || "?"
                     )}
                   </div>
                   <div className="flex-1">
                     <p className="font-bold">{winner.winnerName}</p>
-                    <p className="text-xs text-slate-500">Won: {winner.rewardTitle}</p>
+                    <p className="text-xs text-slate-500">
+                      Won: {winner.rewardTitle}
+                    </p>
                   </div>
                   {idx === 0 && (
                     <span className="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full">

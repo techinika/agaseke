@@ -28,6 +28,7 @@ export interface Product {
     minQuantity: number;
     discountPercentage: number;
   }[];
+  platformFeePayer?: "buyer" | "creator";
 }
 
 export interface CartItem {
@@ -81,4 +82,5 @@ export interface Coupon {
   usedCount: number;
   active: boolean;
   createdAt: Timestamp | Date;
+  productIds?: string[];
 }

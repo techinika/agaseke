@@ -320,6 +320,19 @@ To confirm, type your email address (${profile?.email}) below.`}
               value={confirmEmail}
               onChange={(e) => setConfirmEmail(e.target.value)}
             />
+            <button
+              onClick={handleDeleteAccount}
+              disabled={deleting || confirmEmail !== auth?.user?.email}
+              className="w-full bg-red-600 text-white py-4 rounded-lg font-bold text-sm hover:bg-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {deleting ? (
+                <Loader size={18} className="animate-spin" />
+              ) : (
+                <>
+                  <Trash2 size={18} /> Delete Account
+                </>
+              )}
+            </button>
           </div>
         </div>
       )}
