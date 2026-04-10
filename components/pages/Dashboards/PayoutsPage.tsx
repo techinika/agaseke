@@ -48,13 +48,15 @@ export default function PayoutsPage() {
 
     const qPayouts = query(
       collection(db, "payouts"),
-      where("creatorId", "==", creator?.handle),
+      where("creatorId", "==", creator.handle),
       orderBy("createdAt", "desc"),
     );
 
+    console.log(qPayouts)
+
     const qRequests = query(
       collection(db, "withdrawRequests"),
-      where("creatorId", "==", creator?.handle),
+      where("creatorId", "==", creator.uid),
       orderBy("createdAt", "desc"),
     );
 
