@@ -43,17 +43,22 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 export default function StorePage() {
   const { creator } = useAuth();
-  const [activeTab, setActiveTab] = useState<"products" | "orders" | "coupons">("products");
+  const [activeTab, setActiveTab] = useState<"products" | "orders" | "coupons" | "folders">("products");
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [folders, setFolders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
   const [deleteCouponId, setDeleteCouponId] = useState<string | null>(null);
+  const [deleteFolderId, setDeleteFolderId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [showCouponModal, setShowCouponModal] = useState(false);
+  const [showFolderModal, setShowFolderModal] = useState(false);
+  const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
 
   useEffect(() => {
     if (!creator?.uid) return;
@@ -103,12 +108,28 @@ export default function StorePage() {
       setCoupons(couponData);
     });
 
+    const foldersRef = collection(db, "storeFolders");
+    const foldersQuery = query(
+      foldersRef,
+      where("creatorId", "==", creator?.uid),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubFolders = onSnapshot(foldersQuery, (snapshot) => {
+      const folderData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as any[];
+      setFolders(folderData);
+    });
+
     setLoading(false);
 
     return () => {
       unsubProducts();
       unsubOrders();
       unsubCoupons();
+      unsubFolders();
     };
   }, [creator?.uid]);
 
@@ -134,6 +155,31 @@ export default function StorePage() {
     setDeleteCouponId(couponId);
   };
 
+  const handleCreateCoupon = async (couponData: {
+    code: string;
+    discountType: "percentage" | "fixed";
+    discountValue: number;
+    minPurchase: number;
+    maxUses: number;
+    productIds: string[];
+    active: boolean;
+  }) => {
+    try {
+      await addDoc(collection(db, "storeCoupons"), {
+        ...couponData,
+        creatorId: creator?.uid,
+        usedCount: 0,
+        createdAt: serverTimestamp(),
+      });
+      toast.success("Coupon created!");
+      setShowCouponModal(false);
+      setEditingCoupon(null);
+    } catch (error) {
+      console.error("Create coupon error:", error);
+      toast.error("Failed to create coupon");
+    }
+  };
+
   const confirmDeleteCoupon = async () => {
     if (!deleteCouponId) return;
     setDeleting(true);
@@ -143,6 +189,46 @@ export default function StorePage() {
       setDeleteCouponId(null);
     } catch (error) {
       toast.error("Failed to delete coupon");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleCreateFolder = async (folderData: {
+    name: string;
+    description: string;
+    productIds: string[];
+    discountEnabled: boolean;
+    discountPercentage: number;
+    active: boolean;
+  }) => {
+    try {
+      await addDoc(collection(db, "storeFolders"), {
+        ...folderData,
+        creatorId: creator?.uid,
+        createdAt: serverTimestamp(),
+      });
+      toast.success("Folder created!");
+      setShowFolderModal(false);
+    } catch (error) {
+      console.error("Create folder error:", error);
+      toast.error("Failed to create folder");
+    }
+  };
+
+  const handleDeleteFolder = (folderId: string) => {
+    setDeleteFolderId(folderId);
+  };
+
+  const confirmDeleteFolder = async () => {
+    if (!deleteFolderId) return;
+    setDeleting(true);
+    try {
+      await deleteDoc(doc(db, "storeFolders", deleteFolderId));
+      toast.success("Folder deleted");
+      setDeleteFolderId(null);
+    } catch (error) {
+      toast.error("Failed to delete folder");
     } finally {
       setDeleting(false);
     }
@@ -184,6 +270,7 @@ export default function StorePage() {
             { id: "products", label: "Products", icon: Package },
             { id: "orders", label: "Orders", icon: ShoppingCart },
             { id: "coupons", label: "Coupons", icon: Tag },
+            { id: "folders", label: "Folders", icon: FileText },
           ].map((item) => (
             <button
               key={item.id}
@@ -217,6 +304,7 @@ export default function StorePage() {
             {activeTab === "products" && "Products"}
             {activeTab === "orders" && "Orders"}
             {activeTab === "coupons" && "Coupons"}
+            {activeTab === "folders" && "Folders"}
           </h3>
           {activeTab === "products" && (
             <button
@@ -228,10 +316,21 @@ export default function StorePage() {
           )}
           {activeTab === "coupons" && (
             <button
-              onClick={() => setIsCreating(true)}
+              onClick={() => {
+                setEditingCoupon(null);
+                setShowCouponModal(true);
+              }}
               className="bg-orange-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-orange-700 transition"
             >
               <Plus size={16} /> Create Coupon
+            </button>
+          )}
+          {activeTab === "folders" && (
+            <button
+              onClick={() => setShowFolderModal(true)}
+              className="bg-orange-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-orange-700 transition"
+            >
+              <Plus size={16} /> Create Folder
             </button>
           )}
         </div>
@@ -254,7 +353,19 @@ export default function StorePage() {
         {activeTab === "coupons" && (
           <CouponsList
             coupons={coupons}
+            onEdit={(coupon) => {
+              setEditingCoupon(coupon);
+              setShowCouponModal(true);
+            }}
             onDelete={handleDeleteCoupon}
+          />
+        )}
+
+        {activeTab === "folders" && (
+          <FoldersList
+            folders={folders}
+            products={products}
+            onDelete={handleDeleteFolder}
           />
         )}
       </main>
@@ -291,6 +402,37 @@ export default function StorePage() {
         loading={deleting}
         variant="danger"
       />
+
+      <ConfirmModal
+        isOpen={deleteFolderId !== null}
+        onClose={() => setDeleteFolderId(null)}
+        onConfirm={confirmDeleteFolder}
+        title="Delete Folder?"
+        message="This will permanently delete this folder. This action cannot be undone."
+        confirmText="Delete"
+        loading={deleting}
+        variant="danger"
+      />
+
+      {showCouponModal && (
+        <CouponModal
+          coupon={editingCoupon}
+          products={products}
+          onClose={() => {
+            setShowCouponModal(false);
+            setEditingCoupon(null);
+          }}
+          onSave={handleCreateCoupon}
+        />
+      )}
+
+      {showFolderModal && (
+        <FolderModal
+          products={products}
+          onClose={() => setShowFolderModal(false)}
+          onSave={handleCreateFolder}
+        />
+      )}
     </div>
   );
 }
@@ -509,9 +651,11 @@ function OrdersList({
 
 function CouponsList({
   coupons,
+  onEdit,
   onDelete,
 }: {
   coupons: Coupon[];
+  onEdit: (c: Coupon) => void;
   onDelete: (id: string) => void;
 }) {
   if (coupons.length === 0) {
@@ -549,14 +693,434 @@ function CouponsList({
           <p className="text-xs text-slate-400 mb-4">
             Used {coupon.usedCount} times{coupon.maxUses ? ` / ${coupon.maxUses}` : ""}
           </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => onEdit(coupon)}
+              className="flex-1 py-2 text-xs font-bold border border-slate-200 text-slate-500 rounded-lg hover:bg-slate-50 transition"
+            >
+              <Edit size={14} className="inline mr-1" /> Edit
+            </button>
+            <button
+              onClick={() => onDelete(coupon.id)}
+              className="flex-1 py-2 text-xs font-bold border border-red-100 text-red-500 rounded-lg hover:bg-red-50 transition"
+            >
+              <Trash2 size={14} className="inline mr-1" /> Delete
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CouponModal({
+  coupon,
+  products,
+  onClose,
+  onSave,
+}: {
+  coupon: Coupon | null;
+  products: Product[];
+  onClose: () => void;
+  onSave: (data: any) => void;
+}) {
+  const [formData, setFormData] = useState({
+    code: coupon?.code || "",
+    discountType: (coupon?.discountType as "percentage" | "fixed") || "percentage",
+    discountValue: coupon?.discountValue || 0,
+    minPurchase: coupon?.minPurchase || 0,
+    maxUses: coupon?.maxUses || 0,
+    productIds: coupon?.productIds || [] as string[],
+    active: coupon?.active ?? true,
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!formData.code || !formData.discountValue) {
+      toast.error("Please fill in required fields");
+      return;
+    }
+    setSaving(true);
+    await onSave(formData);
+    setSaving(false);
+  };
+
+  const toggleProduct = (productId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      productIds: prev.productIds.includes(productId)
+        ? prev.productIds.filter((id) => id !== productId)
+        : [...prev.productIds, productId],
+    }));
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+      <div className="bg-white w-full max-w-lg rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-slate-100">
+          <h2 className="text-xl font-bold">{coupon ? "Edit Coupon" : "Create Coupon"}</h2>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">Coupon Code *</label>
+            <input
+              type="text"
+              value={formData.code}
+              onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+              placeholder="e.g., SUMMER20"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 font-bold"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Discount Type</label>
+              <select
+                value={formData.discountType}
+                onChange={(e) => setFormData({ ...formData, discountType: e.target.value as any })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3"
+              >
+                <option value="percentage">Percentage</option>
+                <option value="fixed">Fixed Amount</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Discount Value *</label>
+              <input
+                type="number"
+                value={formData.discountValue}
+                onChange={(e) => setFormData({ ...formData, discountValue: parseInt(e.target.value) || 0 })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Min. Purchase (RWF)</label>
+              <input
+                type="number"
+                value={formData.minPurchase}
+                onChange={(e) => setFormData({ ...formData, minPurchase: parseInt(e.target.value) || 0 })}
+                placeholder="0 for no minimum"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Max Uses</label>
+              <input
+                type="number"
+                value={formData.maxUses}
+                onChange={(e) => setFormData({ ...formData, maxUses: parseInt(e.target.value) || 0 })}
+                placeholder="Empty for unlimited"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">Apply to Products (optional)</label>
+            <p className="text-xs text-slate-500 mb-2">Leave empty to apply to all products</p>
+            <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-lg">
+              {products.map((product) => (
+                <label
+                  key={product.id}
+                  className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0"
+                >
+                  <input
+                    type="checkbox"
+                    checked={formData.productIds.includes(product.id)}
+                    onChange={() => toggleProduct(product.id)}
+                    className="w-4 h-4"
+                  />
+                  <span className="font-medium">{product.name}</span>
+                  <span className="text-xs text-slate-400">{product.price.toLocaleString()} RWF</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+            <div>
+              <p className="font-bold">Active</p>
+              <p className="text-xs text-slate-500">Customers can use this coupon</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, active: !formData.active })}
+              className={`w-12 h-6 rounded-full transition-colors ${
+                formData.active ? "bg-green-500" : "bg-slate-300"
+              }`}
+            >
+              <div
+                className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                  formData.active ? "translate-x-6" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6 border-t border-slate-100">
           <button
-            onClick={() => onDelete(coupon.id)}
+            onClick={handleSubmit}
+            disabled={saving || !formData.code || !formData.discountValue}
+            className="w-full bg-orange-600 text-white py-4 rounded-lg font-bold hover:bg-orange-700 transition disabled:opacity-50"
+          >
+            {saving ? <Loader className="animate-spin mx-auto" /> : coupon ? "Update Coupon" : "Create Coupon"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FoldersList({
+  folders,
+  products,
+  onDelete,
+}: {
+  folders: any[];
+  products: Product[];
+  onDelete: (id: string) => void;
+}) {
+  if (folders.length === 0) {
+    return (
+      <div className="text-center py-20 bg-white rounded-lg border border-slate-100">
+        <FileText size={48} className="mx-auto text-slate-200 mb-4" />
+        <p className="text-slate-500 font-medium">No folders yet</p>
+        <p className="text-slate-400 text-sm mt-2">Group products together for bundle sales</p>
+      </div>
+    );
+  }
+
+  const getProductNames = (productIds: string[]) => {
+    return productIds
+      .map((id) => products.find((p) => p.id)?.name)
+      .filter(Boolean)
+      .join(", ");
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {folders.map((folder) => (
+        <div key={folder.id} className="bg-white rounded-lg border border-slate-100 p-6">
+          <div className="flex items-start justify-between mb-4">
+            <div className="bg-purple-100 text-purple-600 px-3 py-1 rounded-lg font-bold text-lg">
+              {folder.name}
+            </div>
+            <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${
+              folder.active ? "bg-green-100 text-green-600" : "bg-slate-100 text-slate-500"
+            }`}>
+              {folder.active ? "ACTIVE" : "INACTIVE"}
+            </span>
+          </div>
+          {folder.description && (
+            <p className="text-sm text-slate-500 mb-2">{folder.description}</p>
+          )}
+          <p className="text-lg font-bold text-slate-900 mb-2">
+            {folder.productIds?.length || 0} products in bundle
+          </p>
+          {folder.discountEnabled && (
+            <p className="text-sm text-green-600 font-bold mb-2">
+              {folder.discountPercentage}% Bundle Discount
+            </p>
+          )}
+          <p className="text-xs text-slate-400 mb-4">
+            {getProductNames(folder.productIds || [])}
+          </p>
+          <button
+            onClick={() => onDelete(folder.id)}
             className="w-full py-2 text-xs font-bold border border-red-100 text-red-500 rounded-lg hover:bg-red-50 transition"
           >
             <Trash2 size={14} className="inline mr-1" /> Delete
           </button>
         </div>
       ))}
+    </div>
+  );
+}
+
+function FolderModal({
+  products,
+  onClose,
+  onSave,
+}: {
+  products: Product[];
+  onClose: () => void;
+  onSave: (data: any) => void;
+}) {
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    productIds: [] as string[],
+    discountEnabled: false,
+    discountPercentage: 0,
+    active: true,
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!formData.name || formData.productIds.length === 0) {
+      toast.error("Please fill in required fields and select at least one product");
+      return;
+    }
+    setSaving(true);
+    await onSave(formData);
+    setSaving(false);
+  };
+
+  const toggleProduct = (productId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      productIds: prev.productIds.includes(productId)
+        ? prev.productIds.filter((id) => id !== productId)
+        : [...prev.productIds, productId],
+    }));
+  };
+
+  const totalPrice = formData.productIds.reduce((sum, id) => {
+    const product = products.find((p) => p.id === id);
+    return sum + (product?.price || 0);
+  }, 0);
+
+  const discountAmount = formData.discountEnabled 
+    ? (totalPrice * formData.discountPercentage) / 100 
+    : 0;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+      <div className="bg-white w-full max-w-lg rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-slate-100">
+          <h2 className="text-xl font-bold">Create Product Folder</h2>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">Folder Name *</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="e.g., Summer Bundle, Music Pack, T-Shirt Set"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 font-bold"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">Description</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="What's included in this bundle..."
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 h-20"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">Select Products *</label>
+            <p className="text-xs text-slate-500 mb-2">Choose products to include in this folder</p>
+            <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-lg">
+              {products.map((product) => (
+                <label
+                  key={product.id}
+                  className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0"
+                >
+                  <input
+                    type="checkbox"
+                    checked={formData.productIds.includes(product.id)}
+                    onChange={() => toggleProduct(product.id)}
+                    className="w-4 h-4"
+                  />
+                  <span className="font-medium">{product.name}</span>
+                  <span className="text-xs text-slate-400">{product.price.toLocaleString()} RWF</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {formData.productIds.length > 0 && (
+            <div className="p-4 bg-slate-50 rounded-lg">
+              <p className="text-sm font-bold">Total: {totalPrice.toLocaleString()} RWF</p>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+            <div>
+              <p className="font-bold">Bundle Discount</p>
+              <p className="text-xs text-slate-500">Apply discount when buying all products together</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, discountEnabled: !formData.discountEnabled })}
+              className={`w-12 h-6 rounded-full transition-colors ${
+                formData.discountEnabled ? "bg-green-500" : "bg-slate-300"
+              }`}
+            >
+              <div
+                className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                  formData.discountEnabled ? "translate-x-6" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+          </div>
+
+          {formData.discountEnabled && (
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2">Discount Percentage</label>
+              <input
+                type="number"
+                value={formData.discountPercentage}
+                onChange={(e) => setFormData({ ...formData, discountPercentage: parseInt(e.target.value) || 0 })}
+                placeholder="e.g., 10 for 10%"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3"
+              />
+              {formData.discountPercentage > 0 && totalPrice > 0 && (
+                <p className="text-sm text-green-600 mt-2">
+                  You save: {discountAmount.toLocaleString()} RWF ({formData.discountPercentage}% off)
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+            <div>
+              <p className="font-bold">Active</p>
+              <p className="text-xs text-slate-500">Customers can purchase this bundle</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFormData({ ...formData, active: !formData.active })}
+              className={`w-12 h-6 rounded-full transition-colors ${
+                formData.active ? "bg-green-500" : "bg-slate-300"
+              }`}
+            >
+              <div
+                className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                  formData.active ? "translate-x-6" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6 border-t border-slate-100">
+          <button
+            onClick={handleSubmit}
+            disabled={saving || !formData.name || formData.productIds.length === 0}
+            className="w-full bg-orange-600 text-white py-4 rounded-lg font-bold hover:bg-orange-700 transition disabled:opacity-50"
+          >
+            {saving ? <Loader className="animate-spin mx-auto" /> : "Create Folder"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
