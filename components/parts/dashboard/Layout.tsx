@@ -155,6 +155,14 @@ export default function DashboardLayout({
                 active={pathname === "/creator/gatherings"}
               />
             )}
+            {creatorSettings?.bookingEnabled && (
+              <NavItem
+                href="/creator/bookings"
+                icon={<Calendar size={18} />}
+                label="Bookings"
+                active={pathname === "/creator/bookings"}
+              />
+            )}
             {creatorSettings?.messagingEnabled !== false && (
               <NavItem
                 href="/creator/messages"

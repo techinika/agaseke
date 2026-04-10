@@ -1,0 +1,1 @@
+import{t as e}from"./jsx-runtime-BYorA0Vo.js";var t=e(),n={parameters:{controls:{matchers:{color:/(background|color)$/i,date:/Date$/i}},backgrounds:{default:`light`,values:[{name:`light`,value:`#ffffff`},{name:`dark`,value:`#1e293b`}]}},decorators:[e=>(0,t.jsx)(`div`,{style:{fontFamily:`system-ui, -apple-system, sans-serif`},children:(0,t.jsx)(e,{})})]};export{n as default};

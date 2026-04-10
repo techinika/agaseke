@@ -171,7 +171,7 @@ export default function LandingPage() {
           {isCreator ? (
             <div className="animate-in zoom-in duration-500">
               <button
-                onClick={() => router.push("/dashboard")}
+                onClick={() => router.push("/creator")}
                 className="group flex items-center gap-4 bg-slate-900 text-white px-12 py-6 rounded-2xl font-black text-lg uppercase tracking-widest hover:bg-orange-600 transition-all shadow-2xl"
               >
                 <span>Go to my Creator Space</span>

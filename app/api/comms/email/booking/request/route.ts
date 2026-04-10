@@ -1,14 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
 
 export async function POST(request: NextRequest) {
-  if (!resend) {
-    console.warn("Resend API key not configured, skipping email");
-    return NextResponse.json({ success: true, skipped: true });
-  }
 
   try {
     const { creatorEmail, creatorName, bookerName, bookerEmail, reason, preferredDate, preferredTime, preferredType } = await request.json();
@@ -78,8 +80,8 @@ export async function POST(request: NextRequest) {
       </html>
     `;
 
-    await resend.emails.send({
-      from: "Agaseke <noreply@agaseke.com>",
+    await transporter.sendMail({
+      from: `"Agaseke" <${process.env.SMTP_USER}>`,
       to: creatorEmail,
       subject: `New booking request from ${bookerName}`,
       html: emailHtml,

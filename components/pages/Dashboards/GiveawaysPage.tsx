@@ -59,7 +59,7 @@ export default function GiveawaysPage() {
     const giveawaysRef = collection(db, "giveaways");
     const q = query(
       giveawaysRef,
-      where("creatorId", "==", creator.uid),
+      where("creatorId", "==", creator.handle),
       orderBy("createdAt", "desc")
     );
 

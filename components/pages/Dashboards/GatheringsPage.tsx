@@ -52,6 +52,7 @@ export default function GatheringsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [checkingIn, setCheckingIn] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
 
   const [formData, setFormData] = useState({
     title: "",
@@ -60,9 +61,11 @@ export default function GatheringsPage() {
     location: "",
     minSupportTier: 0,
     capacity: 20,
+    creatorId: creator?.uid,
+    active: true,
   });
   useEffect(() => {
-    if (!creator) return;
+    if (!creator?.uid) return;
 
     const q = query(
       collection(db, "creatorGatherings"),
@@ -80,33 +83,41 @@ export default function GatheringsPage() {
     });
 
     return () => unsubscribe();
-  }, [creator]);
+  }, [creator?.uid]);
 
-  const activeEvent = events[selectedEventIndex];
+  const upcomingEvents = events.filter((e) => e.status === "Upcoming");
+  const pastEvents = events.filter((e) => e.status !== "Upcoming");
+  const displayEvents = activeTab === "upcoming" ? upcomingEvents : pastEvents;
+  const activeEvent = displayEvents[selectedEventIndex];
+  const currentEventId = activeEvent?.id;
 
   useEffect(() => {
-    if (!activeEvent?.id) {
+    if (!currentEventId) {
       setAttendees([]);
       return;
     }
 
-    const fetchAttendees = async () => {
-      const attendanceRef = collection(db, "gatheringsAttendance");
-      const q = query(
-        attendanceRef,
-        where("gatheringId", "==", activeEvent.id),
-        orderBy("createdAt", "desc")
-      );
-      const snapshot = await getDocs(q);
+    let mounted = true;
+    const attendanceRef = collection(db, "gatheringsAttendance");
+    const q = query(
+      attendanceRef,
+      where("gatheringId", "==", currentEventId),
+      orderBy("createdAt", "desc"),
+    );
+
+    getDocs(q).then((snapshot) => {
+      if (!mounted) return;
       const attendeeData = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
       setAttendees(attendeeData);
-    };
+    });
 
-    fetchAttendees();
-  }, [activeEvent?.id]);
+    return () => {
+      mounted = false;
+    };
+  }, [currentEventId]);
 
   const handleCreate = async () => {
     if (!creator || !formData.title) return;
@@ -116,15 +127,16 @@ export default function GatheringsPage() {
       if (editingEvent) {
         await updateDoc(doc(db, "creatorGatherings", editingEvent.id), {
           ...formData,
+          status: formData.active ? "Upcoming" : "Disabled",
         });
         toast.success("Event updated!");
         setEditingEvent(null);
       } else {
         await addDoc(collection(db, "creatorGatherings"), {
-          creatorId: creator.uid,
           ...formData,
+          creatorId: creator?.uid,
           attendeesCount: 0,
-          status: "Upcoming",
+          status: formData.active ? "Upcoming" : "Disabled",
           createdAt: serverTimestamp(),
         });
         toast.success("Event created!");
@@ -137,6 +149,8 @@ export default function GatheringsPage() {
         location: "",
         minSupportTier: 0,
         capacity: 20,
+        creatorId: creator?.uid,
+        active: true,
       });
     } catch (e) {
       console.error(e);
@@ -151,7 +165,9 @@ export default function GatheringsPage() {
       await updateDoc(doc(db, "creatorGatherings", eventId), {
         status: newStatus,
       });
-      toast.success(`Event ${newStatus === "Upcoming" ? "enabled" : "disabled"}`);
+      toast.success(
+        `Event ${newStatus === "Upcoming" ? "enabled" : "disabled"}`,
+      );
     } catch (error) {
       console.error("Status update error:", error);
       toast.error("Failed to update status");
@@ -182,7 +198,9 @@ export default function GatheringsPage() {
       time: event.time || "",
       location: event.location || "",
       minSupportTier: event.minSupportTier || 0,
-      capacity: event.capacity || 20,
+      capacity: event.capacity || 0,
+      creatorId: event.creatorId || creator?.uid,
+      active: event.status === "Upcoming",
     });
     setIsCreating(true);
   };
@@ -204,6 +222,7 @@ export default function GatheringsPage() {
           creatorName: creator?.name,
           eventTitle: activeEvent.title,
           eventDate: activeEvent.date,
+          eventTime: activeEvent.time,
           eventLocation: activeEvent.location,
         }),
       }).catch(() => {});
@@ -217,13 +236,78 @@ export default function GatheringsPage() {
     }
   };
 
+  const handleDeclineCheckIn = async (attendee: any) => {
+    setCheckingIn(attendee.id);
+    try {
+      await updateDoc(doc(db, "gatheringsAttendance", attendee.id), {
+        checkedIn: false,
+        checkInDeclined: true,
+        checkInDeclinedAt: serverTimestamp(),
+        checkInNote: "",
+      });
+
+      fetch("/api/comms/email/gathering/declined", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          supporterEmail: attendee.supporterEmail,
+          supporterName: attendee.supporterName,
+          creatorName: creator?.name,
+          eventTitle: activeEvent.title,
+          eventDate: activeEvent.date,
+        }),
+      }).catch(() => {});
+
+      toast.success(`${attendee.supporterName} declined`);
+    } catch (error) {
+      console.error("Decline error:", error);
+      toast.error("Failed to update");
+    } finally {
+      setCheckingIn(null);
+    }
+  };
+
+  const handleUndoCheckIn = async (attendee: any) => {
+    setCheckingIn(attendee.id);
+    try {
+      await updateDoc(doc(db, "gatheringsAttendance", attendee.id), {
+        checkedIn: false,
+        checkInDeclined: false,
+        checkedInAt: null,
+        checkInDeclinedAt: null,
+      });
+
+      const previousStatus = attendee.checkedIn ? "check-in" : "decline";
+      fetch("/api/comms/email/gathering/undo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          supporterEmail: attendee.supporterEmail,
+          supporterName: attendee.supporterName,
+          creatorName: creator?.name,
+          eventTitle: activeEvent?.title,
+          eventDate: activeEvent?.date,
+          action: `undo_${previousStatus}`,
+        }),
+      }).catch(() => {});
+
+      toast.success(`Undo for ${attendee.supporterName}`);
+    } catch (error) {
+      console.error("Undo error:", error);
+      toast.error("Failed to undo");
+    } finally {
+      setCheckingIn(null);
+    }
+  };
+
   const filteredAttendees = attendees.filter(
     (a) =>
       a.supporterName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.supporterEmail?.toLowerCase().includes(searchQuery.toLowerCase())
+      a.supporterEmail?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const checkedInCount = attendees.filter((a) => a.checkedIn).length;
+  const declinedCount = attendees.filter((a) => a.checkInDeclined).length;
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] flex text-slate-900">
@@ -246,11 +330,36 @@ export default function GatheringsPage() {
       <main className="flex-1 flex flex-col md:flex-row">
         <div className="flex-1 p-8 border-r border-slate-100 overflow-y-auto">
           <div className="flex justify-between items-center mb-8">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400">
-              All Events
-            </h3>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setActiveTab("upcoming");
+                  setSelectedEventIndex(0);
+                }}
+                className={`px-4 py-2 rounded-lg font-bold text-sm transition ${
+                  activeTab === "upcoming"
+                    ? "bg-slate-900 text-white"
+                    : "bg-white text-slate-500 hover:bg-slate-50"
+                }`}
+              >
+                Upcoming
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("past");
+                  setSelectedEventIndex(0);
+                }}
+                className={`px-4 py-2 rounded-lg font-bold text-sm transition ${
+                  activeTab === "past"
+                    ? "bg-slate-900 text-white"
+                    : "bg-white text-slate-500 hover:bg-slate-50"
+                }`}
+              >
+                Past
+              </button>
+            </div>
             <span className="text-xs font-bold text-orange-600">
-              {events.filter(e => e.status === "Upcoming").length} Active
+              {upcomingEvents.length} Active
             </span>
           </div>
 
@@ -261,18 +370,18 @@ export default function GatheringsPage() {
               <div className="text-center py-12 bg-white rounded-lg border border-slate-100">
                 <Calendar className="mx-auto text-slate-200 mb-4" size={40} />
                 <p className="text-slate-500 font-medium">No events yet</p>
-                <p className="text-sm text-slate-400 mt-2">Create your first event to get started</p>
+                <p className="text-sm text-slate-400 mt-2">
+                  Create your first event to get started
+                </p>
               </div>
             ) : (
-              events.map((event, index) => (
-                <button
+              displayEvents.map((event, index) => (
+                <div
                   key={event.id}
                   onClick={() => setSelectedEventIndex(index)}
-                  className={`w-full text-left p-6 rounded-lg border transition-all ${
+                  className={`w-full text-left p-6 rounded-lg border transition-all cursor-pointer ${
                     selectedEventIndex === index
                       ? "bg-white border-orange-500 shadow-xl scale-[1.01]"
-                      : event.status !== "Upcoming"
-                      ? "bg-slate-50 border-slate-200 opacity-60"
                       : "bg-white border-slate-200 hover:border-slate-300"
                   }`}
                 >
@@ -290,14 +399,23 @@ export default function GatheringsPage() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleUpdateStatus(event.id, event.status === "Upcoming" ? "Disabled" : "Upcoming");
+                          handleUpdateStatus(
+                            event.id,
+                            event.status === "Upcoming"
+                              ? "Disabled"
+                              : "Upcoming",
+                          );
                         }}
                         className={`text-[10px] font-bold px-2 py-1 rounded-lg uppercase transition ${
                           event.status === "Upcoming"
                             ? "bg-green-50 text-green-600 hover:bg-green-100"
                             : "bg-slate-200 text-slate-500 hover:bg-slate-300"
                         }`}
-                        title={event.status === "Upcoming" ? "Click to disable" : "Click to enable"}
+                        title={
+                          event.status === "Upcoming"
+                            ? "Click to disable"
+                            : "Click to enable"
+                        }
                       >
                         {event.status}
                       </button>
@@ -321,7 +439,7 @@ export default function GatheringsPage() {
                       }
                     />
                   </div>
-                </button>
+                </div>
               ))
             )}
           </div>
@@ -356,8 +474,16 @@ export default function GatheringsPage() {
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                       Entry Requirement
                     </p>
-                    <span className="bg-green-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">
-                      {attendees.length}{activeEvent.capacity ? `/${activeEvent.capacity}` : ""} spots
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                        activeEvent.status === "Upcoming"
+                          ? "bg-green-500"
+                          : "bg-red-500"
+                      }`}
+                    >
+                      {activeEvent.status === "Upcoming"
+                        ? "Active"
+                        : "Inactive"}
                     </span>
                   </div>
                   <h2 className="text-xl font-bold">
@@ -365,6 +491,37 @@ export default function GatheringsPage() {
                       ? `Min. Support: ${activeEvent.minSupportTier} RWF`
                       : "Open to Everyone"}
                   </h2>
+                  <div className="mt-4 pt-4 border-t border-slate-700 flex items-center justify-between">
+                    <div className="text-sm">
+                      <span className="text-green-400 font-bold">
+                        {attendees.length}
+                      </span>{" "}
+                      <span className="text-slate-400">
+                        {activeEvent.capacity
+                          ? `/ ${activeEvent.capacity} spots`
+                          : "registered"}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() =>
+                        handleUpdateStatus(
+                          activeEvent.id,
+                          activeEvent.status === "Upcoming"
+                            ? "Disabled"
+                            : "Upcoming",
+                        )
+                      }
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
+                        activeEvent.status === "Upcoming"
+                          ? "bg-red-500 text-white hover:bg-red-600"
+                          : "bg-green-500 text-white hover:bg-green-600"
+                      }`}
+                    >
+                      {activeEvent.status === "Upcoming"
+                        ? "Deactivate"
+                        : "Activate"}
+                    </button>
+                  </div>
                 </div>
 
                 {activeEvent.capacity && (
@@ -383,7 +540,9 @@ export default function GatheringsPage() {
 
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-bold text-sm">RSVPs ({attendees.length})</h4>
+                    <h4 className="font-bold text-sm">
+                      RSVPs ({attendees.length})
+                    </h4>
                   </div>
                   {attendees.length > 0 ? (
                     <div className="space-y-3 max-h-64 overflow-y-auto">
@@ -400,7 +559,9 @@ export default function GatheringsPage() {
                               {attendee.supporterName}
                             </p>
                             <p className="text-[10px] text-slate-400">
-                              {attendee.createdAt?.toDate?.().toLocaleDateString() || "Recently"}
+                              {attendee.createdAt
+                                ?.toDate?.()
+                                .toLocaleDateString() || "Recently"}
                             </p>
                           </div>
                         </div>
@@ -408,7 +569,10 @@ export default function GatheringsPage() {
                     </div>
                   ) : (
                     <div className="text-center py-8 bg-slate-50 rounded-lg">
-                      <Users size={24} className="mx-auto text-slate-300 mb-2" />
+                      <Users
+                        size={24}
+                        className="mx-auto text-slate-300 mb-2"
+                      />
                       <p className="text-sm text-slate-400">No RSVPs yet</p>
                     </div>
                   )}
@@ -448,8 +612,10 @@ export default function GatheringsPage() {
                       date: "",
                       time: "",
                       location: "",
+                      creatorId: creator?.uid,
                       minSupportTier: 0,
                       capacity: 20,
+                      active: true,
                     });
                   }}
                   className="p-2 hover:bg-slate-100 rounded-full transition"
@@ -504,6 +670,7 @@ export default function GatheringsPage() {
                   <input
                     type="number"
                     placeholder="Min. RWF support to qualify (0 for all)"
+                    value={formData.minSupportTier || ""}
                     className="w-full bg-slate-50 p-4 rounded-lg text-sm outline-none font-bold focus:ring-2 focus:ring-orange-100"
                     onChange={(e) =>
                       setFormData({
@@ -525,6 +692,7 @@ export default function GatheringsPage() {
                   <input
                     type="number"
                     placeholder="Max attendees (leave empty for unlimited)"
+                    value={formData.capacity || ""}
                     className="w-full bg-slate-50 p-4 rounded-lg text-sm outline-none font-bold focus:ring-2 focus:ring-orange-100"
                     onChange={(e) =>
                       setFormData({
@@ -536,6 +704,30 @@ export default function GatheringsPage() {
                   <p className="text-[10px] text-slate-400">
                     Set a limit on how many supporters can RSVP.
                   </p>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                  <div>
+                    <p className="font-bold text-sm">Publish Event</p>
+                    <p className="text-xs text-slate-400">
+                      Make visible to supporters
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData({ ...formData, active: !formData.active })
+                    }
+                    className={`w-12 h-6 rounded-full transition-colors ${
+                      formData.active ? "bg-green-500" : "bg-slate-300"
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                        formData.active ? "translate-x-6" : "translate-x-0.5"
+                      }`}
+                    />
+                  </button>
                 </div>
 
                 <button
@@ -576,7 +768,13 @@ export default function GatheringsPage() {
                 <div>
                   <h2 className="text-xl font-bold">Check-in Guests</h2>
                   <p className="text-sm text-slate-500">
-                    {checkedInCount} / {attendees.length} checked in
+                    {checkedInCount}/{attendees.length} checked in
+                    {declinedCount > 0 && (
+                      <span className="text-red-500">
+                        {" "}
+                        · {declinedCount} declined
+                      </span>
+                    )}
                   </p>
                 </div>
                 <button
@@ -592,7 +790,10 @@ export default function GatheringsPage() {
 
               <div className="p-6">
                 <div className="relative">
-                  <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+                  <Search
+                    size={18}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+                  />
                   <input
                     type="text"
                     placeholder="Search by name or email..."
@@ -635,27 +836,60 @@ export default function GatheringsPage() {
                         </div>
                         <div>
                           <p className="font-bold">{attendee.supporterName}</p>
-                          <p className="text-xs text-slate-400">{attendee.supporterEmail}</p>
+                          <p className="text-xs text-slate-400">
+                            {attendee.supporterEmail}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         {attendee.checkedIn ? (
-                          <span className="flex items-center gap-1 text-green-600 text-sm font-bold">
-                            <Check size={16} /> Checked In
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="flex items-center gap-1 text-green-600 text-sm font-bold">
+                              <Check size={16} /> Checked In
+                            </span>
+                            <button
+                              onClick={() => handleUndoCheckIn(attendee)}
+                              disabled={checkingIn === attendee.id}
+                              className="text-xs text-slate-400 hover:text-slate-600 underline"
+                            >
+                              Undo
+                            </button>
+                          </div>
+                        ) : attendee.checkInDeclined ? (
+                          <div className="flex items-center gap-2">
+                            <span className="flex items-center gap-1 text-red-500 text-sm font-bold">
+                              <X size={16} /> Declined
+                            </span>
+                            <button
+                              onClick={() => handleUndoCheckIn(attendee)}
+                              disabled={checkingIn === attendee.id}
+                              className="text-xs text-slate-400 hover:text-slate-600 underline"
+                            >
+                              Undo
+                            </button>
+                          </div>
                         ) : (
-                          <button
-                            onClick={() => handleCheckIn(attendee)}
-                            disabled={checkingIn === attendee.id}
-                            className="flex items-center gap-1 bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-orange-600 transition disabled:opacity-50"
-                          >
-                            {checkingIn === attendee.id ? (
-                              <Loader size={14} className="animate-spin" />
-                            ) : (
-                              <Check size={14} />
-                            )}
-                            Check In
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleCheckIn(attendee)}
+                              disabled={checkingIn === attendee.id}
+                              className="flex items-center gap-1 bg-green-500 text-white px-3 py-2 rounded-lg text-sm font-bold hover:bg-green-600 transition disabled:opacity-50"
+                            >
+                              {checkingIn === attendee.id ? (
+                                <Loader size={14} className="animate-spin" />
+                              ) : (
+                                <Check size={14} />
+                              )}
+                              Check In
+                            </button>
+                            <button
+                              onClick={() => handleDeclineCheckIn(attendee)}
+                              disabled={checkingIn === attendee.id}
+                              className="flex items-center gap-1 bg-red-100 text-red-600 px-3 py-2 rounded-lg text-sm font-bold hover:bg-red-200 transition disabled:opacity-50"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>

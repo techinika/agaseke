@@ -61,7 +61,7 @@ export default function CreatorDashboard() {
 
         const contentQ = query(
           collection(db, "creatorContent"),
-          where("creatorId", "==", creator?.uid),
+          where("creatorId", "==", creator?.handle),
           orderBy("createdAt", "desc"),
           limit(5),
         );
@@ -112,7 +112,7 @@ export default function CreatorDashboard() {
     };
 
     fetchDashboardData();
-  }, [creator]);
+  }, [creator?.handle]);
 
   if (loading)
     return (

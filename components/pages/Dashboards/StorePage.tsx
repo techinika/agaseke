@@ -61,7 +61,7 @@ export default function StorePage() {
     const productsRef = collection(db, "storeProducts");
     const q = query(
       productsRef,
-      where("creatorId", "==", creator.uid),
+      where("creatorId", "==", creator?.uid),
       orderBy("createdAt", "desc")
     );
 
@@ -76,7 +76,7 @@ export default function StorePage() {
     const ordersRef = collection(db, "storeOrders");
     const ordersQuery = query(
       ordersRef,
-      where("creatorId", "==", creator.uid),
+      where("creatorId", "==", creator?.uid),
       orderBy("createdAt", "desc")
     );
 
@@ -91,7 +91,7 @@ export default function StorePage() {
     const couponsRef = collection(db, "storeCoupons");
     const couponsQuery = query(
       couponsRef,
-      where("creatorId", "==", creator.uid),
+      where("creatorId", "==", creator?.uid),
       orderBy("createdAt", "desc")
     );
 
@@ -665,40 +665,57 @@ function ProductModal({
 
     setSaving(true);
     try {
-      const productData = {
+      console.log("Saving product with creatorId:", creatorId, "formData:", formData);
+      
+      const productData: Record<string, any> = {
         creatorId,
         name: formData.name,
         description: formData.description,
         price: formData.price,
         type: formData.type,
-        stock: formData.type === "physical" ? formData.stock : 0,
-        imageUrl: formData.imageUrl,
-        fileUrl: formData.fileUrl,
-        fileType: formData.type === "digital" ? formData.fileType : undefined,
-        sizes: formData.type === "physical" ? formData.sizes : undefined,
         active: formData.active,
-        discount: {
-          enabled: formData.discountEnabled,
-          percentage: formData.discountPercentage,
-          code: formData.discountCode || undefined,
-        },
-        bulkPricing: formData.bulkPricing,
         updatedAt: serverTimestamp(),
       };
+
+      if (formData.imageUrl) productData.imageUrl = formData.imageUrl;
+      if (formData.fileUrl) productData.fileUrl = formData.fileUrl;
+      if (formData.type === "physical") {
+        productData.stock = formData.stock || 0;
+        if (formData.sizes?.length > 0) productData.sizes = formData.sizes;
+      }
+      if (formData.type === "digital" && formData.fileType) {
+        productData.fileType = formData.fileType;
+      }
+      if (formData.discountEnabled && formData.discountPercentage) {
+        productData.discount = {
+          enabled: true,
+          percentage: formData.discountPercentage,
+        };
+        if (formData.discountCode) {
+          productData.discount.code = formData.discountCode;
+        }
+      }
+      if (formData.bulkPricing?.length > 0) {
+        productData.bulkPricing = formData.bulkPricing;
+      }
+
+      console.log("productData to save:", productData);
 
       if (product) {
         await updateDoc(doc(db, "storeProducts", product.id), productData);
         toast.success("Product updated!");
       } else {
-        await addDoc(collection(db, "storeProducts"), {
+        const docRef = await addDoc(collection(db, "storeProducts"), {
           ...productData,
           createdAt: serverTimestamp(),
         });
+        console.log("Product created:", docRef.id);
         toast.success("Product created!");
       }
       onClose();
     } catch (error) {
-      toast.error("Failed to save product");
+      console.error("Save product error:", error);
+      toast.error(`Failed to save product: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setSaving(false);
     }

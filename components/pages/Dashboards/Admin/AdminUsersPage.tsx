@@ -329,7 +329,7 @@ export default function AdminUsersPage() {
                           )}
                           {user.type === "creator" && (
                             <a
-                              href={`/${user.id}`}
+                              href={`/${user.username || user.id}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition"
@@ -416,7 +416,7 @@ export default function AdminUsersPage() {
                   )}
                   {selectedUser.type === "creator" && (
                     <a
-                      href={`/${selectedUser.id}`}
+                      href={`/${selectedUser.username || selectedUser.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex-1 py-3 bg-slate-900 text-white rounded-lg font-bold text-sm hover:bg-slate-800 transition text-center"

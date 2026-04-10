@@ -81,7 +81,7 @@ export default function MessagesPage() {
     const chatroomsRef = collection(db, "chatrooms");
     const q = query(
       chatroomsRef,
-      where("creatorId", "==", creator.uid),
+      where("creatorId", "==", creator.handle),
       orderBy("updatedAt", "desc")
     );
 
