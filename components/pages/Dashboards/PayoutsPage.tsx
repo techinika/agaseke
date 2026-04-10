@@ -48,11 +48,9 @@ export default function PayoutsPage() {
 
     const qPayouts = query(
       collection(db, "payouts"),
-      where("creatorId", "==", creator.handle),
+      where("creatorUid", "==", creator.uid),
       orderBy("createdAt", "desc"),
     );
-
-    console.log(qPayouts)
 
     const qRequests = query(
       collection(db, "withdrawRequests"),
@@ -61,6 +59,8 @@ export default function PayoutsPage() {
     );
 
     const unsubPayouts = onSnapshot(qPayouts, (snap) => {
+      console.log(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+
       setPayouts(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
       setLoading(false);
     });
@@ -73,7 +73,7 @@ export default function PayoutsPage() {
       unsubPayouts();
       unsubRequests();
     };
-  }, [creator]);
+  }, []);
 
   const handleWithdrawInit = () => {
     if (!isVerified) {
