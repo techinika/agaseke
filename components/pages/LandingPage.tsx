@@ -71,6 +71,7 @@ export default function LandingPage() {
             username === "auth" ||
             username === "help-center" ||
             username === "api" ||
+            username === "test" ||
             username === "profile" ||
             username === "payout" ||
             username === "payout-policy" ||

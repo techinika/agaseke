@@ -33,6 +33,7 @@ import {
   ArrowDownRight,
   RefreshCw,
   Activity,
+  Clock,
 } from "lucide-react";
 import Loading from "@/app/loading";
 import { StatCard } from "@/components/parts/dashboard/StatCard";
@@ -45,6 +46,8 @@ export default function AdminDashboard() {
   const [processing, setProcessing] = useState(false);
   const [stats, setStats] = useState({
     totalPlatformIncome: 0,
+    totalPayoutsProcessed: 0,
+    totalPendingPayouts: 0,
     profileCount: 0,
     creatorCount: 0,
     totalViews: 0,
@@ -63,6 +66,7 @@ export default function AdminDashboard() {
   const [verifications, setVerifications] = useState<any[]>([]);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [visitorStats, setVisitorStats] = useState<{ today: number; week: number; month: number }>({ today: 0, week: 0, month: 0 });
+  const [monthlyData, setMonthlyData] = useState<{ month: string; income: number; payouts: number }[]>([]);
 
   const [modal, setModal] = useState<{
     show: boolean;
@@ -106,6 +110,79 @@ export default function AdminDashboard() {
       const ordersSnap = await getDocs(collection(db, "storeOrders"));
       const totalOrders = ordersSnap.size;
 
+      // Get total payouts processed (from payouts collection)
+      const payoutsSnap = await getDocs(collection(db, "payouts"));
+      let totalPayoutsProcessed = 0;
+      payoutsSnap.forEach((doc) => {
+        totalPayoutsProcessed += doc.data().amount || 0;
+      });
+
+      // Get total pending payouts (sum of pendingPayout from all creators + pending withdrawal requests)
+      let totalPendingPayouts = 0;
+      creatorsSnap.forEach((doc) => {
+        totalPendingPayouts += doc.data().pendingPayout || 0;
+      });
+
+      // Get monthly data for charts from platformIncome and payouts collections
+      const platformIncomeSnap = await getDocs(collection(db, "platformIncome"));
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      const monthlyStats: { month: string; income: number; payouts: number }[] = [];
+      const allPlatformIncome = platformIncomeSnap.docs.map(d => d.data());
+      const allPayouts = payoutsSnap.docs.map(d => d.data());
+
+      // Initialize last 6 months with 0
+      for (let i = 5; i >= 0; i--) {
+        const monthIndex = (currentMonth - i + 12) % 12;
+        const yearOffset = currentMonth - i < 0 ? -1 : 0;
+        const year = currentYear + yearOffset;
+        const monthName = months[monthIndex];
+        
+        let monthIncome = 0;
+        let monthPayouts = 0;
+        
+        // Get platform income for this month
+        allPlatformIncome.forEach((income) => {
+          const createdAt = income.createdAt;
+          if (createdAt && typeof createdAt.toDate === 'function') {
+            const docDate = createdAt.toDate();
+            if (docDate.getMonth() === monthIndex && docDate.getFullYear() === year) {
+              monthIncome += income.amount || 0;
+            }
+          }
+        });
+        
+        // Get payouts for this month
+        allPayouts.forEach((payout) => {
+          const createdAt = payout.createdAt;
+          if (createdAt && typeof createdAt.toDate === 'function') {
+            const docDate = createdAt.toDate();
+            if (docDate.getMonth() === monthIndex && docDate.getFullYear() === year) {
+              monthPayouts += payout.amount || 0;
+            }
+          }
+        });
+        
+        monthlyStats.push({ month: monthName, income: monthIncome, payouts: monthPayouts });
+      }
+      setMonthlyData(monthlyStats);
+
+      // Get transaction counts by type from transactions collection
+      const transactionsSnap = await getDocs(collection(db, "transactions"));
+      const allTransactions = transactionsSnap.docs.map(d => d.data());
+      let txSupports = 0;
+      let txProducts = 0;
+      allTransactions.forEach((tx) => {
+        if (tx.status === 'successful' || tx.status === 'success') {
+          if (tx.type === 'support') {
+            txSupports += 1;
+          } else if (tx.type === 'product') {
+            txProducts += 1;
+          }
+        }
+      });
+
       // Top earners
       const earnersQuery = query(
         collection(db, "creators"),
@@ -145,6 +222,8 @@ export default function AdminDashboard() {
 
       setStats({
         totalPlatformIncome: totalIncome,
+        totalPayoutsProcessed,
+        totalPendingPayouts,
         profileCount: profilesSnap.size,
         creatorCount: creatorsSnap.size,
         totalViews,
@@ -313,22 +392,22 @@ export default function AdminDashboard() {
             trend={stats.recentGrowth > 0 ? "+" + stats.recentGrowth + "%" : undefined}
           />
           <StatCard
-            label="Total Profiles"
-            value={stats.profileCount}
-            icon={<Users className="text-blue-600" />}
-            color="bg-blue-50"
+            label="Payouts Processed"
+            value={`${stats.totalPayoutsProcessed.toLocaleString()} RWF`}
+            icon={<CheckCircle2 className="text-green-600" />}
+            color="bg-green-50"
           />
           <StatCard
-            label="Total Creators"
-            value={stats.creatorCount}
-            icon={<UserCheck className="text-orange-600" />}
-            color="bg-orange-50"
+            label="Pending Payouts"
+            value={`${stats.totalPendingPayouts.toLocaleString()} RWF`}
+            icon={<Clock className="text-amber-600" />}
+            color="bg-amber-50"
           />
           <StatCard
-            label="Total Views"
+            label="Profile Visits"
             value={stats.totalViews.toLocaleString()}
-            icon={<Eye className="text-orange-600" />}
-            color="bg-orange-50"
+            icon={<Eye className="text-purple-600" />}
+            color="bg-purple-50"
           />
         </div>
 
@@ -336,39 +415,114 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
           <div className="bg-white rounded-xl border border-slate-100 p-4">
             <div className="flex items-center gap-2 mb-2">
+              <Users size={14} className="text-blue-600" />
+              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Profiles</p>
+            </div>
+            <p className="text-xl font-bold">{stats.profileCount}</p>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-100 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <UserCheck size={14} className="text-orange-600" />
+              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Creators</p>
+            </div>
+            <p className="text-xl font-bold">{stats.creatorCount}</p>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-100 p-4">
+            <div className="flex items-center gap-2 mb-2">
               <ShoppingBag size={14} className="text-cyan-600" />
+              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Store Orders</p>
+            </div>
+            <p className="text-xl font-bold">{stats.totalOrders}</p>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-100 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Gift size={14} className="text-pink-600" />
+              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Supports</p>
+            </div>
+            <p className="text-xl font-bold">{stats.totalSupports}</p>
+          </div>
+          <div className="bg-white rounded-xl border border-slate-100 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <ShoppingBag size={14} className="text-amber-600" />
               <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Products</p>
             </div>
             <p className="text-xl font-bold">{stats.totalProducts}</p>
           </div>
           <div className="bg-white rounded-xl border border-slate-100 p-4">
             <div className="flex items-center gap-2 mb-2">
-              <Gift size={14} className="text-pink-600" />
+              <Gift size={14} className="text-purple-600" />
               <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Giveaways</p>
             </div>
             <p className="text-xl font-bold">{stats.totalGiveaways}</p>
           </div>
-          <div className="bg-white rounded-xl border border-slate-100 p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <ShoppingBag size={14} className="text-amber-600" />
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Orders</p>
+        </div>
+
+        {/* CHARTS SECTION */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          <div className="bg-white rounded-xl border border-slate-100 p-6">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-6">
+              Platform Income vs Payouts (Last 6 Months)
+            </h3>
+            <div className="flex items-end justify-between gap-2 h-48">
+              {monthlyData.map((data, index) => {
+                const maxValue = Math.max(...monthlyData.map(d => Math.max(d.income, d.payouts)));
+                const incomeHeight = (data.income / maxValue) * 100;
+                const payoutHeight = (data.payouts / maxValue) * 100;
+                return (
+                  <div key={index} className="flex flex-col items-center flex-1 gap-2">
+                    <div className="w-full flex items-end justify-center gap-1 h-36">
+                      <div
+                        className="w-6 bg-emerald-500 rounded-t"
+                        style={{ height: `${incomeHeight}%` }}
+                        title={`Income: ${data.income.toLocaleString()} RWF`}
+                      />
+                      <div
+                        className="w-6 bg-orange-500 rounded-t"
+                        style={{ height: `${payoutHeight}%` }}
+                        title={`Payouts: ${data.payouts.toLocaleString()} RWF`}
+                      />
+                    </div>
+                    <span className="text-xs font-bold text-slate-400">{data.month}</span>
+                  </div>
+                );
+              })}
             </div>
-            <p className="text-xl font-bold">{stats.totalOrders}</p>
+            <div className="flex items-center gap-6 mt-4 justify-center">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-emerald-500 rounded" />
+                <span className="text-xs text-slate-500">Platform Income</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-orange-500 rounded" />
+                <span className="text-xs text-slate-500">Payouts</span>
+              </div>
+            </div>
           </div>
-          <div className="bg-white rounded-xl border border-slate-100 p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <MessageSquare size={14} className="text-orange-600" />
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Supports</p>
+
+          <div className="bg-white rounded-xl border border-slate-100 p-6">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-6">
+              Transaction Overview
+            </h3>
+            <div className="space-y-6">
+              <div>
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="font-medium">Support Transactions</span>
+                  <span className="font-bold">{stats.totalSupports}</span>
+                </div>
+                <div className="w-full bg-slate-100 rounded-full h-3">
+                  <div className="bg-pink-500 h-3 rounded-full" style={{ width: `${Math.min((stats.totalSupports / Math.max(stats.totalSupports + stats.totalOrders, 1)) * 100, 100)}%` }} />
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="font-medium">Product Transactions</span>
+                  <span className="font-bold">{stats.totalOrders}</span>
+                </div>
+                <div className="w-full bg-slate-100 rounded-full h-3">
+                  <div className="bg-cyan-500 h-3 rounded-full" style={{ width: `${Math.min((stats.totalOrders / Math.max(stats.totalSupports + stats.totalOrders, 1)) * 100, 100)}%` }} />
+                </div>
+              </div>
             </div>
-            <p className="text-xl font-bold">{stats.totalSupports}</p>
-          </div>
-          <div className="bg-white rounded-xl border border-slate-100 p-4 col-span-2">
-            <div className="flex items-center gap-2 mb-2">
-              <Eye size={14} className="text-green-600" />
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Visitors Today</p>
-            </div>
-            <p className="text-xl font-bold">{visitorStats.today.toLocaleString()}</p>
-            <p className="text-[10px] text-slate-400">{visitorStats.week.toLocaleString()} this week</p>
           </div>
         </div>
 

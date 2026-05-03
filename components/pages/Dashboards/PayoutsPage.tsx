@@ -204,8 +204,8 @@ export default function PayoutsPage() {
                   {(creator?.totalEarnings || 0).toLocaleString()}{" "}
                   <span className="text-sm font-bold text-slate-300">RWF</span>
                 </h2>
-              </div>
-              <div className="bg-white p-8 rounded-lg border border-slate-100 shadow-sm">
+             </div>
+             <div className="bg-white p-8 rounded-lg border border-slate-100 shadow-sm">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">
                   Destination
                 </p>
@@ -227,6 +227,29 @@ export default function PayoutsPage() {
                   </span>
                 )}
               </div>
+            </div>
+
+            {/* Progress to Threshold */}
+            <div className="bg-white p-8 rounded-lg border border-slate-100 shadow-sm mb-10">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  Progress to Payout Threshold
+                </p>
+                <p className="text-sm font-bold text-slate-900">
+                  {pendingAmount.toLocaleString()} / {WITHDRAW_THRESHOLD.toLocaleString()} RWF
+                </p>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-3 mb-3">
+                <div
+                  className="bg-orange-600 h-3 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min((pendingAmount / WITHDRAW_THRESHOLD) * 100, 100)}%` }}
+                />
+              </div>
+              <p className="text-xs text-slate-500">
+                {pendingAmount >= WITHDRAW_THRESHOLD
+                  ? "You've reached the payout threshold! You can now request a withdrawal."
+                  : `You need ${(WITHDRAW_THRESHOLD - pendingAmount).toLocaleString()} RWF more to reach the payout threshold.`}
+              </p>
             </div>
 
             {/* History Section */}

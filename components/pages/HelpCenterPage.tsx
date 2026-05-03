@@ -17,11 +17,11 @@ const faqs = [
     questions: [
       {
         q: "How do I support a creator?",
-        a: "Simply visit a creator's profile, click 'Support', and enter the amount you wish to contribute. You will be prompted to complete the transaction via MoMo.",
+        a: "Simply visit a creator's profile, click 'Gift', and enter the amount you wish to contribute. You will be prompted to complete the transaction via MoMo.",
       },
       {
         q: "Is my payment secure?",
-        a: "Yes. We use standard mobile money gateways and do not store your private financial PINs. Transactions are processed directly through your service provider.",
+        a: "Yes. We use standard payment gateways (PayPack, Pesapal) and do not store your private financial PINs. Transactions are processed directly through your service provider.",
       },
       {
         q: "Can I get a refund?",
