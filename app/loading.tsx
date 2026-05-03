@@ -1,27 +1,41 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
+
 export default function Loading() {
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white">
-      <div className="flex flex-col items-center gap-8">
-        <div className="flex flex-col items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-slate-900 rounded flex items-center justify-center">
-              <span className="text-white text-lg font-bold">a</span>
-            </div>
-            <span className="text-xl font-bold text-slate-900">agaseke.me</span>
+      <div className="flex flex-col items-center gap-10">
+        {/* Logo with pulse animation */}
+        <div className="relative">
+          <div className="w-14 h-14 bg-slate-900 rounded-xl flex items-center justify-center shadow-xl">
+            <span className="text-white text-2xl font-bold">a</span>
+          </div>
+          <div className="absolute inset-0 rounded-xl bg-orange-500 animate-ping opacity-20" />
+        </div>
+
+        {/* Brand text */}
+        <div className="flex flex-col items-center gap-3">
+          <span className="text-2xl font-bold text-slate-900 tracking-tight">agaseke.me</span>
+          
+          {/* Loading indicator */}
+          <div className="flex items-center gap-3">
+            <Loader2 className="w-5 h-5 text-orange-600 animate-spin" />
+            <span className="text-base font-medium text-slate-500">Loading...</span>
           </div>
         </div>
 
+        {/* Animated dots */}
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-orange-200 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
-          <div className="w-2 h-2 bg-orange-200 rounded-full animate-pulse" style={{ animationDelay: '200ms' }} />
-          <div className="w-2 h-2 bg-orange-200 rounded-full animate-pulse" style={{ animationDelay: '400ms' }} />
+          <div className="w-2 h-2 bg-orange-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+          <div className="w-2 h-2 bg-orange-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+          <div className="w-2 h-2 bg-orange-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
         </div>
       </div>
 
-      <div className="absolute bottom-8">
-        <p className="text-xs font-medium text-slate-400">
+      {/* Footer text */}
+      <div className="absolute bottom-10">
+        <p className="text-sm font-medium text-slate-400">
           Audience Monetization Platform
         </p>
       </div>
