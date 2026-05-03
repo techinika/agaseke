@@ -50,7 +50,9 @@ export default function PartnersPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingPartner, setEditingPartner] = useState<Partner | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [deletingPartnerId, setDeletingPartnerId] = useState<string | null>(null);
+  const [deletingPartnerId, setDeletingPartnerId] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!creator?.uid) return;
@@ -59,7 +61,7 @@ export default function PartnersPage() {
     const q = query(
       partnersRef,
       where("creatorId", "==", creator.uid),
-      orderBy("createdAt", "desc")
+      orderBy("createdAt", "desc"),
     );
 
     const unsub = onSnapshot(q, (snapshot) => {
@@ -91,7 +93,9 @@ export default function PartnersPage() {
       await updateDoc(doc(db, "creatorPartners", partner.id), {
         featured: !partner.featured,
       });
-      toast.success(partner.featured ? "Removed from featured" : "Added to featured");
+      toast.success(
+        partner.featured ? "Removed from featured" : "Added to featured",
+      );
     } catch (error) {
       toast.error("Failed to update");
     }
@@ -106,27 +110,26 @@ export default function PartnersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] flex text-slate-900">
-      <aside className="w-64 bg-white border-r border-slate-200 hidden md:block p-6">
-        <div className="flex items-center justify-between mb-8">
+    <div className="min-h-screen bg-[#F9FAFB] flex flex-col text-slate-900">
+      <aside className="w-full bg-white border-b border-slate-200 hidden md:flex items-center justify-between p-6">
+        <div className="flex items-center gap-4">
           <button
             onClick={() => window.history.back()}
             className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition font-bold text-xs uppercase tracking-widest"
           >
             <ArrowLeft size={16} /> Back
           </button>
-          <button
-            onClick={() => {
-              setEditingPartner(null);
-              setShowModal(true);
-            }}
-            className="p-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition"
-            title="Add Partner"
-          >
-            <Plus size={16} />
-          </button>
+          <h2 className="text-xl font-bold uppercase">Partners</h2>
         </div>
-        <h2 className="text-xl font-bold uppercase">Partners</h2>
+        <button
+          onClick={() => {
+            setEditingPartner(null);
+            setShowModal(true);
+          }}
+          className="bg-orange-600 text-white px-6 py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:bg-orange-700 transition shadow-lg"
+        >
+          <Plus size={18} /> Add Partner
+        </button>
       </aside>
 
       <main className="flex-1 p-8">
@@ -135,7 +138,8 @@ export default function PartnersPage() {
             Your Partners
           </h3>
           <p className="text-slate-500">
-            Manage brands and businesses you work with. Featured partners will be highlighted on your public profile.
+            Manage brands and businesses you work with. Featured partners will
+            be highlighted on your public profile.
           </p>
         </div>
 
@@ -159,7 +163,9 @@ export default function PartnersPage() {
               <div
                 key={partner.id}
                 className={`bg-white rounded-xl border overflow-hidden ${
-                  partner.featured ? "border-orange-500 shadow-lg" : "border-slate-100"
+                  partner.featured
+                    ? "border-orange-500 shadow-lg"
+                    : "border-slate-100"
                 }`}
               >
                 {partner.featured && (
@@ -183,7 +189,9 @@ export default function PartnersPage() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-lg truncate">{partner.name}</h4>
+                      <h4 className="font-bold text-lg truncate">
+                        {partner.name}
+                      </h4>
                       {partner.website && (
                         <a
                           href={partner.website}
@@ -359,7 +367,10 @@ function PartnerModal({
           <h2 className="text-xl font-bold uppercase tracking-tight">
             {partner ? "Edit Partner" : "Add Partner"}
           </h2>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full">
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-slate-100 rounded-full"
+          >
             <X size={20} />
           </button>
         </div>
@@ -369,7 +380,11 @@ function PartnerModal({
             <div className="relative">
               <div className="w-24 h-24 bg-slate-100 rounded-lg overflow-hidden border-2 border-dashed border-slate-200">
                 {formData.logo ? (
-                  <img src={formData.logo} alt="Logo" className="w-full h-full object-cover" />
+                  <img
+                    src={formData.logo}
+                    alt="Logo"
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <Building2 size={32} className="text-slate-300" />
@@ -378,38 +393,59 @@ function PartnerModal({
               </div>
               <label className="absolute -bottom-2 -right-2 p-2 bg-orange-600 text-white rounded-lg shadow-lg cursor-pointer hover:bg-orange-700 transition">
                 <Upload size={14} />
-                <input type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" disabled={uploading} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  className="hidden"
+                  disabled={uploading}
+                />
               </label>
             </div>
           </div>
 
           <div>
-            <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Partner Name *</label>
+            <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+              Partner Name *
+            </label>
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, name: e.target.value }))
+              }
               className="w-full bg-slate-50 p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
               placeholder="e.g., Gym Master Rwanda"
             />
           </div>
 
           <div>
-            <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Website</label>
+            <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+              Website
+            </label>
             <input
               type="url"
               value={formData.website}
-              onChange={(e) => setFormData((prev) => ({ ...prev, website: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, website: e.target.value }))
+              }
               className="w-full bg-slate-50 p-4 rounded-lg text-sm font-medium outline-none focus:ring-2 focus:ring-orange-100"
               placeholder="https://example.com"
             />
           </div>
 
           <div>
-            <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Description</label>
+            <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+              Description
+            </label>
             <textarea
               value={formData.description}
-              onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  description: e.target.value,
+                }))
+              }
               className="w-full bg-slate-50 p-4 rounded-lg text-sm outline-none resize-none h-24 focus:ring-2 focus:ring-orange-100"
               placeholder="Brief description of the partnership..."
             />
@@ -417,7 +453,9 @@ function PartnerModal({
 
           <label className="flex items-center gap-3 cursor-pointer">
             <div
-              onClick={() => setFormData((prev) => ({ ...prev, featured: !prev.featured }))}
+              onClick={() =>
+                setFormData((prev) => ({ ...prev, featured: !prev.featured }))
+              }
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                 formData.featured ? "bg-orange-500" : "bg-slate-200"
               }`}
@@ -438,7 +476,11 @@ function PartnerModal({
             disabled={saving}
             className="w-full py-4 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            {saving ? <Loader size={18} className="animate-spin" /> : <Save size={18} />}
+            {saving ? (
+              <Loader size={18} className="animate-spin" />
+            ) : (
+              <Save size={18} />
+            )}
             {partner ? "Update Partner" : "Add Partner"}
           </button>
         </div>
