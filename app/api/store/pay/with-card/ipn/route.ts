@@ -178,7 +178,7 @@ export async function POST(req: Request) {
           creatorUid: txData.creatorUid,
           amount: creatorShare,
           txRef: OrderMerchantReference,
-          reason: "support",
+          reason: "product_sale",
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
