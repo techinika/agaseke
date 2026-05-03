@@ -6,6 +6,7 @@ export type ProductType = "digital" | "physical";
 export interface Product {
   id: string;
   creatorId: string;
+  creatorUid: string;
   name: string;
   description: string;
   price: number;

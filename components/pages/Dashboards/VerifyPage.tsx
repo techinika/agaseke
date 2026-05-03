@@ -45,7 +45,10 @@ export const VerificationPage = () => {
   const handleSendOTP = async () => {
     const phone = (document.getElementById("phoneInput") as HTMLInputElement)
       .value;
-    if (!phone) return alert("Enter phone number");
+    if (!phone) {
+      toast.error("Enter phone number");
+      return;
+    }
 
     try {
       const verifier = new RecaptchaVerifier(auth, "recaptcha-anchor", {
@@ -54,13 +57,18 @@ export const VerificationPage = () => {
       const result = await signInWithPhoneNumber(auth, phone, verifier);
       setConfirmationResult(result);
       setOtpSent(true);
+      toast.success("OTP sent to your phone");
     } catch (err) {
       console.error(err);
+      toast.error("Failed to send OTP");
     }
   };
 
   const handleVerifyOTP = async () => {
-    if (!confirmationResult || otpCode.length < 5) return;
+    if (!confirmationResult || otpCode.length < 5) {
+      toast.error("Please enter the complete OTP code");
+      return;
+    }
     try {
       await confirmationResult.confirm(otpCode);
       setPhoneVerified(true);
@@ -68,8 +76,10 @@ export const VerificationPage = () => {
       await updateDoc(doc(db, "creators", String(creator?.handle)), {
         phoneVerified: true,
       });
+      toast.success("Phone verified successfully!");
     } catch (err) {
-      alert("Invalid Code");
+      console.error(err);
+      toast.error("Invalid OTP code");
     }
   };
 

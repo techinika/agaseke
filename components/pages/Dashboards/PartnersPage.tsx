@@ -28,6 +28,7 @@ import {
   onSnapshot,
   serverTimestamp,
 } from "firebase/firestore";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 
@@ -49,6 +50,7 @@ export default function PartnersPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingPartner, setEditingPartner] = useState<Partner | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [deletingPartnerId, setDeletingPartnerId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!creator?.uid) return;
@@ -72,13 +74,15 @@ export default function PartnersPage() {
     return () => unsub();
   }, [creator?.handle]);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete this partner?")) return;
+  const handleDelete = async () => {
+    if (!deletingPartnerId) return;
     try {
-      await deleteDoc(doc(db, "creatorPartners", id));
+      await deleteDoc(doc(db, "creatorPartners", deletingPartnerId));
       toast.success("Partner deleted");
+      setDeletingPartnerId(null);
     } catch (error) {
-      toast.error("Failed to delete");
+      toast.error("Failed to delete partner");
+      setDeletingPartnerId(null);
     }
   };
 
@@ -220,7 +224,7 @@ export default function PartnersPage() {
                       <Edit size={14} />
                     </button>
                     <button
-                      onClick={() => handleDelete(partner.id)}
+                      onClick={() => setDeletingPartnerId(partner.id)}
                       className="p-2 text-red-400 hover:text-red-600 border border-red-100 rounded-lg transition"
                     >
                       <Trash2 size={14} />
@@ -243,6 +247,16 @@ export default function PartnersPage() {
           }}
         />
       )}
+
+      <ConfirmModal
+        isOpen={!!deletingPartnerId}
+        onClose={() => setDeletingPartnerId(null)}
+        onConfirm={handleDelete}
+        title="Delete Partner"
+        message="Are you sure you want to delete this partner? This action cannot be undone."
+        confirmText="Delete"
+        variant="danger"
+      />
     </div>
   );
 }
@@ -300,15 +314,24 @@ function PartnerModal({
 
     setSaving(true);
     try {
-      const partnerData = {
+      if (!formData.name.trim()) {
+        toast.error("Partner name is required");
+        setSaving(false);
+        return;
+      }
+
+      const partnerData: Record<string, unknown> = {
         creatorId,
         name: formData.name.trim(),
-        logo: formData.logo || undefined,
-        website: formData.website.trim() || undefined,
-        description: formData.description.trim() || undefined,
+        website: formData.website.trim() || null,
+        description: formData.description.trim() || null,
         featured: formData.featured,
         updatedAt: serverTimestamp(),
       };
+
+      if (formData.logo) {
+        partnerData.logo = formData.logo;
+      }
 
       if (partner) {
         await updateDoc(doc(db, "creatorPartners", partner.id), partnerData);
@@ -323,7 +346,7 @@ function PartnerModal({
       onClose();
     } catch (error) {
       console.error("Save error:", error);
-      toast.error("Failed to save");
+      toast.error("Failed to save partner");
     } finally {
       setSaving(false);
     }

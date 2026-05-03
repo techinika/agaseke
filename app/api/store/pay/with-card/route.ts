@@ -14,20 +14,57 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const {
-      amount,
-      email,
-      firstName,
-      lastName,
+      productId,
+      quantity,
+      buyerId,
+      buyerEmail,
+      buyerName,
+      selectedSize,
+      productPrice,
+      productName,
       creatorId,
       creatorUid,
-      supporterId,
-      message,
-      includeReferral,
-      referralUid,
-      referralId,
+      platformFeePayer,
     } = body;
 
-    // 1. Get Token
+    if (!buyerId) {
+      return NextResponse.json(
+        { error: "Authentication required. Please log in to purchase." },
+        { status: 401 }
+      );
+    }
+
+    if (!productId) {
+      return NextResponse.json(
+        { error: "Product ID is required" },
+        { status: 400 }
+      );
+    }
+
+    if (!creatorId || !creatorUid) {
+      return NextResponse.json(
+        { error: "Product creator not found" },
+        { status: 400 }
+      );
+    }
+
+    const platformSharePercentage = Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
+    const price = Number(productPrice) || 0;
+    const feePayer = platformFeePayer || "buyer";
+    const qty = Number(quantity) || 1;
+
+    let totalAmount = price * qty;
+    let platformFee = 0;
+    let creatorEarnings = price * qty;
+
+    if (feePayer === "buyer") {
+      platformFee = totalAmount * platformSharePercentage;
+      totalAmount = totalAmount + platformFee;
+    } else {
+      platformFee = totalAmount * platformSharePercentage;
+      creatorEarnings = totalAmount - platformFee;
+    }
+
     const authRes = await fetch(
       `${process.env.PESAPAL_URL}/api/Auth/RequestToken`,
       {
@@ -44,9 +81,9 @@ export async function POST(req: Request) {
     );
     const { token } = await authRes.json();
 
-    const merchantRef = `AGS-CARD-${Date.now()}`;
+    const merchantRef = `AGS-STORE-CARD-${Date.now()}`;
 
-    const ipnPath = `${config.baseUrl}/api/support/with-card/ipn`;
+    const ipnPath = `${config.baseUrl}/api/store/pay/with-card/ipn`;
 
     const ipnRes = await fetch(`${config.url}/api/URLSetup/RegisterIPN`, {
       method: "POST",
@@ -74,14 +111,14 @@ export async function POST(req: Request) {
         body: JSON.stringify({
           id: merchantRef,
           currency: "RWF",
-          amount: Number(amount),
-          description: `Support for ${creatorId}`,
+          amount: Number(totalAmount),
+          description: `Purchase: ${productName}`,
           callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment`,
           notification_id: ipnData.ipn_id ?? process.env.PESAPAL_IPN_ID,
           billing_address: {
-            email_address: email,
-            first_name: firstName || "Supporter",
-            last_name: lastName || "Agaseke",
+            email_address: buyerEmail || "",
+            first_name: buyerName?.split(" ")[0] || "Buyer",
+            last_name: buyerName?.split(" ").slice(1).join(" ") || "Agaseke",
             country_code: "RW",
           },
         }),
@@ -99,16 +136,22 @@ export async function POST(req: Request) {
         .set({
           ref: merchantRef,
           orderTrackingId: payData.order_tracking_id,
-          amount: Number(amount),
+          amount: Number(totalAmount),
+          productPrice: price,
+          quantity: qty,
+          platformFee: platformFee,
+          creatorEarnings: creatorEarnings,
+          platformFeePayer: feePayer,
           creatorUid,
           creatorId,
-          supporterId: supporterId || "anonymous",
+          buyerId: buyerId,
+          buyerEmail: buyerEmail || "",
+          buyerName: buyerName || "",
+          productId: productId,
+          productName: productName || "",
+          selectedSize: selectedSize || "",
           status: "pending",
-          message: message || "",
-          includeReferral: !!includeReferral,
-          referralUid: referralUid || "",
-          referralId: referralId || "",
-          type: "support",
+          type: "product",
           paymentMethod: "card",
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });

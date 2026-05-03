@@ -242,11 +242,19 @@ export const StoreTab = ({
   }
 
   if (showCart && !showCheckout) {
+    const handleCheckout = () => {
+      if (!currentUser?.uid) {
+        toast.error("Please log in to complete your purchase");
+        setIsModalOpen(true);
+        return;
+      }
+      setShowCheckout(true);
+    };
     return (
       <CartModal
         cart={cart}
         onClose={() => setShowCart(false)}
-        onCheckout={() => setShowCheckout(true)}
+        onCheckout={handleCheckout}
         onUpdateQuantity={updateQuantity}
         onRemove={removeFromCart}
         getItemPrice={getItemPrice}
@@ -822,11 +830,29 @@ function CheckoutModal({
   });
   const [processing, setProcessing] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"momo" | "card">("momo");
 
   const hasPhysicalProducts = cart.some(
     (item) => item.product.type === "physical",
   );
+
+  const platformSharePercentage =
+    Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
+
+  let platformFee = 0;
+  let buyerPaysMore = false;
+
+  for (const item of cart) {
+    const feePayer = item.product.platformFeePayer || "buyer";
+    if (feePayer === "buyer") {
+      platformFee +=
+        getItemPrice(item) * item.quantity * platformSharePercentage;
+      buyerPaysMore = true;
+    }
+  }
+
   const finalTotal = total - couponDiscount;
+  const totalWithPlatformFee = finalTotal + platformFee;
 
   const applyCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -891,73 +917,63 @@ function CheckoutModal({
       }
     }
 
+    if (!currentUser?.uid) {
+      toast.error("Please log in to complete your purchase");
+      return;
+    }
+
+    if (paymentMethod === "momo" && !shippingAddress.phone) {
+      toast.error("Please enter your phone number");
+      return;
+    }
+
     setProcessing(true);
     try {
-      const orderData: any = {
-        creatorId,
+      const phone = shippingAddress.phone.replace(/\s/g, "");
+
+      const firstItem = cart[0];
+      const productData = {
+        productId: firstItem?.product.id,
+        quantity: cart.reduce((sum, item) => sum + item.quantity, 0),
         buyerId: currentUser.uid,
-        buyerName: currentUser.displayName || "Customer",
         buyerEmail: currentUser.email || "",
-        items: cart.map((item) => ({
-          productId: item.product.id,
-          productName: item.product.name,
-          quantity: item.quantity,
-          price: item.product.price,
-          selectedSize: item.selectedSize,
-        })),
-        subtotal: total,
-        discount: couponDiscount,
-        total: finalTotal,
-        couponCode: appliedCoupon,
-        status: "pending",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        buyerName: currentUser.displayName || "Customer",
+        phone: phone,
+        selectedSize: firstItem?.selectedSize,
+        productPrice: firstItem?.product.price,
+        productName: firstItem?.product.name,
+        creatorId: firstItem?.product.creatorId,
+        creatorUid: firstItem?.product?.creatorId,
+        platformFeePayer: firstItem?.product.platformFeePayer || "buyer",
       };
 
-      if (hasPhysicalProducts) {
-        orderData.shippingAddress = shippingAddress;
-      }
+      const endpoint =
+        paymentMethod === "momo"
+          ? "/api/store/pay/with-momo"
+          : "/api/store/pay/with-card";
 
-      const orderRef = await addDoc(collection(db, "storeOrders"), orderData);
-
-      if (appliedCoupon) {
-        const couponsRef = collection(db, "storeCoupons");
-        const q = query(
-          couponsRef,
-          where("creatorId", "==", creatorId),
-          where("code", "==", appliedCoupon),
-        );
-        const snapshot = await getDocs(q);
-        if (!snapshot.empty) {
-          await updateDoc(doc(db, "storeCoupons", snapshot.docs[0].id), {
-            usedCount: (snapshot.docs[0].data().usedCount || 0) + 1,
-          });
-        }
-      }
-
-      for (const item of cart) {
-        if (item.product.type === "physical") {
-          const productRef = doc(db, "storeProducts", item.product.id);
-          await updateDoc(productRef, {
-            stock: Math.max(0, (item.product.stock || 0) - item.quantity),
-          });
-        }
-      }
-
-      fetch("/api/comms/email/store/order", {
+      const paymentResponse = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          creatorEmail: "",
-          creatorName,
-          buyerName: currentUser.displayName,
-          buyerEmail: currentUser.email,
-          orderId: orderRef.id,
-          items: cart,
-          total: finalTotal,
-        }),
-      }).catch(() => {});
+        body: JSON.stringify(productData),
+      });
 
+      const paymentData = await paymentResponse.json();
+
+      if (!paymentResponse.ok) {
+        toast.error(paymentData.error || "Payment failed to initiate");
+        setProcessing(false);
+        return;
+      }
+
+      if (paymentMethod === "card" && paymentData.redirect_url) {
+        window.location.href = paymentData.redirect_url;
+        return;
+      }
+
+      toast.success(
+        "Payment initiated! Check your phone to complete the payment.",
+      );
       onSuccess();
     } catch (error) {
       console.error("Error placing order:", error);
@@ -1139,28 +1155,87 @@ function CheckoutModal({
                 <h4 className="font-bold">Final Total</h4>
                 <div className="flex justify-between text-2xl font-bold text-orange-600">
                   <span>Total</span>
-                  <span>{finalTotal.toLocaleString()} RWF</span>
+                  <span>
+                    {buyerPaysMore
+                      ? totalWithPlatformFee.toLocaleString()
+                      : finalTotal.toLocaleString()}{" "}
+                    RWF
+                  </span>
                 </div>
-              </div>
-
-              <div className="bg-amber-50 rounded-xl p-4 flex items-start gap-3">
-                <AlertCircle size={20} className="text-amber-600 mt-0.5" />
-                <p className="text-sm text-amber-800">
-                  Payment will be processed via Mobile Money. You will receive a
-                  prompt on your phone to complete the payment.
-                </p>
+                {buyerPaysMore && (
+                  <p className="text-xs text-slate-500">
+                    (Includes platform fee: {platformFee.toLocaleString()} RWF)
+                  </p>
+                )}
               </div>
 
               <div className="space-y-3">
-                <label className="text-sm font-bold">
-                  MTN Mobile Money Number
-                </label>
-                <input
-                  type="tel"
-                  placeholder="07X XXX XXXX"
-                  className="w-full bg-slate-50 p-4 rounded-lg text-sm font-medium outline-none"
-                />
+                <label className="text-sm font-bold">Payment Method</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("momo")}
+                    className={`py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${
+                      paymentMethod === "momo"
+                        ? "border-orange-600 bg-orange-50 text-orange-600"
+                        : "border-slate-200 text-slate-400"
+                    }`}
+                  >
+                    Mobile Money
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod("card")}
+                    className={`py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${
+                      paymentMethod === "card"
+                        ? "border-orange-600 bg-orange-50 text-orange-600"
+                        : "border-slate-200 text-slate-400"
+                    }`}
+                  >
+                    Card Payment
+                  </button>
+                </div>
               </div>
+
+              {paymentMethod === "momo" && (
+                <div className="bg-amber-50 rounded-xl p-4 flex items-start gap-3">
+                  <AlertCircle size={20} className="text-amber-600 mt-0.5" />
+                  <p className="text-sm text-amber-800">
+                    Payment will be processed via Mobile Money. You will receive
+                    a prompt on your phone to complete the payment.
+                  </p>
+                </div>
+              )}
+
+              {paymentMethod === "momo" && (
+                <div className="space-y-3">
+                  <label className="text-sm font-bold">
+                    MTN Mobile Money Number
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="07X XXX XXXX"
+                    value={shippingAddress.phone}
+                    onChange={(e) =>
+                      setShippingAddress({
+                        ...shippingAddress,
+                        phone: e.target.value,
+                      })
+                    }
+                    className="w-full bg-slate-50 p-4 rounded-lg text-sm font-medium outline-none"
+                  />
+                </div>
+              )}
+
+              {paymentMethod === "card" && (
+                <div className="bg-blue-50 rounded-xl p-4 flex items-start gap-3">
+                  <CreditCard size={20} className="text-blue-600 mt-0.5" />
+                  <p className="text-sm text-blue-800">
+                    You will be redirected to a secure payment page to complete
+                    your card payment.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>

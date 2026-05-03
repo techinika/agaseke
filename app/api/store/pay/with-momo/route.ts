@@ -6,16 +6,63 @@ import { adminDb } from "@/db/firebaseAdmin";
 export async function POST(req: Request) {
   try {
     const {
-      amount,
+      productId,
+      quantity,
+      buyerId,
+      buyerName,
       phone,
+      selectedSize,
+      productPrice,
+      productName,
       creatorId,
       creatorUid,
-      supporterId,
-      message,
-      includeReferral,
-      referralUid,
-      referralId,
+      platformFeePayer,
     } = await req.json();
+
+    if (!buyerId) {
+      return NextResponse.json(
+        { error: "Authentication required. Please log in to purchase." },
+        { status: 401 }
+      );
+    }
+
+    if (!productId) {
+      return NextResponse.json(
+        { error: "Product ID is required" },
+        { status: 400 }
+      );
+    }
+
+    if (!phone) {
+      return NextResponse.json(
+        { error: "Phone number is required" },
+        { status: 400 }
+      );
+    }
+
+    if (!creatorId || !creatorUid) {
+      return NextResponse.json(
+        { error: "Product creator not found" },
+        { status: 400 }
+      );
+    }
+
+    const platformSharePercentage = Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
+    const price = Number(productPrice) || 0;
+    const feePayer = platformFeePayer || "buyer";
+    const qty = Number(quantity) || 1;
+
+    let totalAmount = price * qty;
+    let platformFee = 0;
+    let creatorEarnings = price * qty;
+
+    if (feePayer === "buyer") {
+      platformFee = totalAmount * platformSharePercentage;
+      totalAmount = totalAmount + platformFee;
+    } else {
+      platformFee = totalAmount * platformSharePercentage;
+      creatorEarnings = totalAmount - platformFee;
+    }
 
     const authRes = await fetch(
       "https://payments.paypack.rw/api/auth/agents/authorize",
@@ -46,7 +93,7 @@ export async function POST(req: Request) {
               ? "production"
               : "development",
         },
-        body: JSON.stringify({ amount, number: phone }),
+        body: JSON.stringify({ amount: Math.round(totalAmount), number: phone }),
       },
     );
 
@@ -55,17 +102,22 @@ export async function POST(req: Request) {
     if (payData.ref) {
       await adminDb.collection("transactions").add({
         ref: payData.ref,
-        amount: Number(amount),
+        amount: Math.round(totalAmount),
+        productPrice: price,
+        quantity: qty,
+        platformFee: platformFee,
+        creatorEarnings: creatorEarnings,
+        platformFeePayer: feePayer,
         phone,
         creatorId,
         creatorUid,
-        supporterId: supporterId || "anonymous",
-        includeReferral: includeReferral,
+        buyerId: buyerId,
+        buyerName: buyerName || "",
+        productId: productId,
+        productName: productName || "",
+        selectedSize: selectedSize || "",
         status: "pending",
-        message: message ?? "",
-        referralUid: referralUid ?? "",
-        referralId: referralId ?? "",
-        type: "support",
+        type: "product",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
