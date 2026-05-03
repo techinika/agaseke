@@ -163,6 +163,14 @@ export default function DashboardLayout({
                 active={pathname === "/creator/bookings"}
               />
             )}
+            {creatorSettings?.giveawayEnabled && (
+              <NavItem
+                href="/creator/giveaways"
+                icon={<Gift size={18} />}
+                label="Giveaways"
+                active={pathname === "/creator/giveaways"}
+              />
+            )}
             {creatorSettings?.messagingEnabled !== false && (
               <NavItem
                 href="/creator/messages"

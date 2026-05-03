@@ -71,7 +71,7 @@ export default function GiveawaysPage() {
     const giveawaysRef = collection(db, "giveaways");
     const q = query(
       giveawaysRef,
-      where("creatorId", "==", creator.handle),
+      where("creatorId", "==", creator.uid),
       orderBy("createdAt", "desc"),
     );
 
@@ -83,7 +83,6 @@ export default function GiveawaysPage() {
 
       setGiveaways(giveawayData);
 
-      // Update selected giveaway if it changed
       if (selectedGiveaway) {
         const updated = giveawayData.find((g) => g.id === selectedGiveaway.id);
         if (updated) {
@@ -264,17 +263,19 @@ export default function GiveawaysPage() {
 
   return (
     <div className="min-h-screen bg-[#F9FAFB] text-slate-900">
-      <aside className="w-64 bg-white border-r border-slate-200 hidden md:block p-6">
-        <button
-          onClick={() => window.history.back()}
-          className="flex items-center gap-2 text-slate-400 hover:text-slate-900 mb-8 transition font-bold text-xs uppercase tracking-widest"
-        >
-          <ArrowLeft size={16} /> Back
-        </button>
-        <h2 className="text-xl font-bold mb-6 uppercase">Giveaways</h2>
+      <aside className="w-full bg-white border-b border-slate-200 hidden md:flex items-center justify-between p-6">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => window.history.back()}
+            className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition font-bold text-xs uppercase tracking-widest"
+          >
+            <ArrowLeft size={16} /> Back
+          </button>
+          <h2 className="text-xl font-bold uppercase">Giveaways</h2>
+        </div>
         <button
           onClick={() => setIsCreating(true)}
-          className="w-full bg-orange-600 text-white py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:bg-orange-700 transition shadow-lg"
+          className="bg-orange-600 text-white px-6 py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:bg-orange-700 transition shadow-lg"
         >
           <Plus size={18} /> New Giveaway
         </button>
