@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { Loader } from "lucide-react";
 
 export default function Loading() {
   return (
@@ -16,26 +16,39 @@ export default function Loading() {
 
         {/* Brand text */}
         <div className="flex flex-col items-center gap-3">
-          <span className="text-2xl font-bold text-slate-900 tracking-tight">agaseke.me</span>
-          
+          <span className="text-2xl font-bold text-slate-900 tracking-tight">
+            agaseke.me
+          </span>
+
           {/* Loading indicator */}
           <div className="flex items-center gap-3">
-            <Loader2 className="w-5 h-5 text-orange-600 animate-spin" />
-            <span className="text-base font-medium text-slate-500">Loading...</span>
+            <Loader className="w-5 h-5 text-orange-600 animate-spin" />
+            <span className="text-base font-medium text-slate-500">
+              Loading...
+            </span>
           </div>
         </div>
 
         {/* Animated dots */}
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-orange-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-          <div className="w-2 h-2 bg-orange-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-          <div className="w-2 h-2 bg-orange-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+          <div
+            className="w-2 h-2 bg-orange-500 rounded-full animate-bounce"
+            style={{ animationDelay: "0ms" }}
+          />
+          <div
+            className="w-2 h-2 bg-orange-500 rounded-full animate-bounce"
+            style={{ animationDelay: "150ms" }}
+          />
+          <div
+            className="w-2 h-2 bg-orange-500 rounded-full animate-bounce"
+            style={{ animationDelay: "300ms" }}
+          />
         </div>
       </div>
 
       {/* Footer text */}
       <div className="absolute bottom-10">
-        <p className="text-sm font-medium text-slate-400">
+        <p className="text-xl font-medium text-slate-400">
           Audience Monetization Platform
         </p>
       </div>
