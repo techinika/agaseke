@@ -342,7 +342,7 @@ export const StoreTab = ({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
           {filteredProducts.map((product) => (
             <ProductCard
               key={product.id}
@@ -419,7 +419,7 @@ function ProductCard({
         <span
           className={`absolute top-3 left-3 text-[10px] font-bold px-2 py-1 rounded-full ${
             product.type === "digital"
-              ? "bg-purple-100 text-purple-600"
+              ? "bg-orange-100 text-orange-600"
               : "bg-blue-100 text-blue-600"
           }`}
         >
@@ -574,7 +574,7 @@ function ProductDetailModal({
             <span
               className={`text-[10px] font-bold px-2 py-1 rounded-full ${
                 product.type === "digital"
-                  ? "bg-purple-100 text-purple-600"
+                  ? "bg-orange-100 text-orange-600"
                   : "bg-blue-100 text-blue-600"
               }`}
             >
@@ -1228,7 +1228,7 @@ function OrderTrackingModal({
     pending: "bg-yellow-100 text-yellow-700",
     paid: "bg-green-100 text-green-700",
     processing: "bg-blue-100 text-blue-700",
-    shipped: "bg-purple-100 text-purple-700",
+    shipped: "bg-orange-100 text-orange-700",
     delivered: "bg-slate-100 text-slate-700",
     cancelled: "bg-red-100 text-red-700",
   };

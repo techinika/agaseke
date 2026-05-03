@@ -1941,7 +1941,7 @@ function ProductModal({
               />
             </div>
 
-            <div className="col-span-2 p-4 bg-purple-50 rounded-lg">
+            <div className="col-span-2 p-4 bg-orange-50 rounded-lg">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-bold text-sm">Platform Fee (10%)</p>
@@ -1960,7 +1960,7 @@ function ProductModal({
                     }
                     className={`px-3 py-2 rounded-lg text-xs font-bold transition ${
                       formData.platformFeePayer === "buyer"
-                        ? "bg-purple-600 text-white"
+                        ? "bg-orange-600 text-white"
                         : "bg-white text-slate-500 border border-slate-200"
                     }`}
                   >
@@ -1976,7 +1976,7 @@ function ProductModal({
                     }
                     className={`px-3 py-2 rounded-lg text-xs font-bold transition ${
                       formData.platformFeePayer === "creator"
-                        ? "bg-purple-600 text-white"
+                        ? "bg-orange-600 text-white"
                         : "bg-white text-slate-500 border border-slate-200"
                     }`}
                   >
@@ -1985,7 +1985,7 @@ function ProductModal({
                 </div>
               </div>
               {formData.price > 0 && (
-                <p className="text-xs text-purple-600 mt-2">
+                <p className="text-xs text-orange-600 mt-2">
                   {formData.platformFeePayer === "buyer"
                     ? `Buyer pays ${(formData.price * 1.1).toLocaleString()} RWF (price + 10%)`
                     : `Creator receives ${(formData.price * 0.9).toLocaleString()} RWF (price - 10%)`}
