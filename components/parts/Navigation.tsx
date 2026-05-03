@@ -11,6 +11,7 @@ import {
   Search,
   HelpCircle,
   BookOpen,
+  Calendar,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/auth/AuthContext";
@@ -182,12 +183,21 @@ const Navbar = () => {
                 <Search size={20} />
               </Link>
               <Link
-                href={"/login"}
-                className="group relative flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-lg text-sm font-bold hover:bg-orange-600 transition-all active:scale-95 shadow-lg shadow-slate-200"
-              >
-                <LogIn className="h-4 w-4" />
-                <span>Sign In</span>
-              </Link>
+                 href="https://calendar.app.google/LFrSfHEno95F4xkD7"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 className="group relative flex items-center gap-2 px-3 md:px-6 py-2.5 bg-orange-600 text-white rounded-lg text-sm font-bold hover:bg-orange-700 transition-all active:scale-95 shadow-lg shadow-orange-200"
+               >
+                 <Calendar className="h-4 w-4" />
+                 <span className="hidden md:inline">Book Demo</span>
+               </Link>
+               <Link
+                 href={"/login"}
+                 className="group relative flex items-center gap-2 px-3 md:px-6 py-2.5 bg-slate-900 text-white rounded-lg text-sm font-bold hover:bg-orange-600 transition-all active:scale-95 shadow-lg shadow-slate-200"
+               >
+                 <LogIn className="h-4 w-4" />
+                 <span className="hidden md:inline">Sign In</span>
+               </Link>
             </div>
           )}
         </div>

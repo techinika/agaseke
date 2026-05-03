@@ -56,7 +56,7 @@ export default function PartnersPage() {
     const partnersRef = collection(db, "creatorPartners");
     const q = query(
       partnersRef,
-      where("creatorId", "==", creator.handle),
+      where("creatorId", "==", creator.uid),
       orderBy("createdAt", "desc")
     );
 
