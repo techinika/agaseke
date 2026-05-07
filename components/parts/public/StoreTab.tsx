@@ -16,6 +16,9 @@ import {
   Download,
   Lock,
   AlertCircle,
+  Folder,
+  FolderOpen,
+  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/db/firebase";
@@ -46,6 +49,20 @@ interface StoreTabProps {
   setIsModalOpen: (open: boolean) => void;
 }
 
+interface FolderData {
+  id: string;
+  name: string;
+  description: string;
+  productIds: string[];
+  discountEnabled: boolean;
+  discountPercentage: number;
+  active: boolean;
+  imageUrl?: string;
+  creatorId: string;
+}
+
+const platformSharePercentage = Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
+
 export const StoreTab = ({
   creatorId,
   creatorName,
@@ -57,6 +74,7 @@ export const StoreTab = ({
 }: StoreTabProps) => {
   const { user: currentUser } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
+  const [folders, setFolders] = useState<FolderData[]>([]);
   const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
@@ -66,6 +84,8 @@ export const StoreTab = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [activeFolder, setActiveFolder] = useState<FolderData | null>(null);
+  const [purchasedProductIds, setPurchasedProductIds] = useState<Set<string>>(new Set());
 
   const canAccess = storePublic || isSupporter;
 
@@ -75,7 +95,7 @@ export const StoreTab = ({
       return;
     }
 
-    const fetchProducts = async () => {
+    const fetchData = async () => {
       try {
         const productsRef = collection(db, "storeProducts");
         const q = query(
@@ -90,14 +110,28 @@ export const StoreTab = ({
           ...doc.data(),
         })) as Product[];
         setProducts(productData);
+
+        const foldersRef = collection(db, "storeFolders");
+        const fq = query(
+          foldersRef,
+          where("creatorId", "==", creatorId),
+          where("active", "==", true),
+          orderBy("createdAt", "desc"),
+        );
+        const folderSnap = await getDocs(fq);
+        const folderData = folderSnap.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as FolderData[];
+        setFolders(folderData);
       } catch (error) {
-        console.error("Error fetching products:", error);
+        console.error("Error fetching data:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProducts();
+    fetchData();
   }, [creatorId, canAccess]);
 
   useEffect(() => {
@@ -113,6 +147,16 @@ export const StoreTab = ({
           ...doc.data(),
         })) as Order[];
         setUserOrders(orderData);
+
+        const purchased = new Set<string>();
+        for (const order of orderData) {
+          if (order.status === "paid" || order.status === "processing" || order.status === "shipped" || order.status === "delivered") {
+            for (const item of order.items) {
+              purchased.add(item.productId);
+            }
+          }
+        }
+        setPurchasedProductIds(purchased);
       } catch (error) {
         console.error("Error fetching orders:", error);
       }
@@ -147,6 +191,20 @@ export const StoreTab = ({
       return [...prev, { product, quantity, selectedSize }];
     });
     toast.success("Added to cart!");
+  };
+
+  const addFolderToCart = (folder: FolderData) => {
+    const folderProducts = products.filter((p) => folder.productIds.includes(p.id));
+    if (folderProducts.length === 0) {
+      toast.error("No products available in this folder");
+      return;
+    }
+    for (const product of folderProducts) {
+      if (!purchasedProductIds.has(product.id)) {
+        addToCart(product, 1);
+      }
+    }
+    setActiveFolder(null);
   };
 
   const updateQuantity = (
@@ -219,6 +277,29 @@ export const StoreTab = ({
     return price;
   };
 
+  const getFolderTotal = (folder: FolderData) => {
+    const folderProducts = products.filter((p) => folder.productIds.includes(p.id) && !purchasedProductIds.has(p.id));
+    const total = folderProducts.reduce((sum, p) => sum + p.price, 0);
+    if (folder.discountEnabled && folder.discountPercentage > 0) {
+      return total - (total * folder.discountPercentage) / 100;
+    }
+    return total;
+  };
+
+  const getFolderPlatformFee = (folder: FolderData) => {
+    const folderProducts = products.filter((p) => folder.productIds.includes(p.id) && !purchasedProductIds.has(p.id));
+    let fee = 0;
+    for (const product of folderProducts) {
+      if ((product.platformFeePayer || "buyer") === "buyer") {
+        fee += product.price * platformSharePercentage;
+      }
+    }
+    if (folder.discountEnabled && folder.discountPercentage > 0) {
+      fee = fee - (fee * folder.discountPercentage) / 100;
+    }
+    return fee;
+  };
+
   if (!canAccess) {
     return (
       <div className="animate-in fade-in duration-500">
@@ -238,6 +319,26 @@ export const StoreTab = ({
       <div className="animate-in fade-in duration-500 flex items-center justify-center h-[400px]">
         <Loader className="animate-spin text-orange-500" size={32} />
       </div>
+    );
+  }
+
+  if (activeFolder) {
+    const folderProducts = products.filter(
+      (p) => activeFolder.productIds.includes(p.id) && p.active,
+    );
+    return (
+      <FolderExplorer
+        folder={activeFolder}
+        products={folderProducts}
+        purchasedProductIds={purchasedProductIds}
+        onBack={() => setActiveFolder(null)}
+        onAddToCart={addToCart}
+        onAddFolderToCart={() => addFolderToCart(activeFolder)}
+        onSelectProduct={setSelectedProduct}
+        isLoggedIn={isLoggedIn}
+        folderTotal={getFolderTotal(activeFolder)}
+        folderPlatformFee={getFolderPlatformFee(activeFolder)}
+      />
     );
   }
 
@@ -299,6 +400,9 @@ export const StoreTab = ({
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
+  const activeFolders = folders.filter((f) => f.active);
+  const hasContent = filteredProducts.length > 0 || activeFolders.length > 0;
+
   return (
     <div className="animate-in fade-in duration-500">
       <div className="flex items-center justify-between mb-6">
@@ -341,7 +445,7 @@ export const StoreTab = ({
         </div>
       </div>
 
-      {filteredProducts.length === 0 ? (
+      {!hasContent ? (
         <div className="text-center py-20 bg-white border border-slate-100 rounded-3xl">
           <Package size={48} className="mx-auto text-slate-200 mb-4" />
           <p className="text-slate-500 font-medium">No products available</p>
@@ -350,16 +454,48 @@ export const StoreTab = ({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-          {filteredProducts.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onAddToCart={addToCart}
-              onSelectProduct={setSelectedProduct}
-              isLoggedIn={isLoggedIn}
-            />
-          ))}
+        <div className="space-y-8">
+          {activeFolders.length > 0 && (
+            <div>
+              <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">
+                Bundles
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                {activeFolders.map((folder) => (
+                  <FolderCard
+                    key={folder.id}
+                    folder={folder}
+                    products={products}
+                    purchasedProductIds={purchasedProductIds}
+                    onEnter={() => setActiveFolder(folder)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {filteredProducts.length > 0 && (
+            <div>
+              {activeFolders.length > 0 && (
+                <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">
+                  All Products
+                </h3>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                {filteredProducts.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    onAddToCart={addToCart}
+                    onSelectProduct={setSelectedProduct}
+                    isLoggedIn={isLoggedIn}
+                    isPurchased={purchasedProductIds.has(product.id)}
+                    fileUrl={product.fileUrl}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -369,28 +505,234 @@ export const StoreTab = ({
           onClose={() => setSelectedProduct(null)}
           onAddToCart={addToCart}
           isLoggedIn={isLoggedIn}
+          isPurchased={purchasedProductIds.has(selectedProduct.id)}
+          fileUrl={selectedProduct.fileUrl}
         />
       )}
     </div>
   );
 };
 
+function FolderCard({
+  folder,
+  products,
+  purchasedProductIds,
+  onEnter,
+}: {
+  folder: FolderData;
+  products: Product[];
+  purchasedProductIds: Set<string>;
+  onEnter: () => void;
+}) {
+  const folderProducts = products.filter((p) => folder.productIds.includes(p.id));
+  const unpurchased = folderProducts.filter((p) => !purchasedProductIds.has(p.id));
+  const totalPrice = unpurchased.reduce((sum, p) => {
+    let price = p.price;
+    if ((p.platformFeePayer || "buyer") === "buyer") {
+      price += price * platformSharePercentage;
+    }
+    return sum + price;
+  }, 0);
+  const discountedPrice = folder.discountEnabled
+    ? totalPrice - (totalPrice * folder.discountPercentage) / 100
+    : totalPrice;
+
+  return (
+    <div
+      onClick={onEnter}
+      className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all cursor-pointer group"
+    >
+      <div className="aspect-square bg-gradient-to-br from-orange-50 to-amber-50 relative flex items-center justify-center">
+        {folder.imageUrl ? (
+          <img
+            src={folder.imageUrl}
+            alt={folder.name}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="text-center">
+            <FolderOpen size={64} className="text-orange-300 mx-auto mb-2" />
+            <p className="text-orange-400 font-bold text-sm">{folderProducts.length} items</p>
+          </div>
+        )}
+        <div className="absolute top-3 left-3 bg-orange-100 text-orange-600 text-[10px] font-bold px-2 py-1 rounded-full">
+          Bundle
+        </div>
+        {folder.discountEnabled && (
+          <div className="absolute top-3 right-3 bg-green-100 text-green-600 text-[10px] font-bold px-2 py-1 rounded-full">
+            {folder.discountPercentage}% OFF
+          </div>
+        )}
+      </div>
+      <div className="p-4">
+        <h3 className="font-bold text-lg truncate">{folder.name}</h3>
+        {folder.description && (
+          <p className="text-sm text-slate-500 line-clamp-2 mt-1">{folder.description}</p>
+        )}
+        <div className="mt-3 space-y-1">
+          {folderProducts.slice(0, 3).map((p) => (
+            <div key={p.id} className="flex items-center justify-between text-xs">
+              <span className="text-slate-600 truncate flex-1">{p.name}</span>
+              <span className={`font-medium ml-2 ${purchasedProductIds.has(p.id) ? "text-green-500" : "text-slate-900"}`}>
+                {purchasedProductIds.has(p.id) ? "Owned" : `${p.price.toLocaleString()} RWF`}
+              </span>
+            </div>
+          ))}
+          {folderProducts.length > 3 && (
+            <p className="text-xs text-slate-400">+{folderProducts.length - 3} more items</p>
+          )}
+        </div>
+        {unpurchased.length > 0 && (
+          <div className="mt-4 flex items-center justify-between">
+            <div>
+              <p className="text-lg font-bold text-slate-900">{discountedPrice.toLocaleString()} RWF</p>
+              {folder.discountEnabled && (
+                <p className="text-xs text-green-600 font-bold">{folder.discountPercentage}% bundle discount</p>
+              )}
+            </div>
+            <span className="flex items-center gap-1 text-orange-600 text-sm font-bold group-hover:gap-2 transition-all">
+              Open <ChevronRight size={16} />
+            </span>
+          </div>
+        )}
+        {unpurchased.length === 0 && (
+          <div className="mt-4">
+            <span className="text-green-600 font-bold text-sm flex items-center gap-1">
+              <Check size={16} /> All items owned
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FolderExplorer({
+  folder,
+  products,
+  purchasedProductIds,
+  onBack,
+  onAddToCart,
+  onAddFolderToCart,
+  onSelectProduct,
+  isLoggedIn,
+  folderTotal,
+  folderPlatformFee,
+}: {
+  folder: FolderData;
+  products: Product[];
+  purchasedProductIds: Set<string>;
+  onBack: () => void;
+  onAddToCart: (product: Product, quantity?: number, size?: string) => void;
+  onAddFolderToCart: () => void;
+  onSelectProduct: (product: Product) => void;
+  isLoggedIn: boolean;
+  folderTotal: number;
+  folderPlatformFee: number;
+}) {
+  const unpurchased = products.filter((p) => !purchasedProductIds.has(p.id));
+  const totalWithFee = folderTotal + folderPlatformFee;
+
+  return (
+    <div className="animate-in fade-in duration-500">
+      <div className="flex items-center gap-3 mb-6">
+        <button
+          onClick={onBack}
+          className="p-2 hover:bg-slate-100 rounded-lg transition"
+        >
+          <ChevronRight size={20} className="rotate-180" />
+        </button>
+        <div>
+          <h2 className="text-xl font-bold">{folder.name}</h2>
+          {folder.description && (
+            <p className="text-sm text-slate-500">{folder.description}</p>
+          )}
+        </div>
+      </div>
+
+      {unpurchased.length > 0 && (
+        <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-lg font-bold text-slate-900">
+                Bundle Total: {folderTotal.toLocaleString()} RWF
+              </p>
+              {folderPlatformFee > 0 && (
+                <p className="text-xs text-slate-500">
+                  + Platform fee: {folderPlatformFee.toLocaleString()} RWF
+                </p>
+              )}
+              {folderPlatformFee > 0 && (
+                <p className="text-sm font-bold text-orange-600">
+                  Total: {totalWithFee.toLocaleString()} RWF
+                </p>
+              )}
+              {folder.discountEnabled && (
+                <p className="text-xs text-green-600 font-bold">
+                  {folder.discountPercentage}% bundle discount applied
+                </p>
+              )}
+            </div>
+            <button
+              onClick={onAddFolderToCart}
+              disabled={!isLoggedIn}
+              className="px-6 py-3 bg-orange-600 text-white rounded-lg font-bold text-sm hover:bg-orange-700 transition disabled:opacity-50 flex items-center gap-2"
+            >
+              <ShoppingCart size={16} />
+              Buy Bundle
+            </button>
+          </div>
+        </div>
+      )}
+
+      {products.length === 0 ? (
+        <div className="text-center py-20 bg-white border border-slate-100 rounded-3xl">
+          <Package size={48} className="mx-auto text-slate-200 mb-4" />
+          <p className="text-slate-500 font-medium">No products in this bundle</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+          {products.map((product) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              onAddToCart={onAddToCart}
+              onSelectProduct={onSelectProduct}
+              isLoggedIn={isLoggedIn}
+              isPurchased={purchasedProductIds.has(product.id)}
+              fileUrl={product.fileUrl}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProductCard({
   product,
   onAddToCart,
   onSelectProduct,
   isLoggedIn,
+  isPurchased,
+  fileUrl,
 }: {
   product: Product;
   onAddToCart: (product: Product, quantity?: number, size?: string) => void;
   onSelectProduct: (product: Product) => void;
   isLoggedIn: boolean;
+  isPurchased: boolean;
+  fileUrl?: string;
 }) {
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<string | undefined>(
     product.sizes?.[0],
   );
   const isOutOfStock = product.type === "physical" && product.stock <= 0;
+
+  const priceWithFee = product.price + ((product.platformFeePayer || "buyer") === "buyer"
+    ? product.price * platformSharePercentage
+    : 0);
 
   const handleAdd = () => {
     if (!isLoggedIn) return;
@@ -408,7 +750,7 @@ function ProductCard({
   };
 
   return (
-    <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all">
+    <div className={`bg-white border rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all ${isPurchased ? "border-green-200" : "border-slate-100"}`}>
       <div
         className="aspect-square bg-slate-50 relative cursor-pointer"
         onClick={() => onSelectProduct(product)}
@@ -433,6 +775,11 @@ function ProductCard({
         >
           {product.type === "digital" ? "Digital" : "Physical"}
         </span>
+        {isPurchased && (
+          <span className="absolute top-3 right-3 bg-green-100 text-green-600 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
+            <Check size={10} /> Owned
+          </span>
+        )}
         {isOutOfStock && (
           <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
             <span className="bg-red-100 text-red-600 px-3 py-1 rounded-full text-xs font-bold">
@@ -448,9 +795,16 @@ function ProductCard({
           {product.description}
         </p>
         <div className="flex items-center justify-between mt-4">
-          <span className="text-xl font-bold">
-            {product.price.toLocaleString()} RWF
-          </span>
+          <div>
+            <span className="text-xl font-bold">
+              {product.price.toLocaleString()} RWF
+            </span>
+            {product.platformFeePayer === "buyer" && (
+              <p className="text-[10px] text-slate-400">
+                +{platformSharePercentage * 100}% fee = {priceWithFee.toLocaleString()} RWF
+              </p>
+            )}
+          </div>
           {product.discount?.enabled && (
             <span className="bg-orange-100 text-orange-600 text-[10px] font-bold px-2 py-1 rounded-full">
               {product.discount.percentage}% OFF
@@ -482,40 +836,65 @@ function ProductCard({
           </p>
         )}
 
-        <div className="flex items-center gap-2 mt-4">
-          <div className="flex items-center bg-slate-100 rounded-lg">
+        {isPurchased ? (
+          <div className="flex gap-2 mt-4">
+            {product.type === "digital" && fileUrl && (
+              <a
+                href={fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 py-2 bg-emerald-500 text-white rounded-lg font-bold text-sm hover:bg-emerald-600 transition flex items-center justify-center gap-2"
+              >
+                <Download size={14} /> Download
+              </a>
+            )}
+            {product.type === "physical" && (
+              <span className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-sm flex items-center justify-center gap-2">
+                <Truck size={14} /> Track Order
+              </span>
+            )}
+            {product.type === "digital" && !fileUrl && (
+              <span className="flex-1 py-2 bg-green-50 text-green-600 rounded-lg font-bold text-sm flex items-center justify-center gap-2">
+                <Check size={14} /> Purchased
+              </span>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 mt-4">
+            <div className="flex items-center bg-slate-100 rounded-lg">
+              <button
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                className="p-2 hover:bg-slate-200 rounded-l-lg transition"
+              >
+                <Minus size={14} />
+              </button>
+              <span className="w-8 text-center text-sm font-bold">
+                {quantity}
+              </span>
+              <button
+                onClick={() => setQuantity(quantity + 1)}
+                className="p-2 hover:bg-slate-200 rounded-r-lg transition"
+              >
+                <Plus size={14} />
+              </button>
+            </div>
             <button
-              onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="p-2 hover:bg-slate-200 rounded-l-lg transition"
+              onClick={handleAdd}
+              disabled={isOutOfStock || !isLoggedIn}
+              className="flex-1 py-2 bg-orange-500 text-white rounded-lg font-bold text-sm hover:bg-orange-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              <Minus size={14} />
-            </button>
-            <span className="w-8 text-center text-sm font-bold">
-              {quantity}
-            </span>
-            <button
-              onClick={() => setQuantity(quantity + 1)}
-              className="p-2 hover:bg-slate-200 rounded-r-lg transition"
-            >
-              <Plus size={14} />
+              {!isLoggedIn ? (
+                <>
+                  <Lock size={14} /> Login to Buy
+                </>
+              ) : (
+                <>
+                  <ShoppingCart size={14} /> Add
+                </>
+              )}
             </button>
           </div>
-          <button
-            onClick={handleAdd}
-            disabled={isOutOfStock || !isLoggedIn}
-            className="flex-1 py-2 bg-orange-500 text-white rounded-lg font-bold text-sm hover:bg-orange-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {!isLoggedIn ? (
-              <>
-                <Lock size={14} /> Login to Buy
-              </>
-            ) : (
-              <>
-                <ShoppingCart size={14} /> Add
-              </>
-            )}
-          </button>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -526,16 +905,24 @@ function ProductDetailModal({
   onClose,
   onAddToCart,
   isLoggedIn,
+  isPurchased,
+  fileUrl,
 }: {
   product: Product;
   onClose: () => void;
   onAddToCart: (product: Product, quantity?: number, size?: string) => void;
   isLoggedIn: boolean;
+  isPurchased: boolean;
+  fileUrl?: string;
 }) {
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<string | undefined>(
     product.sizes?.[0],
   );
+
+  const priceWithFee = product.price + ((product.platformFeePayer || "buyer") === "buyer"
+    ? product.price * platformSharePercentage
+    : 0);
 
   const handleAdd = () => {
     if (
@@ -579,23 +966,37 @@ function ProductDetailModal({
           </div>
 
           <div className="md:w-1/2 p-6 space-y-4">
-            <span
-              className={`text-[10px] font-bold px-2 py-1 rounded-full ${
-                product.type === "digital"
-                  ? "bg-orange-100 text-orange-600"
-                  : "bg-blue-100 text-blue-600"
-              }`}
-            >
-              {product.type === "digital"
-                ? "Digital Product"
-                : "Physical Product"}
-            </span>
+            <div className="flex items-center gap-2">
+              <span
+                className={`text-[10px] font-bold px-2 py-1 rounded-full ${
+                  product.type === "digital"
+                    ? "bg-orange-100 text-orange-600"
+                    : "bg-blue-100 text-blue-600"
+                }`}
+              >
+                {product.type === "digital"
+                  ? "Digital Product"
+                  : "Physical Product"}
+              </span>
+              {isPurchased && (
+                <span className="bg-green-100 text-green-600 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                  <Check size={10} /> Owned
+                </span>
+              )}
+            </div>
 
             <h2 className="text-2xl font-bold">{product.name}</h2>
             <p className="text-slate-600">{product.description}</p>
 
-            <div className="text-3xl font-bold">
-              {product.price.toLocaleString()} RWF
+            <div>
+              <div className="text-3xl font-bold">
+                {product.price.toLocaleString()} RWF
+              </div>
+              {product.platformFeePayer === "buyer" && (
+                <p className="text-xs text-slate-500 mt-1">
+                  {priceWithFee.toLocaleString()} RWF with platform fee
+                </p>
+              )}
             </div>
 
             {product.discount?.enabled && (
@@ -638,35 +1039,55 @@ function ProductDetailModal({
               </div>
             )}
 
-            <div className="flex items-center gap-4">
-              <div className="flex items-center bg-slate-100 rounded-lg">
+            {isPurchased ? (
+              <div className="flex gap-3">
+                {product.type === "digital" && fileUrl && (
+                  <a
+                    href={fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 py-3 bg-emerald-500 text-white rounded-lg font-bold hover:bg-emerald-600 transition flex items-center justify-center gap-2"
+                  >
+                    <Download size={18} /> Download
+                  </a>
+                )}
+                {product.type === "physical" && (
+                  <span className="flex-1 py-3 bg-blue-50 text-blue-600 rounded-lg font-bold flex items-center justify-center gap-2">
+                    <Truck size={18} /> Track in My Orders
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-4">
+                <div className="flex items-center bg-slate-100 rounded-lg">
+                  <button
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    className="p-3 hover:bg-slate-200 rounded-l-lg transition"
+                  >
+                    <Minus size={16} />
+                  </button>
+                  <span className="w-12 text-center font-bold">{quantity}</span>
+                  <button
+                    onClick={() => setQuantity(quantity + 1)}
+                    className="p-3 hover:bg-slate-200 rounded-r-lg transition"
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+
                 <button
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="p-3 hover:bg-slate-200 rounded-l-lg transition"
+                  onClick={handleAdd}
+                  disabled={
+                    !isLoggedIn ||
+                    (product.type === "physical" && product.stock <= 0)
+                  }
+                  className="flex-1 py-3 bg-orange-500 text-white rounded-lg font-bold hover:bg-orange-600 transition disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  <Minus size={16} />
-                </button>
-                <span className="w-12 text-center font-bold">{quantity}</span>
-                <button
-                  onClick={() => setQuantity(quantity + 1)}
-                  className="p-3 hover:bg-slate-200 rounded-r-lg transition"
-                >
-                  <Plus size={16} />
+                  <ShoppingCart size={18} />
+                  Add to Cart
                 </button>
               </div>
-
-              <button
-                onClick={handleAdd}
-                disabled={
-                  !isLoggedIn ||
-                  (product.type === "physical" && product.stock <= 0)
-                }
-                className="flex-1 py-3 bg-orange-500 text-white rounded-lg font-bold hover:bg-orange-600 transition disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                <ShoppingCart size={18} />
-                Add to Cart
-              </button>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -835,9 +1256,6 @@ function CheckoutModal({
   const hasPhysicalProducts = cart.some(
     (item) => item.product.type === "physical",
   );
-
-  const platformSharePercentage =
-    Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
 
   let platformFee = 0;
   let buyerPaysMore = false;
@@ -1324,10 +1742,10 @@ function OrderTrackingModal({
   };
 
   const physicalOrders = orders.filter((o) =>
-    o.items.some((i) => !i.productId.startsWith("digital")),
+    o.items.some((i) => i.productId.startsWith("product_")),
   );
   const digitalOrders = orders.filter((o) =>
-    o.items.every((i) => i.productId.startsWith("digital")),
+    o.items.every((i) => i.productId.startsWith("product_")),
   );
 
   return (
@@ -1375,13 +1793,24 @@ function OrderTrackingModal({
 
                 <div className="space-y-2 mb-4">
                   {order.items.map((item, idx) => (
-                    <div key={idx} className="flex justify-between text-sm">
+                    <div key={idx} className="flex justify-between text-sm items-center">
                       <span>
                         {item.quantity}x {item.productName}
                       </span>
-                      <span className="font-medium">
-                        {item.price.toLocaleString()} RWF
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className="font-medium">
+                          {item.price.toLocaleString()} RWF
+                        </span>
+                        {order.status !== "cancelled" && (
+                          <button
+                            onClick={() => handleDownload(item.productId, "")}
+                            className="text-green-600 hover:bg-green-50 p-1 rounded transition"
+                            title="Download"
+                          >
+                            <Download size={14} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
