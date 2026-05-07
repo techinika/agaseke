@@ -31,7 +31,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { handleLogout } from "@/db/functions/LogOut";
 import SharePageModal from "../SharePage";
 import FeedbackFAB from "../FeedbackFAB";
-import { db } from "@/db/firebase";
+import { auth, db } from "@/db/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
 import { Creator } from "@/types/creator";
 
@@ -51,11 +51,14 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!creator?.handle) return;
-    const unsubscribe = onSnapshot(doc(db, "creators", creator.handle), (doc) => {
-      if (doc.exists()) {
-        setCreatorSettings(doc.data() as Creator);
-      }
-    });
+    const unsubscribe = onSnapshot(
+      doc(db, "creators", creator.handle),
+      (doc) => {
+        if (doc.exists()) {
+          setCreatorSettings(doc.data() as Creator);
+        }
+      },
+    );
     return () => unsubscribe();
   }, [creator?.handle]);
 
@@ -279,10 +282,18 @@ export default function DashboardLayout({
                 </div>
 
                 <div className="w-8 h-8 bg-slate-100 rounded-full border border-slate-200 flex items-center justify-center text-xs font-bold overflow-hidden">
-                  {creator?.profilePicture ? (
+                  {creator?.profilePicture || auth?.currentUser?.photoURL ? (
                     <img
-                      src={creator.profilePicture}
-                      alt={creator.name}
+                      src={
+                        creator?.profilePicture ||
+                        auth?.currentUser?.photoURL ||
+                        undefined
+                      }
+                      alt={
+                        creator?.name ||
+                        auth?.currentUser?.displayName ||
+                        undefined
+                      }
                       className="w-full h-full object-cover"
                     />
                   ) : (

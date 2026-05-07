@@ -111,7 +111,29 @@ export default function CreatorOnboarding() {
             formData.username === "payout" ||
             formData.username === "settings" ||
             formData.username === "notification" ||
-            formData.username === "support-us"
+            formData.username === "support-us" ||
+            formData.username === "store" ||
+            formData.username === "messages" ||
+            formData.username === "explore" ||
+            formData.username === "artist" ||
+            formData.username === "podcasts" ||
+            formData.username === "photographers" ||
+            formData.username === "vloggers" ||
+            formData.username === "dancers" ||
+            formData.username === "comedians" ||
+            formData.username === "musicians" ||
+            formData.username === "public" ||
+            formData.username === "business" ||
+            formData.username === "entrepreneurs" ||
+            formData.username === "athletes" ||
+            formData.username === "reviewers" ||
+            formData.username === "content-creators" ||
+            formData.username === "journalists" ||
+            formData.username === "models" ||
+            formData.username === "educators" ||
+            formData.username === "interviewers" ||
+            formData.username === "bloggers" ||
+            formData.username === "designers"
             ? "taken"
             : "available",
         );

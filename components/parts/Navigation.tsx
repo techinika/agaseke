@@ -74,11 +74,11 @@ const Navbar = () => {
                   className="flex items-center gap-2 p-1 pr-3 rounded-lg border border-slate-200 hover:border-orange-200 hover:bg-white transition-all group relative z-50 shadow-sm"
                 >
                   <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden font-bold text-xs ring-2 ring-transparent group-hover:ring-orange-100 transition-all">
-                    {auth?.profile?.photoURL ? (
+                    {auth?.user?.photoURL ? (
                       <img
-                        src={auth.profile.photoURL}
+                        src={auth.user?.photoURL}
                         alt="Avatar"
-                        className="w-full h-full object-cover"
+                        className="w-full h-full wrap-break-word object-cover"
                       />
                     ) : (
                       <span className="text-slate-600">
@@ -183,21 +183,21 @@ const Navbar = () => {
                 <Search size={20} />
               </Link>
               <Link
-                 href="https://calendar.app.google/LFrSfHEno95F4xkD7"
-                 target="_blank"
-                 rel="noopener noreferrer"
-                 className="group relative flex items-center gap-2 px-3 md:px-6 py-2.5 bg-orange-600 text-white rounded-lg text-sm font-bold hover:bg-orange-700 transition-all active:scale-95 shadow-lg shadow-orange-200"
-               >
-                 <Calendar className="h-4 w-4" />
-                 <span className="hidden md:inline">Book Demo</span>
-               </Link>
-               <Link
-                 href={"/login"}
-                 className="group relative flex items-center gap-2 px-3 md:px-6 py-2.5 bg-slate-900 text-white rounded-lg text-sm font-bold hover:bg-orange-600 transition-all active:scale-95 shadow-lg shadow-slate-200"
-               >
-                 <LogIn className="h-4 w-4" />
-                 <span className="hidden md:inline">Sign In</span>
-               </Link>
+                href="https://calendar.app.google/LFrSfHEno95F4xkD7"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative flex items-center gap-2 px-3 md:px-6 py-2.5 bg-orange-600 text-white rounded-lg text-sm font-bold hover:bg-orange-700 transition-all active:scale-95 shadow-lg shadow-orange-200"
+              >
+                <Calendar className="h-4 w-4" />
+                <span className="hidden md:inline">Book Demo</span>
+              </Link>
+              <Link
+                href={"/login"}
+                className="group relative flex items-center gap-2 px-3 md:px-6 py-2.5 bg-slate-900 text-white rounded-lg text-sm font-bold hover:bg-orange-600 transition-all active:scale-95 shadow-lg shadow-slate-200"
+              >
+                <LogIn className="h-4 w-4" />
+                <span className="hidden md:inline">Sign In</span>
+              </Link>
             </div>
           )}
         </div>

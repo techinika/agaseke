@@ -98,7 +98,29 @@ export default function LandingPage() {
             username === "payout" ||
             username === "settings" ||
             username === "notification" ||
-            username === "support-us" 
+            username === "support-us" ||
+            username === "store" ||
+            username === "messages" ||
+            username === "explore" ||
+            username === "artist" ||
+            username === "podcasts" ||
+            username === "photographers" ||
+            username === "vloggers" ||
+            username === "dancers" ||
+            username === "comedians" ||
+            username === "musicians" ||
+            username === "public" ||
+            username === "business" ||
+            username === "entrepreneurs" ||
+            username === "athletes" ||
+            username === "reviewers" ||
+            username === "content-creators" ||
+            username === "journalists" ||
+            username === "models" ||
+            username === "educators" ||
+            username === "interviewers" ||
+            username === "bloggers" ||
+            username === "designers"
             ? "taken"
             : "available",
         );
