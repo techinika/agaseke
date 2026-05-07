@@ -70,6 +70,8 @@ export default function StorePage() {
     discountEnabled: false,
     discountPercentage: 0,
     active: true,
+    imageUrl: "",
+    bundlePrice: 0,
   });
 
   useEffect(() => {
@@ -213,17 +215,30 @@ export default function StorePage() {
     discountEnabled: boolean;
     discountPercentage: number;
     active: boolean;
+    imageUrl: string;
+    bundlePrice: number;
   }) => {
     try {
+      const data: Record<string, any> = {
+        name: folderData.name,
+        description: folderData.description,
+        productIds: folderData.productIds,
+        discountEnabled: folderData.discountEnabled,
+        discountPercentage: folderData.discountPercentage,
+        active: folderData.active,
+      };
+      if (folderData.imageUrl) data.imageUrl = folderData.imageUrl;
+      if (folderData.bundlePrice > 0) data.bundlePrice = folderData.bundlePrice;
+
       if (editingFolder) {
         await updateDoc(doc(db, "storeFolders", editingFolder.id), {
-          ...folderData,
+          ...data,
           updatedAt: serverTimestamp(),
         });
         toast.success("Folder updated!");
       } else {
         await addDoc(collection(db, "storeFolders"), {
-          ...folderData,
+          ...data,
           creatorId: creator?.uid,
           createdAt: serverTimestamp(),
         });
@@ -238,6 +253,8 @@ export default function StorePage() {
         discountEnabled: false,
         discountPercentage: 0,
         active: true,
+        imageUrl: "",
+        bundlePrice: 0,
       });
     } catch (error) {
       console.error("Create folder error:", error);
@@ -465,6 +482,8 @@ export default function StorePage() {
                 discountEnabled: folder.discountEnabled || false,
                 discountPercentage: folder.discountPercentage || 0,
                 active: folder.active ?? true,
+                imageUrl: folder.imageUrl || "",
+                bundlePrice: folder.bundlePrice || 0,
               });
               setShowFolderModal(true);
             }}
@@ -1168,14 +1187,22 @@ function FoldersList({
       {folders.map((folder) => (
         <div
           key={folder.id}
-          className="bg-white rounded-lg border border-slate-100 p-6"
+          className="bg-white rounded-lg border border-slate-100 overflow-hidden"
         >
-          <div className="flex items-start justify-between mb-4">
-            <div className="bg-orange-100 text-orange-600 px-3 py-1 rounded-lg font-bold text-lg">
-              {folder.name}
-            </div>
+          <div className="aspect-video bg-gradient-to-br from-orange-50 to-amber-50 relative">
+            {folder.imageUrl ? (
+              <img
+                src={folder.imageUrl}
+                alt={folder.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <FileText size={40} className="text-slate-300" />
+              </div>
+            )}
             <span
-              className={`text-[10px] font-bold px-2 py-1 rounded-full ${
+              className={`absolute top-3 right-3 text-[10px] font-bold px-2 py-1 rounded-full ${
                 folder.active
                   ? "bg-green-100 text-green-600"
                   : "bg-slate-100 text-slate-500"
@@ -1184,33 +1211,43 @@ function FoldersList({
               {folder.active ? "ACTIVE" : "INACTIVE"}
             </span>
           </div>
-          {folder.description && (
-            <p className="text-sm text-slate-500 mb-2">{folder.description}</p>
-          )}
-          <p className="text-lg font-bold text-slate-900 mb-2">
-            {folder.productIds?.length || 0} products in bundle
-          </p>
-          {folder.discountEnabled && (
-            <p className="text-sm text-green-600 font-bold mb-2">
-              {folder.discountPercentage}% Bundle Discount
+          <div className="p-6">
+            <h3 className="font-bold text-lg">{folder.name}</h3>
+            {folder.description && (
+              <p className="text-sm text-slate-500 mt-1">{folder.description}</p>
+            )}
+            <div className="flex items-center gap-3 mt-3">
+              <p className="text-lg font-bold text-slate-900">
+                {folder.productIds?.length || 0} products
+              </p>
+              {folder.discountEnabled && (
+                <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                  {folder.discountPercentage}% OFF
+                </span>
+              )}
+              {folder.bundlePrice > 0 && (
+                <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
+                  {folder.bundlePrice.toLocaleString()} RWF
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-400 mt-2 line-clamp-2">
+              {getProductNames(folder.productIds || [])}
             </p>
-          )}
-          <p className="text-xs text-slate-400 mb-4">
-            {getProductNames(folder.productIds || [])}
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => onEdit(folder)}
-              className="flex-1 py-2 text-xs font-bold border border-slate-200 text-slate-500 rounded-lg hover:bg-slate-50 transition"
-            >
-              <Edit size={14} className="inline mr-1" /> Edit
-            </button>
-            <button
-              onClick={() => onDelete(folder.id)}
-              className="flex-1 py-2 text-xs font-bold border border-red-100 text-red-500 rounded-lg hover:bg-red-50 transition"
-            >
-              <Trash2 size={14} className="inline mr-1" /> Delete
-            </button>
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => onEdit(folder)}
+                className="flex-1 py-2 text-xs font-bold border border-slate-200 text-slate-500 rounded-lg hover:bg-slate-50 transition"
+              >
+                <Edit size={14} className="inline mr-1" /> Edit
+              </button>
+              <button
+                onClick={() => onDelete(folder.id)}
+                className="flex-1 py-2 text-xs font-bold border border-red-100 text-red-500 rounded-lg hover:bg-red-50 transition"
+              >
+                <Trash2 size={14} className="inline mr-1" /> Delete
+              </button>
+            </div>
           </div>
         </div>
       ))}
@@ -1234,6 +1271,33 @@ function FolderModal({
   onSave: (data: any) => void;
 }) {
   const [saving, setSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const uploadFormData = new FormData();
+    uploadFormData.append("file", file);
+    uploadFormData.append("creatorHandle", "folder");
+
+    try {
+      const res = await fetch("/api/upload/content/image", {
+        method: "POST",
+        body: uploadFormData,
+      });
+      const data = await res.json();
+      if (data.url) {
+        setFormData((prev: any) => ({ ...prev, imageUrl: data.url }));
+        toast.success("Image uploaded!");
+      }
+    } catch {
+      toast.error("Upload failed");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!formData.name || formData.productIds.length === 0) {
@@ -1261,8 +1325,10 @@ function FolderModal({
     return sum + (product?.price || 0);
   }, 0);
 
+  const effectivePrice = formData.bundlePrice > 0 ? formData.bundlePrice : totalPrice;
+
   const discountAmount = formData.discountEnabled
-    ? (totalPrice * formData.discountPercentage) / 100
+    ? (effectivePrice * formData.discountPercentage) / 100
     : 0;
 
   return (
@@ -1312,6 +1378,52 @@ function FolderModal({
 
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-2">
+              Folder Image
+            </label>
+            <div className="border-2 border-dashed border-slate-200 rounded-lg p-4 text-center">
+              {formData.imageUrl ? (
+                <div className="relative inline-block">
+                  <img
+                    src={formData.imageUrl}
+                    alt="Preview"
+                    className="max-h-32 mx-auto rounded-lg"
+                  />
+                  <button
+                    onClick={() =>
+                      setFormData((prev: any) => ({ ...prev, imageUrl: "" }))
+                    }
+                    className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <ImageIcon
+                    size={28}
+                    className="mx-auto text-slate-300 mb-2"
+                  />
+                  <p className="text-xs text-slate-500 mb-3">
+                    Upload a cover image for this folder
+                  </p>
+                  <label className="cursor-pointer bg-slate-100 px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-200 transition inline-flex items-center gap-2">
+                    <Upload size={14} />
+                    {isUploading ? "Uploading..." : "Choose File"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                      disabled={isUploading}
+                    />
+                  </label>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">
               Select Products *
             </label>
             <p className="text-xs text-slate-500 mb-2">
@@ -1339,12 +1451,39 @@ function FolderModal({
           </div>
 
           {formData.productIds.length > 0 && (
-            <div className="p-4 bg-slate-50 rounded-lg">
-              <p className="text-sm font-bold">
-                Total: {totalPrice.toLocaleString()} RWF
+            <div className="p-4 bg-slate-50 rounded-lg space-y-1">
+              <p className="text-sm text-slate-500">
+                Sum of products: {totalPrice.toLocaleString()} RWF
               </p>
+              {formData.bundlePrice > 0 && (
+                <p className="text-sm font-bold text-orange-600">
+                  Bundle price: {formData.bundlePrice.toLocaleString()} RWF
+                </p>
+              )}
             </div>
           )}
+
+          <div>
+            <label className="block text-sm font-bold text-slate-700 mb-2">
+              Fixed Bundle Price (optional)
+            </label>
+            <input
+              type="number"
+              value={formData.bundlePrice || ""}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  bundlePrice: parseInt(e.target.value) || 0,
+                })
+              }
+              placeholder="Leave empty to use sum of product prices"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Set a custom price for the entire bundle instead of using the sum
+              of individual product prices
+            </p>
+          </div>
 
           <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
             <div>
@@ -1390,7 +1529,7 @@ function FolderModal({
                 placeholder="e.g., 10 for 10%"
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3"
               />
-              {formData.discountPercentage > 0 && totalPrice > 0 && (
+              {formData.discountPercentage > 0 && effectivePrice > 0 && (
                 <p className="text-sm text-green-600 mt-2">
                   You save: {discountAmount.toLocaleString()} RWF (
                   {formData.discountPercentage}% off)

@@ -14,6 +14,9 @@ import {
   doc,
   updateDoc,
   Timestamp,
+  runTransaction,
+  serverTimestamp,
+  increment,
 } from "firebase/firestore";
 import {
   TrendingUp,
@@ -291,13 +294,32 @@ export default function AdminDashboard() {
 
     try {
       if (category === "withdrawal") {
-        await updateDoc(doc(db, "withdrawRequests", target.id), {
-          status: type === "approve" ? "completed" : "rejected",
-          updatedAt: new Date(),
-        });
-
         if (type === "approve") {
-          // Send payout email notification
+          await runTransaction(db, async (transaction) => {
+            transaction.update(doc(db, "withdrawRequests", target.id), {
+              status: "completed",
+              updatedAt: new Date(),
+            });
+
+            const payoutRef = doc(collection(db, "payouts"));
+            transaction.set(payoutRef, {
+              withdrawalRequestId: target.id,
+              creatorId: target.handle,
+              creatorUid: target.creatorId,
+              amount: target.amount,
+              status: "completed",
+              approvedAt: serverTimestamp(),
+              method: target.method || "MoMo",
+              accountNumber: target.accountNumber || "",
+              createdAt: serverTimestamp(),
+            });
+
+            const creatorRef = doc(db, "creators", target.handle);
+            transaction.update(creatorRef, {
+              pendingPayout: increment(-target.amount),
+            });
+          });
+
           await fetch("/api/comms/email/payout/processed", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -308,6 +330,11 @@ export default function AdminDashboard() {
               method: target.method,
               accountNumber: target.accountNumber,
             }),
+          });
+        } else {
+          await updateDoc(doc(db, "withdrawRequests", target.id), {
+            status: "rejected",
+            updatedAt: new Date(),
           });
         }
 

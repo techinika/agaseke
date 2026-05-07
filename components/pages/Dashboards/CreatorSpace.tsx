@@ -61,7 +61,7 @@ export default function CreatorDashboard() {
 
         const contentQ = query(
           collection(db, "creatorContent"),
-          where("creatorId", "==", creator?.handle),
+          where("creatorId", "==", creator?.uid),
           orderBy("createdAt", "desc"),
           limit(5),
         );

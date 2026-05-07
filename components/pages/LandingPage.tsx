@@ -75,7 +75,52 @@ export default function LandingPage() {
             username === "profile" ||
             username === "payout" ||
             username === "payout-policy" ||
-            username === "onboarding"
+            username === "onboarding" ||
+            username === "payment" ||
+            username === "dashboard" ||
+            username === "checkout" ||
+            username === "verify" ||
+            username === "payments" ||
+            username === "help" ||
+            username === "api" ||
+            username === "search" ||
+            username === "about" ||
+            username === "contact" ||
+            username === "faq" ||
+            username === "privacy" ||
+            username === "terms" ||
+            username === "support" ||
+            username === "feedback" ||
+            username === "blog" ||
+            username === "contact-us" ||
+            username === "help-us-improve" ||
+            username === "login-demo" ||
+            username === "payout" ||
+            username === "settings" ||
+            username === "notification" ||
+            username === "support-us" ||
+            username === "store" ||
+            username === "messages" ||
+            username === "explore" ||
+            username === "artist" ||
+            username === "podcasts" ||
+            username === "photographers" ||
+            username === "vloggers" ||
+            username === "dancers" ||
+            username === "comedians" ||
+            username === "musicians" ||
+            username === "public" ||
+            username === "business" ||
+            username === "entrepreneurs" ||
+            username === "athletes" ||
+            username === "reviewers" ||
+            username === "content-creators" ||
+            username === "journalists" ||
+            username === "models" ||
+            username === "educators" ||
+            username === "interviewers" ||
+            username === "bloggers" ||
+            username === "designers"
             ? "taken"
             : "available",
         );

@@ -39,8 +39,8 @@ export const ProtectedSection = ({
         <Heart className="text-orange-200 mb-4" size={48} />
         <h3 className="text-xl font-bold">Send a Gift to Unlock</h3>
         <p className="text-slate-500 max-w-xs mx-auto mb-6">
-          Direct messaging is exclusive to supporters. Send a small gift to
-          start the conversation.
+          This feature is exclusive to supporters. Send a small gift to enable
+          it.
         </p>
         <button
           onClick={() => setIsModalOpen(true)}

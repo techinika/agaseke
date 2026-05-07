@@ -63,11 +63,11 @@ export default function ContentManager() {
 
   // 1. Fetch Content from Firestore
   useEffect(() => {
-    if (!creator?.handle) return;
+    if (!creator?.uid) return;
 
     const q = query(
       collection(db, "creatorContent"),
-      where("creatorId", "==", creator.handle),
+      where("creatorId", "==", creator.uid),
       orderBy("createdAt", "desc"),
     );
 
@@ -98,7 +98,10 @@ export default function ContentManager() {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("creatorHandle", creator?.handle || "");
-      formData.append("type", newPost.type === "document" ? "perk_file" : newPost.type);
+      formData.append(
+        "type",
+        newPost.type === "document" ? "perk_file" : newPost.type,
+      );
 
       let endpoint = "/api/upload/content/image";
       if (newPost.type === "video") endpoint = "/api/upload/content/video";
@@ -147,7 +150,10 @@ export default function ContentManager() {
         await updateDoc(doc(db, "creatorContent", editingPost.id), contentData);
         toast.success("Post updated!");
       } else {
-        const docRef = await addDoc(collection(db, "creatorContent"), contentData);
+        const docRef = await addDoc(
+          collection(db, "creatorContent"),
+          contentData,
+        );
         toast.success("Content published!");
 
         // Notify supporters
@@ -165,11 +171,13 @@ export default function ContentManager() {
               contentId: docRef.id,
             }),
           });
-          
+
           if (response.ok) {
             const data = await response.json();
             if (data.sentCount > 0) {
-              toast.success(`Notified ${data.sentCount} supporter(s) about your new content!`);
+              toast.success(
+                `Notified ${data.sentCount} supporter(s) about your new content!`,
+              );
             }
           }
         } catch (notifyError) {

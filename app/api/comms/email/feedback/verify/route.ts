@@ -56,8 +56,8 @@ export async function POST(req: NextRequest) {
       from: `"Agaseke Verification" <${process.env.SMTP_HELLO}>`,
       to: email,
       subject: approved
-        ? "✅ Agaseke Verification Successful"
-        : "⚠️ Action Required: Agaseke Verification Update",
+        ? "Agaseke Verification Successful"
+        : "Action Required: Agaseke Verification Update",
       html: emailHtml,
     });
 

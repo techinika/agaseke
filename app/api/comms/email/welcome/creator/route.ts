@@ -42,7 +42,7 @@ export async function POST(req: Request) {
           </div>
           
           <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #f1f5f9;">
-            <p style="font-size: 12px; color: #94a3b8; margin: 0;">Sent with ❤️ from the Agaseke Team</p>
+            <p style="font-size: 12px; color: #94a3b8; margin: 0;">Sent with care from the Agaseke Team</p>
           </div>
         </div>
       </div>
