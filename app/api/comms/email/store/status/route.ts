@@ -17,12 +17,12 @@ const statusMessages: Record<string, { subject: string; title: string; message: 
   },
   shipped: {
     subject: "Your Order Has Been Shipped",
-    title: "Order Shipped! 📦",
+    title: "Order Shipped",
     message: "Your order is on its way! You should receive it soon. We'll notify you when it's delivered.",
   },
   delivered: {
     subject: "Your Order Has Been Delivered",
-    title: "Order Delivered! ✅",
+    title: "Order Delivered",
     message: "Your order has been delivered. We hope you enjoy your purchase!",
   },
   cancelled: {

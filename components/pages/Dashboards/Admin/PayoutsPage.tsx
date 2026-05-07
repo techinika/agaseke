@@ -10,6 +10,7 @@ import {
   doc,
   runTransaction,
   serverTimestamp,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "@/db/firebase";
 import {
@@ -81,6 +82,22 @@ export default function AdminPayouts() {
           createdAt: serverTimestamp(),
         });
       });
+
+      const profileSnap = await getDoc(doc(db, "profiles", confirmPayout.uid));
+      const creatorEmail = profileSnap.data()?.email;
+      if (creatorEmail) {
+        await fetch("/api/comms/email/payout/processed", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            creatorEmail,
+            creatorName: confirmPayout.name,
+            amount,
+            method: "MoMo",
+            accountNumber: confirmPayout.payoutNumber,
+          }),
+        });
+      }
 
       toast.success(
         `Payout of ${amount} RWF for ${confirmPayout.name} recorded!`,

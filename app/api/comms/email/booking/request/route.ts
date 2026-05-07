@@ -48,11 +48,11 @@ export async function POST(request: NextRequest) {
               <p><strong>${bookerName}</strong> has requested to book a meeting with you!</p>
               
               <div class="booking-card">
-                <p><strong>👤 Name:</strong> ${bookerName}</p>
-                <p><strong>📧 Email:</strong> ${bookerEmail}</p>
-                <p><strong>📅 Date:</strong> ${preferredDate || "Not specified"}</p>
-                <p><strong>🕐 Time:</strong> ${preferredTime || "Not specified"}</p>
-                <p><strong>📍 Type:</strong> ${preferredType === "online" ? "Online" : preferredType === "physical" ? "In Person" : "Either"}</p>
+                <p><strong>Name:</strong> ${bookerName}</p>
+                <p><strong>Email:</strong> ${bookerEmail}</p>
+                <p><strong>Date:</strong> ${preferredDate || "Not specified"}</p>
+                <p><strong>Time:</strong> ${preferredTime || "Not specified"}</p>
+                <p><strong>Type:</strong> ${preferredType === "online" ? "Online" : preferredType === "physical" ? "In Person" : "Either"}</p>
               </div>
               
               ${reason ? `

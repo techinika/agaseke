@@ -51,15 +51,15 @@ export async function POST(request: NextRequest) {
               <p>Hi ${bookerName},</p>
               
               <div style="text-align: center;">
-                <span class="status ${status}">${isAccepted ? "✓ CONFIRMED" : "✗ DECLINED"}</span>
+                <span class="status ${status}">${isAccepted ? "CONFIRMED" : "DECLINED"}</span>
               </div>
               
               ${isAccepted ? `
                 <p>Great news! Your booking with <strong>${creatorName}</strong> has been confirmed.</p>
                 
                 <div class="details">
-                  <p><strong>📅 Date:</strong> ${bookingDate}</p>
-                  <p><strong>🕐 Time:</strong> ${bookingTime}</p>
+                  <p><strong>Date:</strong> ${bookingDate}</p>
+                  <p><strong>Time:</strong> ${bookingTime}</p>
                 </div>
                 
                 ${note ? `<div class="note"><strong>Message from ${creatorName}:</strong><br>${note}</div>` : ""}

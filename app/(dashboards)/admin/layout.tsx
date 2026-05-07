@@ -37,6 +37,7 @@ export default function RootLayout({
           <NavItem href="/admin/users">Users</NavItem>
           <NavItem href="/admin/payouts">Payouts</NavItem>
           <NavItem href="/admin/comms">Broadcast</NavItem>
+          <NavItem href="/admin/feedback">Feedback</NavItem>
           <NavItem href="/admin/logs">Activity Logs</NavItem>
         </div>
       </nav>

@@ -49,9 +49,9 @@ export async function POST(request: NextRequest) {
         
         <div class="event-card">
           <h2 style="margin: 0 0 15px 0; color: #f97316;">${eventTitle}</h2>
-          <p style="margin: 8px 0;"><strong>📅 Date:</strong> ${eventDate}</p>
-          ${eventTime ? `<p style="margin: 8px 0;"><strong>🕐 Time:</strong> ${eventTime}</p>` : ""}
-          <p style="margin: 8px 0;"><strong>📍 Location:</strong> ${eventLocation || "See creator for details"}</p>
+          <p style="margin: 8px 0;"><strong>Date:</strong> ${eventDate}</p>
+          ${eventTime ? `<p style="margin: 8px 0;"><strong>Time:</strong> ${eventTime}</p>` : ""}
+          <p style="margin: 8px 0;"><strong>Location:</strong> ${eventLocation || "See creator for details"}</p>
         </div>
         
         <p>Enjoy the event! We hope you have a great time.</p>
