@@ -88,7 +88,30 @@ export default function CreatorOnboarding() {
             formData.username === "profile" ||
             formData.username === "payout" ||
             formData.username === "payout-policy" ||
-            formData.username === "onboarding"
+            formData.username === "onboarding" ||
+            formData.username === "payment" ||
+            formData.username === "dashboard" ||
+            formData.username === "checkout" ||
+            formData.username === "verify" ||
+            formData.username === "payments" ||
+            formData.username === "help" ||
+            formData.username === "api" ||
+            formData.username === "search" ||
+            formData.username === "about" ||
+            formData.username === "contact" ||
+            formData.username === "faq" ||
+            formData.username === "privacy" ||
+            formData.username === "terms" ||
+            formData.username === "support" ||
+            formData.username === "feedback" ||
+            formData.username === "blog" ||
+            formData.username === "contact-us" ||
+            formData.username === "help-us-improve" ||
+            formData.username === "login-demo" ||
+            formData.username === "payout" ||
+            formData.username === "settings" ||
+            formData.username === "notification" ||
+            formData.username === "support-us"
             ? "taken"
             : "available",
         );

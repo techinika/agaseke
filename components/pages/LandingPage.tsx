@@ -75,7 +75,30 @@ export default function LandingPage() {
             username === "profile" ||
             username === "payout" ||
             username === "payout-policy" ||
-            username === "onboarding"
+            username === "onboarding" ||
+            username === "payment" ||
+            username === "dashboard" ||
+            username === "checkout" ||
+            username === "verify" ||
+            username === "payments" ||
+            username === "help" ||
+            username === "api" ||
+            username === "search" ||
+            username === "about" ||
+            username === "contact" ||
+            username === "faq" ||
+            username === "privacy" ||
+            username === "terms" ||
+            username === "support" ||
+            username === "feedback" ||
+            username === "blog" ||
+            username === "contact-us" ||
+            username === "help-us-improve" ||
+            username === "login-demo" ||
+            username === "payout" ||
+            username === "settings" ||
+            username === "notification" ||
+            username === "support-us" 
             ? "taken"
             : "available",
         );
