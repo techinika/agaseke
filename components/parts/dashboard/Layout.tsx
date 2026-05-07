@@ -13,6 +13,7 @@ import {
   Share2,
   Settings,
   LogOut,
+  User,
   UserCircle,
   ChevronDown,
   CheckCircle,
@@ -282,22 +283,14 @@ export default function DashboardLayout({
                 </div>
 
                 <div className="w-8 h-8 bg-slate-100 rounded-full border border-slate-200 flex items-center justify-center text-xs font-bold overflow-hidden">
-                  {creator?.profilePicture || auth?.currentUser?.photoURL ? (
+                  {creator?.profilePicture ? (
                     <img
-                      src={
-                        creator?.profilePicture ||
-                        auth?.currentUser?.photoURL ||
-                        undefined
-                      }
-                      alt={
-                        creator?.name ||
-                        auth?.currentUser?.displayName ||
-                        undefined
-                      }
+                      src={creator?.profilePicture}
+                      alt={creator?.name || "Creator"}
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    creator?.name?.[0] || "C"
+                    <User size={16} className="text-slate-400" />
                   )}
                 </div>
                 <ChevronDown

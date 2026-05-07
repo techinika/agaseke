@@ -74,16 +74,14 @@ const Navbar = () => {
                   className="flex items-center gap-2 p-1 pr-3 rounded-lg border border-slate-200 hover:border-orange-200 hover:bg-white transition-all group relative z-50 shadow-sm"
                 >
                   <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden font-bold text-xs ring-2 ring-transparent group-hover:ring-orange-100 transition-all">
-                    {auth?.user?.photoURL ? (
+                    {auth?.profile?.photoURL || auth?.user?.photoURL ? (
                       <img
-                        src={auth.user?.photoURL}
+                        src={auth?.profile?.photoURL || auth?.user?.photoURL || undefined as (string | undefined)}
                         alt="Avatar"
-                        className="w-full h-full wrap-break-word object-cover"
+                        className="w-full h-full object-cover"
                       />
                     ) : (
-                      <span className="text-slate-600">
-                        {auth?.profile?.displayName?.[0]}
-                      </span>
+                      <User size={16} className="text-slate-500" />
                     )}
                   </div>
                   <div className="hidden sm:flex flex-col items-start leading-tight">
