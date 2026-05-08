@@ -15,7 +15,38 @@ export async function POST(req: Request) {
       includeReferral,
       referralUid,
       referralId,
+      productId,
+      productPrice,
+      productName,
+      quantity,
+      selectedSize,
+      platformFeePayer,
+      buyerName,
     } = await req.json();
+
+    const isStoreTransaction = !!productId;
+    const platformSharePercentage = Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
+    const price = Number(productPrice) || 0;
+    const qty = Number(quantity) || 1;
+    const feePayer = platformFeePayer || "buyer";
+
+    let totalAmount = Number(amount);
+    let platformFee = 0;
+    let creatorEarnings = 0;
+    let referralEarnings = 0;
+
+    if (isStoreTransaction) {
+      const productTotal = price * qty;
+      platformFee = productTotal * platformSharePercentage;
+      referralEarnings = productTotal * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE || 0.01);
+      
+      if (feePayer === "buyer") {
+        totalAmount = productTotal + platformFee;
+        creatorEarnings = productTotal - platformFee - referralEarnings;
+      } else {
+        creatorEarnings = productTotal - platformFee - referralEarnings;
+      }
+    }
 
     const authRes = await fetch(
       "https://payments.paypack.rw/api/auth/agents/authorize",
@@ -53,9 +84,9 @@ export async function POST(req: Request) {
     const payData = await payRes.json();
 
     if (payData.ref) {
-      await adminDb.collection("transactions").add({
+      const txData: Record<string, any> = {
         ref: payData.ref,
-        amount: Number(amount),
+        amount: totalAmount,
         phone,
         creatorId,
         creatorUid,
@@ -65,9 +96,25 @@ export async function POST(req: Request) {
         message: message ?? "",
         referralUid: referralUid ?? "",
         referralId: referralId ?? "",
-        type: "support",
+        type: isStoreTransaction ? "store" : "support",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      };
+
+      if (isStoreTransaction) {
+        txData.productId = productId;
+        txData.productPrice = price;
+        txData.productName = productName || "";
+        txData.quantity = qty;
+        txData.selectedSize = selectedSize || "";
+        txData.platformFee = platformFee;
+        txData.creatorEarnings = creatorEarnings;
+        txData.referralEarnings = referralEarnings;
+        txData.platformFeePayer = feePayer;
+        txData.buyerId = supporterId || "anonymous";
+        txData.buyerName = buyerName || "";
+      }
+
+      await adminDb.collection("transactions").add(txData);
 
       return NextResponse.json({ ref: payData.ref });
     }

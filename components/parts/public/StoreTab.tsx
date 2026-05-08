@@ -61,7 +61,8 @@ interface FolderData {
   creatorId: string;
 }
 
-const platformSharePercentage = Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
+const platformSharePercentage =
+  Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
 
 export const StoreTab = ({
   creatorId,
@@ -85,7 +86,9 @@ export const StoreTab = ({
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [processing, setProcessing] = useState(false);
   const [activeFolder, setActiveFolder] = useState<FolderData | null>(null);
-  const [purchasedProductIds, setPurchasedProductIds] = useState<Set<string>>(new Set());
+  const [purchasedProductIds, setPurchasedProductIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   const canAccess = storePublic || isSupporter;
 
@@ -150,7 +153,12 @@ export const StoreTab = ({
 
         const purchased = new Set<string>();
         for (const order of orderData) {
-          if (order.status === "paid" || order.status === "processing" || order.status === "shipped" || order.status === "delivered") {
+          if (
+            order.status === "paid" ||
+            order.status === "processing" ||
+            order.status === "shipped" ||
+            order.status === "delivered"
+          ) {
             for (const item of order.items) {
               purchased.add(item.productId);
             }
@@ -194,7 +202,9 @@ export const StoreTab = ({
   };
 
   const addFolderToCart = (folder: FolderData) => {
-    const folderProducts = products.filter((p) => folder.productIds.includes(p.id));
+    const folderProducts = products.filter((p) =>
+      folder.productIds.includes(p.id),
+    );
     if (folderProducts.length === 0) {
       toast.error("No products available in this folder");
       return;
@@ -278,7 +288,9 @@ export const StoreTab = ({
   };
 
   const getFolderTotal = (folder: FolderData) => {
-    const folderProducts = products.filter((p) => folder.productIds.includes(p.id) && !purchasedProductIds.has(p.id));
+    const folderProducts = products.filter(
+      (p) => folder.productIds.includes(p.id) && !purchasedProductIds.has(p.id),
+    );
     const total = folderProducts.reduce((sum, p) => sum + p.price, 0);
     if (folder.discountEnabled && folder.discountPercentage > 0) {
       return total - (total * folder.discountPercentage) / 100;
@@ -287,7 +299,9 @@ export const StoreTab = ({
   };
 
   const getFolderPlatformFee = (folder: FolderData) => {
-    const folderProducts = products.filter((p) => folder.productIds.includes(p.id) && !purchasedProductIds.has(p.id));
+    const folderProducts = products.filter(
+      (p) => folder.productIds.includes(p.id) && !purchasedProductIds.has(p.id),
+    );
     let fee = 0;
     for (const product of folderProducts) {
       if ((product.platformFeePayer || "buyer") === "buyer") {
@@ -524,8 +538,12 @@ function FolderCard({
   purchasedProductIds: Set<string>;
   onEnter: () => void;
 }) {
-  const folderProducts = products.filter((p) => folder.productIds.includes(p.id));
-  const unpurchased = folderProducts.filter((p) => !purchasedProductIds.has(p.id));
+  const folderProducts = products.filter((p) =>
+    folder.productIds.includes(p.id),
+  );
+  const unpurchased = folderProducts.filter(
+    (p) => !purchasedProductIds.has(p.id),
+  );
   const totalPrice = unpurchased.reduce((sum, p) => {
     let price = p.price;
     if ((p.platformFeePayer || "buyer") === "buyer") {
@@ -552,7 +570,9 @@ function FolderCard({
         ) : (
           <div className="text-center">
             <FolderOpen size={64} className="text-orange-300 mx-auto mb-2" />
-            <p className="text-orange-400 font-bold text-sm">{folderProducts.length} items</p>
+            <p className="text-orange-400 font-bold text-sm">
+              {folderProducts.length} items
+            </p>
           </div>
         )}
         <div className="absolute top-3 left-3 bg-orange-100 text-orange-600 text-[10px] font-bold px-2 py-1 rounded-full">
@@ -567,27 +587,42 @@ function FolderCard({
       <div className="p-4">
         <h3 className="font-bold text-lg truncate">{folder.name}</h3>
         {folder.description && (
-          <p className="text-sm text-slate-500 line-clamp-2 mt-1">{folder.description}</p>
+          <p className="text-sm text-slate-500 line-clamp-2 mt-1">
+            {folder.description}
+          </p>
         )}
         <div className="mt-3 space-y-1">
           {folderProducts.slice(0, 3).map((p) => (
-            <div key={p.id} className="flex items-center justify-between text-xs">
+            <div
+              key={p.id}
+              className="flex items-center justify-between text-xs"
+            >
               <span className="text-slate-600 truncate flex-1">{p.name}</span>
-              <span className={`font-medium ml-2 ${purchasedProductIds.has(p.id) ? "text-green-500" : "text-slate-900"}`}>
-                {purchasedProductIds.has(p.id) ? "Owned" : `${p.price.toLocaleString()} RWF`}
+              <span
+                className={`font-medium ml-2 ${purchasedProductIds.has(p.id) ? "text-green-500" : "text-slate-900"}`}
+              >
+                {purchasedProductIds.has(p.id)
+                  ? "Owned"
+                  : `${p.price.toLocaleString()} RWF`}
               </span>
             </div>
           ))}
           {folderProducts.length > 3 && (
-            <p className="text-xs text-slate-400">+{folderProducts.length - 3} more items</p>
+            <p className="text-xs text-slate-400">
+              +{folderProducts.length - 3} more items
+            </p>
           )}
         </div>
         {unpurchased.length > 0 && (
           <div className="mt-4 flex items-center justify-between">
             <div>
-              <p className="text-lg font-bold text-slate-900">{discountedPrice.toLocaleString()} RWF</p>
+              <p className="text-lg font-bold text-slate-900">
+                {discountedPrice.toLocaleString()} RWF
+              </p>
               {folder.discountEnabled && (
-                <p className="text-xs text-green-600 font-bold">{folder.discountPercentage}% bundle discount</p>
+                <p className="text-xs text-green-600 font-bold">
+                  {folder.discountPercentage}% bundle discount
+                </p>
               )}
             </div>
             <span className="flex items-center gap-1 text-orange-600 text-sm font-bold group-hover:gap-2 transition-all">
@@ -688,7 +723,9 @@ function FolderExplorer({
       {products.length === 0 ? (
         <div className="text-center py-20 bg-white border border-slate-100 rounded-3xl">
           <Package size={48} className="mx-auto text-slate-200 mb-4" />
-          <p className="text-slate-500 font-medium">No products in this bundle</p>
+          <p className="text-slate-500 font-medium">
+            No products in this bundle
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
@@ -730,9 +767,11 @@ function ProductCard({
   );
   const isOutOfStock = product.type === "physical" && product.stock <= 0;
 
-  const priceWithFee = product.price + ((product.platformFeePayer || "buyer") === "buyer"
-    ? product.price * platformSharePercentage
-    : 0);
+  const priceWithFee =
+    product.price +
+    ((product.platformFeePayer || "buyer") === "buyer"
+      ? product.price * platformSharePercentage
+      : 0);
 
   const handleAdd = () => {
     if (!isLoggedIn) return;
@@ -750,7 +789,9 @@ function ProductCard({
   };
 
   return (
-    <div className={`bg-white border rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all ${isPurchased ? "border-green-200" : "border-slate-100"}`}>
+    <div
+      className={`bg-white border rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all ${isPurchased ? "border-green-200" : "border-slate-100"}`}
+    >
       <div
         className="aspect-square bg-slate-50 relative cursor-pointer"
         onClick={() => onSelectProduct(product)}
@@ -801,7 +842,8 @@ function ProductCard({
             </span>
             {product.platformFeePayer === "buyer" && (
               <p className="text-[10px] text-slate-400">
-                +{platformSharePercentage * 100}% fee = {priceWithFee.toLocaleString()} RWF
+                +{platformSharePercentage * 100}% fee ={" "}
+                {priceWithFee.toLocaleString()} RWF
               </p>
             )}
           </div>
@@ -920,9 +962,11 @@ function ProductDetailModal({
     product.sizes?.[0],
   );
 
-  const priceWithFee = product.price + ((product.platformFeePayer || "buyer") === "buyer"
-    ? product.price * platformSharePercentage
-    : 0);
+  const priceWithFee =
+    product.price +
+    ((product.platformFeePayer || "buyer") === "buyer"
+      ? product.price * platformSharePercentage
+      : 0);
 
   const handleAdd = () => {
     if (
@@ -1367,8 +1411,8 @@ function CheckoutModal({
 
       const endpoint =
         paymentMethod === "momo"
-          ? "/api/store/pay/with-momo"
-          : "/api/store/pay/with-card";
+          ? "/api/support/with-momo/pay"
+          : "/api/support/with-card/pay";
 
       const paymentResponse = await fetch(endpoint, {
         method: "POST",
@@ -1793,7 +1837,10 @@ function OrderTrackingModal({
 
                 <div className="space-y-2 mb-4">
                   {order.items.map((item, idx) => (
-                    <div key={idx} className="flex justify-between text-sm items-center">
+                    <div
+                      key={idx}
+                      className="flex justify-between text-sm items-center"
+                    >
                       <span>
                         {item.quantity}x {item.productName}
                       </span>
