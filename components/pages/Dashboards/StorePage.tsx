@@ -595,11 +595,11 @@ function ProductsList({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
       {products.map((product) => (
         <div
           key={product.id}
-          className="bg-white rounded-lg border border-slate-100 overflow-hidden"
+          className="bg-white rounded-lg border border-slate-100 overflow-hidden shadow-sm"
         >
           <div className="aspect-square bg-slate-50 relative">
             {product.imageUrl ? (

@@ -1,8 +1,9 @@
 import PublicProfile from "@/components/pages/PublicProfile";
-import { db } from "@/db/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { adminDb } from "@/db/firebaseAdmin";
 import { Metadata } from "next";
 import { baseUrl } from "@/app/sitemap";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/db/firebase";
 
 export async function generateMetadata({
   params,
@@ -11,88 +12,101 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { username } = await params;
 
-  const creatorRef = doc(db, "creators", username);
-  const creatorSnap = await getDoc(creatorRef);
-  const creator = creatorSnap.data();
+  try {
+    const creatorRef = doc(db, "creators", username as string);
+    const creatorSnap = await getDoc(creatorRef);
 
-  if (!creator) {
-    return {
-      title: "Creator Not Found | Agaseke",
-      description: "This creator page could not be found.",
-      robots: {
-        index: false,
-        follow: false,
-      },
-    };
-  }
+    const creator = creatorSnap.data();
 
-  const profileRef = doc(db, "profiles", creator?.uid);
-  const profileSnap = await getDoc(profileRef);
-  const profile = profileSnap.data();
-
-  const displayName = creator.name;
-  const verified = creator.verified || false;
-  const bio = creator.bio || `Support ${displayName} on Agaseke. Fueling Rwandan creativity one contribution at a time.`;
-  const image = profile?.photoURL || creator.profilePicture || "/agaseke.png";
-
-  const title = verified
-    ? `✓ ${displayName} (@${username}) | Agaseke`
-    : `${displayName} (@${username}) | Agaseke`;
-
-  const keywords = [
-    displayName,
-    username,
-    "Rwandan creator",
-    "support creator Rwanda",
-    creator.bio?.split(" ").slice(0, 5).join(" ") || "content creator",
-  ];
-
-  return {
-    title,
-    description: bio,
-    keywords,
-    authors: [{ name: displayName }],
-    alternates: {
-      canonical: `/${username}`,
-    },
-    openGraph: {
-      title,
-      description: bio,
-      url: `${baseUrl}/${username}`,
-      siteName: "Agaseke",
-      images: [
-        {
-          url: image,
-          width: 400,
-          height: 400,
-          alt: `${displayName} on Agaseke`,
+    if (!creator) {
+      return {
+        title: "Creator Not Found | Agaseke",
+        description: "This creator page could not be found.",
+        robots: {
+          index: false,
+          follow: false,
         },
-      ],
-      locale: "en_RW",
-      type: "profile",
-      firstName: displayName.split(" ")[0],
+      };
+    }
+
+    const profileSnap = await adminDb
+      .collection("profiles")
+      .doc(creator?.uid)
+      .get();
+    const profile = profileSnap.data();
+
+    const displayName = creator.name;
+    const verified = creator.verified || false;
+    const bio =
+      creator.bio ||
+      `Support ${displayName} on Agaseke. Fueling Rwandan creativity one contribution at a time.`;
+    const image = profile?.photoURL || creator.profilePicture || "/agaseke.png";
+
+    const title = verified
+      ? `✓ ${displayName} (@${username}) | Agaseke`
+      : `${displayName} (@${username}) | Agaseke`;
+
+    const keywords = [
+      displayName,
       username,
-    },
-    twitter: {
-      card: "summary",
+      "Rwandan creator",
+      "support creator Rwanda",
+      creator.bio?.split(" ").slice(0, 5).join(" ") || "content creator",
+    ];
+
+    return {
       title,
       description: bio,
-      images: [image],
-      site: "@Agaseke_support",
-      creator: creator.socials?.twitter
-        ? `@${creator.socials.twitter}`
-        : undefined,
-    },
-    robots: {
-      index: true,
-      follow: true,
-      googleBot: {
+      keywords,
+      authors: [{ name: displayName }],
+      alternates: {
+        canonical: `/${username}`,
+      },
+      openGraph: {
+        title,
+        description: bio,
+        url: `${baseUrl}/${username}`,
+        siteName: "Agaseke",
+        images: [
+          {
+            url: image,
+            width: 400,
+            height: 400,
+            alt: `${displayName} on Agaseke`,
+          },
+        ],
+        locale: "en_RW",
+        type: "profile",
+        firstName: displayName.split(" ")[0],
+        username,
+      },
+      twitter: {
+        card: "summary",
+        title,
+        description: bio,
+        images: [image],
+        site: "@Agaseke_support",
+        creator: creator.socials?.twitter
+          ? `@${creator.socials.twitter}`
+          : undefined,
+      },
+      robots: {
         index: true,
         follow: true,
-        "max-image-preview": "large",
+        googleBot: {
+          index: true,
+          follow: true,
+          "max-image-preview": "large",
+        },
       },
-    },
-  };
+    };
+  } catch (error) {
+    console.error("Error generating metadata:", error);
+    return {
+      title: `${username} | Agaseke`,
+      description: `Support ${username} on Agaseke.`,
+    };
+  }
 }
 
 async function page({ params }: { params: Promise<{ username: string }> }) {

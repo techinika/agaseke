@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import MessagingPage from "@/components/pages/public/MessagingPage";
-import { db } from "@/db/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { adminDb } from "@/db/firebaseAdmin";
 import { Metadata } from "next";
 import { baseUrl } from "@/app/sitemap";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/db/firebase";
 
 export async function generateMetadata({
   params,
@@ -12,27 +13,34 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { username } = await params;
 
-  const creatorRef = doc(db, "creators", username);
-  const creatorSnap = await getDoc(creatorRef);
-  const creator = creatorSnap.data();
+  try {
+    const creatorRef = doc(db, "creators", username as string);
+    const creatorSnap = await getDoc(creatorRef);
+    const creator = creatorSnap.data();
 
-  if (!creator) {
+    if (!creator) {
+      return {
+        title: "Creator Not Found | Agaseke",
+      };
+    }
+
     return {
-      title: "Creator Not Found | Agaseke",
+      title: `Message ${creator.name} | Agaseke`,
+      description: `Send a message to ${creator.name} on Agaseke.`,
+      alternates: {
+        canonical: `/${username}/messaging`,
+      },
+      openGraph: {
+        title: `Message ${creator.name} | Agaseke`,
+        url: `${baseUrl}/${username}/messaging`,
+      },
+    };
+  } catch (error) {
+    console.error("Error generating metadata:", error);
+    return {
+      title: `Message | ${username} | Agaseke`,
     };
   }
-
-  return {
-    title: `Message ${creator.name} | Agaseke`,
-    description: `Send a message to ${creator.name} on Agaseke.`,
-    alternates: {
-      canonical: `/${username}/messaging`,
-    },
-    openGraph: {
-      title: `Message ${creator.name} | Agaseke`,
-      url: `${baseUrl}/${username}/messaging`,
-    },
-  };
 }
 
 async function page({ params }: { params: Promise<{ username: string }> }) {

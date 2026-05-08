@@ -5,13 +5,21 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Heart, Loader } from "lucide-react";
 import { db } from "@/db/firebase";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+} from "firebase/firestore";
 import { Creator } from "@/types/creator";
 import { useAuth } from "@/auth/AuthContext";
 import { SupportModal } from "@/components/parts/public/SupportModal";
 import { GatheringsTab } from "@/components/parts/public/GatheringsTab";
 import Navbar from "@/components/parts/Navigation";
 import Footer from "@/components/parts/Footer";
+import Loading from "@/app/loading";
 
 interface GatheringsPageProps {
   username: string;
@@ -88,11 +96,7 @@ export default function GatheringsPage({ username }: GatheringsPageProps) {
   }, [currentUser, username]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#FBFBFC] flex items-center justify-center">
-        <Loader className="animate-spin text-orange-500" size={32} />
-      </div>
-    );
+    return <Loading />;
   }
 
   if (!creatorData) {
