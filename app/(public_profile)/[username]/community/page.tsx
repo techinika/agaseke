@@ -11,26 +11,33 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { username } = await params;
 
-  const creatorSnap = await adminDb.collection("creators").doc(username).get();
-  const creator = creatorSnap.data();
+  try {
+    const creatorSnap = await adminDb.collection("creators").doc(username).get();
+    const creator = creatorSnap.data();
 
-  if (!creator) {
+    if (!creator) {
+      return {
+        title: "Creator Not Found | Agaseke",
+      };
+    }
+
     return {
-      title: "Creator Not Found | Agaseke",
+      title: `Community | ${creator.name} (@${username}) | Agaseke`,
+      description: `View ${creator.name}'s community posts and public content on Agaseke.`,
+      alternates: {
+        canonical: `/${username}/community`,
+      },
+      openGraph: {
+        title: `Community | ${creator.name} (@${username})`,
+        url: `${baseUrl}/${username}/community`,
+      },
+    };
+  } catch (error) {
+    console.error("Error generating metadata:", error);
+    return {
+      title: `Community | ${username} | Agaseke`,
     };
   }
-
-  return {
-    title: `Community | ${creator.name} (@${username}) | Agaseke`,
-    description: `View ${creator.name}'s community posts and public content on Agaseke.`,
-    alternates: {
-      canonical: `/${username}/community`,
-    },
-    openGraph: {
-      title: `Community | ${creator.name} (@${username})`,
-      url: `${baseUrl}/${username}/community`,
-    },
-  };
 }
 
 async function page({ params }: { params: Promise<{ username: string }> }) {

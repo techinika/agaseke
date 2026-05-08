@@ -13,7 +13,7 @@ interface ErrorProps {
 
 const Error = ({ error, reset }: ErrorProps) => {
   const router = useRouter();
-  
+
   return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center px-6 overflow-hidden relative">
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
@@ -66,7 +66,8 @@ const Error = ({ error, reset }: ErrorProps) => {
             Something went wrong
           </h2>
           <p className="text-slate-500 font-medium leading-relaxed mb-4">
-            We encountered an unexpected error. This might be a temporary issue with our servers or your connection.
+            We encountered an unexpected error. This might be a temporary issue
+            with our servers or your connection.
           </p>
           {error?.message && (
             <p className="text-xs text-slate-400 bg-slate-50 p-3 rounded-lg mb-6 font-mono">
@@ -74,7 +75,7 @@ const Error = ({ error, reset }: ErrorProps) => {
             </p>
           )}
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-wrap gap-4 justify-center">
             <button
               onClick={() => reset()}
               className="flex items-center justify-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-lg font-bold transition-all hover:bg-red-600 active:scale-95 shadow-xl shadow-slate-200"

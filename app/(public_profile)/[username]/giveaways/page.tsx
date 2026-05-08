@@ -11,26 +11,33 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { username } = await params;
 
-  const creatorSnap = await adminDb.collection("creators").doc(username).get();
-  const creator = creatorSnap.data();
+  try {
+    const creatorSnap = await adminDb.collection("creators").doc(username).get();
+    const creator = creatorSnap.data();
 
-  if (!creator) {
+    if (!creator) {
+      return {
+        title: "Creator Not Found | Agaseke",
+      };
+    }
+
     return {
-      title: "Creator Not Found | Agaseke",
+      title: `Giveaways | ${creator.name} (@${username}) | Agaseke`,
+      description: `View ${creator.name}'s giveaways and past winners on Agaseke.`,
+      alternates: {
+        canonical: `/${username}/giveaways`,
+      },
+      openGraph: {
+        title: `Giveaways | ${creator.name} (@${username})`,
+        url: `${baseUrl}/${username}/giveaways`,
+      },
+    };
+  } catch (error) {
+    console.error("Error generating metadata:", error);
+    return {
+      title: `Giveaways | ${username} | Agaseke`,
     };
   }
-
-  return {
-    title: `Giveaways | ${creator.name} (@${username}) | Agaseke`,
-    description: `View ${creator.name}'s giveaways and past winners on Agaseke.`,
-    alternates: {
-      canonical: `/${username}/giveaways`,
-    },
-    openGraph: {
-      title: `Giveaways | ${creator.name} (@${username})`,
-      url: `${baseUrl}/${username}/giveaways`,
-    },
-  };
 }
 
 async function page({ params }: { params: Promise<{ username: string }> }) {
