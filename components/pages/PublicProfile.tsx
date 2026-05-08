@@ -34,6 +34,7 @@ import { BookingModal } from "../parts/public/BookingModal";
 import { GatheringsTab } from "../parts/public/GatheringsTab";
 import Footer from "../parts/Footer";
 import { Building2, ExternalLink } from "lucide-react";
+import { SeoUpdater } from "../parts/public/SeoUpdater";
 
 export default function PublicProfile({ username }: { username: string }) {
   const { user: currentUser, isLoggedIn, isCreator } = useAuth();
@@ -245,6 +246,11 @@ export default function PublicProfile({ username }: { username: string }) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
+      />
+
+      <SeoUpdater 
+        data={{ creator: creatorData, profile: profileData }} 
+        username={username} 
       />
 
       <Navbar />
