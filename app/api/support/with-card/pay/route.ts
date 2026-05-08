@@ -153,7 +153,7 @@ export async function POST(req: Request) {
         txData.platformFeePayer = feePayer;
         txData.buyerId = supporterId || "anonymous";
         txData.buyerName = buyerName || "";
-        txData.buyerEmail = email;
+        if (email) txData.buyerEmail = email;
       }
 
       await adminDb
