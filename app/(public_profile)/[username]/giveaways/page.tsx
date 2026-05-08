@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import GiveawaysPage from "@/components/pages/public/GiveawaysPage";
-import { db } from "@/db/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { adminDb } from "@/db/firebaseAdmin";
 import { Metadata } from "next";
 import { baseUrl } from "@/app/sitemap";
 
@@ -12,8 +11,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { username } = await params;
 
-  const creatorRef = doc(db, "creators", username);
-  const creatorSnap = await getDoc(creatorRef);
+  const creatorSnap = await adminDb.collection("creators").doc(username).get();
   const creator = creatorSnap.data();
 
   if (!creator) {
