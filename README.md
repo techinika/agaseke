@@ -96,7 +96,7 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - **Giveaways**: Enter giveaways and view winner announcements
   - `/[username]/giveaways` - Active and past giveaways with winners
   - `/[username]/messaging` - Direct message the creator
-- **Support**: One-time payments via mobile money or card
+- **Support**: One-time payments via mobile money (MomoPay) or card (credit/debit)
 - **Gift Once**: Quick support button available on all subpages
 - **Winner Notification**: Congratulatory message when winning a giveaway
 
@@ -534,3 +534,14 @@ MIT License - see LICENSE file for details.
 ## Support
 
 For issues or feature requests, please open an issue on GitHub.
+
+## Recent Updates
+
+### SEO & Discovery Enhancements (May 2025)
+- **Dynamic Metadata**: Server-side `generateMetadata` for all creator profile pages (`/[username]`, `/[username]/community`, `/[username]/store`, `/[username]/gatherings`, `/[username]/giveaways`, `/[username]/messaging`)
+- **Sitemap**: Auto-generated sitemap includes all creator profiles with dynamic priorities and change frequencies
+- **Payment Confirmation**: Different confirmation messages for store payments ("Confirming your order payment..." / "Your payment of X RWF has been processed successfully.") vs support gifts ("Confirming your gift..." / "Your gift of X RWF has been sent successfully.")
+
+### Bug Fixes (May 2025)
+- **Store Checkout**: Fixed creator ID mismatch - now uses `creatorHandle` (username) for `creatorId` field and `creatorUid` for `creatorUid` field when processing store orders
+- **Payment Transaction**: Fixed transaction lookup by ensuring proper reference matching in IPN handler
