@@ -19,6 +19,7 @@ import { SupportModal } from "@/components/parts/public/SupportModal";
 import { GiveawayTab } from "@/components/parts/public/GiveawayTab";
 import Navbar from "@/components/parts/Navigation";
 import Footer from "@/components/parts/Footer";
+import Loading from "@/app/loading";
 
 interface GiveawaysPageProps {
   username: string;
@@ -95,11 +96,7 @@ export default function GiveawaysPage({ username }: GiveawaysPageProps) {
   }, [currentUser, username]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#FBFBFC] flex items-center justify-center">
-        <Loader className="animate-spin text-orange-500" size={32} />
-      </div>
-    );
+    return <Loading />;
   }
 
   if (!creatorData) {

@@ -2,6 +2,8 @@ import PublicProfile from "@/components/pages/PublicProfile";
 import { adminDb } from "@/db/firebaseAdmin";
 import { Metadata } from "next";
 import { baseUrl } from "@/app/sitemap";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/db/firebase";
 
 export async function generateMetadata({
   params,
@@ -11,7 +13,9 @@ export async function generateMetadata({
   const { username } = await params;
 
   try {
-    const creatorSnap = await adminDb.collection("creators").doc(username).get();
+    const creatorRef = doc(db, "creators", username as string);
+    const creatorSnap = await getDoc(creatorRef);
+
     const creator = creatorSnap.data();
 
     if (!creator) {
@@ -25,12 +29,17 @@ export async function generateMetadata({
       };
     }
 
-    const profileSnap = await adminDb.collection("profiles").doc(creator?.uid).get();
+    const profileSnap = await adminDb
+      .collection("profiles")
+      .doc(creator?.uid)
+      .get();
     const profile = profileSnap.data();
 
     const displayName = creator.name;
     const verified = creator.verified || false;
-    const bio = creator.bio || `Support ${displayName} on Agaseke. Fueling Rwandan creativity one contribution at a time.`;
+    const bio =
+      creator.bio ||
+      `Support ${displayName} on Agaseke. Fueling Rwandan creativity one contribution at a time.`;
     const image = profile?.photoURL || creator.profilePicture || "/agaseke.png";
 
     const title = verified

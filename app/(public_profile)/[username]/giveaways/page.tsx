@@ -3,6 +3,8 @@ import GiveawaysPage from "@/components/pages/public/GiveawaysPage";
 import { adminDb } from "@/db/firebaseAdmin";
 import { Metadata } from "next";
 import { baseUrl } from "@/app/sitemap";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/db/firebase";
 
 export async function generateMetadata({
   params,
@@ -12,7 +14,8 @@ export async function generateMetadata({
   const { username } = await params;
 
   try {
-    const creatorSnap = await adminDb.collection("creators").doc(username).get();
+    const creatorRef = doc(db, "creators", username as string);
+    const creatorSnap = await getDoc(creatorRef);
     const creator = creatorSnap.data();
 
     if (!creator) {

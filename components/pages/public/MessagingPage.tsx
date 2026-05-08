@@ -19,6 +19,7 @@ import { SupportModal } from "@/components/parts/public/SupportModal";
 import { MessageTab } from "@/components/parts/public/MessageTab";
 import Navbar from "@/components/parts/Navigation";
 import Footer from "@/components/parts/Footer";
+import Loading from "@/app/loading";
 
 interface MessagingPageProps {
   username: string;
@@ -95,11 +96,7 @@ export default function MessagingPage({ username }: MessagingPageProps) {
   }, [currentUser, username]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#FBFBFC] flex items-center justify-center">
-        <Loader className="animate-spin text-orange-500" size={32} />
-      </div>
-    );
+    return <Loading />;
   }
 
   if (!creatorData) {
@@ -144,9 +141,7 @@ export default function MessagingPage({ username }: MessagingPageProps) {
 
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-900">Messages</h1>
-          <p className="text-slate-500 mt-1">
-            Send a message to {creatorName}
-          </p>
+          <p className="text-slate-500 mt-1">Send a message to {creatorName}</p>
         </div>
 
         <main className="min-h-[500px]">
