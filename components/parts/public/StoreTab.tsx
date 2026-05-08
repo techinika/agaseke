@@ -384,6 +384,7 @@ export const StoreTab = ({
         cart={cart}
         creatorId={creatorId}
         creatorName={creatorName}
+        creatorHandle={creatorHandle}
         onClose={() => {
           setShowCheckout(false);
           setShowCart(false);
@@ -1267,6 +1268,7 @@ function CheckoutModal({
   cart,
   creatorId,
   creatorName,
+  creatorHandle,
   onClose,
   onSuccess,
   getItemPrice,
@@ -1276,6 +1278,7 @@ function CheckoutModal({
   cart: CartItem[];
   creatorId: string;
   creatorName: string;
+  creatorHandle: string;
   onClose: () => void;
   onSuccess: () => void;
   getItemPrice: (item: CartItem) => number;
@@ -1404,8 +1407,8 @@ function CheckoutModal({
         selectedSize: firstItem?.selectedSize,
         productPrice: firstItem?.product.price,
         productName: firstItem?.product.name,
-        creatorId: firstItem?.product.creatorId,
-        creatorUid: firstItem?.product?.creatorId,
+        creatorId: creatorHandle,
+        creatorUid: firstItem?.product.creatorId,
         platformFeePayer: firstItem?.product.platformFeePayer || "buyer",
       };
 
