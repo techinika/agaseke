@@ -1,4 +1,4 @@
-import { baseUrl } from "@/app/sitemap";
+import { baseUrl } from "@/lib/baseUrl";
 import { Creator } from "@/types/creator";
 
 export default function CreatorSchema({

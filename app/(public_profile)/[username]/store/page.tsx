@@ -2,7 +2,7 @@
 import StorePage from "@/components/pages/public/StorePage";
 import { adminDb } from "@/db/firebaseAdmin";
 import { Metadata } from "next";
-import { baseUrl } from "@/app/sitemap";
+import { baseUrl } from "@/lib/baseUrl";
 
 async function getCreatorData(username: string) {
   try {

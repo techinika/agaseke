@@ -1,6 +1,6 @@
 import PrivacyPage from "@/components/pages/Legal/PrivacyPage";
 import { Metadata } from "next";
-import { baseUrl } from "@/app/sitemap";
+import { baseUrl } from "@/lib/baseUrl";
 
 export const metadata: Metadata = {
   title: "Privacy Policy | Agaseke",
