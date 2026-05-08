@@ -9,23 +9,20 @@ export async function generateMetadata({
   params: Promise<{ username: string }>;
 }): Promise<Metadata> {
   const { username } = await params;
-
+  
   return {
     title: `Community | ${username} | Agaseke`,
     description: `Browse community posts and content from ${username} on Agaseke.`,
     keywords: [username, "community", "posts", "content", "Agaseke"],
-    alternates: {
-      canonical: `/${username}/community`,
-      languages: { "en-RW": `/${username}/community` },
-    },
+    alternates: { canonical: `/${username}/community` },
     openGraph: {
       title: `Community | ${username} | Agaseke`,
-      description: `Browse community posts from ${username}.`,
+      description: `Browse posts from ${username}.`,
       url: `${baseUrl}/${username}/community`,
       siteName: "Agaseke",
       type: "website",
     },
-    twitter: { card: "summary", title: `Community | ${username}` },
+    twitter: { card: "summary" },
     robots: { index: true, follow: true },
   };
 }

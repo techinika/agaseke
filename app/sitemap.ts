@@ -1,27 +1,9 @@
 import { MetadataRoute } from "next";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "@/db/firebase";
 
 export const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://agaseke.me";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const creatorsSnap = await getDocs(collection(db, "creators"));
-  
-  const creatorUrls: MetadataRoute.Sitemap = creatorsSnap.docs
-    .filter((doc) => {
-      const data = doc.data();
-      return data && data.name && data.bio;
-    })
-    .map((doc) => {
-      const data = doc.data();
-      return {
-        url: `${baseUrl}/${doc.id}`,
-        lastModified: new Date(),
-        changeFrequency: "weekly" as const,
-        priority: 0.8,
-      };
-    });
-
+  // Static pages only - creator pages can be added via API or separate mechanism
   const staticPages: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
@@ -67,5 +49,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  return [...staticPages, ...creatorUrls];
+  return staticPages;
 }

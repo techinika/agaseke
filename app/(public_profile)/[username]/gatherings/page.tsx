@@ -9,15 +9,12 @@ export async function generateMetadata({
   params: Promise<{ username: string }>;
 }): Promise<Metadata> {
   const { username } = await params;
-
+  
   return {
-    title: `Events & Gatherings | ${username} | Agaseke`,
+    title: `Events | ${username} | Agaseke`,
     description: `RSVP to events and gatherings by ${username} on Agaseke.`,
     keywords: [username, "events", "gatherings", "meetups", "Agaseke"],
-    alternates: {
-      canonical: `/${username}/gatherings`,
-      languages: { "en-RW": `/${username}/gatherings` },
-    },
+    alternates: { canonical: `/${username}/gatherings` },
     openGraph: {
       title: `Events | ${username} | Agaseke`,
       description: `RSVP to events by ${username}.`,
@@ -25,7 +22,7 @@ export async function generateMetadata({
       siteName: "Agaseke",
       type: "website",
     },
-    twitter: { card: "summary", title: `Events | ${username}` },
+    twitter: { card: "summary" },
     robots: { index: true, follow: true },
   };
 }
