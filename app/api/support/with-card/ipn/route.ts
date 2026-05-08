@@ -72,18 +72,8 @@ export async function POST(req: Request) {
 
     if (statusData.payment_status_description === "Completed") {
       const totalAmount = Number(txData.amount);
+      const txType = txData.type || "support";
       const batch = adminDb.batch();
-
-      // Calculate Shares based on Agaseke's logic
-      const platformSharePercentage = txData.includeReferral
-        ? Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL)
-        : Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE);
-
-      const platformShare = totalAmount * platformSharePercentage;
-      const creatorShare =
-        totalAmount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE);
-      const referralShare =
-        totalAmount * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE);
 
       batch.update(txDoc.ref, {
         status: "successful",
@@ -92,68 +82,178 @@ export async function POST(req: Request) {
         successfulAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      batch.set(adminDb.collection("platformIncome").doc(), {
-        amount: platformShare,
-        txRef: OrderMerchantReference,
-        reason: "card_payment_fee",
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+      if (txType === "store") {
+        const platformFee = Number(txData.platformFee) || 0;
+        const creatorEarnings = Number(txData.creatorEarnings) || 0;
+        const referralEarnings = Number(txData.referralEarnings) || 0;
+        const productId = txData.productId;
+        const quantity = Number(txData.quantity) || 1;
 
-      // Record Creator Income
-      batch.set(adminDb.collection("creatorIncome").doc(), {
-        creatorUid: txData.creatorUid,
-        amount: creatorShare,
-        txRef: OrderMerchantReference,
-        reason: "support",
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+        let productData = null;
+        if (productId) {
+          const productSnap = await adminDb
+            .collection("storeProducts")
+            .doc(productId)
+            .get();
+          productData = productSnap.data();
+        }
 
-      const supportRef = adminDb.collection("supportedCreators").doc();
-      batch.set(supportRef, {
-        creatorId: txData.creatorId,
-        amount: totalAmount,
-        supporterId: txData.supporterId || null,
-        txRef: OrderMerchantReference,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-
-      // Update Creator Totals
-      const creatorRef = adminDb.collection("creators").doc(txData.creatorId);
-      batch.update(creatorRef, {
-        totalEarnings: admin.firestore.FieldValue.increment(creatorShare),
-        totalSupporters: admin.firestore.FieldValue.increment(1),
-        pendingPayout: admin.firestore.FieldValue.increment(creatorShare),
-      });
-
-      // Handle Referral Allocation
-      if (txData.includeReferral && txData.referralUid) {
-        batch.set(adminDb.collection("creatorIncome").doc(), {
-          creatorUid: txData.referralUid,
-          amount: referralShare,
+        batch.set(adminDb.collection("platformIncome").doc(), {
+          amount: platformFee,
           txRef: OrderMerchantReference,
-          reason: "referral_commission",
+          reason: "product_sale_platform_fee",
+          productId: productId,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        batch.update(adminDb.collection("creators").doc(txData.referralId), {
-          totalEarnings: admin.firestore.FieldValue.increment(referralShare),
-          pendingPayout: admin.firestore.FieldValue.increment(referralShare),
+        batch.set(adminDb.collection("creatorIncome").doc(), {
+          creatorUid: txData.creatorUid,
+          amount: creatorEarnings,
+          txRef: OrderMerchantReference,
+          reason: "product_sale",
+          productId: productId,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-      }
 
-      // Update Supporter Profile Stats
-      if (txData.supporterId && txData.supporterId !== "anonymous") {
-        const profileRef = adminDb
-          .collection("profiles")
-          .doc(txData.supporterId);
-        batch.update(profileRef, {
-          totalSupport: admin.firestore.FieldValue.increment(totalAmount),
-          totalSupportedCreators: admin.firestore.FieldValue.increment(1),
+        if (referralEarnings > 0 && txData.referralUid) {
+          batch.set(adminDb.collection("creatorIncome").doc(), {
+            creatorUid: txData.referralUid,
+            amount: referralEarnings,
+            txRef: OrderMerchantReference,
+            reason: "referral_commission",
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          batch.update(adminDb.collection("creators").doc(txData.referralId), {
+            totalEarnings: admin.firestore.FieldValue.increment(referralEarnings),
+            pendingPayout: admin.firestore.FieldValue.increment(referralEarnings),
+          });
+        }
+
+        const orderRef = adminDb.collection("storeOrders").doc();
+        batch.set(orderRef, {
+          orderId: orderRef.id,
+          txRef: OrderMerchantReference,
+          buyerId: txData.buyerId,
+          buyerName: txData.buyerName || "",
+          creatorId: txData.creatorId,
+          creatorUid: txData.creatorUid,
+          productId: productId,
+          productName: txData.productName,
+          selectedSize: txData.selectedSize || "",
+          quantity: quantity,
+          productPrice: txData.productPrice,
+          platformFee: platformFee,
+          totalAmount: totalAmount,
+          platformFeePayer: txData.platformFeePayer || "buyer",
+          status: "paid",
+          paymentMethod: "card",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
+
+        batch.set(adminDb.collection("sales").doc(), {
+          txRef: OrderMerchantReference,
+          buyerId: txData.buyerId,
+          buyerName: txData.buyerName || "",
+          buyerEmail: txData.buyerEmail || "",
+          creatorId: txData.creatorId,
+          creatorUid: txData.creatorUid,
+          productId: productId,
+          productName: txData.productName,
+          quantity: quantity,
+          productPrice: txData.productPrice,
+          totalAmount: totalAmount,
+          platformFee: platformFee,
+          creatorEarnings: creatorEarnings,
+          referralEarnings: referralEarnings,
+          referralUid: txData.referralUid || null,
+          status: "completed",
+          paymentMethod: "card",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        batch.update(adminDb.collection("creators").doc(txData.creatorId), {
+          totalEarnings: admin.firestore.FieldValue.increment(creatorEarnings),
+          pendingPayout: admin.firestore.FieldValue.increment(creatorEarnings),
+        });
+
+        if (productId && productData?.type === "physical" && productData?.stock !== undefined) {
+          batch.update(adminDb.collection("storeProducts").doc(productId), {
+            stock: admin.firestore.FieldValue.increment(-quantity),
+          });
+        }
+
+        if (txData.buyerId) {
+          batch.update(adminDb.collection("profiles").doc(txData.buyerId), {
+            totalPurchases: admin.firestore.FieldValue.increment(1),
+            totalSpent: admin.firestore.FieldValue.increment(totalAmount),
+          });
+        }
+
+        console.log(`[PESAPAL IPN] Store Order Success for ${OrderMerchantReference}`);
+      } else {
+        const platformSharePercentage = txData.includeReferral
+          ? Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL)
+          : Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE);
+
+        const platformShare = totalAmount * platformSharePercentage;
+        const creatorShare = totalAmount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE);
+        const referralShare = totalAmount * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE);
+
+        batch.set(adminDb.collection("platformIncome").doc(), {
+          amount: platformShare,
+          txRef: OrderMerchantReference,
+          reason: "card_payment_fee",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        batch.set(adminDb.collection("creatorIncome").doc(), {
+          creatorUid: txData.creatorUid,
+          amount: creatorShare,
+          txRef: OrderMerchantReference,
+          reason: "support",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        batch.set(adminDb.collection("supportedCreators").doc(), {
+          creatorId: txData.creatorId,
+          amount: totalAmount,
+          supporterId: txData.supporterId || null,
+          txRef: OrderMerchantReference,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        batch.update(adminDb.collection("creators").doc(txData.creatorId), {
+          totalEarnings: admin.firestore.FieldValue.increment(creatorShare),
+          totalSupporters: admin.firestore.FieldValue.increment(1),
+          pendingPayout: admin.firestore.FieldValue.increment(creatorShare),
+        });
+
+        if (txData.includeReferral && txData.referralUid) {
+          batch.set(adminDb.collection("creatorIncome").doc(), {
+            creatorUid: txData.referralUid,
+            amount: referralShare,
+            txRef: OrderMerchantReference,
+            reason: "referral_commission",
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          batch.update(adminDb.collection("creators").doc(txData.referralId), {
+            totalEarnings: admin.firestore.FieldValue.increment(referralShare),
+            pendingPayout: admin.firestore.FieldValue.increment(referralShare),
+          });
+        }
+
+        if (txData.supporterId && txData.supporterId !== "anonymous") {
+          batch.update(adminDb.collection("profiles").doc(txData.supporterId), {
+            totalSupport: admin.firestore.FieldValue.increment(totalAmount),
+            totalSupportedCreators: admin.firestore.FieldValue.increment(1),
+          });
+        }
+
+        console.log(`[PESAPAL IPN] Support Success for ${OrderMerchantReference}`);
       }
 
       await batch.commit();
-      console.log(`[PESAPAL IPN] Success for ${OrderMerchantReference}`);
     } else {
       await txDoc.ref.update({
         status: "failed",
