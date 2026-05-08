@@ -88,12 +88,16 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
 
 ### For Supporters
 
-- **Public Profiles**: Browse creator content
-- **Support**: One-time payments via mobile money
-- **Store**: Purchase digital and physical products
-- **Messaging**: Direct communication with creators
-- **Gatherings**: RSVP to events
-- **Giveaways**: Enter giveaways and view winner announcements
+- **Public Profiles**: Browse creator content at `/[username]`
+- **Public Profile Subpages**: Full-page versions of each tab:
+  - `/[username]/community` - All public posts and supporter-only content
+  - `/[username]/store` - Browse products, track orders, view purchased items
+  - `/[username]/gatherings` - Upcoming events and past gatherings
+  - **Giveaways**: Enter giveaways and view winner announcements
+  - `/[username]/giveaways` - Active and past giveaways with winners
+  - `/[username]/messaging` - Direct message the creator
+- **Support**: One-time payments via mobile money or card
+- **Gift Once**: Quick support button available on all subpages
 - **Winner Notification**: Congratulatory message when winning a giveaway
 
 ### Admin Dashboard (`/admin`)
@@ -220,6 +224,11 @@ agaseke/
 │   │       ├── giveaways/        # Giveaway management
 │   │       └── verify/           # Identity verification
 │   ├── [username]/               # Public creator profiles
+│   │   ├── community/             # Full community page
+│   │   ├── gatherings/           # Full gatherings page
+│   │   ├── store/                 # Full store page
+│   │   ├── giveaways/             # Full giveaways page
+│   │   └── messaging/             # Full messaging page
 │   └── api/
 │       ├── comms/email/          # Email notification APIs
 │       ├── support/              # Payment APIs

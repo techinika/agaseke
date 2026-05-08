@@ -273,6 +273,7 @@ export default function PublicProfile({ username }: { username: string }) {
         giveawayEnabled={creatorData?.giveawayEnabled === true}
         gatheringsEnabled={creatorData?.gatheringsEnabled === true}
         isSupporter={isSupporter}
+        username={username}
       />
 
       <main className="max-w-2xl mx-auto px-6 mt-8 min-h-[500px]">
