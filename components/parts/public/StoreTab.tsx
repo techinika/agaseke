@@ -1400,7 +1400,7 @@ function CheckoutModal({
       const productData = {
         productId: firstItem?.product.id,
         quantity: cart.reduce((sum, item) => sum + item.quantity, 0),
-        buyerId: currentUser.uid,
+        supporterId: currentUser.uid,
         buyerEmail: currentUser.email || "",
         buyerName: currentUser.displayName || "Customer",
         phone: phone,
