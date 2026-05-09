@@ -1814,12 +1814,12 @@ function OrderTrackingModal({
     }
   };
 
-  const physicalOrders = orders.filter((o) =>
-    o.items.some((i) => i.productId.startsWith("product_")),
-  );
-  const digitalOrders = orders.filter((o) =>
-    o.items.every((i) => i.productId.startsWith("product_")),
-  );
+  // const physicalOrders = orders.filter((o) =>
+  //   o.items.some((i) => i.productId.startsWith("product_")),
+  // );
+  // const digitalOrders = orders.filter((o) =>
+  //   o.items.every((i) => i.productId.startsWith("product_")),
+  // );
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
