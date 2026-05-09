@@ -362,6 +362,8 @@ export default function AdminDashboard() {
             name: target.name,
             approved: isApprove,
             reason: isApprove ? "" : rejectionReason,
+            creatorUid: target.uid,
+            handle: target.handle,
           }),
         });
 
