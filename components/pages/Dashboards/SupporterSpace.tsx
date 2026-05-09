@@ -3,20 +3,22 @@
 
 import React, { useEffect, useState } from "react";
 import {
-  Search,
-  Lock,
-  ArrowRight,
-  Zap,
-  Star,
-  Clock,
-  Loader,
-  User,
-  MapPin,
-  X,
-  CheckCircle2,
-  Eye,
-  FileText,
-} from "lucide-react";
+   Search,
+   Lock,
+   ArrowRight,
+   Zap,
+   Star,
+   Clock,
+   Loader,
+   User,
+   MapPin,
+   X,
+   CheckCircle2,
+   Eye,
+   FileText,
+   ShoppingBag,
+   Package,
+ } from "lucide-react";
 import Navbar from "@/components/parts/Navigation";
 import { useAuth } from "@/auth/AuthContext";
 import Loading from "@/app/loading";
@@ -40,10 +42,11 @@ export default function SupporterSpace() {
   const auth = useAuth();
   const router = useRouter();
   const [creators, setCreators] = useState<any[]>([]); // For Discovery Sidebar
-  const [searchTerm, setSearchTerm] = useState("");
-  const [favorites, setFavorites] = useState<any[]>([]);
-  const [feed, setFeed] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+   const [searchTerm, setSearchTerm] = useState("");
+   const [favorites, setFavorites] = useState<any[]>([]);
+   const [feed, setFeed] = useState<any[]>([]);
+   const [purchases, setPurchases] = useState<any[]>([]);
+   const [loading, setLoading] = useState(true);
 
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [isRSVPing, setIsRSVPing] = useState(false);
@@ -67,14 +70,19 @@ export default function SupporterSpace() {
           supportSnap.docs.map((d) => d.data().creatorId),
         );
 
-        // 2. Fetch all Content and all Gatherings
-        // Note: For large scale, you'd filter these in the query,
-        // but for current scale, fetching and filtering in memory is fine.
-        const [contentSnap, gatheringSnap, creatorsSnap] = await Promise.all([
-          getDocs(collection(db, "creatorContent")),
-          getDocs(collection(db, "creatorGatherings")),
-          getDocs(collection(db, "creators")),
-        ]);
+         // 2. Fetch all Content, Gatherings, and user's purchases
+         // Note: For large scale, you'd filter these in the query,
+         // but for current scale, fetching and filtering in memory is fine.
+         const purchasesQuery = query(
+           collection(db, "storeOrders"),
+           where("buyerId", "==", auth.user.uid),
+         );
+         const [contentSnap, gatheringSnap, creatorsSnap, purchasesSnap] = await Promise.all([
+           getDocs(collection(db, "creatorContent")),
+           getDocs(collection(db, "creatorGatherings")),
+           getDocs(collection(db, "creators")),
+           getDocs(purchasesQuery),
+         ]);
 
         // 3. Map creators for metadata lookup (Name, Handle, Photo)
         const creatorMap = new Map();
@@ -130,15 +138,34 @@ export default function SupporterSpace() {
             updates: 0, // You can add logic here to count new items if desired
           }));
 
-        setFavorites(favoritesData);
-        setFeed(
-          combinedFeed.sort(
-            (a: any, b: any) =>
-              (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0),
-          ),
-        );
+         setFavorites(favoritesData);
+         setFeed(
+           combinedFeed.sort(
+             (a: any, b: any) =>
+               (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0),
+           ),
+         );
 
-        // 8. Discovery Creators (Not supported yet)
+         // 7.5 Process Purchases
+         const purchasesData = purchasesSnap.docs
+           .map((d) => {
+             const data = d.data();
+             const creator = creatorMap.get(data.creatorUid);
+             return {
+               id: d.id,
+               ...data,
+               creatorName: creator?.name || "Unknown Creator",
+               creatorHandle: creator?.handle || "creator",
+               creatorPhoto: creator?.photoURL || null,
+             };
+           })
+           .sort(
+             (a: any, b: any) =>
+               (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0),
+           );
+         setPurchases(purchasesData);
+
+         // 8. Discovery Creators (Not supported yet)
         const discoveryList = creatorsSnap.docs
           .map((d) => ({ handle: d.id, ...d.data() }))
           .filter((c: any) => !supportedCreatorUids.has(c.uid));
@@ -261,23 +288,34 @@ export default function SupporterSpace() {
                 {`"When you learn, teach. When you get, give."`}
               </p>
             </div>
-            <div className="mt-8 flex gap-10">
-              <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                  Impact
-                </p>
-                <p className="text-2xl font-bold text-orange-600">
-                  {auth?.profile?.totalSupport || 0}{" "}
-                  <span className="text-sm font-normal">RWF</span>
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                  Supports
-                </p>
-                <p className="text-2xl font-bold">{favorites.length} Times</p>
-              </div>
-            </div>
+             <div className="mt-8 flex flex-wrap gap-10">
+               <div>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                   Impact
+                 </p>
+                 <p className="text-2xl font-bold text-orange-600">
+                   {auth?.profile?.totalSupport || 0}{" "}
+                   <span className="text-sm font-normal">RWF</span>
+                 </p>
+               </div>
+               <div>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                   Supports
+                 </p>
+                 <p className="text-2xl font-bold">{favorites.length} Times</p>
+               </div>
+               {purchases.length > 0 && (
+                 <div>
+                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                     Purchases
+                   </p>
+                   <p className="text-2xl font-bold text-emerald-600">
+                     {purchases.length}{" "}
+                     <span className="text-sm font-normal">Items</span>
+                   </p>
+                 </div>
+               )}
+             </div>
           </div>
           <Link
             href={auth?.isCreator ? "/creator" : "/onboarding"}
@@ -389,11 +427,87 @@ export default function SupporterSpace() {
                     No updates found from your creators.
                   </p>
                 </div>
-              )}
-            </div>
-          </div>
+               )}
+             </div>
 
-          {/* Sidebar: Following & Discover */}
+             {purchases.length > 0 && (
+               <div className="mt-12">
+                 <h3 className="font-bold text-xl flex items-center gap-2 mb-6">
+                   <ShoppingBag size={20} className="text-orange-500 fill-orange-500" />{" "}
+                   My Purchases
+                 </h3>
+
+                 <div className="space-y-4">
+                   {purchases.slice(0, 10).map((purchase: any) => (
+                     <div
+                       key={purchase.id}
+                       className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm hover:shadow-md transition-shadow"
+                     >
+                       <div className="flex items-start gap-4">
+                         <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                           <Package size={24} className="text-slate-400" />
+                         </div>
+                         <div className="flex-1 min-w-0">
+                           <div className="flex items-start justify-between gap-4">
+                             <div className="min-w-0">
+                               <h4 className="font-bold text-sm line-clamp-1">
+                                 {purchase.productName || "Product"}
+                               </h4>
+                               <p className="text-xs text-slate-500 mt-0.5">
+                                 from{" "}
+                                 <Link
+                                   href={`/${purchase.creatorHandle}`}
+                                   className="text-orange-600 hover:underline"
+                                 >
+                                   @{purchase.creatorHandle}
+                                 </Link>
+                               </p>
+                             </div>
+                             <div className="text-right shrink-0">
+                               <p className="font-bold text-sm text-emerald-600">
+                                 {purchase.totalAmount?.toLocaleString?.() ||
+                                   Number(purchase.totalAmount || 0).toLocaleString()}{" "}
+                                 RWF
+                               </p>
+                               <p className="text-[10px] text-slate-400 uppercase mt-0.5">
+                                 {purchase.createdAt
+                                   ? purchase.createdAt.toDate?.()?.toLocaleDateString?.() ||
+                                     new Date(purchase.createdAt).toLocaleDateString()
+                                   : ""}
+                               </p>
+                             </div>
+                           </div>
+                           <div className="flex items-center gap-3 mt-2">
+                             <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-green-50 text-green-700 font-medium">
+                               <CheckCircle2 size={10} /> {purchase.status || "paid"}
+                             </span>
+                             <span className="text-[10px] text-slate-400">
+                               {purchase.paymentMethod === "card" ? "Card" : "Mobile Money"}
+                             </span>
+                             {purchase.quantity > 1 && (
+                               <span className="text-[10px] text-slate-400">
+                                 Qty: {purchase.quantity}
+                               </span>
+                             )}
+                           </div>
+                         </div>
+                       </div>
+                     </div>
+                   ))}
+                 </div>
+
+                 {purchases.length > 10 && (
+                   <div className="text-center mt-4">
+                     <p className="text-xs text-slate-400">
+                       Showing 10 of {purchases.length} purchases
+                     </p>
+                   </div>
+                 )}
+               </div>
+             )}
+           </div>
+
+           {/* Sidebar: Following & Discover */}
           <div className="lg:col-span-4 space-y-8">
             <section className="bg-white p-6 rounded-lg border border-slate-100 shadow-sm">
               <h3 className="font-bold mb-4">Following</h3>

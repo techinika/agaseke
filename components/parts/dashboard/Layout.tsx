@@ -3,30 +3,31 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import {
-  BarChart3,
-  Plus,
-  Calendar,
-  MessageSquare,
-  Wallet,
-  Copy,
-  Check,
-  Share2,
-  Settings,
-  LogOut,
-  User,
-  UserCircle,
-  ChevronDown,
-  CheckCircle,
-  Menu,
-  X,
-  Briefcase,
-  Store,
-  Gift,
-  Building2,
-  Users,
-  CalendarCheck,
-  Bell,
-} from "lucide-react";
+   BarChart3,
+   Plus,
+   Calendar,
+   MessageSquare,
+   Wallet,
+   Copy,
+   Check,
+   Share2,
+   Settings,
+   LogOut,
+   User,
+   UserCircle,
+   ChevronDown,
+   CheckCircle,
+   Menu,
+   X,
+   Briefcase,
+   Store,
+   Gift,
+   Building2,
+   Users,
+   CalendarCheck,
+   Bell,
+   ShoppingBag,
+ } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/auth/AuthContext";
@@ -163,15 +164,23 @@ export default function DashboardLayout({
               label="Content"
               active={pathname === "/creator/content"}
             />
-            {creatorSettings?.storeEnabled && (
-              <NavItem
-                href="/creator/store"
-                icon={<Store size={18} />}
-                label="Store"
-                active={pathname === "/creator/store"}
-              />
-            )}
-            {creatorSettings?.gatheringsEnabled && (
+             {creatorSettings?.storeEnabled && (
+               <NavItem
+                 href="/creator/store"
+                 icon={<Store size={18} />}
+                 label="Store"
+                 active={pathname === "/creator/store"}
+               />
+             )}
+             {creatorSettings?.storeEnabled && (
+               <NavItem
+                 href="/creator/sales"
+                 icon={<ShoppingBag size={18} />}
+                 label="Sales"
+                 active={pathname === "/creator/sales"}
+               />
+             )}
+             {creatorSettings?.gatheringsEnabled && (
               <NavItem
                 href="/creator/gatherings"
                 icon={<Calendar size={18} />}
