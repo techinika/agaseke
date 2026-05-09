@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   User,
   LayoutDashboard,
@@ -12,18 +12,40 @@ import {
   HelpCircle,
   BookOpen,
   Calendar,
+  Bell,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/auth/AuthContext";
 import { handleLogout } from "@/db/functions/LogOut";
 import Loading from "@/app/loading";
 import { usePathname } from "next/navigation";
+import { db } from "@/db/firebase";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import NotificationDrawer from "@/components/ui/NotificationDrawer";
 
 const Navbar = () => {
   const auth = useAuth();
   const pathname = usePathname();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!auth?.user?.uid) return;
+
+    const q = query(
+      collection(db, "notifications"),
+      where("userId", "==", auth.user.uid),
+      where("read", "==", false)
+    );
+
+    const unsub = onSnapshot(q, (snapshot) => {
+      setUnreadCount(snapshot.size);
+    });
+
+    return () => unsub();
+  }, [auth?.user?.uid]);
 
   if (loggingOut) return <Loading />;
 
@@ -31,7 +53,8 @@ const Navbar = () => {
   const isActive = (path: string) => pathname === path;
 
   return (
-    <nav className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-slate-100">
+    <>
+     <nav className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-slate-100">
       <div className="flex items-center justify-between px-6 py-3.5 mx-auto container">
         {/* LEFT: Logo & Brand */}
         <div className="flex items-center gap-8">
@@ -66,13 +89,25 @@ const Navbar = () => {
 
         {/* RIGHT: User Actions */}
         <div className="flex items-center gap-3">
-          {auth?.user && auth?.isLoggedIn ? (
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <button
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex items-center gap-2 p-1 pr-3 rounded-lg border border-slate-200 hover:border-orange-200 hover:bg-white transition-all group relative z-50 shadow-sm"
-                >
+         {auth?.user && auth?.isLoggedIn ? (
+             <div className="flex items-center gap-3">
+               <button
+                 onClick={() => setShowNotifications(true)}
+                 className="relative p-2 hover:bg-slate-100 rounded-lg transition-colors"
+               >
+                 <Bell size={20} className="text-slate-600" />
+                 {unreadCount > 0 && (
+                   <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] bg-orange-500 text-white text-[10px] font-bold rounded-full px-1">
+                     {unreadCount > 99 ? "99+" : unreadCount}
+                   </span>
+                 )}
+               </button>
+
+               <div className="relative">
+                 <button
+                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                   className="flex items-center gap-2 p-1 pr-3 rounded-lg border border-slate-200 hover:border-orange-200 hover:bg-white transition-all group relative z-50 shadow-sm"
+                 >
                   <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden font-bold text-xs ring-2 ring-transparent group-hover:ring-orange-100 transition-all">
                     {auth?.profile?.photoURL || auth?.user?.photoURL ? (
                       <img
@@ -198,9 +233,18 @@ const Navbar = () => {
               </Link>
             </div>
           )}
-        </div>
-      </div>
-    </nav>
+         </div>
+       </div>
+     </nav>
+
+      {auth?.user?.uid && (
+        <NotificationDrawer
+          isOpen={showNotifications}
+          onClose={() => setShowNotifications(false)}
+          userId={auth.user.uid}
+        />
+      )}
+    </>
   );
 };
 
