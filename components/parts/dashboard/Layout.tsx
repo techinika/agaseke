@@ -25,6 +25,7 @@ import {
   Building2,
   Users,
   CalendarCheck,
+  TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -144,12 +145,20 @@ export default function DashboardLayout({
               active={pathname === "/creator/content"}
             />
             {creatorSettings?.storeEnabled && (
-              <NavItem
-                href="/creator/store"
-                icon={<Store size={18} />}
-                label="Store"
-                active={pathname === "/creator/store"}
-              />
+              <>
+                <NavItem
+                  href="/creator/store"
+                  icon={<Store size={18} />}
+                  label="Store"
+                  active={pathname === "/creator/store"}
+                />
+                <NavItem
+                  href="/creator/sales"
+                  icon={<TrendingUp size={18} />}
+                  label="Sales"
+                  active={pathname === "/creator/sales"}
+                />
+              </>
             )}
             {creatorSettings?.gatheringsEnabled && (
               <NavItem
