@@ -57,7 +57,7 @@ export async function POST(req: Request) {
 
        if (feePayer === "buyer") {
          totalAmount = productTotal + platformFee;
-         creatorEarnings = productTotal - platformFee - referralEarnings;
+         creatorEarnings = productTotal - referralEarnings;
        } else {
          creatorEarnings = productTotal - platformFee - referralEarnings;
        }

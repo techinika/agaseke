@@ -35,20 +35,20 @@ export async function POST(req: Request) {
     let creatorEarnings = 0;
     let referralEarnings = 0;
 
-    if (isStoreTransaction) {
-       const productTotal = price * qty;
-       platformFee = productTotal * platformSharePercentage;
-       referralEarnings = productTotal * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE || 0.01);
+     if (isStoreTransaction) {
+        const productTotal = price * qty;
+        platformFee = productTotal * platformSharePercentage;
+        referralEarnings = productTotal * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE || 0.01);
 
-       totalAmount = productTotal;
+        totalAmount = productTotal;
 
-       if (feePayer === "buyer") {
-         totalAmount = productTotal + platformFee;
-         creatorEarnings = productTotal - platformFee - referralEarnings;
-       } else {
-         creatorEarnings = productTotal - platformFee - referralEarnings;
-       }
-     }
+        if (feePayer === "buyer") {
+          totalAmount = productTotal + platformFee;
+          creatorEarnings = productTotal - referralEarnings;
+        } else {
+          creatorEarnings = productTotal - platformFee - referralEarnings;
+        }
+      }
 
     const authRes = await fetch(
       "https://payments.paypack.rw/api/auth/agents/authorize",
