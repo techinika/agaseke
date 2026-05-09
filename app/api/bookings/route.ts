@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db/firebase";
-import { collection, addDoc, doc, getDoc, serverTimestamp } from "firebase/firestore";
+import { adminDb, admin } from "@/db/firebaseAdmin";
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,18 +10,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const creatorDoc = await getDoc(doc(db, "creators", creatorHandle));
-    if (!creatorDoc.exists()) {
+    const creatorDoc = await adminDb.collection("creators").doc(creatorHandle).get();
+    if (!creatorDoc.exists) {
       return NextResponse.json({ error: "Creator not found" }, { status: 404 });
     }
 
     const creatorData = creatorDoc.data();
 
-    if (!creatorData.bookingEnabled) {
+    if (!creatorData?.bookingEnabled) {
       return NextResponse.json({ error: "Booking is not enabled for this creator" }, { status: 403 });
     }
 
-    const bookingRef = await addDoc(collection(db, "bookingRequests"), {
+    const bookingRef = await adminDb.collection("bookingRequests").add({
       creatorId: creatorDoc.id,
       creatorName: creatorData.name,
       creatorHandle: creatorHandle,
@@ -35,7 +34,7 @@ export async function POST(request: NextRequest) {
       preferredTime: preferredTime || "",
       preferredType: preferredType || "both",
       status: "pending",
-      createdAt: serverTimestamp(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
     if (creatorData.email) {

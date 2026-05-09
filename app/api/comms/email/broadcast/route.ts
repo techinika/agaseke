@@ -1,7 +1,6 @@
 import {  updatesTransporter } from "@/lib/emailTransporter";
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { adminDb, admin } from "@/db/firebaseAdmin";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export async function POST(req: NextRequest) {
@@ -47,14 +46,14 @@ export async function POST(req: NextRequest) {
     await Promise.all(emailPromises);
 
     // LOG TO FIRESTORE
-    await addDoc(collection(db, "adminBroadcasts"), {
+    await adminDb.collection("adminBroadcasts").add({
       subject,
       message,
       targetLabel,
       recipientsCount: recipients.length,
       sentCount,
       failedCount,
-      sentAt: serverTimestamp(),
+      sentAt: admin.firestore.FieldValue.serverTimestamp(),
       status: failedCount === 0 ? "success" : "partial_failure",
     });
 
