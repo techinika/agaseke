@@ -25,7 +25,11 @@ import {
   Building2,
   Users,
   CalendarCheck,
+<<<<<<< HEAD
   TrendingUp,
+=======
+  Bell,
+>>>>>>> dev
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -34,15 +38,16 @@ import { handleLogout } from "@/db/functions/LogOut";
 import SharePageModal from "../SharePage";
 import FeedbackFAB from "../FeedbackFAB";
 import { auth, db } from "@/db/firebase";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, collection, query, where } from "firebase/firestore";
 import { Creator } from "@/types/creator";
+import NotificationDrawer from "@/components/ui/NotificationDrawer";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { creator, isAdmin } = useAuth();
+  const { creator, isAdmin, user } = useAuth();
   const [copied, setCopied] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -50,6 +55,8 @@ export default function DashboardLayout({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [creatorSettings, setCreatorSettings] = useState<Creator | null>(null);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     if (!creator?.handle) return;
@@ -63,6 +70,22 @@ export default function DashboardLayout({
     );
     return () => unsubscribe();
   }, [creator?.handle]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const q = query(
+      collection(db, "notifications"),
+      where("userId", "==", user.uid),
+      where("read", "==", false)
+    );
+
+    const unsub = onSnapshot(q, (snapshot) => {
+      setUnreadCount(snapshot.size);
+    });
+
+    return () => unsub();
+  }, [user?.uid]);
 
   // Close sidebar when route changes (mobile)
   useEffect(() => {
@@ -273,8 +296,16 @@ export default function DashboardLayout({
           </div>
 
           <div className="flex items-center gap-3 md:gap-6">
-            <button className="hidden sm:flex bg-orange-600 text-white px-4 py-2 rounded-lg text-xs font-bold items-center gap-2 hover:bg-orange-700 transition shadow-sm">
-              <Plus size={16} /> Create New
+            <button
+              onClick={() => setShowNotifications(true)}
+              className="relative p-2 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              <Bell size={20} className="text-slate-600" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] bg-orange-500 text-white text-[10px] font-bold rounded-full px-1">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
             </button>
 
             <div className="relative" ref={dropdownRef}>
@@ -359,6 +390,12 @@ export default function DashboardLayout({
       <SharePageModal
         isOpen={showShareModal}
         onClose={() => setShowShareModal(false)}
+      />
+
+      <NotificationDrawer
+        isOpen={showNotifications}
+        onClose={() => setShowNotifications(false)}
+        userId={user?.uid || ""}
       />
     </div>
   );

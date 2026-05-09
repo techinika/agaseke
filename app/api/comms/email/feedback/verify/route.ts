@@ -1,9 +1,10 @@
 import { helloTransporter } from "@/lib/emailTransporter";
 import { NextRequest, NextResponse } from "next/server";
+import { createNotification } from "@/lib/adminNotifications";
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, name, approved, reason } = await req.json();
+    const { email, name, approved, reason, creatorUid, handle } = await req.json();
 
     const statusColor = approved ? "#059669" : "#DC2626";
     const statusTitle = approved ? "Account Verified" : "Verification Update";
@@ -52,14 +53,30 @@ export async function POST(req: NextRequest) {
       </div>
     `;
 
-    await helloTransporter.sendMail({
-      from: `"Agaseke Verification" <${process.env.SMTP_HELLO}>`,
-      to: email,
-      subject: approved
-        ? "Agaseke Verification Successful"
-        : "Action Required: Agaseke Verification Update",
-      html: emailHtml,
-    });
+     await helloTransporter.sendMail({
+       from: `"Agaseke Verification" <${process.env.SMTP_HELLO}>`,
+       to: email,
+       subject: approved
+         ? "Agaseke Verification Successful"
+         : "Action Required: Agaseke Verification Update",
+       html: emailHtml,
+     });
+
+    if (creatorUid) {
+      await createNotification({
+        userId: creatorUid,
+        type: approved ? "verification_approved" : "verification_rejected",
+        title: approved ? "Verification Approved!" : "Verification Update",
+        message: approved
+          ? "Congratulations! Your identity verification has been approved. You now have a verified badge and can receive payouts."
+          : `Your verification request was not approved. ${reason || "Please review and resubmit."}`,
+        metadata: {
+          approved,
+          reason: reason || undefined,
+        },
+        link: approved ? "/creator" : "/creator/verify",
+      });
+    }
 
     return NextResponse.json(
       { message: "Feedback email sent" },
