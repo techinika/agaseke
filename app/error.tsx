@@ -3,7 +3,12 @@
 import React from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Home, ArrowLeft, AlertTriangle, RefreshCw } from "lucide-react";
+import {
+  Home,
+  ArrowLeft,
+  AlertTriangle,
+  Loader,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface ErrorProps {
@@ -80,7 +85,7 @@ const Error = ({ error, reset }: ErrorProps) => {
               onClick={() => reset()}
               className="flex items-center justify-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-lg font-bold transition-all hover:bg-red-600 active:scale-95 shadow-xl shadow-slate-200"
             >
-              <RefreshCw size={18} /> Try Again
+              <Loader size={18} /> Try Again
             </button>
 
             <Link

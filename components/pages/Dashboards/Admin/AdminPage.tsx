@@ -31,12 +31,9 @@ import {
   Wallet,
   Gift,
   ShoppingBag,
-  MessageSquare,
-  ArrowUpRight,
-  ArrowDownRight,
-  RefreshCw,
   Activity,
   Clock,
+  Loader,
 } from "lucide-react";
 import Loading from "@/app/loading";
 import { StatCard } from "@/components/parts/dashboard/StatCard";
@@ -68,8 +65,14 @@ export default function AdminDashboard() {
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [verifications, setVerifications] = useState<any[]>([]);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
-  const [visitorStats, setVisitorStats] = useState<{ today: number; week: number; month: number }>({ today: 0, week: 0, month: 0 });
-  const [monthlyData, setMonthlyData] = useState<{ month: string; income: number; payouts: number }[]>([]);
+  const [visitorStats, setVisitorStats] = useState<{
+    today: number;
+    week: number;
+    month: number;
+  }>({ today: 0, week: 0, month: 0 });
+  const [monthlyData, setMonthlyData] = useState<
+    { month: string; income: number; payouts: number }[]
+  >([]);
 
   const [modal, setModal] = useState<{
     show: boolean;
@@ -127,13 +130,29 @@ export default function AdminDashboard() {
       });
 
       // Get monthly data for charts from platformIncome and payouts collections
-      const platformIncomeSnap = await getDocs(collection(db, "platformIncome"));
-      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const platformIncomeSnap = await getDocs(
+        collection(db, "platformIncome"),
+      );
+      const months = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
-      const monthlyStats: { month: string; income: number; payouts: number }[] = [];
-      const allPlatformIncome = platformIncomeSnap.docs.map(d => d.data());
-      const allPayouts = payoutsSnap.docs.map(d => d.data());
+      const monthlyStats: { month: string; income: number; payouts: number }[] =
+        [];
+      const allPlatformIncome = platformIncomeSnap.docs.map((d) => d.data());
+      const allPayouts = payoutsSnap.docs.map((d) => d.data());
 
       // Initialize last 6 months with 0
       for (let i = 5; i >= 0; i--) {
@@ -141,46 +160,56 @@ export default function AdminDashboard() {
         const yearOffset = currentMonth - i < 0 ? -1 : 0;
         const year = currentYear + yearOffset;
         const monthName = months[monthIndex];
-        
+
         let monthIncome = 0;
         let monthPayouts = 0;
-        
+
         // Get platform income for this month
         allPlatformIncome.forEach((income) => {
           const createdAt = income.createdAt;
-          if (createdAt && typeof createdAt.toDate === 'function') {
+          if (createdAt && typeof createdAt.toDate === "function") {
             const docDate = createdAt.toDate();
-            if (docDate.getMonth() === monthIndex && docDate.getFullYear() === year) {
+            if (
+              docDate.getMonth() === monthIndex &&
+              docDate.getFullYear() === year
+            ) {
               monthIncome += income.amount || 0;
             }
           }
         });
-        
+
         // Get payouts for this month
         allPayouts.forEach((payout) => {
           const createdAt = payout.createdAt;
-          if (createdAt && typeof createdAt.toDate === 'function') {
+          if (createdAt && typeof createdAt.toDate === "function") {
             const docDate = createdAt.toDate();
-            if (docDate.getMonth() === monthIndex && docDate.getFullYear() === year) {
+            if (
+              docDate.getMonth() === monthIndex &&
+              docDate.getFullYear() === year
+            ) {
               monthPayouts += payout.amount || 0;
             }
           }
         });
-        
-        monthlyStats.push({ month: monthName, income: monthIncome, payouts: monthPayouts });
+
+        monthlyStats.push({
+          month: monthName,
+          income: monthIncome,
+          payouts: monthPayouts,
+        });
       }
       setMonthlyData(monthlyStats);
 
       // Get transaction counts by type from transactions collection
       const transactionsSnap = await getDocs(collection(db, "transactions"));
-      const allTransactions = transactionsSnap.docs.map(d => d.data());
+      const allTransactions = transactionsSnap.docs.map((d) => d.data());
       let txSupports = 0;
       let txProducts = 0;
       allTransactions.forEach((tx) => {
-        if (tx.status === 'successful' || tx.status === 'success') {
-          if (tx.type === 'support') {
+        if (tx.status === "successful" || tx.status === "success") {
+          if (tx.type === "support") {
             txSupports += 1;
-          } else if (tx.type === 'product') {
+          } else if (tx.type === "product") {
             txProducts += 1;
           }
         }
@@ -238,8 +267,12 @@ export default function AdminDashboard() {
       });
       setTopEarners(earnersSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
       setTopViewed(viewsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      setWithdrawals(withdrawalSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      setVerifications(verificationSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      setWithdrawals(
+        withdrawalSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+      );
+      setVerifications(
+        verificationSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+      );
     } catch (error) {
       console.error("Error fetching admin stats:", error);
     } finally {
@@ -346,7 +379,9 @@ export default function AdminDashboard() {
           creatorHandle: target.creatorHandle,
         });
 
-        toast.success(`Withdrawal ${type === "approve" ? "approved" : "rejected"}`);
+        toast.success(
+          `Withdrawal ${type === "approve" ? "approved" : "rejected"}`,
+        );
       } else {
         const isApprove = type === "approve";
         await updateDoc(doc(db, "creators", target.id), {
@@ -375,7 +410,9 @@ export default function AdminDashboard() {
           creatorHandle: target.handle,
         });
 
-        toast.success(`Verification ${type === "approve" ? "approved" : "rejected"}`);
+        toast.success(
+          `Verification ${type === "approve" ? "approved" : "rejected"}`,
+        );
       }
       setModal(null);
       setRejectionReason("");
@@ -406,7 +443,7 @@ export default function AdminDashboard() {
             onClick={fetchData}
             className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition"
           >
-            <RefreshCw size={16} />
+            <Loader size={16} />
             Refresh
           </button>
         </header>
@@ -418,7 +455,11 @@ export default function AdminDashboard() {
             value={`${stats.totalPlatformIncome.toLocaleString()} RWF`}
             icon={<DollarSign className="text-emerald-600" />}
             color="bg-emerald-50"
-            trend={stats.recentGrowth > 0 ? "+" + stats.recentGrowth + "%" : undefined}
+            trend={
+              stats.recentGrowth > 0
+                ? "+" + stats.recentGrowth + "%"
+                : undefined
+            }
           />
           <StatCard
             label="Payouts Processed"
@@ -445,42 +486,54 @@ export default function AdminDashboard() {
           <div className="bg-white rounded-xl border border-slate-100 p-4">
             <div className="flex items-center gap-2 mb-2">
               <Users size={14} className="text-blue-600" />
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Profiles</p>
+              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                Profiles
+              </p>
             </div>
             <p className="text-xl font-bold">{stats.profileCount}</p>
           </div>
           <div className="bg-white rounded-xl border border-slate-100 p-4">
             <div className="flex items-center gap-2 mb-2">
               <UserCheck size={14} className="text-orange-600" />
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Creators</p>
+              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                Creators
+              </p>
             </div>
             <p className="text-xl font-bold">{stats.creatorCount}</p>
           </div>
           <div className="bg-white rounded-xl border border-slate-100 p-4">
             <div className="flex items-center gap-2 mb-2">
               <ShoppingBag size={14} className="text-cyan-600" />
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Store Orders</p>
+              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                Store Orders
+              </p>
             </div>
             <p className="text-xl font-bold">{stats.totalOrders}</p>
           </div>
           <div className="bg-white rounded-xl border border-slate-100 p-4">
             <div className="flex items-center gap-2 mb-2">
               <Gift size={14} className="text-pink-600" />
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Supports</p>
+              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                Supports
+              </p>
             </div>
             <p className="text-xl font-bold">{stats.totalSupports}</p>
           </div>
           <div className="bg-white rounded-xl border border-slate-100 p-4">
             <div className="flex items-center gap-2 mb-2">
               <ShoppingBag size={14} className="text-amber-600" />
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Products</p>
+              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                Products
+              </p>
             </div>
             <p className="text-xl font-bold">{stats.totalProducts}</p>
           </div>
           <div className="bg-white rounded-xl border border-slate-100 p-4">
             <div className="flex items-center gap-2 mb-2">
               <Gift size={14} className="text-purple-600" />
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Giveaways</p>
+              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                Giveaways
+              </p>
             </div>
             <p className="text-xl font-bold">{stats.totalGiveaways}</p>
           </div>
@@ -494,11 +547,16 @@ export default function AdminDashboard() {
             </h3>
             <div className="flex items-end justify-between gap-2 h-48">
               {monthlyData.map((data, index) => {
-                const maxValue = Math.max(...monthlyData.map(d => Math.max(d.income, d.payouts)));
+                const maxValue = Math.max(
+                  ...monthlyData.map((d) => Math.max(d.income, d.payouts)),
+                );
                 const incomeHeight = (data.income / maxValue) * 100;
                 const payoutHeight = (data.payouts / maxValue) * 100;
                 return (
-                  <div key={index} className="flex flex-col items-center flex-1 gap-2">
+                  <div
+                    key={index}
+                    className="flex flex-col items-center flex-1 gap-2"
+                  >
                     <div className="w-full flex items-end justify-center gap-1 h-36">
                       <div
                         className="w-6 bg-emerald-500 rounded-t"
@@ -511,7 +569,9 @@ export default function AdminDashboard() {
                         title={`Payouts: ${data.payouts.toLocaleString()} RWF`}
                       />
                     </div>
-                    <span className="text-xs font-bold text-slate-400">{data.month}</span>
+                    <span className="text-xs font-bold text-slate-400">
+                      {data.month}
+                    </span>
                   </div>
                 );
               })}
@@ -539,7 +599,12 @@ export default function AdminDashboard() {
                   <span className="font-bold">{stats.totalSupports}</span>
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-3">
-                  <div className="bg-pink-500 h-3 rounded-full" style={{ width: `${Math.min((stats.totalSupports / Math.max(stats.totalSupports + stats.totalOrders, 1)) * 100, 100)}%` }} />
+                  <div
+                    className="bg-pink-500 h-3 rounded-full"
+                    style={{
+                      width: `${Math.min((stats.totalSupports / Math.max(stats.totalSupports + stats.totalOrders, 1)) * 100, 100)}%`,
+                    }}
+                  />
                 </div>
               </div>
               <div>
@@ -548,7 +613,12 @@ export default function AdminDashboard() {
                   <span className="font-bold">{stats.totalOrders}</span>
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-3">
-                  <div className="bg-cyan-500 h-3 rounded-full" style={{ width: `${Math.min((stats.totalOrders / Math.max(stats.totalSupports + stats.totalOrders, 1)) * 100, 100)}%` }} />
+                  <div
+                    className="bg-cyan-500 h-3 rounded-full"
+                    style={{
+                      width: `${Math.min((stats.totalOrders / Math.max(stats.totalSupports + stats.totalOrders, 1)) * 100, 100)}%`,
+                    }}
+                  />
                 </div>
               </div>
             </div>
@@ -719,7 +789,9 @@ export default function AdminDashboard() {
                 />
               ))}
               {topEarners.length === 0 && (
-                <p className="text-slate-400 text-sm text-center py-4">No data yet</p>
+                <p className="text-slate-400 text-sm text-center py-4">
+                  No data yet
+                </p>
               )}
             </div>
           </section>
@@ -743,7 +815,9 @@ export default function AdminDashboard() {
                 />
               ))}
               {topViewed.length === 0 && (
-                <p className="text-slate-400 text-sm text-center py-4">No data yet</p>
+                <p className="text-slate-400 text-sm text-center py-4">
+                  No data yet
+                </p>
               )}
             </div>
           </section>
@@ -758,22 +832,30 @@ export default function AdminDashboard() {
             <div className="space-y-3 max-h-[300px] overflow-y-auto">
               {recentActivities.slice(0, 8).map((activity) => (
                 <div key={activity.id} className="flex items-start gap-3 p-2">
-                  <div className={`w-2 h-2 rounded-full mt-1.5 ${
-                    activity.level === "success" ? "bg-green-500" :
-                    activity.level === "error" ? "bg-red-500" :
-                    activity.level === "warning" ? "bg-amber-500" :
-                    "bg-blue-500"
-                  }`} />
+                  <div
+                    className={`w-2 h-2 rounded-full mt-1.5 ${
+                      activity.level === "success"
+                        ? "bg-green-500"
+                        : activity.level === "error"
+                          ? "bg-red-500"
+                          : activity.level === "warning"
+                            ? "bg-amber-500"
+                            : "bg-blue-500"
+                    }`}
+                  />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm truncate">{activity.message}</p>
                     <p className="text-[10px] text-slate-400">
-                      {activity.createdAt?.toDate?.()?.toLocaleTimeString() || "Now"}
+                      {activity.createdAt?.toDate?.()?.toLocaleTimeString() ||
+                        "Now"}
                     </p>
                   </div>
                 </div>
               ))}
               {recentActivities.length === 0 && (
-                <p className="text-slate-400 text-sm text-center py-4">No recent activity</p>
+                <p className="text-slate-400 text-sm text-center py-4">
+                  No recent activity
+                </p>
               )}
             </div>
           </section>

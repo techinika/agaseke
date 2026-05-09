@@ -125,10 +125,8 @@ export async function POST(req: Request) {
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
           });
           batch.update(adminDb.collection("creators").doc(txData.referralId), {
-            totalEarnings:
-              admin.firestore.FieldValue.increment(referralEarnings),
-            pendingPayout:
-              admin.firestore.FieldValue.increment(referralEarnings),
+            totalEarnings: admin.firestore.FieldValue.increment(referralEarnings),
+            pendingPayout: admin.firestore.FieldValue.increment(referralEarnings),
           });
         }
 
@@ -174,28 +172,12 @@ export async function POST(req: Request) {
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        const creatorSnap = await adminDb
-          .collection("creators")
-          .where("uid", "==", txData.creatorId)
-          .limit(1)
-          .get();
+        batch.update(adminDb.collection("creators").doc(txData.creatorId), {
+          totalEarnings: admin.firestore.FieldValue.increment(creatorEarnings),
+          pendingPayout: admin.firestore.FieldValue.increment(creatorEarnings),
+        });
 
-        console.log(creatorSnap);
-
-        if (!creatorSnap.empty) {
-          batch.update(creatorSnap.docs[0].ref, {
-            totalEarnings:
-              admin.firestore.FieldValue.increment(creatorEarnings),
-            pendingPayout:
-              admin.firestore.FieldValue.increment(creatorEarnings),
-          });
-        }
-
-        if (
-          productId &&
-          productData?.type === "physical" &&
-          productData?.stock !== undefined
-        ) {
+        if (productId && productData?.type === "physical" && productData?.stock !== undefined) {
           batch.update(adminDb.collection("storeProducts").doc(productId), {
             stock: admin.firestore.FieldValue.increment(-quantity),
           });
@@ -208,12 +190,6 @@ export async function POST(req: Request) {
           });
         }
 
-<<<<<<< HEAD
-        console.log(
-          `[PESAPAL IPN] Store Order Success for ${OrderMerchantReference}`,
-        );
-      } else {
-=======
          console.log(`[PESAPAL IPN] Store Order Success for ${OrderMerchantReference}`);
 
          if (txData.creatorUid) {
@@ -237,16 +213,13 @@ export async function POST(req: Request) {
            });
          }
        } else {
->>>>>>> dev
         const platformSharePercentage = txData.includeReferral
           ? Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL)
           : Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE);
 
         const platformShare = totalAmount * platformSharePercentage;
-        const creatorShare =
-          totalAmount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE);
-        const referralShare =
-          totalAmount * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE);
+        const creatorShare = totalAmount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE);
+        const referralShare = totalAmount * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE);
 
         batch.set(adminDb.collection("platformIncome").doc(), {
           amount: platformShare,
@@ -299,14 +272,7 @@ export async function POST(req: Request) {
           });
         }
 
-<<<<<<< HEAD
-        console.log(
-          `[PESAPAL IPN] Support Success for ${OrderMerchantReference}`,
-        );
-      }
-=======
          console.log(`[PESAPAL IPN] Support Success for ${OrderMerchantReference}`);
->>>>>>> dev
 
          if (txData.creatorUid) {
            await createNotification({
