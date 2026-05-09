@@ -1,6 +1,6 @@
 import TermsPage from "@/components/pages/Legal/TermsPage";
 import { Metadata } from "next";
-import { baseUrl } from "@/app/sitemap";
+import { baseUrl } from "@/lib/baseUrl";
 
 export const metadata: Metadata = {
   title: "Terms of Service | Agaseke",

@@ -35,18 +35,20 @@ export async function POST(req: Request) {
     let creatorEarnings = 0;
     let referralEarnings = 0;
 
-    if (isStoreTransaction) {
-      const productTotal = price * qty;
-      platformFee = productTotal * platformSharePercentage;
-      referralEarnings = productTotal * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE || 0.01);
-      
-      if (feePayer === "buyer") {
-        totalAmount = productTotal + platformFee;
-        creatorEarnings = productTotal - platformFee - referralEarnings;
-      } else {
-        creatorEarnings = productTotal - platformFee - referralEarnings;
+     if (isStoreTransaction) {
+        const productTotal = price * qty;
+        platformFee = productTotal * platformSharePercentage;
+        referralEarnings = productTotal * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE || 0.01);
+
+        totalAmount = productTotal;
+
+        if (feePayer === "buyer") {
+          totalAmount = productTotal + platformFee;
+          creatorEarnings = productTotal - referralEarnings;
+        } else {
+          creatorEarnings = productTotal - platformFee - referralEarnings;
+        }
       }
-    }
 
     const authRes = await fetch(
       "https://payments.paypack.rw/api/auth/agents/authorize",
@@ -65,21 +67,21 @@ export async function POST(req: Request) {
 
     const { access } = await authRes.json();
 
-    const payRes = await fetch(
-      "https://payments.paypack.rw/api/transactions/cashin",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${access}`,
-          "X-Webhook-Mode":
-            process.env.NODE_ENV === "production"
-              ? "production"
-              : "development",
-        },
-        body: JSON.stringify({ amount, number: phone }),
-      },
-    );
+     const payRes = await fetch(
+       "https://payments.paypack.rw/api/transactions/cashin",
+       {
+         method: "POST",
+         headers: {
+           "Content-Type": "application/json",
+           Authorization: `Bearer ${access}`,
+           "X-Webhook-Mode":
+             process.env.NODE_ENV === "production"
+               ? "production"
+               : "development",
+         },
+         body: JSON.stringify({ amount: totalAmount, number: phone }),
+       },
+     );
 
     const payData = await payRes.json();
 

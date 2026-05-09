@@ -1,7 +1,7 @@
 import ExplorePage from "@/components/pages/ExplorePage";
 import ExploreSchema from "@/components/seo/ExploreSchema";
 import { Metadata } from "next";
-import { baseUrl } from "@/app/sitemap";
+import { baseUrl } from "@/lib/baseUrl";
 
 export const metadata: Metadata = {
   title: "Explore Rwandan Creators | Agaseke",

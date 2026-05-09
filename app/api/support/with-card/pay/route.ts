@@ -32,10 +32,12 @@ export async function POST(req: Request) {
       selectedSize,
       platformFeePayer,
       buyerName,
+      buyerId,
     } = body;
 
     const isStoreTransaction = !!productId;
-    const platformSharePercentage = Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
+    const platformSharePercentage =
+      Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
     const price = Number(productPrice) || 0;
     const qty = Number(quantity) || 1;
     const feePayer = platformFeePayer || "buyer";
@@ -46,17 +48,20 @@ export async function POST(req: Request) {
     let referralEarnings = 0;
 
     if (isStoreTransaction) {
-      const productTotal = price * qty;
-      platformFee = productTotal * platformSharePercentage;
-      referralEarnings = productTotal * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE || 0.01);
-      
-      if (feePayer === "buyer") {
-        totalAmount = productTotal + platformFee;
-        creatorEarnings = productTotal - platformFee - referralEarnings;
-      } else {
-        creatorEarnings = productTotal - platformFee - referralEarnings;
-      }
-    }
+       const productTotal = price * qty;
+       platformFee = productTotal * platformSharePercentage;
+       referralEarnings =
+         productTotal * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE || 0.01);
+
+       totalAmount = productTotal;
+
+       if (feePayer === "buyer") {
+         totalAmount = productTotal + platformFee;
+         creatorEarnings = productTotal - referralEarnings;
+       } else {
+         creatorEarnings = productTotal - platformFee - referralEarnings;
+       }
+     }
 
     // 1. Get Token
     const authRes = await fetch(
@@ -106,7 +111,9 @@ export async function POST(req: Request) {
           id: merchantRef,
           currency: "RWF",
           amount: totalAmount,
-          description: isStoreTransaction ? `Purchase: ${productName}` : `Support for ${creatorId}`,
+          description: isStoreTransaction
+            ? `Purchase: ${productName}`
+            : `Support for ${creatorId}`,
           callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment`,
           notification_id: ipnData.ipn_id ?? process.env.PESAPAL_IPN_ID,
           billing_address: {
@@ -130,6 +137,7 @@ export async function POST(req: Request) {
         amount: totalAmount,
         creatorUid,
         creatorId,
+        buyerId: buyerId || "anonymous",
         supporterId: supporterId || "anonymous",
         status: "pending",
         message: message || "",
@@ -151,15 +159,12 @@ export async function POST(req: Request) {
         txData.creatorEarnings = creatorEarnings;
         txData.referralEarnings = referralEarnings;
         txData.platformFeePayer = feePayer;
-        txData.buyerId = supporterId || "anonymous";
+        txData.buyerId = buyerId || supporterId || "anonymous";
         txData.buyerName = buyerName || "";
         if (email) txData.buyerEmail = email;
       }
 
-      await adminDb
-        .collection("transactions")
-        .doc(merchantRef)
-        .set(txData);
+      await adminDb.collection("transactions").doc(merchantRef).set(txData);
 
       return NextResponse.json({
         redirect_url: payData.redirect_url,

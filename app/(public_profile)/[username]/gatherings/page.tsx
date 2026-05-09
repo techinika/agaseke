@@ -1,7 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import GatheringsPage from "@/components/pages/public/GatheringsPage";
+import { adminDb } from "@/db/firebaseAdmin";
 import { Metadata } from "next";
-import { baseUrl } from "@/app/sitemap";
+import { baseUrl } from "@/lib/baseUrl";
+
+async function getCreatorData(username: string) {
+  try {
+    const creatorSnap = await adminDb.collection("creators").doc(username).get();
+    return creatorSnap.exists ? creatorSnap.data() : null;
+  } catch (error) {
+    console.error("Error fetching creator:", error);
+    return null;
+  }
+}
 
 export async function generateMetadata({
   params,
@@ -9,23 +20,36 @@ export async function generateMetadata({
   params: Promise<{ username: string }>;
 }): Promise<Metadata> {
   const { username } = await params;
-
+  const creator = await getCreatorData(username);
+  
+  if (!creator) {
+    return {
+      title: "Events | Not Found | Agaseke",
+      robots: { index: false, follow: false },
+    };
+  }
+  
+  const displayName = creator.name || username;
+  const bio = creator.bio || `RSVP to events and gatherings by ${displayName} on Agaseke.`;
+  const image = creator.profilePicture || `${baseUrl}/agaseke.png`;
+  
   return {
-    title: `Events & Gatherings | ${username} | Agaseke`,
-    description: `RSVP to events and gatherings by ${username} on Agaseke.`,
-    keywords: [username, "events", "gatherings", "meetups", "Agaseke"],
+    title: `Events & Gatherings | ${displayName} (@${username}) | Agaseke`,
+    description: bio,
+    keywords: [displayName, username, "events", "gatherings", "meetups", "Agaseke"],
     alternates: {
       canonical: `/${username}/gatherings`,
       languages: { "en-RW": `/${username}/gatherings` },
     },
     openGraph: {
-      title: `Events | ${username} | Agaseke`,
-      description: `RSVP to events by ${username}.`,
+      title: `Events | ${displayName} (@${username})`,
+      description: `RSVP to events by ${displayName}.`,
       url: `${baseUrl}/${username}/gatherings`,
       siteName: "Agaseke",
+      images: [{ url: image, width: 400, height: 400, alt: `${displayName} on Agaseke` }],
       type: "website",
     },
-    twitter: { card: "summary", title: `Events | ${username}` },
+    twitter: { card: "summary", title: `Events | ${displayName}`, description: bio, images: [image] },
     robots: { index: true, follow: true },
   };
 }

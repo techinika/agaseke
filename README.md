@@ -27,6 +27,13 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - Platform fee payer option (buyer pays 10% extra or creator absorbs 10%)
   - Reopen cancelled orders
   - Create manual orders from dashboard
+- **Sales** (`/creator/sales`):
+  - Real-time sales statistics (Total Sales, Your Earnings, Total Orders, Unique Buyers)
+  - Recent Sales table with product images, buyer profile photos/emails, product type badges
+  - Top Products section with rank badges, units sold, earnings
+  - Search by buyer name, product name, or email
+  - Time filters (All Time, This Week, This Month, This Year)
+  - Only visible when Store is enabled in settings
 - **Giveaways** (`/creator/giveaways`):
   - Create and edit contests with multiple prize types
   - Random draw or challenge-based selection
@@ -96,7 +103,7 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - **Giveaways**: Enter giveaways and view winner announcements
   - `/[username]/giveaways` - Active and past giveaways with winners
   - `/[username]/messaging` - Direct message the creator
-- **Support**: One-time payments via mobile money or card
+- **Support**: One-time payments via mobile money (MomoPay) or card (credit/debit)
 - **Gift Once**: Quick support button available on all subpages
 - **Winner Notification**: Congratulatory message when winning a giveaway
 
@@ -219,6 +226,7 @@ agaseke/
 │   │       ├── payouts/          # Earnings & payouts
 │   │       ├── settings/         # Creator settings
 │   │       ├── store/            # Store management
+│   │       ├── sales/            # Sales tracking & analytics
 │   │       ├── supporters/       # Supporters & broadcast email
 │   │       ├── partners/         # Partner management
 │   │       ├── giveaways/        # Giveaway management
@@ -288,6 +296,7 @@ agaseke/
 | `storeProducts` | Products (digital/physical) |
 | `storeOrders` | Customer orders |
 | `storeCoupons` | Discount coupons |
+| `sales` | Individual sale records with earnings breakdown |
 
 ### Giveaways
 
@@ -534,3 +543,28 @@ MIT License - see LICENSE file for details.
 ## Support
 
 For issues or feature requests, please open an issue on GitHub.
+
+## Recent Updates
+
+### Sales Dashboard & Store Enhancements (May 2026)
+- **Sales Page** (`/creator/sales`): New dashboard page for tracking product sales and earnings
+  - Real-time sales statistics: Total Sales, Your Earnings, Total Orders, Unique Buyers
+  - Recent Sales table with product images, buyer profile photos/emails, product type (Digital/Physical) badges
+  - Top Products section with rank badges, product images, units sold, type indicator
+  - Search by buyer name, product name, or email
+  - Time filters: All Time, This Week, This Month, This Year
+  - Only visible in sidebar when `storeEnabled` is true in creator settings
+- **Store Payment Fix**: Uses `supporterId` instead of `buyerId` to correctly get logged-in user ID for transactions
+- **Order Data Handling**: Fixed `order.items.some()` undefined error by checking if `items` array exists before using it
+- **My Purchases**: Added button in StoreTab for viewing order history with digital product download capability
+- **Sales Collection**: Each sale record includes `productId`, `buyerId`, `creatorId`, `creatorUid`, `productName`, `buyerName`, `buyerEmail`, `quantity`, `productPrice`, `totalAmount`, `platformFee`, `creatorEarnings`, `referralEarnings`, `referralUid`, `status`, `paymentMethod`, `createdAt`
+
+### SEO & Discovery Enhancements (May 2025)
+- **Dynamic Metadata**: Server-side `generateMetadata` for all creator profile pages (`/[username]`, `/[username]/community`, `/[username]/store`, `/[username]/gatherings`, `/[username]/giveaways`, `/[username]/messaging`)
+- **Sitemap**: Auto-generated sitemap includes all creator profiles AND their enabled subpages (community, store, gatherings, giveaways, messaging) based on creator settings
+- **baseUrl**: Separated `baseUrl` utility to `lib/baseUrl.ts` to avoid firebase-admin being bundled in client components
+- **Payment Confirmation**: Different confirmation messages for store payments ("Confirming your order payment..." / "Your payment of X RWF has been processed successfully.") vs support gifts ("Confirming your gift..." / "Your gift of X RWF has been sent successfully.")
+
+### Bug Fixes (May 2025)
+- **Store Checkout**: Fixed creator ID mismatch - now uses `creatorHandle` (username) for `creatorId` field and `creatorUid` for `creatorUid` field when processing store orders
+- **Payment Transaction**: Fixed transaction lookup by ensuring proper reference matching in IPN handler

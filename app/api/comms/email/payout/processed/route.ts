@@ -1,6 +1,6 @@
 import { updatesTransporter } from "@/lib/emailTransporter";
 import { NextRequest, NextResponse } from "next/server";
-import { logActivity } from "@/lib/logger";
+import { logActivity } from "@/lib/adminLogger";
 
 export async function POST(req: NextRequest) {
   try {

@@ -8,17 +8,10 @@ import {
   Shield,
   ShieldCheck,
   ShieldOff,
-  MoreVertical,
   Eye,
-  Mail,
-  Crown,
   Loader,
-  RefreshCw,
-  ChevronDown,
-  Check,
   X,
   DollarSign,
-  Calendar,
   ExternalLink,
 } from "lucide-react";
 import { db } from "@/db/firebase";
@@ -36,6 +29,7 @@ import {
 } from "firebase/firestore";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/logger";
+import Loading from "@/app/loading";
 
 interface UserProfile {
   id: string;
@@ -130,11 +124,7 @@ export default function AdminUsersPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <RefreshCw className="animate-spin text-orange-500" size={40} />
-      </div>
-    );
+    return <Loading />;
   }
 
   return (

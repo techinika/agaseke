@@ -2,20 +2,19 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { 
-  Search, 
-  Filter, 
-  Activity, 
-  Info, 
-  CheckCircle, 
-  AlertTriangle, 
+import {
+  Search,
+  Filter,
+  Activity,
+  Info,
+  CheckCircle,
+  AlertTriangle,
   XCircle,
   Calendar,
   User,
   Shield,
   Download,
   RefreshCw,
-  ChevronDown,
 } from "lucide-react";
 import { db } from "@/db/firebase";
 import {
@@ -49,7 +48,9 @@ export default function AdminLogsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [levelFilter, setLevelFilter] = useState<LogLevel | "all">("all");
-  const [categoryFilter, setCategoryFilter] = useState<LogCategory | "all">("all");
+  const [categoryFilter, setCategoryFilter] = useState<LogCategory | "all">(
+    "all",
+  );
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
@@ -71,7 +72,8 @@ export default function AdminLogsPage() {
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
       if (levelFilter !== "all" && log.level !== levelFilter) return false;
-      if (categoryFilter !== "all" && log.category !== categoryFilter) return false;
+      if (categoryFilter !== "all" && log.category !== categoryFilter)
+        return false;
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
         return (
@@ -88,15 +90,17 @@ export default function AdminLogsPage() {
 
   const stats = useMemo(() => {
     const total = logs.length;
-    const errors = logs.filter(l => l.level === "error").length;
-    const warnings = logs.filter(l => l.level === "warning").length;
-    const successes = logs.filter(l => l.level === "success").length;
+    const errors = logs.filter((l) => l.level === "error").length;
+    const warnings = logs.filter((l) => l.level === "warning").length;
+    const successes = logs.filter((l) => l.level === "success").length;
     return { total, errors, warnings, successes };
   }, [logs]);
 
   const exportLogs = () => {
     const csv = [
-      ["Timestamp", "Level", "Category", "Message", "User", "Details"].join(","),
+      ["Timestamp", "Level", "Category", "Message", "User", "Details"].join(
+        ",",
+      ),
       ...filteredLogs.map((log) =>
         [
           log.createdAt?.toDate().toISOString() || "",
@@ -105,7 +109,7 @@ export default function AdminLogsPage() {
           `"${log.message.replace(/"/g, '""')}"`,
           log.userEmail || log.userName || "",
           JSON.stringify(log.metadata || {}),
-        ].join(",")
+        ].join(","),
       ),
     ].join("\n");
 
@@ -121,10 +125,14 @@ export default function AdminLogsPage() {
 
   const getLevelIcon = (level: LogLevel) => {
     switch (level) {
-      case "success": return <CheckCircle size={14} />;
-      case "warning": return <AlertTriangle size={14} />;
-      case "error": return <XCircle size={14} />;
-      default: return <Info size={14} />;
+      case "success":
+        return <CheckCircle size={14} />;
+      case "warning":
+        return <AlertTriangle size={14} />;
+      case "error":
+        return <XCircle size={14} />;
+      default:
+        return <Info size={14} />;
     }
   };
 
@@ -174,29 +182,45 @@ export default function AdminLogsPage() {
         {/* Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-white rounded-xl border border-slate-100 p-4">
-            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Total Logs</p>
-            <p className="text-2xl font-bold text-slate-900 mt-1">{stats.total.toLocaleString()}</p>
+            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+              Total Logs
+            </p>
+            <p className="text-2xl font-bold text-slate-900 mt-1">
+              {stats.total.toLocaleString()}
+            </p>
           </div>
           <div className="bg-green-50 rounded-xl border border-green-100 p-4">
             <div className="flex items-center gap-2">
               <CheckCircle size={16} className="text-green-600" />
-              <p className="text-[10px] font-bold uppercase text-green-600 tracking-wider">Success</p>
+              <p className="text-[10px] font-bold uppercase text-green-600 tracking-wider">
+                Success
+              </p>
             </div>
-            <p className="text-2xl font-bold text-green-700 mt-1">{stats.successes.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-green-700 mt-1">
+              {stats.successes.toLocaleString()}
+            </p>
           </div>
           <div className="bg-amber-50 rounded-xl border border-amber-100 p-4">
             <div className="flex items-center gap-2">
               <AlertTriangle size={16} className="text-amber-600" />
-              <p className="text-[10px] font-bold uppercase text-amber-600 tracking-wider">Warnings</p>
+              <p className="text-[10px] font-bold uppercase text-amber-600 tracking-wider">
+                Warnings
+              </p>
             </div>
-            <p className="text-2xl font-bold text-amber-700 mt-1">{stats.warnings.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-amber-700 mt-1">
+              {stats.warnings.toLocaleString()}
+            </p>
           </div>
           <div className="bg-red-50 rounded-xl border border-red-100 p-4">
             <div className="flex items-center gap-2">
               <XCircle size={16} className="text-red-600" />
-              <p className="text-[10px] font-bold uppercase text-red-600 tracking-wider">Errors</p>
+              <p className="text-[10px] font-bold uppercase text-red-600 tracking-wider">
+                Errors
+              </p>
             </div>
-            <p className="text-2xl font-bold text-red-700 mt-1">{stats.errors.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-red-700 mt-1">
+              {stats.errors.toLocaleString()}
+            </p>
           </div>
         </div>
 
@@ -209,7 +233,10 @@ export default function AdminLogsPage() {
                   Search
                 </label>
                 <div className="relative">
-                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" />
+                  <Search
+                    size={16}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300"
+                  />
                   <input
                     type="text"
                     placeholder="Search logs..."
@@ -225,7 +252,9 @@ export default function AdminLogsPage() {
                 </label>
                 <select
                   value={levelFilter}
-                  onChange={(e) => setLevelFilter(e.target.value as LogLevel | "all")}
+                  onChange={(e) =>
+                    setLevelFilter(e.target.value as LogLevel | "all")
+                  }
                   className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-lg text-sm outline-none"
                 >
                   <option value="all">All Levels</option>
@@ -241,7 +270,9 @@ export default function AdminLogsPage() {
                 </label>
                 <select
                   value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value as LogCategory | "all")}
+                  onChange={(e) =>
+                    setCategoryFilter(e.target.value as LogCategory | "all")
+                  }
                   className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-lg text-sm outline-none"
                 >
                   <option value="all">All Categories</option>
@@ -278,16 +309,21 @@ export default function AdminLogsPage() {
               {filteredLogs.map((log) => (
                 <div key={log.id} className="p-4 hover:bg-slate-50 transition">
                   <div className="flex items-start gap-4">
-                    <div className={`p-2 rounded-lg ${getLogLevelColor(log.level)}`}>
+                    <div
+                      className={`p-2 rounded-lg ${getLogLevelColor(log.level)}`}
+                    >
                       {getLevelIcon(log.level)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${getCategoryColor(log.category)}`}>
+                        <span
+                          className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${getCategoryColor(log.category)}`}
+                        >
                           {log.category}
                         </span>
                         <span className="text-xs text-slate-400">
-                          {log.createdAt?.toDate().toLocaleString() || "Unknown time"}
+                          {log.createdAt?.toDate().toLocaleString() ||
+                            "Unknown time"}
                         </span>
                       </div>
                       <p className="text-sm text-slate-900">{log.message}</p>
@@ -300,8 +336,7 @@ export default function AdminLogsPage() {
                         )}
                         {log.creatorHandle && (
                           <span className="flex items-center gap-1">
-                            <Shield size={12} />
-                            @{log.creatorHandle}
+                            <Shield size={12} />@{log.creatorHandle}
                           </span>
                         )}
                       </div>

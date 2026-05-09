@@ -1,71 +1,75 @@
 import { MetadataRoute } from "next";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "@/db/firebase";
+import { adminDb } from "@/db/firebaseAdmin";
+import { baseUrl } from "@/lib/baseUrl";
 
-export const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://agaseke.me";
+export { baseUrl };
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const creatorsSnap = await getDocs(collection(db, "creators"));
-  
-  const creatorUrls: MetadataRoute.Sitemap = creatorsSnap.docs
-    .filter((doc) => {
+  const sitemapEntries: MetadataRoute.Sitemap = [];
+
+  try {
+    const creatorsSnap = await adminDb.collection("creators").get();
+    
+    for (const doc of creatorsSnap.docs) {
       const data = doc.data();
-      return data && data.name && data.bio;
-    })
-    .map((doc) => {
-      const data = doc.data();
-      return {
-        url: `${baseUrl}/${doc.id}`,
+      const username = doc.id;
+      
+      if (!data?.name) continue;
+      
+      sitemapEntries.push({
+        url: `${baseUrl}/${username}`,
         lastModified: new Date(),
         changeFrequency: "weekly" as const,
         priority: 0.8,
-      };
-    });
+      });
+      
+      sitemapEntries.push({
+        url: `${baseUrl}/${username}/community`,
+        lastModified: new Date(),
+        changeFrequency: "weekly" as const,
+        priority: 0.6,
+      });
+      
+      if (data.storeEnabled) {
+        sitemapEntries.push({
+          url: `${baseUrl}/${username}/store`,
+          lastModified: new Date(),
+          changeFrequency: "daily" as const,
+          priority: 0.7,
+        });
+      }
+      
+      if (data.gatheringsEnabled) {
+        sitemapEntries.push({
+          url: `${baseUrl}/${username}/gatherings`,
+          lastModified: new Date(),
+          changeFrequency: "weekly" as const,
+          priority: 0.6,
+        });
+      }
+      
+      if (data.giveawayEnabled) {
+        sitemapEntries.push({
+          url: `${baseUrl}/${username}/giveaways`,
+          lastModified: new Date(),
+          changeFrequency: "weekly" as const,
+          priority: 0.6,
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Error generating sitemap:", error);
+  }
 
   const staticPages: MetadataRoute.Sitemap = [
-    {
-      url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 1,
-    },
-    {
-      url: `${baseUrl}/explore`,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/help-center`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.5,
-    },
-    {
-      url: `${baseUrl}/login`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.3,
-    },
-    {
-      url: `${baseUrl}/privacy`,
-      lastModified: new Date(),
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
-    {
-      url: `${baseUrl}/terms`,
-      lastModified: new Date(),
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
-    {
-      url: `${baseUrl}/payout-policy`,
-      lastModified: new Date(),
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
+    { url: baseUrl, lastModified: new Date(), changeFrequency: "daily", priority: 1 },
+    { url: `${baseUrl}/explore`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
+    { url: `${baseUrl}/help-center`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
+    { url: `${baseUrl}/login`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.3 },
+    { url: `${baseUrl}/privacy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
+    { url: `${baseUrl}/terms`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
+    { url: `${baseUrl}/payout-policy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
   ];
 
-  return [...staticPages, ...creatorUrls];
+  return [...staticPages, ...sitemapEntries];
 }

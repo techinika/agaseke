@@ -78,11 +78,14 @@ export default function PaymentCallback() {
               </div>
               <div className="space-y-2">
                 <h1 className="text-2xl font-bold text-slate-900">
-                  Confirming your gift...
+                  {txData?.type === "store" 
+                    ? "Confirming your order payment..." 
+                    : "Confirming your gift..."}
                 </h1>
                 <p className="text-slate-500 text-sm">
-                  We&apos;re verifying your transaction with the bank. This won&apos;t
-                  take long.
+                  {txData?.type === "store"
+                    ? "We're verifying your order payment with the bank. This won't take long."
+                    : "We're verifying your transaction with the bank. This won't take long."}
                 </p>
               </div>
               <div className="text-[10px] font-mono text-slate-300 uppercase tracking-widest">
@@ -101,11 +104,15 @@ export default function PaymentCallback() {
                   Thank You!
                 </h1>
                 <p className="text-slate-600 font-medium">
-                  Your gift of{" "}
+                  {txData?.type === "store"
+                    ? `Your payment of `
+                    : `Your gift of `}
                   <span className="text-orange-600 font-bold">
                     {txData?.amount} RWF
                   </span>{" "}
-                  has been sent successfully.
+                  {txData?.type === "store"
+                    ? "has been processed successfully."
+                    : "has been sent successfully."}
                 </p>
               </div>
               <div className="pt-4">

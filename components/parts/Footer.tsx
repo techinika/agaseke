@@ -38,18 +38,19 @@ export default function Footer() {
           </div>
 
           <div className="flex flex-wrap gap-12 md:gap-24">
-            <FooterGroup
-              title="Platform"
-              links={[
-                { label: "Explore", href: "/explore" },
-                { label: "Help Center", href: "/help-center" },
-                {
-                  label: "Blog",
-                  href: "https://medium.com/@agasekeforcreators",
-                  isExternal: true,
-                },
-              ]}
-            />
+             <FooterGroup
+               title="Platform"
+               links={[
+                 { label: "Explore", href: "/explore" },
+                 { label: "Changelog", href: "/changelog" },
+                 { label: "Help Center", href: "/help-center" },
+                 {
+                   label: "Blog",
+                   href: "https://medium.com/@agasekeforcreators",
+                   isExternal: true,
+                 },
+               ]}
+             />
 
             <FooterGroup
               title="Legal"

@@ -1,8 +1,7 @@
 import { updatesTransporter } from "@/lib/emailTransporter";
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/db/firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
-import { logActivity } from "@/lib/logger";
+import { adminDb } from "@/db/firebaseAdmin";
+import { logActivity } from "@/lib/adminLogger";
 
 interface NewContentNotification {
   creatorId: string;
@@ -34,12 +33,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get all supporters of this creator
-    const supportsRef = collection(db, "supportedCreators");
-    const supportsQuery = query(
-      supportsRef,
-      where("creatorId", "==", creatorId)
-    );
-    const supportsSnap = await getDocs(supportsQuery);
+    const supportsSnap = await adminDb.collection("supportedCreators").where("creatorId", "==", creatorId).get();
 
     if (supportsSnap.empty) {
       return NextResponse.json({
@@ -51,12 +45,7 @@ export async function POST(req: NextRequest) {
 
     // Get supporter emails from profiles
     const supporterIds = supportsSnap.docs.map((doc) => doc.data().supporterId);
-    const profilesRef = collection(db, "profiles");
-    const profilesQuery = query(
-      profilesRef,
-      where("uid", "in", supporterIds.slice(0, 10)) // Firebase limit
-    );
-    const profilesSnap = await getDocs(profilesQuery);
+    const profilesSnap = await adminDb.collection("profiles").where("uid", "in", supporterIds.slice(0, 10)).get();
 
     const supporters = profilesSnap.docs
       .map((doc) => doc.data())
