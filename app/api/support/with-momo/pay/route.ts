@@ -6,23 +6,25 @@ import { adminDb } from "@/db/firebaseAdmin";
 export async function POST(req: Request) {
   try {
     const {
-      amount,
-      phone,
-      creatorId,
-      creatorUid,
-      supporterId,
-      message,
-      includeReferral,
-      referralUid,
-      referralId,
-      productId,
-      productPrice,
-      productName,
-      quantity,
-      selectedSize,
-      platformFeePayer,
-      buyerName,
-    } = await req.json();
+       amount,
+       phone,
+       creatorId,
+       creatorUid,
+       supporterId,
+       message,
+       includeReferral,
+       referralUid,
+       referralId,
+       productId,
+       productPrice,
+       productName,
+       quantity,
+       selectedSize,
+       platformFeePayer,
+       buyerName,
+       email,
+       buyerEmail,
+     } = await req.json();
 
     const isStoreTransaction = !!productId;
     const platformSharePercentage = Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
@@ -102,19 +104,20 @@ export async function POST(req: Request) {
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       };
 
-      if (isStoreTransaction) {
-        txData.productId = productId;
-        txData.productPrice = price;
-        txData.productName = productName || "";
-        txData.quantity = qty;
-        txData.selectedSize = selectedSize || "";
-        txData.platformFee = platformFee;
-        txData.creatorEarnings = creatorEarnings;
-        txData.referralEarnings = referralEarnings;
-        txData.platformFeePayer = feePayer;
-        txData.buyerId = supporterId || "anonymous";
-        txData.buyerName = buyerName || "";
-      }
+       if (isStoreTransaction) {
+         txData.productId = productId;
+         txData.productPrice = price;
+         txData.productName = productName || "";
+         txData.quantity = qty;
+         txData.selectedSize = selectedSize || "";
+         txData.platformFee = platformFee;
+         txData.creatorEarnings = creatorEarnings;
+         txData.referralEarnings = referralEarnings;
+         txData.platformFeePayer = feePayer;
+         txData.buyerId = supporterId || "anonymous";
+         txData.buyerName = buyerName || "";
+         txData.buyerEmail = buyerEmail || email || "";
+       }
 
       await adminDb.collection("transactions").add(txData);
 
