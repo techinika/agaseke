@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import admin from "firebase-admin";
 import { adminDb } from "@/db/firebaseAdmin";
+import { createNotification } from "@/lib/adminNotifications";
 
 export async function HEAD() {
   return new Response(null, { status: 200 });
@@ -159,8 +160,29 @@ export async function POST(req: Request) {
         });
       }
 
-      console.log(`[PAYPACK WEBHOOK] Store Order Success for ${ref}`);
-    } else {
+       console.log(`[PAYPACK WEBHOOK] Store Order Success for ${ref}`);
+
+       if (txData.creatorUid) {
+         await createNotification({
+           userId: txData.creatorUid,
+           type: "new_sale",
+           title: "New Sale!",
+           message: `${txData.buyerName || "Someone"} purchased ${txData.productName || "a product"} for ${totalAmount.toLocaleString()} RWF`,
+           metadata: {
+             txRef: ref,
+             productId: productId,
+             productName: txData.productName,
+             buyerName: txData.buyerName,
+             buyerEmail: txData.buyerEmail,
+             amount: totalAmount,
+             creatorEarnings: creatorEarnings,
+           },
+           link: "/creator/sales",
+           actorName: txData.buyerName || undefined,
+           actorId: txData.buyerId || undefined,
+         });
+       }
+     } else {
       const platformSharePercentage = txData.includeReferral
         ? Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL)
         : Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE);
@@ -219,10 +241,26 @@ export async function POST(req: Request) {
         });
       }
 
-      console.log(`[PAYPACK WEBHOOK] Support Success for ${ref}`);
-    }
+       console.log(`[PAYPACK WEBHOOK] Support Success for ${ref}`);
 
-    await batch.commit();
+       if (txData.creatorUid) {
+         await createNotification({
+           userId: txData.creatorUid,
+           type: "support_received",
+           title: "New Support Received!",
+           message: `You received ${totalAmount.toLocaleString()} RWF in support${txData.supporterId && txData.supporterId !== "anonymous" ? "" : " from an anonymous supporter"}`,
+           metadata: {
+             txRef: ref,
+             amount: totalAmount,
+             creatorShare: creatorShare,
+           },
+           link: "/creator/supporters",
+           actorId: txData.supporterId !== "anonymous" ? txData.supporterId : undefined,
+         });
+       }
+     }
+
+     await batch.commit();
   } else {
     await txDoc.ref.update({ status: "failed" });
   }
