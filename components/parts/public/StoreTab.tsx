@@ -1422,21 +1422,26 @@ function CheckoutModal({
       const phone = shippingAddress.phone.replace(/\s/g, "");
 
       const firstItem = cart[0];
-      const productData = {
-        productId: firstItem?.product.id,
-        quantity: cart.reduce((sum, item) => sum + item.quantity, 0),
-        supporterId: currentUser.uid,
-        buyerId: currentUser.uid,
-        buyerEmail: currentUser.email || "",
-        buyerName: currentUser.displayName || "Customer",
-        phone: phone,
-        selectedSize: firstItem?.selectedSize,
-        productPrice: firstItem?.product.price,
-        productName: firstItem?.product.name,
-        creatorId: creatorHandle,
-        creatorUid: firstItem?.product.creatorId,
-        platformFeePayer: firstItem?.product.platformFeePayer || "buyer",
-      };
+       const amountToPay = buyerPaysMore ? totalWithPlatformFee : finalTotal;
+       const productData = {
+         productId: firstItem?.product.id,
+         quantity: cart.reduce((sum, item) => sum + item.quantity, 0),
+         supporterId: currentUser.uid,
+         buyerId: currentUser.uid,
+         buyerEmail: currentUser.email || "",
+         buyerName: currentUser.displayName || "Customer",
+         phone: phone,
+         selectedSize: firstItem?.selectedSize,
+         productPrice: firstItem?.product.price,
+         productName: firstItem?.product.name,
+         creatorId: creatorHandle,
+         creatorUid: firstItem?.product.creatorId,
+         platformFeePayer: firstItem?.product.platformFeePayer || "buyer",
+         amount: amountToPay,
+         email: currentUser.email || "",
+         firstName: currentUser.displayName?.split(" ")[0] || "Customer",
+         lastName: currentUser.displayName?.split(" ")[1] || "",
+       };
 
       const endpoint =
         paymentMethod === "momo"

@@ -48,18 +48,20 @@ export async function POST(req: Request) {
     let referralEarnings = 0;
 
     if (isStoreTransaction) {
-      const productTotal = price * qty;
-      platformFee = productTotal * platformSharePercentage;
-      referralEarnings =
-        productTotal * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE || 0.01);
+       const productTotal = price * qty;
+       platformFee = productTotal * platformSharePercentage;
+       referralEarnings =
+         productTotal * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE || 0.01);
 
-      if (feePayer === "buyer") {
-        totalAmount = productTotal + platformFee;
-        creatorEarnings = productTotal - platformFee - referralEarnings;
-      } else {
-        creatorEarnings = productTotal - platformFee - referralEarnings;
-      }
-    }
+       totalAmount = productTotal;
+
+       if (feePayer === "buyer") {
+         totalAmount = productTotal + platformFee;
+         creatorEarnings = productTotal - platformFee - referralEarnings;
+       } else {
+         creatorEarnings = productTotal - platformFee - referralEarnings;
+       }
+     }
 
     // 1. Get Token
     const authRes = await fetch(
