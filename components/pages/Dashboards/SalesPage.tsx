@@ -74,9 +74,9 @@ export default function SalesPage() {
   const [profiles, setProfiles] = useState<Record<string, ProfileInfo>>({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [timeFilter, setTimeFilter] = useState<"all" | "week" | "month" | "year">(
-    "all",
-  );
+  const [timeFilter, setTimeFilter] = useState<
+    "all" | "week" | "month" | "year"
+  >("all");
 
   useEffect(() => {
     if (!creator?.uid) return;
@@ -84,7 +84,7 @@ export default function SalesPage() {
     const salesRef = collection(db, "sales");
     const q = query(
       salesRef,
-      where("creatorId", "==", creator.uid),
+      where("creatorId", "==", creator.handle),
       orderBy("createdAt", "desc"),
     );
 
@@ -135,9 +135,9 @@ export default function SalesPage() {
           const profileMap: Record<string, ProfileInfo> = {};
 
           for (let i = 0; i < buyerIds.length; i += batchSize) {
-            const batch = buyerIds.slice(i, i + batchSize).filter(
-              (id) => id !== "anonymous",
-            );
+            const batch = buyerIds
+              .slice(i, i + batchSize)
+              .filter((id) => id !== "anonymous");
             if (batch.length === 0) continue;
 
             const profilesQuery = query(
@@ -183,27 +183,45 @@ export default function SalesPage() {
 
     let matchesTime = true;
     if (timeFilter === "week") {
-      matchesTime = (now.getTime() - saleDate.getTime()) / (1000 * 60 * 60 * 24) <= 7;
+      matchesTime =
+        (now.getTime() - saleDate.getTime()) / (1000 * 60 * 60 * 24) <= 7;
     } else if (timeFilter === "month") {
-      matchesTime = (now.getTime() - saleDate.getTime()) / (1000 * 60 * 60 * 24) <= 30;
+      matchesTime =
+        (now.getTime() - saleDate.getTime()) / (1000 * 60 * 60 * 24) <= 30;
     } else if (timeFilter === "year") {
-      matchesTime = (now.getTime() - saleDate.getTime()) / (1000 * 60 * 60 * 24) <= 365;
+      matchesTime =
+        (now.getTime() - saleDate.getTime()) / (1000 * 60 * 60 * 24) <= 365;
     }
 
     return matchesSearch && matchesTime;
   });
 
-  const totalSales = filteredSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
+  const totalSales = filteredSales.reduce(
+    (sum, sale) => sum + sale.totalAmount,
+    0,
+  );
   const totalEarnings = filteredSales.reduce(
     (sum, sale) => sum + (sale.creatorEarnings || 0),
     0,
   );
   const totalOrders = filteredSales.length;
   const uniqueBuyers = new Set(
-    filteredSales.map((sale) => sale.buyerId).filter((id) => id !== "anonymous"),
+    filteredSales
+      .map((sale) => sale.buyerId)
+      .filter((id) => id !== "anonymous"),
   ).size;
 
-  const productSales: Record<string, { name: string; total: number; quantity: number; earnings: number; type?: string; imageUrl?: string }> = {};
+  const productSales: Record<
+    string,
+    {
+      name: string;
+      total: number;
+      quantity: number;
+      earnings: number;
+      type?: string;
+      imageUrl?: string;
+    }
+  > = {};
   filteredSales.forEach((sale) => {
     if (!productSales[sale.productId]) {
       const product = products[sale.productId];
@@ -270,7 +288,9 @@ export default function SalesPage() {
         <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-500">Your Earnings</p>
+              <p className="text-sm font-medium text-slate-500">
+                Your Earnings
+              </p>
               <p className="text-2xl md:text-3xl font-black text-slate-900 mt-1">
                 {totalEarnings.toLocaleString()} RWF
               </p>
@@ -298,7 +318,9 @@ export default function SalesPage() {
         <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-500">Unique Buyers</p>
+              <p className="text-sm font-medium text-slate-500">
+                Unique Buyers
+              </p>
               <p className="text-2xl md:text-3xl font-black text-slate-900 mt-1">
                 {uniqueBuyers}
               </p>
@@ -380,8 +402,10 @@ export default function SalesPage() {
                   {filteredSales.slice(0, 50).map((sale) => {
                     const product = products[sale.productId];
                     const profile = profiles[sale.buyerId];
-                    const buyerName = profile?.displayName || sale.buyerName || "Anonymous";
-                    const productName = product?.name || sale.productName || "N/A";
+                    const buyerName =
+                      profile?.displayName || sale.buyerName || "Anonymous";
+                    const productName =
+                      product?.name || sale.productName || "N/A";
                     const productType = product?.type;
 
                     return (
