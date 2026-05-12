@@ -75,6 +75,13 @@ export default function AdminDashboard() {
     { month: string; income: number; payouts: number }[]
   >([]);
 
+  const [growthFilter, setGrowthFilter] = useState<"7d" | "weekly" | "monthly" | "annual" | "yoy">("7d");
+  const [userGrowthData, setUserGrowthData] = useState<{
+    labels: string[];
+    current: number[];
+    previous: number[];
+  }>({ labels: [], current: [], previous: [] });
+
   const [modal, setModal] = useState<{
     show: boolean;
     type: "approve" | "reject";
@@ -320,6 +327,196 @@ export default function AdminDashboard() {
       unsubLogs();
     };
   }, []);
+
+  const calculateUserGrowth = async () => {
+    try {
+      const profilesSnap = await getDocs(collection(db, "profiles"));
+      const allProfiles = profilesSnap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
+
+      const now = new Date();
+      let labels: string[] = [];
+      let current: number[] = [];
+      let previous: number[] = [];
+
+      const getCreationDate = (profile: any): Date | null => {
+        if (profile.createdAt && typeof profile.createdAt.toDate === "function") {
+          return profile.createdAt.toDate();
+        }
+        if (profile.createdAt) {
+          return new Date(profile.createdAt);
+        }
+        return null;
+      };
+
+      if (growthFilter === "7d") {
+        for (let i = 6; i >= 0; i--) {
+          const date = new Date(now);
+          date.setDate(date.getDate() - i);
+          const dateStr = date.toLocaleDateString("en-US", { weekday: "short" });
+          labels.push(dateStr);
+
+          const prevDate = new Date(date);
+          prevDate.setDate(prevDate.getDate() - 7);
+
+          const currentCount = allProfiles.filter((p) => {
+            const created = getCreationDate(p);
+            if (!created) return false;
+            return (
+              created.getFullYear() === date.getFullYear() &&
+              created.getMonth() === date.getMonth() &&
+              created.getDate() === date.getDate()
+            );
+          }).length;
+
+          const prevCount = allProfiles.filter((p) => {
+            const created = getCreationDate(p);
+            if (!created) return false;
+            return (
+              created.getFullYear() === prevDate.getFullYear() &&
+              created.getMonth() === prevDate.getMonth() &&
+              created.getDate() === prevDate.getDate()
+            );
+          }).length;
+
+          current.push(currentCount);
+          previous.push(prevCount);
+        }
+      } else if (growthFilter === "weekly") {
+        const currentWeek = Math.ceil(
+          (now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) /
+            (7 * 24 * 60 * 60 * 1000),
+        );
+        for (let i = 11; i >= 0; i--) {
+          const week = currentWeek - i;
+          if (week < 1) continue;
+          labels.push(`W${week}`);
+
+          const weekStart = new Date(now.getFullYear(), 0, 1 + (week - 1) * 7);
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekEnd.getDate() + 7);
+
+          const prevWeekStart = new Date(weekStart);
+          prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+          const prevWeekEnd = new Date(weekStart);
+
+          const currentCount = allProfiles.filter((p) => {
+            const created = getCreationDate(p);
+            if (!created) return false;
+            return created >= weekStart && created < weekEnd;
+          }).length;
+
+          const prevCount = allProfiles.filter((p) => {
+            const created = getCreationDate(p);
+            if (!created) return false;
+            return created >= prevWeekStart && created < prevWeekEnd;
+          }).length;
+
+          current.push(currentCount);
+          previous.push(prevCount);
+        }
+      } else if (growthFilter === "monthly") {
+        const months = [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
+        ];
+        const currentMonth = now.getMonth();
+        for (let i = 11; i >= 0; i--) {
+          const monthIndex = (currentMonth - i + 12) % 12;
+          const yearOffset = currentMonth - i < 0 ? -1 : 0;
+          const year = now.getFullYear() + yearOffset;
+          labels.push(months[monthIndex]);
+
+          const monthStart = new Date(year, monthIndex, 1);
+          const monthEnd = new Date(year, monthIndex + 1, 1);
+
+          const prevMonthStart = new Date(year, monthIndex - 1, 1);
+          const prevMonthEnd = monthStart;
+
+          const currentCount = allProfiles.filter((p) => {
+            const created = getCreationDate(p);
+            if (!created) return false;
+            return created >= monthStart && created < monthEnd;
+          }).length;
+
+          const prevCount = allProfiles.filter((p) => {
+            const created = getCreationDate(p);
+            if (!created) return false;
+            return created >= prevMonthStart && created < prevMonthEnd;
+          }).length;
+
+          current.push(currentCount);
+          previous.push(prevCount);
+        }
+      } else if (growthFilter === "annual") {
+        for (let i = 4; i >= 0; i--) {
+          const year = now.getFullYear() - i;
+          labels.push(year.toString());
+
+          const yearStart = new Date(year, 0, 1);
+          const yearEnd = new Date(year + 1, 0, 1);
+
+          const prevYearStart = new Date(year - 1, 0, 1);
+          const prevYearEnd = yearStart;
+
+          const currentCount = allProfiles.filter((p) => {
+            const created = getCreationDate(p);
+            if (!created) return false;
+            return created >= yearStart && created < yearEnd;
+          }).length;
+
+          const prevCount = allProfiles.filter((p) => {
+            const created = getCreationDate(p);
+            if (!created) return false;
+            return created >= prevYearStart && created < prevYearEnd;
+          }).length;
+
+          current.push(currentCount);
+          previous.push(prevCount);
+        }
+      } else if (growthFilter === "yoy") {
+        const currentYear = now.getFullYear();
+        const years = [currentYear - 4, currentYear - 3, currentYear - 2, currentYear - 1, currentYear];
+        
+        for (let i = 0; i < years.length; i++) {
+          const year = years[i];
+          labels.push(year.toString());
+
+          const yearStart = new Date(year, 0, 1);
+          const yearEnd = new Date(year + 1, 0, 1);
+
+          const currentCount = allProfiles.filter((p) => {
+            const created = getCreationDate(p);
+            if (!created) return false;
+            return created >= yearStart && created < yearEnd;
+          }).length;
+
+          current.push(currentCount);
+          previous.push(0);
+        }
+      }
+
+      setUserGrowthData({ labels, current, previous });
+    } catch (error) {
+      console.error("Error calculating user growth:", error);
+    }
+  };
+
+  useEffect(() => {
+    calculateUserGrowth();
+  }, [growthFilter]);
 
   const handleAction = async () => {
     if (!modal) return;
@@ -570,46 +767,121 @@ export default function AdminDashboard() {
         </div>
 
         {/* CHARTS SECTION */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mb-8">
           <div className="bg-white rounded-xl border border-slate-100 p-6">
             <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-6">
-              Platform Income vs Payouts (Last 6 Months)
+              User Growth
             </h3>
-            <div className="flex items-end justify-between gap-2 h-48">
+            <div className="flex flex-wrap gap-2 mb-6">
+              {[
+                { key: "7d", label: "7 Days" },
+                { key: "weekly", label: "Weekly" },
+                { key: "monthly", label: "Monthly" },
+                { key: "annual", label: "Annual" },
+                { key: "yoy", label: "Year to Year" },
+              ].map((filter) => (
+                <button
+                  key={filter.key}
+                  onClick={() => setGrowthFilter(filter.key as any)}
+                  className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${
+                    growthFilter === filter.key
+                      ? "bg-slate-900 text-white"
+                      : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-end justify-between gap-1 h-48">
+              {userGrowthData.labels.map((label, index) => {
+                const maxValue = Math.max(
+                  ...userGrowthData.current,
+                  ...userGrowthData.previous,
+                  1,
+                );
+                const currentHeight = (userGrowthData.current[index] / maxValue) * 100;
+                const prevHeight = (userGrowthData.previous[index] / maxValue) * 100;
+                return (
+                  <div
+                    key={index}
+                    className="flex flex-col items-center flex-1 gap-1"
+                  >
+                    <div className="w-full flex items-end justify-center gap-0.5 h-36">
+                      <div
+                        className="w-3 sm:w-4 md:w-5 lg:w-6 bg-blue-500 rounded-t"
+                        style={{ height: `${Math.max(currentHeight, 2)}%` }}
+                        title={`Current: ${userGrowthData.current[index]}`}
+                      />
+                      <div
+                        className="w-3 sm:w-4 md:w-5 lg:w-6 bg-slate-300 rounded-t"
+                        style={{ height: `${Math.max(prevHeight, 2)}%` }}
+                        title={`Previous: ${userGrowthData.previous[index]}`}
+                      />
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-400 truncate max-w-[40px]">
+                      {label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-4 mt-4 justify-center text-xs">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-blue-500 rounded" />
+                <span className="text-slate-500">
+                  {growthFilter === "7d" ? "This Week" : growthFilter === "weekly" ? "This Week" : growthFilter === "monthly" ? "This Year" : growthFilter === "annual" ? "Year" : "Year"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-slate-300 rounded" />
+                <span className="text-slate-500">
+                  {growthFilter === "7d" ? "Last Week" : growthFilter === "weekly" ? "Last Week" : growthFilter === "monthly" ? "Last Year" : growthFilter === "annual" ? "Last Year" : "-"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-slate-100 p-6">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-6">
+              Platform Income vs Payouts
+            </h3>
+            <div className="flex items-end justify-between gap-1 sm:gap-2 h-48">
               {monthlyData.map((data, index) => {
                 const maxValue = Math.max(
                   ...monthlyData.map((d) => Math.max(d.income, d.payouts)),
+                  1,
                 );
                 const incomeHeight = (data.income / maxValue) * 100;
                 const payoutHeight = (data.payouts / maxValue) * 100;
                 return (
                   <div
                     key={index}
-                    className="flex flex-col items-center flex-1 gap-2"
+                    className="flex flex-col items-center flex-1 gap-1"
                   >
-                    <div className="w-full flex items-end justify-center gap-1 h-36">
+                    <div className="w-full flex items-end justify-center gap-0.5 sm:gap-1 h-36">
                       <div
-                        className="w-6 bg-emerald-500 rounded-t"
-                        style={{ height: `${incomeHeight}%` }}
+                        className="w-4 sm:w-5 md:w-6 lg:w-8 bg-emerald-500 rounded-t"
+                        style={{ height: `${Math.max(incomeHeight, 2)}%` }}
                         title={`Income: ${data.income.toLocaleString()} RWF`}
                       />
                       <div
-                        className="w-6 bg-orange-500 rounded-t"
-                        style={{ height: `${payoutHeight}%` }}
+                        className="w-4 sm:w-5 md:w-6 lg:w-8 bg-orange-500 rounded-t"
+                        style={{ height: `${Math.max(payoutHeight, 2)}%` }}
                         title={`Payouts: ${data.payouts.toLocaleString()} RWF`}
                       />
                     </div>
-                    <span className="text-xs font-bold text-slate-400">
+                    <span className="text-[10px] sm:text-xs font-bold text-slate-400">
                       {data.month}
                     </span>
                   </div>
                 );
               })}
             </div>
-            <div className="flex items-center gap-6 mt-4 justify-center">
+            <div className="flex items-center gap-4 sm:gap-6 mt-4 justify-center flex-wrap">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-emerald-500 rounded" />
-                <span className="text-xs text-slate-500">Platform Income</span>
+                <span className="text-xs text-slate-500">Income</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-orange-500 rounded" />
@@ -625,7 +897,7 @@ export default function AdminDashboard() {
             <div className="space-y-6">
               <div>
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="font-medium">Support Transactions</span>
+                  <span className="font-medium">Supports</span>
                   <span className="font-bold">{stats.totalSupports}</span>
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-3">
@@ -639,7 +911,7 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="font-medium">Product Transactions</span>
+                  <span className="font-medium">Products</span>
                   <span className="font-bold">{stats.totalOrders}</span>
                 </div>
                 <div className="w-full bg-slate-100 rounded-full h-3">
