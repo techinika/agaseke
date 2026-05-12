@@ -325,6 +325,21 @@ export default function AdminDashboard() {
     setProcessing(true);
     const { target, type, category } = modal;
 
+    let userEmail = "";
+    const profilesSnap = await getDocs(
+      query(
+        collection(db, "profiles"),
+        where(
+          "username",
+          "==",
+          category === "withdrawal" ? target.handle : target.uid,
+        ),
+      ),
+    );
+    if (!profilesSnap.empty) {
+      userEmail = profilesSnap.docs[0].data().email || "";
+    }
+
     try {
       if (category === "withdrawal") {
         if (type === "approve") {
@@ -357,7 +372,7 @@ export default function AdminDashboard() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              creatorEmail: target.email,
+              creatorEmail: userEmail,
               creatorName: target.creatorName,
               amount: target.amount,
               method: target.method,
@@ -393,7 +408,7 @@ export default function AdminDashboard() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            email: target.email,
+            email: userEmail,
             name: target.name,
             approved: isApprove,
             reason: isApprove ? "" : rejectionReason,
