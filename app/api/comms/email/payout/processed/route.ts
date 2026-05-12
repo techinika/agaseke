@@ -1,6 +1,8 @@
 import { updatesTransporter } from "@/lib/emailTransporter";
 import { NextRequest, NextResponse } from "next/server";
 import { logActivity } from "@/lib/adminLogger";
+import { createNotification } from "@/lib/adminNotifications";
+import { adminDb } from "@/db/firebaseAdmin";
 
 export async function POST(req: NextRequest) {
   try {
@@ -69,6 +71,16 @@ export async function POST(req: NextRequest) {
       userEmail: creatorEmail,
       userName: creatorName,
     });
+
+    const adminsSnap = await adminDb.collection("profiles").where("isAdmin", "==", true).get();
+    for (const adminDoc of adminsSnap.docs) {
+      await createNotification({
+        userId: adminDoc.id,
+        type: "payout_processed",
+        title: "Payout Processed",
+        message: `Payout of ${amount.toLocaleString()} RWF processed for ${creatorName || creatorEmail}`,
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/db/firebaseAdmin";
+import { createNotification } from "@/lib/adminNotifications";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export async function POST(req: Request) {
@@ -120,6 +121,17 @@ export async function POST(req: Request) {
        }
 
       await adminDb.collection("transactions").add(txData);
+
+      const adminsSnap = await adminDb.collection("profiles").where("isAdmin", "==", true).get();
+      for (const adminDoc of adminsSnap.docs) {
+        await createNotification({
+          userId: adminDoc.id,
+          type: "new_transaction",
+          title: "New Transaction",
+          message: `${isStoreTransaction ? "Store purchase" : "Support"} of ${totalAmount.toLocaleString()} RWF initiated`,
+          link: "/admin/payouts",
+        });
+      }
 
       return NextResponse.json({ ref: payData.ref });
     }

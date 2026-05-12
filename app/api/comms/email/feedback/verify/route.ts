@@ -1,6 +1,7 @@
 import { helloTransporter } from "@/lib/emailTransporter";
 import { NextRequest, NextResponse } from "next/server";
 import { createNotification } from "@/lib/adminNotifications";
+import { adminDb } from "@/db/firebaseAdmin";
 
 export async function POST(req: NextRequest) {
   try {
@@ -75,6 +76,17 @@ export async function POST(req: NextRequest) {
           reason: reason || undefined,
         },
         link: approved ? "/creator" : "/creator/verify",
+      });
+    }
+
+    const adminsSnap = await adminDb.collection("profiles").where("isAdmin", "==", true).get();
+    for (const adminDoc of adminsSnap.docs) {
+      await createNotification({
+        userId: adminDoc.id,
+        type: approved ? "verification_approved" : "verification_rejected",
+        title: approved ? "Creator Verified" : "Verification Rejected",
+        message: `${name} (@${handle}) was ${approved ? "verified" : "rejected for verification"}`,
+        link: "/admin",
       });
     }
 

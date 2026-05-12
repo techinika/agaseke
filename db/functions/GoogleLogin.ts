@@ -57,6 +57,20 @@ export const handleGoogleLogin = async (
         console.error("Welcome email failed to send:", emailError);
       }
 
+      try {
+        await fetch("/api/admin/notifications/new-user", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.uid,
+            userName: user.displayName || "Agaseke User",
+            userEmail: user.email,
+          }),
+        });
+      } catch (notifError) {
+        console.error("New user notification failed:", notifError);
+      }
+
       if (reservedUsername) {
         window.location.href = `/onboarding?username=${encodeURIComponent(reservedUsername)}`;
       } else {

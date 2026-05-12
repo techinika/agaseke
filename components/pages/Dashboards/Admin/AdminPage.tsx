@@ -13,6 +13,7 @@ import {
   onSnapshot,
   doc,
   updateDoc,
+  addDoc,
   Timestamp,
   runTransaction,
   serverTimestamp,
@@ -384,6 +385,20 @@ export default function AdminDashboard() {
             status: "rejected",
             updatedAt: new Date(),
           });
+
+          const adminsSnap = await getDocs(
+            query(collection(db, "profiles"), where("isAdmin", "==", true)),
+          );
+          for (const adminDoc of adminsSnap.docs) {
+            const notificationData = {
+              userId: adminDoc.id,
+              type: category,
+              title: "Withdrawal Rejected",
+              message: `Withdrawal of ${target.amount?.toLocaleString()} RWF for ${target.creatorName} was rejected`,
+              read: false,
+            };
+            await addDoc(collection(db, "notifications"), notificationData);
+          }
         }
 
         await logActivity({
