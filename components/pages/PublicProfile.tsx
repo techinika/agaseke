@@ -35,6 +35,7 @@ import { GatheringsTab } from "../parts/public/GatheringsTab";
 import Footer from "../parts/Footer";
 import { Building2, ExternalLink } from "lucide-react";
 import { SeoUpdater } from "../parts/public/SeoUpdater";
+import { normalizeSocialUrl } from "@/lib/urlUtils";
 
 export default function PublicProfile({ username }: { username: string }) {
   const { user: currentUser, isLoggedIn, isCreator } = useAuth();
@@ -188,22 +189,12 @@ export default function PublicProfile({ username }: { username: string }) {
       ? creatorData?.profilePicture
       : profileData?.photoURL,
     socials: {
-      twitter: creatorData.socials?.twitter
-        ? `https://twitter.com/${creatorData.socials.twitter}`
-        : null,
-      instagram: creatorData.socials?.instagram
-        ? `https://instagram.com/${creatorData.socials.instagram}`
-        : null,
-      linkedin: creatorData.socials?.linkedin
-        ? `${creatorData.socials.linkedin}`
-        : null,
-      youtube: creatorData.socials?.youtube
-        ? `${creatorData.socials.youtube}`
-        : null,
-      tiktok: creatorData.socials?.tiktok
-        ? `${creatorData.socials.tiktok}`
-        : null,
-      web: creatorData.socials?.web || null,
+      twitter: normalizeSocialUrl(creatorData.socials?.twitter, "twitter"),
+      instagram: normalizeSocialUrl(creatorData.socials?.instagram, "instagram"),
+      linkedin: normalizeSocialUrl(creatorData.socials?.linkedin, "linkedin"),
+      youtube: normalizeSocialUrl(creatorData.socials?.youtube, "youtube"),
+      tiktok: normalizeSocialUrl(creatorData.socials?.tiktok, "tiktok"),
+      web: normalizeSocialUrl(creatorData.socials?.web, "web"),
     },
     events: creatorData.events || [],
   };
@@ -222,15 +213,11 @@ export default function PublicProfile({ username }: { username: string }) {
       "@id": `https://agaseke.me/${creator?.handle}`,
     },
     sameAs: [
-      creator.socials?.twitter
-        ? `https://x.com/${creator.socials.twitter}`
-        : null,
-      creator.socials?.instagram
-        ? `https://instagram.com/${creator.socials.instagram}`
-        : null,
-      creator.socials?.linkedin ? creator.socials.linkedin : null,
-      creator.socials?.youtube ? creator.socials.youtube : null,
-      creator.socials?.tiktok ? creator.socials.tiktok : null,
+      creator.socials?.twitter,
+      creator.socials?.instagram,
+      creator.socials?.linkedin,
+      creator.socials?.youtube,
+      creator.socials?.tiktok,
     ].filter(Boolean),
     interactionStatistic: creatorData.views
       ? {
