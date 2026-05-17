@@ -57,9 +57,11 @@ export default function AdminDashboard() {
     totalGiveaways: 0,
     totalOrders: 0,
     recentGrowth: 0,
+    totalTransactionAmount: 0, // New state for total transaction amount
   });
   const [rejectionReason, setRejectionReason] = useState("");
   const [timeFilter, setTimeFilter] = useState<"all" | "7d" | "30d">("all");
+  const [transactionFilter, setTransactionFilter] = useState<"day" | "week" | "month" | "annual">("month"); // New state for transaction amount filter
 
   const [topEarners, setTopEarners] = useState<any[]>([]);
   const [topViewed, setTopViewed] = useState<any[]>([]);
@@ -81,6 +83,109 @@ export default function AdminDashboard() {
     current: number[];
     previous: number[];
   }>({ labels: [], current: [], previous: [] });
+
+  // Raw data for transaction chart
+  const [rawIncome, setRawIncome] = useState<any[]>([]);
+  const [rawPayouts, setRawPayouts] = useState<any[]>([]);
+
+  // Process transaction chart data based on filter
+  useEffect(() => {
+    if (rawIncome.length === 0 && rawPayouts.length === 0) return;
+
+    const now = new Date();
+    const newData: { month: string; income: number; payouts: number }[] = [];
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    if (transactionFilter === "day") {
+      // Last 7 days
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        const label = d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+        
+        let income = 0, payouts = 0;
+        rawIncome.forEach((inc: any) => {
+          if (inc.createdAt?.toDate) {
+            const docDate = inc.createdAt.toDate();
+            if (docDate.toDateString() === d.toDateString()) income += inc.amount || 0;
+          }
+        });
+        rawPayouts.forEach((p: any) => {
+          if (p.createdAt?.toDate) {
+            const docDate = p.createdAt.toDate();
+            if (docDate.toDateString() === d.toDateString()) payouts += p.amount || 0;
+          }
+        });
+        newData.push({ month: label, income, payouts });
+      }
+    } else if (transactionFilter === "week") {
+      // Last 5 weeks
+      for (let i = 4; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - (i * 7));
+        const label = `Week ${5 - i}`;
+        
+        let income = 0, payouts = 0;
+        rawIncome.forEach((inc: any) => {
+          if (inc.createdAt?.toDate) {
+            const docDate = inc.createdAt.toDate();
+            const diffTime = now.getTime() - docDate.getTime();
+            const diffWeeks = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000));
+            if (diffWeeks === 4 - i) income += inc.amount || 0;
+          }
+        });
+        rawPayouts.forEach((p: any) => {
+          if (p.createdAt?.toDate) {
+             const docDate = p.createdAt.toDate();
+            const diffTime = now.getTime() - docDate.getTime();
+            const diffWeeks = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000));
+            if (diffWeeks === 4 - i) payouts += p.amount || 0;
+          }
+        });
+        newData.push({ month: label, income, payouts });
+      }
+    } else if (transactionFilter === "month") {
+      // Last 6 months
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      for (let i = 5; i >= 0; i--) {
+        const monthIndex = (currentMonth - i + 12) % 12;
+        const yearOffset = currentMonth - i < 0 ? -1 : 0;
+        const year = currentYear + yearOffset;
+        
+        let income = 0, payouts = 0;
+        rawIncome.forEach((inc: any) => {
+          if (inc.createdAt?.toDate) {
+            const docDate = inc.createdAt.toDate();
+            if (docDate.getMonth() === monthIndex && docDate.getFullYear() === year) income += inc.amount || 0;
+          }
+        });
+        rawPayouts.forEach((p: any) => {
+          if (p.createdAt?.toDate) {
+            const docDate = p.createdAt.toDate();
+            if (docDate.getMonth() === monthIndex && docDate.getFullYear() === year) payouts += p.amount || 0;
+          }
+        });
+        newData.push({ month: months[monthIndex], income, payouts });
+      }
+    } else if (transactionFilter === "annual") {
+      // Last 12 months (Year view)
+      const currentYear = now.getFullYear();
+      for (let i = 11; i >= 0; i--) {
+        const year = currentYear - i;
+        let income = 0, payouts = 0;
+        rawIncome.forEach((inc: any) => {
+          if (inc.createdAt?.toDate && inc.createdAt.toDate().getFullYear() === year) income += inc.amount || 0;
+        });
+        rawPayouts.forEach((p: any) => {
+          if (p.createdAt?.toDate && p.createdAt.toDate().getFullYear() === year) payouts += p.amount || 0;
+        });
+        newData.push({ month: year.toString(), income, payouts });
+      }
+    }
+
+    setMonthlyData(newData);
+  }, [transactionFilter, rawIncome, rawPayouts]);
 
   const [modal, setModal] = useState<{
     show: boolean;
@@ -208,6 +313,10 @@ export default function AdminDashboard() {
       }
       setMonthlyData(monthlyStats);
 
+      // Store raw data for transaction filtering
+      setRawIncome(allPlatformIncome);
+      setRawPayouts(allPayouts);
+
       // Get transaction counts by type from transactions collection
       const transactionsSnap = await getDocs(collection(db, "transactions"));
       const allTransactions = transactionsSnap.docs.map((d) => d.data());
@@ -272,6 +381,7 @@ export default function AdminDashboard() {
         totalGiveaways,
         totalOrders,
         recentGrowth: Math.floor(Math.random() * 20) + 5,
+        totalTransactionAmount: totalIncome + totalPayoutsProcessed,
       });
       setTopEarners(earnersSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
       setTopViewed(viewsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -675,6 +785,22 @@ export default function AdminDashboard() {
           </button>
         </header>
 
+        {/* Total Transaction Amount - Prominent Display */}
+        <div className="mb-8 bg-gradient-to-r from-orange-600 to-orange-500 rounded-2xl p-8 text-white shadow-xl">
+          <div className="flex items-center gap-3 mb-2 opacity-90">
+            <Activity size={20} />
+            <p className="text-xs font-bold uppercase tracking-widest">
+              Total Transaction Value (Since Inception)
+            </p>
+          </div>
+          <p className="text-5xl font-black tracking-tight">
+            {stats.totalTransactionAmount.toLocaleString()} RWF
+          </p>
+          <p className="text-xs font-medium opacity-75 mt-2">
+            Income + Payouts
+          </p>
+        </div>
+
         {/* Main Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard
@@ -845,9 +971,29 @@ export default function AdminDashboard() {
           </div>
 
           <div className="bg-white rounded-xl border border-slate-100 p-6">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-6">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">
               Platform Income vs Payouts
             </h3>
+            <div className="flex flex-wrap gap-2 mb-6">
+              {[
+                { key: "day", label: "Daily" },
+                { key: "week", label: "Weekly" },
+                { key: "month", label: "Monthly" },
+                { key: "annual", label: "Annual" },
+              ].map((filter) => (
+                <button
+                  key={filter.key}
+                  onClick={() => setTransactionFilter(filter.key as any)}
+                  className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${
+                    transactionFilter === filter.key
+                      ? "bg-slate-900 text-white"
+                      : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
             <div className="overflow-x-auto pb-2">
               <div className="flex items-end justify-between gap-1 sm:gap-2 h-48 min-w-max">
                 {monthlyData.map((data, index) => {
