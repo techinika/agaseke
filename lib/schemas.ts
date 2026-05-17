@@ -16,7 +16,7 @@ export function getOrganizationSchema(): OrganizationSchema {
     url: baseUrl,
     logo: `${baseUrl}/agaseke.png`,
     sameAs: [
-      "https://twitter.com/Agaseke_support",
+      "https://x.com/Agaseke_support",
       "https://www.instagram.com/agaseke_support",
       "https://www.facebook.com/agaseke",
     ],
@@ -88,7 +88,7 @@ export function getCreatorProfileSchema(
   }
 ) {
   const sameAs: string[] = [];
-  if (socials.twitter) sameAs.push(`https://twitter.com/${socials.twitter}`);
+  if (socials.twitter) sameAs.push(`https://x.com/${socials.twitter}`);
   if (socials.instagram)
     sameAs.push(`https://instagram.com/${socials.instagram}`);
   if (socials.youtube) sameAs.push(socials.youtube);
