@@ -57,19 +57,22 @@ export default function AdminComms() {
     setSending(true);
     try {
       let recipients: any[] = [];
+      let recipientIds: string[] = [];
 
       const profilesSnap = await getDocs(collection(db, "profiles"));
       const profilesMap = new Map();
       profilesSnap.forEach((d) => profilesMap.set(d.id, d.data()));
 
       if (target === "all") {
-        recipients = Array.from(profilesMap.values())
-          .map((p) => ({
+        recipients = Array.from(profilesMap.entries())
+          .map(([uid, p]) => ({
+            uid,
             email: p.email,
             name: p.displayName,
             handle: p.username,
           }))
           .filter((r) => r.email);
+        recipientIds = recipients.map((r) => r.uid);
       } else {
         let creatorQuery;
         if (target === "verified") {
@@ -87,18 +90,23 @@ export default function AdminComms() {
         }
 
         const cSnap = await getDocs(creatorQuery);
-        recipients = cSnap.docs
+        const recipientData = cSnap.docs
           .map((doc) => {
-            const profile = profilesMap.get(doc.data().uid);
+            const uid = doc.data().uid;
+            const profile = profilesMap.get(uid);
             return profile
               ? {
+                  uid,
                   email: profile.email,
                   name: profile.displayName,
                   handle: profile.username,
                 }
               : null;
           })
-          .filter(Boolean);
+          .filter((r): r is NonNullable<typeof r> => r !== null);
+        
+        recipients = recipientData;
+        recipientIds = recipientData.map((r) => r.uid);
       }
 
       if (recipients.length === 0) {
@@ -111,6 +119,7 @@ export default function AdminComms() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           recipients,
+          recipientIds,
           subject,
           message,
           targetLabel: target.toUpperCase(),

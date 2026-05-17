@@ -766,8 +766,8 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* CHARTS SECTION */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mb-8">
+        {/* CHARTS SECTION - One per row, horizontally scrollable */}
+        <div className="space-y-8 mb-8">
           <div className="bg-white rounded-xl border border-slate-100 p-6">
             <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-6">
               User Growth
@@ -793,38 +793,40 @@ export default function AdminDashboard() {
                 </button>
               ))}
             </div>
-            <div className="flex items-end justify-between gap-1 h-48">
-              {userGrowthData.labels.map((label, index) => {
-                const maxValue = Math.max(
-                  ...userGrowthData.current,
-                  ...userGrowthData.previous,
-                  1,
-                );
-                const currentHeight = (userGrowthData.current[index] / maxValue) * 100;
-                const prevHeight = (userGrowthData.previous[index] / maxValue) * 100;
-                return (
-                  <div
-                    key={index}
-                    className="flex flex-col items-center flex-1 gap-1"
-                  >
-                    <div className="w-full flex items-end justify-center gap-0.5 h-36">
-                      <div
-                        className="w-3 sm:w-4 md:w-5 lg:w-6 bg-blue-500 rounded-t"
-                        style={{ height: `${Math.max(currentHeight, 2)}%` }}
-                        title={`Current: ${userGrowthData.current[index]}`}
-                      />
-                      <div
-                        className="w-3 sm:w-4 md:w-5 lg:w-6 bg-slate-300 rounded-t"
-                        style={{ height: `${Math.max(prevHeight, 2)}%` }}
-                        title={`Previous: ${userGrowthData.previous[index]}`}
-                      />
+            <div className="overflow-x-auto pb-2">
+              <div className="flex items-end justify-between gap-1 h-48 min-w-max">
+                {userGrowthData.labels.map((label, index) => {
+                  const maxValue = Math.max(
+                    ...userGrowthData.current,
+                    ...userGrowthData.previous,
+                    1,
+                  );
+                  const currentHeight = (userGrowthData.current[index] / maxValue) * 100;
+                  const prevHeight = (userGrowthData.previous[index] / maxValue) * 100;
+                  return (
+                    <div
+                      key={index}
+                      className="flex flex-col items-center flex-1 gap-1 min-w-[40px]"
+                    >
+                      <div className="w-full flex items-end justify-center gap-0.5 h-36">
+                        <div
+                          className="w-3 sm:w-4 md:w-5 lg:w-6 bg-blue-500 rounded-t"
+                          style={{ height: `${Math.max(currentHeight, 2)}%` }}
+                          title={`Current: ${userGrowthData.current[index]}`}
+                        />
+                        <div
+                          className="w-3 sm:w-4 md:w-5 lg:w-6 bg-slate-300 rounded-t"
+                          style={{ height: `${Math.max(prevHeight, 2)}%` }}
+                          title={`Previous: ${userGrowthData.previous[index]}`}
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-400 truncate max-w-[40px]">
+                        {label}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-bold text-slate-400 truncate max-w-[40px]">
-                      {label}
-                    </span>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
             <div className="flex items-center gap-4 mt-4 justify-center text-xs">
               <div className="flex items-center gap-2">
@@ -846,37 +848,39 @@ export default function AdminDashboard() {
             <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-6">
               Platform Income vs Payouts
             </h3>
-            <div className="flex items-end justify-between gap-1 sm:gap-2 h-48">
-              {monthlyData.map((data, index) => {
-                const maxValue = Math.max(
-                  ...monthlyData.map((d) => Math.max(d.income, d.payouts)),
-                  1,
-                );
-                const incomeHeight = (data.income / maxValue) * 100;
-                const payoutHeight = (data.payouts / maxValue) * 100;
-                return (
-                  <div
-                    key={index}
-                    className="flex flex-col items-center flex-1 gap-1"
-                  >
-                    <div className="w-full flex items-end justify-center gap-0.5 sm:gap-1 h-36">
-                      <div
-                        className="w-4 sm:w-5 md:w-6 lg:w-8 bg-emerald-500 rounded-t"
-                        style={{ height: `${Math.max(incomeHeight, 2)}%` }}
-                        title={`Income: ${data.income.toLocaleString()} RWF`}
-                      />
-                      <div
-                        className="w-4 sm:w-5 md:w-6 lg:w-8 bg-orange-500 rounded-t"
-                        style={{ height: `${Math.max(payoutHeight, 2)}%` }}
-                        title={`Payouts: ${data.payouts.toLocaleString()} RWF`}
-                      />
+            <div className="overflow-x-auto pb-2">
+              <div className="flex items-end justify-between gap-1 sm:gap-2 h-48 min-w-max">
+                {monthlyData.map((data, index) => {
+                  const maxValue = Math.max(
+                    ...monthlyData.map((d) => Math.max(d.income, d.payouts)),
+                    1,
+                  );
+                  const incomeHeight = (data.income / maxValue) * 100;
+                  const payoutHeight = (data.payouts / maxValue) * 100;
+                  return (
+                    <div
+                      key={index}
+                      className="flex flex-col items-center flex-1 gap-1 min-w-[50px]"
+                    >
+                      <div className="w-full flex items-end justify-center gap-0.5 sm:gap-1 h-36">
+                        <div
+                          className="w-4 sm:w-5 md:w-6 lg:w-8 bg-emerald-500 rounded-t"
+                          style={{ height: `${Math.max(incomeHeight, 2)}%` }}
+                          title={`Income: ${data.income.toLocaleString()} RWF`}
+                        />
+                        <div
+                          className="w-4 sm:w-5 md:w-6 lg:w-8 bg-orange-500 rounded-t"
+                          style={{ height: `${Math.max(payoutHeight, 2)}%` }}
+                          title={`Payouts: ${data.payouts.toLocaleString()} RWF`}
+                        />
+                      </div>
+                      <span className="text-[10px] sm:text-xs font-bold text-slate-400">
+                        {data.month}
+                      </span>
                     </div>
-                    <span className="text-[10px] sm:text-xs font-bold text-slate-400">
-                      {data.month}
-                    </span>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
             <div className="flex items-center gap-4 sm:gap-6 mt-4 justify-center flex-wrap">
               <div className="flex items-center gap-2">

@@ -27,6 +27,7 @@ import {
    CalendarCheck,
    Bell,
    ShoppingBag,
+   Megaphone,
  } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -235,6 +236,12 @@ export default function DashboardLayout({
               icon={<Users size={18} />}
               label="Supporters"
               active={pathname === "/creator/supporters"}
+            />
+            <NavItem
+              href="/creator/notices"
+              icon={<Megaphone size={18} />}
+              label="Notices"
+              active={pathname === "/creator/notices"}
             />
             <NavItem
               href="/creator/settings"
