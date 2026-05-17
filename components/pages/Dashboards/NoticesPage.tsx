@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import { Megaphone, Bell, Calendar, AlertCircle, CheckCircle, XCircle } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
+import Navbar from "@/components/parts/Navigation";
 
 interface Notice {
   id: string;
@@ -32,6 +33,7 @@ export default function NoticesPage() {
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -84,7 +86,8 @@ export default function NoticesPage() {
 
   return (
     <div className="min-h-screen bg-[#FBFBFC] text-slate-900 pb-20">
-      <main className="max-w-4xl mx-auto px-6 pt-12">
+      <Navbar />
+      <main className="max-w-4xl mx-auto px-6 pt-8">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
           <div>
             <div className="flex items-center gap-3 mb-2">
@@ -142,7 +145,8 @@ export default function NoticesPage() {
             {filteredNotices.map((notice) => (
               <div
                 key={notice.id}
-                className={`bg-white border-2 rounded-2xl p-6 transition-all ${
+                onClick={() => setSelectedNotice(notice)}
+                className={`bg-white border-2 rounded-2xl p-6 transition-all cursor-pointer hover:border-orange-300 ${
                   notice.read 
                     ? "border-slate-100" 
                     : "border-orange-200 shadow-md"
@@ -197,6 +201,70 @@ export default function NoticesPage() {
           </div>
         )}
       </main>
+
+      {/* Full Notice Details Modal */}
+      {selectedNotice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-6 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-2xl rounded-[32px] p-8 shadow-2xl scale-in-center overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center gap-3">
+                <div className={`p-3 rounded-xl ${selectedNotice.read ? "bg-slate-100" : "bg-orange-100"}`}>
+                  <Megaphone size={24} className={selectedNotice.read ? "text-slate-400" : "text-orange-600"} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black uppercase tracking-tight">
+                    {selectedNotice.title}
+                  </h2>
+                  <div className="flex items-center gap-2 mt-1">
+                    {selectedNotice.read ? (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-100 px-2 py-1 rounded">
+                        Read
+                      </span>
+                    ) : (
+                      <span className="bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+                        NEW
+                      </span>
+                    )}
+                    {selectedNotice.metadata?.targetLabel && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-100 px-2 py-1 rounded">
+                        {selectedNotice.metadata.targetLabel}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedNotice(null)}
+                className="w-10 h-10 flex items-center justify-center bg-slate-100 rounded-full text-slate-400 hover:text-slate-900 transition-all"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="overflow-y-auto pr-2 custom-scrollbar flex-1">
+              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 mb-6">
+                <p className="text-slate-700 whitespace-pre-wrap text-sm leading-relaxed font-medium">
+                  {selectedNotice.message}
+                </p>
+              </div>
+              
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2 text-slate-400">
+                  <Calendar size={16} />
+                  <span className="font-medium">
+                    {formatDate(selectedNotice.createdAt)}
+                  </span>
+                </div>
+                {selectedNotice.metadata?.recipientsCount && (
+                  <span className="text-slate-400">
+                    Sent to {selectedNotice.metadata.recipientsCount} recipients
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
