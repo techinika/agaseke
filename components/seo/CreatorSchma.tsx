@@ -22,7 +22,7 @@ export default function CreatorSchema({
     },
     sameAs: [
       creator.socials.twitter
-        ? `https://twitter.com/${creator.socials.twitter}`
+        ? `https://x.com/${creator.socials.twitter}`
         : null,
       creator.socials.instagram
         ? `https://instagram.com/${creator.socials.instagram}`

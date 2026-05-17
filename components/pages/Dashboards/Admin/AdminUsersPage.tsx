@@ -56,6 +56,8 @@ export default function AdminUsersPage() {
   >("all");
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [makingAdmin, setMakingAdmin] = useState<string | null>(null);
+  const [verifyingUser, setVerifyingUser] = useState<UserProfile | null>(null);
+  const [verifyLoading, setVerifyLoading] = useState(false);
 
   useEffect(() => {
     const profilesRef = collection(db, "profiles");
@@ -120,6 +122,48 @@ export default function AdminUsersPage() {
       toast.error("Failed to update user");
     } finally {
       setMakingAdmin(null);
+    }
+  };
+
+  const verifyUser = async () => {
+    if (!verifyingUser) return;
+    setVerifyLoading(true);
+
+    try {
+      await updateDoc(doc(db, "creators", verifyingUser.username || verifyingUser.id), {
+        verified: true,
+        verificationStatus: "approved",
+      });
+
+      await fetch("/api/comms/email/feedback/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: verifyingUser.email,
+          name: verifyingUser.displayName,
+          approved: true,
+          reason: "",
+          creatorUid: verifyingUser.uid || verifyingUser.id,
+          handle: verifyingUser.username || verifyingUser.id,
+        }),
+      });
+
+      await logActivity({
+        level: "success",
+        category: "verification",
+        message: `Verified by admin: ${verifyingUser.displayName || verifyingUser.email}`,
+        userId: verifyingUser.id,
+        userEmail: verifyingUser.email || undefined,
+        userName: verifyingUser.displayName || undefined,
+      });
+
+      toast.success("User verified successfully");
+      setVerifyingUser(null);
+    } catch (error) {
+      console.error("Error verifying user:", error);
+      toast.error("Failed to verify user");
+    } finally {
+      setVerifyLoading(false);
     }
   };
 
@@ -359,6 +403,15 @@ export default function AdminUsersPage() {
                             </button>
                           )}
                           {user.type === "creator" && (
+                            <button
+                              onClick={() => setVerifyingUser(user)}
+                              className="p-2 text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition"
+                              title="Verify User"
+                            >
+                              <ShieldCheck size={16} />
+                            </button>
+                          )}
+                          {user.type === "creator" && (
                             <a
                               href={`/${user.username || user.id}`}
                               target="_blank"
@@ -379,6 +432,68 @@ export default function AdminUsersPage() {
           )}
         </div>
       </main>
+
+      {/* Verify User Modal */}
+      {verifyingUser && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+          <div className="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+              <h2 className="text-xl font-bold">Verify User</h2>
+              <button
+                onClick={() => setVerifyingUser(null)}
+                className="p-2 hover:bg-slate-100 rounded-full"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-xl font-bold overflow-hidden">
+                  {verifyingUser.photoURL ? (
+                    <img
+                      src={verifyingUser.photoURL}
+                      alt={verifyingUser.displayName || "User"}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    (verifyingUser.displayName ||
+                      verifyingUser.email ||
+                      "?")[0].toUpperCase()
+                  )}
+                </div>
+                <div>
+                  <p className="font-bold text-lg">
+                    {verifyingUser.displayName || "No name"}
+                  </p>
+                  <p className="text-sm text-slate-500">
+                    {verifyingUser.email}
+                  </p>
+                </div>
+              </div>
+              <p className="text-slate-600 mb-6">
+                Are you sure you want to verify this user? They will receive an
+                email notification confirming their verification status.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setVerifyingUser(null)}
+                  className="flex-1 py-3 bg-slate-100 text-slate-700 rounded-lg font-bold text-sm hover:bg-slate-200 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={verifyUser}
+                  disabled={verifyLoading}
+                  className="flex-1 py-3 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition flex items-center justify-center gap-2"
+                >
+                  {verifyLoading && <Loader size={16} className="animate-spin" />}
+                  Confirm Verification
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* User Details Modal */}
       {selectedUser && (
@@ -459,6 +574,17 @@ export default function AdminUsersPage() {
                   </p>
                 </div>
                 <div className="flex gap-3">
+                  {selectedUser.type === "creator" && (
+                    <button
+                      onClick={() => {
+                        setVerifyingUser(selectedUser);
+                        setSelectedUser(null);
+                      }}
+                      className="flex-1 py-3 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition"
+                    >
+                      Verify User
+                    </button>
+                  )}
                   {!selectedUser.isAdmin && (
                     <button
                       onClick={() => {

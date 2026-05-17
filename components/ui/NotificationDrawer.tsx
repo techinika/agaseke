@@ -21,6 +21,9 @@ import {
   CheckCheck,
   Loader,
   ArrowRight,
+  UserPlus,
+  UserCheck,
+  CreditCard,
 } from "lucide-react";
 import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, getDocs, writeBatch } from "firebase/firestore";
 import { db } from "@/db/firebase";
@@ -50,6 +53,10 @@ const iconMap: Record<NotificationType, React.ReactNode> = {
   booking_declined: <XCircle size={18} className="text-red-500" />,
   payout_processed: <Wallet size={18} className="text-emerald-500" />,
   broadcast_received: <Megaphone size={18} className="text-orange-500" />,
+  new_user: <UserPlus size={18} className="text-blue-500" />,
+  new_creator: <UserCheck size={18} className="text-green-500" />,
+  new_transaction: <CreditCard size={18} className="text-purple-500" />,
+  withdrawal: <Wallet size={18} className="text-orange-500" />,
 };
 
 const getIcon = (type: NotificationType): React.ReactNode => {

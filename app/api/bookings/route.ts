@@ -21,6 +21,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Booking is not enabled for this creator" }, { status: 403 });
     }
 
+    // Check for conflicting bookings at the same time slot
+    const conflictingQuery = await adminDb
+      .collection("bookingRequests")
+      .where("creatorHandle", "==", creatorHandle)
+      .where("preferredDate", "==", preferredDate)
+      .where("preferredTime", "==", preferredTime)
+      .where("status", "in", ["pending", "accepted"])
+      .get();
+
+    if (!conflictingQuery.empty) {
+      return NextResponse.json(
+        { error: "This time slot is already booked. Please choose a different time." },
+        { status: 409 }
+      );
+    }
+
     const bookingRef = await adminDb.collection("bookingRequests").add({
       creatorId: creatorDoc.id,
       creatorName: creatorData.name,

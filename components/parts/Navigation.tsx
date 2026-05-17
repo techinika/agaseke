@@ -13,6 +13,7 @@ import {
   BookOpen,
   Calendar,
   Bell,
+  Megaphone,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/auth/AuthContext";
@@ -176,10 +177,16 @@ const Navbar = () => {
                           />
                         )}
 
+<DropdownLink
+                            href={auth?.isCreator ? "/creator" : "/supporter"}
+                            icon={<LayoutDashboard size={18} />}
+                            label="My Workspace"
+                            onClick={() => setIsDropdownOpen(false)}
+                          />
                         <DropdownLink
-                          href={auth?.isCreator ? "/creator" : "/supporter"}
-                          icon={<LayoutDashboard size={18} />}
-                          label="My Workspace"
+                          href="/supporter/notices"
+                          icon={<Megaphone size={18} />}
+                          label="Notices"
                           onClick={() => setIsDropdownOpen(false)}
                         />
 

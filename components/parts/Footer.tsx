@@ -23,7 +23,7 @@ export default function Footer() {
                 icon={<FaInstagram size={20} />}
               />
               <SocialIcon
-                href="https://twitter.com/agaseke_support"
+                href="https://x.com/agaseke_support"
                 icon={<FaTwitter size={20} />}
               />
               <SocialIcon

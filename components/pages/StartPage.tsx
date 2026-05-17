@@ -219,6 +219,20 @@ export default function CreatorOnboarding() {
         console.error("Creator launch email failed:", emailError);
       }
 
+      try {
+        await fetch("/api/admin/notifications/new-creator", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            creatorUid: user.uid,
+            creatorName: formData.fullName,
+            handle: formData.username,
+          }),
+        });
+      } catch (notifError) {
+        console.error("Creator notification failed:", notifError);
+      }
+
       toast.success("Welcome to the creator family!");
       router.push("/creator");
     } catch (error) {

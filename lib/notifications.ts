@@ -13,7 +13,11 @@ export type NotificationType =
   | "booking_accepted"
   | "booking_declined"
   | "payout_processed"
-  | "broadcast_received";
+  | "broadcast_received"
+  | "new_user"
+  | "new_creator"
+  | "new_transaction"
+  | "withdrawal";
 
 export interface Notification {
   id: string;
@@ -59,6 +63,10 @@ export function getNotificationIconKey(type: NotificationType): string {
     booking_declined: "xCircle",
     payout_processed: "wallet",
     broadcast_received: "megaphone",
+    new_user: "userPlus",
+    new_creator: "userCheck",
+    new_transaction: "creditCard",
+    withdrawal: "wallet",
   };
   return iconMap[type] || "bell";
 }

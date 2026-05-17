@@ -50,7 +50,7 @@ export default function BookingsPage() {
   const [bookings, setBookings] = useState<BookingRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [showClearModal, setShowClearModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<"requests" | "availability">("requests");
+  const [activeTab, setActiveTab] = useState<"requests" | "rejected" | "availability">("requests");
   const [availability, setAvailability] = useState<BookingAvailability>({
     daysOfWeek: [1, 2, 3, 4, 5],
     bookingType: "both",
@@ -172,6 +172,7 @@ export default function BookingsPage() {
   };
 
   const pendingBookings = bookings.filter((b) => b.status === "pending");
+  const rejectedBookings = bookings.filter((b) => b.status === "declined");
   const upcomingBookings = bookings.filter((b) => b.status === "accepted");
   const pastBookings = bookings.filter((b) => ["completed", "declined", "cancelled"].includes(b.status));
 
@@ -225,6 +226,21 @@ export default function BookingsPage() {
             }`}
           >
             Availability
+          </button>
+          <button
+            onClick={() => setActiveTab("rejected")}
+            className={`px-6 py-3 rounded-lg font-black text-sm transition-all ${
+              activeTab === "rejected"
+                ? "bg-slate-900 text-white"
+                : "bg-white text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            Rejected
+            {rejectedBookings.length > 0 && (
+              <span className="ml-2 bg-red-500 text-white px-2 py-0.5 rounded-full text-xs">
+                {rejectedBookings.length}
+              </span>
+            )}
           </button>
         </div>
 
@@ -357,6 +373,57 @@ export default function BookingsPage() {
                 <p className="text-sm text-slate-400 mt-2">
                   When someone books a meeting with you, it will appear here.
                 </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "rejected" && (
+          <div className="space-y-6">
+            {rejectedBookings.length > 0 ? (
+              rejectedBookings.map((booking) => (
+                <div key={booking.id} className="bg-white border border-red-100 rounded-lg p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-black text-lg">{booking.bookerName}</p>
+                        <span className="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded uppercase">
+                          Rejected
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-slate-500 mt-1">
+                        <span className="flex items-center gap-1">
+                          <Mail size={14} />
+                          {booking.bookerEmail}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                       <div className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1">
+                          <Calendar size={14} />
+                          {booking.preferredDate}
+                       </div>
+                       <div className="flex items-center gap-2 text-sm font-bold text-slate-500">
+                          <Clock size={14} />
+                          {booking.preferredTime}
+                       </div>
+                    </div>
+                  </div>
+                  <div className="bg-slate-50 p-4 rounded-lg text-sm text-slate-600 mb-4">
+                    <p className="font-bold mb-1">Reason:</p>
+                    <p>{booking.reason || "No reason provided."}</p>
+                  </div>
+                  {booking.responseNote && (
+                     <div className="bg-red-50 p-3 rounded-lg text-sm text-red-700">
+                       <p className="font-bold mb-1">Note:</p>
+                       <p>{booking.responseNote}</p>
+                     </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="bg-white border border-dashed border-slate-200 rounded-3xl p-16 text-center">
+                <p className="text-slate-400 text-lg font-medium">No rejected bookings</p>
               </div>
             )}
           </div>
