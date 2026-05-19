@@ -546,7 +546,7 @@ export default function SupporterSpace() {
     if (isVideo) {
       return (
         <div className="relative aspect-video bg-gray-900 rounded-lg overflow-hidden mt-3">
-          <video src={contentUrl} controls className="w-full h-full" />
+          <video src={contentUrl} controls controlsList="nodownload" className="w-full h-full" />
         </div>
       );
     }
@@ -923,20 +923,35 @@ export default function SupporterSpace() {
                         {item.contentUrl && expandedPostId !== item.id && (
                           <div className="mt-3 rounded-lg overflow-hidden bg-gray-100">
                             {item.type === "video" ? (
-                              <video src={item.contentUrl} controls className="w-full aspect-video" />
+                              <video
+                                src={item.contentUrl}
+                                controls
+                                controlsList="nodownload"
+                                className="w-full aspect-video"
+                              />
                             ) : item.type === "document" ? (
                               <div className="p-4">
                                 <div className="flex items-center gap-3 mb-2">
                                   <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                                    <FileText size={20} className="text-orange-600" />
+                                    <FileText
+                                      size={20}
+                                      className="text-orange-600"
+                                    />
                                   </div>
                                   <div>
-                                    <p className="text-sm font-medium text-gray-900">Document</p>
+                                    <p className="text-sm font-medium text-gray-900">
+                                      Document
+                                    </p>
                                     <p className="text-xs text-gray-500">PDF</p>
                                   </div>
                                 </div>
                                 <button
-                                  onClick={() => setViewingDocument({ url: item.contentUrl, title: item.title })}
+                                  onClick={() =>
+                                    setViewingDocument({
+                                      url: item.contentUrl,
+                                      title: item.title,
+                                    })
+                                  }
                                   className="w-full py-2 bg-orange-500 text-white rounded-lg text-sm font-medium"
                                 >
                                   Read Document
@@ -1217,7 +1232,7 @@ export default function SupporterSpace() {
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <a
+              {/* <Link
                 href={viewingDocument.url}
                 download
                 target="_blank"
@@ -1225,7 +1240,7 @@ export default function SupporterSpace() {
                 className="px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg text-sm font-medium flex items-center gap-2"
               >
                 <Download size={16} /> Download
-              </a>
+              </Link> */}
               <button
                 onClick={() => setViewingDocument(null)}
                 className="p-2 hover:bg-gray-700 rounded-lg"
