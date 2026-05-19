@@ -202,6 +202,18 @@ export default function ContentManager() {
       if (newPost.type === "document") endpoint = "/api/upload/content/docs";
 
       const res = await fetch(endpoint, { method: "POST", body: formData });
+      
+      if (!res.ok) {
+        let errorMessage = "Upload failed";
+        try {
+          const data = await res.json();
+          errorMessage = data.error || `Upload failed (${res.status})`;
+        } catch {
+          errorMessage = `Upload failed: Request entity too large. Maximum file size is 50MB.`;
+        }
+        throw new Error(errorMessage);
+      }
+
       const data = await res.json();
 
       if (data.url) {

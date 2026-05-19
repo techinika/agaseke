@@ -1,5 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { FileText, Lock, Globe, Heart } from "lucide-react";
+"use client";
+
+import { useState } from "react";
+import { FileText, Lock, Globe, Heart, ChevronDown, ChevronUp } from "lucide-react";
 
 interface CommunityTabProps {
   publicPosts: any[];
@@ -14,6 +17,20 @@ export const CommunityTab = ({
   isSupporter,
   name,
 }: CommunityTabProps) => {
+  const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (postId: string) => {
+    setExpandedPosts((prev) => {
+      const next = new Set(prev);
+      if (next.has(postId)) {
+        next.delete(postId);
+      } else {
+        next.add(postId);
+      }
+      return next;
+    });
+  };
+
   const allPosts = isSupporter
     ? [...privatePosts, ...publicPosts].sort(
         (a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)
@@ -120,9 +137,33 @@ export const CommunityTab = ({
             )}
 
             <h4 className="font-bold text-lg mb-2">{item.title}</h4>
-            <p className="text-slate-500 text-sm whitespace-pre-wrap leading-relaxed">
-              {item.description || item.content}
-            </p>
+            {item.description || item.content ? (
+              <div className="text-slate-500 text-sm whitespace-pre-wrap leading-relaxed">
+                {(item.description || item.content).length > 200 && !expandedPosts.has(item.id) ? (
+                  <>
+                    <span>{(item.description || item.content).slice(0, 200)}...</span>
+                    <button
+                      onClick={() => toggleExpand(item.id)}
+                      className="ml-1 text-orange-600 font-medium hover:underline"
+                    >
+                      Read more
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span>{item.description || item.content}</span>
+                    {(item.description || item.content).length > 200 && (
+                      <button
+                        onClick={() => toggleExpand(item.id)}
+                        className="ml-1 text-orange-600 font-medium hover:underline"
+                      >
+                        Read less
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            ) : null}
 
             <div className="mt-4 pt-3 border-t border-slate-50 flex items-center gap-2 text-xs text-slate-400">
               <span>

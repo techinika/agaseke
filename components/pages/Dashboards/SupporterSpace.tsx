@@ -541,12 +541,15 @@ export default function SupporterSpace() {
 
     if (!contentUrl) return null;
 
-    console.log(item);
-
     if (isVideo) {
       return (
         <div className="relative aspect-video bg-gray-900 rounded-lg overflow-hidden mt-3">
-          <video src={contentUrl} controls controlsList="nodownload" className="w-full h-full" />
+          <video
+            src={contentUrl}
+            controls
+            controlsList="nodownload"
+            className="w-full h-full"
+          />
         </div>
       );
     }
@@ -625,8 +628,8 @@ export default function SupporterSpace() {
     );
   };
 
-  const renderPostText = (text: string, isExpanded: boolean) => {
-    if (isExpanded || text.length <= 125) {
+  const renderPostText = (text: string, itemId: string, isExpanded: boolean) => {
+    if (isExpanded || text.length <= 200) {
       return (
         <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">
           {text}
@@ -634,19 +637,17 @@ export default function SupporterSpace() {
       );
     }
 
-    const firstPart = text.substring(0, 25);
-    const restPart = text.substring(25);
+    const firstPart = text.substring(0, 200);
 
     return (
       <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">
-        {firstPart}
+        {firstPart}...
         <button
-          onClick={() => setExpandedPostId(null)}
+          onClick={() => setExpandedPostId(itemId)}
           className="text-orange-500 hover:underline font-medium"
         >
-          ...read more
+          Read more
         </button>
-        {restPart}
       </p>
     );
   };
@@ -849,7 +850,6 @@ export default function SupporterSpace() {
             <div className="space-y-4">
               {filteredFeed.length > 0 ? (
                 filteredFeed.map((item) => {
-                  console.log(item);
                   return (
                     <div
                       key={item.id}
@@ -914,6 +914,7 @@ export default function SupporterSpace() {
                           <div>
                             {renderPostText(
                               item.description || "",
+                              item.id,
                               expandedPostId === item.id,
                             )}
                           </div>
@@ -976,7 +977,7 @@ export default function SupporterSpace() {
                         )}
 
                         {expandedPostId === item.id && (
-                          <div className="mt-4 pt-4 border-t border-gray-100">
+                          <div className="mt-4">
                             {renderContentMedia(item)}
 
                             {item.docUrl && !Array.isArray(item.docUrl) && (
@@ -1012,7 +1013,7 @@ export default function SupporterSpace() {
                             className={`flex items-center gap-1.5 text-sm ${showCommentFor === item.id ? "text-blue-500" : "text-gray-500 hover:text-blue-500"}`}
                           >
                             <MessageCircle size={18} />
-                            {comments[item.id]?.length || 0}
+                            {commentCounts[item.id] || 0}
                           </button>
                           <span className="flex items-center gap-1.5 text-sm text-gray-400">
                             <Eye size={16} /> {item.views || 0}
@@ -1025,13 +1026,13 @@ export default function SupporterSpace() {
                         )}
                         {item.type === "content" &&
                           item.description &&
-                          item.description.length > 125 && (
+                          item.description.length > 200 && (
                             <button
                               onClick={() => setExpandedPostId(item.id)}
                               className="text-xs text-orange-500 hover:underline"
                             >
                               {expandedPostId === item.id
-                                ? "Show less"
+                                ? "Read less"
                                 : "Read more"}
                             </button>
                           )}
