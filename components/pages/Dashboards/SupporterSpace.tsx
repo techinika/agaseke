@@ -206,7 +206,7 @@ export default function SupporterSpace() {
         });
 
         const contents = contentSnap.docs
-          .map((d) => ({ id: d.id, ...d.data(), type: "content" }))
+          .map((d) => ({ id: d.id, ...d.data() }))
           .filter((item: any) => {
             const isSupportedByHandle = supportedHandles.has(item.creatorId);
             const isSupportedByUid = supportedCreatorUids.has(item.creatorId);
@@ -923,13 +923,24 @@ export default function SupporterSpace() {
                         {item.contentUrl && expandedPostId !== item.id && (
                           <div className="mt-3 rounded-lg overflow-hidden bg-gray-100">
                             {item.type === "video" ? (
-                              <div className="aspect-video flex items-center justify-center">
-                                <Play size={40} className="text-gray-400" />
-                              </div>
+                              <video src={item.contentUrl} controls className="w-full aspect-video" />
                             ) : item.type === "document" ? (
-                              <div className="p-4 flex items-center justify-center gap-2 text-gray-500">
-                                <Paperclip size={20} />
-                                <span className="text-sm">View Document</span>
+                              <div className="p-4">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                                    <FileText size={20} className="text-orange-600" />
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium text-gray-900">Document</p>
+                                    <p className="text-xs text-gray-500">PDF</p>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => setViewingDocument({ url: item.contentUrl, title: item.title })}
+                                  className="w-full py-2 bg-orange-500 text-white rounded-lg text-sm font-medium"
+                                >
+                                  Read Document
+                                </button>
                               </div>
                             ) : (
                               <div
