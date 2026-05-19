@@ -11,9 +11,17 @@ import {
   onSnapshot,
   limit,
 } from "firebase/firestore";
-import { Megaphone, Bell, Calendar, AlertCircle, CheckCircle, XCircle } from "lucide-react";
+import {
+  Megaphone,
+  Bell,
+  Calendar,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import Navbar from "@/components/parts/Navigation";
+import Loading from "@/app/loading";
 
 interface Notice {
   id: string;
@@ -58,11 +66,10 @@ export default function NoticesPage() {
     return () => unsubscribe();
   }, [user]);
 
-  const filteredNotices = filter === "unread" 
-    ? notices.filter(n => !n.read)
-    : notices;
+  const filteredNotices =
+    filter === "unread" ? notices.filter((n) => !n.read) : notices;
 
-  const unreadCount = notices.filter(n => !n.read).length;
+  const unreadCount = notices.filter((n) => !n.read).length;
 
   const formatDate = (timestamp: any) => {
     if (!timestamp) return "";
@@ -77,16 +84,11 @@ export default function NoticesPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#FBFBFC] flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full" />
-      </div>
-    );
+    return <Loading />;
   }
 
   return (
     <div className="min-h-screen bg-[#FBFBFC] text-slate-900 pb-20">
-      <Navbar />
       <main className="max-w-4xl mx-auto px-6 pt-8">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
           <div>
@@ -100,7 +102,7 @@ export default function NoticesPage() {
               Important announcements from the admin team.
             </p>
           </div>
-          
+
           {unreadCount > 0 && (
             <div className="flex items-center gap-2 bg-orange-100 text-orange-700 px-4 py-2 rounded-full">
               <Bell size={16} />
@@ -135,7 +137,9 @@ export default function NoticesPage() {
         {filteredNotices.length === 0 ? (
           <div className="bg-white border border-dashed border-slate-200 rounded-3xl p-16 text-center">
             <Megaphone className="text-slate-300 mx-auto mb-4" size={48} />
-            <h3 className="text-xl font-bold text-slate-700 mb-2">No notices yet</h3>
+            <h3 className="text-xl font-bold text-slate-700 mb-2">
+              No notices yet
+            </h3>
             <p className="text-slate-400 font-medium">
               When the admin sends announcements, they will appear here.
             </p>
@@ -147,25 +151,32 @@ export default function NoticesPage() {
                 key={notice.id}
                 onClick={() => setSelectedNotice(notice)}
                 className={`bg-white border-2 rounded-2xl p-6 transition-all cursor-pointer hover:border-orange-300 ${
-                  notice.read 
-                    ? "border-slate-100" 
+                  notice.read
+                    ? "border-slate-100"
                     : "border-orange-200 shadow-md"
                 }`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-4">
-                    <div className={`p-3 rounded-xl ${
-                      notice.read ? "bg-slate-100" : "bg-orange-100"
-                    }`}>
-                      <Megaphone size={20} className={
-                        notice.read ? "text-slate-400" : "text-orange-600"
-                      } />
+                    <div
+                      className={`p-3 rounded-xl ${
+                        notice.read ? "bg-slate-100" : "bg-orange-100"
+                      }`}
+                    >
+                      <Megaphone
+                        size={20}
+                        className={
+                          notice.read ? "text-slate-400" : "text-orange-600"
+                        }
+                      />
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className={`font-bold text-lg ${
-                          notice.read ? "text-slate-600" : "text-slate-900"
-                        }`}>
+                        <h3
+                          className={`font-bold text-lg ${
+                            notice.read ? "text-slate-600" : "text-slate-900"
+                          }`}
+                        >
                           {notice.title}
                         </h3>
                         {!notice.read && (
@@ -208,8 +219,15 @@ export default function NoticesPage() {
           <div className="bg-white w-full max-w-2xl rounded-[32px] p-8 shadow-2xl scale-in-center overflow-hidden flex flex-col max-h-[90vh]">
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-3">
-                <div className={`p-3 rounded-xl ${selectedNotice.read ? "bg-slate-100" : "bg-orange-100"}`}>
-                  <Megaphone size={24} className={selectedNotice.read ? "text-slate-400" : "text-orange-600"} />
+                <div
+                  className={`p-3 rounded-xl ${selectedNotice.read ? "bg-slate-100" : "bg-orange-100"}`}
+                >
+                  <Megaphone
+                    size={24}
+                    className={
+                      selectedNotice.read ? "text-slate-400" : "text-orange-600"
+                    }
+                  />
                 </div>
                 <div>
                   <h2 className="text-2xl font-black uppercase tracking-tight">
@@ -247,7 +265,7 @@ export default function NoticesPage() {
                   {selectedNotice.message}
                 </p>
               </div>
-              
+
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2 text-slate-400">
                   <Calendar size={16} />

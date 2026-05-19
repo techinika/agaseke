@@ -1,24 +1,30 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
-   Search,
-   Lock,
-   ArrowRight,
-   Zap,
-   Star,
-   Clock,
-   Loader,
-   User,
-   MapPin,
-   X,
-   CheckCircle2,
-   Eye,
-   FileText,
-   ShoppingBag,
-   Package,
- } from "lucide-react";
+  Zap,
+  Loader,
+  User,
+  MapPin,
+  X,
+  CheckCircle2,
+  Eye,
+  FileText,
+  ShoppingBag,
+  Package,
+  Heart,
+  MessageCircle,
+  Send,
+  ChevronLeft,
+  ChevronRight,
+  Play,
+  Paperclip,
+  Calendar,
+  TrendingUp,
+  Sparkles,
+  Download,
+} from "lucide-react";
 import Navbar from "@/components/parts/Navigation";
 import { useAuth } from "@/auth/AuthContext";
 import Loading from "@/app/loading";
@@ -30,26 +36,92 @@ import {
   where,
   addDoc,
   updateDoc,
+  deleteDoc,
   increment,
   serverTimestamp,
+  orderBy,
+  onSnapshot,
 } from "firebase/firestore";
 import { db } from "@/db/firebase";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
+interface Comment {
+  id: string;
+  text: string;
+  userId: string;
+  userName: string;
+  userPhoto?: string;
+  createdAt: any;
+  parentId?: string;
+  replies?: Comment[];
+}
+
+const extractYouTubeId = (url: string): string | null => {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s?]+)/,
+    /youtube\.com\/shorts\/([^&\s?]+)/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+};
+
+const hasYouTubeLink = (text: string): string | null => {
+  const urlPattern =
+    /https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)[^\s]+/gi;
+  const match = text.match(urlPattern);
+  if (match) return match[0];
+  return null;
+};
+
 export default function SupporterSpace() {
   const auth = useAuth();
   const router = useRouter();
-  const [creators, setCreators] = useState<any[]>([]); // For Discovery Sidebar
-   const [searchTerm, setSearchTerm] = useState("");
-   const [favorites, setFavorites] = useState<any[]>([]);
-   const [feed, setFeed] = useState<any[]>([]);
-   const [purchases, setPurchases] = useState<any[]>([]);
-   const [loading, setLoading] = useState(true);
+  const [creators, setCreators] = useState<any[]>([]);
+  const [favorites, setFavorites] = useState<any[]>([]);
+  const [feed, setFeed] = useState<any[]>([]);
+  const [purchases, setPurchases] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [feedFilter, setFeedFilter] = useState<"all" | "following" | "public">(
+    "all",
+  );
 
-  const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [isRSVPing, setIsRSVPing] = useState(false);
+  const [expandedPostId, setExpandedPostId] = useState<string | null>(null);
+  const [comments, setComments] = useState<Record<string, Comment[]>>(
+    {} as Record<string, Comment[]>,
+  );
+  const [commentText, setCommentText] = useState<Record<string, string>>({});
+  const [replyText, setReplyText] = useState<Record<string, string>>({});
+  const [replyingTo, setReplyingTo] = useState<Record<string, string | null>>(
+    {},
+  );
+  const [loadingComments, setLoadingComments] = useState<
+    Record<string, boolean>
+  >({});
+  const [documentIndex, setDocumentIndex] = useState<Record<string, number>>(
+    {},
+  );
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+  const [likedDocIds, setLikedDocIds] = useState<Record<string, string>>({});
+  const [showCommentFor, setShowCommentFor] = useState<string | null>(null);
+  const [seenPosts, setSeenPosts] = useState<Set<string>>(new Set());
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>(
+    {},
+  );
+  const [viewingDocument, setViewingDocument] = useState<{
+    url: string;
+    title: string;
+  } | null>(null);
+  const [viewingImage, setViewingImage] = useState<{ url: string } | null>(
+    null,
+  );
+  const postRefs = useRef<Record<string, HTMLDivElement>>({});
+
+  let supportedCreatorUids = new Set<string>();
 
   useEffect(() => {
     const fetchSupporterData = async () => {
@@ -57,7 +129,6 @@ export default function SupporterSpace() {
       setLoading(true);
 
       try {
-        // 1. Get IDs of creators this user currently supports
         const supportRef = collection(db, "supportedCreators");
         const qSupport = query(
           supportRef,
@@ -65,109 +136,162 @@ export default function SupporterSpace() {
         );
         const supportSnap = await getDocs(qSupport);
 
-        // Create a Set of creatorUids for O(1) lookup
-        const supportedCreatorUids = new Set(
+        supportedCreatorUids = new Set(
           supportSnap.docs.map((d) => d.data().creatorId),
         );
 
-         // 2. Fetch all Content, Gatherings, and user's purchases
-         // Note: For large scale, you'd filter these in the query,
-         // but for current scale, fetching and filtering in memory is fine.
-         const purchasesQuery = query(
-           collection(db, "storeOrders"),
-           where("buyerId", "==", auth.user.uid),
-         );
-         const [contentSnap, gatheringSnap, creatorsSnap, purchasesSnap] = await Promise.all([
-           getDocs(collection(db, "creatorContent")),
-           getDocs(collection(db, "creatorGatherings")),
-           getDocs(collection(db, "creators")),
-           getDocs(purchasesQuery),
-         ]);
+        const purchasesQuery = query(
+          collection(db, "storeOrders"),
+          where("buyerId", "==", auth.user.uid),
+        );
 
-        // 3. Map creators for metadata lookup (Name, Handle, Photo)
+        const [
+          contentSnap,
+          gatheringSnap,
+          creatorsSnap,
+          purchasesSnap,
+          commentsSnap,
+        ] = await Promise.all([
+          getDocs(
+            query(
+              collection(db, "creatorContent"),
+              orderBy("createdAt", "desc"),
+            ),
+          ),
+          getDocs(
+            query(
+              collection(db, "creatorGatherings"),
+              orderBy("createdAt", "desc"),
+            ),
+          ),
+          getDocs(collection(db, "creators")),
+          getDocs(purchasesQuery),
+          getDocs(collection(db, "postComments")),
+        ]);
+
+        const counts: Record<string, number> = {};
+        commentsSnap.docs.forEach((d) => {
+          const postId = d.data().postId;
+          counts[postId] = (counts[postId] || 0) + 1;
+        });
+        setCommentCounts(counts);
+
+        let profileMap = new Map();
+        if (supportedCreatorUids.size > 0) {
+          const profilesSnap = await getDocs(
+            query(
+              collection(db, "profiles"),
+              where("uid", "in", Array.from(supportedCreatorUids)),
+            ),
+          );
+          profilesSnap.docs.forEach((d) => {
+            const data = d.data();
+            profileMap.set(data.uid, data.photoURL);
+          });
+        }
+
         const creatorMap = new Map();
+        const supportedHandles = new Set<string>();
         creatorsSnap.docs.forEach((d) => {
           const data = d.data();
-          creatorMap.set(data.uid, {
+          creatorMap.set(d.id, {
             name: data.name,
-            handle: d.id, // The document ID is the handle
-            photoURL: data.photoURL,
+            handle: d.id,
+            uid: data.uid,
+            photoURL: data.profilePicture || profileMap.get(data.uid) || null,
           });
+          if (supportedCreatorUids.has(data.uid)) {
+            supportedHandles.add(d.id);
+          }
         });
 
-        // 4. Process Content: Show if Public OR User is a Supporter
         const contents = contentSnap.docs
-          .map((d) => ({
-            id: d.id,
-            ...d.data(),
-            type: "content",
-          }))
+          .map((d) => ({ id: d.id, ...d.data() }))
           .filter((item: any) => {
-            const isSupporter = supportedCreatorUids.has(item.creatorId);
-            return !item.isPrivate || isSupporter;
+            const isSupportedByHandle = supportedHandles.has(item.creatorId);
+            const isSupportedByUid = supportedCreatorUids.has(item.creatorId);
+            const isSupported = isSupportedByHandle || isSupportedByUid;
+            return !item.isPrivate || isSupported;
           });
 
-        // 5. Process Gatherings: STRICTLY only show if User is a Supporter
         const gatherings = gatheringSnap.docs
-          .map((d) => ({
-            id: d.id,
-            ...d.data(),
-            type: "gathering",
-          }))
-          .filter((item: any) => supportedCreatorUids.has(item.creatorId));
+          .map((d) => ({ id: d.id, ...d.data(), type: "gathering" }))
+          .filter((item: any) => {
+            const isSupportedByHandle = supportedHandles.has(item.creatorId);
+            const isSupportedByUid = supportedCreatorUids.has(item.creatorId);
+            return isSupportedByHandle || isSupportedByUid;
+          });
 
-        // 6. Merge, Attach Creator Details, and Sort
         const combinedFeed = [...contents, ...gatherings].map((item: any) => {
-          const creator = creatorMap.get(item.creatorId);
+          let creator = creatorMap.get(item.creatorId);
+          if (!creator) {
+            for (const [handle, data] of creatorMap) {
+              if (data.uid === item.creatorId) {
+                creator = data;
+                break;
+              }
+            }
+          }
+          const isFollowingByHandle = supportedHandles.has(item.creatorId);
+          const isFollowingByUid = supportedCreatorUids.has(item.creatorId);
+          const isFollowing = isFollowingByHandle || isFollowingByUid;
           return {
             ...item,
-            creatorName: creator?.name || "Unknown Creator",
-            creatorHandle: creator?.handle || "creator",
+            creatorName:
+              creator?.name || item.creatorId?.substring(0, 8) || "Unknown",
+            creatorHandle: creator?.handle || item.creatorId || "creator",
             creatorPhoto: creator?.photoURL || null,
+            creatorUid: creator?.uid || item.creatorId,
+            isFollowing,
+            isPublic: !item.isPrivate,
+            likes: item.stats?.likes || 0,
+            commentCount: counts[item.id] || 0,
           };
         });
 
-        // 7. Update Favorites Sidebar (only the creators user supports)
         const favoritesData = creatorsSnap.docs
           .filter((d) => supportedCreatorUids.has(d.data().uid))
-          .map((d) => ({
-            id: d.id,
-            name: d.data().name,
-            photoURL: d.data().photoURL,
-            handle: d.id,
-            updates: 0, // You can add logic here to count new items if desired
-          }));
+          .map((d) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              name: data.name,
+              photoURL: data.profilePicture || profileMap.get(data.uid) || null,
+              handle: d.id,
+              updates: 0,
+            };
+          });
 
-         setFavorites(favoritesData);
-         setFeed(
-           combinedFeed.sort(
-             (a: any, b: any) =>
-               (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0),
-           ),
-         );
+        setFavorites(favoritesData);
+        setFeed(combinedFeed);
 
-         // 7.5 Process Purchases
-         const purchasesData = purchasesSnap.docs
-           .map((d) => {
-             const data = d.data();
-             const creator = creatorMap.get(data.creatorUid);
-             return {
-               id: d.id,
-               ...data,
-               creatorName: creator?.name || "Unknown Creator",
-               creatorHandle: creator?.handle || "creator",
-               creatorPhoto: creator?.photoURL || null,
-             };
-           })
-           .sort(
-             (a: any, b: any) =>
-               (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0),
-           );
-         setPurchases(purchasesData);
+        const purchasesData = purchasesSnap.docs
+          .map((d) => {
+            const data = d.data();
+            const creator = creatorMap.get(data.creatorUid);
+            return {
+              id: d.id,
+              ...data,
+              creatorName: creator?.name || "Unknown Creator",
+              creatorHandle: creator?.handle || "creator",
+              creatorPhoto: creator?.photoURL || null,
+            };
+          })
+          .sort(
+            (a: any, b: any) =>
+              (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0),
+          );
+        setPurchases(purchasesData);
 
-         // 8. Discovery Creators (Not supported yet)
         const discoveryList = creatorsSnap.docs
-          .map((d) => ({ handle: d.id, ...d.data() }))
+          .map((d) => {
+            const data = d.data();
+            return {
+              handle: d.id,
+              ...data,
+              photoURL: data.profilePicture || null,
+            };
+          })
           .filter((c: any) => !supportedCreatorUids.has(c.uid));
         setCreators(discoveryList);
       } catch (error) {
@@ -181,393 +305,876 @@ export default function SupporterSpace() {
     fetchSupporterData();
   }, [auth.user]);
 
-  const filteredCreators = creators.filter(
-    (c) =>
-      c.handle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.name?.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
-  const openDetails = async (item: any) => {
-    setSelectedItem(item);
+  useEffect(() => {
+    if (!auth.user?.uid) return;
 
-    setFeed((prevFeed) =>
-      prevFeed.map((feedItem) =>
-        feedItem.id === item.id
-          ? { ...feedItem, views: (feedItem.views || 0) + 1 }
-          : feedItem,
+    const likedRef = collection(db, "postLikes");
+    const likedQuery = query(likedRef, where("userId", "==", auth.user.uid));
+    const unsubscribe = onSnapshot(likedQuery, (snap) => {
+      const liked = new Set<string>();
+      const docIds: Record<string, string> = {};
+      snap.docs.forEach((d) => {
+        const postId = d.data().postId;
+        liked.add(postId);
+        docIds[postId] = d.id;
+      });
+      setLikedPosts(liked);
+      setLikedDocIds(docIds);
+    });
+
+    return () => unsubscribe();
+  }, [auth.user?.uid]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const postId = entry.target.getAttribute("data-post-id");
+          if (postId && entry.isIntersecting && !seenPosts.has(postId)) {
+            setSeenPosts((prev) => new Set(prev).add(postId));
+
+            const item = feed.find(
+              (f) => f.id === postId && f.type === "content",
+            );
+            if (item) {
+              updateDoc(doc(db, "creatorContent", postId), {
+                views: increment(1),
+              }).catch(() => {});
+            }
+          }
+        });
+      },
+      { threshold: 0.5 },
+    );
+
+    Object.values(postRefs.current).forEach((el) => {
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [feed, seenPosts]);
+
+  const fetchComments = async (postId: string) => {
+    if (comments[postId] && comments[postId].length > 0) return;
+    setLoadingComments((prev) => ({ ...prev, [postId]: true }));
+    try {
+      const q = query(
+        collection(db, "postComments"),
+        where("postId", "==", postId),
+        orderBy("createdAt", "desc"),
+      );
+      const snap = await getDocs(q);
+      const commentList = snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      })) as Comment[];
+
+      const organizedComments: Comment[] = [];
+      const replyMap: Record<string, Comment[]> = {};
+
+      commentList.forEach((c) => {
+        if (c.parentId) {
+          if (!replyMap[c.parentId]) replyMap[c.parentId] = [];
+          replyMap[c.parentId].push(c);
+        } else {
+          organizedComments.push(c);
+        }
+      });
+
+      organizedComments.forEach((c) => {
+        c.replies = replyMap[c.id] || [];
+      });
+
+      setComments((prev) => ({ ...prev, [postId]: organizedComments }));
+    } catch (e) {
+      console.error("Failed to load comments", e);
+    } finally {
+      setLoadingComments((prev) => ({ ...prev, [postId]: false }));
+    }
+  };
+
+  const handleAddComment = async (postId: string) => {
+    if (!commentText[postId]?.trim() || !auth.user) return;
+    try {
+      const newComment = {
+        postId,
+        text: commentText[postId],
+        userId: auth.user.uid,
+        userName: auth.profile?.displayName || "Anonymous",
+        userPhoto: auth.profile?.photoURL || null,
+        createdAt: serverTimestamp(),
+      };
+      await addDoc(collection(db, "postComments"), newComment);
+      setCommentText((prev) => ({ ...prev, [postId]: "" }));
+      fetchComments(postId);
+      toast.success("Comment added");
+    } catch (e) {
+      toast.error("Failed to add comment");
+    }
+  };
+
+  const handleAddReply = async (postId: string, parentId: string) => {
+    if (!replyText[parentId]?.trim() || !auth.user) return;
+    try {
+      const newReply = {
+        postId,
+        parentId,
+        text: replyText[parentId],
+        userId: auth.user.uid,
+        userName: auth.profile?.displayName || "Anonymous",
+        userPhoto: auth.profile?.photoURL || null,
+        createdAt: serverTimestamp(),
+      };
+      await addDoc(collection(db, "postComments"), newReply);
+      setReplyText((prev) => ({ ...prev, [parentId]: "" }));
+      setReplyingTo((prev) => ({ ...prev, [parentId]: null }));
+      setComments((prev) => {
+        const newComments = { ...prev };
+        delete newComments[postId];
+        return newComments;
+      });
+      fetchComments(postId);
+      setCommentCounts((prev) => ({
+        ...prev,
+        [postId]: (prev[postId] || 0) + 1,
+      }));
+    } catch (e) {
+      toast.error("Failed to add reply");
+    }
+  };
+
+  const handleLike = async (item: any) => {
+    if (!auth.user) return toast.error("Please login");
+    const postKey = item.id;
+
+    if (likedPosts.has(postKey)) {
+      const likeDocId = likedDocIds[postKey];
+      if (likeDocId) {
+        try {
+          await deleteDoc(doc(db, "postLikes", likeDocId));
+          await updateDoc(doc(db, "creatorContent", item.id), {
+            "stats.likes": increment(-1),
+          });
+          setFeed((prev) =>
+            prev.map((f) =>
+              f.id === item.id
+                ? { ...f, likes: Math.max(0, (f.likes || 0) - 1) }
+                : f,
+            ),
+          );
+        } catch (e) {
+          console.error("Unlike error", e);
+        }
+      }
+      return;
+    }
+
+    setLikedPosts((prev) => new Set(prev).add(postKey));
+    setFeed((prev) =>
+      prev.map((f) =>
+        f.id === item.id ? { ...f, likes: (f.likes || 0) + 1 } : f,
       ),
     );
 
-    const collectionName =
-      item.type === "content" ? "creatorContent" : "creatorGatherings";
     try {
-      const docRef = doc(db, collectionName, item.id);
-      await updateDoc(docRef, {
-        views: increment(1),
-      });
-    } catch (e) {
-      console.error("View count error", e);
-    }
-  };
-
-  const handleRSVP = async () => {
-    if (!auth.user) return toast.error("Please login to RSVP");
-
-    const now = new Date();
-    const gatheringDateTime = new Date(
-      `${selectedItem.date}T${selectedItem.time}`,
-    );
-
-    if (now > gatheringDateTime) {
-      return toast.error("This gathering has already passed.");
-    }
-
-    setIsRSVPing(true);
-    try {
-      const attendanceRef = collection(db, "gatheringsAttendance");
-      const existingRSVP = await getDocs(
-        query(
-          attendanceRef,
-          where("gatheringId", "==", selectedItem.id),
-          where("supporterId", "==", auth.user.uid),
-        ),
-      );
-
-      if (!existingRSVP.empty) {
-        toast.error("You have already RSVP'd to this gathering.");
-        setIsRSVPing(false);
-        return;
-      }
-
-      if (selectedItem.capacity) {
-        const currentAttendees = await getDocs(
-          query(attendanceRef, where("gatheringId", "==", selectedItem.id)),
-        );
-
-        if (currentAttendees.size >= selectedItem.capacity) {
-          toast.error("Sorry, this gathering is fully booked!");
-          setIsRSVPing(false);
-          return;
-        }
-      }
-
-      await addDoc(collection(db, "gatheringsAttendance"), {
-        gatheringId: selectedItem.id,
-        gatheringTitle: selectedItem.title,
-        gatheringDate: selectedItem.date,
-        supporterId: auth.user.uid,
-        supporterName: auth.profile?.displayName || "Anonymous",
-        supporterEmail: auth.user.email,
-        status: "confirmed",
+      const docRef = await addDoc(collection(db, "postLikes"), {
+        postId: item.id,
+        userId: auth.user.uid,
         createdAt: serverTimestamp(),
       });
-
-      toast.success("RSVP Successful! See you there.");
-      setSelectedItem(null);
+      setLikedDocIds((prev) => ({ ...prev, [item.id]: docRef.id }));
+      await updateDoc(doc(db, "creatorContent", item.id), {
+        "stats.likes": increment(1),
+      });
     } catch (e) {
-      toast.error("Failed to RSVP");
-    } finally {
-      setIsRSVPing(false);
+      console.error("Like error", e);
     }
   };
+
+  const toggleExpand = async (item: any) => {
+    if (expandedPostId === item.id) {
+      setExpandedPostId(null);
+      setShowCommentFor(null);
+      return;
+    }
+    setExpandedPostId(item.id);
+    setDocumentIndex((prev) => ({ ...prev, [item.id]: 0 }));
+  };
+
+  const toggleComments = (item: any) => {
+    if (showCommentFor === item.id) {
+      setShowCommentFor(null);
+    } else {
+      setShowCommentFor(item.id);
+      fetchComments(item.id);
+    }
+  };
+
+  const filteredFeed = feed.filter((item) => {
+    if (feedFilter === "following") return item.isFollowing;
+    if (feedFilter === "public") return item.isPublic && !item.isFollowing;
+    return true;
+  });
+
+  const renderYouTubeEmbed = (text: string) => {
+    const youtubeUrl = hasYouTubeLink(text);
+    if (!youtubeUrl) return null;
+
+    const videoId = extractYouTubeId(youtubeUrl);
+    if (!videoId) return null;
+
+    return (
+      <div className="mt-3 rounded-lg overflow-hidden bg-black">
+        <iframe
+          src={`https://www.youtube.com/embed/${videoId}`}
+          className="w-full aspect-video"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
+    );
+  };
+
+  const renderContentMedia = (item: any) => {
+    const contentUrl = item.contentUrl || item.imageUrl || item.docUrl;
+    const isVideo = item.type === "video";
+
+    if (!contentUrl) return null;
+
+    console.log(item);
+
+    if (isVideo) {
+      return (
+        <div className="relative aspect-video bg-gray-900 rounded-lg overflow-hidden mt-3">
+          <video src={contentUrl} controls controlsList="nodownload" className="w-full h-full" />
+        </div>
+      );
+    }
+
+    if (item.type === "document" || item.contentType === "document") {
+      const pages = Array.isArray(contentUrl) ? contentUrl : [contentUrl];
+      const currentIndex = documentIndex[item.id] || 0;
+      const currentUrl = pages[currentIndex];
+
+      return (
+        <div className="mt-3 bg-gray-50 rounded-lg p-4 border border-gray-200">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+              <FileText size={24} className="text-orange-600" />
+            </div>
+            <div className="flex-1">
+              <p className="font-medium text-sm text-gray-900">Document</p>
+              <p className="text-xs text-gray-500">
+                {pages.length} page{pages.length > 1 ? "s" : ""}
+              </p>
+            </div>
+          </div>
+          {pages.length > 1 && (
+            <div className="flex items-center justify-between mb-3">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDocumentIndex((prev) => ({
+                    ...prev,
+                    [item.id]: Math.max(0, currentIndex - 1),
+                  }));
+                }}
+                disabled={currentIndex === 0}
+                className="p-1.5 bg-white border rounded-lg disabled:opacity-50"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <span className="text-sm text-gray-500">
+                {currentIndex + 1} of {pages.length}
+              </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDocumentIndex((prev) => ({
+                    ...prev,
+                    [item.id]: Math.min(pages.length - 1, currentIndex + 1),
+                  }));
+                }}
+                disabled={currentIndex === pages.length - 1}
+                className="p-1.5 bg-white border rounded-lg disabled:opacity-50"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
+          <button
+            onClick={() =>
+              setViewingDocument({ url: currentUrl, title: item.title })
+            }
+            className="block w-full text-center py-2.5 bg-orange-500 text-white rounded-lg font-medium text-sm hover:bg-orange-600 transition"
+          >
+            Read Document
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="mt-3 rounded-lg overflow-hidden bg-gray-100">
+        <img
+          src={contentUrl}
+          alt={item.title}
+          className="w-full h-auto max-h-[500px] object-contain"
+        />
+      </div>
+    );
+  };
+
+  const renderPostText = (text: string, isExpanded: boolean) => {
+    if (isExpanded || text.length <= 125) {
+      return (
+        <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">
+          {text}
+        </p>
+      );
+    }
+
+    const firstPart = text.substring(0, 25);
+    const restPart = text.substring(25);
+
+    return (
+      <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">
+        {firstPart}
+        <button
+          onClick={() => setExpandedPostId(null)}
+          className="text-orange-500 hover:underline font-medium"
+        >
+          ...read more
+        </button>
+        {restPart}
+      </p>
+    );
+  };
+
+  const renderPostComments = (item: any) => (
+    <div className="px-4 pb-4 border-t border-gray-100 pt-3 bg-gray-50">
+      <h4 className="text-xs font-semibold text-gray-500 mb-3">
+        Comments ({comments[item.id]?.length || 0})
+      </h4>
+
+      {loadingComments[item.id] ? (
+        <div className="flex items-center justify-center py-4">
+          <Loader className="animate-spin text-gray-400" size={20} />
+        </div>
+      ) : (
+        <div className="space-y-3 max-h-[300px] overflow-y-auto">
+          {comments[item.id]?.slice(0, 5).map((comment) => (
+            <div key={comment.id} className="bg-white rounded-lg p-2.5">
+              <div className="flex items-start gap-2">
+                <div className="w-7 h-7 rounded-full bg-gray-200 overflow-hidden shrink-0">
+                  {comment.userPhoto ? (
+                    <img
+                      src={comment.userPhoto}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-[10px] flex items-center justify-center h-full text-gray-500">
+                      {comment.userName?.[0]}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-xs">
+                      {comment.userName}
+                    </span>
+                    {comment.userId === item.creatorId && (
+                      <span className="text-[10px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
+                        Owner
+                      </span>
+                    )}
+                    <span className="text-[10px] text-gray-400">
+                      {comment.createdAt?.toDate?.()?.toLocaleDateString()}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-0.5">{comment.text}</p>
+                  <button
+                    onClick={() =>
+                      setReplyingTo((prev) => ({
+                        ...prev,
+                        [comment.id]: comment.id,
+                      }))
+                    }
+                    className="text-[10px] text-blue-500 mt-1"
+                  >
+                    Reply
+                  </button>
+
+                  {replyingTo[comment.id] && (
+                    <div className="mt-2 flex gap-2">
+                      <input
+                        value={replyText[comment.id] || ""}
+                        onChange={(e) =>
+                          setReplyText((prev) => ({
+                            ...prev,
+                            [comment.id]: e.target.value,
+                          }))
+                        }
+                        placeholder="Write a reply..."
+                        className="flex-1 text-xs px-2 py-1.5 border rounded-lg"
+                      />
+                      <button
+                        onClick={() => handleAddReply(item.id, comment.id)}
+                        className="px-2 py-1 bg-blue-500 text-white rounded text-xs"
+                      >
+                        Send
+                      </button>
+                    </div>
+                  )}
+
+                  {(comment.replies || []).slice(0, 2).map((reply) => (
+                    <div
+                      key={reply.id}
+                      className="mt-2 ml-3 pl-2 border-l-2 border-gray-200"
+                    >
+                      <div className="flex items-start gap-1.5">
+                        <div className="w-5 h-5 rounded-full bg-gray-200 overflow-hidden shrink-0">
+                          {reply.userPhoto ? (
+                            <img
+                              src={reply.userPhoto}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-[8px] flex items-center justify-center h-full text-gray-500">
+                              {reply.userName?.[0]}
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <span className="font-medium text-[10px]">
+                            {reply.userName}
+                          </span>
+                          {reply.userId === item.creatorId && (
+                            <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full ml-1">
+                              Owner
+                            </span>
+                          )}
+                          <p className="text-xs text-gray-600">{reply.text}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {(comment.replies?.length || 0) > 2 && (
+                    <button className="text-[10px] text-blue-500 mt-1">
+                      View {(comment.replies?.length || 0) - 2} more replies
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+          {(!comments[item.id] || comments[item.id].length === 0) && (
+            <p className="text-xs text-gray-400 text-center py-2">
+              No comments yet
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="mt-3 flex gap-2">
+        <input
+          value={commentText[item.id] || ""}
+          onChange={(e) =>
+            setCommentText((prev) => ({ ...prev, [item.id]: e.target.value }))
+          }
+          placeholder="Write a comment..."
+          className="flex-1 text-xs px-3 py-2 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+          onKeyDown={(e) => e.key === "Enter" && handleAddComment(item.id)}
+        />
+        <button
+          onClick={() => handleAddComment(item.id)}
+          className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition"
+        >
+          <Send size={14} />
+        </button>
+      </div>
+    </div>
+  );
 
   if (auth.loading || loading) return <Loading />;
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] text-slate-900 pb-20">
+    <div className="min-h-screen bg-gray-50">
       <Navbar />
-      <main className="max-w-6xl mx-auto px-6 pt-10">
-        {/* Header Stats */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="md:col-span-2 bg-white p-8 rounded-lg border border-slate-100 shadow-sm flex flex-col justify-between">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">
-                Amahoro,{" "}
-                {auth.profile?.displayName?.split(" ")[0] || "Supporter"}!
-              </h1>
-              <p className="text-slate-500">
-                {`"When you learn, teach. When you get, give."`}
-              </p>
-            </div>
-             <div className="mt-8 flex flex-wrap gap-10">
-               <div>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                   Impact
-                 </p>
-                 <p className="text-2xl font-bold text-orange-600">
-                   {auth?.profile?.totalSupport || 0}{" "}
-                   <span className="text-sm font-normal">RWF</span>
-                 </p>
-               </div>
-               <div>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                   Supports
-                 </p>
-                 <p className="text-2xl font-bold">{favorites.length} Times</p>
-               </div>
-               {purchases.length > 0 && (
-                 <div>
-                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                     Purchases
-                   </p>
-                   <p className="text-2xl font-bold text-emerald-600">
-                     {purchases.length}{" "}
-                     <span className="text-sm font-normal">Items</span>
-                   </p>
-                 </div>
-               )}
-             </div>
+
+      <div className="max-w-7xl mx-auto px-4 pt-20 pb-24">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Welcome back,{" "}
+              {auth.profile?.displayName?.split(" ")[0] || "Supporter"}
+            </h1>
+            <p className="text-sm text-gray-500">
+              {feed.length} posts from your feed
+            </p>
           </div>
           <Link
             href={auth?.isCreator ? "/creator" : "/onboarding"}
-            className="bg-slate-900 rounded-lg p-8 text-white flex flex-col justify-between group hover:bg-black transition-all"
+            className="bg-gray-900 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 transition flex items-center gap-2"
           >
-            <Zap size={24} className="text-orange-500 fill-orange-500 mb-4" />
-            <div>
-              <h3 className="text-xl font-bold mb-1">
-                {auth?.isCreator
-                  ? "You are already a Creator"
-                  : "Become a Creator"}
+            <Zap size={16} />
+            {auth?.isCreator ? "Go to Creator" : "Become Creator"}
+          </Link>
+        </div>
+
+        <div className="flex gap-2 mb-6">
+          {[
+            { key: "all", label: "All" },
+            { key: "following", label: "Following" },
+            { key: "public", label: "For You" },
+          ].map((filter) => (
+            <button
+              key={filter.key}
+              onClick={() => setFeedFilter(filter.key as any)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                feedFilter === filter.key
+                  ? "bg-gray-900 text-white"
+                  : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-100"
+              }`}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-8">
+            <div className="space-y-4">
+              {filteredFeed.length > 0 ? (
+                filteredFeed.map((item) => {
+                  console.log(item);
+                  return (
+                    <div
+                      key={item.id}
+                      ref={(el) => {
+                        if (el) postRefs.current[item.id] = el;
+                      }}
+                      data-post-id={item.id}
+                      className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden"
+                    >
+                      <div className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Link
+                              href={`/${item.creatorHandle}`}
+                              className="shrink-0"
+                            >
+                              <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden">
+                                {item.creatorPhoto ? (
+                                  <img
+                                    src={item.creatorPhoto}
+                                    alt={item.creatorName}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-gray-400 font-medium">
+                                    {item.creatorName?.[0] || "?"}
+                                  </div>
+                                )}
+                              </div>
+                            </Link>
+                            <div>
+                              <Link
+                                href={`/${item.creatorHandle}`}
+                                className="font-semibold text-gray-900 hover:text-blue-600"
+                              >
+                                {item.creatorName}
+                              </Link>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-xs text-gray-500">
+                                  @{item.creatorHandle}
+                                </span>
+                                <span
+                                  className={`text-[10px] px-2 py-0.5 rounded-full ${item.isFollowing ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"}`}
+                                >
+                                  {item.isFollowing ? "Following" : "Public"}
+                                </span>
+                                <span className="text-xs text-gray-400">
+                                  ·{" "}
+                                  {item.createdAt
+                                    ?.toDate?.()
+                                    ?.toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4">
+                          <h3 className="font-semibold text-lg text-gray-900 mb-2">
+                            {item.title}
+                          </h3>
+                          <div>
+                            {renderPostText(
+                              item.description || "",
+                              expandedPostId === item.id,
+                            )}
+                          </div>
+                          {renderYouTubeEmbed(item.description || "")}
+                        </div>
+
+                        {item.contentUrl && expandedPostId !== item.id && (
+                          <div className="mt-3 rounded-lg overflow-hidden bg-gray-100">
+                            {item.type === "video" ? (
+                              <video
+                                src={item.contentUrl}
+                                controls
+                                controlsList="nodownload"
+                                className="w-full aspect-video"
+                              />
+                            ) : item.type === "document" ? (
+                              <div className="p-4">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                                    <FileText
+                                      size={20}
+                                      className="text-orange-600"
+                                    />
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium text-gray-900">
+                                      Document
+                                    </p>
+                                    <p className="text-xs text-gray-500">PDF</p>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() =>
+                                    setViewingDocument({
+                                      url: item.contentUrl,
+                                      title: item.title,
+                                    })
+                                  }
+                                  className="w-full py-2 bg-orange-500 text-white rounded-lg text-sm font-medium"
+                                >
+                                  Read Document
+                                </button>
+                              </div>
+                            ) : (
+                              <div
+                                onClick={() =>
+                                  item.contentUrl &&
+                                  setViewingImage({ url: item.contentUrl })
+                                }
+                                className="cursor-zoom-in"
+                              >
+                                <img
+                                  src={item.contentUrl}
+                                  alt={item?.title}
+                                  className="w-full h-48 object-cover hover:opacity-90 transition-opacity"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {expandedPostId === item.id && (
+                          <div className="mt-4 pt-4 border-t border-gray-100">
+                            {renderContentMedia(item)}
+
+                            {item.docUrl && !Array.isArray(item.docUrl) && (
+                              <Link
+                                href={item.contentUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-4 flex items-center gap-2 text-blue-600 text-sm hover:underline"
+                              >
+                                <Paperclip size={14} /> View Attached Document
+                              </Link>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="px-4 pb-3 pt-2 flex items-center justify-between border-t border-gray-100">
+                        <div className="flex items-center gap-4">
+                          <button
+                            onClick={() => handleLike(item)}
+                            className={`flex items-center gap-1.5 text-sm ${likedPosts.has(item.id) ? "text-red-500" : "text-gray-500 hover:text-red-500"}`}
+                          >
+                            <Heart
+                              size={18}
+                              className={
+                                likedPosts.has(item.id) ? "fill-current" : ""
+                              }
+                            />
+                            {item.likes || 0}
+                          </button>
+                          <button
+                            onClick={() => toggleComments(item)}
+                            className={`flex items-center gap-1.5 text-sm ${showCommentFor === item.id ? "text-blue-500" : "text-gray-500 hover:text-blue-500"}`}
+                          >
+                            <MessageCircle size={18} />
+                            {comments[item.id]?.length || 0}
+                          </button>
+                          <span className="flex items-center gap-1.5 text-sm text-gray-400">
+                            <Eye size={16} /> {item.views || 0}
+                          </span>
+                        </div>
+                        {item.type === "gathering" && (
+                          <span className="text-xs text-orange-600 flex items-center gap-1">
+                            <MapPin size={14} /> {item.location}
+                          </span>
+                        )}
+                        {item.type === "content" &&
+                          item.description &&
+                          item.description.length > 125 && (
+                            <button
+                              onClick={() => setExpandedPostId(item.id)}
+                              className="text-xs text-orange-500 hover:underline"
+                            >
+                              {expandedPostId === item.id
+                                ? "Show less"
+                                : "Read more"}
+                            </button>
+                          )}
+                      </div>
+
+                      {showCommentFor === item.id && renderPostComments(item)}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-16 bg-white rounded-lg border border-gray-100">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <User className="text-gray-400" size={24} />
+                  </div>
+                  <p className="text-gray-500 text-sm">
+                    {feedFilter === "following"
+                      ? "No posts from creators you follow"
+                      : feedFilter === "public"
+                        ? "No public posts available"
+                        : "No posts in your feed yet"}
+                  </p>
+                  <button
+                    onClick={() => router.push("/explore")}
+                    className="mt-4 text-sm text-white bg-gray-900 px-4 py-2 rounded-lg hover:bg-gray-800 transition"
+                  >
+                    Explore Creators
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="hidden lg:block lg:col-span-4 space-y-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+              <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                Your Stats
               </h3>
-              <p className="text-slate-400 text-xs mb-4">
-                {auth?.isCreator
-                  ? "Continue Managing your Agaseke."
-                  : "Start your own Agaseke."}
-              </p>
-              <div className="text-orange-500 text-sm font-bold flex items-center gap-2">
-                {auth?.isCreator ? "Continue" : "Launch"}
-                <ArrowRight size={14} />
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Total Supported</span>
+                  <span className="font-semibold text-orange-600">
+                    {(auth?.profile?.totalSupport || 0).toLocaleString()} RWF
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Following</span>
+                  <span className="font-semibold text-gray-900">
+                    {favorites.length} creators
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Purchases</span>
+                  <span className="font-semibold text-gray-900">
+                    {purchases.length} items
+                  </span>
+                </div>
               </div>
             </div>
-          </Link>
-        </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-          <div className="lg:col-span-8 space-y-8">
-            <h3 className="font-bold text-xl flex items-center gap-2">
-              <Star size={20} className="text-orange-500 fill-orange-500" />{" "}
-              Recent Activity
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {feed.length > 0 ? (
-                feed.map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => openDetails(item)}
-                    className="bg-white rounded-2xl border border-slate-100 overflow-hidden cursor-pointer hover:border-orange-200 hover:shadow-xl hover:shadow-slate-200/50 transition-all group"
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+              <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                Following
+              </h3>
+              <div className="space-y-2">
+                {favorites.slice(0, 6).map((c) => (
+                  <Link
+                    key={c.id}
+                    href={`/${c.handle}`}
+                    className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-gray-50 transition"
                   >
-                    <div className="relative aspect-video bg-slate-100 overflow-hidden">
-                      {item.imageUrl ? (
+                    <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden">
+                      {c.photoURL ? (
                         <img
-                          src={item.imageUrl}
-                          alt={item.title || "Content image"}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          src={c.photoURL}
+                          alt={c.name}
+                          className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-slate-300">
-                          {item.type === "gathering" ? (
-                            <MapPin size={40} />
-                          ) : (
-                            <FileText size={40} />
-                          )}
-                        </div>
+                        <span className="text-sm flex items-center justify-center h-full text-gray-400">
+                          {c.name?.[0]}
+                        </span>
                       )}
-
-                      {/* Access Badge */}
-                      <div className="absolute top-4 left-4 flex gap-2">
-                        <span
-                          className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${
-                            item.type === "gathering"
-                              ? "bg-orange-600 text-white"
-                              : "bg-blue-600 text-white"
-                          }`}
-                        >
-                          {item.type}
-                        </span>
-                      </div>
                     </div>
-
-                    <div className="p-6">
-                      <div className="flex justify-between items-center mb-3">
-                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
-                          {item.createdAt?.toDate().toLocaleDateString()}
-                        </p>
-                        {item.isPrivate && (
-                          <div className="flex items-center gap-1 text-orange-600 text-[10px] font-black uppercase tracking-widest">
-                            <Lock size={10} /> Supporters Only
-                          </div>
-                        )}
-                      </div>
-
-                      <h4 className="font-bold text-lg mb-2 line-clamp-1 uppercase tracking-tight group-hover:text-orange-600 transition-colors">
-                        {item.title}
-                      </h4>
-                      <p className="text-slate-500 text-sm line-clamp-2 mb-6">
-                        {item.description}
-                      </p>
-
-                      <div className="pt-4 border-t border-slate-50 flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
-                        <span className="flex items-center gap-2">
-                          <div className="w-5 h-5 rounded-full bg-slate-100 overflow-hidden">
-                            {/* You can add creator mini-avatar here if you pass it through the feed */}
-                          </div>
-                          @{item.creatorHandle}
-                        </span>
-                        <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded">
-                          <Eye size={12} /> {item.views || 0}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="col-span-2 py-20 text-center bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
-                  <User className="mx-auto text-slate-300 mb-2" size={40} />
-                  <p className="text-slate-400 font-medium">
-                    No updates found from your creators.
-                  </p>
-                </div>
-               )}
-             </div>
-
-             {purchases.length > 0 && (
-               <div className="mt-12">
-                 <h3 className="font-bold text-xl flex items-center gap-2 mb-6">
-                   <ShoppingBag size={20} className="text-orange-500 fill-orange-500" />{" "}
-                   My Purchases
-                 </h3>
-
-                 <div className="space-y-4">
-                   {purchases.slice(0, 10).map((purchase: any) => (
-                     <div
-                       key={purchase.id}
-                       className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm hover:shadow-md transition-shadow"
-                     >
-                       <div className="flex items-start gap-4">
-                         <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                           <Package size={24} className="text-slate-400" />
-                         </div>
-                         <div className="flex-1 min-w-0">
-                           <div className="flex items-start justify-between gap-4">
-                             <div className="min-w-0">
-                               <h4 className="font-bold text-sm line-clamp-1">
-                                 {purchase.productName || "Product"}
-                               </h4>
-                               <p className="text-xs text-slate-500 mt-0.5">
-                                 from{" "}
-                                 <Link
-                                   href={`/${purchase.creatorHandle}`}
-                                   className="text-orange-600 hover:underline"
-                                 >
-                                   @{purchase.creatorHandle}
-                                 </Link>
-                               </p>
-                             </div>
-                             <div className="text-right shrink-0">
-                               <p className="font-bold text-sm text-emerald-600">
-                                 {purchase.totalAmount?.toLocaleString?.() ||
-                                   Number(purchase.totalAmount || 0).toLocaleString()}{" "}
-                                 RWF
-                               </p>
-                               <p className="text-[10px] text-slate-400 uppercase mt-0.5">
-                                 {purchase.createdAt
-                                   ? purchase.createdAt.toDate?.()?.toLocaleDateString?.() ||
-                                     new Date(purchase.createdAt).toLocaleDateString()
-                                   : ""}
-                               </p>
-                             </div>
-                           </div>
-                           <div className="flex items-center gap-3 mt-2">
-                             <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-green-50 text-green-700 font-medium">
-                               <CheckCircle2 size={10} /> {purchase.status || "paid"}
-                             </span>
-                             <span className="text-[10px] text-slate-400">
-                               {purchase.paymentMethod === "card" ? "Card" : "Mobile Money"}
-                             </span>
-                             {purchase.quantity > 1 && (
-                               <span className="text-[10px] text-slate-400">
-                                 Qty: {purchase.quantity}
-                               </span>
-                             )}
-                           </div>
-                         </div>
-                       </div>
-                     </div>
-                   ))}
-                 </div>
-
-                 {purchases.length > 10 && (
-                   <div className="text-center mt-4">
-                     <p className="text-xs text-slate-400">
-                       Showing 10 of {purchases.length} purchases
-                     </p>
-                   </div>
-                 )}
-               </div>
-             )}
-           </div>
-
-           {/* Sidebar: Following & Discover */}
-          <div className="lg:col-span-4 space-y-8">
-            <section className="bg-white p-6 rounded-lg border border-slate-100 shadow-sm">
-              <h3 className="font-bold mb-4">Following</h3>
-              <div className="space-y-3">
-                {favorites.length > 0 ? (
-                  favorites.map((c) => (
-                    <Link
-                      key={c.id}
-                      href={`/${c.handle}`}
-                      className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-lg transition"
-                    >
-                      <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center font-bold text-orange-600 text-xs overflow-hidden">
-                        {c.photoURL ? (
-                          <img
-                            src={c.photoURL}
-                            alt={c.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          c.name[0]
-                        )}
-                      </div>
-                      <span className="text-sm font-bold truncate">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
                         {c.name}
-                      </span>
-                      {c.updates > 0 && (
-                        <div className="ml-auto w-2 h-2 bg-orange-600 rounded-full" />
-                      )}
-                    </Link>
-                  ))
-                ) : (
-                  <p className="text-xs text-slate-400">
-                    Not following anyone yet.
+                      </p>
+                      <p className="text-xs text-gray-500">@{c.handle}</p>
+                    </div>
+                  </Link>
+                ))}
+                {favorites.length === 0 && (
+                  <p className="text-xs text-gray-400 text-center py-2">
+                    Not following anyone yet
                   </p>
                 )}
               </div>
-            </section>
+            </div>
 
-            <section className="bg-white p-6 rounded-lg border border-slate-100 shadow-sm">
-              <h3 className="font-bold mb-4">Discover</h3>
-              <div className="relative mb-4">
-                <Search
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300"
-                  size={14}
-                />
-                <input
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Find creators..."
-                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border-none rounded-lg text-sm focus:ring-1 focus:ring-orange-200 outline-none"
-                />
+            {purchases.length > 0 && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <ShoppingBag size={18} className="text-emerald-500" />
+                  Recent Purchases
+                </h3>
+                <div className="space-y-2">
+                  {purchases.slice(0, 4).map((purchase) => (
+                    <div
+                      key={purchase.id}
+                      className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-gray-50"
+                    >
+                      <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center shrink-0">
+                        <Package size={14} className="text-gray-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-gray-900 truncate">
+                          {purchase.productName || "Product"}
+                        </p>
+                        <p className="text-[10px] text-gray-500">
+                          from @{purchase.creatorHandle}
+                        </p>
+                      </div>
+                      <span className="text-xs font-medium text-emerald-600">
+                        {Number(purchase.totalAmount || 0).toLocaleString()} RWF
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="space-y-4">
-                {filteredCreators.slice(0, 4).map((c) => (
+            )}
+
+            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+              <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                Discover Creators
+              </h3>
+              <div className="space-y-2">
+                {creators.slice(0, 5).map((c) => (
                   <Link
                     key={c.handle}
                     href={`/${c.handle}`}
-                    className="flex items-center gap-3 group"
+                    className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-gray-50 transition"
                   >
-                    <div className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center font-bold text-slate-400 text-xs overflow-hidden shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden">
                       {c.photoURL ? (
                         <img
                           src={c.photoURL}
@@ -575,172 +1182,99 @@ export default function SupporterSpace() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        c.handle[0]
+                        <span className="text-sm flex items-center justify-center h-full text-gray-400">
+                          {c.handle?.[0]}
+                        </span>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold truncate group-hover:text-orange-600 transition">
+                      <p className="text-sm font-medium text-gray-900">
                         @{c.handle}
                       </p>
-                      <p className="text-[10px] text-slate-400 truncate">
+                      <p className="text-xs text-gray-500 truncate">
                         {c.bio || "New Creator"}
                       </p>
                     </div>
                   </Link>
                 ))}
-                <button
-                  onClick={() => router.push("/explore")}
-                  className="w-full py-2 mt-2 text-xs font-bold text-orange-600 bg-orange-50 rounded-lg hover:bg-orange-100 transition"
-                >
-                  Explore More
-                </button>
               </div>
-            </section>
-          </div>
-        </div>
-      </main>
+              <button
+                onClick={() => router.push("/explore")}
+                className="w-full mt-4 text-sm text-gray-600 hover:text-gray-900 text-center"
+              >
+                Explore more →
+              </button>
+            </div>
 
-      {selectedItem && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
-            {(selectedItem.imageUrl || selectedItem.videoUrl) && (
-              <div className="relative w-full aspect-video bg-black">
-                {selectedItem.videoUrl ? (
-                  <video
-                    src={selectedItem.videoUrl}
-                    controls
-                    className="w-full h-full"
-                    poster={selectedItem.imageUrl}
-                  />
-                ) : (
-                  <img
-                    src={selectedItem.imageUrl}
-                    alt={selectedItem.title}
-                    className="w-full h-full object-contain"
-                  />
-                )}
-              </div>
-            )}
-
-            <div className="p-8 overflow-y-auto">
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex gap-2">
-                  <span className="bg-orange-100 text-orange-700 text-[10px] font-bold px-2 py-1 rounded tracking-tighter uppercase">
-                    {selectedItem.type}
-                  </span>
-                  {!selectedItem.isPrivate && (
-                    <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-1 rounded tracking-tighter uppercase">
-                      Public
-                    </span>
-                  )}
-                </div>
-                <button
-                  onClick={() => setSelectedItem(null)}
-                  className="text-slate-300 hover:text-slate-600 transition-colors"
-                >
-                  <X size={28} />
-                </button>
-              </div>
-
-              <h2 className="text-2xl font-black mb-2 uppercase tracking-tight">
-                {selectedItem.title}
-              </h2>
-
-              <div className="text-xs font-bold text-slate-400 mb-6 flex flex-wrap gap-4">
-                <span className="flex items-center gap-1">
-                  <Clock size={14} />{" "}
-                  {selectedItem.createdAt?.toDate().toLocaleDateString()}
-                </span>
-                {selectedItem.type === "gathering" && (
-                  <span className="flex items-center gap-1 text-orange-600">
-                    <MapPin size={14} /> {selectedItem.location}
-                  </span>
-                )}
-                {selectedItem.capacity && (
-                  <span className="flex items-center gap-1 text-amber-600">
-                    <User size={14} /> {selectedItem.capacity} spots available
-                  </span>
-                )}
-                <span className="flex items-center gap-1">
-                  <Eye size={14} /> {selectedItem.views || 0} views
-                </span>
-              </div>
-
-              <div className="bg-slate-50 p-6 rounded-2xl mb-8">
-                <p className="text-slate-600 leading-relaxed whitespace-pre-wrap text-sm">
-                  {selectedItem.description || selectedItem.content}
-                </p>
-              </div>
-
-              {selectedItem.docUrl && (
-                <Link
-                  href={selectedItem.docUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between p-4 mb-8 bg-blue-50 border border-blue-100 rounded-2xl group hover:bg-blue-600 transition-all"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 rounded-lg text-blue-600 group-hover:bg-white transition-colors">
-                      <FileText size={20} />
-                    </div>
-                    <span className="text-sm font-bold text-blue-700 group-hover:text-white">
-                      View Attached Document
-                    </span>
-                  </div>
-                  <ArrowRight
-                    size={18}
-                    className="text-blue-400 group-hover:text-white"
-                  />
-                </Link>
-              )}
-
-              {selectedItem.type === "gathering" ? (
-                selectedItem.capacity ? (
-                  <div className="space-y-3">
-                    <div className="bg-amber-50 p-3 rounded-lg border border-amber-100">
-                      <p className="text-xs font-bold text-amber-800 text-center">
-                        Limited spots available - Reserve your spot now!
-                      </p>
-                    </div>
-                    <button
-                      disabled={isRSVPing}
-                      onClick={handleRSVP}
-                      className="w-full bg-orange-500 text-white py-4 rounded-2xl font-black uppercase text-sm tracking-widest flex items-center justify-center gap-2 hover:bg-orange-600 transition-all shadow-lg active:scale-95 disabled:opacity-50"
-                    >
-                      {isRSVPing ? (
-                        <Loader className="animate-spin" />
-                      ) : (
-                        <>
-                          <CheckCircle2 size={18} /> Reserve My Spot
-                        </>
-                      )}
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    disabled={isRSVPing}
-                    onClick={handleRSVP}
-                    className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-sm tracking-widest flex items-center justify-center gap-2 hover:bg-orange-600 transition-all shadow-lg active:scale-95 disabled:opacity-50"
-                  >
-                    {isRSVPing ? (
-                      <Loader className="animate-spin" />
-                    ) : (
-                      <>
-                        <CheckCircle2 size={18} /> I&apos;m Interested to Attend
-                      </>
-                    )}
-                  </button>
-                )
-              ) : (
-                <button
-                  onClick={() => setSelectedItem(null)}
-                  className="w-full bg-slate-100 text-slate-900 py-4 rounded-2xl font-black uppercase text-sm tracking-widest hover:bg-slate-200 transition-all"
-                >
-                  Back to Feed
-                </button>
-              )}
+            <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg p-4 text-white">
+              <h3 className="font-semibold mb-2">Start Creating</h3>
+              <p className="text-sm text-white/80 mb-4">
+                Share your content and grow your audience
+              </p>
+              <Link
+                href={auth?.isCreator ? "/creator" : "/onboarding"}
+                className="block w-full bg-white text-orange-600 text-center py-2 rounded-lg font-medium hover:bg-white/90 transition"
+              >
+                {auth?.isCreator ? "Go to Dashboard" : "Become Creator"}
+              </Link>
             </div>
           </div>
+        </div>
+      </div>
+
+      {viewingDocument && (
+        <div className="fixed inset-0 z-[100] bg-black/90 flex flex-col animate-in fade-in duration-200">
+          <div className="flex items-center justify-between p-4 bg-gray-900 text-white">
+            <div className="flex items-center gap-3">
+              <FileText size={24} />
+              <span className="font-medium truncate max-w-md">
+                {viewingDocument.title}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* <Link
+                href={viewingDocument.url}
+                download
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg text-sm font-medium flex items-center gap-2"
+              >
+                <Download size={16} /> Download
+              </Link> */}
+              <button
+                onClick={() => setViewingDocument(null)}
+                className="p-2 hover:bg-gray-700 rounded-lg"
+              >
+                <X size={24} />
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 flex items-center justify-center p-4 overflow-auto">
+            <iframe
+              src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocument.url)}&embedded=true`}
+              className="w-full max-w-4xl h-full bg-white"
+              title="PDF Viewer"
+            />
+          </div>
+        </div>
+      )}
+
+      {viewingImage && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setViewingImage(null)}
+        >
+          <button
+            className="absolute top-4 right-4 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition"
+            onClick={() => setViewingImage(null)}
+          >
+            <X size={28} />
+          </button>
+          <img
+            src={viewingImage.url}
+            alt="Full size"
+            className="max-w-full max-h-full object-contain animate-in zoom-in-95 duration-200"
+          />
         </div>
       )}
     </div>

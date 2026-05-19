@@ -18,6 +18,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No video file provided" }, { status: 400 });
     }
 
+    const MAX_SIZE = 50 * 1024 * 1024; // 50MB
+    if (file.size > MAX_SIZE) {
+      return NextResponse.json(
+        { error: `Video file too large. Maximum size is 50MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB` },
+        { status: 400 }
+      );
+    }
+
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const base64 = buffer.toString("base64");
@@ -30,6 +38,7 @@ export async function POST(req: Request) {
           resource_type: "video",
           folder: `agaseke/videos/${creatorHandle}`,
           chunk_size: 6000000,
+          access_control: [{ access_type: "anonymous" }],
         },
         (error, result) => {
           if (error) reject(error);

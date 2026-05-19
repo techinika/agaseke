@@ -29,6 +29,7 @@ export async function POST(req: Request) {
     const uploadResponse = await cloudinary.uploader.upload(dataUri, {
       folder: `agaseke/posts/${creatorHandle || "general"}`,
       resource_type: "image",
+      access_control: [{ access_type: "anonymous" }],
       transformation: [
         { width: 1200, crop: "limit" },
         { quality: "auto" },
