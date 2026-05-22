@@ -34,6 +34,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
+import { formatCurrency } from "@/lib/format";
 import { toast } from "sonner";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Edit } from "lucide-react";
@@ -490,7 +491,7 @@ export default function GatheringsPage() {
                   </div>
                   <h2 className="text-xl font-bold">
                     {activeEvent.minSupportTier > 0
-                      ? `Min. Support: ${activeEvent.minSupportTier} RWF`
+                      ? `Min. Support: ${formatCurrency(activeEvent.minSupportTier, creator?.currency)}`
                       : "Open to Everyone"}
                   </h2>
                   <div className="mt-4 pt-4 border-t border-slate-700 flex items-center justify-between">
@@ -671,7 +672,7 @@ export default function GatheringsPage() {
                   </label>
                   <input
                     type="number"
-                    placeholder="Min. RWF support to qualify (0 for all)"
+                    placeholder={`Min. ${creator?.currency || "RWF"} support to qualify (0 for all)`}
                     value={formData.minSupportTier || ""}
                     className="w-full bg-slate-50 p-4 rounded-lg text-sm outline-none font-bold focus:ring-2 focus:ring-orange-100"
                     onChange={(e) =>

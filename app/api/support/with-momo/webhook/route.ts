@@ -167,7 +167,7 @@ export async function POST(req: Request) {
            userId: txData.creatorUid,
            type: "new_sale",
            title: "New Sale!",
-           message: `${txData.buyerName || "Someone"} purchased ${txData.productName || "a product"} for ${totalAmount.toLocaleString()} RWF`,
+            message: `${txData.buyerName || "Someone"} purchased ${txData.productName || "a product"} for ${totalAmount.toLocaleString()} ${txData.currency || "RWF"}`,
            metadata: {
              txRef: ref,
              productId: productId,
@@ -248,7 +248,7 @@ export async function POST(req: Request) {
            userId: txData.creatorUid,
            type: "support_received",
            title: "New Support Received!",
-           message: `You received ${totalAmount.toLocaleString()} RWF in support${txData.supporterId && txData.supporterId !== "anonymous" ? "" : " from an anonymous supporter"}`,
+            message: `You received ${totalAmount.toLocaleString()} ${txData.currency || "RWF"} in support${txData.supporterId && txData.supporterId !== "anonymous" ? "" : " from an anonymous supporter"}`,
            metadata: {
              txRef: ref,
              amount: totalAmount,

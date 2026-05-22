@@ -3,8 +3,10 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    const { creatorEmail, creatorName, supporterName, amount, message } =
+    const { creatorEmail, creatorName, supporterName, amount, message, currency } =
       await req.json();
+
+    const cur = currency || "RWF";
 
     const emailHtml = `
       <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #334155; line-height: 1.6; background-color: #F8FAFC; padding: 20px;">
@@ -17,7 +19,7 @@ export async function POST(req: Request) {
           <div style="padding: 40px 30px; text-align: center;">
             <p style="font-size: 18px; color: #475569; margin: 0;">Hey ${creatorName},</p>
 
-            <h2 style="font-size: 32px; font-weight: 900; color: #0F172A; margin: 10px 0;">${amount.toLocaleString()} RWF</h2>
+            <h2 style="font-size: 32px; font-weight: 900; color: #0F172A; margin: 10px 0;">${amount.toLocaleString()} ${cur}</h2>
             <p style="font-size: 16px; color: #64748B;">from <strong>${supporterName || "A generous supporter"}</strong></p>
 
             ${
@@ -48,7 +50,7 @@ export async function POST(req: Request) {
     await helloTransporter.sendMail({
       from: `"Agaseke Alerts" <${process.env.SMTP_HELLO}>`,
       to: creatorEmail,
-      subject: `You just received ${amount} RWF on Agaseke!`,
+      subject: `You just received ${amount} ${cur} on Agaseke!`,
       html: emailHtml,
     });
 

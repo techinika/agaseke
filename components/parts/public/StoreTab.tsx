@@ -38,6 +38,8 @@ import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { Product, CartItem, Order, ShippingAddress } from "@/types/store";
 import { ProtectedSection } from "./ProtectedSection";
+import { formatCurrency, isMoMoSupported } from "@/lib/format";
+import { Creator } from "@/types/creator";
 
 interface StoreTabProps {
   creatorId: string;
@@ -47,6 +49,7 @@ interface StoreTabProps {
   isLoggedIn: boolean;
   isSupporter: boolean;
   setIsModalOpen: (open: boolean) => void;
+  creatorData?: Creator;
 }
 
 interface FolderData {
@@ -72,6 +75,7 @@ export const StoreTab = ({
   isLoggedIn,
   isSupporter,
   setIsModalOpen,
+  creatorData,
 }: StoreTabProps) => {
   const { user: currentUser } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
@@ -357,6 +361,7 @@ export const StoreTab = ({
         isLoggedIn={isLoggedIn}
         folderTotal={getFolderTotal(activeFolder)}
         folderPlatformFee={getFolderPlatformFee(activeFolder)}
+        creatorData={creatorData}
       />
     );
   }
@@ -379,6 +384,7 @@ export const StoreTab = ({
         onRemove={removeFromCart}
         getItemPrice={getItemPrice}
         total={getCartTotal()}
+        creatorData={creatorData}
       />
     );
   }
@@ -404,6 +410,7 @@ export const StoreTab = ({
         getItemPrice={getItemPrice}
         total={getCartTotal()}
         currentUser={currentUser}
+        creatorData={creatorData}
       />
     );
   }
@@ -414,6 +421,7 @@ export const StoreTab = ({
         orders={userOrders}
         onClose={() => setShowOrderTracking(false)}
         currentUser={currentUser}
+        creatorData={creatorData}
       />
     );
   }
@@ -425,6 +433,7 @@ export const StoreTab = ({
         products={products}
         creatorHandle={creatorHandle}
         onClose={() => setShowMyPurchases(false)}
+        creatorData={creatorData}
       />
     );
   }
@@ -508,6 +517,7 @@ export const StoreTab = ({
                     products={products}
                     purchasedProductIds={purchasedProductIds}
                     onEnter={() => setActiveFolder(folder)}
+                    creatorData={creatorData}
                   />
                 ))}
               </div>
@@ -531,6 +541,7 @@ export const StoreTab = ({
                     isLoggedIn={isLoggedIn}
                     isPurchased={purchasedProductIds.has(product.id)}
                     fileUrl={product.fileUrl}
+                    creatorData={creatorData}
                   />
                 ))}
               </div>
@@ -547,6 +558,7 @@ export const StoreTab = ({
           isLoggedIn={isLoggedIn}
           isPurchased={purchasedProductIds.has(selectedProduct.id)}
           fileUrl={selectedProduct.fileUrl}
+          creatorData={creatorData}
         />
       )}
     </div>
@@ -558,11 +570,13 @@ function FolderCard({
   products,
   purchasedProductIds,
   onEnter,
+  creatorData,
 }: {
   folder: FolderData;
   products: Product[];
   purchasedProductIds: Set<string>;
   onEnter: () => void;
+  creatorData?: Creator;
 }) {
   const folderProducts = products.filter((p) =>
     folder.productIds.includes(p.id),
@@ -629,7 +643,7 @@ function FolderCard({
               >
                 {purchasedProductIds.has(p.id)
                   ? "Owned"
-                  : `${p.price.toLocaleString()} RWF`}
+                  : formatCurrency(p.price, creatorData?.currency)}
               </span>
             </div>
           ))}
@@ -643,7 +657,7 @@ function FolderCard({
           <div className="mt-4 flex items-center justify-between">
             <div>
               <p className="text-lg font-bold text-slate-900">
-                {discountedPrice.toLocaleString()} RWF
+                {formatCurrency(discountedPrice, creatorData?.currency)}
               </p>
               {folder.discountEnabled && (
                 <p className="text-xs text-green-600 font-bold">
@@ -679,6 +693,7 @@ function FolderExplorer({
   isLoggedIn,
   folderTotal,
   folderPlatformFee,
+  creatorData,
 }: {
   folder: FolderData;
   products: Product[];
@@ -690,6 +705,7 @@ function FolderExplorer({
   isLoggedIn: boolean;
   folderTotal: number;
   folderPlatformFee: number;
+  creatorData?: Creator;
 }) {
   const unpurchased = products.filter((p) => !purchasedProductIds.has(p.id));
   const totalWithFee = folderTotal + folderPlatformFee;
@@ -716,16 +732,16 @@ function FolderExplorer({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-lg font-bold text-slate-900">
-                Bundle Total: {folderTotal.toLocaleString()} RWF
+                Bundle Total: {formatCurrency(folderTotal, creatorData?.currency)}
               </p>
               {folderPlatformFee > 0 && (
                 <p className="text-xs text-slate-500">
-                  + Platform fee: {folderPlatformFee.toLocaleString()} RWF
+                  + Platform fee: {formatCurrency(folderPlatformFee, creatorData?.currency)}
                 </p>
               )}
               {folderPlatformFee > 0 && (
                 <p className="text-sm font-bold text-orange-600">
-                  Total: {totalWithFee.toLocaleString()} RWF
+                  Total: {formatCurrency(totalWithFee, creatorData?.currency)}
                 </p>
               )}
               {folder.discountEnabled && (
@@ -764,6 +780,7 @@ function FolderExplorer({
               isLoggedIn={isLoggedIn}
               isPurchased={purchasedProductIds.has(product.id)}
               fileUrl={product.fileUrl}
+              creatorData={creatorData}
             />
           ))}
         </div>
@@ -779,6 +796,7 @@ function ProductCard({
   isLoggedIn,
   isPurchased,
   fileUrl,
+  creatorData,
 }: {
   product: Product;
   onAddToCart: (product: Product, quantity?: number, size?: string) => void;
@@ -786,6 +804,7 @@ function ProductCard({
   isLoggedIn: boolean;
   isPurchased: boolean;
   fileUrl?: string;
+  creatorData?: Creator;
 }) {
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<string | undefined>(
@@ -864,12 +883,12 @@ function ProductCard({
         <div className="flex items-center justify-between mt-4">
           <div>
             <span className="text-xl font-bold">
-              {product.price.toLocaleString()} RWF
+              {formatCurrency(product.price, creatorData?.currency)}
             </span>
             {product.platformFeePayer === "buyer" && (
               <p className="text-[10px] text-slate-400">
                 +{platformSharePercentage * 100}% fee ={" "}
-                {priceWithFee.toLocaleString()} RWF
+                {formatCurrency(priceWithFee, creatorData?.currency)}
               </p>
             )}
           </div>
@@ -975,6 +994,7 @@ function ProductDetailModal({
   isLoggedIn,
   isPurchased,
   fileUrl,
+  creatorData,
 }: {
   product: Product;
   onClose: () => void;
@@ -982,6 +1002,7 @@ function ProductDetailModal({
   isLoggedIn: boolean;
   isPurchased: boolean;
   fileUrl?: string;
+  creatorData?: Creator;
 }) {
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<string | undefined>(
@@ -1060,11 +1081,11 @@ function ProductDetailModal({
 
             <div>
               <div className="text-3xl font-bold">
-                {product.price.toLocaleString()} RWF
+                {formatCurrency(product.price, creatorData?.currency)}
               </div>
               {product.platformFeePayer === "buyer" && (
                 <p className="text-xs text-slate-500 mt-1">
-                  {priceWithFee.toLocaleString()} RWF with platform fee
+                  {formatCurrency(priceWithFee, creatorData?.currency)} with platform fee
                 </p>
               )}
             </div>
@@ -1173,6 +1194,7 @@ function CartModal({
   onRemove,
   getItemPrice,
   total,
+  creatorData,
 }: {
   cart: CartItem[];
   onClose: () => void;
@@ -1185,6 +1207,7 @@ function CartModal({
   onRemove: (id: string, size?: string) => void;
   getItemPrice: (item: CartItem) => number;
   total: number;
+  creatorData?: Creator;
 }) {
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
@@ -1232,7 +1255,7 @@ function CartModal({
                     </p>
                   )}
                   <p className="text-sm text-orange-600 font-bold mt-1">
-                    {getItemPrice(item).toLocaleString()} RWF
+                    {formatCurrency(getItemPrice(item), creatorData?.currency)}
                   </p>
                 </div>
                 <div className="flex flex-col items-end justify-between">
@@ -1273,7 +1296,7 @@ function CartModal({
           <div className="p-6 border-t border-slate-100 space-y-4">
             <div className="flex justify-between text-lg font-bold">
               <span>Total</span>
-              <span>{total.toLocaleString()} RWF</span>
+              <span>{formatCurrency(total, creatorData?.currency)}</span>
             </div>
             <button
               onClick={onCheckout}
@@ -1299,6 +1322,7 @@ function CheckoutModal({
   getItemPrice,
   total,
   currentUser,
+  creatorData,
 }: {
   cart: CartItem[];
   creatorId: string;
@@ -1309,6 +1333,7 @@ function CheckoutModal({
   getItemPrice: (item: CartItem) => number;
   total: number;
   currentUser: any;
+  creatorData?: Creator;
 }) {
   const [step, setStep] = useState<"info" | "shipping" | "payment">("info");
   const [couponCode, setCouponCode] = useState("");
@@ -1366,7 +1391,7 @@ function CheckoutModal({
       const coupon = snapshot.docs[0].data();
       if (coupon.minPurchase && total < coupon.minPurchase) {
         toast.error(
-          `Minimum purchase of ${coupon.minPurchase.toLocaleString()} RWF required`,
+          `Minimum purchase of ${formatCurrency(coupon.minPurchase, creatorData?.currency)} required`,
         );
         return;
       }
@@ -1385,7 +1410,7 @@ function CheckoutModal({
       setCouponDiscount(discount);
       setAppliedCoupon(coupon.code);
       toast.success(
-        `Coupon applied! You save ${discount.toLocaleString()} RWF`,
+        `Coupon applied! You save ${formatCurrency(discount, creatorData?.currency)}`,
       );
     } catch (error) {
       toast.error("Failed to apply coupon");
@@ -1437,11 +1462,12 @@ function CheckoutModal({
          creatorId: creatorHandle,
          creatorUid: firstItem?.product.creatorId,
          platformFeePayer: firstItem?.product.platformFeePayer || "buyer",
-         amount: amountToPay,
-         email: currentUser.email || "",
-         firstName: currentUser.displayName?.split(" ")[0] || "Customer",
-         lastName: currentUser.displayName?.split(" ")[1] || "",
-       };
+          amount: amountToPay,
+          email: currentUser.email || "",
+          firstName: currentUser.displayName?.split(" ")[0] || "Customer",
+          lastName: currentUser.displayName?.split(" ")[1] || "",
+          currency: creatorData?.currency || "RWF",
+        };
 
       const endpoint =
         paymentMethod === "momo"
@@ -1525,12 +1551,12 @@ function CheckoutModal({
                     <span>
                       {item.quantity}x {item.product.name}
                     </span>
-                    <span>{getItemPrice(item).toLocaleString()} RWF</span>
+                    <span>{formatCurrency(getItemPrice(item), creatorData?.currency)}</span>
                   </div>
                 ))}
                 <div className="border-t border-slate-200 pt-2 flex justify-between font-bold">
                   <span>Subtotal</span>
-                  <span>{total.toLocaleString()} RWF</span>
+                  <span>{formatCurrency(total, creatorData?.currency)}</span>
                 </div>
               </div>
 
@@ -1563,7 +1589,7 @@ function CheckoutModal({
                   <div className="bg-green-50 text-green-700 p-3 rounded-lg text-sm font-medium flex items-center gap-2">
                     <Check size={16} />
                     Coupon "{appliedCoupon}" applied! You save{" "}
-                    {couponDiscount.toLocaleString()} RWF
+                    {formatCurrency(couponDiscount, creatorData?.currency)}
                   </div>
                 )}
               </div>
@@ -1571,7 +1597,7 @@ function CheckoutModal({
               {couponDiscount > 0 && (
                 <div className="flex justify-between text-lg font-bold text-green-600">
                   <span>Total</span>
-                  <span>{finalTotal.toLocaleString()} RWF</span>
+                  <span>{formatCurrency(finalTotal, creatorData?.currency)}</span>
                 </div>
               )}
             </div>
@@ -1653,21 +1679,21 @@ function CheckoutModal({
                   <span>Total</span>
                   <span>
                     {buyerPaysMore
-                      ? totalWithPlatformFee.toLocaleString()
-                      : finalTotal.toLocaleString()}{" "}
-                    RWF
+                      ? formatCurrency(totalWithPlatformFee, creatorData?.currency)
+                      : formatCurrency(finalTotal, creatorData?.currency)}
                   </span>
                 </div>
                 {buyerPaysMore && (
                   <p className="text-xs text-slate-500">
-                    (Includes platform fee: {platformFee.toLocaleString()} RWF)
+                    (Includes platform fee: {formatCurrency(platformFee, creatorData?.currency)})
                   </p>
                 )}
               </div>
 
               <div className="space-y-3">
                 <label className="text-sm font-bold">Payment Method</label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className={`grid ${isMoMoSupported(creatorData?.currency) ? "grid-cols-2" : "grid-cols-1"} gap-3`}>
+                  {isMoMoSupported(creatorData?.currency) && (
                   <button
                     type="button"
                     onClick={() => setPaymentMethod("momo")}
@@ -1679,6 +1705,7 @@ function CheckoutModal({
                   >
                     Mobile Money
                   </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setPaymentMethod("card")}
@@ -1782,10 +1809,12 @@ function OrderTrackingModal({
   orders,
   onClose,
   currentUser,
+  creatorData,
 }: {
   orders: Order[];
   onClose: () => void;
   currentUser: any;
+  creatorData?: Creator;
 }) {
   const statusSteps = ["pending", "paid", "processing", "shipped", "delivered"];
   const statusLabels: Record<string, string> = {
@@ -1880,7 +1909,7 @@ function OrderTrackingModal({
                       </span>
                       <div className="flex items-center gap-3">
                         <span className="font-medium">
-                          {item.price.toLocaleString()} RWF
+                          {formatCurrency(item.price, creatorData?.currency)}
                         </span>
                         {order.status !== "cancelled" && (
                           <button
@@ -1947,7 +1976,7 @@ function OrderTrackingModal({
 
                 <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-200">
                   <span className="font-bold">
-                    Total: {order.total.toLocaleString()} RWF
+                    Total: {formatCurrency(order.total, creatorData?.currency)}
                   </span>
                   {order.status === "pending" && (
                     <Link
@@ -1973,11 +2002,13 @@ function MyPurchasesModal({
   products,
   creatorHandle,
   onClose,
+  creatorData,
 }: {
   orders: Order[];
   products: Product[];
   creatorHandle: string;
   onClose: () => void;
+  creatorData?: Creator;
 }) {
   const [downloadingProduct, setDownloadingProduct] = useState<string | null>(
     null,
@@ -2056,7 +2087,7 @@ function MyPurchasesModal({
                       {item.productName}
                     </h3>
                     <p className="text-sm text-slate-500">
-                      {item.quantity}x {item.price.toLocaleString()} RWF
+                      {item.quantity}x {formatCurrency(item.price, creatorData?.currency)}
                       {item.selectedSize && ` - Size: ${item.selectedSize}`}
                     </p>
                   </div>

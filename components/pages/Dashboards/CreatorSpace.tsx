@@ -26,6 +26,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
+import { formatCurrency } from "@/lib/format";
 
 export default function CreatorDashboard() {
   const { creator } = useAuth();
@@ -154,8 +155,7 @@ export default function CreatorDashboard() {
             <Wallet size={18} className="text-orange-500" />
           </div>
           <h3 className="text-4xl font-bold">
-            {creator?.pendingPayout?.toLocaleString() || 0}
-            <span className="text-sm font-medium text-slate-500 ml-2">RWF</span>
+            {formatCurrency(creator?.pendingPayout, creator?.currency)}
           </h3>
           <button
             onClick={() => router.push("/creator/payouts")}
@@ -194,7 +194,8 @@ export default function CreatorDashboard() {
                       ? "Someone"
                       : sup.supporterName || "A Supporter"
                   }
-                  amount={sup.amount?.toLocaleString()}
+                  amount={sup.amount}
+                  currency={sup.currency || creator?.currency}
                   time={
                     sup.createdAt
                       ? formatDistanceToNow(sup.createdAt.toDate(), {
@@ -253,7 +254,7 @@ function StatTile({ title, value, icon }: any) {
   );
 }
 
-function ActivityRow({ name, amount, time }: any) {
+function ActivityRow({ name, amount, time, currency }: any) {
   return (
     <div className="p-6 flex items-center gap-4 hover:bg-slate-50 transition border-b border-slate-50 last:border-0">
       <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center text-lg font-bold shrink-0">
@@ -270,7 +271,7 @@ function ActivityRow({ name, amount, time }: any) {
           </span>
         </div>
         <p className="text-lg font-bold text-orange-600 tracking-tight">
-          {amount} RWF
+          {amount != null ? formatCurrency(amount, currency) : "—"}
         </p>
       </div>
     </div>

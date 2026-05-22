@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import confetti from "canvas-confetti";
+import { formatCurrency } from "@/lib/format";
 
 export default function PaymentCallback() {
   const searchParams = useSearchParams();
@@ -108,7 +109,7 @@ export default function PaymentCallback() {
                     ? `Your payment of `
                     : `Your gift of `}
                   <span className="text-orange-600 font-bold">
-                    {txData?.amount} RWF
+                    {formatCurrency(txData?.amount || 0, txData?.currency)}
                   </span>{" "}
                   {txData?.type === "store"
                     ? "has been processed successfully."
@@ -118,49 +119,39 @@ export default function PaymentCallback() {
               <div className="pt-4">
                 <Link
                   href={`/${txData?.creatorId || ""}`}
-                  className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all group"
+                  className="inline-flex items-center gap-2 text-orange-600 font-bold text-sm hover:text-orange-700 transition-colors"
                 >
-                  Back to Creator{" "}
-                  <ArrowRight
-                    size={18}
-                    className="group-hover:translate-x-1 transition-transform"
-                  />
+                  Back to Profile <ArrowRight size={16} />
                 </Link>
               </div>
             </div>
           )}
 
           {status === "error" && (
-            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+            <div className="space-y-6 animate-in zoom-in-95 duration-500">
               <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
                 <XCircle size={40} />
               </div>
               <div className="space-y-2">
-                <h1 className="text-2xl font-bold text-slate-900">
+                <h1 className="text-3xl font-black text-slate-900">
                   Payment Failed
                 </h1>
-                <p className="text-slate-500 text-sm">
-                  We couldn&apos;t verify this transaction. It might have been
-                  cancelled or declined.
+                <p className="text-slate-500 font-medium">
+                  {txData?.type === "store"
+                    ? "Something went wrong processing your payment."
+                    : "Something went wrong sending your gift."}
                 </p>
               </div>
-              <button
-                onClick={() => router.back()}
-                className="w-full bg-slate-100 text-slate-900 py-4 rounded-2xl font-bold hover:bg-slate-200 transition-all"
-              >
-                Go Back & Try Again
-              </button>
+              <div className="pt-4">
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-lg font-bold text-sm hover:bg-orange-600 transition-colors"
+                >
+                  Try Again
+                </Link>
+              </div>
             </div>
           )}
-        </div>
-
-        <div className="bg-slate-50 p-4 border-t border-slate-100 flex items-center justify-center gap-2">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
-            Powered by
-          </span>
-          <span className="text-xs font-bold text-slate-800 tracking-tighter">
-            agaseke.me
-          </span>
         </div>
       </div>
     </div>

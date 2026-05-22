@@ -8,6 +8,8 @@ import {
   setDoc,
   updateDoc,
   serverTimestamp,
+  collection,
+  getDocs,
 } from "firebase/firestore";
 import {
   Check,
@@ -23,9 +25,12 @@ import {
   Loader,
   XCircle,
   Linkedin,
+  MapPin,
+  DollarSign,
 } from "lucide-react";
 import { toast } from "sonner";
 import { auth, db } from "@/db/firebase";
+import { PlatformLocation, Currency } from "@/types/platform";
 
 export default function CreatorOnboarding() {
   const searchParams = useSearchParams();
@@ -38,10 +43,15 @@ export default function CreatorOnboarding() {
     "idle" | "checking" | "available" | "taken" | "invalid"
   >("idle");
 
+  const [locations, setLocations] = useState<PlatformLocation[]>([]);
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
+
   const [formData, setFormData] = useState({
     username: searchParams.get("username") || "",
     fullName: "",
     bio: "",
+    location: "",
+    currency: "",
     momoNumber: "",
     momoNetwork: "MTN",
     socials: {
@@ -53,6 +63,22 @@ export default function CreatorOnboarding() {
       web: "",
     },
   });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const locSnap = await getDocs(collection(db, "locations"));
+      setLocations(
+        locSnap.docs.map((d) => ({ id: d.id, ...d.data() } as PlatformLocation)),
+      );
+      const curSnap = await getDocs(collection(db, "currencies"));
+      const curList = curSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Currency));
+      setCurrencies(curList);
+      if (curList.length > 0 && !formData.currency) {
+        setFormData((prev) => ({ ...prev, currency: curList[0].code }));
+      }
+    };
+    fetchData();
+  }, []);
 
   useEffect(() => {
     if (formData.username.length < 3) {
@@ -174,6 +200,8 @@ export default function CreatorOnboarding() {
         uid: user.uid,
         name: formData.fullName,
         bio: formData.bio,
+        location: formData.location || "",
+        currency: formData.currency || "",
         handle: formData.username,
         payoutNumber: formData.momoNumber,
         network: formData.momoNetwork,
@@ -361,6 +389,48 @@ export default function CreatorOnboarding() {
                   setFormData({ ...formData, bio: e.target.value })
                 }
               />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="relative">
+                  <MapPin
+                    size={16}
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"
+                  />
+                  <select
+                    value={formData.location}
+                    onChange={(e) =>
+                      setFormData({ ...formData, location: e.target.value })
+                    }
+                    className="w-full p-4 pl-10 bg-slate-50 border border-slate-100 rounded-lg text-sm font-bold outline-none focus:border-orange-500 appearance-none cursor-pointer"
+                  >
+                    <option value="">Your location</option>
+                    {locations.map((loc) => (
+                      <option key={loc.id} value={loc.name}>
+                        {loc.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="relative">
+                  <DollarSign
+                    size={16}
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none"
+                  />
+                  <select
+                    value={formData.currency}
+                    onChange={(e) =>
+                      setFormData({ ...formData, currency: e.target.value })
+                    }
+                    className="w-full p-4 pl-10 bg-slate-50 border border-slate-100 rounded-lg text-sm font-bold outline-none focus:border-orange-500 appearance-none cursor-pointer"
+                  >
+                    <option value="">Your currency</option>
+                    {currencies.map((cur) => (
+                      <option key={cur.id} value={cur.code}>
+                        {cur.code} — {cur.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
             <div className="flex gap-3">
               <button
@@ -600,6 +670,16 @@ export default function CreatorOnboarding() {
                   agaseke.me/{formData.username}
                 </span>
               </div>
+              {(formData.location || formData.currency) && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+                    Location / Currency
+                  </span>
+                  <span className="font-bold text-slate-700 text-sm">
+                    {[formData.location, formData.currency].filter(Boolean).join(" · ")}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
                   Payout

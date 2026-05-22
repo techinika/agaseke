@@ -35,6 +35,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
+import { formatCurrency } from "@/lib/format";
 import { toast } from "sonner";
 import { Product } from "@/types/store";
 import { Order } from "@/types/store";
@@ -582,6 +583,7 @@ function ProductsList({
   onEdit: (p: Product) => void;
   onDelete: (id: string) => void;
 }) {
+  const { creator } = useAuth();
   if (products.length === 0) {
     return (
       <div className="text-center py-20 bg-white rounded-lg border border-slate-100">
@@ -635,7 +637,7 @@ function ProductsList({
             </p>
             <div className="flex items-center justify-between mt-4">
               <span className="font-bold text-lg">
-                {product.price.toLocaleString()} RWF
+                {formatCurrency(product.price, creator?.currency)}
               </span>
               {product.type === "physical" && (
                 <span className="text-xs text-slate-400">
@@ -671,6 +673,7 @@ function OrdersList({
   orders: Order[];
   onUpdateStatus: (id: string, status: Order["status"]) => void;
 }) {
+  const { creator } = useAuth();
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
 
@@ -758,13 +761,13 @@ function OrdersList({
                     {item.quantity}x {item.productName}
                   </span>
                   <span className="font-medium">
-                    {item.price.toLocaleString()} RWF
+                    {formatCurrency(item.price, creator?.currency)}
                   </span>
                 </div>
               ))}
               <div className="border-t border-slate-200 mt-3 pt-3 flex justify-between font-bold">
                 <span>Total</span>
-                <span>{order.total.toLocaleString()} RWF</span>
+                <span>{formatCurrency(order.total, creator?.currency)}</span>
               </div>
             </div>
 
@@ -865,6 +868,7 @@ function CouponsList({
   onEdit: (c: Coupon) => void;
   onDelete: (id: string) => void;
 }) {
+  const { creator } = useAuth();
   if (coupons.length === 0) {
     return (
       <div className="text-center py-20 bg-white rounded-lg border border-slate-100">
@@ -901,11 +905,11 @@ function CouponsList({
           <p className="text-2xl font-bold text-slate-900 mb-2">
             {coupon.discountType === "percentage"
               ? `${coupon.discountValue}% OFF`
-              : `${coupon.discountValue.toLocaleString()} RWF OFF`}
+              : `${formatCurrency(coupon.discountValue, creator?.currency)} OFF`}
           </p>
           {coupon.minPurchase && (
             <p className="text-xs text-slate-500 mb-2">
-              Min. purchase: {coupon.minPurchase.toLocaleString()} RWF
+              Min. purchase: {formatCurrency(coupon.minPurchase, creator?.currency)}
             </p>
           )}
           <p className="text-xs text-slate-400 mb-4">
@@ -953,6 +957,7 @@ function CouponModal({
     productIds: coupon?.productIds || ([] as string[]),
     active: coupon?.active ?? true,
   });
+  const { creator } = useAuth();
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async () => {
@@ -1045,7 +1050,7 @@ function CouponModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">
-                Min. Purchase (RWF)
+                Min. Purchase ({creator?.currency || "RWF"})
               </label>
               <input
                 type="number"
@@ -1100,7 +1105,7 @@ function CouponModal({
                   />
                   <span className="font-medium">{product.name}</span>
                   <span className="text-xs text-slate-400">
-                    {product.price.toLocaleString()} RWF
+                    {formatCurrency(product.price, creator?.currency)}
                   </span>
                 </label>
               ))}
@@ -1163,6 +1168,7 @@ function FoldersList({
   onEdit: (folder: any) => void;
   onDelete: (id: string) => void;
 }) {
+  const { creator } = useAuth();
   if (folders.length === 0) {
     return (
       <div className="text-center py-20 bg-white rounded-lg border border-slate-100">
@@ -1227,7 +1233,7 @@ function FoldersList({
               )}
               {folder.bundlePrice > 0 && (
                 <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
-                  {folder.bundlePrice.toLocaleString()} RWF
+                  {formatCurrency(folder.bundlePrice, creator?.currency)}
                 </span>
               )}
             </div>
@@ -1270,6 +1276,7 @@ function FolderModal({
   onClose: () => void;
   onSave: (data: any) => void;
 }) {
+  const { creator } = useAuth();
   const [saving, setSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -1443,7 +1450,7 @@ function FolderModal({
                   />
                   <span className="font-medium">{product.name}</span>
                   <span className="text-xs text-slate-400">
-                    {product.price.toLocaleString()} RWF
+                    {formatCurrency(product.price, creator?.currency)}
                   </span>
                 </label>
               ))}
@@ -1453,11 +1460,11 @@ function FolderModal({
           {formData.productIds.length > 0 && (
             <div className="p-4 bg-slate-50 rounded-lg space-y-1">
               <p className="text-sm text-slate-500">
-                Sum of products: {totalPrice.toLocaleString()} RWF
+                Sum of products: {formatCurrency(totalPrice, creator?.currency)}
               </p>
               {formData.bundlePrice > 0 && (
                 <p className="text-sm font-bold text-orange-600">
-                  Bundle price: {formData.bundlePrice.toLocaleString()} RWF
+                  Bundle price: {formatCurrency(formData.bundlePrice, creator?.currency)}
                 </p>
               )}
             </div>
@@ -1531,7 +1538,7 @@ function FolderModal({
               />
               {formData.discountPercentage > 0 && effectivePrice > 0 && (
                 <p className="text-sm text-green-600 mt-2">
-                  You save: {discountAmount.toLocaleString()} RWF (
+                  You save: {formatCurrency(discountAmount, creator?.currency)} (
                   {formData.discountPercentage}% off)
                 </p>
               )}
@@ -1600,6 +1607,7 @@ function CreateOrderModal({
     productIds: [] as { productId: string; quantity: number; price: number }[],
     notes: "",
   });
+  const { creator } = useAuth();
   const [saving, setSaving] = useState(false);
 
   const addProduct = (productId: string) => {
@@ -1712,7 +1720,7 @@ function CreateOrderModal({
               <option value="">Select a product to add</option>
               {products.map((product) => (
                 <option key={product.id} value={product.id}>
-                  {product.name} - {product.price.toLocaleString()} RWF
+                  {product.name} - {formatCurrency(product.price, creator?.currency)}
                 </option>
               ))}
             </select>
@@ -1733,7 +1741,7 @@ function CreateOrderModal({
                     <div className="flex-1">
                       <p className="font-medium">{product?.name}</p>
                       <p className="text-sm text-slate-500">
-                        {product?.price.toLocaleString()} RWF each
+                        {formatCurrency(product?.price ?? 0, creator?.currency)} each
                       </p>
                     </div>
                     <input
@@ -1746,7 +1754,7 @@ function CreateOrderModal({
                       className="w-16 bg-white border border-slate-200 rounded-lg px-2 py-1 text-center"
                     />
                     <p className="font-bold w-24 text-right">
-                      {(item.price * item.quantity).toLocaleString()} RWF
+                      {formatCurrency(item.price * item.quantity, creator?.currency)}
                     </p>
                     <button
                       onClick={() => removeProduct(item.productId)}
@@ -1764,7 +1772,7 @@ function CreateOrderModal({
             <div className="p-4 bg-orange-50 rounded-lg flex justify-between items-center">
               <p className="font-bold">Total Amount</p>
               <p className="text-xl font-bold text-orange-600">
-                {totalAmount.toLocaleString()} RWF
+                {formatCurrency(totalAmount, creator?.currency)}
               </p>
             </div>
           )}
@@ -1837,6 +1845,7 @@ function ProductModal({
     platformFeePayer:
       product?.platformFeePayer || ("buyer" as "buyer" | "creator"),
   });
+  const { creator } = useAuth();
   const [saving, setSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [newSize, setNewSize] = useState("");
@@ -2065,7 +2074,7 @@ function ProductModal({
 
             <div>
               <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
-                Price (RWF) *
+                Price ({creator?.currency || "RWF"}) *
               </label>
               <input
                 type="number"
@@ -2126,8 +2135,8 @@ function ProductModal({
               {formData.price > 0 && (
                 <p className="text-xs text-orange-600 mt-2">
                   {formData.platformFeePayer === "buyer"
-                    ? `Buyer pays ${(formData.price * 1.1).toLocaleString()} RWF (price + 10%)`
-                    : `Creator receives ${(formData.price * 0.9).toLocaleString()} RWF (price - 10%)`}
+                    ? `Buyer pays ${formatCurrency(formData.price * 1.1, creator?.currency)} (price + 10%)`
+                    : `Creator receives ${formatCurrency(formData.price * 0.9, creator?.currency)} (price - 10%)`}
                 </p>
               )}
             </div>

@@ -20,7 +20,9 @@ import {
   DollarSign,
 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
+import { formatCurrency } from "@/lib/format";
 import { Profile } from "@/types/profile";
+import { PlatformLocation, Currency } from "@/types/platform";
 import { toast } from "sonner";
 import Loading from "@/app/loading";
 import Link from "next/link";
@@ -40,7 +42,25 @@ export default function ProfileEditPage() {
 
   const [displayName, setDisplayName] = useState("");
   const [location, setLocation] = useState("");
+  const [currency, setCurrency] = useState("");
   const [phone, setPhone] = useState("");
+
+  const [locations, setLocations] = useState<PlatformLocation[]>([]);
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
+
+  useEffect(() => {
+    const fetchPlatformData = async () => {
+      const locSnap = await getDocs(collection(db, "locations"));
+      setLocations(
+        locSnap.docs.map((d) => ({ id: d.id, ...d.data() } as PlatformLocation)),
+      );
+      const curSnap = await getDocs(collection(db, "currencies"));
+      setCurrencies(
+        curSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Currency)),
+      );
+    };
+    fetchPlatformData();
+  }, []);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -53,6 +73,7 @@ export default function ProfileEditPage() {
           setProfile(data as Profile);
           setDisplayName(data.displayName || "");
           setLocation(data.location || "");
+          setCurrency(data.currency || "");
           setPhone(data?.phoneNumber || "");
         }
 
@@ -82,6 +103,7 @@ export default function ProfileEditPage() {
       await updateDoc(userRef, {
         displayName,
         location,
+        currency,
         phoneNumber: phone,
       });
       toast.success("Profile updated successfully!");
@@ -209,35 +231,52 @@ export default function ProfileEditPage() {
               </div>
 
               <div className="space-y-2 md:col-span-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">
-                  Location
+                <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1 flex items-center gap-1.5">
+                  <MapPin size={12} /> Location
                 </label>
-                <div className="relative">
-                  <MapPin
-                    size={16}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
-                  />
-                  <input
-                    type="text"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    placeholder="e.g. Kigali, Rwanda"
-                    className="w-full bg-slate-50 border-none focus:ring-2 focus:ring-orange-100 rounded-lg py-4 pl-12 pr-6 font-bold transition-all"
-                  />
-                </div>
-                <div className="relative">
-                  <Phone
-                    size={16}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
-                  />
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="e.g. +250789999999"
-                    className="w-full bg-slate-50 border-none focus:ring-2 focus:ring-orange-100 rounded-lg py-4 pl-12 pr-6 font-bold transition-all"
-                  />
-                </div>
+                <select
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  className="w-full bg-slate-50 border-none focus:ring-2 focus:ring-orange-100 rounded-lg py-4 px-6 font-bold transition-all appearance-none cursor-pointer"
+                >
+                  <option value="">Select location</option>
+                  {locations.map((loc) => (
+                    <option key={loc.id} value={loc.name}>
+                      {loc.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1 flex items-center gap-1.5">
+                  <DollarSign size={12} /> Currency
+                </label>
+                <select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  className="w-full bg-slate-50 border-none focus:ring-2 focus:ring-orange-100 rounded-lg py-4 px-6 font-bold transition-all appearance-none cursor-pointer"
+                >
+                  <option value="">Select currency</option>
+                  {currencies.map((cur) => (
+                    <option key={cur.id} value={cur.code}>
+                      {cur.code} — {cur.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1 flex items-center gap-1.5">
+                  <Phone size={12} /> Phone Number
+                </label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="e.g. +250789999999"
+                  className="w-full bg-slate-50 border-none focus:ring-2 focus:ring-orange-100 rounded-lg py-4 px-6 font-bold transition-all"
+                />
               </div>
             </div>
 
@@ -263,7 +302,7 @@ export default function ProfileEditPage() {
             <p className="text-sm text-red-700 font-medium">
               {hasPendingPayout ? (
                 <>
-                  You have <span className="font-bold">{pendingAmount.toLocaleString()} RWF</span> pending payout. 
+                  You have <span className="font-bold">{formatCurrency(pendingAmount, auth.creator?.currency)}</span> pending payout. 
                   You must withdraw your funds before deleting your account.
                 </>
               ) : (
@@ -273,7 +312,7 @@ export default function ProfileEditPage() {
             <button
               onClick={() => {
                 if (hasPendingPayout) {
-                  toast.error(`Please withdraw your ${pendingAmount.toLocaleString()} RWF first`);
+                  toast.error(`Please withdraw your ${formatCurrency(pendingAmount, auth.creator?.currency)} first`);
                 } else {
                   setIsDeleteModalOpen(true);
                 }

@@ -29,6 +29,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { Giveaway, GiveawayEntry } from "@/types/giveaway";
 import { ProtectedSection } from "./ProtectedSection";
+import { formatCurrency } from "@/lib/format";
 
 interface GiveawayTabProps {
   creatorId: string;
@@ -39,6 +40,7 @@ interface GiveawayTabProps {
   userTotalSupport: number;
   setIsModalOpen: (open: boolean) => void;
   currentUserId?: string;
+  creatorData?: any;
 }
 
 export const GiveawayTab = ({
@@ -50,6 +52,7 @@ export const GiveawayTab = ({
   userTotalSupport,
   setIsModalOpen,
   currentUserId,
+  creatorData,
 }: GiveawayTabProps) => {
   const { user: currentUser } = useAuth();
   const [activeGiveaways, setActiveGiveaways] = useState<Giveaway[]>([]);
@@ -373,7 +376,7 @@ export const GiveawayTab = ({
                           <p className="text-xs text-amber-700 mt-1">
                             {giveaway.access === "supporters"
                               ? "This giveaway is only for supporters."
-                              : `You need to support with at least ${giveaway.minSupportAmount?.toLocaleString()} RWF to participate.`}
+                              : `You need to support with at least ${formatCurrency(giveaway.minSupportAmount || 0, creatorData?.currency)} to participate.`}
                           </p>
                         </div>
                       </div>

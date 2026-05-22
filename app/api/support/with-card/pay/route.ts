@@ -34,7 +34,10 @@ export async function POST(req: Request) {
       platformFeePayer,
       buyerName,
       buyerId,
+      currency: txCurrency,
     } = body;
+
+    const currency = txCurrency || "RWF";
 
     const isStoreTransaction = !!productId;
     const platformSharePercentage =
@@ -110,7 +113,7 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({
           id: merchantRef,
-          currency: "RWF",
+          currency,
           amount: totalAmount,
           description: isStoreTransaction
             ? `Purchase: ${productName}`
@@ -136,6 +139,7 @@ export async function POST(req: Request) {
         ref: merchantRef,
         orderTrackingId: payData.order_tracking_id,
         amount: totalAmount,
+        currency,
         creatorUid,
         creatorId,
         buyerId: buyerId || "anonymous",
@@ -173,7 +177,7 @@ export async function POST(req: Request) {
           userId: adminDoc.id,
           type: "new_transaction",
           title: "New Transaction",
-          message: `${isStoreTransaction ? "Store purchase" : "Support"} of ${totalAmount.toLocaleString()} RWF initiated`,
+          message: `${isStoreTransaction ? "Store purchase" : "Support"} of ${totalAmount.toLocaleString()} ${currency} initiated`,
           link: "/admin/payouts",
         });
       }

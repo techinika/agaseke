@@ -24,6 +24,7 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
+import { formatCurrency } from "@/lib/format";
 
 export default function PayoutsPage() {
   const router = useRouter();
@@ -83,7 +84,7 @@ export default function PayoutsPage() {
     }
     if (pendingAmount < WITHDRAW_THRESHOLD) {
       toast.error(
-        `Minimum withdraw is ${WITHDRAW_THRESHOLD.toLocaleString()} RWF`,
+        `Minimum withdraw is ${formatCurrency(WITHDRAW_THRESHOLD, creator?.currency)}`,
       );
       return;
     }
@@ -97,7 +98,7 @@ export default function PayoutsPage() {
 
     if (isNaN(finalAmount) || finalAmount < WITHDRAW_THRESHOLD) {
       toast.error(
-        `Amount must be at least ${WITHDRAW_THRESHOLD.toLocaleString()} RWF`,
+        `Amount must be at least ${formatCurrency(WITHDRAW_THRESHOLD, creator?.currency)}`,
       );
       return;
     }
@@ -192,8 +193,7 @@ export default function PayoutsPage() {
                   Pending Balance
                 </p>
                 <h2 className="text-4xl font-black">
-                  {pendingAmount.toLocaleString()}{" "}
-                  <span className="text-sm font-bold text-slate-300">RWF</span>
+                  {formatCurrency(pendingAmount, creator?.currency)}
                 </h2>
               </div>
               <div className="bg-white p-8 rounded-lg border border-slate-100 shadow-sm">
@@ -201,8 +201,7 @@ export default function PayoutsPage() {
                   Total Earnings
                 </p>
                 <h2 className="text-4xl font-black">
-                  {(creator?.totalEarnings || 0).toLocaleString()}{" "}
-                  <span className="text-sm font-bold text-slate-300">RWF</span>
+                  {formatCurrency(creator?.totalEarnings || 0, creator?.currency)}
                 </h2>
              </div>
              <div className="bg-white p-8 rounded-lg border border-slate-100 shadow-sm">
@@ -236,7 +235,7 @@ export default function PayoutsPage() {
                   Progress to Payout Threshold
                 </p>
                 <p className="text-sm font-bold text-slate-900">
-                  {pendingAmount.toLocaleString()} / {WITHDRAW_THRESHOLD.toLocaleString()} RWF
+                  {formatCurrency(pendingAmount, creator?.currency)} / {formatCurrency(WITHDRAW_THRESHOLD, creator?.currency)}
                 </p>
               </div>
               <div className="w-full bg-slate-100 rounded-full h-3 mb-3">
@@ -248,7 +247,7 @@ export default function PayoutsPage() {
               <p className="text-xs text-slate-500">
                 {pendingAmount >= WITHDRAW_THRESHOLD
                   ? "You've reached the payout threshold! You can now request a withdrawal."
-                  : `You need ${(WITHDRAW_THRESHOLD - pendingAmount).toLocaleString()} RWF more to reach the payout threshold.`}
+                       : `You need ${formatCurrency(WITHDRAW_THRESHOLD - pendingAmount, creator?.currency)} more to reach the payout threshold.`}
               </p>
             </div>
 
@@ -296,7 +295,7 @@ export default function PayoutsPage() {
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-black">
-                            -{tx.amount.toLocaleString()} RWF
+                            -{formatCurrency(tx.amount, tx.currency)}
                           </p>
                           <p className="text-[10px] text-green-500 font-bold uppercase tracking-widest">
                             Completed
@@ -330,7 +329,7 @@ export default function PayoutsPage() {
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-black">
-                          {req.amount.toLocaleString()} RWF
+                          {formatCurrency(req.amount, req.currency || creator?.currency)}
                         </p>
                         <p
                           className={`text-[10px] font-bold uppercase tracking-widest ${req.status === "pending" ? "text-orange-600" : req.status === "approved" ? "text-green-500" : "text-red-500"}`}
@@ -390,7 +389,7 @@ export default function PayoutsPage() {
                         type="number"
                         value={customAmount}
                         onChange={(e) => setCustomAmount(e.target.value)}
-                        placeholder="Enter amount (RWF)"
+                        placeholder={`Enter amount (${creator?.currency || "RWF"})`}
                         className="w-full bg-slate-50 p-4 rounded-lg font-black text-lg outline-none border-2 border-transparent focus:border-orange-600 transition"
                       />
                     </div>

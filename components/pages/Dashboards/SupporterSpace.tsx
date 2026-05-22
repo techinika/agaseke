@@ -46,6 +46,7 @@ import { db } from "@/db/firebase";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { formatCurrency } from "@/lib/format";
 
 interface Comment {
   id: string;
@@ -1074,7 +1075,7 @@ export default function SupporterSpace() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">Total Supported</span>
                   <span className="font-semibold text-orange-600">
-                    {(auth?.profile?.totalSupport || 0).toLocaleString()} RWF
+                    {formatCurrency(auth?.profile?.totalSupport || 0, auth?.profile?.currency)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -1156,7 +1157,7 @@ export default function SupporterSpace() {
                         </p>
                       </div>
                       <span className="text-xs font-medium text-emerald-600">
-                        {Number(purchase.totalAmount || 0).toLocaleString()} RWF
+                        {formatCurrency(Number(purchase.totalAmount || 0), purchase.currency || auth?.profile?.currency)}
                       </span>
                     </div>
                   ))}

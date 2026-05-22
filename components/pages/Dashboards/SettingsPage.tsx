@@ -22,10 +22,19 @@ import {
   ShoppingBag,
   Gift,
   Calendar,
+  MapPin,
+  DollarSign,
 } from "lucide-react";
-import { db, auth } from "@/db/firebase";
-import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { db } from "@/db/firebase";
+import {
+  doc,
+  onSnapshot,
+  updateDoc,
+  collection,
+  getDocs,
+} from "firebase/firestore";
 import { Creator } from "@/types/creator";
+import { PlatformLocation, Currency } from "@/types/platform";
 import { useAuth } from "@/auth/AuthContext";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -41,6 +50,23 @@ export default function CreatorSettings() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
+
+  const [locations, setLocations] = useState<PlatformLocation[]>([]);
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
+
+  useEffect(() => {
+    const fetchPlatformData = async () => {
+      const locSnap = await getDocs(collection(db, "locations"));
+      setLocations(
+        locSnap.docs.map((d) => ({ id: d.id, ...d.data() } as PlatformLocation)),
+      );
+      const curSnap = await getDocs(collection(db, "currencies"));
+      setCurrencies(
+        curSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Currency)),
+      );
+    };
+    fetchPlatformData();
+  }, []);
 
   useEffect(() => {
     if (!creator) return;
@@ -114,6 +140,8 @@ export default function CreatorSettings() {
       const updateData: Record<string, any> = {
         name: creatorData.name || "",
         bio: creatorData.bio || "",
+        location: creatorData.location || "",
+        currency: creatorData.currency || "",
         profilePicture: creatorData.profilePicture || "",
         socials: creatorData.socials || {},
         messagingEnabled: creatorData.messagingEnabled ?? false,
@@ -269,6 +297,43 @@ export default function CreatorSettings() {
                     placeholder="Tell your supporters who you are..."
                     className="w-full h-32 bg-slate-50 p-4 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none resize-none border border-transparent focus:bg-white transition-all"
                   />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 flex items-center gap-1.5">
+                      <MapPin size={12} /> Location
+                    </label>
+                    <select
+                      value={creatorData?.location || ""}
+                      onChange={(e) => handleUpdate("location", e.target.value)}
+                      className="w-full bg-slate-50 p-4 rounded-lg text-sm font-bold focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-white transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="">Select location</option>
+                      {locations.map((loc) => (
+                        <option key={loc.id} value={loc.name}>
+                          {loc.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 flex items-center gap-1.5">
+                      <DollarSign size={12} /> Currency
+                    </label>
+                    <select
+                      value={creatorData?.currency || ""}
+                      onChange={(e) => handleUpdate("currency", e.target.value)}
+                      className="w-full bg-slate-50 p-4 rounded-lg text-sm font-bold focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-white transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="">Select currency</option>
+                      {currencies.map((cur) => (
+                        <option key={cur.id} value={cur.code}>
+                          {cur.code} — {cur.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div className="p-6 bg-slate-900 rounded-lg text-white flex items-center justify-between shadow-xl">
@@ -749,7 +814,7 @@ export default function CreatorSettings() {
                       {!creatorData?.messagingAllowAll && (
                         <div className="space-y-2">
                           <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                            Minimum Support Amount (RWF)
+                            Minimum Support Amount ({creatorData?.currency || "RWF"})
                           </label>
                           <input
                             type="number"

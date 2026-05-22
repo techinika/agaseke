@@ -17,6 +17,7 @@ import {
 } from "firebase/firestore";
 import { ProtectedSection } from "./ProtectedSection";
 import { toast } from "sonner";
+import { formatCurrency } from "@/lib/format";
 
 interface MessageTabProps {
   isLoggedIn: boolean;
@@ -273,7 +274,7 @@ export const MessageTab = ({
           <p className="text-sm text-slate-500 max-w-[250px] mx-auto">
             {messagingAllowAll
               ? "This creator has disabled direct messaging."
-              : `You need to support with at least ${messagingMinAmount.toLocaleString()} RWF to send a message.`}
+              : `You need to support with at least ${formatCurrency(messagingMinAmount, creatorData?.currency)} to send a message.`}
           </p>
           <button
             onClick={() => setIsModalOpen(true)}

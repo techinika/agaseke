@@ -40,6 +40,7 @@ export default function RootLayout({
           <NavItem href="/admin/changelog">Changelog</NavItem>
           <NavItem href="/admin/feedback">Feedback</NavItem>
           <NavItem href="/admin/logs">Activity Logs</NavItem>
+          <NavItem href="/admin/localisation">Localisation</NavItem>
         </div>
       </nav>
       {children}

@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader, Check } from "lucide-react";
+import { Loader, Check, Smartphone, ShieldCheck } from "lucide-react";
 import { db } from "@/db/firebase";
-import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
 import Link from "next/link";
+import { formatCurrency, isMoMoSupported } from "@/lib/format";
 
 export default function PayStoreOrderPage() {
   const params = useParams();
@@ -15,8 +16,9 @@ export default function PayStoreOrderPage() {
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [paid, setPaid] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"momo" | "card">("momo");
+  const [paymentMethod, setPaymentMethod] = useState<"momo" | "card">("card");
   const [phone, setPhone] = useState("");
+  const [currency, setCurrency] = useState("RWF");
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -26,6 +28,18 @@ export default function PayStoreOrderPage() {
       if (orderDoc.exists()) {
         const data = orderDoc.data();
         setOrder({ id: orderDoc.id, ...data });
+
+        const creatorHandle = data.creatorId || data.creatorHandle;
+        if (creatorHandle) {
+          const creatorDoc = await getDoc(doc(db, "creators", creatorHandle));
+          if (creatorDoc.exists()) {
+            const creatorCurrency = creatorDoc.data().currency || "RWF";
+            setCurrency(creatorCurrency);
+            if (!isMoMoSupported(creatorCurrency)) {
+              setPaymentMethod("card");
+            }
+          }
+        }
       }
       setLoading(false);
     };
@@ -116,23 +130,30 @@ export default function PayStoreOrderPage() {
         
         <div className="bg-slate-50 rounded-lg p-4 mb-6">
           <p className="text-sm text-slate-500 mb-2">Order Total</p>
-          <p className="text-2xl font-bold">{order.total.toLocaleString()} RWF</p>
+          <p className="text-2xl font-bold">{formatCurrency(order.total, currency)}</p>
         </div>
 
         <div className="space-y-4 mb-6">
           <p className="font-bold">Payment Method</p>
           
-          <button
-            onClick={() => setPaymentMethod("momo")}
-            className={`w-full p-4 rounded-lg border-2 transition ${
-              paymentMethod === "momo"
-                ? "border-orange-500 bg-orange-50"
-                : "border-slate-100"
-            }`}
-          >
-            <p className="font-bold">Mobile Money (MoMo)</p>
-            <p className="text-sm text-slate-500">Pay via MTN or Airtel Money</p>
-          </button>
+          {isMoMoSupported(currency) && (
+            <button
+              onClick={() => setPaymentMethod("momo")}
+              className={`w-full p-4 rounded-lg border-2 transition ${
+                paymentMethod === "momo"
+                  ? "border-orange-500 bg-orange-50"
+                  : "border-slate-100"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Smartphone size={20} className={paymentMethod === "momo" ? "text-orange-600" : "text-slate-400"} />
+                <div className="text-left">
+                  <p className="font-bold">Mobile Money (MoMo)</p>
+                  <p className="text-sm text-slate-500">Pay via MTN or Airtel Money</p>
+                </div>
+              </div>
+            </button>
+          )}
           
           <button
             onClick={() => setPaymentMethod("card")}
@@ -142,9 +163,20 @@ export default function PayStoreOrderPage() {
                 : "border-slate-100"
             }`}
           >
-            <p className="font-bold">Bank Card</p>
-            <p className="text-sm text-slate-500">Visa, Mastercard</p>
+            <div className="flex items-center gap-3">
+              <ShieldCheck size={20} className={paymentMethod === "card" ? "text-orange-600" : "text-slate-400"} />
+              <div className="text-left">
+                <p className="font-bold">Bank Card</p>
+                <p className="text-sm text-slate-500">Visa, Mastercard</p>
+              </div>
+            </div>
           </button>
+          
+          {!isMoMoSupported(currency) && (
+            <p className="text-xs text-slate-400 text-center">
+              Card payments only for {currency} transactions
+            </p>
+          )}
         </div>
 
         {paymentMethod === "momo" && (
@@ -165,7 +197,7 @@ export default function PayStoreOrderPage() {
           disabled={paying || (paymentMethod === "momo" && !phone)}
           className="w-full bg-green-600 text-white py-4 rounded-lg font-bold hover:bg-green-700 transition disabled:opacity-50"
         >
-          {paying ? <Loader className="animate-spin mx-auto" /> : `Pay ${order.total.toLocaleString()} RWF`}
+          {paying ? <Loader className="animate-spin mx-auto" /> : `Pay ${formatCurrency(order.total, currency)}`}
         </button>
       </div>
     </div>

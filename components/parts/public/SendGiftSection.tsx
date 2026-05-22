@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, CheckCircle2, Heart, LogIn, Share2, User } from "lucide-react";
+import { Calendar, CheckCircle2, Heart, LogIn, Share2, User, MapPin, DollarSign } from "lucide-react";
 import Link from "next/link";
 import { SocialPill } from "../profile/SocialPill";
 import { getIcon } from "../profile/GetLink";
@@ -13,6 +13,8 @@ export const SendGiftSection = ({
   verified,
   handle,
   bio,
+  location,
+  currency,
   setIsShareModalOpen,
   setIsModalOpen,
   currentUser,
@@ -32,6 +34,8 @@ export const SendGiftSection = ({
   verified: boolean;
   handle: string;
   bio: string;
+  location?: string;
+  currency?: string;
   setIsShareModalOpen: any;
   setIsModalOpen: any;
   currentUser: any;
@@ -77,6 +81,23 @@ export const SendGiftSection = ({
         <p className="text-slate-500 text-lg leading-relaxed max-w-lg mx-auto mb-8 font-medium">
           {bio}
         </p>
+
+        {(location || currency) && (
+          <div className="flex flex-wrap justify-center gap-3 mb-6">
+            {location && (
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-50 rounded-full border border-slate-100 text-xs font-bold text-slate-500">
+                <MapPin size={12} className="text-orange-500" />
+                {location}
+              </div>
+            )}
+            {currency && (
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-50 rounded-full border border-slate-100 text-xs font-bold text-slate-500">
+                <DollarSign size={12} className="text-emerald-500" />
+                {currency}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex flex-wrap justify-center gap-3 mb-10">
           {Object.entries(socials).map(

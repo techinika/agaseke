@@ -35,6 +35,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
+import { formatCurrency } from "@/lib/format";
 import { toast } from "sonner";
 import {
   Giveaway,
@@ -487,6 +488,7 @@ function GiveawayDetail({
   onShowWinners: () => void;
   creatorHandle: string;
 }) {
+  const { creator } = useAuth();
   const isActive = giveaway.status === "active";
   const isEnded =
     giveaway.status === "ended" || giveaway.status === "completed";
@@ -531,7 +533,7 @@ function GiveawayDetail({
               ? "Public"
               : giveaway.access === "supporters"
                 ? "Supporters Only"
-                : `Supporters (${giveaway.minSupportAmount}+ RWF)`}
+                : `Supporters (${formatCurrency(giveaway.minSupportAmount, creator?.currency)}+)`}
           </p>
         </div>
 
@@ -715,6 +717,7 @@ function GiveawayModal({
   creatorName: string;
   onClose: () => void;
 }) {
+  const { creator } = useAuth();
   const [existingPartners, setExistingPartners] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     title: giveaway?.title || "",
@@ -1007,7 +1010,7 @@ function GiveawayModal({
           {formData.access === "tier" && (
             <div>
               <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
-                Minimum Support (RWF)
+                Minimum Support ({creator?.currency || "RWF"})
               </label>
               <input
                 type="number"

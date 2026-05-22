@@ -3,7 +3,6 @@
 
 import React, { useState, useEffect } from "react";
 import {
-  TrendingUp,
   DollarSign,
   Package,
   Users,
@@ -21,6 +20,7 @@ import {
   documentId,
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
+import { formatCurrency } from "@/lib/format";
 
 interface SaleRecord {
   id: string;
@@ -41,6 +41,7 @@ interface SaleRecord {
   referralUid: string;
   status: string;
   paymentMethod: string;
+  currency: string;
   createdAt: any;
 }
 
@@ -196,14 +197,16 @@ export default function SalesPage() {
     return matchesSearch && matchesTime;
   });
 
-  const totalSales = filteredSales.reduce(
-    (sum, sale) => sum + sale.totalAmount,
-    0,
-  );
-  const totalEarnings = filteredSales.reduce(
-    (sum, sale) => sum + (sale.creatorEarnings || 0),
-    0,
-  );
+  const currencyTotals: Record<string, { sales: number; earnings: number }> = {};
+  filteredSales.forEach((sale) => {
+    const cur = sale.currency || creator?.currency || "RWF";
+    if (!currencyTotals[cur]) {
+      currencyTotals[cur] = { sales: 0, earnings: 0 };
+    }
+    currencyTotals[cur].sales += sale.totalAmount;
+    currencyTotals[cur].earnings += sale.creatorEarnings || 0;
+  });
+
   const totalOrders = filteredSales.length;
   const uniqueBuyers = new Set(
     filteredSales
@@ -215,33 +218,40 @@ export default function SalesPage() {
     string,
     {
       name: string;
-      total: number;
+      perCurrency: Record<string, { total: number; earnings: number }>;
       quantity: number;
-      earnings: number;
       type?: string;
       imageUrl?: string;
     }
   > = {};
   filteredSales.forEach((sale) => {
+    const cur = sale.currency || creator?.currency || "RWF";
     if (!productSales[sale.productId]) {
       const product = products[sale.productId];
       productSales[sale.productId] = {
         name: product?.name || sale.productName,
-        total: 0,
+        perCurrency: {},
         quantity: 0,
-        earnings: 0,
         type: product?.type,
         imageUrl: product?.imageUrl,
       };
     }
-    productSales[sale.productId].total += sale.totalAmount;
-    productSales[sale.productId].quantity += sale.quantity || 1;
-    productSales[sale.productId].earnings += sale.creatorEarnings || 0;
+    const info = productSales[sale.productId];
+    if (!info.perCurrency[cur]) {
+      info.perCurrency[cur] = { total: 0, earnings: 0 };
+    }
+    info.perCurrency[cur].total += sale.totalAmount;
+    info.perCurrency[cur].earnings += sale.creatorEarnings || 0;
+    info.quantity += sale.quantity || 1;
   });
 
   const topProducts = Object.entries(productSales)
     .map(([id, data]) => ({ id, ...data }))
-    .sort((a, b) => b.total - a.total)
+    .sort((a, b) => {
+      const aTotal = Object.values(a.perCurrency).reduce((s, c) => s + c.total, 0);
+      const bTotal = Object.values(b.perCurrency).reduce((s, c) => s + c.total, 0);
+      return bTotal - aTotal;
+    })
     .slice(0, 5);
 
   const paymentMethods: Record<string, string> = {
@@ -270,36 +280,25 @@ export default function SalesPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-500">Total Sales</p>
-              <p className="text-2xl md:text-3xl font-black text-slate-900 mt-1">
-                {totalSales.toLocaleString()} RWF
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-orange-600" />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-500">
-                Your Earnings
-              </p>
-              <p className="text-2xl md:text-3xl font-black text-slate-900 mt-1">
-                {totalEarnings.toLocaleString()} RWF
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-green-600" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {Object.entries(currencyTotals).map(([currency, { sales, earnings }]) => (
+          <div key={currency} className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500">Total Sales ({currency})</p>
+                <p className="text-2xl md:text-3xl font-black text-slate-900 mt-1">
+                  {formatCurrency(sales, currency)}
+                </p>
+                <p className="text-sm text-green-600 mt-1">
+                  Earnings: {formatCurrency(earnings, currency)}
+                </p>
+              </div>
+              <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center">
+                <DollarSign className="w-6 h-6 text-orange-600" />
+              </div>
             </div>
           </div>
-        </div>
+        ))}
 
         <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
           <div className="flex items-center justify-between">
@@ -470,12 +469,12 @@ export default function SalesPage() {
                         </td>
                         <td className="px-5 py-4">
                           <span className="font-bold text-slate-900">
-                            {sale.totalAmount?.toLocaleString() || 0} RWF
+                            {formatCurrency(sale.totalAmount || 0, sale.currency || creator?.currency)}
                           </span>
                         </td>
                         <td className="px-5 py-4">
                           <span className="font-bold text-green-600">
-                            {sale.creatorEarnings?.toLocaleString() || 0} RWF
+                            {formatCurrency(sale.creatorEarnings || 0, sale.currency || creator?.currency)}
                           </span>
                         </td>
                         <td className="px-5 py-4">
@@ -564,12 +563,16 @@ export default function SalesPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-slate-900">
-                      {product.total.toLocaleString()} RWF
-                    </p>
-                    <p className="text-xs text-green-600">
-                      Earned: {product.earnings.toLocaleString()} RWF
-                    </p>
+                    {Object.entries(product.perCurrency).map(([cur, { total, earnings }]) => (
+                      <div key={cur} className="mb-1 last:mb-0">
+                        <p className="font-bold text-slate-900">
+                          {formatCurrency(total, cur)}
+                        </p>
+                        <p className="text-xs text-green-600">
+                          Earned: {formatCurrency(earnings, cur)}
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}

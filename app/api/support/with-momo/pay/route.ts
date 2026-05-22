@@ -25,7 +25,10 @@ export async function POST(req: Request) {
        buyerName,
        email,
        buyerEmail,
-     } = await req.json();
+       currency: txCurrency,
+      } = await req.json();
+
+    const currency = txCurrency || "RWF";
 
     const isStoreTransaction = !!productId;
     const platformSharePercentage = Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
@@ -92,6 +95,7 @@ export async function POST(req: Request) {
       const txData: Record<string, any> = {
         ref: payData.ref,
         amount: totalAmount,
+        currency,
         phone,
         creatorId,
         creatorUid,

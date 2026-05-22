@@ -28,6 +28,7 @@ import {
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { Profile } from "@/types/profile";
+import { formatCurrency } from "@/lib/format";
 
 interface SupporterSupport {
   id: string;
@@ -253,7 +254,7 @@ export default function SupportersPage() {
             Total Support
           </p>
           <p className="text-2xl font-bold text-slate-900">
-            {totalSupportValue.toLocaleString()} RWF
+            {formatCurrency(totalSupportValue, creator?.currency)}
           </p>
         </div>
 
@@ -374,7 +375,7 @@ export default function SupportersPage() {
                         <div className="flex items-center gap-2">
                           <DollarSign size={14} className="text-orange-500" />
                           <span className="font-bold text-slate-900">
-                            {supporter.totalAmount.toLocaleString()} RWF
+                            {formatCurrency(supporter.totalAmount, creator?.currency)}
                           </span>
                         </div>
                       </td>
