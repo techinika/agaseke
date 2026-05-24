@@ -40,7 +40,8 @@ const statusMessages: Record<string, { subject: string; title: string; message: 
 
 export async function POST(request: NextRequest) {
   try {
-    const { buyerEmail, buyerName, creatorName, orderId, newStatus, previousStatus, items, total, trackingNumber } = await request.json();
+    const { buyerEmail, buyerName, creatorName, orderId, newStatus, previousStatus, items, total, trackingNumber, currency } = await request.json();
+    const cur = currency || "RWF";
 
     if (!buyerEmail || !orderId || !newStatus) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
     const itemsList = items
       ?.map((item: any) => `<div style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
         <span>${item.quantity}x ${item.productName}</span>
-        <span style="float: right; font-weight: 600;">${item.price?.toLocaleString()} RWF</span>
+        <span style="float: right; font-weight: 600;">${item.price?.toLocaleString()} ${cur}</span>
       </div>`)
       .join("") || "";
 
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
         ${itemsList ? `<div style="margin: 15px 0;">${itemsList}</div>` : ""}
         
         <div style="border-top: 2px solid #f97316; padding-top: 15px; margin-top: 15px;">
-          <strong style="font-size: 18px;">Total: ${total?.toLocaleString()} RWF</strong>
+          <strong style="font-size: 18px;">Total: ${total?.toLocaleString()} ${cur}</strong>
         </div>
         
         ${trackingNumber ? `<div style="margin-top: 15px; padding: 12px; background: #e0f2fe; border-radius: 8px;">

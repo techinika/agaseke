@@ -25,6 +25,7 @@ import {
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { formatCurrency } from "@/lib/format";
+import { Currency } from "@/types/platform";
 
 export default function PayoutsPage() {
   const router = useRouter();
@@ -36,13 +37,15 @@ export default function PayoutsPage() {
   const [payouts, setPayouts] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
 
   const [withdrawType, setWithdrawType] = useState<"all" | "custom">("all");
   const [customAmount, setCustomAmount] = useState<string>("");
 
   const pendingAmount = creator?.pendingPayout || 0;
   const isVerified = creator?.verified || false;
-  const WITHDRAW_THRESHOLD = 10000;
+  const currentCurrency = currencies.find((c) => c.code === creator?.currency);
+  const WITHDRAW_THRESHOLD = currentCurrency?.payoutThreshold ?? 10000;
 
   useEffect(() => {
     if (!creator) return;
@@ -59,6 +62,15 @@ export default function PayoutsPage() {
       orderBy("createdAt", "desc"),
     );
 
+    const unsubCurrencies = onSnapshot(
+      collection(db, "currencies"),
+      (snap) => {
+        setCurrencies(
+          snap.docs.map((d) => ({ id: d.id, ...d.data() } as Currency)),
+        );
+      },
+    );
+
     const unsubPayouts = onSnapshot(qPayouts, (snap) => {
       console.log(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
 
@@ -71,6 +83,7 @@ export default function PayoutsPage() {
     });
 
     return () => {
+      unsubCurrencies();
       unsubPayouts();
       unsubRequests();
     };

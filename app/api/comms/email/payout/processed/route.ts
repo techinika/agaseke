@@ -6,7 +6,8 @@ import { adminDb } from "@/db/firebaseAdmin";
 
 export async function POST(req: NextRequest) {
   try {
-    const { creatorEmail, creatorName, amount, method, accountNumber } = await req.json();
+    const { creatorEmail, creatorName, amount, method, accountNumber, currency } = await req.json();
+    const cur = currency || "RWF";
 
     if (!creatorEmail || !amount) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
               <table style="width: 100%; border-collapse: collapse;">
                 <tr>
                   <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Amount</td>
-                  <td style="padding: 8px 0; text-align: right; font-weight: bold; font-size: 18px;">${amount.toLocaleString()} RWF</td>
+                  <td style="padding: 8px 0; text-align: right; font-weight: bold; font-size: 18px;">${amount.toLocaleString()} ${cur}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Method</td>
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
     await logActivity({
       level: "success",
       category: "payout",
-      message: `Payout email sent to ${creatorEmail} for ${amount.toLocaleString()} RWF`,
+      message: `Payout email sent to ${creatorEmail} for ${amount.toLocaleString()} ${cur}`,
       userEmail: creatorEmail,
       userName: creatorName,
     });
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest) {
         userId: adminDoc.id,
         type: "payout_processed",
         title: "Payout Processed",
-        message: `Payout of ${amount.toLocaleString()} RWF processed for ${creatorName || creatorEmail}`,
+        message: `Payout of ${amount.toLocaleString()} ${cur} processed for ${creatorName || creatorEmail}`,
       });
     }
 

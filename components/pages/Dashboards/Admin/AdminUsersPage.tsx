@@ -43,6 +43,7 @@ interface UserProfile {
   onboarded: boolean;
   totalSupport: number;
   totalSupportedCreators: number;
+  currency?: string;
   createdAt?: Timestamp;
   lastLogin?: Timestamp;
 }
@@ -356,7 +357,7 @@ export default function AdminUsersPage() {
                       <td className="px-6 py-4">
                         <p className="font-bold text-sm">
                           {user.totalSupport > 0
-                            ? `${user.totalSupport.toLocaleString()} RWF`
+                            ? `${user.totalSupport.toLocaleString()} ${user.currency || "RWF"}`
                             : "-"}
                         </p>
                       </td>
@@ -553,7 +554,7 @@ export default function AdminUsersPage() {
                       Total Supported
                     </p>
                     <p className="text-xl font-bold mt-1">
-                      {selectedUser.totalSupport.toLocaleString()} RWF
+                      {selectedUser.totalSupport.toLocaleString()} {selectedUser.currency || "RWF"}
                     </p>
                   </div>
                   <div className="bg-slate-50 rounded-lg p-4">

@@ -2,14 +2,15 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    const { creatorEmail, creatorName, buyerName, buyerEmail, orderId, items, total } = await req.json();
+    const { creatorEmail, creatorName, buyerName, buyerEmail, orderId, items, total, currency } = await req.json();
+    const cur = currency || "RWF";
 
     if (!buyerEmail || !items || !total) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     const itemsList = items
-      .map((item: any) => `${item.quantity}x ${item.productName} - ${item.price.toLocaleString()} RWF`)
+      .map((item: any) => `${item.quantity}x ${item.productName} - ${item.price.toLocaleString()} ${cur}`)
       .join("\n");
 
     const emailHtml = `
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
       
       <div class="item">${itemsList.replace(/\n/g, "</div><div class='item'>")}</div>
       
-      <div class="total">Total: ${total.toLocaleString()} RWF</div>
+      <div class="total">Total: ${total.toLocaleString()} ${cur}</div>
       
       <p style="margin-top: 20px;">
         Your order has been received and is being processed. You'll receive updates as your order progresses.

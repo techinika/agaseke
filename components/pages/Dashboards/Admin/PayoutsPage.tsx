@@ -93,6 +93,7 @@ export default function AdminPayouts() {
             creatorEmail,
             creatorName: confirmPayout.name,
             amount,
+            currency: confirmPayout.currency || "RWF",
             method: "MoMo",
             accountNumber: confirmPayout.payoutNumber,
           }),
@@ -100,7 +101,7 @@ export default function AdminPayouts() {
       }
 
       toast.success(
-        `Payout of ${amount} RWF for ${confirmPayout.name} recorded!`,
+        `Payout of ${amount} ${confirmPayout.currency || "RWF"} for ${confirmPayout.name} recorded!`,
       );
       setConfirmPayout(null);
     } catch (error) {
@@ -140,8 +141,7 @@ export default function AdminPayouts() {
                 Total Liability
               </p>
               <p className="text-2xl font-black text-slate-900">
-                {totalPending.toLocaleString()}{" "}
-                <span className="text-sm font-normal text-slate-400">RWF</span>
+                {totalPending.toLocaleString()}
               </p>
             </div>
           </div>
@@ -237,7 +237,7 @@ export default function AdminPayouts() {
                     <td className="px-6 py-5 text-right font-black text-slate-900">
                       {creator.pendingPayout.toLocaleString()}{" "}
                       <span className="text-[10px] font-medium text-slate-400">
-                        RWF
+                        {creator.currency || "RWF"}
                       </span>
                     </td>
                     <td className="px-6 py-5 text-right">
@@ -280,7 +280,7 @@ export default function AdminPayouts() {
         title="Approve Payout?"
         message={
           confirmPayout
-            ? `Are you sure you want to approve a payout of ${confirmPayout.pendingPayout?.toLocaleString()} RWF for ${confirmPayout.name}? Make sure you have sent the payment via MoMo before confirming.`
+            ? `Are you sure you want to approve a payout of ${confirmPayout.pendingPayout?.toLocaleString()} ${confirmPayout.currency || "RWF"} for ${confirmPayout.name}? Make sure you have sent the payment via MoMo before confirming.`
             : ""
         }
         confirmText="Approve"

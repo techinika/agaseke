@@ -5,9 +5,9 @@ import React, { useEffect, useState } from "react";
 import { db } from "@/db/firebase";
 import {
   collection,
-  getDocs,
   addDoc,
   deleteDoc,
+  updateDoc,
   doc,
   serverTimestamp,
   onSnapshot,
@@ -21,6 +21,9 @@ import {
   Loader,
   MapPin,
   Landmark,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 import Loading from "@/app/loading";
 import { PlatformLocation, Currency } from "@/types/platform";
@@ -36,7 +39,19 @@ export default function LocalisationPage() {
   const [newCurrencyCode, setNewCurrencyCode] = useState("");
   const [newCurrencyName, setNewCurrencyName] = useState("");
   const [newCurrencySymbol, setNewCurrencySymbol] = useState("");
+  const [newCurrencyThreshold, setNewCurrencyThreshold] = useState("10000");
   const [addingCurrency, setAddingCurrency] = useState(false);
+
+  const [editingLocationId, setEditingLocationId] = useState<string | null>(null);
+  const [editingLocationName, setEditingLocationName] = useState("");
+
+  const [editingCurrencyId, setEditingCurrencyId] = useState<string | null>(null);
+  const [editingCurrencyCode, setEditingCurrencyCode] = useState("");
+  const [editingCurrencyName, setEditingCurrencyName] = useState("");
+  const [editingCurrencySymbol, setEditingCurrencySymbol] = useState("");
+  const [editingCurrencyThreshold, setEditingCurrencyThreshold] = useState("");
+
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const unsubLocations = onSnapshot(
@@ -88,6 +103,32 @@ export default function LocalisationPage() {
     }
   };
 
+  const startEditLocation = (loc: PlatformLocation) => {
+    setEditingLocationId(loc.id);
+    setEditingLocationName(loc.name);
+  };
+
+  const cancelEditLocation = () => {
+    setEditingLocationId(null);
+    setEditingLocationName("");
+  };
+
+  const saveLocation = async (id: string) => {
+    if (!editingLocationName.trim()) return;
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, "locations", id), {
+        name: editingLocationName.trim(),
+      });
+      toast.success("Location updated");
+      setEditingLocationId(null);
+    } catch {
+      toast.error("Failed to update location");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const addCurrency = async () => {
     if (!newCurrencyCode.trim() || !newCurrencyName.trim()) return;
     setAddingCurrency(true);
@@ -96,11 +137,13 @@ export default function LocalisationPage() {
         code: newCurrencyCode.trim().toUpperCase(),
         name: newCurrencyName.trim(),
         symbol: newCurrencySymbol.trim() || newCurrencyCode.trim().toUpperCase(),
+        payoutThreshold: parseInt(newCurrencyThreshold) || 10000,
         createdAt: serverTimestamp(),
       });
       setNewCurrencyCode("");
       setNewCurrencyName("");
       setNewCurrencySymbol("");
+      setNewCurrencyThreshold("10000");
       toast.success("Currency added");
     } catch {
       toast.error("Failed to add currency");
@@ -115,6 +158,37 @@ export default function LocalisationPage() {
       toast.success("Currency removed");
     } catch {
       toast.error("Failed to remove currency");
+    }
+  };
+
+  const startEditCurrency = (cur: Currency) => {
+    setEditingCurrencyId(cur.id);
+    setEditingCurrencyCode(cur.code);
+    setEditingCurrencyName(cur.name);
+    setEditingCurrencySymbol(cur.symbol);
+    setEditingCurrencyThreshold(String(cur.payoutThreshold ?? 10000));
+  };
+
+  const cancelEditCurrency = () => {
+    setEditingCurrencyId(null);
+  };
+
+  const saveCurrency = async (id: string) => {
+    if (!editingCurrencyCode.trim() || !editingCurrencyName.trim()) return;
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, "currencies", id), {
+        code: editingCurrencyCode.trim().toUpperCase(),
+        name: editingCurrencyName.trim(),
+        symbol: editingCurrencySymbol.trim() || editingCurrencyCode.trim().toUpperCase(),
+        payoutThreshold: parseInt(editingCurrencyThreshold) || 10000,
+      });
+      toast.success("Currency updated");
+      setEditingCurrencyId(null);
+    } catch {
+      toast.error("Failed to update currency");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -188,18 +262,61 @@ export default function LocalisationPage() {
                       key={loc.id}
                       className="flex items-center justify-between p-3.5 rounded-xl hover:bg-slate-50 transition-all group"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
-                          <Globe size={15} className="text-orange-500" />
-                        </div>
-                        <span className="font-bold text-sm">{loc.name}</span>
-                      </div>
-                      <button
-                        onClick={() => deleteLocation(loc.id)}
-                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                      >
-                        <Trash2 size={15} />
-                      </button>
+                      {editingLocationId === loc.id ? (
+                        <>
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
+                              <Globe size={15} className="text-orange-500" />
+                            </div>
+                            <input
+                              type="text"
+                              value={editingLocationName}
+                              onChange={(e) => setEditingLocationName(e.target.value)}
+                              onKeyDown={(e) => e.key === "Enter" && saveLocation(loc.id)}
+                              className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm font-bold outline-none focus:border-orange-500 transition-all"
+                              autoFocus
+                            />
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => saveLocation(loc.id)}
+                              disabled={saving || !editingLocationName.trim()}
+                              className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-all"
+                            >
+                              <Check size={15} />
+                            </button>
+                            <button
+                              onClick={cancelEditLocation}
+                              className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                            >
+                              <X size={15} />
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
+                              <Globe size={15} className="text-orange-500" />
+                            </div>
+                            <span className="font-bold text-sm">{loc.name}</span>
+                          </div>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                            <button
+                              onClick={() => startEditLocation(loc)}
+                              className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button
+                              onClick={() => deleteLocation(loc.id)}
+                              className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))
                 )}
@@ -227,7 +344,7 @@ export default function LocalisationPage() {
 
             <div className="p-6">
               <div className="space-y-2 mb-6">
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <input
                     type="text"
                     value={newCurrencyCode}
@@ -241,15 +358,22 @@ export default function LocalisationPage() {
                     value={newCurrencySymbol}
                     onChange={(e) => setNewCurrencySymbol(e.target.value)}
                     placeholder="Symbol (e.g. FRw)"
-                    className="w-28 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2.5 text-sm font-medium outline-none focus:border-emerald-500 transition-all"
+                    className="w-24 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2.5 text-sm font-medium outline-none focus:border-emerald-500 transition-all"
                   />
                   <input
                     type="text"
                     value={newCurrencyName}
                     onChange={(e) => setNewCurrencyName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && addCurrency()}
                     placeholder="Name (e.g. Rwandan Franc)"
-                    className="flex-1 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2.5 text-sm font-medium outline-none focus:border-emerald-500 transition-all"
+                    className="flex-1 min-w-[120px] bg-slate-50 border border-slate-100 rounded-lg px-3 py-2.5 text-sm font-medium outline-none focus:border-emerald-500 transition-all"
+                  />
+                  <input
+                    type="number"
+                    value={newCurrencyThreshold}
+                    onChange={(e) => setNewCurrencyThreshold(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && addCurrency()}
+                    placeholder="Threshold"
+                    className="w-24 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2.5 text-sm font-medium outline-none focus:border-emerald-500 transition-all"
                   />
                   <button
                     onClick={addCurrency}
@@ -283,25 +407,86 @@ export default function LocalisationPage() {
                       key={cur.id}
                       className="flex items-center justify-between p-3.5 rounded-xl hover:bg-slate-50 transition-all group"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center font-bold text-emerald-600 text-xs">
-                          {cur.symbol || cur.code}
+                      {editingCurrencyId === cur.id ? (
+                        <div className="flex items-center gap-2 w-full">
+                          <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center font-bold text-emerald-600 text-xs shrink-0">
+                            {editingCurrencySymbol || editingCurrencyCode}
+                          </div>
+                          <input
+                            type="text"
+                            value={editingCurrencyCode}
+                            onChange={(e) => setEditingCurrencyCode(e.target.value.toUpperCase())}
+                            className="w-16 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-sm font-bold uppercase outline-none focus:border-emerald-500 transition-all"
+                            maxLength={3}
+                            autoFocus
+                          />
+                          <input
+                            type="text"
+                            value={editingCurrencySymbol}
+                            onChange={(e) => setEditingCurrencySymbol(e.target.value)}
+                            className="w-16 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-sm font-medium outline-none focus:border-emerald-500 transition-all"
+                          />
+                          <input
+                            type="text"
+                            value={editingCurrencyName}
+                            onChange={(e) => setEditingCurrencyName(e.target.value)}
+                            className="flex-1 min-w-[80px] bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-sm font-medium outline-none focus:border-emerald-500 transition-all"
+                          />
+                          <input
+                            type="number"
+                            value={editingCurrencyThreshold}
+                            onChange={(e) => setEditingCurrencyThreshold(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && saveCurrency(cur.id)}
+                            className="w-20 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-sm font-medium outline-none focus:border-emerald-500 transition-all"
+                          />
+                          <button
+                            onClick={() => saveCurrency(cur.id)}
+                            disabled={saving || !editingCurrencyCode.trim() || !editingCurrencyName.trim()}
+                            className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-all shrink-0"
+                          >
+                            <Check size={15} />
+                          </button>
+                          <button
+                            onClick={cancelEditCurrency}
+                            className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all shrink-0"
+                          >
+                            <X size={15} />
+                          </button>
                         </div>
-                        <div>
-                          <span className="font-bold text-sm">
-                            {cur.code}
-                          </span>
-                          <span className="text-xs text-slate-400 ml-2">
-                            {cur.name}
-                          </span>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => deleteCurrency(cur.id)}
-                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                      >
-                        <Trash2 size={15} />
-                      </button>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center font-bold text-emerald-600 text-xs">
+                              {cur.symbol || cur.code}
+                            </div>
+                            <div>
+                              <span className="font-bold text-sm">
+                                {cur.code}
+                              </span>
+                              <span className="text-xs text-slate-400 ml-2">
+                                {cur.name}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-slate-300 font-bold uppercase tracking-widest ml-2">
+                              Threshold: {formatThreshold(cur.payoutThreshold ?? 10000)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                            <button
+                              onClick={() => startEditCurrency(cur)}
+                              className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button
+                              onClick={() => deleteCurrency(cur.id)}
+                              className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))
                 )}
@@ -312,4 +497,9 @@ export default function LocalisationPage() {
       </main>
     </div>
   );
+}
+
+function formatThreshold(val: number) {
+  if (val >= 1000) return `${(val / 1000).toFixed(0)}k`;
+  return String(val);
 }
