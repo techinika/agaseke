@@ -6,7 +6,7 @@ import { Mail, Instagram, Twitter } from "lucide-react";
 import Footer from "@/components/parts/Footer";
 
 export default function TermsPage() {
-  const lastUpdated = "February 02, 2026";
+  const lastUpdated = "May 24, 2026";
 
   return (
     <div className="min-h-screen bg-white text-slate-900 pb-20">
@@ -46,9 +46,28 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold mb-4">
-              3. Creator Responsibilities
-            </h2>
+            <h2 className="text-2xl font-bold mb-4">3. Platform Fee</h2>
+            <p className="leading-relaxed text-slate-600">
+              Agaseke charges a <strong>10% platform fee</strong> on all
+              transactions processed through the platform, including but not
+              limited to:
+            </p>
+            <ul className="list-disc pl-6 space-y-2 text-slate-600 mt-4">
+              <li>Support contributions (tips/gifts) from supporters to creators.</li>
+              <li>Store purchases made through creator storefronts.</li>
+              <li>Paid event or gathering RSVPs.</li>
+              <li>Any other payments facilitated via Agaseke&apos;s payment infrastructure.</li>
+            </ul>
+            <p className="leading-relaxed text-slate-600 mt-4">
+              The remaining <strong>90%</strong> is disbursed to the creator.
+              This fee covers payment processing, platform maintenance, and
+              operational costs. The platform fee is deducted at the time of
+              transaction and is non-refundable.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-bold mb-4">4. Creator Responsibilities</h2>
             <p className="leading-relaxed text-slate-600">
               Creators are responsible for the content they post and the
               gatherings they organize. By using Agaseke, creators agree to:
@@ -64,7 +83,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold mb-4">4. Gatherings & RSVPs</h2>
+            <h2 className="text-2xl font-bold mb-4">5. Gatherings & RSVPs</h2>
             <p className="leading-relaxed text-slate-600">
               When a Supporter RSVPs for a Gathering, Agaseke shares the
               Supporter’s contact information (Name and Phone Number) with the
@@ -74,7 +93,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold mb-4">5. Prohibited Conduct</h2>
+            <h2 className="text-2xl font-bold mb-4">6. Prohibited Conduct</h2>
             <p className="leading-relaxed text-slate-600 text-sm bg-slate-50 p-4 rounded-lg">
               Users may not use Agaseke to:
               <br />• Post hate speech, explicit content, or illegal material.
@@ -85,7 +104,7 @@ export default function TermsPage() {
 
           <section className="bg-orange-50 p-8 rounded-lg border border-orange-100">
             <h2 className="text-2xl font-bold mb-4 text-orange-950">
-              6. Support & Contact
+              7. Support & Contact
             </h2>
             <p className="mb-6 text-orange-900/80">
               Need help? Whether you are a creator or a supporter, our team is

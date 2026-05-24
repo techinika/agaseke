@@ -24,6 +24,7 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
+import { EmptyState } from "./payoutspage/index";
 
 export default function PayoutsPage() {
   const router = useRouter();
@@ -452,13 +453,4 @@ export default function PayoutsPage() {
   );
 }
 
-function EmptyState({ msg }: { msg: string }) {
-  return (
-    <div className="p-20 text-center">
-      <div className="w-16 h-16 bg-slate-50 rounded-lg flex items-center justify-center mx-auto mb-4">
-        <Wallet className="text-slate-200" />
-      </div>
-      <p className="text-slate-400 font-bold text-sm">{msg}</p>
-    </div>
-  );
-}
+

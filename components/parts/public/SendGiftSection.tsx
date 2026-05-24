@@ -17,7 +17,6 @@ export const SendGiftSection = ({
   setIsModalOpen,
   currentUser,
   bookingEnabled,
-  setIsBookingModalOpen,
 }: {
   name: string;
   socials: {
@@ -36,7 +35,6 @@ export const SendGiftSection = ({
   setIsModalOpen: any;
   currentUser: any;
   bookingEnabled?: boolean;
-  setIsBookingModalOpen?: any;
 }) => {
   return (
     <div className="relative">
@@ -114,13 +112,13 @@ export const SendGiftSection = ({
         </button>
 
         {bookingEnabled && (
-          <button
-            onClick={() => setIsBookingModalOpen(true)}
+          <Link
+            href={`/${handle}/booking`}
             className="w-full mt-3 py-3 px-4 border border-slate-200 rounded-lg text-slate-600 font-medium text-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
           >
             <Calendar size={16} className="text-orange-600" />
             Book a Meeting
-          </button>
+          </Link>
         )}
 
         {!currentUser && (

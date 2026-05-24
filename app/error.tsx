@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
@@ -18,6 +18,24 @@ interface ErrorProps {
 
 const Error = ({ error, reset }: ErrorProps) => {
   const router = useRouter();
+
+  useEffect(() => {
+    fetch("/api/log-error", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        level: "error",
+        category: "system",
+        message: error.message || "Unknown client error",
+        metadata: {
+          digest: error.digest,
+          stack: error.stack?.slice(0, 2000),
+          url: window.location.href,
+          userAgent: window.navigator.userAgent,
+        },
+      }),
+    }).catch(console.error);
+  }, [error]);
 
   return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center px-6 overflow-hidden relative">

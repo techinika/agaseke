@@ -26,6 +26,11 @@ import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
+import {
+  StatTile,
+  ActivityRow,
+  HistoryItem,
+} from "./creatorspace/index";
 
 export default function CreatorDashboard() {
   const { creator } = useAuth();
@@ -239,62 +244,4 @@ export default function CreatorDashboard() {
   );
 }
 
-function StatTile({ title, value, icon }: any) {
-  return (
-    <div className="bg-white p-8 rounded-lg border border-slate-100 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-          {title}
-        </p>
-        <div className="text-orange-500">{icon}</div>
-      </div>
-      <h3 className="text-4xl font-bold text-slate-900">{value}</h3>
-    </div>
-  );
-}
 
-function ActivityRow({ name, amount, time }: any) {
-  return (
-    <div className="p-6 flex items-center gap-4 hover:bg-slate-50 transition border-b border-slate-50 last:border-0">
-      <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center text-lg font-bold shrink-0">
-        {name[0]}
-      </div>
-      <div className="flex-1">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-bold text-slate-900">
-            {name}{" "}
-            <span className="font-normal text-slate-400 ml-1">gifted you</span>
-          </p>
-          <span className="text-[10px] font-bold text-slate-300 uppercase">
-            {time}
-          </span>
-        </div>
-        <p className="text-lg font-bold text-orange-600 tracking-tight">
-          {amount} RWF
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function HistoryItem({ type, title, meta, icon }: any) {
-  return (
-    <div className="flex items-start gap-4 group">
-      <div className="mt-1 w-8 h-8 rounded-lg bg-slate-50 text-slate-400 flex items-center justify-center group-hover:bg-orange-50 group-hover:text-orange-600 transition">
-        {icon}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-slate-800 truncate leading-none mb-1 group-hover:text-orange-600 transition">
-          {title}
-        </p>
-        <div className="flex items-center gap-2">
-          <span className="text-[9px] font-bold text-slate-300 uppercase tracking-tighter">
-            {type}
-          </span>
-          <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
-          <span className="text-[10px] font-medium text-slate-400">{meta}</span>
-        </div>
-      </div>
-    </div>
-  );
-}

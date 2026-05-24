@@ -30,7 +30,6 @@ import { CommunityTab } from "../parts/public/CommunityTab";
 import { StoreTab } from "../parts/public/StoreTab";
 import { GiveawayTab } from "../parts/public/GiveawayTab";
 import { MessageTab } from "../parts/public/MessageTab";
-import { BookingModal } from "../parts/public/BookingModal";
 import { GatheringsTab } from "../parts/public/GatheringsTab";
 import Footer from "../parts/Footer";
 import { Building2, ExternalLink } from "lucide-react";
@@ -40,17 +39,6 @@ import { normalizeSocialUrl } from "@/lib/urlUtils";
 export default function PublicProfile({ username }: { username: string }) {
   const { user: currentUser, isLoggedIn, isCreator } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [creatorData, setCreatorData] = useState<Creator | null>(null);
-  const [profileData, setProfileData] = useState<any>(null);
-  const [referralId, setReferralId] = useState("");
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("community");
-  const [isSupporter, setIsSupporter] = useState(false);
-  const [publicPosts, setPublicPosts] = useState<any[]>([]);
-  const [privatePosts, setPrivatePosts] = useState<any[]>([]);
-  const [featuredPartners, setFeaturedPartners] = useState<any[]>([]);
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -83,6 +71,16 @@ export default function PublicProfile({ username }: { username: string }) {
         }
       } catch (error) {
         console.error("Error fetching creator:", error);
+        fetch("/api/log-error", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            level: "error",
+            category: "general",
+            message: "Error fetching creator in PublicProfile",
+            metadata: { username, error: String(error) },
+          }),
+        }).catch(() => {});
       } finally {
         setLoading(false);
       }
@@ -118,7 +116,7 @@ export default function PublicProfile({ username }: { username: string }) {
           where("creatorId", "==", creatorData.uid),
           where("isPrivate", "==", false),
           orderBy("createdAt", "desc"),
-          limit(20),
+          limit(3),
         );
         const publicSnap = await getDocs(publicQ);
         const publicData = publicSnap.docs.map((doc) => ({
@@ -134,7 +132,7 @@ export default function PublicProfile({ username }: { username: string }) {
             where("creatorId", "==", creatorData.uid),
             where("isPrivate", "==", true),
             orderBy("createdAt", "desc"),
-            limit(20),
+            limit(3),
           );
           const privateSnap = await getDocs(privateQ);
           const privateData = privateSnap.docs.map((doc) => ({
@@ -254,7 +252,6 @@ export default function PublicProfile({ username }: { username: string }) {
         setIsModalOpen={setIsModalOpen}
         currentUser={currentUser}
         bookingEnabled={creatorData?.bookingEnabled === true}
-        setIsBookingModalOpen={setIsBookingModalOpen}
       />
 
       <TabManager
@@ -275,7 +272,9 @@ export default function PublicProfile({ username }: { username: string }) {
             publicPosts={publicPosts} 
             privatePosts={privatePosts}
             isSupporter={isSupporter}
-            name={creator?.name} 
+            name={creator?.name}
+            compact={true}
+            username={username}
           />
         )}
 
@@ -306,6 +305,7 @@ export default function PublicProfile({ username }: { username: string }) {
             isLoggedIn={isLoggedIn}
             isSupporter={isSupporter}
             setIsModalOpen={setIsModalOpen}
+            compact={true}
           />
         )}
 
@@ -319,6 +319,8 @@ export default function PublicProfile({ username }: { username: string }) {
             userTotalSupport={profileData?.totalSupport || 0}
             setIsModalOpen={setIsModalOpen}
             currentUserId={currentUser?.uid}
+            compact={true}
+            username={username}
           />
         )}
 
@@ -327,6 +329,8 @@ export default function PublicProfile({ username }: { username: string }) {
             creatorId={creator.uid}
             creatorHandle={username}
             isSupporter={isSupporter}
+            compact={true}
+            username={username}
           />
         )}
       </main>
@@ -406,12 +410,6 @@ export default function PublicProfile({ username }: { username: string }) {
           username={username}
         />
       )}
-
-      <BookingModal
-        isOpen={isBookingModalOpen}
-        onClose={() => setIsBookingModalOpen(false)}
-        creator={creatorData}
-      />
 
       <Footer />
     </div>

@@ -15,12 +15,8 @@ import {
   Megaphone,
   Bell,
   Calendar,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
-import Navbar from "@/components/parts/Navigation";
 import Loading from "@/app/loading";
 
 interface Notice {
@@ -37,7 +33,7 @@ interface Notice {
 }
 
 export default function NoticesPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "unread">("all");
@@ -81,6 +77,12 @@ export default function NoticesPage() {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  const personalizeMessage = (msg: string) => {
+    const name = profile?.displayName || user?.displayName || "there";
+    const handle = profile?.username || "";
+    return msg.replace(/\[NAME\]/g, name).replace(/\[HANDLE\]/g, handle);
   };
 
   if (loading) {
@@ -186,18 +188,8 @@ export default function NoticesPage() {
                         )}
                       </div>
                       <p className="text-slate-500 text-sm leading-relaxed max-w-2xl">
-                        {notice.message}
+                        {personalizeMessage(notice.message)}
                       </p>
-                      {notice.metadata?.targetLabel && (
-                        <div className="mt-3 flex items-center gap-2">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-100 px-2 py-1 rounded">
-                            {notice.metadata.targetLabel}
-                          </span>
-                          <span className="text-[10px] text-slate-400">
-                            {notice.metadata.recipientsCount} recipients
-                          </span>
-                        </div>
-                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-slate-400">
@@ -243,11 +235,6 @@ export default function NoticesPage() {
                         NEW
                       </span>
                     )}
-                    {selectedNotice.metadata?.targetLabel && (
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-100 px-2 py-1 rounded">
-                        {selectedNotice.metadata.targetLabel}
-                      </span>
-                    )}
                   </div>
                 </div>
               </div>
@@ -262,7 +249,7 @@ export default function NoticesPage() {
             <div className="overflow-y-auto pr-2 custom-scrollbar flex-1">
               <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 mb-6">
                 <p className="text-slate-700 whitespace-pre-wrap text-sm leading-relaxed font-medium">
-                  {selectedNotice.message}
+                  {personalizeMessage(selectedNotice.message)}
                 </p>
               </div>
 
@@ -273,11 +260,6 @@ export default function NoticesPage() {
                     {formatDate(selectedNotice.createdAt)}
                   </span>
                 </div>
-                {selectedNotice.metadata?.recipientsCount && (
-                  <span className="text-slate-400">
-                    Sent to {selectedNotice.metadata.recipientsCount} recipients
-                  </span>
-                )}
               </div>
             </div>
           </div>

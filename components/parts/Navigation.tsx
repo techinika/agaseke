@@ -23,6 +23,10 @@ import { usePathname } from "next/navigation";
 import { db } from "@/db/firebase";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import NotificationDrawer from "@/components/ui/NotificationDrawer";
+import {
+  NavLink,
+  DropdownLink,
+} from "./navigation/index";
 
 const Navbar = () => {
   const auth = useAuth();
@@ -254,64 +258,5 @@ const Navbar = () => {
     </>
   );
 };
-
-/* --- Sub-Components to keep code clean --- */
-
-function NavLink({
-  href,
-  icon,
-  label,
-  active,
-  isExternal,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  label: string;
-  active?: boolean;
-  isExternal?: boolean;
-}) {
-  const content = (
-    <div
-      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-        active
-          ? "text-orange-600 bg-orange-50"
-          : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
-      }`}
-    >
-      {icon}
-      <span>{label}</span>
-    </div>
-  );
-
-  return isExternal ? (
-    <a href={href} target="_blank" rel="noopener noreferrer">
-      {content}
-    </a>
-  ) : (
-    <Link href={href}>{content}</Link>
-  );
-}
-
-function DropdownLink({
-  href,
-  icon,
-  label,
-  onClick,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <Link
-      href={href}
-      onClick={onClick}
-      className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 rounded-lg hover:bg-orange-50 hover:text-orange-600 transition-colors"
-    >
-      {icon} {label}
-    </Link>
-  );
-}
 
 export default Navbar;

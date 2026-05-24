@@ -1,0 +1,212 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
+
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { ArrowLeft, Heart, Loader, FileText, Lock, Globe, MessageCircle, Share2 } from "lucide-react";
+import { db } from "@/db/firebase";
+import { doc, getDoc, getDocs, collection, query, where, orderBy, addDoc, onSnapshot, Timestamp, serverTimestamp } from "firebase/firestore";
+import { useAuth } from "@/auth/AuthContext";
+import { toast } from "sonner";
+import Navbar from "@/components/parts/Navigation";
+import Footer from "@/components/parts/Footer";
+import Loading from "@/app/loading";
+
+export default function PostDetailPage({ username, postId }: { username: string; postId: string }) {
+  const { user: currentUser, profile } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [post, setPost] = useState<any>(null);
+  const [creatorData, setCreatorData] = useState<any>(null);
+  const [comments, setComments] = useState<any[]>([]);
+  const [likes, setLikes] = useState<Set<string>>(new Set());
+  const [userLiked, setUserLiked] = useState(false);
+  const [newComment, setNewComment] = useState("");
+  const [submittingComment, setSubmittingComment] = useState(false);
+
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        const creatorRef = doc(db, "creators", username);
+        const creatorSnap = await getDoc(creatorRef);
+        if (!creatorSnap.exists()) { setLoading(false); return; }
+        setCreatorData(creatorSnap.data());
+
+        const postRef = doc(db, "creatorContent", postId);
+        const postSnap = await getDoc(postRef);
+        if (!postSnap.exists()) { setLoading(false); return; }
+        setPost({ id: postSnap.id, ...postSnap.data() });
+      } catch (e) { console.error(e); }
+      finally { setLoading(false); }
+    };
+    fetch();
+  }, [username, postId]);
+
+  useEffect(() => {
+    if (!postId) return;
+    const commentsRef = collection(db, "creatorContent", postId, "comments");
+    const q = query(commentsRef, orderBy("createdAt", "asc"));
+    const unsub = onSnapshot(q, (snap) => {
+      setComments(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsub();
+  }, [postId]);
+
+  useEffect(() => {
+    if (!currentUser?.uid || !postId) return;
+    const checkLike = async () => {
+      const likeRef = collection(db, "creatorContent", postId, "likes");
+      const q = query(likeRef, where("userId", "==", currentUser.uid));
+      const snap = await getDocs(q);
+      setUserLiked(!snap.empty);
+    };
+    checkLike();
+  }, [currentUser?.uid, postId]);
+
+  useEffect(() => {
+    if (!postId) return;
+    const likesRef = collection(db, "creatorContent", postId, "likes");
+    const unsub = onSnapshot(likesRef, (snap) => {
+      setLikes(new Set(snap.docs.map(d => d.data().userId)));
+    });
+    return () => unsub();
+  }, [postId]);
+
+  const handleLike = async () => {
+    if (!currentUser?.uid) { toast.error("Please log in to like"); return; }
+    const likeRef = collection(db, "creatorContent", postId, "likes");
+    const q = query(likeRef, where("userId", "==", currentUser.uid));
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      await snap.docs[0].ref.delete();
+      setUserLiked(false);
+    } else {
+      await addDoc(likeRef, { userId: currentUser.uid, createdAt: serverTimestamp() });
+      setUserLiked(true);
+    }
+  };
+
+  const handleComment = async () => {
+    if (!currentUser?.uid) { toast.error("Please log in to comment"); return; }
+    if (!newComment.trim()) return;
+    setSubmittingComment(true);
+    try {
+      await addDoc(collection(db, "creatorContent", postId, "comments"), {
+        userId: currentUser.uid,
+        userName: profile?.displayName || currentUser.displayName || "Anonymous",
+        userPhoto: profile?.photoURL || currentUser.photoURL || "",
+        content: newComment.trim(),
+        createdAt: serverTimestamp(),
+      });
+      setNewComment("");
+    } catch { toast.error("Failed to add comment"); }
+    finally { setSubmittingComment(false); }
+  };
+
+  if (loading) return <Loading />;
+  if (!post || !creatorData) {
+    return (
+      <div className="min-h-screen bg-[#FBFBFC] flex items-center justify-center">
+        <Navbar />
+        <div className="text-center">
+          <p className="text-slate-500">Post not found</p>
+          <Link href={`/${username}`} className="text-orange-500 font-bold mt-4 inline-block">Go Back</Link>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#FBFBFC]">
+      <Navbar />
+      <div className="max-w-3xl mx-auto px-6 py-8">
+        <Link href={`/${username}`} className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition mb-8 inline-flex">
+          <ArrowLeft size={20} />
+          <span className="font-medium">Back to Profile</span>
+        </Link>
+
+        <div className="bg-white border border-slate-100 p-6 rounded-2xl shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded uppercase tracking-widest text-slate-500">
+              {post.type === "video" ? "Video" : post.type === "image" ? "Image" : post.type === "document" ? "Document" : "Post"}
+            </span>
+            <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest ${post.isPrivate ? "bg-amber-50 text-amber-600" : "bg-green-50 text-green-600"}`}>
+              {post.isPrivate ? <><Lock size={10} /> Supporters Only</> : <><Globe size={10} /> Public</>}
+            </span>
+          </div>
+
+          {post.type === "image" && post.contentUrl && (
+            <div className="mb-4 rounded-lg overflow-hidden">
+              <img src={post.contentUrl} alt={post.title} className="w-full max-h-[500px] object-cover" />
+            </div>
+          )}
+          {post.type === "video" && post.contentUrl && (
+            <div className="mb-4 rounded-lg overflow-hidden">
+              <video src={post.contentUrl} controls className="w-full max-h-[500px] object-cover bg-black" />
+            </div>
+          )}
+          {post.type === "document" && post.contentUrl && (
+            <a href={post.contentUrl} target="_blank" rel="noopener noreferrer"
+              className="mb-4 flex items-center gap-3 p-4 bg-slate-50 rounded-lg border border-slate-100 hover:bg-slate-100 transition-colors">
+              <FileText size={24} className="text-orange-500" />
+              <span className="text-sm font-medium text-slate-700">Download Document</span>
+            </a>
+          )}
+
+          <h1 className="text-2xl font-bold mb-3">{post.title}</h1>
+          {(post.description || post.content) && (
+            <div className="text-slate-600 whitespace-pre-wrap leading-relaxed">
+              {post.description || post.content}
+            </div>
+          )}
+
+          <div className="mt-6 pt-4 border-t border-slate-50 flex items-center gap-4 text-sm text-slate-400">
+            <span>{post.createdAt?.toDate?.().toLocaleDateString() || "Recently"}</span>
+            {post.views && <span>{post.views} views</span>}
+          </div>
+
+          <div className="mt-4 flex items-center gap-4 pt-4 border-t border-slate-50">
+            <button onClick={handleLike} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition ${userLiked ? "bg-red-50 text-red-500" : "bg-slate-50 text-slate-500 hover:bg-slate-100"}`}>
+              <Heart size={16} className={userLiked ? "fill-current" : ""} /> {likes.size}
+            </button>
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-slate-50 text-slate-500">
+              <MessageCircle size={16} /> {comments.length}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-8">
+          <h3 className="text-lg font-bold mb-4">Comments ({comments.length})</h3>
+          <div className="space-y-4">
+            {comments.map((c) => (
+              <div key={c.id} className="flex gap-3 bg-white p-4 rounded-xl border border-slate-100">
+                <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-xs font-bold text-orange-600 flex-shrink-0 overflow-hidden">
+                  {c.userPhoto ? <img src={c.userPhoto} alt="" className="w-full h-full object-cover" /> : (c.userName?.[0] || "?")}
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-900">{c.userName}</p>
+                  <p className="text-sm text-slate-600 mt-0.5">{c.content}</p>
+                  <p className="text-[10px] text-slate-400 mt-1">{c.createdAt?.toDate?.().toLocaleDateString() || ""}</p>
+                </div>
+              </div>
+            ))}
+            {comments.length === 0 && (
+              <p className="text-slate-400 text-sm text-center py-8">No comments yet. Be the first to comment!</p>
+            )}
+          </div>
+
+          <div className="mt-6 flex gap-3">
+            <input value={newComment} onChange={e => setNewComment(e.target.value)} placeholder={currentUser ? "Write a comment..." : "Log in to comment"}
+              disabled={!currentUser} onKeyDown={e => e.key === "Enter" && handleComment()}
+              className="flex-1 bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-orange-100 outline-none" />
+            <button onClick={handleComment} disabled={!currentUser || !newComment.trim() || submittingComment}
+              className="px-5 py-3 bg-orange-500 text-white rounded-xl font-bold text-sm hover:bg-orange-600 transition disabled:opacity-50">
+              {submittingComment ? <Loader className="animate-spin" size={16} /> : "Post"}
+            </button>
+          </div>
+        </div>
+      </div>
+      <Footer />
+    </div>
+  );
+}

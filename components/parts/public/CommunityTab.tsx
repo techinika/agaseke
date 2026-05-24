@@ -2,13 +2,25 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, Lock, Globe, Heart, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  FileText,
+  Lock,
+  Globe,
+  Heart,
+  ChevronDown,
+  ChevronUp,
+  ArrowRight,
+  MessageCircle,
+} from "lucide-react";
+import Link from "next/link";
 
 interface CommunityTabProps {
   publicPosts: any[];
   privatePosts: any[];
   isSupporter: boolean;
   name: string;
+  compact?: boolean;
+  username?: string;
 }
 
 export const CommunityTab = ({
@@ -16,6 +28,8 @@ export const CommunityTab = ({
   privatePosts,
   isSupporter,
   name,
+  compact = false,
+  username = "",
 }: CommunityTabProps) => {
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
 
@@ -33,10 +47,13 @@ export const CommunityTab = ({
 
   const allPosts = isSupporter
     ? [...privatePosts, ...publicPosts].sort(
-        (a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)
+        (a, b) =>
+          (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0),
       )
     : publicPosts;
 
+  const displayPosts = compact ? allPosts.slice(0, 2) : allPosts;
+  const hasMorePosts = allPosts.length > 2;
   const visiblePrivatePosts = privatePosts.length;
 
   if (allPosts.length === 0) {
@@ -68,7 +85,7 @@ export const CommunityTab = ({
       )}
 
       <div className="grid grid-cols-1 gap-6">
-        {allPosts.map((item) => (
+        {displayPosts.map((item) => (
           <div
             key={item.id}
             className="bg-white border border-slate-100 p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow"
@@ -136,12 +153,17 @@ export const CommunityTab = ({
               </a>
             )}
 
-            <h4 className="font-bold text-lg mb-2">{item.title}</h4>
+            <Link href={`/${username}/community/${item.id}`} className="block group">
+              <h4 className="font-bold text-lg mb-2 group-hover:text-orange-600 transition-colors">{item.title}</h4>
+            </Link>
             {item.description || item.content ? (
               <div className="text-slate-500 text-sm whitespace-pre-wrap leading-relaxed">
-                {(item.description || item.content).length > 200 && !expandedPosts.has(item.id) ? (
+                {(item.description || item.content).length > 200 &&
+                !expandedPosts.has(item.id) ? (
                   <>
-                    <span>{(item.description || item.content).slice(0, 200)}...</span>
+                    <span>
+                      {(item.description || item.content).slice(0, 200)}...
+                    </span>
                     <button
                       onClick={() => toggleExpand(item.id)}
                       className="ml-1 text-orange-600 font-medium hover:underline"
@@ -165,17 +187,35 @@ export const CommunityTab = ({
               </div>
             ) : null}
 
-            <div className="mt-4 pt-3 border-t border-slate-50 flex items-center gap-2 text-xs text-slate-400">
+            <div className="mt-4 pt-3 border-t border-slate-50 flex items-center gap-3 text-xs text-slate-400">
               <span>
-                {item.createdAt?.toDate?.().toLocaleDateString() || "Recently"}
+                {item.createdAt?.toDate?.().toLocaleDateString() ||
+                  "Recently"}
               </span>
               {item.views && (
-                <span className="ml-auto">{item.views} views</span>
+                <span>{item.views} views</span>
               )}
+              <Link
+                href={`/${username}/community/${item.id}`}
+                className="ml-auto flex items-center gap-1 text-orange-600 font-medium hover:underline"
+              >
+                View Post <ArrowRight size={12} />
+              </Link>
             </div>
           </div>
         ))}
       </div>
+
+      {compact && hasMorePosts && (
+        <div className="text-center">
+          <Link
+            href={`/${username}/community`}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-lg font-bold text-sm hover:bg-orange-700 transition shadow-lg"
+          >
+            See All Posts <ArrowRight size={16} />
+          </Link>
+        </div>
+      )}
     </div>
   );
 };

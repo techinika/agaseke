@@ -126,6 +126,16 @@ export default function CommunityPage({ username }: CommunityPageProps) {
         }
       } catch (error) {
         console.error("Error checking support status:", error);
+        fetch("/api/log-error", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            level: "error",
+            category: "general",
+            message: "Error fetching community posts",
+            metadata: { username, creatorUid: creatorData?.uid, error: String(error) },
+          }),
+        }).catch(() => {});
       }
     };
 

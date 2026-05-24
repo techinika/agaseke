@@ -24,6 +24,10 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/db/firebase";
 import { useAuth } from "@/auth/AuthContext";
 import { PaymentMethods } from "../parts/home/PaymentSection";
+import {
+  FeatureCard,
+  Step,
+} from "./landingpage/index";
 
 export default function LandingPage() {
   const { isCreator, user } = useAuth();
@@ -384,46 +388,4 @@ export default function LandingPage() {
   );
 }
 
-function FeatureCard({
-  icon,
-  title,
-  desc,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  desc: string;
-}) {
-  return (
-    <div className="p-8 rounded-lg bg-white border border-slate-200/50 hover:shadow-xl hover:border-orange-100 transition-all duration-300">
-      <div className="mb-6 inline-flex p-3 bg-orange-50 rounded-xl text-orange-600">
-        {React.cloneElement(icon as React.ReactElement, { size: 24 } as any)}
-      </div>
-      <h3 className="text-lg font-bold uppercase tracking-tight mb-2">
-        {title}
-      </h3>
-      <p className="text-slate-500 text-sm leading-relaxed">{desc}</p>
-    </div>
-  );
-}
 
-function Step({
-  icon,
-  title,
-  desc,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  desc: string;
-}) {
-  return (
-    <div className="flex flex-col items-center">
-      <div className="w-16 h-16 bg-slate-50 rounded-lg flex items-center justify-center mb-6 border border-slate-100 shadow-sm">
-        {React.cloneElement(icon as React.ReactElement, { size: 28 } as any)}
-      </div>
-      <h4 className="font-bold uppercase tracking-tighter text-lg mb-2">
-        {title}
-      </h4>
-      <p className="text-slate-500 text-sm">{desc}</p>
-    </div>
-  );
-}

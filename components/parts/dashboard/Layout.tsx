@@ -39,6 +39,7 @@ import { auth, db } from "@/db/firebase";
 import { doc, onSnapshot, collection, query, where } from "firebase/firestore";
 import { Creator } from "@/types/creator";
 import NotificationDrawer from "@/components/ui/NotificationDrawer";
+import { NavItem } from "./layout-parts/index";
 
 export default function DashboardLayout({
   children,
@@ -405,17 +406,4 @@ export default function DashboardLayout({
   );
 }
 
-function NavItem({ icon, label, href, active }: any) {
-  return (
-    <Link
-      href={href}
-      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-        active
-          ? "bg-orange-50 text-orange-600"
-          : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-      }`}
-    >
-      {icon} {label}
-    </Link>
-  );
-}
+

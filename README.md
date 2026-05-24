@@ -96,16 +96,22 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
 ### For Supporters
 
 - **Public Profiles**: Browse creator content at `/[username]`
-- **Public Profile Subpages**: Full-page versions of each tab:
+- **Public Profile Subpages**: Full-page versions of each tab with SEO-friendly URLs:
   - `/[username]/community` - All public posts and supporter-only content
+  - `/[username]/community/[postId]` - Individual post detail with comments and likes
   - `/[username]/store` - Browse products, track orders, view purchased items
+  - `/[username]/store/[productId]` - Individual product detail page
   - `/[username]/gatherings` - Upcoming events and past gatherings
-  - **Giveaways**: Enter giveaways and view winner announcements
+  - `/[username]/gatherings/[gatheringId]` - Individual event detail with RSVP
   - `/[username]/giveaways` - Active and past giveaways with winners
+  - `/[username]/giveaways/[giveawayId]` - Individual giveaway detail with enter/share/winners
+  - `/[username]/booking` - Book a meeting with the creator
   - `/[username]/messaging` - Direct message the creator
+- **Community Interaction**: Like posts and leave comments on creator content
 - **Support**: One-time payments via mobile money (MomoPay) or card (credit/debit)
 - **Gift Once**: Quick support button available on all subpages
 - **Winner Notification**: Congratulatory message when winning a giveaway
+- **Progressive Web App**: Install Agaseke as a standalone app on your device
 
 ### Admin Dashboard (`/admin`)
 
@@ -233,9 +239,14 @@ agaseke/
 │   │       └── verify/           # Identity verification
 │   ├── [username]/               # Public creator profiles
 │   │   ├── community/             # Full community page
-│   │   ├── gatherings/           # Full gatherings page
+│   │   │   └── [postId]/          # Individual post detail with comments/likes
+│   │   ├── gatherings/            # Full gatherings page
+│   │   │   └── [gatheringId]/     # Individual event detail
 │   │   ├── store/                 # Full store page
+│   │   │   └── [productId]/       # Individual product detail
 │   │   ├── giveaways/             # Full giveaways page
+│   │   │   └── [giveawayId]/      # Individual giveaway detail
+│   │   ├── booking/               # Book a meeting page
 │   │   └── messaging/             # Full messaging page
 │   └── api/
 │       ├── comms/email/          # Email notification APIs
@@ -561,9 +572,18 @@ For issues or feature requests, please open an issue on GitHub.
 
 ### SEO & Discovery Enhancements (May 2025)
 - **Dynamic Metadata**: Server-side `generateMetadata` for all creator profile pages (`/[username]`, `/[username]/community`, `/[username]/store`, `/[username]/gatherings`, `/[username]/giveaways`, `/[username]/messaging`)
-- **Sitemap**: Auto-generated sitemap includes all creator profiles AND their enabled subpages (community, store, gatherings, giveaways, messaging) based on creator settings
+- **Sitemap**: Auto-generated sitemap includes all creator profiles, enabled subpages, AND individual detail pages (products, posts, giveaways, gatherings) with UID-to-username mapping
 - **baseUrl**: Separated `baseUrl` utility to `lib/baseUrl.ts` to avoid firebase-admin being bundled in client components
 - **Payment Confirmation**: Different confirmation messages for store payments ("Confirming your order payment..." / "Your payment of X RWF has been processed successfully.") vs support gifts ("Confirming your gift..." / "Your gift of X RWF has been sent successfully.")
+
+### Detail Pages & PWA (May 2026)
+- **Product Detail Pages**: `/[username]/store/[productId]` — Full product view instead of modal, with add-to-cart, size selection, bulk pricing
+- **Post Detail Pages**: `/[username]/community/[postId]` — Full post view with comments and likes system
+- **Giveaway Detail Pages**: `/[username]/giveaways/[giveawayId]` — Full giveaway view with enter, share, and winner viewing
+- **Event Detail Pages**: `/[username]/gatherings/[gatheringId]` — Full event view with RSVP, capacity, and location info
+- **Booking Page**: `/[username]/booking` — Standalone booking page instead of modal, with calendar picker, time slots, and meeting type selection
+- **Comments & Likes**: Added real-time comments and likes to community posts (Firestore subcollections)
+- **Progressive Web App**: Added manifest.json, service worker with cache-first strategy for static assets, and install prompts
 
 ### Bug Fixes (May 2025)
 - **Store Checkout**: Fixed creator ID mismatch - now uses `creatorHandle` (username) for `creatorId` field and `creatorUid` for `creatorUid` field when processing store orders
