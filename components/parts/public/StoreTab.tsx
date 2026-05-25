@@ -523,7 +523,7 @@ export const StoreTab = ({
               className="flex items-center gap-2 px-4 py-3 bg-white border border-slate-100 rounded-lg text-sm font-bold hover:bg-slate-50 transition"
             >
               <Package size={16} />
-              My Purchases
+              <span className="hidden md:inline">My Purchases</span>
             </button>
           )}
           {userOrders.length > 0 && (
@@ -532,7 +532,7 @@ export const StoreTab = ({
               className="flex items-center gap-2 px-4 py-3 bg-white border border-slate-100 rounded-lg text-sm font-bold hover:bg-slate-50 transition"
             >
               <Truck size={16} />
-              My Orders
+              <span className="hidden md:inline">My Orders</span>
             </button>
           )}
           <button
@@ -540,7 +540,7 @@ export const StoreTab = ({
             className="relative flex items-center gap-2 px-4 py-3 bg-orange-600 text-white rounded-lg font-bold text-sm hover:bg-orange-700 transition shadow-lg"
           >
             <ShoppingCart size={18} />
-            Cart
+            <span className="hidden md:inline">Cart</span>
             {cartCount > 0 && (
               <span className="absolute -top-2 -right-2 w-6 h-6 bg-white text-orange-600 rounded-full flex items-center justify-center text-xs font-bold">
                 {cartCount}
