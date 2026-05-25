@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   FileText,
   Lock,
@@ -13,6 +13,8 @@ import {
   MessageCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { db } from "@/db/firebase";
+import { collection, getCountFromServer } from "firebase/firestore";
 
 interface CommunityTabProps {
   publicPosts: any[];
@@ -56,15 +58,36 @@ export const CommunityTab = ({
   const hasMorePosts = allPosts.length > 2;
   const visiblePrivatePosts = privatePosts.length;
 
+  const [counts, setCounts] = useState<Record<string, { likes: number; comments: number }>>({});
+
+  useEffect(() => {
+    const fetchCounts = async () => {
+      const newCounts: Record<string, { likes: number; comments: number }> = {};
+      await Promise.all(
+        displayPosts.map(async (post) => {
+          try {
+            const [likesSnap, commentsSnap] = await Promise.all([
+              getCountFromServer(collection(db, "creatorContent", post.id, "likes")),
+              getCountFromServer(collection(db, "creatorContent", post.id, "comments")),
+            ]);
+            newCounts[post.id] = { likes: likesSnap.data().count, comments: commentsSnap.data().count };
+          } catch { newCounts[post.id] = { likes: 0, comments: 0 }; }
+        }),
+      );
+      setCounts(newCounts);
+    };
+    if (displayPosts.length > 0) fetchCounts();
+  }, [displayPosts.map((p) => p.id).join(",")]);
+
   if (allPosts.length === 0) {
     return (
       <div className="animate-in fade-in duration-500">
-        <div className="text-center py-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
-          <div className="bg-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-            <FileText className="text-slate-300" size={24} />
+        <div className="text-center py-20 bg-muted rounded-3xl border-2 border-dashed border-border-strong">
+          <div className="bg-card w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+            <FileText className="text-muted-foreground" size={24} />
           </div>
-          <h3 className="font-bold text-slate-900">No posts yet</h3>
-          <p className="text-slate-500 text-sm">
+          <h3 className="font-bold text-foreground">No posts yet</h3>
+          <p className="text-muted-foreground text-sm">
             When {name} shares updates, they will appear here.
           </p>
         </div>
@@ -75,9 +98,9 @@ export const CommunityTab = ({
   return (
     <div className="animate-in fade-in duration-500 space-y-8">
       {isSupporter && visiblePrivatePosts > 0 && (
-        <div className="bg-gradient-to-r from-orange-50 to-amber-50 p-4 rounded-xl border border-orange-100 flex items-center gap-3">
+        <div className="bg-gradient-to-r from-orange-50 dark:from-orange-950/50 to-amber-50 dark:to-amber-950/50 p-4 rounded-xl border border-orange-100 dark:border-orange-900/50 flex items-center gap-3">
           <Heart size={20} className="text-orange-500 fill-orange-500" />
-          <p className="text-sm text-orange-800 font-medium">
+          <p className="text-sm text-orange-800 dark:text-orange-200 font-medium">
             You have access to {visiblePrivatePosts} supporter-only{" "}
             {visiblePrivatePosts === 1 ? "post" : "posts"}!
           </p>
@@ -88,10 +111,10 @@ export const CommunityTab = ({
         {displayPosts.map((item) => (
           <div
             key={item.id}
-            className="bg-white border border-slate-100 p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow"
+            className="bg-card border border-border p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow"
           >
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-bold bg-slate-100 px-2 py-1 rounded uppercase tracking-widest text-slate-500">
+              <span className="text-[10px] font-bold bg-muted px-2 py-1 rounded uppercase tracking-widest text-muted-foreground">
                 {item.type === "video"
                   ? "Video"
                   : item.type === "image"
@@ -103,8 +126,8 @@ export const CommunityTab = ({
               <span
                 className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest ${
                   item.isPrivate
-                    ? "bg-amber-50 text-amber-600"
-                    : "bg-green-50 text-green-600"
+                    ? "bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400"
+                    : "bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400"
                 }`}
               >
                 {item.isPrivate ? (
@@ -144,10 +167,10 @@ export const CommunityTab = ({
                 href={item.contentUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mb-3 flex items-center gap-3 p-4 bg-slate-50 rounded-lg border border-slate-100 hover:bg-slate-100 transition-colors"
+                className="mb-3 flex items-center gap-3 p-4 bg-muted rounded-lg border border-border hover:bg-card-hover transition-colors"
               >
                 <FileText size={24} className="text-orange-500" />
-                <span className="text-sm font-medium text-slate-700">
+                <span className="text-sm font-medium text-foreground">
                   Download Document
                 </span>
               </a>
@@ -157,7 +180,7 @@ export const CommunityTab = ({
               <h4 className="font-bold text-lg mb-2 group-hover:text-orange-600 transition-colors">{item.title}</h4>
             </Link>
             {item.description || item.content ? (
-              <div className="text-slate-500 text-sm whitespace-pre-wrap leading-relaxed">
+              <div className="text-muted-foreground text-sm whitespace-pre-wrap leading-relaxed">
                 {(item.description || item.content).length > 200 &&
                 !expandedPosts.has(item.id) ? (
                   <>
@@ -187,7 +210,7 @@ export const CommunityTab = ({
               </div>
             ) : null}
 
-            <div className="mt-4 pt-3 border-t border-slate-50 flex items-center gap-3 text-xs text-slate-400">
+            <div className="mt-4 pt-3 border-t border-border flex items-center gap-3 text-xs text-muted-foreground">
               <span>
                 {item.createdAt?.toDate?.().toLocaleDateString() ||
                   "Recently"}
@@ -195,9 +218,19 @@ export const CommunityTab = ({
               {item.views && (
                 <span>{item.views} views</span>
               )}
+              {counts[item.id] && (
+                <div className="flex items-center gap-3 ml-auto">
+                  <span className="flex items-center gap-1">
+                    <Heart size={12} /> {counts[item.id].likes}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <MessageCircle size={12} /> {counts[item.id].comments}
+                  </span>
+                </div>
+              )}
               <Link
                 href={`/${username}/community/${item.id}`}
-                className="ml-auto flex items-center gap-1 text-orange-600 font-medium hover:underline"
+                className="flex items-center gap-1 text-orange-600 font-medium hover:underline"
               >
                 View Post <ArrowRight size={12} />
               </Link>

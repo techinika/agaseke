@@ -1,5 +1,3 @@
-"use client";
-
 import React from "react";
 import Navbar from "@/components/parts/Navigation";
 import { Mail, Instagram, Twitter } from "lucide-react";

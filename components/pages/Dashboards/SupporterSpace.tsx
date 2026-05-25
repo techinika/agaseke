@@ -671,7 +671,7 @@ export default function SupporterSpace() {
                   {comment.userPhoto ? (
                     <img
                       src={comment.userPhoto}
-                      alt=""
+                      alt={comment.userName || "Commenter"}
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -739,7 +739,7 @@ export default function SupporterSpace() {
                           {reply.userPhoto ? (
                             <img
                               src={reply.userPhoto}
-                              alt=""
+                              alt={reply.userName || "Commenter"}
                               className="w-full h-full object-cover"
                             />
                           ) : (

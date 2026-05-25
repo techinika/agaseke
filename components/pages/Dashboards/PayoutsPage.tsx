@@ -60,8 +60,6 @@ export default function PayoutsPage() {
     );
 
     const unsubPayouts = onSnapshot(qPayouts, (snap) => {
-      console.log(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-
       setPayouts(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
       setLoading(false);
     });

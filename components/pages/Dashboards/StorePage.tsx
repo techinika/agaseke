@@ -362,7 +362,7 @@ export default function StorePage() {
         >
           <ArrowLeft size={16} /> Back
         </button>
-        <h2 className="text-xl font-bold mb-6 uppercase">Store</h2>
+        <h1 className="text-xl font-bold mb-6 uppercase">Store</h1>
 
         <nav className="space-y-1">
           {[

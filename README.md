@@ -585,6 +585,23 @@ For issues or feature requests, please open an issue on GitHub.
 - **Comments & Likes**: Added real-time comments and likes to community posts (Firestore subcollections)
 - **Progressive Web App**: Added manifest.json, service worker with cache-first strategy for static assets, and install prompts
 
+### Performance & SEO Improvements (May 2026)
+- **Server-Side JSON-LD**: Schema components (`HomeSchema`, `ExploreSchema`, `CreatorSchema`) migrated from client-side `document.createElement` to server-rendered `<script>` tags — structured data now visible to all crawlers
+- **Full SEO Metadata Coverage**: Added `openGraph` + `twitter:card` metadata to 13 previously-missing pages (changelog, help-center, payout-policy, profile, login, onboarding, dashboard index pages)
+- **Twitter Cards on Detail Pages**: Added twitter metadata to all 5 detail page types (`[postId]`, `[productId]`, `[giveawayId]`, `[gatheringId]`, `booking`)
+- **Home Page Metadata**: Added explicit `export const metadata` to root landing page with OG/Twitter tags
+- **Server Components**: Converted legal pages (`TermsPage`), `loading.tsx`, and all SEO schema components from client to server components — reducing JS bundle
+- **Dynamic Imports**: Code-split heavy libraries — `framer-motion` on error/404 pages, `qrcode.react` on share page, `canvas-confetti` loaded lazily
+- **Memoized Handlers**: Added `useCallback` to 11 event handlers in `PostDetailPage` and `StoreTab` to prevent unnecessary re-renders
+- **Async Memo Fix**: Replaced async `useMemo` anti-pattern (returning Promises) with proper `useEffect` + `Promise.all` in `SupportersPage`
+- **Heading Hierarchy**: Added missing `<h1>` to 4 dashboard pages; fixed `<h1>`→`<h3>` jump in `NoticesPage`
+- **Alt Text**: Fixed 9 empty `alt=""` attributes on profile/content images across the platform
+- **Sitemap Partitioning**: Split sitemap into 6 category files via `generateSitemaps` (static, creators, products, posts, giveaways, gatherings) — all links preserved, under 50K per file
+- **Noindex on Dashboards**: Added `robots: noindex` to 21 dashboard/admin sub-pages to prevent private routes from appearing in search results
+- **Sitemap Coverage**: Added `/changelog` to sitemap static pages
+- **Admin Description Fix**: Corrected copy-paste error on admin dashboard metadata
+- **Notification Icons**: Added missing `new_like` and `new_comment` icon entries in `NotificationDrawer`
+
 ### Bug Fixes (May 2025)
 - **Store Checkout**: Fixed creator ID mismatch - now uses `creatorHandle` (username) for `creatorId` field and `creatorUid` for `creatorUid` field when processing store orders
 - **Payment Transaction**: Fixed transaction lookup by ensuring proper reference matching in IPN handler

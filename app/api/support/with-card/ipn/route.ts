@@ -9,13 +9,6 @@ export async function POST(req: Request) {
     const { OrderTrackingId, OrderMerchantReference, OrderNotificationType } =
       await req.json();
 
-    console.log(
-      "Request Details: ",
-      OrderNotificationType,
-      OrderMerchantReference,
-      OrderTrackingId,
-    );
-
     if (OrderNotificationType !== "IPNCHANGE") {
       return NextResponse.json({
         orderNotificationType: OrderNotificationType,
@@ -64,8 +57,6 @@ export async function POST(req: Request) {
 
     const txDoc = txQuery.docs[0];
     const txData = txDoc.data();
-
-    console.log(txData);
 
     if (txData.status === "successful" || txData.status === "success") {
       return NextResponse.json({ status: 200, message: "Already processed" });
@@ -190,8 +181,6 @@ export async function POST(req: Request) {
           });
         }
 
-         console.log(`[PESAPAL IPN] Store Order Success for ${OrderMerchantReference}`);
-
          if (txData.creatorUid) {
            await createNotification({
              userId: txData.creatorUid,
@@ -271,8 +260,6 @@ export async function POST(req: Request) {
             totalSupportedCreators: admin.firestore.FieldValue.increment(1),
           });
         }
-
-         console.log(`[PESAPAL IPN] Support Success for ${OrderMerchantReference}`);
 
          if (txData.creatorUid) {
            await createNotification({

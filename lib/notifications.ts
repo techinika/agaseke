@@ -17,7 +17,9 @@ export type NotificationType =
   | "new_user"
   | "new_creator"
   | "new_transaction"
-  | "withdrawal";
+  | "withdrawal"
+  | "new_like"
+  | "new_comment";
 
 export interface Notification {
   id: string;
@@ -67,6 +69,8 @@ export function getNotificationIconKey(type: NotificationType): string {
     new_creator: "userCheck",
     new_transaction: "creditCard",
     withdrawal: "wallet",
+    new_like: "heart",
+    new_comment: "messageSquare",
   };
   return iconMap[type] || "bell";
 }

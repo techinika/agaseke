@@ -39,7 +39,6 @@ export async function POST(req: Request) {
   const txData = txDoc.data();
 
   if (txData.status === "successful") {
-    console.log(`Transaction ${ref} already processed.`);
     return NextResponse.json({ received: true, note: "Already processed" });
   }
 
@@ -160,10 +159,8 @@ export async function POST(req: Request) {
         });
       }
 
-       console.log(`[PAYPACK WEBHOOK] Store Order Success for ${ref}`);
-
-       if (txData.creatorUid) {
-         await createNotification({
+        if (txData.creatorUid) {
+          await createNotification({
            userId: txData.creatorUid,
            type: "new_sale",
            title: "New Sale!",
@@ -241,10 +238,8 @@ export async function POST(req: Request) {
         });
       }
 
-       console.log(`[PAYPACK WEBHOOK] Support Success for ${ref}`);
-
-       if (txData.creatorUid) {
-         await createNotification({
+        if (txData.creatorUid) {
+          await createNotification({
            userId: txData.creatorUid,
            type: "support_received",
            title: "New Support Received!",

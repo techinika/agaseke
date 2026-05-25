@@ -10,7 +10,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import Navbar from "@/components/parts/Navigation";
 import Footer from "@/components/parts/Footer";
-import Loading from "@/app/loading";
+import DetailSkeleton from "@/components/ui/DetailSkeleton";
 import { WinnersModal } from "@/components/parts/public/giveaway";
 import type { Giveaway } from "@/components/parts/public/giveaway";
 
@@ -97,7 +97,7 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
     else { navigator.clipboard.writeText(`${text} ${url}`); toast.success("Link copied!"); }
   };
 
-  if (loading) return <Loading />;
+  if (loading) return <DetailSkeleton />;
   if (!giveaway || !creatorData) {
     return (
       <div className="min-h-screen bg-[#FBFBFC] flex items-center justify-center">

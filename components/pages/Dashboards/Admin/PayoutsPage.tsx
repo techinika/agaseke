@@ -210,7 +210,7 @@ export default function AdminPayouts() {
                           {creator.profilePicture ? (
                             <img
                               src={creator.profilePicture}
-                              alt=""
+                              alt={creator.name || "Creator"}
                               className="w-full h-full object-cover"
                             />
                           ) : (

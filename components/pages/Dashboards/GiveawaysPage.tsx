@@ -268,7 +268,7 @@ export default function GiveawaysPage() {
           >
             <ArrowLeft size={16} /> Back
           </button>
-          <h2 className="text-xl font-bold uppercase">Giveaways</h2>
+          <h1 className="text-xl font-bold uppercase">Giveaways</h1>
         </div>
         <button
           onClick={() => setIsCreating(true)}

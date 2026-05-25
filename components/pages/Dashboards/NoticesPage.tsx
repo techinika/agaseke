@@ -139,9 +139,9 @@ export default function NoticesPage() {
         {filteredNotices.length === 0 ? (
           <div className="bg-white border border-dashed border-slate-200 rounded-3xl p-16 text-center">
             <Megaphone className="text-slate-300 mx-auto mb-4" size={48} />
-            <h3 className="text-xl font-bold text-slate-700 mb-2">
+            <h2 className="text-xl font-bold text-slate-700 mb-2">
               No notices yet
-            </h3>
+            </h2>
             <p className="text-slate-400 font-medium">
               When the admin sends announcements, they will appear here.
             </p>
@@ -174,13 +174,13 @@ export default function NoticesPage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <h3
+                        <h2
                           className={`font-bold text-lg ${
                             notice.read ? "text-slate-600" : "text-slate-900"
                           }`}
                         >
                           {notice.title}
-                        </h3>
+                        </h2>
                         {!notice.read && (
                           <span className="bg-orange-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
                             NEW

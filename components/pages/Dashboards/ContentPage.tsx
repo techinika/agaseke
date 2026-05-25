@@ -496,7 +496,7 @@ export default function ContentManager() {
                     <div key={comment.id} className="bg-gray-50 rounded-lg p-3">
                       <div className="flex items-start gap-2">
                         <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden shrink-0">
-                          {comment.userPhoto ? <img src={comment.userPhoto} alt="" className="w-full h-full object-cover" /> : <span className="text-xs flex items-center justify-center h-full text-gray-500">{comment.userName?.[0]}</span>}
+                          {comment.userPhoto ? <img src={comment.userPhoto} alt={comment.userName || "Commenter"} className="w-full h-full object-cover" /> : <span className="text-xs flex items-center justify-center h-full text-gray-500">{comment.userName?.[0]}</span>}
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -520,7 +520,7 @@ export default function ContentManager() {
                             <div key={reply.id} className="mt-2 ml-4 pl-3 border-l-2 border-gray-200">
                               <div className="flex items-start gap-2">
                                 <div className="w-6 h-6 rounded-full bg-gray-200 overflow-hidden shrink-0">
-                                  {reply.userPhoto ? <img src={reply.userPhoto} alt="" className="w-full h-full object-cover" /> : <span className="text-[10px] flex items-center justify-center h-full text-gray-500">{reply.userName?.[0]}</span>}
+                                  {reply.userPhoto ? <img src={reply.userPhoto} alt={reply.userName || "Commenter"} className="w-full h-full object-cover" /> : <span className="text-[10px] flex items-center justify-center h-full text-gray-500">{reply.userName?.[0]}</span>}
                                 </div>
                                 <div>
                                   <span className="font-medium text-xs">{reply.userName}</span>

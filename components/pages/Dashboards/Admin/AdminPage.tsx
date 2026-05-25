@@ -1176,7 +1176,7 @@ export default function AdminDashboard() {
                       <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden">
                         <img
                           src={creator.profilePicture || ""}
-                          alt=""
+                          alt={creator.name || "Creator"}
                           className="w-full h-full object-cover"
                         />
                       </div>

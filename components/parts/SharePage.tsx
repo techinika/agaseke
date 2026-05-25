@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
-import { QRCodeCanvas } from "qrcode.react";
-import { toPng } from "html-to-image";
+import dynamic from "next/dynamic";
 import {
   Download,
   X,
@@ -14,6 +13,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/auth/AuthContext";
+import { toPng } from "html-to-image";
+
+const QRCodeCanvas = dynamic(() => import("qrcode.react").then((mod) => mod.QRCodeCanvas), { ssr: false });
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -191,7 +193,7 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
                   {safeProfileImage ? (
                     <img
                       src={safeProfileImage}
-                      alt=""
+                      alt={creator?.name || "Creator profile"}
                       className="w-full h-full rounded-[1.2rem] object-cover"
                       crossOrigin="anonymous"
                     />

@@ -10,7 +10,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import Navbar from "@/components/parts/Navigation";
 import Footer from "@/components/parts/Footer";
-import Loading from "@/app/loading";
+import DetailSkeleton from "@/components/ui/DetailSkeleton";
 import type { Gathering } from "@/components/parts/public/gatherings";
 
 export default function GatheringDetailPage({ username, gatheringId }: { username: string; gatheringId: string }) {
@@ -74,7 +74,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
     finally { setRsvping(false); }
   };
 
-  if (loading) return <Loading />;
+  if (loading) return <DetailSkeleton />;
   if (!gathering || !creatorData) {
     return (
       <div className="min-h-screen bg-[#FBFBFC] flex items-center justify-center">

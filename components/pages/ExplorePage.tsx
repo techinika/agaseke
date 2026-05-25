@@ -165,7 +165,7 @@ export default function ExplorePage() {
                         {creator.profilePicture ? (
                           <img
                             src={creator.profilePicture}
-                            alt=""
+                            alt={creator.name || creator.handle || "Creator profile"}
                             className="w-full h-full object-cover"
                           />
                         ) : (

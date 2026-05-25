@@ -45,6 +45,12 @@ export async function generateMetadata({
       images: [{ url: creator.profilePicture || `${baseUrl}/agaseke.png`, width: 400, height: 400, alt: displayName }],
       type: "website",
     },
+    twitter: {
+      card: "summary_large_image",
+      title: `${title} | ${displayName}`,
+      description: `RSVP to ${title} by ${displayName}.`,
+      images: [creator.profilePicture || `${baseUrl}/agaseke.png`],
+    },
     robots: { index: true, follow: true },
   };
 }

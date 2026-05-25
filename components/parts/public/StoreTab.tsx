@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   ShoppingCart,
   Loader,
@@ -193,27 +193,30 @@ export const StoreTab = ({
       p.description.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const addToCart = (
-    product: Product,
-    quantity: number = 1,
-    selectedSize?: string,
-  ) => {
-    setCart((prev) => {
-      const existing = prev.find(
-        (item) =>
-          item.product.id === product.id && item.selectedSize === selectedSize,
-      );
-      if (existing) {
-        return prev.map((item) =>
-          item.product.id === product.id && item.selectedSize === selectedSize
-            ? { ...item, quantity: item.quantity + quantity }
-            : item,
+  const addToCart = useCallback(
+    (
+      product: Product,
+      quantity: number = 1,
+      selectedSize?: string,
+    ) => {
+      setCart((prev) => {
+        const existing = prev.find(
+          (item) =>
+            item.product.id === product.id && item.selectedSize === selectedSize,
         );
-      }
-      return [...prev, { product, quantity, selectedSize }];
-    });
-    toast.success("Added to cart!");
-  };
+        if (existing) {
+          return prev.map((item) =>
+            item.product.id === product.id && item.selectedSize === selectedSize
+              ? { ...item, quantity: item.quantity + quantity }
+              : item,
+          );
+        }
+        return [...prev, { product, quantity, selectedSize }];
+      });
+      toast.success("Added to cart!");
+    },
+    [],
+  );
 
   const addFolderToCart = (folder: FolderData) => {
     const folderProducts = products.filter((p) =>
@@ -231,29 +234,32 @@ export const StoreTab = ({
     setActiveFolder(null);
   };
 
-  const updateQuantity = (
-    productId: string,
-    selectedSize: string | undefined,
-    delta: number,
-  ) => {
-    setCart(
-      (prev) =>
-        prev
-          .map((item) => {
-            if (
-              item.product.id === productId &&
-              item.selectedSize === selectedSize
-            ) {
-              const newQty = item.quantity + delta;
-              return newQty > 0 ? { ...item, quantity: newQty } : null;
-            }
-            return item;
-          })
-          .filter(Boolean) as CartItem[],
-    );
-  };
+  const updateQuantity = useCallback(
+    (
+      productId: string,
+      selectedSize: string | undefined,
+      delta: number,
+    ) => {
+      setCart(
+        (prev) =>
+          prev
+            .map((item) => {
+              if (
+                item.product.id === productId &&
+                item.selectedSize === selectedSize
+              ) {
+                const newQty = item.quantity + delta;
+                return newQty > 0 ? { ...item, quantity: newQty } : null;
+              }
+              return item;
+            })
+            .filter(Boolean) as CartItem[],
+      );
+    },
+    [],
+  );
 
-  const removeFromCart = (productId: string, selectedSize?: string) => {
+  const removeFromCart = useCallback((productId: string, selectedSize?: string) => {
     setCart((prev) =>
       prev.filter(
         (item) =>
@@ -262,9 +268,9 @@ export const StoreTab = ({
           ),
       ),
     );
-  };
+  }, []);
 
-  const getCartTotal = () => {
+  const getCartTotal = useCallback(() => {
     let total = 0;
     cart.forEach((item) => {
       let itemPrice = item.product.price * item.quantity;
@@ -283,9 +289,9 @@ export const StoreTab = ({
       total += itemPrice;
     });
     return total;
-  };
+  }, [cart]);
 
-  const getItemPrice = (item: CartItem) => {
+  const getItemPrice = useCallback((item: CartItem) => {
     let price = item.product.price * item.quantity;
 
     if (item.product.bulkPricing && item.product.bulkPricing.length > 0) {
@@ -299,9 +305,9 @@ export const StoreTab = ({
     }
 
     return price;
-  };
+  }, []);
 
-  const getFolderTotal = (folder: FolderData) => {
+  const getFolderTotal = useCallback((folder: FolderData) => {
     const folderProducts = products.filter(
       (p) => folder.productIds.includes(p.id) && !purchasedProductIds.has(p.id),
     );
@@ -310,9 +316,9 @@ export const StoreTab = ({
       return total - (total * folder.discountPercentage) / 100;
     }
     return total;
-  };
+  }, [products, purchasedProductIds]);
 
-  const getFolderPlatformFee = (folder: FolderData) => {
+  const getFolderPlatformFee = useCallback((folder: FolderData) => {
     const folderProducts = products.filter(
       (p) => folder.productIds.includes(p.id) && !purchasedProductIds.has(p.id),
     );
@@ -326,7 +332,7 @@ export const StoreTab = ({
       fee = fee - (fee * folder.discountPercentage) / 100;
     }
     return fee;
-  };
+  }, [products, purchasedProductIds, platformSharePercentage]);
 
   if (!canAccess) {
     return (

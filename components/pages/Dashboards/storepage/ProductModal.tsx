@@ -127,13 +127,6 @@ export default function ProductModal({
 
     setSaving(true);
     try {
-      console.log(
-        "Saving product with creatorId:",
-        creatorId,
-        "formData:",
-        formData,
-      );
-
       const productData: Record<string, any> = {
         creatorId,
         name: formData.name,
@@ -166,8 +159,6 @@ export default function ProductModal({
         productData.bulkPricing = formData.bulkPricing;
       }
 
-      console.log("productData to save:", productData);
-
       if (product) {
         await updateDoc(doc(db, "storeProducts", product.id), productData);
         toast.success("Product updated!");
@@ -176,7 +167,6 @@ export default function ProductModal({
           ...productData,
           createdAt: serverTimestamp(),
         });
-        console.log("Product created:", docRef.id);
         toast.success("Product created!");
       }
       onClose();

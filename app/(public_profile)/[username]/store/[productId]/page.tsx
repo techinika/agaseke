@@ -46,6 +46,12 @@ export async function generateMetadata({
       images: [{ url: image, width: 800, height: 800, alt: name }],
       type: "website",
     },
+    twitter: {
+      card: "summary_large_image",
+      title: `${name} | ${displayName}`,
+      description: `Buy ${name} from ${displayName}'s store.`,
+      images: [image],
+    },
     robots: { index: true, follow: true },
   };
 }

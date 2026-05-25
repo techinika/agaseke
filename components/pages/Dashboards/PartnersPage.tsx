@@ -120,7 +120,7 @@ export default function PartnersPage() {
           >
             <ArrowLeft size={16} /> Back
           </button>
-          <h2 className="text-xl font-bold uppercase">Partners</h2>
+          <h1 className="text-xl font-bold uppercase">Partners</h1>
         </div>
         <button
           onClick={() => {

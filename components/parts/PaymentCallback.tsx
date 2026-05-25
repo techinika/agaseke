@@ -11,7 +11,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
-import confetti from "canvas-confetti";
+
 
 export default function PaymentCallback() {
   const searchParams = useSearchParams();
@@ -25,11 +25,13 @@ export default function PaymentCallback() {
   const merchantRef = searchParams.get("OrderMerchantReference");
 
   const triggerConfetti = useCallback(() => {
-    confetti({
-      particleCount: 150,
-      spread: 70,
-      origin: { y: 0.6 },
-      colors: ["#ea580c", "#fb923c", "#fff"],
+    void import("canvas-confetti").then((mod) => {
+      mod.default({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ["#ea580c", "#fb923c", "#fff"],
+      });
     });
   }, []);
 

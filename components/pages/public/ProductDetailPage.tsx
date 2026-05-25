@@ -10,7 +10,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import Navbar from "@/components/parts/Navigation";
 import Footer from "@/components/parts/Footer";
-import Loading from "@/app/loading";
+import DetailSkeleton from "@/components/ui/DetailSkeleton";
 import type { Product } from "@/components/parts/public/store/types";
 
 const platformSharePercentage = Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
@@ -70,7 +70,7 @@ export default function ProductDetailPage({ username, productId }: { username: s
     toast.success("Added to cart!");
   };
 
-  if (loading) return <Loading />;
+  if (loading) return <DetailSkeleton />;
 
   if (!product || !creatorData) {
     return (

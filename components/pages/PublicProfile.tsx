@@ -39,6 +39,16 @@ import { normalizeSocialUrl } from "@/lib/urlUtils";
 export default function PublicProfile({ username }: { username: string }) {
   const { user: currentUser, isLoggedIn, isCreator } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [creatorData, setCreatorData] = useState<any>(null);
+  const [profileData, setProfileData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [referralId, setReferralId] = useState<string | null>(null);
+  const [isSupporter, setIsSupporter] = useState(false);
+  const [publicPosts, setPublicPosts] = useState<any[]>([]);
+  const [privatePosts, setPrivatePosts] = useState<any[]>([]);
+  const [featuredPartners, setFeaturedPartners] = useState<any[]>([]);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("community");
 
   useEffect(() => {
     const fetchData = async () => {

@@ -113,39 +113,40 @@ export default function SupportersPage() {
     return Array.from(grouped.values());
   }, [supports]);
 
-  const enrichedSupporters = useMemo(() => {
-    return aggregatedSupporters.map(async (supporter) => {
-      if (supporter.supporterId === "anonymous") {
-        return supporter;
-      }
-
-      try {
-        const profileDoc = await getDoc(doc(db, "profiles", supporter.supporterId));
-        if (profileDoc.exists()) {
-          const profile = profileDoc.data() as Profile;
-          return {
-            ...supporter,
-            email: profile.email || supporter.email,
-            displayName: profile.displayName || supporter.displayName,
-            photoURL: profile.photoURL || supporter.photoURL,
-          };
-        }
-      } catch (error) {
-        console.error("Error fetching profile:", error);
-      }
-      return supporter;
-    });
-  }, [aggregatedSupporters]);
-
   const [resolvedSupporters, setResolvedSupporters] = useState<AggregatedSupporter[]>([]);
 
   useEffect(() => {
-    if (enrichedSupporters.length === 0) return;
+    if (aggregatedSupporters.length === 0) return;
 
-    Promise.all(enrichedSupporters).then((results) => {
-      setResolvedSupporters(results);
-    });
-  }, [enrichedSupporters]);
+    const enrich = async () => {
+      const enriched = await Promise.all(
+        aggregatedSupporters.map(async (supporter) => {
+          if (supporter.supporterId === "anonymous") {
+            return supporter;
+          }
+
+          try {
+            const profileDoc = await getDoc(doc(db, "profiles", supporter.supporterId));
+            if (profileDoc.exists()) {
+              const profile = profileDoc.data() as Profile;
+              return {
+                ...supporter,
+                email: profile.email || supporter.email,
+                displayName: profile.displayName || supporter.displayName,
+                photoURL: profile.photoURL || supporter.photoURL,
+              };
+            }
+          } catch (error) {
+            console.error("Error fetching profile:", error);
+          }
+          return supporter;
+        })
+      );
+      setResolvedSupporters(enriched);
+    };
+
+    enrich();
+  }, [aggregatedSupporters]);
 
   const filteredSupporters = useMemo(() => {
     return resolvedSupporters.filter((supporter) => {
@@ -247,7 +248,7 @@ export default function SupportersPage() {
             <Mail size={16} />
           </button>
         </div>
-        <h2 className="text-xl font-bold uppercase">Supporters</h2>
+        <h1 className="text-xl font-bold uppercase">Supporters</h1>
 
         <div className="bg-orange-50 rounded-lg p-4 mt-6 mb-6">
           <p className="text-[10px] font-bold uppercase text-orange-600 tracking-widest mb-1">

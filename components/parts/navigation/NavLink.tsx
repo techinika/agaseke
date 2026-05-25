@@ -18,8 +18,8 @@ export default function NavLink({
     <div
       className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
         active
-          ? "text-orange-600 bg-orange-50"
-          : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+          ? "text-orange-600 bg-orange-50 dark:bg-orange-950 dark:text-orange-400"
+          : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800"
       }`}
     >
       {icon}
