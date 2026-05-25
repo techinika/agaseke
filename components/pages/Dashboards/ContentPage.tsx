@@ -246,7 +246,7 @@ export default function ContentManager() {
         contentUrl: uploadedUrl,
         isPrivate: newPost.isPrivate,
         createdAt: serverTimestamp(),
-        stats: { views: 0, likes: 0 },
+        views: 0,
       };
 
       if (editingPost) {
@@ -448,9 +448,9 @@ export default function ContentManager() {
                   {selectedPost.isPrivate ? <Lock size={14} className="text-amber-500" /> : <Globe size={14} className="text-green-500" />}
                   <span className="hidden sm:inline">{selectedPost.isPrivate ? "Supporters Only" : "Public"}</span>
                   <span className="text-gray-300">|</span>
-                  {selectedPost.stats?.views || 0} views
+                  {selectedPost.views || 0} views
                   <span className="text-gray-300">|</span>
-                  {selectedPost.stats?.likes || 0} likes
+                  {selectedPost.likes || selectedPost.stats?.likes || 0} likes
                 </p>
               </div>
               <div className="flex gap-2 shrink-0">

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   FileText,
   Lock,
@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/db/firebase";
-import { collection, getCountFromServer } from "firebase/firestore";
+import { collection, getCountFromServer, doc, updateDoc, increment } from "firebase/firestore";
 
 interface CommunityTabProps {
   publicPosts: any[];
@@ -59,6 +59,8 @@ export const CommunityTab = ({
   const visiblePrivatePosts = privatePosts.length;
 
   const [counts, setCounts] = useState<Record<string, { likes: number; comments: number }>>({});
+  const viewedPosts = useRef<Set<string>>(new Set());
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchCounts = async () => {
@@ -77,6 +79,30 @@ export const CommunityTab = ({
       setCounts(newCounts);
     };
     if (displayPosts.length > 0) fetchCounts();
+  }, [displayPosts.map((p) => p.id).join(",")]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || displayPosts.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const postId = entry.target.getAttribute("data-post-id");
+          if (!postId || viewedPosts.current.has(postId)) continue;
+          viewedPosts.current.add(postId);
+          const postRef = doc(db, "creatorContent", postId);
+          updateDoc(postRef, { views: increment(1) }).catch(() => {});
+        }
+      },
+      { threshold: 0.3 },
+    );
+
+    const cards = container.querySelectorAll("[data-post-id]");
+    cards.forEach((card) => observer.observe(card));
+
+    return () => observer.disconnect();
   }, [displayPosts.map((p) => p.id).join(",")]);
 
   if (allPosts.length === 0) {
@@ -107,10 +133,11 @@ export const CommunityTab = ({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6">
+      <div ref={containerRef} className="grid grid-cols-1 gap-6">
         {displayPosts.map((item) => (
           <div
             key={item.id}
+            data-post-id={item.id}
             className="bg-card border border-border p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow"
           >
             <div className="flex items-center justify-between mb-3">

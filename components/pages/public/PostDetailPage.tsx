@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { ArrowLeft, Heart, Loader, FileText, Lock, Globe, MessageCircle, Share2, Pencil, Trash2, Check, X } from "lucide-react";
 import { db } from "@/db/firebase";
-import { doc, getDoc, getDocs, collection, query, where, orderBy, addDoc, deleteDoc, updateDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, getDocs, collection, query, where, orderBy, addDoc, deleteDoc, updateDoc, onSnapshot, serverTimestamp, increment } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import Navbar from "@/components/parts/Navigation";
@@ -24,6 +24,7 @@ export default function PostDetailPage({ username, postId }: { username: string;
   const [submittingComment, setSubmittingComment] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editCommentContent, setEditCommentContent] = useState("");
+  const viewCounted = useRef(false);
 
   useEffect(() => {
     const fetch = async () => {
@@ -36,12 +37,20 @@ export default function PostDetailPage({ username, postId }: { username: string;
         const postRef = doc(db, "creatorContent", postId);
         const postSnap = await getDoc(postRef);
         if (!postSnap.exists()) { setLoading(false); return; }
-        setPost({ id: postSnap.id, ...postSnap.data() });
+        const postData = { id: postSnap.id, ...postSnap.data() };
+        setPost(postData);
       } catch (e) { console.error(e); }
       finally { setLoading(false); }
     };
     fetch();
   }, [username, postId]);
+
+  useEffect(() => {
+    if (loading || !postId || viewCounted.current) return;
+    viewCounted.current = true;
+    const postRef = doc(db, "creatorContent", postId);
+    updateDoc(postRef, { views: increment(1) }).catch(() => {});
+  }, [loading, postId]);
 
   useEffect(() => {
     if (!postId) return;
