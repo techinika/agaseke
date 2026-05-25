@@ -12,7 +12,7 @@ export default function RootLayout({
   return (
     <AuthGuard>
       <Navbar />
-      <nav className="sticky top-0 z-40 bg-[#FBFBFC]/80 backdrop-blur-md border-b border-slate-200 px-6 mb-10 overflow-x-auto no-scrollbar">
+      <nav className="sticky top-0 z-40 bg-[#FBFBFC]/80 backdrop-blur-md border-b border-slate-200 px-6 overflow-x-auto no-scrollbar">
         <div className="max-w-7xl mx-auto flex items-center gap-8 py-4">
           <NavItem href="/admin">Overview</NavItem>
           <NavItem href="/admin/users">Users</NavItem>

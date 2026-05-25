@@ -491,14 +491,15 @@ export default function SupporterSpace() {
     }
   };
 
-  const toggleExpand = async (item: any) => {
-    if (expandedPostId === item.id) {
-      setExpandedPostId(null);
-      setShowCommentFor(null);
-      return;
+  const handleCardClick = (item: any, e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest("button, a, input, textarea, video, iframe")) return;
+    const text = item.description || "";
+    if (text.length > 200 && expandedPostId !== item.id) {
+      setExpandedPostId(item.id);
+      setDocumentIndex((prev) => ({ ...prev, [item.id]: 0 }));
+    } else {
+      router.push(`/supporter/${item.id}`);
     }
-    setExpandedPostId(item.id);
-    setDocumentIndex((prev) => ({ ...prev, [item.id]: 0 }));
   };
 
   const toggleComments = (item: any) => {
@@ -653,7 +654,7 @@ export default function SupporterSpace() {
   };
 
   const renderPostComments = (item: any) => (
-    <div className="px-4 pb-4 border-t border-gray-100 pt-3 bg-gray-50">
+    <div onClick={(e) => e.stopPropagation()} className="px-4 pb-4 border-t border-gray-100 pt-3 bg-gray-50">
       <h4 className="text-xs font-semibold text-gray-500 mb-3">
         Comments ({comments[item.id]?.length || 0})
       </h4>
@@ -779,7 +780,7 @@ export default function SupporterSpace() {
         </div>
       )}
 
-      <div className="mt-3 flex gap-2">
+      <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
         <input
           value={commentText[item.id] || ""}
           onChange={(e) =>
@@ -857,7 +858,8 @@ export default function SupporterSpace() {
                         if (el) postRefs.current[item.id] = el;
                       }}
                       data-post-id={item.id}
-                      className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden"
+                      onClick={(e) => handleCardClick(item, e)}
+                      className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden cursor-pointer"
                     >
                       <div className="p-4">
                         <div className="flex items-center justify-between">
@@ -922,7 +924,7 @@ export default function SupporterSpace() {
                         </div>
 
                         {item.contentUrl && expandedPostId !== item.id && (
-                          <div className="mt-3 rounded-lg overflow-hidden bg-gray-100">
+                          <div onClick={(e) => e.stopPropagation()} className="mt-3 rounded-lg overflow-hidden bg-gray-100">
                             {item.type === "video" ? (
                               <video
                                 src={item.contentUrl}
@@ -977,7 +979,7 @@ export default function SupporterSpace() {
                         )}
 
                         {expandedPostId === item.id && (
-                          <div className="mt-4">
+                          <div onClick={(e) => e.stopPropagation()} className="mt-4">
                             {renderContentMedia(item)}
 
                             {item.docUrl && !Array.isArray(item.docUrl) && (
@@ -997,7 +999,10 @@ export default function SupporterSpace() {
                       <div className="px-4 pb-3 pt-2 flex items-center justify-between border-t border-gray-100">
                         <div className="flex items-center gap-4">
                           <button
-                            onClick={() => handleLike(item)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleLike(item);
+                            }}
                             className={`flex items-center gap-1.5 text-sm ${likedPosts.has(item.id) ? "text-red-500" : "text-gray-500 hover:text-red-500"}`}
                           >
                             <Heart
@@ -1009,7 +1014,10 @@ export default function SupporterSpace() {
                             {item.likes || 0}
                           </button>
                           <button
-                            onClick={() => toggleComments(item)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleComments(item);
+                            }}
                             className={`flex items-center gap-1.5 text-sm ${showCommentFor === item.id ? "text-blue-500" : "text-gray-500 hover:text-blue-500"}`}
                           >
                             <MessageCircle size={18} />
@@ -1024,18 +1032,17 @@ export default function SupporterSpace() {
                             <MapPin size={14} /> {item.location}
                           </span>
                         )}
-                        {item.type === "content" &&
-                          item.description &&
-                          item.description.length > 200 && (
-                            <button
-                              onClick={() => setExpandedPostId(item.id)}
-                              className="text-xs text-orange-500 hover:underline"
-                            >
-                              {expandedPostId === item.id
-                                ? "Read less"
-                                : "Read more"}
-                            </button>
-                          )}
+                        {item.type === "content" && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/supporter/${item.id}`);
+                            }}
+                            className="text-xs text-orange-500 hover:underline font-medium"
+                          >
+                            View Post
+                          </button>
+                        )}
                       </div>
 
                       {showCommentFor === item.id && renderPostComments(item)}
