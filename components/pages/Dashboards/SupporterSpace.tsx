@@ -1070,7 +1070,7 @@ export default function SupporterSpace() {
                   </p>
                   <button
                     onClick={() => router.push("/explore")}
-                    className="mt-4 text-sm text-white bg-foreground px-4 py-2 rounded-lg hover:bg-foreground/90 transition"
+                    className="mt-4 text-sm text-background bg-foreground px-4 py-2 rounded-lg hover:bg-foreground/90 transition"
                   >
                     Explore Creators
                   </button>

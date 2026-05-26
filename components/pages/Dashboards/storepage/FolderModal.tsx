@@ -249,7 +249,7 @@ export default function FolderModal({
                 })
               }
               className={`w-12 h-6 rounded-full transition-colors ${
-                formData.discountEnabled ? "bg-green-500" : "bg-slate-300"
+                formData.discountEnabled ? "bg-green-500" : "bg-border-strong"
               }`}
             >
               <div
@@ -299,7 +299,7 @@ export default function FolderModal({
                 setFormData({ ...formData, active: !formData.active })
               }
               className={`w-12 h-6 rounded-full transition-colors ${
-                formData.active ? "bg-green-500" : "bg-slate-300"
+                formData.active ? "bg-green-500" : "bg-border-strong"
               }`}
             >
               <div

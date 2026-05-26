@@ -346,7 +346,7 @@ export default function SupportersPage() {
                     <tr
                       key={supporter.supporterId}
                       className={`border-b border-border last:border-0 hover:bg-muted ${
-                        index % 2 === 0 ? "bg-card" : "bg-slate-25"
+                        index % 2 === 0 ? "bg-card" : "bg-muted"
                       }`}
                     >
                       <td className="px-6 py-4">
