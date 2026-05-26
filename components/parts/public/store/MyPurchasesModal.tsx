@@ -1,17 +1,21 @@
 import { useState } from "react";
-import { Package, Download, X } from "lucide-react";
+import { Package, Download, X, Loader } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Product, Order } from "./types";
+import { downloadProduct } from "@/lib/downloadProduct";
 
 export function MyPurchasesModal({
   orders,
   products,
   creatorHandle,
+  uid,
   onClose,
 }: {
   orders: Order[];
   products: Product[];
   creatorHandle: string;
+  uid?: string;
   onClose: () => void;
 }) {
   const [downloadingProduct, setDownloadingProduct] = useState<string | null>(
@@ -53,9 +57,10 @@ export function MyPurchasesModal({
 
   const handleDownload = async (productId: string) => {
     setDownloadingProduct(productId);
-    const product = products.find((p) => p.id === productId);
-    if (product?.fileUrl) {
-      window.open(product.fileUrl, "_blank");
+    try {
+      await downloadProduct(productId, uid);
+    } catch {
+      toast.error("Download failed");
     }
     setTimeout(() => setDownloadingProduct(null), 1000);
   };

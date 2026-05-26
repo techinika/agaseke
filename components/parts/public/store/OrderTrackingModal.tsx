@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Truck, X, Check, Download, Loader } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Timestamp } from "firebase/firestore";
 import { Order, Product } from "./types";
+import { downloadProduct } from "@/lib/downloadProduct";
 
 const statusSteps = ["pending", "paid", "processing", "shipped", "delivered"];
 const statusLabels: Record<string, string> = {
@@ -24,10 +26,12 @@ const statusColors: Record<string, string> = {
 export function OrderTrackingModal({
   orders,
   products = [],
+  uid,
   onClose,
 }: {
   orders: Order[];
   products?: Product[];
+  uid?: string;
   onClose: () => void;
 }) {
   const [downloadingProduct, setDownloadingProduct] = useState<string | null>(
@@ -38,9 +42,10 @@ export function OrderTrackingModal({
 
   const handleDownload = async (productId: string) => {
     setDownloadingProduct(productId);
-    const product = products.find((p) => p.id === productId);
-    if (product?.fileUrl) {
-      window.open(product.fileUrl, "_blank");
+    try {
+      await downloadProduct(productId, uid);
+    } catch {
+      toast.error("Download failed");
     }
     setTimeout(() => setDownloadingProduct(null), 1000);
   };
