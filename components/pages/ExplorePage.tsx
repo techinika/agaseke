@@ -97,7 +97,7 @@ export default function ExplorePage() {
   }, [searchTerm, creators]);
 
   return (
-    <div className="min-h-screen bg-[#FBFBFC] text-slate-900 pb-20">
+    <div className="min-h-screen bg-background text-foreground pb-20">
       <ExploreSchema />
       <header className="pt-20 pb-12 px-6">
         <div className="max-w-6xl mx-auto text-center">
@@ -107,14 +107,14 @@ export default function ExplorePage() {
               Creators
             </span>
           </h1>
-          <p className="text-slate-500 font-medium text-lg max-w-xl mx-auto mb-10">
+          <p className="text-muted-foreground font-medium text-lg max-w-xl mx-auto mb-10">
             Connect with the artists, storytellers, and innovators shaping the
             creative landscape in Kigali.
           </p>
 
           <div className="max-w-2xl mx-auto relative group">
             <Search
-              className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-orange-600 transition-colors"
+              className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-orange-600 transition-colors"
               size={20}
             />
             <input
@@ -122,7 +122,7 @@ export default function ExplorePage() {
               placeholder="Search by name, handle, or bio keywords..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-white border border-slate-100 shadow-xl shadow-slate-200/50 rounded-lg py-6 pl-14 pr-6 text-lg outline-none focus:ring-4 focus:ring-orange-50 transition-all font-medium"
+              className="w-full bg-card border border-border shadow-xl shadow-border rounded-lg py-6 pl-14 pr-6 text-lg outline-none focus:ring-4 focus:ring-orange-50 transition-all font-medium"
             />
           </div>
         </div>
@@ -134,7 +134,7 @@ export default function ExplorePage() {
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div
                 key={i}
-                className="h-80 bg-slate-100 animate-pulse rounded-lg"
+                className="h-80 bg-muted animate-pulse rounded-lg"
               />
             ))}
           </div>
@@ -142,7 +142,7 @@ export default function ExplorePage() {
           <>
             {/* Results Info */}
             <div className="flex items-center justify-between mb-8 px-2">
-              <h3 className="text-xs font-bold uppercase tracking-[0.3em] text-slate-400">
+              <h3 className="text-xs font-bold uppercase tracking-[0.3em] text-muted-foreground">
                 {searchTerm
                   ? `Searching for "${searchTerm}"`
                   : "Community Spotlight"}
@@ -155,13 +155,13 @@ export default function ExplorePage() {
                 <Link
                   key={creator.handle}
                   href={`/${creator.handle}`}
-                  className="group bg-white border border-slate-50 p-8 rounded-lg shadow-sm hover:shadow-2xl hover:shadow-orange-900/5 hover:-translate-y-1 transition-all duration-500 relative overflow-hidden"
+                  className="group bg-card border border-border p-8 rounded-lg shadow-sm hover:shadow-2xl hover:shadow-orange-900/5 hover:-translate-y-1 transition-all duration-500 relative overflow-hidden"
                 >
                   <div className="absolute -top-10 -right-10 w-32 h-32 bg-orange-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
 
                   <div className="flex items-start justify-between mb-6">
-                    <div className="w-20 h-20 bg-slate-50 rounded-lg p-1 border border-slate-100">
-                      <div className="w-full h-full bg-slate-200 rounded-lg overflow-hidden flex items-center justify-center">
+                    <div className="w-20 h-20 bg-muted rounded-lg p-1 border border-border">
+                      <div className="w-full h-full bg-muted rounded-lg overflow-hidden flex items-center justify-center">
                         {creator.profilePicture ? (
                           <img
                             src={creator.profilePicture}
@@ -169,7 +169,7 @@ export default function ExplorePage() {
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <User size={30} className="text-slate-400" />
+                          <User size={30} className="text-muted-foreground" />
                         )}
                       </div>
                     </div>
@@ -190,16 +190,16 @@ export default function ExplorePage() {
                     <p className="text-orange-600 font-bold text-xs uppercase tracking-widest">
                       @{creator.handle}
                     </p>
-                    <p className="text-slate-500 text-sm leading-relaxed line-clamp-2 pt-2">
+                    <p className="text-muted-foreground text-sm leading-relaxed line-clamp-2 pt-2">
                       {creator.bio || "No bio available."}
                     </p>
                   </div>
 
-                  <div className="mt-8 pt-6 border-t border-slate-50 flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-300">
+                  <div className="mt-8 pt-6 border-t border-border flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                       View Profile
                     </span>
-                    <div className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center group-hover:bg-orange-600 transition-colors">
+                    <div className="w-10 h-10 rounded-full bg-foreground text-white flex items-center justify-center group-hover:bg-orange-600 transition-colors">
                       <ArrowRight size={18} />
                     </div>
                   </div>
@@ -212,7 +212,7 @@ export default function ExplorePage() {
                 <button
                   onClick={() => fetchCreators()}
                   disabled={loadingMore}
-                  className="group relative inline-flex items-center gap-3 bg-white border border-slate-200 px-12 py-5 rounded-lg font-bold text-xs uppercase tracking-[0.2em] hover:border-orange-600 hover:text-orange-600 transition-all disabled:opacity-50 shadow-sm overflow-hidden"
+                  className="group relative inline-flex items-center gap-3 bg-card border border-border px-12 py-5 rounded-lg font-bold text-xs uppercase tracking-[0.2em] hover:border-orange-600 hover:text-orange-600 transition-all disabled:opacity-50 shadow-sm overflow-hidden"
                 >
                   {loadingMore ? (
                     <Loader
@@ -234,13 +234,13 @@ export default function ExplorePage() {
 
             {filteredCreators.length === 0 && (
               <div className="py-24 text-center">
-                <div className="w-24 h-24 bg-slate-50 rounded-lg flex items-center justify-center mx-auto mb-8 border border-slate-100">
-                  <Search size={32} className="text-slate-300" />
+                <div className="w-24 h-24 bg-muted rounded-lg flex items-center justify-center mx-auto mb-8 border border-border">
+                  <Search size={32} className="text-muted-foreground" />
                 </div>
                 <h3 className="text-3xl font-bold tracking-tighter">
                   No creators found
                 </h3>
-                <p className="text-slate-500 mt-2 font-medium">
+                <p className="text-muted-foreground mt-2 font-medium">
                   Try searching for different keywords or names.
                 </p>
               </div>

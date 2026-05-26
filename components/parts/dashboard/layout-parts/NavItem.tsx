@@ -8,7 +8,7 @@ export default function NavItem({ icon, label, href, active }: any) {
       className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
         active
           ? "bg-orange-50 text-orange-600"
-          : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+          : "text-muted-foreground hover:bg-muted hover:text-foreground"
       }`}
     >
       {icon} {label}

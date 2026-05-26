@@ -237,7 +237,7 @@ export default function PublicProfile({ username }: { username: string }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#FBFBFC] text-slate-900 selection:bg-orange-100">
+    <div className="min-h-screen bg-background text-foreground selection:bg-orange-100">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
@@ -349,19 +349,19 @@ export default function PublicProfile({ username }: { username: string }) {
         <section className="max-w-2xl mx-auto px-6 py-12">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200"></div>
+              <div className="w-full border-t border-border"></div>
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-[#FBFBFC] px-4 flex items-center gap-2">
+              <span className="bg-background px-4 flex items-center gap-2">
                 <Building2 size={16} className="text-orange-500" />
-                <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+                <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
                   Partners & Collaborations
                 </span>
               </span>
             </div>
           </div>
           
-          <div className="mt-8 bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+          <div className="mt-8 bg-card rounded-2xl border border-border p-6 shadow-sm">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {featuredPartners.map((partner) => (
                 <a
@@ -369,21 +369,21 @@ export default function PublicProfile({ username }: { username: string }) {
                   href={partner.website || "#"}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex items-center gap-4 p-4 bg-slate-50 rounded-xl hover:bg-orange-50 hover:border-orange-200 border border-transparent transition-all"
+                  className="group flex items-center gap-4 p-4 bg-muted rounded-xl hover:bg-orange-50 hover:border-orange-200 border border-transparent transition-all"
                 >
-                  <div className="w-14 h-14 bg-white rounded-xl overflow-hidden flex items-center justify-center shadow-sm border border-slate-100">
+                  <div className="w-14 h-14 bg-card rounded-xl overflow-hidden flex items-center justify-center shadow-sm border border-border">
                     {partner.logo ? (
                       <img src={partner.logo} alt={partner.name} className="w-full h-full object-cover" />
                     ) : (
-                      <Building2 size={24} className="text-slate-300" />
+                      <Building2 size={24} className="text-muted-foreground" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-slate-900 group-hover:text-orange-700 transition-colors truncate">
+                    <p className="font-bold text-foreground group-hover:text-orange-700 transition-colors truncate">
                       {partner.name}
                     </p>
                     {partner.description && (
-                      <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">
+                      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
                         {partner.description}
                       </p>
                     )}

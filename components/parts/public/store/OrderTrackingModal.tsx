@@ -47,13 +47,13 @@ export function OrderTrackingModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-      <div className="bg-white w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 max-h-[90vh] flex flex-col">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+    <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+      <div className="bg-card w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 max-h-[90vh] flex flex-col">
+        <div className="p-6 border-b border-border flex justify-between items-center">
           <h2 className="text-xl font-bold">My Orders</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-full transition"
+            className="p-2 hover:bg-muted rounded-full transition"
           >
             <X size={20} />
           </button>

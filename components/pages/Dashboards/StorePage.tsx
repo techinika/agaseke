@@ -354,11 +354,11 @@ export default function StorePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] text-slate-900 flex">
-      <aside className="w-64 bg-white border-r border-slate-200 hidden md:block p-6">
+    <div className="min-h-screen bg-background text-foreground flex">
+      <aside className="w-64 bg-card border-r border-border hidden md:block p-6">
         <button
           onClick={() => window.history.back()}
-          className="flex items-center gap-2 text-slate-400 hover:text-slate-900 mb-8 transition font-bold text-xs uppercase tracking-widest"
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition font-bold text-xs uppercase tracking-widest"
         >
           <ArrowLeft size={16} /> Back
         </button>
@@ -377,13 +377,13 @@ export default function StorePage() {
               className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === item.id
                   ? "bg-orange-50 text-orange-600"
-                  : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
               <item.icon size={18} />
               {item.label}
               {item.id === "products" && products.length > 0 && (
-                <span className="ml-auto text-[10px] bg-slate-100 px-2 py-0.5 rounded-full">
+                <span className="ml-auto text-[10px] bg-muted px-2 py-0.5 rounded-full">
                   {products.length}
                 </span>
               )}
@@ -400,7 +400,7 @@ export default function StorePage() {
 
       <main className="flex-1 p-8">
         <div className="flex justify-between items-center mb-8">
-          <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400">
+          <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
             {activeTab === "products" && "Products"}
             {activeTab === "orders" && "Orders"}
             {activeTab === "coupons" && "Coupons"}

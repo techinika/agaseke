@@ -34,7 +34,7 @@ export function ActiveGiveawayCard({
   creatorHandle?: string;
 }) {
   return (
-    <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
+    <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
       <div className="bg-gradient-to-r from-orange-600 to-amber-600 p-6 text-white">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -79,29 +79,29 @@ export function ActiveGiveawayCard({
 
       <div className="p-6">
         <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="text-center p-3 bg-slate-50 rounded-xl">
+          <div className="text-center p-3 bg-muted rounded-xl">
             <Clock size={20} className="mx-auto text-orange-600 mb-1" />
-            <p className="text-xs text-slate-500">Time Left</p>
+            <p className="text-xs text-muted-foreground">Time Left</p>
             <p className="font-bold">{daysLeft} days</p>
           </div>
-          <div className="text-center p-3 bg-slate-50 rounded-xl">
+          <div className="text-center p-3 bg-muted rounded-xl">
             <Users size={20} className="mx-auto text-orange-600 mb-1" />
-            <p className="text-xs text-slate-500">Winners</p>
+            <p className="text-xs text-muted-foreground">Winners</p>
             <p className="font-bold">{giveaway.maxWinners}</p>
           </div>
-          <div className="text-center p-3 bg-slate-50 rounded-xl">
+          <div className="text-center p-3 bg-muted rounded-xl">
             <Trophy size={20} className="mx-auto text-orange-600 mb-1" />
-            <p className="text-xs text-slate-500">Prizes</p>
+            <p className="text-xs text-muted-foreground">Prizes</p>
             <p className="font-bold">{giveaway.rewards.length}</p>
           </div>
         </div>
 
         <div className="space-y-3 mb-6">
-          <p className="text-xs font-bold text-slate-400 uppercase">Prizes</p>
+          <p className="text-xs font-bold text-muted-foreground uppercase">Prizes</p>
           {giveaway.rewards.map((reward: any, idx: number) => (
             <div
               key={idx}
-              className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl"
+              className="flex items-center gap-3 p-3 bg-muted rounded-xl"
             >
               <div
                 className={`p-2 rounded-lg ${
@@ -123,7 +123,7 @@ export function ActiveGiveawayCard({
               </div>
               <div className="flex-1">
                 <p className="font-bold text-sm">{reward.title}</p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   Quantity: {reward.quantity}
                 </p>
               </div>

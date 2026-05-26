@@ -765,20 +765,20 @@ export default function AdminDashboard() {
   if (loading) return <Loading />;
 
   return (
-    <div className="min-h-screen bg-[#FBFBFC] text-slate-900 pb-20 relative">
+    <div className="min-h-screen bg-background text-foreground pb-20 relative">
       <main className="max-w-7xl mx-auto px-6 mt-12">
         <header className="mb-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight text-slate-900 uppercase">
+            <h1 className="text-4xl font-bold tracking-tight text-foreground uppercase">
               Platform Control
             </h1>
-            <p className="text-slate-500 font-medium">
+            <p className="text-muted-foreground font-medium">
               Manage growth, verify creators, and process payouts.
             </p>
           </div>
           <button
             onClick={fetchData}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition"
+            className="flex items-center gap-2 px-4 py-2 bg-foreground text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition"
           >
             <Loader size={16} />
             Refresh
@@ -836,55 +836,55 @@ export default function AdminDashboard() {
 
         {/* Secondary Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
-          <div className="bg-white rounded-xl border border-slate-100 p-4">
+          <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-2 mb-2">
               <Users size={14} className="text-blue-600" />
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
                 Profiles
               </p>
             </div>
             <p className="text-xl font-bold">{stats.profileCount}</p>
           </div>
-          <div className="bg-white rounded-xl border border-slate-100 p-4">
+          <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-2 mb-2">
               <UserCheck size={14} className="text-orange-600" />
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
                 Creators
               </p>
             </div>
             <p className="text-xl font-bold">{stats.creatorCount}</p>
           </div>
-          <div className="bg-white rounded-xl border border-slate-100 p-4">
+          <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-2 mb-2">
               <ShoppingBag size={14} className="text-cyan-600" />
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
                 Store Orders
               </p>
             </div>
             <p className="text-xl font-bold">{stats.totalOrders}</p>
           </div>
-          <div className="bg-white rounded-xl border border-slate-100 p-4">
+          <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-2 mb-2">
               <Gift size={14} className="text-pink-600" />
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
                 Supports
               </p>
             </div>
             <p className="text-xl font-bold">{stats.totalSupports}</p>
           </div>
-          <div className="bg-white rounded-xl border border-slate-100 p-4">
+          <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-2 mb-2">
               <ShoppingBag size={14} className="text-amber-600" />
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
                 Products
               </p>
             </div>
             <p className="text-xl font-bold">{stats.totalProducts}</p>
           </div>
-          <div className="bg-white rounded-xl border border-slate-100 p-4">
+          <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-2 mb-2">
               <Gift size={14} className="text-purple-600" />
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
                 Giveaways
               </p>
             </div>
@@ -894,8 +894,8 @@ export default function AdminDashboard() {
 
         {/* CHARTS SECTION - One per row, horizontally scrollable */}
         <div className="space-y-8 mb-8">
-          <div className="bg-white rounded-xl border border-slate-100 p-6">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-6">
+          <div className="bg-card rounded-xl border border-border p-6">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-6">
               User Growth
             </h3>
             <div className="flex flex-wrap gap-2 mb-6">
@@ -911,8 +911,8 @@ export default function AdminDashboard() {
                   onClick={() => setGrowthFilter(filter.key as any)}
                   className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${
                     growthFilter === filter.key
-                      ? "bg-slate-900 text-white"
-                      : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                      ? "bg-foreground text-white"
+                      : "bg-muted text-muted-foreground hover:bg-slate-200"
                   }`}
                 >
                   {filter.label}
@@ -946,7 +946,7 @@ export default function AdminDashboard() {
                           title={`Previous: ${userGrowthData.previous[index]}`}
                         />
                       </div>
-                      <span className="text-[10px] font-bold text-slate-400 truncate max-w-[40px]">
+                      <span className="text-[10px] font-bold text-muted-foreground truncate max-w-[40px]">
                         {label}
                       </span>
                     </div>
@@ -957,21 +957,21 @@ export default function AdminDashboard() {
             <div className="flex items-center gap-4 mt-4 justify-center text-xs">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-blue-500 rounded" />
-                <span className="text-slate-500">
+                <span className="text-muted-foreground">
                   {growthFilter === "7d" ? "This Week" : growthFilter === "weekly" ? "This Week" : growthFilter === "monthly" ? "This Year" : growthFilter === "annual" ? "Year" : "Year"}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-slate-300 rounded" />
-                <span className="text-slate-500">
+                <span className="text-muted-foreground">
                   {growthFilter === "7d" ? "Last Week" : growthFilter === "weekly" ? "Last Week" : growthFilter === "monthly" ? "Last Year" : growthFilter === "annual" ? "Last Year" : "-"}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-100 p-6">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">
+          <div className="bg-card rounded-xl border border-border p-6">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-4">
               Platform Income vs Payouts
             </h3>
             <div className="flex flex-wrap gap-2 mb-6">
@@ -986,8 +986,8 @@ export default function AdminDashboard() {
                   onClick={() => setTransactionFilter(filter.key as any)}
                   className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${
                     transactionFilter === filter.key
-                      ? "bg-slate-900 text-white"
-                      : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                      ? "bg-foreground text-white"
+                      : "bg-muted text-muted-foreground hover:bg-slate-200"
                   }`}
                 >
                   {filter.label}
@@ -1020,7 +1020,7 @@ export default function AdminDashboard() {
                           title={`Payouts: ${data.payouts.toLocaleString()} RWF`}
                         />
                       </div>
-                      <span className="text-[10px] sm:text-xs font-bold text-slate-400">
+                      <span className="text-[10px] sm:text-xs font-bold text-muted-foreground">
                         {data.month}
                       </span>
                     </div>
@@ -1031,17 +1031,17 @@ export default function AdminDashboard() {
             <div className="flex items-center gap-4 sm:gap-6 mt-4 justify-center flex-wrap">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-emerald-500 rounded" />
-                <span className="text-xs text-slate-500">Income</span>
+                <span className="text-xs text-muted-foreground">Income</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-orange-500 rounded" />
-                <span className="text-xs text-slate-500">Payouts</span>
+                <span className="text-xs text-muted-foreground">Payouts</span>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-100 p-6">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-6">
+          <div className="bg-card rounded-xl border border-border p-6">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-6">
               Transaction Overview
             </h3>
             <div className="space-y-6">
@@ -1050,7 +1050,7 @@ export default function AdminDashboard() {
                   <span className="font-medium">Supports</span>
                   <span className="font-bold">{stats.totalSupports}</span>
                 </div>
-                <div className="w-full bg-slate-100 rounded-full h-3">
+                <div className="w-full bg-muted rounded-full h-3">
                   <div
                     className="bg-pink-500 h-3 rounded-full"
                     style={{
@@ -1064,7 +1064,7 @@ export default function AdminDashboard() {
                   <span className="font-medium">Products</span>
                   <span className="font-bold">{stats.totalOrders}</span>
                 </div>
-                <div className="w-full bg-slate-100 rounded-full h-3">
+                <div className="w-full bg-muted rounded-full h-3">
                   <div
                     className="bg-cyan-500 h-3 rounded-full"
                     style={{
@@ -1079,8 +1079,8 @@ export default function AdminDashboard() {
 
         {/* PENDING REQUESTS SECTION */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <section className="bg-white rounded-lg border border-slate-100 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
+          <section className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-slate-50 bg-muted/50 flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <Wallet className="text-orange-600" size={20} />
                 <h2 className="font-bold uppercase tracking-tight">
@@ -1093,23 +1093,23 @@ export default function AdminDashboard() {
             </div>
             <div className="p-2 max-h-[400px] overflow-y-auto">
               {withdrawals.length === 0 ? (
-                <div className="p-10 text-center text-slate-400 text-sm">
+                <div className="p-10 text-center text-muted-foreground text-sm">
                   No pending withdrawals.
                 </div>
               ) : (
                 withdrawals.map((req) => (
                   <div
                     key={req.id}
-                    className="flex items-center justify-between p-4 hover:bg-slate-50 rounded-2xl transition-all"
+                    className="flex items-center justify-between p-4 hover:bg-muted rounded-2xl transition-all"
                   >
                     <div>
                       <p className="font-bold text-sm">
                         {req.creatorName || "Creator"}
                       </p>
-                      <p className="text-lg font-black text-slate-900">
+                      <p className="text-lg font-black text-foreground">
                         {req.amount?.toLocaleString()} RWF
                       </p>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                      <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
                         {req.method} • {req.accountNumber}
                       </p>
                     </div>
@@ -1149,8 +1149,8 @@ export default function AdminDashboard() {
             </div>
           </section>
 
-          <section className="bg-white rounded-lg border border-slate-100 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
+          <section className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-slate-50 bg-muted/50 flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <ShieldAlert className="text-blue-600" size={20} />
                 <h2 className="font-bold uppercase tracking-tight">
@@ -1163,17 +1163,17 @@ export default function AdminDashboard() {
             </div>
             <div className="p-2 max-h-[400px] overflow-y-auto">
               {verifications.length === 0 ? (
-                <div className="p-10 text-center text-slate-400 text-sm">
+                <div className="p-10 text-center text-muted-foreground text-sm">
                   No pending verifications.
                 </div>
               ) : (
                 verifications.map((creator) => (
                   <div
                     key={creator.id}
-                    className="flex items-center justify-between p-4 hover:bg-slate-50 rounded-2xl transition-all"
+                    className="flex items-center justify-between p-4 hover:bg-muted rounded-2xl transition-all"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden">
+                      <div className="w-10 h-10 rounded-full bg-muted overflow-hidden">
                         <img
                           src={creator.profilePicture || ""}
                           alt={creator.name || "Creator"}
@@ -1182,7 +1182,7 @@ export default function AdminDashboard() {
                       </div>
                       <div>
                         <p className="font-bold text-sm">{creator.name}</p>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-muted-foreground">
                           @{creator.handle}
                         </p>
                       </div>
@@ -1197,7 +1197,7 @@ export default function AdminDashboard() {
                             category: "verification",
                           })
                         }
-                        className="bg-slate-900 text-white text-[10px] font-black uppercase px-4 py-2 rounded-lg hover:bg-emerald-600 transition-all"
+                        className="bg-foreground text-white text-[10px] font-black uppercase px-4 py-2 rounded-lg hover:bg-emerald-600 transition-all"
                       >
                         Approve
                       </button>
@@ -1224,9 +1224,9 @@ export default function AdminDashboard() {
 
         {/* Stats & Activity Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <section className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+          <section className="bg-card p-8 rounded-3xl border border-border shadow-sm">
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-slate-900 rounded-lg text-white">
+              <div className="p-2 bg-foreground rounded-lg text-white">
                 <BarChart3 size={20} />
               </div>
               <h2 className="text-xl font-bold uppercase">Top Earners</h2>
@@ -1241,14 +1241,14 @@ export default function AdminDashboard() {
                 />
               ))}
               {topEarners.length === 0 && (
-                <p className="text-slate-400 text-sm text-center py-4">
+                <p className="text-muted-foreground text-sm text-center py-4">
                   No data yet
                 </p>
               )}
             </div>
           </section>
 
-          <section className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+          <section className="bg-card p-8 rounded-3xl border border-border shadow-sm">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-orange-600 rounded-lg text-white">
                 <Eye size={20} />
@@ -1267,14 +1267,14 @@ export default function AdminDashboard() {
                 />
               ))}
               {topViewed.length === 0 && (
-                <p className="text-slate-400 text-sm text-center py-4">
+                <p className="text-muted-foreground text-sm text-center py-4">
                   No data yet
                 </p>
               )}
             </div>
           </section>
 
-          <section className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+          <section className="bg-card p-8 rounded-3xl border border-border shadow-sm">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-green-600 rounded-lg text-white">
                 <Activity size={20} />
@@ -1297,7 +1297,7 @@ export default function AdminDashboard() {
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm truncate">{activity.message}</p>
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-[10px] text-muted-foreground">
                       {activity.createdAt?.toDate?.()?.toLocaleTimeString() ||
                         "Now"}
                     </p>
@@ -1305,7 +1305,7 @@ export default function AdminDashboard() {
                 </div>
               ))}
               {recentActivities.length === 0 && (
-                <p className="text-slate-400 text-sm text-center py-4">
+                <p className="text-muted-foreground text-sm text-center py-4">
                   No recent activity
                 </p>
               )}
@@ -1315,8 +1315,8 @@ export default function AdminDashboard() {
       </main>
 
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl scale-in-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-foreground/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-card w-full max-w-md rounded-3xl p-8 shadow-2xl scale-in-center">
             <div
               className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 ${modal.type === "approve" ? "bg-emerald-100 text-emerald-600" : "bg-red-100 text-red-600"}`}
             >
@@ -1329,25 +1329,25 @@ export default function AdminDashboard() {
             <h3 className="text-2xl font-black uppercase tracking-tight mb-2">
               Confirm Action?
             </h3>
-            <p className="text-slate-500 mb-8 font-medium">
+            <p className="text-muted-foreground mb-8 font-medium">
               Are you sure you want to{" "}
-              <span className="font-bold text-slate-900">{modal.type}</span>{" "}
+              <span className="font-bold text-foreground">{modal.type}</span>{" "}
               this {modal.category} request for{" "}
-              <span className="font-bold text-slate-900">
+              <span className="font-bold text-foreground">
                 {modal.target.name || modal.target.creatorName || "this user"}
               </span>
               ? This action cannot be undone.
             </p>
             {modal.type === "reject" && (
               <div className="mb-6 animate-in slide-in-from-top-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 block">
                   Rejection Reason (Sent to Creator)
                 </label>
                 <textarea
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}
                   placeholder="e.g. ID document is too blurry to read."
-                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-red-500 outline-none transition-all h-28 resize-none"
+                  className="w-full bg-muted border-2 border-border rounded-2xl p-4 text-sm focus:border-red-500 outline-none transition-all h-28 resize-none"
                 />
               </div>
             )}
@@ -1355,7 +1355,7 @@ export default function AdminDashboard() {
               <button
                 onClick={() => setModal(null)}
                 disabled={processing}
-                className="flex-1 px-6 py-4 rounded-xl font-bold text-slate-400 hover:bg-slate-50 transition-all uppercase text-xs tracking-widest"
+                className="flex-1 px-6 py-4 rounded-xl font-bold text-muted-foreground hover:bg-muted transition-all uppercase text-xs tracking-widest"
               >
                 Cancel
               </button>

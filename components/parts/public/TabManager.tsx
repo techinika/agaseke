@@ -39,7 +39,7 @@ export const TabManager = ({
   ];
 
   return (
-    <div className="sticky top-4 mt-5 z-50 bg-[#FBFBFC]/80 backdrop-blur-md border-b border-slate-100 mb-8">
+    <div className="sticky top-4 mt-5 z-50 bg-background/80 backdrop-blur-md border-b border-border mb-8">
       <div className="max-w-2xl mx-auto flex items-center justify-between px-2 w-full">
         {tabs.map((tab) => (
           <div key={tab.id} className="relative group">
@@ -48,7 +48,7 @@ export const TabManager = ({
               className={`flex flex-col items-center gap-1 px-4 py-4 border-b-2 transition-all duration-300 ${
                 activeTab === tab.id
                   ? "border-orange-600 text-orange-600 font-bold"
-                  : "border-transparent text-slate-400 hover:text-slate-600"
+                  : "border-transparent text-muted-foreground hover:text-muted-foreground"
               }`}
             >
               {tab.icon}
@@ -59,7 +59,7 @@ export const TabManager = ({
             {username && (
               <Link
                 href={`/${username}/${tab.page}`}
-                className="absolute top-2 right-0 p-1.5 bg-slate-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-orange-100 hover:text-orange-600"
+                className="absolute top-2 right-0 p-1.5 bg-muted rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-orange-100 hover:text-orange-600"
                 title="Open full page"
               >
                 <ArrowUpRight size={12} />

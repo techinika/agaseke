@@ -172,27 +172,27 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FBFBFC] text-slate-900 pb-20">
+    <div className="min-h-screen bg-background text-foreground pb-20">
       <main className="max-w-7xl mx-auto px-6 mt-12">
         <header className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 uppercase">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground uppercase">
             User Management
           </h1>
-          <p className="text-slate-500 font-medium mt-1">
+          <p className="text-muted-foreground font-medium mt-1">
             View and manage all platform users
           </p>
         </header>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-xl border border-slate-100 p-4">
+          <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-2">
-              <Users size={16} className="text-slate-400" />
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+              <Users size={16} className="text-muted-foreground" />
+              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
                 Total Users
               </p>
             </div>
-            <p className="text-2xl font-bold text-slate-900 mt-1">
+            <p className="text-2xl font-bold text-foreground mt-1">
               {stats.total.toLocaleString()}
             </p>
           </div>
@@ -232,34 +232,34 @@ export default function AdminUsersPage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-xl border border-slate-100 p-4 mb-6">
+        <div className="bg-card rounded-xl border border-border p-4 mb-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider block mb-2">
+              <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider block mb-2">
                 Search
               </label>
               <div className="relative">
                 <Search
                   size={16}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                 />
                 <input
                   type="text"
                   placeholder="Search by name or email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-100"
+                  className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-100"
                 />
               </div>
             </div>
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider block mb-2">
+              <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider block mb-2">
                 User Type
               </label>
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value as any)}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-lg text-sm outline-none"
+                className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-sm outline-none"
               >
                 <option value="all">All Users</option>
                 <option value="creator">Creators</option>
@@ -271,12 +271,12 @@ export default function AdminUsersPage() {
         </div>
 
         {/* Users List */}
-        <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
           {filteredUsers.length === 0 ? (
             <div className="text-center py-20">
               <Users size={48} className="mx-auto text-slate-200 mb-4" />
-              <p className="text-slate-500 font-medium">No users found</p>
-              <p className="text-slate-400 text-sm mt-1">
+              <p className="text-muted-foreground font-medium">No users found</p>
+              <p className="text-muted-foreground text-sm mt-1">
                 {searchTerm || typeFilter !== "all"
                   ? "Try adjusting your filters"
                   : "Users will appear here as they sign up"}
@@ -286,20 +286,20 @@ export default function AdminUsersPage() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-100">
-                    <th className="text-left px-6 py-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                  <tr className="bg-muted border-b border-border">
+                    <th className="text-left px-6 py-4 text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
                       User
                     </th>
-                    <th className="text-left px-6 py-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                    <th className="text-left px-6 py-4 text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
                       Type
                     </th>
-                    <th className="text-left px-6 py-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                    <th className="text-left px-6 py-4 text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
                       Total Support
                     </th>
-                    <th className="text-left px-6 py-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                    <th className="text-left px-6 py-4 text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
                       Joined
                     </th>
-                    <th className="text-left px-6 py-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                    <th className="text-left px-6 py-4 text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -308,11 +308,11 @@ export default function AdminUsersPage() {
                   {filteredUsers.map((user) => (
                     <tr
                       key={user.id}
-                      className="border-b border-slate-50 hover:bg-slate-50 transition"
+                      className="border-b border-slate-50 hover:bg-muted transition"
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-sm font-bold overflow-hidden">
+                          <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center text-sm font-bold overflow-hidden">
                             {user.photoURL ? (
                               <img
                                 src={user.photoURL}
@@ -329,7 +329,7 @@ export default function AdminUsersPage() {
                             <p className="font-bold text-sm">
                               {user.displayName || "No name"}
                             </p>
-                            <p className="text-xs text-slate-400">
+                            <p className="text-xs text-muted-foreground">
                               {user.email || "No email"}
                             </p>
                           </div>
@@ -361,7 +361,7 @@ export default function AdminUsersPage() {
                         </p>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="text-sm text-slate-500">
+                        <p className="text-sm text-muted-foreground">
                           {user.createdAt?.toDate().toLocaleDateString() ||
                             "Unknown"}
                         </p>
@@ -370,7 +370,7 @@ export default function AdminUsersPage() {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => setSelectedUser(user)}
-                            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                            className="p-2 text-muted-foreground hover:text-muted-foreground hover:bg-muted rounded-lg transition"
                             title="View Details"
                           >
                             <Eye size={16} />
@@ -416,7 +416,7 @@ export default function AdminUsersPage() {
                               href={`/${user.username || user.id}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                              className="p-2 text-muted-foreground hover:text-muted-foreground hover:bg-muted rounded-lg transition"
                               title="View Profile"
                             >
                               <ExternalLink size={16} />
@@ -435,20 +435,20 @@ export default function AdminUsersPage() {
 
       {/* Verify User Modal */}
       {verifyingUser && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-          <div className="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+        <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+          <div className="bg-card w-full max-w-md rounded-2xl overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-border flex justify-between items-center">
               <h2 className="text-xl font-bold">Verify User</h2>
               <button
                 onClick={() => setVerifyingUser(null)}
-                className="p-2 hover:bg-slate-100 rounded-full"
+                className="p-2 hover:bg-muted rounded-full"
               >
                 <X size={20} />
               </button>
             </div>
             <div className="p-6">
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center text-xl font-bold overflow-hidden">
+                <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center text-xl font-bold overflow-hidden">
                   {verifyingUser.photoURL ? (
                     <img
                       src={verifyingUser.photoURL}
@@ -465,19 +465,19 @@ export default function AdminUsersPage() {
                   <p className="font-bold text-lg">
                     {verifyingUser.displayName || "No name"}
                   </p>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-muted-foreground">
                     {verifyingUser.email}
                   </p>
                 </div>
               </div>
-              <p className="text-slate-600 mb-6">
+              <p className="text-muted-foreground mb-6">
                 Are you sure you want to verify this user? They will receive an
                 email notification confirming their verification status.
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setVerifyingUser(null)}
-                  className="flex-1 py-3 bg-slate-100 text-slate-700 rounded-lg font-bold text-sm hover:bg-slate-200 transition"
+                  className="flex-1 py-3 bg-muted text-foreground rounded-lg font-bold text-sm hover:bg-slate-200 transition"
                 >
                   Cancel
                 </button>
@@ -497,20 +497,20 @@ export default function AdminUsersPage() {
 
       {/* User Details Modal */}
       {selectedUser && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-          <div className="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+        <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+          <div className="bg-card w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-border flex justify-between items-center">
               <h2 className="text-xl font-bold">User Details</h2>
               <button
                 onClick={() => setSelectedUser(null)}
-                className="p-2 hover:bg-slate-100 rounded-full"
+                className="p-2 hover:bg-muted rounded-full"
               >
                 <X size={20} />
               </button>
             </div>
             <div className="p-6">
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-2xl font-bold overflow-hidden">
+                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center text-2xl font-bold overflow-hidden">
                   {selectedUser.photoURL ? (
                     <img
                       src={selectedUser.photoURL}
@@ -527,7 +527,7 @@ export default function AdminUsersPage() {
                   <p className="font-bold text-lg">
                     {selectedUser.displayName || "No name"}
                   </p>
-                  <p className="text-sm text-slate-500">{selectedUser.email}</p>
+                  <p className="text-sm text-muted-foreground">{selectedUser.email}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <span
                       className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
@@ -548,16 +548,16 @@ export default function AdminUsersPage() {
               </div>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-slate-50 rounded-lg p-4">
-                    <p className="text-[10px] font-bold uppercase text-slate-400">
+                  <div className="bg-muted rounded-lg p-4">
+                    <p className="text-[10px] font-bold uppercase text-muted-foreground">
                       Total Supported
                     </p>
                     <p className="text-xl font-bold mt-1">
                       {selectedUser.totalSupport.toLocaleString()} RWF
                     </p>
                   </div>
-                  <div className="bg-slate-50 rounded-lg p-4">
-                    <p className="text-[10px] font-bold uppercase text-slate-400">
+                  <div className="bg-muted rounded-lg p-4">
+                    <p className="text-[10px] font-bold uppercase text-muted-foreground">
                       Creators Supported
                     </p>
                     <p className="text-xl font-bold mt-1">
@@ -565,8 +565,8 @@ export default function AdminUsersPage() {
                     </p>
                   </div>
                 </div>
-                <div className="bg-slate-50 rounded-lg p-4">
-                  <p className="text-[10px] font-bold uppercase text-slate-400">
+                <div className="bg-muted rounded-lg p-4">
+                  <p className="text-[10px] font-bold uppercase text-muted-foreground">
                     User ID
                   </p>
                   <p className="text-sm font-mono mt-1 break-all">
@@ -602,7 +602,7 @@ export default function AdminUsersPage() {
                       href={`/${selectedUser.username || selectedUser.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 py-3 bg-slate-900 text-white rounded-lg font-bold text-sm hover:bg-slate-800 transition text-center"
+                      className="flex-1 py-3 bg-foreground text-white rounded-lg font-bold text-sm hover:bg-slate-800 transition text-center"
                     >
                       View Profile
                     </a>

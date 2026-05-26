@@ -205,13 +205,13 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-70px)] bg-white flex overflow-hidden">
-      <aside className="w-full md:w-80 lg:w-96 border-r border-slate-100 flex flex-col bg-slate-50/50">
+    <div className="min-h-[calc(100vh-70px)] bg-card flex overflow-hidden">
+      <aside className="w-full md:w-80 lg:w-96 border-r border-border flex flex-col bg-muted/50">
         <div className="p-6">
           <h1 className="text-2xl font-bold uppercase mb-6">Messages</h1>
           <div className="relative">
             <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
               size={18}
             />
             <input
@@ -219,7 +219,7 @@ export default function MessagesPage() {
               placeholder="Search supporters..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-lg py-3 pl-12 pr-4 text-sm outline-none focus:ring-2 focus:ring-orange-100 transition"
+              className="w-full bg-card border border-border rounded-lg py-3 pl-12 pr-4 text-sm outline-none focus:ring-2 focus:ring-orange-100 transition"
             />
           </div>
         </div>
@@ -228,10 +228,10 @@ export default function MessagesPage() {
           {filteredChatrooms.length === 0 ? (
             <div className="text-center py-12 px-4">
               <MessageSquare size={40} className="mx-auto text-slate-200 mb-4" />
-              <p className="text-slate-500 font-medium">
+              <p className="text-muted-foreground font-medium">
                 {searchQuery ? "No conversations found" : "No messages yet"}
               </p>
-              <p className="text-slate-400 text-sm mt-2">
+              <p className="text-muted-foreground text-sm mt-2">
                 {searchQuery
                   ? "Try a different search term"
                   : "Supporters will appear here once they message you"}
@@ -244,8 +244,8 @@ export default function MessagesPage() {
                 onClick={() => setSelectedChatId(chat.id)}
                 className={`w-full flex items-center gap-4 p-4 rounded-lg transition-all ${
                   selectedChatId === chat.id
-                    ? "bg-white shadow-sm border border-slate-100"
-                    : "hover:bg-slate-100"
+                    ? "bg-card shadow-sm border border-border"
+                    : "hover:bg-muted"
                 }`}
               >
                 <div className="relative">
@@ -273,15 +273,15 @@ export default function MessagesPage() {
                     <span className="font-bold text-sm truncate">
                       {chat.supporterName}
                     </span>
-                    <span className="text-[10px] font-bold text-slate-400">
+                    <span className="text-[10px] font-bold text-muted-foreground">
                       {formatTime(chat.lastMessageAt)}
                     </span>
                   </div>
                   <p
                     className={`text-xs truncate ${
                       chat.unreadCount > 0
-                        ? "text-slate-700 font-medium"
-                        : "text-slate-400"
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground"
                     }`}
                   >
                     {chat.lastMessage || "No messages yet"}
@@ -293,14 +293,14 @@ export default function MessagesPage() {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col bg-white">
+      <main className="flex-1 flex flex-col bg-card">
         {selectedChatroom ? (
           <>
             <header className="p-4 md:p-6 border-b border-slate-50 flex justify-between items-center bg-gradient-to-r from-slate-50 to-orange-50">
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => setSelectedChatId(null)}
-                  className="md:hidden p-2 text-slate-400 hover:text-slate-900"
+                  className="md:hidden p-2 text-muted-foreground hover:text-foreground"
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -337,7 +337,7 @@ export default function MessagesPage() {
                   onClick={() => toggleChatroomEnabled(selectedChatroom.id, selectedChatroom.enabled !== false)}
                   className={`p-2 transition ${
                     selectedChatroom.enabled !== false
-                      ? "text-slate-300 hover:text-red-500"
+                      ? "text-muted-foreground hover:text-red-500"
                       : "text-red-500 hover:text-green-500"
                   }`}
                   title={selectedChatroom.enabled !== false ? "Disable messages from this supporter" : "Enable messages from this supporter"}
@@ -348,22 +348,22 @@ export default function MessagesPage() {
                     <CheckCircle size={20} />
                   )}
                 </button>
-                <button className="p-2 text-slate-300 hover:text-slate-900 transition">
+                <button className="p-2 text-muted-foreground hover:text-foreground transition">
                   <MoreVertical size={20} />
                 </button>
               </div>
             </header>
 
-            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-slate-50/30">
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-muted/30">
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center">
-                  <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm">
-                    <MessageSquare size={24} className="text-slate-300" />
+                  <div className="w-16 h-16 bg-card rounded-full flex items-center justify-center mb-4 shadow-sm">
+                    <MessageSquare size={24} className="text-muted-foreground" />
                   </div>
-                  <h4 className="font-bold text-slate-900">
+                  <h4 className="font-bold text-foreground">
                     Start the conversation
                   </h4>
-                  <p className="text-sm text-slate-500 max-w-[250px]">
+                  <p className="text-sm text-muted-foreground max-w-[250px]">
                     Send your first message to{" "}
                     {selectedChatroom.supporterName.split(" ")[0]}!
                   </p>
@@ -379,7 +379,7 @@ export default function MessagesPage() {
                         className={`max-w-[80%] px-4 py-3 rounded-2xl ${
                           msg.senderType === "creator"
                             ? "bg-orange-500 text-white rounded-br-md"
-                            : "bg-white border border-slate-100 text-slate-800 rounded-bl-md shadow-sm"
+                            : "bg-card border border-border text-foreground rounded-bl-md shadow-sm"
                         }`}
                       >
                         <p className="text-sm whitespace-pre-wrap">
@@ -389,7 +389,7 @@ export default function MessagesPage() {
                           className={`text-[10px] mt-1 ${
                             msg.senderType === "creator"
                               ? "text-orange-100"
-                              : "text-slate-400"
+                              : "text-muted-foreground"
                           }`}
                         >
                           {msg.createdAt?.toDate?.().toLocaleTimeString([], {
@@ -405,8 +405,8 @@ export default function MessagesPage() {
               )}
             </div>
 
-            <footer className="p-4 md:p-6 bg-white border-t border-slate-50">
-              <div className="flex items-center gap-3 bg-slate-100 p-2 pl-4 rounded-2xl">
+            <footer className="p-4 md:p-6 bg-card border-t border-slate-50">
+              <div className="flex items-center gap-3 bg-muted p-2 pl-4 rounded-2xl">
                 <input
                   type="text"
                   placeholder="Type your reply..."
@@ -431,12 +431,12 @@ export default function MessagesPage() {
             </footer>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-300 p-12 text-center">
-            <div className="w-20 h-20 bg-slate-50 rounded-lg flex items-center justify-center mb-6">
+          <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-12 text-center">
+            <div className="w-20 h-20 bg-muted rounded-lg flex items-center justify-center mb-6">
               <MessageSquare size={40} className="opacity-20" />
             </div>
             <h3 className="text-xl font-bold uppercase mb-2">Your Messages</h3>
-            <p className="text-sm font-medium max-w-xs text-slate-400">
+            <p className="text-sm font-medium max-w-xs text-muted-foreground">
               Select a supporter from the left to view your conversation.
             </p>
           </div>

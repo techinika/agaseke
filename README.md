@@ -614,3 +614,8 @@ For issues or feature requests, please open an issue on GitHub.
 - **Real-Time Comments & Likes**: Supporter post detail page (`/supporter/[postId]`) now uses `onSnapshot` for both comments and likes (was one-time `getDocs`), matching the public `PostDetailPage` pattern. Like counts update in real-time when others interact.
 - **Tailwind CSS v4 Theme Variables**: Added `card`, `card-hover`, `border`, `border-strong`, `muted`, `muted-foreground` CSS variables to `globals.css` for consistent component theming.
 - **Gift Once Button on Booking Page**: Added "Gift Once" quick support button and `SupportModal` to the booking page (`/[username]/booking`), matching the pattern on other public subpages.
+
+### Dark Mode Theme-ification (May 2026)
+- **Replaced hardcoded colors with CSS variable theme classes across 40+ files**: All page backgrounds (`bg-[#FBFBFC]`/`bg-[#F9FAFB]`/`bg-white`), text colors (`text-gray-*`/`text-slate-*`), borders (`border-gray-*`/`border-slate-*`), and surface backgrounds (`bg-gray-*`/`bg-slate-*`) replaced with theme-aware classes (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-card`, `bg-muted`, `bg-foreground`).
+- Dark mode now works across all pages: supporter dashboard, creator dashboard, admin dashboard, public profile pages, navigation, footer, modals, and UI components.
+- Uses Tailwind v4's `@custom-variant dark` with class-based toggling via `next-themes` — `.dark` class on `<html>` switches all CSS variables to the dark palette.

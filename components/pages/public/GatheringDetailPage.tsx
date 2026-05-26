@@ -77,10 +77,10 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
   if (loading) return <DetailSkeleton />;
   if (!gathering || !creatorData) {
     return (
-      <div className="min-h-screen bg-[#FBFBFC] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Navbar />
         <div className="text-center">
-          <p className="text-slate-500">Event not found</p>
+          <p className="text-muted-foreground">Event not found</p>
           <Link href={`/${username}`} className="text-orange-500 font-bold mt-4 inline-block">Go Back</Link>
         </div>
         <Footer />
@@ -97,17 +97,17 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
   });
 
   return (
-    <div className="min-h-screen bg-[#FBFBFC]">
+    <div className="min-h-screen bg-background">
       <Navbar />
       <div className="max-w-3xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
-          <Link href={`/${username}/gatherings`} className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition">
+          <Link href={`/${username}/gatherings`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition">
             <ArrowLeft size={20} />
             <span className="font-medium">Back to Events</span>
           </Link>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+        <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
           <div className={`p-8 ${isUpcoming ? "bg-gradient-to-r from-orange-500 to-amber-500" : "bg-slate-200"} text-white`}>
             <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
               {isUpcoming ? "Upcoming" : "Past Event"}
@@ -118,42 +118,42 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
 
           <div className="p-6 space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-xl">
+              <div className="flex items-center gap-3 bg-muted p-4 rounded-xl">
                 <Calendar size={20} className="text-orange-500" />
                 <div>
-                  <p className="text-xs text-slate-400 font-bold uppercase">Date</p>
-                  <p className="text-sm font-bold text-slate-900">{formattedDate}</p>
+                  <p className="text-xs text-muted-foreground font-bold uppercase">Date</p>
+                  <p className="text-sm font-bold text-foreground">{formattedDate}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-xl">
+              <div className="flex items-center gap-3 bg-muted p-4 rounded-xl">
                 <Clock size={20} className="text-orange-500" />
                 <div>
-                  <p className="text-xs text-slate-400 font-bold uppercase">Time</p>
-                  <p className="text-sm font-bold text-slate-900">{gathering.time}</p>
+                  <p className="text-xs text-muted-foreground font-bold uppercase">Time</p>
+                  <p className="text-sm font-bold text-foreground">{gathering.time}</p>
                 </div>
               </div>
               {gathering.capacity && (
-                <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-xl">
+                <div className="flex items-center gap-3 bg-muted p-4 rounded-xl">
                   <Users size={20} className="text-orange-500" />
                   <div>
-                    <p className="text-xs text-slate-400 font-bold uppercase">Capacity</p>
-                    <p className="text-sm font-bold text-slate-900">{gathering.attendeesCount || 0} / {gathering.capacity}</p>
+                    <p className="text-xs text-muted-foreground font-bold uppercase">Capacity</p>
+                    <p className="text-sm font-bold text-foreground">{gathering.attendeesCount || 0} / {gathering.capacity}</p>
                   </div>
                 </div>
               )}
               {isRsvped && gathering.location && (
-                <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-xl">
+                <div className="flex items-center gap-3 bg-muted p-4 rounded-xl">
                   <MapPin size={20} className="text-orange-500" />
                   <div>
-                    <p className="text-xs text-slate-400 font-bold uppercase">Location</p>
-                    <p className="text-sm font-bold text-slate-900">{gathering.location}</p>
+                    <p className="text-xs text-muted-foreground font-bold uppercase">Location</p>
+                    <p className="text-sm font-bold text-foreground">{gathering.location}</p>
                   </div>
                 </div>
               )}
             </div>
 
             {isUpcoming && (
-              <div className="border-t border-slate-100 pt-5">
+              <div className="border-t border-border pt-5">
                 {isRsvped ? (
                   <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center gap-3">
                     <CheckCircle size={20} className="text-emerald-500" />
@@ -175,8 +175,8 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
             )}
 
             {!isUpcoming && (
-              <div className="border-t border-slate-100 pt-5">
-                <p className="text-center text-sm text-slate-500 bg-slate-50 py-3 rounded-xl">
+              <div className="border-t border-border pt-5">
+                <p className="text-center text-sm text-muted-foreground bg-muted py-3 rounded-xl">
                   This event has already taken place.
                 </p>
               </div>

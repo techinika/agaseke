@@ -310,12 +310,12 @@ export default function GatheringsPage() {
   const declinedCount = attendees.filter((a) => a.checkInDeclined).length;
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] flex flex-col text-slate-900">
-      <aside className="w-full bg-white border-b border-slate-200 hidden md:flex items-center justify-between p-6">
+    <div className="min-h-screen bg-background flex flex-col text-foreground">
+      <aside className="w-full bg-card border-b border-border hidden md:flex items-center justify-between p-6">
         <div className="flex items-center gap-4">
           <button
             onClick={() => window.history.back()}
-            className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition font-bold text-xs uppercase tracking-widest"
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition font-bold text-xs uppercase tracking-widest"
           >
             <ArrowLeft size={16} /> Back
           </button>
@@ -330,7 +330,7 @@ export default function GatheringsPage() {
       </aside>
 
       <main className="flex-1 flex flex-col md:flex-row">
-        <div className="flex-1 p-8 border-r border-slate-100 overflow-y-auto">
+        <div className="flex-1 p-8 border-r border-border overflow-y-auto">
           <div className="flex justify-between items-center mb-8">
             <div className="flex gap-2">
               <button
@@ -340,8 +340,8 @@ export default function GatheringsPage() {
                 }}
                 className={`px-4 py-2 rounded-lg font-bold text-sm transition ${
                   activeTab === "upcoming"
-                    ? "bg-slate-900 text-white"
-                    : "bg-white text-slate-500 hover:bg-slate-50"
+                    ? "bg-foreground text-white"
+                    : "bg-card text-muted-foreground hover:bg-muted"
                 }`}
               >
                 Upcoming
@@ -353,8 +353,8 @@ export default function GatheringsPage() {
                 }}
                 className={`px-4 py-2 rounded-lg font-bold text-sm transition ${
                   activeTab === "past"
-                    ? "bg-slate-900 text-white"
-                    : "bg-white text-slate-500 hover:bg-slate-50"
+                    ? "bg-foreground text-white"
+                    : "bg-card text-muted-foreground hover:bg-muted"
                 }`}
               >
                 Past
@@ -367,12 +367,12 @@ export default function GatheringsPage() {
 
           <div className="space-y-4">
             {loading ? (
-              <Loader className="animate-spin mx-auto text-slate-300" />
+              <Loader className="animate-spin mx-auto text-muted-foreground" />
             ) : events.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-lg border border-slate-100">
+              <div className="text-center py-12 bg-card rounded-lg border border-border">
                 <Calendar className="mx-auto text-slate-200 mb-4" size={40} />
-                <p className="text-slate-500 font-medium">No events yet</p>
-                <p className="text-sm text-slate-400 mt-2">
+                <p className="text-muted-foreground font-medium">No events yet</p>
+                <p className="text-sm text-muted-foreground mt-2">
                   Create your first event to get started
                 </p>
               </div>
@@ -383,13 +383,13 @@ export default function GatheringsPage() {
                   onClick={() => setSelectedEventIndex(index)}
                   className={`w-full text-left p-6 rounded-lg border transition-all cursor-pointer ${
                     selectedEventIndex === index
-                      ? "bg-white border-orange-500 shadow-xl scale-[1.01]"
-                      : "bg-white border-slate-200 hover:border-slate-300"
+                      ? "bg-card border-orange-500 shadow-xl scale-[1.01]"
+                      : "bg-card border-border hover:border-border-strong"
                   }`}
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div
-                      className={`p-3 rounded-lg ${event.minSupportTier > 0 ? "bg-amber-50 text-amber-600" : "bg-slate-50 text-slate-900"}`}
+                      className={`p-3 rounded-lg ${event.minSupportTier > 0 ? "bg-amber-50 text-amber-600" : "bg-muted text-foreground"}`}
                     >
                       {event.minSupportTier > 0 ? (
                         <ShieldCheck size={20} />
@@ -411,7 +411,7 @@ export default function GatheringsPage() {
                         className={`text-[10px] font-bold px-2 py-1 rounded-lg uppercase transition ${
                           event.status === "Upcoming"
                             ? "bg-green-50 text-green-600 hover:bg-green-100"
-                            : "bg-slate-200 text-slate-500 hover:bg-slate-300"
+                            : "bg-slate-200 text-muted-foreground hover:bg-slate-300"
                         }`}
                         title={
                           event.status === "Upcoming"
@@ -424,12 +424,12 @@ export default function GatheringsPage() {
                     </div>
                   </div>
                   <h4 className="text-xl font-bold mb-1">{event.title}</h4>
-                  <p className="text-sm text-slate-500 flex items-center gap-2 mb-4">
-                    <MapPin size={14} className="text-slate-300" />{" "}
+                  <p className="text-sm text-muted-foreground flex items-center gap-2 mb-4">
+                    <MapPin size={14} className="text-muted-foreground" />{" "}
                     {event.location}
                   </p>
                   <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                    <div className="text-xs font-bold text-slate-400">
+                    <div className="text-xs font-bold text-muted-foreground">
                       {event.attendeesCount || 0} RSVPs
                     </div>
                     <ChevronRight
@@ -437,7 +437,7 @@ export default function GatheringsPage() {
                       className={
                         selectedEventIndex === index
                           ? "text-orange-500"
-                          : "text-slate-300"
+                          : "text-muted-foreground"
                       }
                     />
                   </div>
@@ -447,7 +447,7 @@ export default function GatheringsPage() {
           </div>
         </div>
 
-        <div className="w-full md:w-96 bg-white p-8 overflow-y-auto">
+        <div className="w-full md:w-96 bg-card p-8 overflow-y-auto">
           {activeEvent ? (
             <div className="animate-in fade-in slide-in-from-right-4">
               <div className="flex justify-between items-center mb-8">
@@ -455,14 +455,14 @@ export default function GatheringsPage() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => startEdit(activeEvent)}
-                    className="p-2 text-slate-300 hover:text-orange-500 transition"
+                    className="p-2 text-muted-foreground hover:text-orange-500 transition"
                     title="Edit Event"
                   >
                     <Edit size={18} />
                   </button>
                   <button
                     onClick={() => setIsDeleting(activeEvent.id)}
-                    className="p-2 text-slate-300 hover:text-red-500 transition"
+                    className="p-2 text-muted-foreground hover:text-red-500 transition"
                     title="Delete Event"
                   >
                     <Trash2 size={18} />
@@ -471,9 +471,9 @@ export default function GatheringsPage() {
               </div>
 
               <div className="space-y-6">
-                <div className="bg-slate-900 p-6 rounded-lg text-white">
+                <div className="bg-foreground p-6 rounded-lg text-white">
                   <div className="flex items-center justify-between mb-4">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                       Entry Requirement
                     </p>
                     <span
@@ -498,7 +498,7 @@ export default function GatheringsPage() {
                       <span className="text-green-400 font-bold">
                         {attendees.length}
                       </span>{" "}
-                      <span className="text-slate-400">
+                      <span className="text-muted-foreground">
                         {activeEvent.capacity
                           ? `/ ${activeEvent.capacity} spots`
                           : "registered"}
@@ -551,7 +551,7 @@ export default function GatheringsPage() {
                       {attendees.map((attendee) => (
                         <div
                           key={attendee.id}
-                          className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg"
+                          className="flex items-center gap-3 p-3 bg-muted rounded-lg"
                         >
                           <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 font-bold text-xs">
                             {attendee.supporterName?.[0] || <User size={14} />}
@@ -560,7 +560,7 @@ export default function GatheringsPage() {
                             <p className="text-sm font-bold truncate">
                               {attendee.supporterName}
                             </p>
-                            <p className="text-[10px] text-slate-400">
+                            <p className="text-[10px] text-muted-foreground">
                               {attendee.createdAt
                                 ?.toDate?.()
                                 .toLocaleDateString() || "Recently"}
@@ -570,12 +570,12 @@ export default function GatheringsPage() {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-8 bg-slate-50 rounded-lg">
+                    <div className="text-center py-8 bg-muted rounded-lg">
                       <Users
                         size={24}
-                        className="mx-auto text-slate-300 mb-2"
+                        className="mx-auto text-muted-foreground mb-2"
                       />
-                      <p className="text-sm text-slate-400">No RSVPs yet</p>
+                      <p className="text-sm text-muted-foreground">No RSVPs yet</p>
                     </div>
                   )}
                 </div>
@@ -583,14 +583,14 @@ export default function GatheringsPage() {
                 <button
                   onClick={() => setShowCheckIn(true)}
                   disabled={attendees.length === 0}
-                  className="w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-slate-200 rounded-lg text-slate-400 font-bold hover:border-orange-500 hover:text-orange-500 transition disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-border rounded-lg text-muted-foreground font-bold hover:border-orange-500 hover:text-orange-500 transition disabled:opacity-50"
                 >
                   <QrCode size={20} /> Check-in Guests
                 </button>
               </div>
             </div>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-slate-300">
+            <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
               <Calendar size={48} className="mb-4 opacity-20" />
               <p className="text-sm font-bold">Select an event to manage</p>
             </div>
@@ -599,8 +599,8 @@ export default function GatheringsPage() {
 
         {/* --- Create Event Modal --- */}
         {isCreating && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-            <div className="bg-white w-full max-w-lg rounded-lg p-10 shadow-2xl animate-in zoom-in-95">
+          <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+            <div className="bg-card w-full max-w-lg rounded-lg p-10 shadow-2xl animate-in zoom-in-95">
               <div className="flex justify-between items-center mb-8">
                 <h2 className="text-2xl font-bold uppercase tracking-tighter">
                   {editingEvent ? "Edit Event" : "Plan Gathering"}
@@ -620,7 +620,7 @@ export default function GatheringsPage() {
                       active: true,
                     });
                   }}
-                  className="p-2 hover:bg-slate-100 rounded-full transition"
+                  className="p-2 hover:bg-muted rounded-full transition"
                 >
                   <X size={20} />
                 </button>
@@ -650,7 +650,7 @@ export default function GatheringsPage() {
                   <input
                     type="date"
                     value={formData.date}
-                    className="bg-slate-50 p-4 rounded-lg text-sm outline-none font-bold"
+                    className="bg-muted p-4 rounded-lg text-sm outline-none font-bold"
                     onChange={(e) =>
                       setFormData({ ...formData, date: e.target.value })
                     }
@@ -658,7 +658,7 @@ export default function GatheringsPage() {
                   <input
                     type="time"
                     value={formData.time}
-                    className="bg-slate-50 p-4 rounded-lg text-sm outline-none font-bold"
+                    className="bg-muted p-4 rounded-lg text-sm outline-none font-bold"
                     onChange={(e) =>
                       setFormData({ ...formData, time: e.target.value })
                     }
@@ -666,14 +666,14 @@ export default function GatheringsPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+                  <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
                     Entry Threshold (Support Amount)
                   </label>
                   <input
                     type="number"
                     placeholder="Min. RWF support to qualify (0 for all)"
                     value={formData.minSupportTier || ""}
-                    className="w-full bg-slate-50 p-4 rounded-lg text-sm outline-none font-bold focus:ring-2 focus:ring-orange-100"
+                    className="w-full bg-muted p-4 rounded-lg text-sm outline-none font-bold focus:ring-2 focus:ring-orange-100"
                     onChange={(e) =>
                       setFormData({
                         ...formData,
@@ -681,21 +681,21 @@ export default function GatheringsPage() {
                       })
                     }
                   />
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-[10px] text-muted-foreground">
                     If set, only supporters who have contributed this amount or
                     more can see this.
                   </p>
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+                  <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
                     Event Capacity (Optional)
                   </label>
                   <input
                     type="number"
                     placeholder="Max attendees (leave empty for unlimited)"
                     value={formData.capacity || ""}
-                    className="w-full bg-slate-50 p-4 rounded-lg text-sm outline-none font-bold focus:ring-2 focus:ring-orange-100"
+                    className="w-full bg-muted p-4 rounded-lg text-sm outline-none font-bold focus:ring-2 focus:ring-orange-100"
                     onChange={(e) =>
                       setFormData({
                         ...formData,
@@ -703,15 +703,15 @@ export default function GatheringsPage() {
                       })
                     }
                   />
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-[10px] text-muted-foreground">
                     Set a limit on how many supporters can RSVP.
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
                   <div>
                     <p className="font-bold text-sm">Publish Event</p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-muted-foreground">
                       Make visible to supporters
                     </p>
                   </div>
@@ -725,7 +725,7 @@ export default function GatheringsPage() {
                     }`}
                   >
                     <div
-                      className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                      className={`w-5 h-5 bg-card rounded-full shadow transition-transform ${
                         formData.active ? "translate-x-6" : "translate-x-0.5"
                       }`}
                     />
@@ -735,7 +735,7 @@ export default function GatheringsPage() {
                 <button
                   onClick={handleCreate}
                   disabled={!formData.title || isSimulating}
-                  className="w-full bg-slate-900 text-white py-5 rounded-lg font-bold text-lg shadow-xl hover:bg-orange-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full bg-foreground text-white py-5 rounded-lg font-bold text-lg shadow-xl hover:bg-orange-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {isSimulating ? (
                     <Loader className="animate-spin" />
@@ -764,12 +764,12 @@ export default function GatheringsPage() {
 
         {/* --- Check-in Modal --- */}
         {showCheckIn && activeEvent && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[120] flex items-center justify-center p-6">
-            <div className="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 max-h-[85vh] flex flex-col">
-              <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+          <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[120] flex items-center justify-center p-6">
+            <div className="bg-card w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 max-h-[85vh] flex flex-col">
+              <div className="p-6 border-b border-border flex justify-between items-center">
                 <div>
                   <h2 className="text-xl font-bold">Check-in Guests</h2>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-muted-foreground">
                     {checkedInCount}/{attendees.length} checked in
                     {declinedCount > 0 && (
                       <span className="text-red-500">
@@ -784,7 +784,7 @@ export default function GatheringsPage() {
                     setShowCheckIn(false);
                     setSearchQuery("");
                   }}
-                  className="p-2 hover:bg-slate-100 rounded-full transition"
+                  className="p-2 hover:bg-muted rounded-full transition"
                 >
                   <X size={20} />
                 </button>
@@ -794,14 +794,14 @@ export default function GatheringsPage() {
                 <div className="relative">
                   <Search
                     size={18}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
                   />
                   <input
                     type="text"
                     placeholder="Search by name or email..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-100 rounded-lg py-3 pl-12 pr-4 text-sm outline-none focus:ring-2 focus:ring-orange-100"
+                    className="w-full bg-muted border border-border rounded-lg py-3 pl-12 pr-4 text-sm outline-none focus:ring-2 focus:ring-orange-100"
                   />
                 </div>
               </div>
@@ -810,7 +810,7 @@ export default function GatheringsPage() {
                 {filteredAttendees.length === 0 ? (
                   <div className="text-center py-12">
                     <Users size={40} className="mx-auto text-slate-200 mb-4" />
-                    <p className="text-slate-500 font-medium">
+                    <p className="text-muted-foreground font-medium">
                       {searchQuery ? "No matching attendees" : "No RSVPs yet"}
                     </p>
                   </div>
@@ -821,7 +821,7 @@ export default function GatheringsPage() {
                       className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
                         attendee.checkedIn
                           ? "bg-green-50 border-green-200"
-                          : "bg-white border-slate-100 hover:border-slate-200"
+                          : "bg-card border-border hover:border-border"
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -838,7 +838,7 @@ export default function GatheringsPage() {
                         </div>
                         <div>
                           <p className="font-bold">{attendee.supporterName}</p>
-                          <p className="text-xs text-slate-400">
+                          <p className="text-xs text-muted-foreground">
                             {attendee.supporterEmail}
                           </p>
                         </div>
@@ -852,7 +852,7 @@ export default function GatheringsPage() {
                             <button
                               onClick={() => handleUndoCheckIn(attendee)}
                               disabled={checkingIn === attendee.id}
-                              className="text-xs text-slate-400 hover:text-slate-600 underline"
+                              className="text-xs text-muted-foreground hover:text-muted-foreground underline"
                             >
                               Undo
                             </button>
@@ -865,7 +865,7 @@ export default function GatheringsPage() {
                             <button
                               onClick={() => handleUndoCheckIn(attendee)}
                               disabled={checkingIn === attendee.id}
-                              className="text-xs text-slate-400 hover:text-slate-600 underline"
+                              className="text-xs text-muted-foreground hover:text-muted-foreground underline"
                             >
                               Undo
                             </button>

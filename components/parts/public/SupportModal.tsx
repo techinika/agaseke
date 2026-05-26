@@ -241,15 +241,15 @@ export function SupportModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-6">
-      <div className="bg-white w-full max-w-lg rounded-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-foreground/60 backdrop-blur-md p-6">
+      <div className="bg-card w-full max-w-lg rounded-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
         <div className="p-8 pb-0 flex justify-between items-center">
           <h3 className="text-3xl font-bold tracking-tight">
             Send gift to {creatorName.split(" ")[0]}
           </h3>
           <button
             onClick={handleClose}
-            className="p-3 bg-slate-50 rounded-full text-slate-400 hover:text-slate-900 transition-colors"
+            className="p-3 bg-muted rounded-full text-muted-foreground hover:text-foreground transition-colors"
           >
             <X size={20} />
           </button>
@@ -259,18 +259,18 @@ export function SupportModal({
           {step === "input" && (
             <div className="space-y-8">
               <div className="text-center">
-                <p className="text-slate-500 text-sm font-medium mb-4">
+                <p className="text-muted-foreground text-sm font-medium mb-4">
                   How much would you like to gift {creatorName.split(" ")[0]}?
                 </p>
                 <div className="relative">
                   <input
                     type="number"
                     placeholder="1000"
-                    className="w-full text-center text-6xl font-bold text-slate-900 outline-none placeholder:text-slate-100"
+                    className="w-full text-center text-6xl font-bold text-foreground outline-none placeholder:text-slate-100"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                   />
-                  <span className="block text-[10px] font-bold text-slate-300 mt-2 uppercase tracking-[0.3em]">
+                  <span className="block text-[10px] font-bold text-muted-foreground mt-2 uppercase tracking-[0.3em]">
                     Rwandan Francs (RWF)
                   </span>
                 </div>
@@ -283,7 +283,7 @@ export function SupportModal({
                   className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
                     paymentMethod === "momo"
                       ? "border-orange-500 bg-orange-50"
-                      : "border-slate-100 hover:border-slate-200"
+                      : "border-border hover:border-border"
                   }`}
                 >
                   <Smartphone
@@ -291,11 +291,11 @@ export function SupportModal({
                     className={
                       paymentMethod === "momo"
                         ? "text-orange-600"
-                        : "text-slate-400"
+                        : "text-muted-foreground"
                     }
                   />
                   <span
-                    className={`text-[10px] font-bold uppercase tracking-widest ${paymentMethod === "momo" ? "text-orange-900" : "text-slate-500"}`}
+                    className={`text-[10px] font-bold uppercase tracking-widest ${paymentMethod === "momo" ? "text-orange-900" : "text-muted-foreground"}`}
                   >
                     MoMo
                   </span>
@@ -306,7 +306,7 @@ export function SupportModal({
                   className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
                     paymentMethod === "card"
                       ? "border-orange-500 bg-orange-50"
-                      : "border-slate-100 hover:border-slate-200"
+                      : "border-border hover:border-border"
                   }`}
                 >
                   <div className="flex gap-1">
@@ -315,12 +315,12 @@ export function SupportModal({
                       className={
                         paymentMethod === "card"
                           ? "text-orange-600"
-                          : "text-slate-400"
+                          : "text-muted-foreground"
                       }
                     />
                   </div>
                   <span
-                    className={`text-[10px] font-bold uppercase tracking-widest ${paymentMethod === "card" ? "text-orange-900" : "text-slate-500"}`}
+                    className={`text-[10px] font-bold uppercase tracking-widest ${paymentMethod === "card" ? "text-orange-900" : "text-muted-foreground"}`}
                   >
                     Bank Cards
                   </span>
@@ -330,18 +330,18 @@ export function SupportModal({
               <div className="space-y-4">
                 {paymentMethod === "momo" && (
                   <>
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                       MoMo Phone Number
                     </label>
                     <div className="relative">
                       <Smartphone
-                        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
                         size={18}
                       />
                       <input
                         type="tel"
                         placeholder="078 000 0000"
-                        className="w-full bg-slate-50 border-2 border-slate-50 p-4 pl-12 rounded-lg font-bold focus:border-orange-500 outline-none transition-all"
+                        className="w-full bg-muted border-2 border-border p-4 pl-12 rounded-lg font-bold focus:border-orange-500 outline-none transition-all"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                       />
@@ -349,13 +349,13 @@ export function SupportModal({
                   </>
                 )}
                 <div>
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                     Heartfelt Message{" "}
                     <Heart size={10} className="text-pink-500" />
                   </label>
                   <textarea
                     placeholder="Write a nice note to the creator..."
-                    className="w-full mt-1 bg-slate-50 border-2 border-slate-50 p-4 rounded-lg font-medium text-sm focus:border-orange-500 outline-none transition-all resize-none h-24"
+                    className="w-full mt-1 bg-muted border-2 border-border p-4 rounded-lg font-medium text-sm focus:border-orange-500 outline-none transition-all resize-none h-24"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                   />
@@ -392,11 +392,11 @@ export function SupportModal({
           {step === "processing" && (
             <div className="py-12 text-center space-y-6">
               <div className="relative mx-auto w-20 h-20">
-                <div className="absolute inset-0 border-4 border-slate-100 rounded-full" />
+                <div className="absolute inset-0 border-4 border-border rounded-full" />
                 <div className="absolute inset-0 border-4 border-t-orange-600 rounded-full animate-spin" />
               </div>
               <h4 className="text-xl font-bold">Verifying Payment...</h4>
-              <p className="text-slate-500 font-medium leading-relaxed">
+              <p className="text-muted-foreground font-medium leading-relaxed">
                 {paymentMethod === "momo" ? (
                   <>
                     We sent a MoMo prompt to <b>{phone}</b>.<br />
@@ -417,15 +417,15 @@ export function SupportModal({
               <div className="w-24 h-24 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
                 <ShieldCheck size={48} />
               </div>
-              <h4 className="text-3xl font-bold text-slate-900">
+              <h4 className="text-3xl font-bold text-foreground">
                 Payment Verified!
               </h4>
-              <p className="text-slate-500 font-medium leading-relaxed">
+              <p className="text-muted-foreground font-medium leading-relaxed">
                 Your gift of <b>{amount} RWF</b> was delivered.
               </p>
               <button
                 onClick={handleClose}
-                className="w-full bg-slate-900 text-white py-4 rounded-lg font-bold hover:bg-orange-600 transition-colors"
+                className="w-full bg-foreground text-white py-4 rounded-lg font-bold hover:bg-orange-600 transition-colors"
               >
                 Back to Profile
               </button>
@@ -437,10 +437,10 @@ export function SupportModal({
               <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
                 <X size={40} />
               </div>
-              <h4 className="text-2xl font-bold text-slate-900">
+              <h4 className="text-2xl font-bold text-foreground">
                 Payment Failed
               </h4>
-              <p className="text-slate-500 font-medium">{errorMessage}</p>
+              <p className="text-muted-foreground font-medium">{errorMessage}</p>
               {popupBlocked && (
                 <Link
                   href={redirectUrl}
@@ -452,7 +452,7 @@ export function SupportModal({
               )}
               <button
                 onClick={() => setStep("input")}
-                className="w-full bg-slate-100 text-slate-900 py-4 rounded-lg font-bold hover:bg-slate-200 transition-colors"
+                className="w-full bg-muted text-foreground py-4 rounded-lg font-bold hover:bg-muted transition-colors"
               >
                 Try Again
               </button>

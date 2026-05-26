@@ -92,11 +92,11 @@ export default function BookingPage({ username, creator }: { username: string; c
   };
 
   return (
-    <div className="min-h-screen bg-[#FBFBFC]">
+    <div className="min-h-screen bg-background">
       <Navbar />
       <div className="max-w-2xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
-          <Link href={`/${username}`} className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition">
+          <Link href={`/${username}`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition">
             <ArrowLeft size={20} />
             <span className="font-medium">Back to Profile</span>
           </Link>
@@ -107,17 +107,17 @@ export default function BookingPage({ username, creator }: { username: string; c
         </div>
 
         {step === "form" && (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            <div className="bg-slate-900 p-6 text-white">
+          <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+            <div className="bg-foreground p-6 text-white">
               <h1 className="text-2xl font-bold">Book a Meeting</h1>
-              <p className="text-slate-400 text-sm mt-1">with {creator?.name || username}</p>
+              <p className="text-muted-foreground text-sm mt-1">with {creator?.name || username}</p>
             </div>
             <div className="p-6 space-y-5">
               {!availability || availability.daysOfWeek.length === 0 || availability.defaultSlots.length === 0 ? (
                 <div className="text-center py-12">
-                  <CalendarDays className="mx-auto text-slate-300 mb-3" size={48} />
-                  <p className="text-slate-500 font-medium">Availability not set up yet</p>
-                  <p className="text-sm text-slate-400 mt-1">Check back later or contact them directly.</p>
+                  <CalendarDays className="mx-auto text-muted-foreground mb-3" size={48} />
+                  <p className="text-muted-foreground font-medium">Availability not set up yet</p>
+                  <p className="text-sm text-muted-foreground mt-1">Check back later or contact them directly.</p>
                 </div>
               ) : (
                 <>
@@ -127,17 +127,17 @@ export default function BookingPage({ username, creator }: { username: string; c
                         const prev = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
                         setCurrentMonth(prev);
                       }} disabled={currentMonth <= new Date(new Date().getFullYear(), new Date().getMonth(), 1)}
-                        className="p-2 hover:bg-slate-100 rounded-lg disabled:opacity-30 transition">
-                        <ChevronLeft size={18} className="text-slate-600" />
+                        className="p-2 hover:bg-muted rounded-lg disabled:opacity-30 transition">
+                        <ChevronLeft size={18} className="text-muted-foreground" />
                       </button>
-                      <h3 className="font-bold text-slate-900">{MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}</h3>
+                      <h3 className="font-bold text-foreground">{MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}</h3>
                       <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
-                        className="p-2 hover:bg-slate-100 rounded-lg transition">
-                        <ChevronRight size={18} className="text-slate-600" />
+                        className="p-2 hover:bg-muted rounded-lg transition">
+                        <ChevronRight size={18} className="text-muted-foreground" />
                       </button>
                     </div>
                     <div className="grid grid-cols-7 gap-1 mb-2">
-                      {DAYS_OF_WEEK.map(d => <div key={d} className="text-center text-xs font-bold text-slate-400 py-2">{d}</div>)}
+                      {DAYS_OF_WEEK.map(d => <div key={d} className="text-center text-xs font-bold text-muted-foreground py-2">{d}</div>)}
                     </div>
                     <div className="grid grid-cols-7 gap-1">
                       {(() => {
@@ -150,7 +150,7 @@ export default function BookingPage({ username, creator }: { username: string; c
                           const isAvailable = calendarDates.includes(dateStr);
                           nodes.push(
                             <button key={dateStr} onClick={() => isAvailable && setSelectedDate(dateStr)} disabled={!isAvailable}
-                              className={`p-2 rounded-lg text-center text-sm transition-all ${selectedDate === dateStr ? "bg-orange-500 text-white font-bold" : isAvailable ? "bg-slate-100 text-slate-700 hover:bg-slate-200" : "text-slate-300 cursor-not-allowed"}`}>
+                              className={`p-2 rounded-lg text-center text-sm transition-all ${selectedDate === dateStr ? "bg-orange-500 text-white font-bold" : isAvailable ? "bg-muted text-foreground hover:bg-slate-200" : "text-muted-foreground cursor-not-allowed"}`}>
                               {d}
                             </button>
                           );
@@ -162,11 +162,11 @@ export default function BookingPage({ username, creator }: { username: string; c
 
                   {selectedDate && (
                     <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">Select Time</label>
+                      <label className="block text-sm font-bold text-foreground mb-2">Select Time</label>
                       <div className="flex flex-wrap gap-2">
                         {availability.defaultSlots.map(slot => (
                           <button key={slot.id} onClick={() => setSelectedTime(`${slot.startTime} - ${slot.endTime}`)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedTime === `${slot.startTime} - ${slot.endTime}` ? "bg-orange-500 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedTime === `${slot.startTime} - ${slot.endTime}` ? "bg-orange-500 text-white" : "bg-muted text-muted-foreground hover:bg-slate-200"}`}>
                             {slot.startTime} - {slot.endTime}
                           </button>
                         ))}
@@ -176,14 +176,14 @@ export default function BookingPage({ username, creator }: { username: string; c
 
                   {selectedDate && selectedTime && availability.bookingType === "both" && (
                     <div>
-                      <label className="block text-sm font-bold text-slate-700 mb-2">Meeting Type</label>
+                      <label className="block text-sm font-bold text-foreground mb-2">Meeting Type</label>
                       <div className="flex gap-3">
                         <button onClick={() => setSelectedType("online")}
-                          className={`flex-1 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${selectedType === "online" ? "bg-orange-500 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+                          className={`flex-1 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${selectedType === "online" ? "bg-orange-500 text-white" : "bg-muted text-muted-foreground hover:bg-slate-200"}`}>
                           <Video size={16} /> Online
                         </button>
                         <button onClick={() => setSelectedType("physical")}
-                          className={`flex-1 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${selectedType === "physical" ? "bg-orange-500 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+                          className={`flex-1 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${selectedType === "physical" ? "bg-orange-500 text-white" : "bg-muted text-muted-foreground hover:bg-slate-200"}`}>
                           <MapPin size={16} /> In Person
                         </button>
                       </div>
@@ -191,25 +191,25 @@ export default function BookingPage({ username, creator }: { username: string; c
                   )}
 
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Your Information</label>
+                    <label className="block text-sm font-bold text-foreground mb-2">Your Information</label>
                     <div className="space-y-2">
                       <input type="text" placeholder="Your name" value={name} onChange={e => setName(e.target.value)}
-                        className="w-full bg-slate-50 p-3 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-white transition-all" />
+                        className="w-full bg-muted p-3 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-white transition-all" />
                       <input type="email" placeholder="Your email" value={email} onChange={e => setEmail(e.target.value)}
-                        className="w-full bg-slate-50 p-3 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-white transition-all" />
+                        className="w-full bg-muted p-3 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-white transition-all" />
                       <input type="tel" placeholder="Phone (optional)" value={phone} onChange={e => setPhone(e.target.value)}
-                        className="w-full bg-slate-50 p-3 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-white transition-all" />
+                        className="w-full bg-muted p-3 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-white transition-all" />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Reason for Meeting (optional)</label>
+                    <label className="block text-sm font-bold text-foreground mb-2">Reason for Meeting (optional)</label>
                     <textarea placeholder="Briefly describe what you'd like to discuss..." value={reason} onChange={e => setReason(e.target.value)} rows={2}
-                      className="w-full bg-slate-50 p-3 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-white transition-all resize-none" />
+                      className="w-full bg-muted p-3 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-white transition-all resize-none" />
                   </div>
 
                   <button onClick={handleSubmit} disabled={submitting || !selectedDate || !selectedTime}
-                    className="w-full bg-slate-900 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all disabled:opacity-50">
+                    className="w-full bg-foreground text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all disabled:opacity-50">
                     {submitting ? <Loader className="animate-spin" size={18} /> : <Calendar size={18} />}
                     Submit Request
                   </button>
@@ -220,28 +220,28 @@ export default function BookingPage({ username, creator }: { username: string; c
         )}
 
         {step === "success" && (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 text-center">
+          <div className="bg-card rounded-2xl shadow-sm border border-border p-12 text-center">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Check className="text-green-500" size={32} />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Request Sent!</h2>
-            <p className="text-slate-500 mb-6">Your booking request has been sent to {creator?.name || username}. You'll receive an email once they respond.</p>
+            <h2 className="text-2xl font-bold text-foreground mb-2">Request Sent!</h2>
+            <p className="text-muted-foreground mb-6">Your booking request has been sent to {creator?.name || username}. You'll receive an email once they respond.</p>
             <Link href={`/${username}`}
-              className="bg-slate-900 text-white px-8 py-3 rounded-lg font-bold hover:bg-orange-600 transition-all inline-block">
+              className="bg-foreground text-white px-8 py-3 rounded-lg font-bold hover:bg-orange-600 transition-all inline-block">
               Back to Profile
             </Link>
           </div>
         )}
 
         {step === "error" && (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 text-center">
+          <div className="bg-card rounded-2xl shadow-sm border border-border p-12 text-center">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="text-red-500" size={32} />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Something went wrong</h2>
-            <p className="text-slate-500 mb-6">We couldn't submit your booking request. Please try again.</p>
+            <h2 className="text-2xl font-bold text-foreground mb-2">Something went wrong</h2>
+            <p className="text-muted-foreground mb-6">We couldn't submit your booking request. Please try again.</p>
             <button onClick={() => setStep("form")}
-              className="bg-slate-900 text-white px-8 py-3 rounded-lg font-bold hover:bg-orange-600 transition-all">
+              className="bg-foreground text-white px-8 py-3 rounded-lg font-bold hover:bg-orange-600 transition-all">
               Try Again
             </button>
           </div>

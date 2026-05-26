@@ -100,10 +100,10 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
   if (loading) return <DetailSkeleton />;
   if (!giveaway || !creatorData) {
     return (
-      <div className="min-h-screen bg-[#FBFBFC] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Navbar />
         <div className="text-center">
-          <p className="text-slate-500">Giveaway not found</p>
+          <p className="text-muted-foreground">Giveaway not found</p>
           <Link href={`/${username}`} className="text-orange-500 font-bold mt-4 inline-block">Go Back</Link>
         </div>
         <Footer />
@@ -117,17 +117,17 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
   const accessible = canAccess(giveaway);
 
   return (
-    <div className="min-h-screen bg-[#FBFBFC]">
+    <div className="min-h-screen bg-background">
       <Navbar />
       <div className="max-w-3xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
-          <Link href={`/${username}/giveaways`} className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition">
+          <Link href={`/${username}/giveaways`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition">
             <ArrowLeft size={20} />
             <span className="font-medium">Back to Giveaways</span>
           </Link>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
+        <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
           <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-8 text-white">
             <div className="flex items-center justify-between mb-4">
               <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
@@ -149,11 +149,11 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
 
           <div className="p-6 space-y-6">
             <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2 text-sm text-slate-600">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Trophy size={16} className="text-orange-500" />
                 <span className="font-bold">{giveaway.winners.length} / {giveaway.maxWinners} winners</span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-slate-600">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Users size={16} className="text-orange-500" />
                 <span className="font-bold">{giveaway.winners.length > 0 ? "Completed" : "Open"}</span>
               </div>
@@ -161,23 +161,23 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
 
             {giveaway.partners && giveaway.partners.length > 0 && (
               <div>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Partners</p>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Partners</p>
                 <div className="flex flex-wrap gap-2">
                   {giveaway.partners.map((p: any) => (
-                    <span key={p.id} className="bg-slate-100 px-3 py-1 rounded-full text-xs font-medium text-slate-600">{p.name}</span>
+                    <span key={p.id} className="bg-muted px-3 py-1 rounded-full text-xs font-medium text-muted-foreground">{p.name}</span>
                   ))}
                 </div>
               </div>
             )}
 
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Prizes</p>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Prizes</p>
               <div className="space-y-2">
                 {giveaway.rewards.map((r, i) => (
-                  <div key={i} className="flex items-center gap-3 bg-slate-50 p-3 rounded-lg">
+                  <div key={i} className="flex items-center gap-3 bg-muted p-3 rounded-lg">
                     <Star size={16} className="text-amber-500" />
-                    <span className="text-sm font-medium text-slate-700">{r.title}</span>
-                    <span className="text-[10px] text-slate-400 ml-auto">{r.type}</span>
+                    <span className="text-sm font-medium text-foreground">{r.title}</span>
+                    <span className="text-[10px] text-muted-foreground ml-auto">{r.type}</span>
                   </div>
                 ))}
               </div>
@@ -191,14 +191,14 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
             )}
 
             {isActive && (
-              <div className="border-t border-slate-100 pt-6">
+              <div className="border-t border-border pt-6">
                 {!isLoggedIn ? (
                   <Link href={`/login?referral=${username}`}
                     className="block w-full py-3 bg-orange-500 text-white rounded-xl font-bold text-center hover:bg-orange-600 transition">
                     Log in to Enter
                   </Link>
                 ) : !accessible ? (
-                  <p className="text-center text-sm text-slate-500 bg-slate-50 py-3 rounded-xl">This giveaway requires supporter access.</p>
+                  <p className="text-center text-sm text-muted-foreground bg-muted py-3 rounded-xl">This giveaway requires supporter access.</p>
                 ) : participating ? (
                   <p className="text-center text-sm text-emerald-600 bg-emerald-50 py-3 rounded-xl font-bold">You've entered! Good luck!</p>
                 ) : (
@@ -210,7 +210,7 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
               </div>
             )}
 
-            <div className="text-xs text-slate-400 text-center">
+            <div className="text-xs text-muted-foreground text-center">
               Ends: {endDate.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
             </div>
           </div>

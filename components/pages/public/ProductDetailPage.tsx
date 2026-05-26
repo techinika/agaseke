@@ -74,10 +74,10 @@ export default function ProductDetailPage({ username, productId }: { username: s
 
   if (!product || !creatorData) {
     return (
-      <div className="min-h-screen bg-[#FBFBFC] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Navbar />
         <div className="text-center">
-          <p className="text-slate-500">Product not found</p>
+          <p className="text-muted-foreground">Product not found</p>
           <Link href={`/${username}`} className="text-orange-500 font-bold mt-4 inline-block">Go Back</Link>
         </div>
         <Footer />
@@ -89,19 +89,19 @@ export default function ProductDetailPage({ username, productId }: { username: s
   const priceWithFee = product.price + ((product.platformFeePayer || "buyer") === "buyer" ? product.price * platformSharePercentage : 0);
 
   return (
-    <div className="min-h-screen bg-[#FBFBFC]">
+    <div className="min-h-screen bg-background">
       <Navbar />
       <div className="max-w-5xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
-          <Link href={`/${username}/store`} className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition">
+          <Link href={`/${username}/store`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition">
             <ArrowLeft size={20} />
             <span className="font-medium">Back to Store</span>
           </Link>
         </div>
 
-        <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100">
+        <div className="bg-card rounded-3xl overflow-hidden shadow-sm border border-border">
           <div className="md:flex">
-            <div className="md:w-1/2 bg-slate-50 aspect-square">
+            <div className="md:w-1/2 bg-muted aspect-square">
               {product.imageUrl ? (
                 <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
               ) : (
@@ -124,12 +124,12 @@ export default function ProductDetailPage({ username, productId }: { username: s
               </div>
 
               <h1 className="text-3xl font-bold">{product.name}</h1>
-              <p className="text-slate-600 leading-relaxed">{product.description}</p>
+              <p className="text-muted-foreground leading-relaxed">{product.description}</p>
 
               <div>
                 <div className="text-4xl font-bold">{product.price.toLocaleString()} RWF</div>
                 {product.platformFeePayer === "buyer" && (
-                  <p className="text-sm text-slate-500 mt-1">{priceWithFee.toLocaleString()} RWF with platform fee</p>
+                  <p className="text-sm text-muted-foreground mt-1">{priceWithFee.toLocaleString()} RWF with platform fee</p>
                 )}
               </div>
 
@@ -154,7 +154,7 @@ export default function ProductDetailPage({ username, productId }: { username: s
                   <div className="flex flex-wrap gap-2">
                     {product.sizes.map((size) => (
                       <button key={size} onClick={() => setSelectedSize(size)}
-                        className={`px-4 py-2 font-bold rounded-lg transition ${selectedSize === size ? "bg-orange-500 text-white" : "bg-slate-100 hover:bg-slate-200"}`}>
+                        className={`px-4 py-2 font-bold rounded-lg transition ${selectedSize === size ? "bg-orange-500 text-white" : "bg-muted hover:bg-slate-200"}`}>
                         {size}
                       </button>
                     ))}
@@ -162,7 +162,7 @@ export default function ProductDetailPage({ username, productId }: { username: s
                 </div>
               )}
 
-              <div className="pt-4 border-t border-slate-100">
+              <div className="pt-4 border-t border-border">
                 {isPurchased ? (
                   <div className="flex gap-3">
                     {product.type === "digital" && fileUrl && (
@@ -179,7 +179,7 @@ export default function ProductDetailPage({ username, productId }: { username: s
                   </div>
                 ) : (
                   <div className="flex items-center gap-4">
-                    <div className="flex items-center bg-slate-100 rounded-lg">
+                    <div className="flex items-center bg-muted rounded-lg">
                       <button onClick={() => setQuantity(Math.max(1, quantity - 1))}
                         className="p-3 hover:bg-slate-200 rounded-l-lg transition"><Minus size={16} /></button>
                       <span className="w-12 text-center font-bold">{quantity}</span>

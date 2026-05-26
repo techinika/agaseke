@@ -209,7 +209,7 @@ export default function PostDetailPage({ username, postId }: { username: string;
           )}
           {post.type === "video" && post.contentUrl && (
             <div className="mb-4 rounded-lg overflow-hidden">
-              <video src={post.contentUrl} controls className="w-full max-h-[500px] object-cover bg-black" />
+              <video src={post.contentUrl} controls className="w-full max-h-[500px] object-cover bg-foreground" />
             </div>
           )}
           {post.type === "document" && post.contentUrl && (
@@ -258,7 +258,7 @@ export default function PostDetailPage({ username, postId }: { username: string;
                         className="flex-1 bg-background border border-border-strong rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900 outline-none text-foreground"
                         onKeyDown={e => e.key === "Enter" && handleEditComment(c.id)} />
                       <button onClick={() => handleEditComment(c.id)} className="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-950 rounded-lg transition"><Check size={16} /></button>
-                      <button onClick={() => { setEditingCommentId(null); setEditCommentContent(""); }} className="p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition"><X size={16} /></button>
+                      <button onClick={() => { setEditingCommentId(null); setEditCommentContent(""); }} className="p-1.5 text-muted-foreground hover:bg-muted dark:hover:bg-slate-800 rounded-lg transition"><X size={16} /></button>
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground mt-0.5">{c.content}</p>

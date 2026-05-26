@@ -450,10 +450,10 @@ export const StoreTab = ({
     return (
       <div className="animate-in fade-in duration-500">
         {products.length === 0 ? (
-          <div className="text-center py-20 bg-white border border-slate-100 rounded-3xl">
-            <Package size={48} className="mx-auto text-slate-200 mb-4" />
-            <p className="text-slate-500 font-medium">No products available</p>
-            <p className="text-slate-400 text-sm mt-2">
+          <div className="text-center py-20 bg-card border border-border rounded-3xl">
+            <Package size={48} className="mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground font-medium">No products available</p>
+            <p className="text-muted-foreground text-sm mt-2">
               Check back later for new products
             </p>
           </div>
@@ -505,14 +505,14 @@ export const StoreTab = ({
         <div className="relative flex-1 max-w-md">
           <Search
             size={18}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
           />
           <input
             type="text"
             placeholder="Search products..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white border border-slate-100 rounded-lg py-3 pl-12 pr-4 text-sm outline-none focus:ring-2 focus:ring-orange-100"
+            className="w-full bg-card border border-border rounded-lg py-3 pl-12 pr-4 text-sm outline-none focus:ring-2 focus:ring-orange-100"
           />
         </div>
 
@@ -520,7 +520,7 @@ export const StoreTab = ({
           {purchasedProductIds.size > 0 && (
             <button
               onClick={() => setShowMyPurchases(true)}
-              className="flex items-center gap-2 px-4 py-3 bg-white border border-slate-100 rounded-lg text-sm font-bold hover:bg-slate-50 transition"
+              className="flex items-center gap-2 px-4 py-3 bg-card border border-border rounded-lg text-sm font-bold hover:bg-muted transition"
             >
               <Package size={16} />
               <span className="hidden md:inline">My Purchases</span>
@@ -529,7 +529,7 @@ export const StoreTab = ({
           {userOrders.length > 0 && (
             <button
               onClick={() => setShowOrderTracking(true)}
-              className="flex items-center gap-2 px-4 py-3 bg-white border border-slate-100 rounded-lg text-sm font-bold hover:bg-slate-50 transition"
+              className="flex items-center gap-2 px-4 py-3 bg-card border border-border rounded-lg text-sm font-bold hover:bg-muted transition"
             >
               <Truck size={16} />
               <span className="hidden md:inline">My Orders</span>
@@ -551,10 +551,10 @@ export const StoreTab = ({
       </div>
 
       {filteredProducts.length === 0 && activeFolders().length === 0 ? (
-        <div className="text-center py-20 bg-white border border-slate-100 rounded-3xl">
-          <Package size={48} className="mx-auto text-slate-200 mb-4" />
-          <p className="text-slate-500 font-medium">No products available</p>
-          <p className="text-slate-400 text-sm mt-2">
+        <div className="text-center py-20 bg-card border border-border rounded-3xl">
+          <Package size={48} className="mx-auto text-muted-foreground mb-4" />
+          <p className="text-muted-foreground font-medium">No products available</p>
+          <p className="text-muted-foreground text-sm mt-2">
             Check back later for new products
           </p>
         </div>
@@ -562,7 +562,7 @@ export const StoreTab = ({
         <div className="space-y-8">
           {activeFolders().length > 0 && (
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">
+              <h3 className="text-sm font-bold uppercase tracking-widest                 text-muted-foreground mb-4">
                 Bundles
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
@@ -582,7 +582,7 @@ export const StoreTab = ({
           {filteredProducts.length > 0 && (
             <div>
               {activeFolders().length > 0 && (
-                <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">
+                <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-4">
                   All Products
                 </h3>
               )}

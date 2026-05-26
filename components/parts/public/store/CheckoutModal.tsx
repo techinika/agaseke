@@ -211,13 +211,13 @@ export function CheckoutModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-      <div className="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 max-h-[90vh] flex flex-col">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+    <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+      <div className="bg-card w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 max-h-[90vh] flex flex-col">
+        <div className="p-6 border-b border-border flex justify-between items-center">
           <h2 className="text-xl font-bold">Checkout</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-full transition"
+            className="p-2 hover:bg-muted rounded-full transition"
           >
             <X size={20} />
           </button>
@@ -236,7 +236,7 @@ export function CheckoutModal({
                 className={`flex-1 py-2 text-xs font-bold rounded-lg transition capitalize ${
                   step === s
                     ? "bg-orange-500 text-white"
-                    : "bg-slate-100 text-slate-500"
+                    : "bg-muted text-muted-foreground"
                 }`}
               >
                 {s}
@@ -246,7 +246,7 @@ export function CheckoutModal({
 
           {step === "info" && (
             <div className="space-y-4">
-              <div className="bg-slate-50 rounded-xl p-4 space-y-2">
+              <div className="bg-muted rounded-xl p-4 space-y-2">
                 <h4 className="font-bold">Order Summary</h4>
                 {cart.map((item) => (
                   <div
@@ -259,7 +259,7 @@ export function CheckoutModal({
                     <span>{getItemPrice(item).toLocaleString()} RWF</span>
                   </div>
                 ))}
-                <div className="border-t border-slate-200 pt-2 flex justify-between font-bold">
+                <div className="border-t border-border pt-2 flex justify-between font-bold">
                   <span>Subtotal</span>
                   <span>{total.toLocaleString()} RWF</span>
                 </div>
@@ -275,13 +275,13 @@ export function CheckoutModal({
                       setCouponCode(e.target.value.toUpperCase())
                     }
                     placeholder="Enter code"
-                    className="flex-1 bg-slate-50 p-3 rounded-lg text-sm font-medium outline-none"
+                    className="flex-1 bg-muted p-3 rounded-lg text-sm font-medium outline-none"
                     disabled={!!appliedCoupon}
                   />
                   <button
                     onClick={applyCoupon}
                     disabled={applyingCoupon || !!appliedCoupon}
-                    className="bg-slate-900 text-white px-4 rounded-lg font-bold text-sm disabled:opacity-50"
+                    className="bg-foreground text-white px-4 rounded-lg font-bold text-sm disabled:opacity-50"
                   >
                     {applyingCoupon ? (
                       <Loader size={16} className="animate-spin" />
@@ -322,7 +322,7 @@ export function CheckoutModal({
                   }))
                 }
                 placeholder="Full Name"
-                className="w-full bg-slate-50 p-4 rounded-lg text-sm font-medium outline-none"
+                className="w-full bg-muted p-4 rounded-lg text-sm font-medium outline-none"
               />
               <input
                 type="tel"
@@ -334,7 +334,7 @@ export function CheckoutModal({
                   }))
                 }
                 placeholder="Phone Number"
-                className="w-full bg-slate-50 p-4 rounded-lg text-sm font-medium outline-none"
+                className="w-full bg-muted p-4 rounded-lg text-sm font-medium outline-none"
               />
               <input
                 type="text"
@@ -346,7 +346,7 @@ export function CheckoutModal({
                   }))
                 }
                 placeholder="Street Address"
-                className="w-full bg-slate-50 p-4 rounded-lg text-sm font-medium outline-none"
+                className="w-full bg-muted p-4 rounded-lg text-sm font-medium outline-none"
               />
               <div className="grid grid-cols-2 gap-4">
                 <input
@@ -359,7 +359,7 @@ export function CheckoutModal({
                     }))
                   }
                   placeholder="City"
-                  className="w-full bg-slate-50 p-4 rounded-lg text-sm font-medium outline-none"
+                  className="w-full bg-muted p-4 rounded-lg text-sm font-medium outline-none"
                 />
                 <input
                   type="text"
@@ -371,7 +371,7 @@ export function CheckoutModal({
                     }))
                   }
                   placeholder="Country"
-                  className="w-full bg-slate-50 p-4 rounded-lg text-sm font-medium outline-none"
+                  className="w-full bg-muted p-4 rounded-lg text-sm font-medium outline-none"
                 />
               </div>
             </div>
@@ -379,7 +379,7 @@ export function CheckoutModal({
 
           {step === "payment" && (
             <div className="space-y-4">
-              <div className="bg-slate-50 rounded-xl p-4 space-y-2">
+              <div className="bg-muted rounded-xl p-4 space-y-2">
                 <h4 className="font-bold">Final Total</h4>
                 <div className="flex justify-between text-2xl font-bold text-orange-600">
                   <span>Total</span>
@@ -391,7 +391,7 @@ export function CheckoutModal({
                   </span>
                 </div>
                 {buyerPaysMore && (
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     (Includes platform fee: {platformFee.toLocaleString()} RWF)
                   </p>
                 )}
@@ -406,7 +406,7 @@ export function CheckoutModal({
                     className={`py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${
                       paymentMethod === "momo"
                         ? "border-orange-600 bg-orange-50 text-orange-600"
-                        : "border-slate-200 text-slate-400"
+                        : "border-border text-muted-foreground"
                     }`}
                   >
                     Mobile Money
@@ -417,7 +417,7 @@ export function CheckoutModal({
                     className={`py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${
                       paymentMethod === "card"
                         ? "border-orange-600 bg-orange-50 text-orange-600"
-                        : "border-slate-200 text-slate-400"
+                        : "border-border text-muted-foreground"
                     }`}
                   >
                     Card Payment
@@ -450,7 +450,7 @@ export function CheckoutModal({
                         phone: e.target.value,
                       })
                     }
-                    className="w-full bg-slate-50 p-4 rounded-lg text-sm font-medium outline-none"
+                    className="w-full bg-muted p-4 rounded-lg text-sm font-medium outline-none"
                   />
                 </div>
               )}
@@ -468,14 +468,14 @@ export function CheckoutModal({
           )}
         </div>
 
-        <div className="p-6 border-t border-slate-100">
+        <div className="p-6 border-t border-border">
           <div className="flex gap-3">
             {step !== "info" && (
               <button
                 onClick={() =>
                   setStep(step === "shipping" ? "info" : "shipping")
                 }
-                className="flex-1 py-4 border border-slate-200 rounded-xl font-bold hover:bg-slate-50 transition"
+                className="flex-1 py-4 border border-border rounded-xl font-bold hover:bg-muted transition"
               >
                 Back
               </button>

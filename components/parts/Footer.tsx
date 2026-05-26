@@ -7,7 +7,7 @@ import {
 
 export default function Footer() {
   return (
-    <footer className="bg-slate-950 pt-20 pb-10 px-6 text-slate-400 border-t border-slate-900 mt-3">
+    <footer className="bg-foreground pt-20 pb-10 px-6 text-muted-foreground border-t border-border mt-3">
       <div className="max-w-7xl mx-auto">
         <div className="w-full flex flex-wrap gap-12 mb-20 justify-between">
           <div className="max-w-xs">
@@ -66,7 +66,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="pt-8 border-t border-slate-900 flex flex-col md:flex-row justify-between items-center gap-6">
+        <div className="pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-6">
           <p className="text-xs">© 2026 Agaseke. Made with ❤️ in Kigali.</p>
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-green-500">

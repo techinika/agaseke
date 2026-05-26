@@ -139,27 +139,27 @@ export default function CreatorSettings() {
 
   if (loading)
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F9FAFB]">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader className="animate-spin text-orange-600" size={32} />
       </div>
     );
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] text-slate-900 pb-20">
+    <div className="min-h-screen bg-background text-foreground pb-20">
       <div className="max-w-5xl mx-auto px-6 pt-10">
         <header className="flex justify-between items-end mb-10">
           <div>
             <h1 className="text-4xl font-bold tracking-tighter uppercase">
               Settings
             </h1>
-            <p className="text-slate-500 font-medium">
+            <p className="text-muted-foreground font-medium">
               Customize your creator identity and supporter perks.
             </p>
           </div>
           <button
             onClick={saveSettings}
             disabled={saving || uploading}
-            className="bg-slate-900 text-white px-8 py-3 rounded-lg font-black flex items-center gap-2 hover:bg-orange-600 transition-all shadow-xl disabled:opacity-50"
+            className="bg-foreground text-white px-8 py-3 rounded-lg font-black flex items-center gap-2 hover:bg-orange-600 transition-all shadow-xl disabled:opacity-50"
           >
             {saving ? (
               <Loader className="animate-spin" size={18} />
@@ -183,8 +183,8 @@ export default function CreatorSettings() {
                 onClick={() => setActiveTab(item.id)}
                 className={`w-full flex items-center gap-3 px-5 py-4 rounded-lg font-black text-sm transition-all ${
                   activeTab === item.id
-                    ? "bg-white text-orange-600 shadow-sm border border-slate-100"
-                    : "text-slate-400 hover:text-slate-600"
+                    ? "bg-card text-orange-600 shadow-sm border border-border"
+                    : "text-muted-foreground hover:text-muted-foreground"
                 }`}
               >
                 <item.icon size={18} />
@@ -195,13 +195,13 @@ export default function CreatorSettings() {
 
           <main className="flex-1 space-y-8">
             {activeTab === "profile" && (
-              <section className="bg-white border border-slate-100 rounded-lg p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4">
+              <section className="bg-card border border-border rounded-lg p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4">
                 {/* Profile Picture Upload */}
                 <div className="flex items-center gap-6">
                   <div className="relative group">
-                    <div className="w-24 h-24 rounded-lg bg-slate-100 overflow-hidden border-4 border-white shadow-lg">
+                    <div className="w-24 h-24 rounded-lg bg-muted overflow-hidden border-4 border-white shadow-lg">
                       {uploading ? (
-                        <div className="w-full h-full flex items-center justify-center bg-slate-900/50">
+                        <div className="w-full h-full flex items-center justify-center bg-foreground/50">
                           <Loader className="animate-spin text-white" />
                         </div>
                       ) : (
@@ -217,7 +217,7 @@ export default function CreatorSettings() {
                     </div>
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      className="absolute -bottom-2 -right-2 p-2 bg-slate-900 text-white rounded-lg shadow-lg hover:bg-orange-600 transition-all"
+                      className="absolute -bottom-2 -right-2 p-2 bg-foreground text-white rounded-lg shadow-lg hover:bg-orange-600 transition-all"
                     >
                       <Camera size={16} />
                     </button>
@@ -231,7 +231,7 @@ export default function CreatorSettings() {
                   </div>
                   <div>
                     <h4 className="font-black text-lg">Profile Photo</h4>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-muted-foreground">
                       Recommended: Square JPEG or PNG, min 400x400px.
                     </p>
                   </div>
@@ -239,39 +239,39 @@ export default function CreatorSettings() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">
+                    <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
                       Creator Name
                     </label>
                     <input
                       type="text"
                       value={creatorData?.name || ""}
                       onChange={(e) => handleUpdate("name", e.target.value)}
-                      className="w-full bg-slate-50 p-4 rounded-lg text-sm font-bold focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-white transition-all"
+                      className="w-full bg-muted p-4 rounded-lg text-sm font-bold focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-card transition-all"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">
+                    <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
                       Username (Permanent)
                     </label>
-                    <div className="w-full bg-slate-100 p-4 rounded-lg text-sm font-bold text-slate-400 cursor-not-allowed">
+                    <div className="w-full bg-muted p-4 rounded-lg text-sm font-bold text-muted-foreground cursor-not-allowed">
                       @{creatorData?.handle}
                     </div>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">
+                  <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
                     Bio
                   </label>
                   <textarea
                     value={creatorData?.bio || ""}
                     onChange={(e) => handleUpdate("bio", e.target.value)}
                     placeholder="Tell your supporters who you are..."
-                    className="w-full h-32 bg-slate-50 p-4 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none resize-none border border-transparent focus:bg-white transition-all"
+                    className="w-full h-32 bg-muted p-4 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none resize-none border border-transparent focus:bg-card transition-all"
                   />
                 </div>
 
-                <div className="p-6 bg-slate-900 rounded-lg text-white flex items-center justify-between shadow-xl">
+                <div className="p-6 bg-foreground rounded-lg text-white flex items-center justify-between shadow-xl">
                   <div className="flex items-center gap-4">
                     <div
                       className={`p-3 rounded-lg ${creatorData?.verified ? "bg-green-500" : "bg-slate-700"}`}
@@ -288,7 +288,7 @@ export default function CreatorSettings() {
                           ? "Identity Verified"
                           : "Verify Identity"}
                       </p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-muted-foreground">
                         {creatorData?.payoutNumber || "No number linked"}
                       </p>
                     </div>
@@ -296,7 +296,7 @@ export default function CreatorSettings() {
                   {!creatorData?.verified && (
                     <button
                       onClick={() => router.push("/creator/verify")}
-                      className="bg-white text-slate-900 px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest hover:bg-orange-500 hover:text-white transition-all"
+                      className="bg-card text-foreground px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest hover:bg-orange-500 hover:text-white transition-all"
                     >
                       Verify Now
                     </button>
@@ -306,7 +306,7 @@ export default function CreatorSettings() {
             )}
 
             {activeTab === "socials" && (
-              <section className="bg-white border border-slate-100 rounded-lg p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4">
+              <section className="bg-card border border-border rounded-lg p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4">
                 <h3 className="text-lg font-black uppercase">
                   Connected Networks
                 </h3>
@@ -345,16 +345,16 @@ export default function CreatorSettings() {
                     {
                       id: "web",
                       icon: Globe,
-                      color: "text-slate-600",
+                      color: "text-muted-foreground",
                       label: "Personal Website",
                     },
                   ].map((social) => (
                     <div
                       key={social.id}
-                      className="flex items-center gap-4 bg-slate-50 p-2 rounded-lg border border-transparent focus-within:border-slate-200 focus-within:bg-white transition-all"
+                      className="flex items-center gap-4 bg-muted p-2 rounded-lg border border-transparent focus-within:border-border focus-within:bg-card transition-all"
                     >
                       <div
-                        className={`p-3 bg-white rounded-lg shadow-sm ${social.color}`}
+                        className={`p-3 bg-card rounded-lg shadow-sm ${social.color}`}
                       >
                         <social.icon size={20} />
                       </div>
@@ -378,18 +378,18 @@ export default function CreatorSettings() {
             )}
 
             {activeTab === "perks" && (
-              <section className="bg-white border border-slate-100 rounded-lg p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4">
+              <section className="bg-card border border-border rounded-lg p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4">
                 <div className="flex justify-between items-center">
                   <h3 className="text-lg font-black uppercase">
                     Supporter Perks
                   </h3>
                 </div>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-muted-foreground">
                   Enable special features for your supporters and visitors.
                 </p>
 
                 <div className="space-y-6">
-                  <div className="p-6 bg-slate-50 rounded-lg border border-slate-100">
+                  <div className="p-6 bg-muted rounded-lg border border-border">
                     <div className="flex flex-wrap justify-between items-start gap-4">
                       <div className="flex items-start gap-4">
                         <div className="p-3 bg-orange-100 rounded-lg">
@@ -397,7 +397,7 @@ export default function CreatorSettings() {
                         </div>
                         <div>
                           <p className="font-black text-lg">Store</p>
-                          <p className="text-sm text-slate-500">
+                          <p className="text-sm text-muted-foreground">
                             Sell merchandise, digital products, and physical
                             goods directly to your audience.
                           </p>
@@ -419,7 +419,7 @@ export default function CreatorSettings() {
                         aria-checked={creatorData?.storeEnabled}
                       >
                         <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition-transform ${
+                          className={`inline-block h-4 w-4 transform rounded-full bg-card shadow-sm ring-0 transition-transform ${
                             creatorData?.storeEnabled
                               ? "translate-x-6"
                               : "translate-x-1"
@@ -429,11 +429,11 @@ export default function CreatorSettings() {
                     </div>
 
                     {creatorData?.storeEnabled && (
-                      <div className="mt-6 pt-6 border-t border-slate-200 space-y-4">
+                      <div className="mt-6 pt-6 border-t border-border space-y-4">
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-bold text-sm">Public Access</p>
-                            <p className="text-xs text-slate-400">
+                            <p className="text-xs text-muted-foreground">
                               Allow anyone to purchase (not just supporters)
                             </p>
                           </div>
@@ -453,7 +453,7 @@ export default function CreatorSettings() {
                             aria-checked={creatorData?.storePublic}
                           >
                             <span
-                              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform ${
+                              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-card shadow-sm transition-transform ${
                                 creatorData?.storePublic
                                   ? "translate-x-5"
                                   : "translate-x-0.5"
@@ -480,7 +480,7 @@ export default function CreatorSettings() {
                 </div>
 
                 {/* Giveaways */}
-                <div className="p-6 bg-slate-50 rounded-lg border border-slate-100">
+                <div className="p-6 bg-muted rounded-lg border border-border">
                   <div className="flex flex-wrap justify-between items-start gap-4">
                     <div className="flex items-start gap-4">
                       <div className="p-3 bg-orange-100 rounded-lg">
@@ -488,7 +488,7 @@ export default function CreatorSettings() {
                       </div>
                       <div>
                         <p className="font-black text-lg">Giveaways</p>
-                        <p className="text-sm text-slate-500">
+                        <p className="text-sm text-muted-foreground">
                           Run contests and reward your supporters with prizes.
                         </p>
                       </div>
@@ -509,7 +509,7 @@ export default function CreatorSettings() {
                       aria-checked={creatorData?.giveawayEnabled}
                     >
                       <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition-transform ${
+                        className={`inline-block h-4 w-4 transform rounded-full bg-card shadow-sm ring-0 transition-transform ${
                           creatorData?.giveawayEnabled
                             ? "translate-x-6"
                             : "translate-x-1"
@@ -519,7 +519,7 @@ export default function CreatorSettings() {
                   </div>
 
                   {creatorData?.giveawayEnabled && (
-                    <div className="mt-6 pt-6 border-t border-slate-200">
+                    <div className="mt-6 pt-6 border-t border-border">
                       <a
                         href="/creator/giveaways"
                         className="inline-flex items-center gap-2 text-sm font-bold text-orange-600 hover:text-orange-700"
@@ -532,7 +532,7 @@ export default function CreatorSettings() {
                 </div>
 
                 {/* Booking */}
-                <div className="p-6 bg-slate-50 rounded-lg border border-slate-100">
+                <div className="p-6 bg-muted rounded-lg border border-border">
                   <div className="flex flex-wrap justify-between items-start gap-4">
                     <div className="flex items-start gap-4">
                       <div className="p-3 bg-blue-100 rounded-lg">
@@ -540,7 +540,7 @@ export default function CreatorSettings() {
                       </div>
                       <div>
                         <p className="font-black text-lg">Book a Meeting</p>
-                        <p className="text-sm text-slate-500">
+                        <p className="text-sm text-muted-foreground">
                           Allow supporters to book meetings or consultations
                           with you.
                         </p>
@@ -562,7 +562,7 @@ export default function CreatorSettings() {
                       aria-checked={creatorData?.bookingEnabled}
                     >
                       <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition-transform ${
+                        className={`inline-block h-4 w-4 transform rounded-full bg-card shadow-sm ring-0 transition-transform ${
                           creatorData?.bookingEnabled
                             ? "translate-x-6"
                             : "translate-x-1"
@@ -572,11 +572,11 @@ export default function CreatorSettings() {
                   </div>
 
                   {creatorData?.bookingEnabled && (
-                    <div className="mt-6 pt-6 border-t border-slate-200 space-y-4">
+                    <div className="mt-6 pt-6 border-t border-border space-y-4">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-bold text-sm">Supporters Only</p>
-                          <p className="text-xs text-slate-400">
+                          <p className="text-xs text-muted-foreground">
                             Only supporters can book meetings
                           </p>
                         </div>
@@ -600,7 +600,7 @@ export default function CreatorSettings() {
                           }
                         >
                           <span
-                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform ${
+                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-card shadow-sm transition-transform ${
                               creatorData?.bookingAccess === "supporters"
                                 ? "translate-x-5"
                                 : "translate-x-0.5"
@@ -620,7 +620,7 @@ export default function CreatorSettings() {
                 </div>
 
                 {/* Gatherings */}
-                <div className="p-6 bg-slate-50 rounded-lg border border-slate-100">
+                <div className="p-6 bg-muted rounded-lg border border-border">
                   <div className="flex flex-wrap justify-between items-start gap-4">
                     <div className="flex items-start gap-4">
                       <div className="p-3 bg-green-100 rounded-lg">
@@ -628,7 +628,7 @@ export default function CreatorSettings() {
                       </div>
                       <div>
                         <p className="font-black text-lg">Gatherings</p>
-                        <p className="text-sm text-slate-500">
+                        <p className="text-sm text-muted-foreground">
                           Create events and allow supporters to RSVP.
                         </p>
                       </div>
@@ -649,7 +649,7 @@ export default function CreatorSettings() {
                       aria-checked={creatorData?.gatheringsEnabled}
                     >
                       <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition-transform ${
+                        className={`inline-block h-4 w-4 transform rounded-full bg-card shadow-sm ring-0 transition-transform ${
                           creatorData?.gatheringsEnabled
                             ? "translate-x-6"
                             : "translate-x-1"
@@ -659,7 +659,7 @@ export default function CreatorSettings() {
                   </div>
 
                   {creatorData?.gatheringsEnabled && (
-                    <div className="mt-6 pt-6 border-t border-slate-200">
+                    <div className="mt-6 pt-6 border-t border-border">
                       <a
                         href="/creator/gatherings"
                         className="inline-flex items-center gap-2 text-sm font-bold text-orange-600 hover:text-orange-700"
@@ -674,13 +674,13 @@ export default function CreatorSettings() {
             )}
 
             {activeTab === "messaging" && (
-              <section className="bg-white border border-slate-100 rounded-lg p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4">
+              <section className="bg-card border border-border rounded-lg p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4">
                 <div className="flex flex-wrap justify-between items-start gap-4">
                   <div>
                     <h3 className="text-lg font-black uppercase mb-2">
                       Direct Messaging
                     </h3>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-muted-foreground">
                       Allow your supporters to send you private messages.
                     </p>
                   </div>
@@ -700,7 +700,7 @@ export default function CreatorSettings() {
                     aria-checked={creatorData?.messagingEnabled}
                   >
                     <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition-transform ${
+                      className={`inline-block h-4 w-4 transform rounded-full bg-card shadow-sm ring-0 transition-transform ${
                         creatorData?.messagingEnabled
                           ? "translate-x-6"
                           : "translate-x-1"
@@ -710,14 +710,14 @@ export default function CreatorSettings() {
                 </div>
 
                 {creatorData?.messagingEnabled && (
-                  <div className="space-y-6 pt-6 border-t border-slate-100">
+                  <div className="space-y-6 pt-6 border-t border-border">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-bold text-sm">
                             Allow all supporters
                           </p>
-                          <p className="text-xs text-slate-400">
+                          <p className="text-xs text-muted-foreground">
                             Any supporter can message you, regardless of amount
                           </p>
                         </div>
@@ -737,7 +737,7 @@ export default function CreatorSettings() {
                           aria-checked={creatorData?.messagingAllowAll}
                         >
                           <span
-                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform ${
+                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-card shadow-sm transition-transform ${
                               creatorData?.messagingAllowAll
                                 ? "translate-x-5"
                                 : "translate-x-0.5"
@@ -748,7 +748,7 @@ export default function CreatorSettings() {
 
                       {!creatorData?.messagingAllowAll && (
                         <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                          <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
                             Minimum Support Amount (RWF)
                           </label>
                           <input
@@ -761,9 +761,9 @@ export default function CreatorSettings() {
                               )
                             }
                             placeholder="0"
-                            className="w-full md:w-48 bg-slate-50 p-4 rounded-lg text-sm font-bold focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-white transition-all"
+                            className="w-full md:w-48 bg-muted p-4 rounded-lg text-sm font-bold focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-card transition-all"
                           />
-                          <p className="text-xs text-slate-400">
+                          <p className="text-xs text-muted-foreground">
                             Only supporters who have given at least this amount
                             can message you
                           </p>
@@ -790,8 +790,8 @@ export default function CreatorSettings() {
                 )}
 
                 {!creatorData?.messagingEnabled && (
-                  <div className="p-6 bg-slate-50 rounded-lg border border-slate-100">
-                    <div className="flex items-center gap-3 text-slate-400">
+                  <div className="p-6 bg-muted rounded-lg border border-border">
+                    <div className="flex items-center gap-3 text-muted-foreground">
                       <AlertCircle size={20} />
                       <p className="text-sm">
                         Messaging is disabled. Your supporters won&apos;t be

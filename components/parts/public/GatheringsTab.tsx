@@ -181,9 +181,9 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
   if (gatherings.length === 0) {
     return (
       <div className="text-center py-12">
-        <Calendar className="mx-auto text-slate-200 mb-4" size={48} />
-        <p className="text-slate-500 font-medium">No upcoming events</p>
-        <p className="text-sm text-slate-400 mt-2">
+        <Calendar className="mx-auto text-muted-foreground mb-4" size={48} />
+        <p className="text-muted-foreground font-medium">No upcoming events</p>
+        <p className="text-sm text-muted-foreground mt-2">
           Check back later for new gatherings and events.
         </p>
       </div>
@@ -228,7 +228,7 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
         <div className="mt-8">
           <button
             onClick={() => setShowPast(!showPast)}
-            className="w-full py-3 text-center text-sm font-bold text-slate-500 hover:text-slate-700 transition"
+            className="w-full py-3 text-center text-sm font-bold text-muted-foreground hover:text-foreground transition"
           >
             {showPast ? "Hide past events" : `View ${pastGatherings.length} past event${pastGatherings.length !== 1 ? "s" : ""}`}
           </button>

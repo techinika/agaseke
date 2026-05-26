@@ -41,8 +41,8 @@ export const SendGiftSection = ({
       <div className="h-48 w-full bg-linear-to-r from-orange-100 via-orange-50 to-orange-100" />
       <div className="max-w-2xl mx-auto px-6 -mt-16 text-center">
         <div className="relative inline-block">
-          <div className="w-32 h-32 bg-white rounded-lg p-1 shadow-2xl mx-auto">
-            <div className="w-full h-full bg-slate-100 rounded-lg flex items-center justify-center overflow-hidden">
+          <div className="w-32 h-32 bg-card rounded-lg p-1 shadow-2xl mx-auto">
+            <div className="w-full h-full bg-muted rounded-lg flex items-center justify-center overflow-hidden">
               {photoURL ? (
                 <img
                   src={photoURL}
@@ -50,7 +50,7 @@ export const SendGiftSection = ({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <User size={50} className="text-slate-300" />
+                <User size={50} className="text-muted-foreground" />
               )}
             </div>
           </div>
@@ -59,7 +59,7 @@ export const SendGiftSection = ({
           )}
         </div>
 
-        <h1 className="mt-6 text-4xl font-bold tracking-tight text-slate-900 flex items-center justify-center gap-2">
+        <h1 className="mt-6 text-4xl font-bold tracking-tight text-foreground flex items-center justify-center gap-2">
           {name}{" "}
           {verified && <CheckCircle2 size={20} className="text-orange-600" />}
         </h1>
@@ -72,7 +72,7 @@ export const SendGiftSection = ({
             <Share2 size={14} />
           </button>
         </p>
-        <p className="text-slate-500 text-lg leading-relaxed max-w-lg mx-auto mb-8 font-medium">
+        <p className="text-muted-foreground text-lg leading-relaxed max-w-lg mx-auto mb-8 font-medium">
           {bio}
         </p>
 
@@ -92,7 +92,7 @@ export const SendGiftSection = ({
 
         <button
           onClick={() => setIsModalOpen(true)}
-          className="group w-full bg-slate-900 text-white p-2 rounded-lg flex items-center justify-between hover:bg-orange-600 transition-all duration-500 shadow-2xl shadow-orange-100 active:scale-95"
+          className="group w-full bg-foreground text-white p-2 rounded-lg flex items-center justify-between hover:bg-orange-600 transition-all duration-500 shadow-2xl shadow-orange-100 active:scale-95"
         >
           <div className="flex items-center gap-4 pl-4">
             <div className="bg-white/10 p-3 rounded-lg group-hover:bg-white/20">
@@ -114,7 +114,7 @@ export const SendGiftSection = ({
         {bookingEnabled && (
           <Link
             href={`/${handle}/booking`}
-            className="w-full mt-3 py-3 px-4 border border-slate-200 rounded-lg text-slate-600 font-medium text-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+            className="w-full mt-3 py-3 px-4 border border-border rounded-lg text-muted-foreground font-medium text-sm hover:bg-muted transition-all flex items-center justify-center gap-2"
           >
             <Calendar size={16} className="text-orange-600" />
             Book a Meeting

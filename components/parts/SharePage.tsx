@@ -137,8 +137,8 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
 
   return (
     <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
-      <div className="bg-white rounded-lg w-full max-w-5xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-300">
-        <div className="p-4 border-b border-slate-200 border-shadow flex justify-between items-center bg-slate-50/50">
+      <div className="bg-card rounded-lg w-full max-w-5xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-300">
+        <div className="p-4 border-b border-border border-shadow flex justify-between items-center bg-muted/50">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-orange-100 rounded-lg">
               <Share2 size={20} className="text-orange-600" />
@@ -159,7 +159,7 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
           <div className="lg:w-1/2 p-6 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
             <div
               ref={cardRef}
-              className="w-[320px] h-[420px] bg-white relative overflow-hidden border border-slate-200 shadow-2xl flex flex-col"
+              className="w-[320px] h-[420px] bg-card relative overflow-hidden border border-border shadow-2xl flex flex-col"
             >
               <div
                 className="p-4 text-center relative"
@@ -189,7 +189,7 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
               </div>
 
               <div className="flex justify-evenly items-center px-8 -mt-4 relative z-10">
-                <div className="w-20 h-20 bg-white p-1.5 rounded-lg shadow-xl border border-slate-50">
+                <div className="w-20 h-20 bg-card p-1.5 rounded-lg shadow-xl border border-slate-50">
                   {safeProfileImage ? (
                     <img
                       src={safeProfileImage}
@@ -198,14 +198,14 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
                       crossOrigin="anonymous"
                     />
                   ) : (
-                    <div className="w-full h-full rounded-[1.2rem] bg-slate-900 flex items-center justify-center text-white text-3xl font-black">
+                    <div className="w-full h-full rounded-[1.2rem] bg-foreground flex items-center justify-center text-white text-3xl font-black">
                       {creator?.name?.charAt(0)}
                     </div>
                   )}
                 </div>
 
                 <div className="text-center mt-4 space-y-1">
-                  <h4 className="text-xl font-black text-slate-900 tracking-tighter">
+                  <h4 className="text-xl font-black text-foreground tracking-tighter">
                     {creator?.name}
                   </h4>
                   <p
@@ -218,7 +218,7 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
               </div>
 
               <div className="flex-1 flex flex-col items-center justify-center px-8 pb-6 pt-2">
-                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                <div className="bg-muted p-4 rounded-lg border border-border">
                   <QRCodeCanvas
                     value={shareUrl}
                     size={130}
@@ -252,14 +252,14 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
             </div>
           </div>
 
-          <div className="lg:w-1/2 p-6 border-t lg:border-t-0 lg:border-l border-slate-200 space-y-6 max-h-[600px] lg:overflow-y-auto">
-            <div className="bg-slate-50 rounded-lg p-4">
+          <div className="lg:w-1/2 p-6 border-t lg:border-t-0 lg:border-l border-border space-y-6 max-h-[600px] lg:overflow-y-auto">
+            <div className="bg-muted rounded-lg p-4">
               <div className="flex items-center gap-2 mb-3">
-                <Type size={16} className="text-slate-500" />
-                <span className="text-sm font-bold text-slate-700">
+                <Type size={16} className="text-muted-foreground" />
+                <span className="text-sm font-bold text-foreground">
                   Headline Text
                 </span>
-                <span className="text-xs text-slate-400 ml-auto">
+                <span className="text-xs text-muted-foreground ml-auto">
                   {headline.length}/30
                 </span>
               </div>
@@ -269,13 +269,13 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
                 onChange={handleHeadlineChange}
                 maxLength={30}
                 placeholder="Enter your headline..."
-                className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none"
+                className="w-full bg-card border border-border rounded-lg px-4 py-2 text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none"
               />
             </div>
 
-            <div className="bg-slate-50 rounded-lg p-4">
+            <div className="bg-muted rounded-lg p-4">
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-sm font-bold text-slate-700">
+                <span className="text-sm font-bold text-foreground">
                   Text Color
                 </span>
               </div>
@@ -287,23 +287,23 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
                     className={`w-10 h-10 rounded-lg transition-all flex items-center justify-center ${
                       textColor === preset.color
                         ? "ring-2 ring-offset-2 ring-orange-500 scale-110"
-                        : "hover:scale-105 border border-slate-200"
+                        : "hover:scale-105 border border-border"
                     }`}
                     style={{ backgroundColor: preset.color }}
                     title={preset.name}
                   >
                     {preset.color === "#ffffff" && (
-                      <div className="w-full h-full rounded border border-slate-300" />
+                      <div className="w-full h-full rounded border border-border-strong" />
                     )}
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="bg-slate-50 rounded-lg p-4">
+            <div className="bg-muted rounded-lg p-4">
               <div className="flex items-center gap-2 mb-3">
-                <Palette size={16} className="text-slate-500" />
-                <span className="text-sm font-bold text-slate-700">
+                <Palette size={16} className="text-muted-foreground" />
+                <span className="text-sm font-bold text-foreground">
                   Accent Color
                 </span>
               </div>
@@ -329,14 +329,14 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
                   type="color"
                   value={customColor || accentColor}
                   onChange={(e) => handleColorSelect(e.target.value)}
-                  className="w-10 h-10 rounded-lg cursor-pointer border border-slate-200"
+                  className="w-10 h-10 rounded-lg cursor-pointer border border-border"
                 />
                 <input
                   type="text"
                   value={customColor}
                   onChange={handleCustomColorChange}
                   placeholder="#f97316"
-                  className="flex-1 bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm font-mono focus:ring-2 focus:ring-orange-100 outline-none"
+                  className="flex-1 bg-card border border-border rounded-lg px-4 py-2 text-sm font-mono focus:ring-2 focus:ring-orange-100 outline-none"
                 />
               </div>
             </div>
@@ -347,13 +347,13 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
                   navigator.clipboard.writeText(shareUrl);
                   toast.success("Link copied!");
                 }}
-                className="bg-slate-100 text-slate-600 py-3 rounded-lg font-bold text-sm hover:bg-slate-200 transition-all border border-slate-200"
+                className="bg-muted text-muted-foreground py-3 rounded-lg font-bold text-sm hover:bg-slate-200 transition-all border border-border"
               >
                 Copy Link
               </button>
               <button
                 onClick={onClose}
-                className="bg-slate-100 text-slate-600 py-3 rounded-lg font-bold text-sm hover:bg-slate-200 transition-all border border-slate-200"
+                className="bg-muted text-muted-foreground py-3 rounded-lg font-bold text-sm hover:bg-slate-200 transition-all border border-border"
               >
                 Close
               </button>

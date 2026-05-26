@@ -16,7 +16,7 @@ export function EndedGiveawayCard({
   creatorHandle?: string;
 }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+    <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
       <div className="bg-gradient-to-r from-slate-600 to-slate-700 p-6 text-white">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -59,7 +59,7 @@ export function EndedGiveawayCard({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-slate-600 mb-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-4">
               <Trophy size={20} className="text-orange-500" />
               <span className="font-bold">
                 {giveaway.winners.length} Winner
@@ -72,9 +72,9 @@ export function EndedGiveawayCard({
                 .map((winner: any, idx: number) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-3 bg-slate-50 rounded-xl p-3"
+                    className="flex items-center gap-3 bg-muted rounded-xl p-3"
                   >
-                    <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center text-slate-600 font-bold overflow-hidden">
+                    <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center text-muted-foreground font-bold overflow-hidden">
                       {winner.winnerPhoto ? (
                         <img
                           src={winner.winnerPhoto}
@@ -87,7 +87,7 @@ export function EndedGiveawayCard({
                     </div>
                     <div className="flex-1">
                       <p className="font-bold text-sm">{winner.winnerName}</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-muted-foreground">
                         Won: {winner.rewardTitle}
                       </p>
                     </div>
@@ -102,7 +102,7 @@ export function EndedGiveawayCard({
             {giveaway.winners.length > 3 && (
               <button
                 onClick={onViewWinners}
-                className="w-full py-3 border border-slate-200 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-50 transition"
+                className="w-full py-3 border border-border rounded-xl font-bold text-sm text-muted-foreground hover:bg-muted transition"
               >
                 View All {giveaway.winners.length} Winners
               </button>

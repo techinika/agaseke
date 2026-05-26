@@ -129,13 +129,13 @@ export default function PayoutsPage() {
 
   if (loading)
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F9FAFB]">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader className="animate-spin text-orange-600" />
       </div>
     );
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] flex text-slate-900">
+    <div className="min-h-screen bg-background flex text-foreground">
       <main className="flex-1 p-8 max-w-5xl mx-auto">
         {view === "overview" ? (
           <div className="animate-in fade-in duration-500">
@@ -144,7 +144,7 @@ export default function PayoutsPage() {
                 <h1 className="text-4xl font-bold tracking-tight uppercase">
                   Payouts
                 </h1>
-                <p className="text-slate-500 text-sm mt-1">
+                <p className="text-muted-foreground text-sm mt-1">
                   Simplicity and exclusive incentives.
                 </p>
               </div>
@@ -153,8 +153,8 @@ export default function PayoutsPage() {
                 onClick={handleWithdrawInit}
                 className={`px-8 py-4 rounded-lg font-black text-sm transition shadow-xl flex items-center gap-2 ${
                   pendingAmount >= WITHDRAW_THRESHOLD
-                    ? "bg-slate-900 text-white hover:bg-orange-600"
-                    : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                    ? "bg-foreground text-white hover:bg-orange-600"
+                    : "bg-slate-200 text-muted-foreground cursor-not-allowed"
                 }`}
               >
                 Request to Withdraw <ArrowUpRight size={18} />
@@ -162,7 +162,7 @@ export default function PayoutsPage() {
             </header>
 
             {!isVerified && (
-              <div className="mb-8 p-6 bg-slate-900 rounded-lg flex items-center justify-between shadow-2xl">
+              <div className="mb-8 p-6 bg-foreground rounded-lg flex items-center justify-between shadow-2xl">
                 <div className="flex items-center gap-4 text-white">
                   <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
                     <AlertCircle size={24} />
@@ -171,14 +171,14 @@ export default function PayoutsPage() {
                     <h4 className="font-bold">
                       Identity Verification Required
                     </h4>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-muted-foreground">
                       Unlock payouts and set your destination.
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => router.push("/creator/verify")}
-                  className="bg-white text-slate-900 px-6 py-3 rounded-lg text-xs font-black uppercase"
+                  className="bg-card text-foreground px-6 py-3 rounded-lg text-xs font-black uppercase"
                 >
                   Verify Now
                 </button>
@@ -186,26 +186,26 @@ export default function PayoutsPage() {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-              <div className="bg-white p-8 rounded-lg border border-slate-100 shadow-sm">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">
+              <div className="bg-card p-8 rounded-lg border border-border shadow-sm">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">
                   Pending Balance
                 </p>
                 <h2 className="text-4xl font-black">
                   {pendingAmount.toLocaleString()}{" "}
-                  <span className="text-sm font-bold text-slate-300">RWF</span>
+                  <span className="text-sm font-bold text-muted-foreground">RWF</span>
                 </h2>
               </div>
-              <div className="bg-white p-8 rounded-lg border border-slate-100 shadow-sm">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">
+              <div className="bg-card p-8 rounded-lg border border-border shadow-sm">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">
                   Total Earnings
                 </p>
                 <h2 className="text-4xl font-black">
                   {(creator?.totalEarnings || 0).toLocaleString()}{" "}
-                  <span className="text-sm font-bold text-slate-300">RWF</span>
+                  <span className="text-sm font-bold text-muted-foreground">RWF</span>
                 </h2>
              </div>
-             <div className="bg-white p-8 rounded-lg border border-slate-100 shadow-sm">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">
+             <div className="bg-card p-8 rounded-lg border border-border shadow-sm">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">
                   Destination
                 </p>
                 {isVerified ? (
@@ -219,7 +219,7 @@ export default function PayoutsPage() {
                   </div>
                 ) : (
                   <span
-                    className="text-sm font-bold text-slate-300 underline cursor-pointer"
+                    className="text-sm font-bold text-muted-foreground underline cursor-pointer"
                     onClick={() => router.push("/creator/verify")}
                   >
                     Not Set
@@ -229,22 +229,22 @@ export default function PayoutsPage() {
             </div>
 
             {/* Progress to Threshold */}
-            <div className="bg-white p-8 rounded-lg border border-slate-100 shadow-sm mb-10">
+            <div className="bg-card p-8 rounded-lg border border-border shadow-sm mb-10">
               <div className="flex items-center justify-between mb-4">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                   Progress to Payout Threshold
                 </p>
-                <p className="text-sm font-bold text-slate-900">
+                <p className="text-sm font-bold text-foreground">
                   {pendingAmount.toLocaleString()} / {WITHDRAW_THRESHOLD.toLocaleString()} RWF
                 </p>
               </div>
-              <div className="w-full bg-slate-100 rounded-full h-3 mb-3">
+              <div className="w-full bg-muted rounded-full h-3 mb-3">
                 <div
                   className="bg-orange-600 h-3 rounded-full transition-all duration-500"
                   style={{ width: `${Math.min((pendingAmount / WITHDRAW_THRESHOLD) * 100, 100)}%` }}
                 />
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 {pendingAmount >= WITHDRAW_THRESHOLD
                   ? "You've reached the payout threshold! You can now request a withdrawal."
                   : `You need ${(WITHDRAW_THRESHOLD - pendingAmount).toLocaleString()} RWF more to reach the payout threshold.`}
@@ -252,18 +252,18 @@ export default function PayoutsPage() {
             </div>
 
             {/* History Section */}
-            <div className="bg-white rounded-lg border border-slate-100 shadow-sm overflow-hidden">
-              <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
+            <div className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
+              <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-muted/50">
                 <div className="flex gap-4">
                   <button
                     onClick={() => setHistoryTab("payouts")}
-                    className={`text-sm font-black uppercase tracking-widest ${historyTab === "payouts" ? "text-slate-900 underline underline-offset-8" : "text-slate-400"}`}
+                    className={`text-sm font-black uppercase tracking-widest ${historyTab === "payouts" ? "text-foreground underline underline-offset-8" : "text-muted-foreground"}`}
                   >
                     Payouts
                   </button>
                   <button
                     onClick={() => setHistoryTab("requests")}
-                    className={`text-sm font-bold uppercase tracking-widest ${historyTab === "requests" ? "text-slate-900 underline underline-offset-8" : "text-slate-400"}`}
+                    className={`text-sm font-bold uppercase tracking-widest ${historyTab === "requests" ? "text-foreground underline underline-offset-8" : "text-muted-foreground"}`}
                   >
                     Withdraw Requests
                   </button>
@@ -278,7 +278,7 @@ export default function PayoutsPage() {
                     payouts.map((tx) => (
                       <div
                         key={tx.id}
-                        className="p-6 flex items-center justify-between hover:bg-slate-50 transition"
+                        className="p-6 flex items-center justify-between hover:bg-muted transition"
                       >
                         <div className="flex items-center gap-4">
                           <div className="w-12 h-12 rounded-lg bg-green-50 text-green-600 flex items-center justify-center">
@@ -288,7 +288,7 @@ export default function PayoutsPage() {
                             <p className="text-sm font-bold">
                               Transfer to MoMo
                             </p>
-                            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">
                               {tx.createdAt?.toDate().toLocaleDateString()}
                             </p>
                           </div>
@@ -310,11 +310,11 @@ export default function PayoutsPage() {
                   requests.map((req) => (
                     <div
                       key={req.id}
-                      className="p-6 flex items-center justify-between hover:bg-slate-50 transition"
+                      className="p-6 flex items-center justify-between hover:bg-muted transition"
                     >
                       <div className="flex items-center gap-4">
                         <div
-                          className={`w-12 h-12 rounded-lg flex items-center justify-center ${req.status === "pending" ? "bg-orange-50 text-orange-600" : "bg-slate-100 text-slate-400"}`}
+                          className={`w-12 h-12 rounded-lg flex items-center justify-center ${req.status === "pending" ? "bg-orange-50 text-orange-600" : "bg-muted text-muted-foreground"}`}
                         >
                           <Clock size={20} />
                         </div>
@@ -322,7 +322,7 @@ export default function PayoutsPage() {
                           <p className="text-sm font-bold">
                             Withdrawal Request
                           </p>
-                          <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">
+                          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">
                             {req.createdAt?.toDate().toLocaleDateString()}
                           </p>
                         </div>
@@ -350,18 +350,18 @@ export default function PayoutsPage() {
                 setView("overview");
                 setWithdrawStep(1);
               }}
-              className="mb-8 flex items-center gap-2 text-slate-400 hover:text-slate-900 font-black text-xs uppercase tracking-widest"
+              className="mb-8 flex items-center gap-2 text-muted-foreground hover:text-foreground font-black text-xs uppercase tracking-widest"
             >
               <ArrowLeft size={16} /> Go Back
             </button>
 
             {withdrawStep === 1 && (
-              <div className="space-y-8 bg-white p-10 rounded-lg shadow-2xl border border-slate-100">
+              <div className="space-y-8 bg-card p-10 rounded-lg shadow-2xl border border-border">
                 <header>
                   <h2 className="text-3xl font-black uppercase tracking-tighter">
                     Withdraw Funds
                   </h2>
-                  <p className="text-slate-500 text-sm mt-2 leading-relaxed">
+                  <p className="text-muted-foreground text-sm mt-2 leading-relaxed">
                     Your request will be reviewed and responded to within{" "}
                     <b>48 hours</b>.
                   </p>
@@ -371,13 +371,13 @@ export default function PayoutsPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => setWithdrawType("all")}
-                      className={`py-4 rounded-lg border-2 font-bold text-sm transition-all ${withdrawType === "all" ? "border-orange-600 bg-orange-50 text-orange-600" : "border-slate-100 text-slate-400"}`}
+                      className={`py-4 rounded-lg border-2 font-bold text-sm transition-all ${withdrawType === "all" ? "border-orange-600 bg-orange-50 text-orange-600" : "border-border text-muted-foreground"}`}
                     >
                       Withdraw All
                     </button>
                     <button
                       onClick={() => setWithdrawType("custom")}
-                      className={`py-4 rounded-lg border-2 font-bold text-sm transition-all ${withdrawType === "custom" ? "border-orange-600 bg-orange-50 text-orange-600" : "border-slate-100 text-slate-400"}`}
+                      className={`py-4 rounded-lg border-2 font-bold text-sm transition-all ${withdrawType === "custom" ? "border-orange-600 bg-orange-50 text-orange-600" : "border-border text-muted-foreground"}`}
                     >
                       Custom Amount
                     </button>
@@ -390,17 +390,17 @@ export default function PayoutsPage() {
                         value={customAmount}
                         onChange={(e) => setCustomAmount(e.target.value)}
                         placeholder="Enter amount (RWF)"
-                        className="w-full bg-slate-50 p-4 rounded-lg font-black text-lg outline-none border-2 border-transparent focus:border-orange-600 transition"
+                        className="w-full bg-muted p-4 rounded-lg font-black text-lg outline-none border-2 border-transparent focus:border-orange-600 transition"
                       />
                     </div>
                   )}
                 </div>
 
-                <div className="py-6 border-y border-slate-50">
-                  <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest text-center mb-1">
+                <div className="py-6 border-y border-border">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center mb-1">
                     Target Account
                   </p>
-                  <p className="text-center font-black text-slate-900">
+                  <p className="text-center font-black text-foreground">
                     {creator?.payoutNumber} ({creator?.network})
                   </p>
                 </div>
@@ -408,7 +408,7 @@ export default function PayoutsPage() {
                 <button
                   onClick={submitRequest}
                   disabled={isSubmitting}
-                  className="w-full bg-slate-900 text-white py-6 rounded-lg font-black text-xl flex items-center justify-center gap-3 shadow-xl hover:bg-orange-600 transition-all disabled:opacity-50"
+                  className="w-full bg-foreground text-white py-6 rounded-lg font-black text-xl flex items-center justify-center gap-3 shadow-xl hover:bg-orange-600 transition-all disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <Loader className="animate-spin" />
@@ -420,7 +420,7 @@ export default function PayoutsPage() {
             )}
 
             {withdrawStep === 2 && (
-              <div className="text-center space-y-8 bg-slate-900 p-12 rounded-lg shadow-2xl text-white">
+              <div className="text-center space-y-8 bg-foreground p-12 rounded-lg shadow-2xl text-white">
                 <div className="w-24 h-24 bg-green-500 rounded-lg flex items-center justify-center mx-auto rotate-12">
                   <CheckCircle2 size={48} />
                 </div>
@@ -428,7 +428,7 @@ export default function PayoutsPage() {
                   <h2 className="text-3xl font-black uppercase tracking-tighter">
                     Request Sent!
                   </h2>
-                  <p className="text-slate-400 text-sm mt-4 leading-relaxed">
+                  <p className="text-muted-foreground text-sm mt-4 leading-relaxed">
                     We have received your request. Our team will verify the data
                     and process your funds shortly.
                   </p>
@@ -438,7 +438,7 @@ export default function PayoutsPage() {
                     setView("overview");
                     setWithdrawStep(1);
                   }}
-                  className="w-full bg-white text-slate-900 py-5 rounded-lg font-black uppercase text-sm hover:bg-orange-500 hover:text-white transition"
+                  className="w-full bg-card text-foreground py-5 rounded-lg font-black uppercase text-sm hover:bg-orange-500 hover:text-white transition"
                 >
                   Done
                 </button>

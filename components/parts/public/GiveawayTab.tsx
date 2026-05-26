@@ -229,10 +229,10 @@ export const GiveawayTab = ({
   if (!hasAnyGiveaways) {
     return (
       <div className="animate-in fade-in duration-500">
-        <div className="text-center py-20 bg-white border border-slate-100 rounded-3xl">
-          <Gift size={48} className="mx-auto text-slate-200 mb-4" />
+        <div className="text-center py-20 bg-card border border-border rounded-3xl">
+          <Gift size={48} className="mx-auto text-muted-foreground mb-4" />
           <h3 className="text-2xl font-bold">No Giveaways Yet</h3>
-          <p className="text-slate-500 mt-2">
+          <p className="text-muted-foreground mt-2">
             Check back later for exciting prizes!
           </p>
         </div>

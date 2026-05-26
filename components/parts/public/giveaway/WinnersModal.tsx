@@ -10,9 +10,9 @@ export function WinnersModal({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-      <div className="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl">
-        <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-orange-600 to-amber-600">
+    <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+      <div className="bg-card w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl">
+        <div className="p-6 border-b border-border bg-gradient-to-r from-orange-600 to-amber-600">
           <h2 className="text-xl font-bold text-white">{giveaway.title}</h2>
           <p className="text-white/80 text-sm mt-1">Winners Announced!</p>
           {giveaway.partners.length > 0 && (
@@ -42,8 +42,8 @@ export function WinnersModal({
         <div className="p-6 max-h-[60vh] overflow-y-auto">
           {giveaway.winners.length === 0 ? (
             <div className="text-center py-12">
-              <Trophy size={40} className="mx-auto text-slate-200 mb-4" />
-              <p className="text-slate-500">No winners yet</p>
+              <Trophy size={40} className="mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">No winners yet</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -53,14 +53,14 @@ export function WinnersModal({
                   className={`flex items-center gap-4 p-4 rounded-xl ${
                     idx === 0
                       ? "bg-gradient-to-r from-orange-100 to-amber-100 border-2 border-orange-300"
-                      : "bg-slate-50"
+                      : "bg-muted"
                   }`}
                 >
                   <div
                     className={`w-12 h-12 rounded-full flex items-center justify-center font-bold ${
                       idx === 0
                         ? "bg-orange-500 text-white"
-                        : "bg-slate-200 text-slate-600"
+                        : "bg-muted text-muted-foreground"
                     }`}
                   >
                     {winner.winnerPhoto ? (
@@ -75,7 +75,7 @@ export function WinnersModal({
                   </div>
                   <div className="flex-1">
                     <p className="font-bold">{winner.winnerName}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                       Won: {winner.rewardTitle}
                     </p>
                   </div>
@@ -90,10 +90,10 @@ export function WinnersModal({
           )}
         </div>
 
-        <div className="p-4 border-t border-slate-100">
+        <div className="p-4 border-t border-border">
           <button
             onClick={onClose}
-            className="w-full py-3 bg-slate-100 rounded-xl font-bold hover:bg-slate-200 transition"
+            className="w-full py-3 bg-muted rounded-xl font-bold hover:bg-muted transition"
           >
             Close
           </button>

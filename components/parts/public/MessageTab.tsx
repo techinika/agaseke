@@ -273,14 +273,14 @@ export const MessageTab = ({
   if (!canMessage) {
     return (
       <div className="animate-in fade-in duration-500">
-        <div className="bg-white border border-slate-100 rounded-3xl p-8 text-center shadow-xl">
-          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <MessageSquare size={32} className="text-slate-300" />
-          </div>
-          <h4 className="font-bold text-lg text-slate-900 mb-2">
-            Messaging Disabled
-          </h4>
-          <p className="text-sm text-slate-500 max-w-[250px] mx-auto">
+          <div className="bg-card border border-border rounded-3xl p-8 text-center shadow-xl">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <MessageSquare size={32} className="text-muted-foreground" />
+            </div>
+            <h4 className="font-bold text-lg text-foreground mb-2">
+              Messaging Disabled
+            </h4>
+            <p className="text-sm text-muted-foreground max-w-[250px] mx-auto">
             {messagingAllowAll
               ? "This creator has disabled direct messaging."
               : `You need to support with at least ${messagingMinAmount.toLocaleString()} RWF to send a message.`}
@@ -306,17 +306,17 @@ export const MessageTab = ({
 
   return (
     <div className="animate-in fade-in duration-500">
-      <div className="flex flex-col h-[550px] bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-xl">
+      <div className="flex flex-col h-[550px] bg-card border border-border rounded-3xl overflow-hidden shadow-xl">
         <ChatHeader name={name} profilePicture={creatorData?.profilePicture} />
 
-        <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-slate-50/30">
+        <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-muted/30">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm">
-                <Send size={24} className="text-slate-300" />
+              <div className="w-16 h-16 bg-card rounded-full flex items-center justify-center mb-4 shadow-sm">
+                <Send size={24} className="text-muted-foreground" />
               </div>
-              <h4 className="font-bold text-slate-900">Start the conversation</h4>
-              <p className="text-sm text-slate-500 max-w-[250px]">
+              <h4 className="font-bold text-foreground">Start the conversation</h4>
+              <p className="text-sm text-muted-foreground max-w-[250px]">
                 Send your first message to {name.split(" ")[0]}. They&apos;ll receive
                 it via email too!
               </p>

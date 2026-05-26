@@ -129,13 +129,13 @@ export const VerificationPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FBFBFC] p-6 md:p-12 text-slate-900">
+    <div className="min-h-screen bg-background p-6 md:p-12 text-foreground">
       <div id="recaptcha-anchor"></div>
 
       <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           {creator?.verificationStatus === "approved" && !isEditing && (
-            <div className="bg-black text-white p-6 rounded-lg flex justify-between items-center">
+            <div className="bg-foreground text-white p-6 rounded-lg flex justify-between items-center">
               <div>
                 <p className="font-bold text-lg">Verified Account</p>
                 <p className="text-sm opacity-70">
@@ -144,7 +144,7 @@ export const VerificationPage = () => {
               </div>
               <button
                 onClick={() => setIsEditing(true)}
-                className="text-sm border border-white/30 px-4 py-2 rounded-lg hover:bg-white/10 transition"
+                className="text-sm border border-white/30 px-4 py-2 rounded-lg hover:bg-card/10 transition"
               >
                 Update
               </button>
@@ -152,7 +152,7 @@ export const VerificationPage = () => {
           )}
 
           {creator?.verificationStatus === "pending" && !isEditing && (
-            <div className="bg-black text-white p-6 rounded-lg flex justify-between items-center">
+            <div className="bg-foreground text-white p-6 rounded-lg flex justify-between items-center">
               <div>
                 <p className="font-bold text-lg">Pending Verification</p>
                 <p className="text-sm opacity-70">
@@ -162,7 +162,7 @@ export const VerificationPage = () => {
               </div>
               <button
                 onClick={() => setIsEditing(true)}
-                className="text-sm border border-white/30 px-4 py-2 rounded-lg hover:bg-white/10 transition"
+                className="text-sm border border-white/30 px-4 py-2 rounded-lg hover:bg-card/10 transition"
               >
                 Update
               </button>
@@ -170,7 +170,7 @@ export const VerificationPage = () => {
           )}
 
           {creator?.verificationStatus === "rejected" && !isEditing && (
-            <div className="bg-black text-white p-6 rounded-lg flex justify-between items-center">
+            <div className="bg-foreground text-white p-6 rounded-lg flex justify-between items-center">
               <div>
                 <p className="font-bold text-lg">Rejected Verification</p>
                 <p className="text-sm opacity-70">
@@ -180,7 +180,7 @@ export const VerificationPage = () => {
               </div>
               <button
                 onClick={() => setIsEditing(true)}
-                className="text-sm border border-white/30 px-4 py-2 rounded-lg hover:bg-white/10 transition"
+                className="text-sm border border-white/30 px-4 py-2 rounded-lg hover:bg-card/10 transition"
               >
                 Update
               </button>
@@ -188,7 +188,7 @@ export const VerificationPage = () => {
           )}
 
           <div
-            className={`bg-white p-8 md:p-10 rounded-lg border border-slate-100 shadow-sm ${!isEditing ? "opacity-60 grayscale-[0.5]" : ""}`}
+            className={`bg-card p-8 md:p-10 rounded-lg border border-border shadow-sm ${!isEditing ? "opacity-60 grayscale-[0.5]" : ""}`}
           >
             <h2 className="text-2xl font-bold tracking-tight mb-8">
               Identity & Payouts
@@ -197,13 +197,13 @@ export const VerificationPage = () => {
             <form onSubmit={handleFinalSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                     Preferred Mode
                   </label>
                   <select
                     name="payoutPreference"
                     disabled={!isEditing}
-                    className="w-full bg-slate-50 border-none rounded-lg p-4 focus:ring-2 focus:ring-black outline-none transition"
+                    className="w-full bg-muted border-none rounded-lg p-4 focus:ring-2 focus:ring-black outline-none transition"
                   >
                     <option value="momo">MTN Mobile Money</option>
                     <option value="bank">Bank Account</option>
@@ -212,19 +212,19 @@ export const VerificationPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                     Country
                   </label>
                   <input
                     name="country"
                     required
                     disabled={!isEditing}
-                    className="w-full bg-slate-50 border-none rounded-lg p-4 outline-none focus:ring-2 focus:ring-black transition"
+                    className="w-full bg-muted border-none rounded-lg p-4 outline-none focus:ring-2 focus:ring-black transition"
                   />
                 </div>
 
                 <div className="md:col-span-2 space-y-2">
-                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                     Bank or Provider Name
                   </label>
                   <input
@@ -232,41 +232,41 @@ export const VerificationPage = () => {
                     required
                     disabled={!isEditing}
                     placeholder="e.g. Bank of Kigali"
-                    className="w-full bg-slate-50 border-none rounded-lg p-4 outline-none focus:ring-2 focus:ring-black transition"
+                    className="w-full bg-muted border-none rounded-lg p-4 outline-none focus:ring-2 focus:ring-black transition"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                     Account Name
                   </label>
                   <input
                     name="accountName"
                     required
                     disabled={!isEditing}
-                    className="w-full bg-slate-50 border-none rounded-lg p-4 outline-none focus:ring-2 focus:ring-black transition"
+                    className="w-full bg-muted border-none rounded-lg p-4 outline-none focus:ring-2 focus:ring-black transition"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                     Account Number
                   </label>
                   <input
                     name="accountNumber"
                     required
                     disabled={!isEditing}
-                    className="w-full bg-slate-50 border-none rounded-lg p-4 outline-none focus:ring-2 focus:ring-black transition"
+                    className="w-full bg-muted border-none rounded-lg p-4 outline-none focus:ring-2 focus:ring-black transition"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                   Identity Document (ID/Passport)
                 </label>
                 <label
-                  className={`block w-full border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition ${isEditing ? "border-slate-200 hover:border-black" : "border-slate-100 bg-slate-50"}`}
+                  className={`block w-full border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition ${isEditing ? "border-border hover:border-foreground" : "border-border bg-muted"}`}
                 >
                   <input
                     type="file"
@@ -278,7 +278,7 @@ export const VerificationPage = () => {
                       setSelectedFileName(e.target.files?.[0]?.name || "")
                     }
                   />
-                  <span className="text-sm font-medium text-slate-500">
+                  <span className="text-sm font-medium text-muted-foreground">
                     {selectedFileName || "Click to upload document"}
                   </span>
                 </label>
@@ -288,7 +288,7 @@ export const VerificationPage = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-black text-white py-5 rounded-lg font-bold hover:opacity-90 transition active:scale-[0.98] disabled:bg-slate-200"
+                  className="w-full bg-foreground text-white py-5 rounded-lg font-bold hover:opacity-90 transition active:scale-[0.98] disabled:bg-muted"
                 >
                   {loading ? "Processing..." : "Submit Verification Request"}
                 </button>
@@ -298,9 +298,9 @@ export const VerificationPage = () => {
         </div>
 
         <div className="space-y-6">
-          <div className="bg-white p-8 rounded-lg border border-slate-100 shadow-sm">
+          <div className="bg-card p-8 rounded-lg border border-border shadow-sm">
             <h3 className="font-bold mb-4">Phone Security</h3>
-            <p className="text-xs text-slate-400 mb-6 leading-relaxed">
+            <p className="text-xs text-muted-foreground mb-6 leading-relaxed">
               Verify your phone to enable secure payouts and account recovery.
             </p>
 
@@ -310,13 +310,13 @@ export const VerificationPage = () => {
                 defaultValue={creator?.payoutNumber}
                 disabled={phoneVerified}
                 placeholder="+250..."
-                className="w-full bg-slate-50 rounded-lg p-4 text-sm outline-none border-none focus:ring-2 focus:ring-black transition"
+                className="w-full bg-muted rounded-lg p-4 text-sm outline-none border-none focus:ring-2 focus:ring-black transition"
               />
 
               {!phoneVerified ? (
                 <button
                   onClick={handleSendOTP}
-                  className="w-full bg-slate-100 py-3 rounded-lg text-sm font-bold hover:bg-slate-200 transition"
+                  className="w-full bg-muted py-3 rounded-lg text-sm font-bold hover:bg-muted transition"
                 >
                   Send OTP
                 </button>
@@ -332,11 +332,11 @@ export const VerificationPage = () => {
                     maxLength={6}
                     onChange={(e) => setOtpCode(e.target.value)}
                     placeholder="Enter code"
-                    className="w-full bg-white border-2 border-black rounded-lg p-4 text-center tracking-[0.5em] font-bold outline-none"
+                    className="w-full bg-card border-2 border-foreground rounded-lg p-4 text-center tracking-[0.5em] font-bold outline-none"
                   />
                   <button
                     onClick={handleVerifyOTP}
-                    className="w-full bg-black text-white py-3 rounded-lg text-sm font-bold"
+                    className="w-full bg-foreground text-white py-3 rounded-lg text-sm font-bold"
                   >
                     Verify Number
                   </button>
@@ -345,7 +345,7 @@ export const VerificationPage = () => {
             </div>
           </div>
 
-          <div className="bg-slate-900 p-8 rounded-lg text-white">
+          <div className="bg-foreground p-8 rounded-lg text-white">
             <h3 className="font-bold mb-2">Why Verify?</h3>
             <p className="text-xs text-white/50 leading-relaxed">
               Verification protects Agaseke from fraud and ensures your revenue

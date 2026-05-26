@@ -62,15 +62,15 @@ export function ProductCard({
 
   return (
     <div
-      className={`bg-white border rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all ${isPurchased ? "border-green-200" : "border-slate-100"}`}
+      className={`bg-card border rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all ${isPurchased ? "border-green-200" : "border-border"}`}
     >
       {creatorHandle ? (
-        <Link href={`/${creatorHandle}/store/${product.id}`} className="block aspect-square bg-slate-50 relative">
+        <Link href={`/${creatorHandle}/store/${product.id}`} className="block aspect-square bg-muted relative">
           {product.imageUrl ? (
             <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Package size={48} className="text-slate-200" />
+              <Package size={48} className="text-muted-foreground" />
             </div>
           )}
           <span className={`absolute top-3 left-3 text-[10px] font-bold px-2 py-1 rounded-full ${product.type === "digital" ? "bg-orange-100 text-orange-600" : "bg-blue-100 text-blue-600"}`}>
@@ -88,12 +88,12 @@ export function ProductCard({
           )}
         </Link>
       ) : (
-        <div className="aspect-square bg-slate-50 relative cursor-pointer" onClick={() => onSelectProduct(product)}>
+        <div className="aspect-square bg-muted relative cursor-pointer" onClick={() => onSelectProduct(product)}>
           {product.imageUrl ? (
             <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Package size={48} className="text-slate-200" />
+              <Package size={48} className="text-muted-foreground" />
             </div>
           )}
           <span className={`absolute top-3 left-3 text-[10px] font-bold px-2 py-1 rounded-full ${product.type === "digital" ? "bg-orange-100 text-orange-600" : "bg-blue-100 text-blue-600"}`}>
@@ -114,7 +114,7 @@ export function ProductCard({
 
       <div className="p-4">
         <h3 className="font-bold text-lg truncate">{product.name}</h3>
-        <p className="text-sm text-slate-500 line-clamp-2 mt-1">
+        <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
           {product.description}
         </p>
         <div className="flex items-center justify-between mt-4">
@@ -123,7 +123,7 @@ export function ProductCard({
               {product.price.toLocaleString()} RWF
             </span>
             {product.platformFeePayer === "buyer" && (
-              <p className="text-[10px] text-slate-400">
+              <p className="text-[10px] text-muted-foreground">
                 +{platformSharePercentage * 100}% fee ={" "}
                 {priceWithFee.toLocaleString()} RWF
               </p>
@@ -145,7 +145,7 @@ export function ProductCard({
                 className={`px-3 py-1 text-xs font-bold rounded-lg transition ${
                   selectedSize === size
                     ? "bg-orange-500 text-white"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    : "bg-muted text-muted-foreground hover:bg-muted"
                 }`}
               >
                 {size}
@@ -155,7 +155,7 @@ export function ProductCard({
         )}
 
         {product.type === "physical" && (
-          <p className="text-xs text-slate-400 mt-2">
+          <p className="text-xs text-muted-foreground mt-2">
             {product.stock > 0 ? `${product.stock} in stock` : "Out of stock"}
           </p>
         )}
@@ -185,10 +185,10 @@ export function ProductCard({
           </div>
         ) : (
           <div className="flex items-center gap-2 mt-4">
-            <div className="flex items-center bg-slate-100 rounded-lg">
+            <div className="flex items-center bg-muted rounded-lg">
               <button
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="p-2 hover:bg-slate-200 rounded-l-lg transition"
+                className="p-2 hover:bg-muted rounded-l-lg transition"
               >
                 <Minus size={14} />
               </button>
@@ -197,7 +197,7 @@ export function ProductCard({
               </span>
               <button
                 onClick={() => setQuantity(quantity + 1)}
-                className="p-2 hover:bg-slate-200 rounded-r-lg transition"
+                className="p-2 hover:bg-muted rounded-r-lg transition"
               >
                 <Plus size={14} />
               </button>

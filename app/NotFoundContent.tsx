@@ -9,10 +9,10 @@ import { useRouter } from "next/navigation";
 const NotFoundContent = () => {
   const router = useRouter();
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center px-6 overflow-hidden relative">
+    <div className="min-h-screen bg-card flex flex-col items-center justify-center px-6 overflow-hidden relative">
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-orange-50 rounded-full blur-[120px] opacity-60" />
-        <div className="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-slate-50 rounded-full blur-[120px] opacity-60" />
+        <div className="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-muted rounded-full blur-[120px] opacity-60" />
       </div>
 
       <div className="relative z-10 flex flex-col items-center text-center">
@@ -21,7 +21,7 @@ const NotFoundContent = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="text-[12rem] md:text-[16rem] font-bold leading-none tracking-tighter text-slate-900/5 select-none"
+            className="text-[12rem] md:text-[16rem] font-bold leading-none tracking-tighter text-foreground/5 select-none"
           >
             404
           </motion.h1>
@@ -32,7 +32,7 @@ const NotFoundContent = () => {
             transition={{ delay: 0.3, duration: 0.5 }}
             className="absolute inset-0 flex items-center justify-center"
           >
-            <div className="bg-white p-8 rounded-lg shadow-2xl shadow-orange-100 border border-orange-50 relative">
+            <div className="bg-card p-8 rounded-lg shadow-2xl shadow-orange-100 border border-orange-50 relative">
               <motion.div
                 animate={{
                   rotate: [0, 10, -10, 0],
@@ -48,7 +48,7 @@ const NotFoundContent = () => {
                 <Search size={40} strokeWidth={3} />
               </motion.div>
 
-              <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg">
+              <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-card rounded-full flex items-center justify-center shadow-lg">
                 <MapPin size={14} className="text-orange-600" />
               </div>
             </div>
@@ -61,10 +61,10 @@ const NotFoundContent = () => {
           transition={{ delay: 0.5 }}
           className="max-w-md"
         >
-          <h2 className="text-3xl font-bold tracking-tighter text-slate-900 mb-4">
+          <h2 className="text-3xl font-bold tracking-tighter text-foreground mb-4">
             This Agaseke does not exist yet!
           </h2>
-          <p className="text-slate-500 font-medium leading-relaxed mb-10">
+          <p className="text-muted-foreground font-medium leading-relaxed mb-10">
             It looks like this space hasn&lsquo;t been woven yet, or the link
             has moved. Don&apos;t worry, even the best storytellers get lost
             sometimes.
@@ -73,14 +73,14 @@ const NotFoundContent = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/"
-              className="flex items-center justify-center gap-3 bg-slate-900 text-white px-8 py-4 rounded-lg font-bold transition-all hover:bg-orange-600 active:scale-95 shadow-xl shadow-slate-200"
+              className="flex items-center justify-center gap-3 bg-foreground text-white px-8 py-4 rounded-lg font-bold transition-all hover:bg-orange-600 active:scale-95 shadow-xl shadow-slate-200"
             >
               <Home size={18} /> Go To Home
             </Link>
 
             <button
               onClick={() => router.refresh()}
-              className="flex items-center justify-center gap-3 bg-white border border-slate-200 text-slate-600 px-8 py-4 rounded-lg font-bold transition-all hover:border-slate-900 hover:text-slate-900 active:scale-95"
+              className="flex items-center justify-center gap-3 bg-card border border-border text-muted-foreground px-8 py-4 rounded-lg font-bold transition-all hover:border-slate-900 hover:text-foreground active:scale-95"
             >
               <ArrowLeft size={18} /> Try Again
             </button>
@@ -91,7 +91,7 @@ const NotFoundContent = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 0.4 }}
           transition={{ delay: 0.8 }}
-          className="mt-20 text-[10px] font-bold uppercase tracking-[0.4em] text-slate-400"
+          className="mt-20 text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground"
         >
           Agaseke for Creators
         </motion.p>

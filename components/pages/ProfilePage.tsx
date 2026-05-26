@@ -122,13 +122,13 @@ export default function ProfileEditPage() {
   if (loading) return <Loading />;
 
   return (
-    <div className="min-h-screen bg-[#FBFBFC] text-slate-900 pb-20">
+    <div className="min-h-screen bg-background text-foreground pb-20">
       <main className="max-w-3xl mx-auto px-6 pt-20">
         <div className="mb-10">
           <h1 className="text-4xl font-bold tracking-tighter">
             Profile Settings
           </h1>
-          <p className="text-slate-500 font-medium">
+          <p className="text-muted-foreground font-medium">
             Manage your identity and account preferences.
           </p>
         </div>
@@ -143,7 +143,7 @@ export default function ProfileEditPage() {
               </p>
               <Link
                 href="/onboarding"
-                className="inline-flex items-center gap-2 bg-white text-orange-600 px-6 py-3 rounded-lg font-bold text-sm transition-transform active:scale-95"
+                className="inline-flex items-center gap-2 bg-card text-orange-600 px-6 py-3 rounded-lg font-bold text-sm transition-transform active:scale-95"
               >
                 Setup Creator Page <ExternalLink size={16} />
               </Link>
@@ -154,9 +154,9 @@ export default function ProfileEditPage() {
 
         <div className="space-y-6">
           {/* Identity Section */}
-          <section className="bg-white p-8 rounded-lg border border-slate-100 shadow-sm space-y-6">
+          <section className="bg-card p-8 rounded-lg border border-border shadow-sm space-y-6">
             <div className="flex items-center gap-4 mb-4">
-              <div className="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center overflow-hidden">
+              <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center overflow-hidden">
                 {profile?.photoURL ? (
                   <img
                     src={profile.photoURL}
@@ -164,11 +164,11 @@ export default function ProfileEditPage() {
                     alt="Profile"
                   />
                 ) : (
-                  <User size={30} className="text-slate-300" />
+                  <User size={30} className="text-muted-foreground" />
                 )}
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                   Account Type
                 </p>
                 <div className="flex items-center gap-2 font-bold text-orange-600 capitalize">
@@ -179,63 +179,63 @@ export default function ProfileEditPage() {
 
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">
+                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">
                   Email Address
                 </label>
                 <div className="relative">
                   <Mail
                     size={16}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
                   />
                   <input
                     type="email"
                     value={profile?.email || ""}
                     disabled
-                    className="w-full bg-slate-50 border-none rounded-lg py-4 pl-12 pr-4 text-slate-400 cursor-not-allowed font-medium"
+                    className="w-full bg-muted border-none rounded-lg py-4 pl-12 pr-4 text-muted-foreground cursor-not-allowed font-medium"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">
+                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">
                   Display Name
                 </label>
                 <input
                   type="text"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  className="w-full bg-slate-50 border-none focus:ring-2 focus:ring-orange-100 rounded-lg py-4 px-6 font-bold transition-all"
+                  className="w-full bg-muted border-none focus:ring-2 focus:ring-orange-100 rounded-lg py-4 px-6 font-bold transition-all"
                 />
               </div>
 
               <div className="space-y-2 md:col-span-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">
+                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">
                   Location
                 </label>
                 <div className="relative">
                   <MapPin
                     size={16}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
                   />
                   <input
                     type="text"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                     placeholder="e.g. Kigali, Rwanda"
-                    className="w-full bg-slate-50 border-none focus:ring-2 focus:ring-orange-100 rounded-lg py-4 pl-12 pr-6 font-bold transition-all"
+                    className="w-full bg-muted border-none focus:ring-2 focus:ring-orange-100 rounded-lg py-4 pl-12 pr-6 font-bold transition-all"
                   />
                 </div>
                 <div className="relative">
                   <Phone
                     size={16}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
                   />
                   <input
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="e.g. +250789999999"
-                    className="w-full bg-slate-50 border-none focus:ring-2 focus:ring-orange-100 rounded-lg py-4 pl-12 pr-6 font-bold transition-all"
+                    className="w-full bg-muted border-none focus:ring-2 focus:ring-orange-100 rounded-lg py-4 pl-12 pr-6 font-bold transition-all"
                   />
                 </div>
               </div>
@@ -244,7 +244,7 @@ export default function ProfileEditPage() {
             <button
               onClick={handleUpdate}
               disabled={saving}
-              className="w-full bg-slate-900 text-white py-5 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors disabled:opacity-50"
+              className="w-full bg-foreground text-white py-5 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors disabled:opacity-50"
             >
               {saving ? (
                 <Loader className="animate-spin" />
@@ -279,7 +279,7 @@ export default function ProfileEditPage() {
                 }
               }}
               disabled={hasPendingPayout}
-              className="bg-white border border-red-200 text-red-600 px-6 py-3 rounded-lg font-bold text-sm hover:bg-red-600 hover:text-white transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-card border border-red-200 text-red-600 px-6 py-3 rounded-lg font-bold text-sm hover:bg-red-600 hover:text-white transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Trash2 size={16} /> Delete My Account
             </button>
@@ -307,16 +307,16 @@ To confirm, type your email address (${profile?.email}) below.`}
 
       {/* Email Confirmation Input (rendered outside modal for styling) */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 z-[101] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 pointer-events-none">
-          <div className="bg-white w-full max-w-md rounded-xl shadow-2xl p-6 pointer-events-auto">
-            <p className="text-sm text-slate-500 mb-4 font-medium">
+        <div className="fixed inset-0 z-[101] flex items-center justify-center bg-foreground/60 backdrop-blur-sm p-4 pointer-events-none">
+          <div className="bg-card w-full max-w-md rounded-xl shadow-2xl p-6 pointer-events-auto">
+            <p className="text-sm text-muted-foreground mb-4 font-medium">
               Type your email to confirm deletion:
             </p>
             <input
               type="text"
               autoComplete="off"
               placeholder="Type your email address"
-              className="w-full bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-red-100 rounded-lg py-4 px-6 font-bold text-center mb-4"
+              className="w-full bg-muted border border-border focus:ring-2 focus:ring-red-100 rounded-lg py-4 px-6 font-bold text-center mb-4"
               value={confirmEmail}
               onChange={(e) => setConfirmEmail(e.target.value)}
             />
