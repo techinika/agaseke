@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import admin from "firebase-admin";
 import { adminDb } from "@/db/firebaseAdmin";
 
 export async function GET(req: NextRequest) {
@@ -30,36 +29,39 @@ export async function GET(req: NextRequest) {
         .where("productId", "==", productId)
         .get();
 
-      const hasAccess = ordersSnap.docs.some((d) => {
-        const s = d.data().status;
-        return s === "paid" || s === "processing" || s === "shipped" || s === "delivered";
-      });
+      if (ordersSnap.empty) {
+        return NextResponse.json(
+          { error: "You have not purchased this product" },
+          { status: 403 },
+        );
+      }
 
-      if (!hasAccess) {
-        return NextResponse.json({ error: "Not purchased" }, { status: 403 });
+      const order = ordersSnap.docs[0].data();
+      const status = order.status;
+
+      if (status === "pending") {
+        return NextResponse.json(
+          { error: "Your order is still pending. Please complete payment first.", orderId: ordersSnap.docs[0].id },
+          { status: 403 },
+        );
+      }
+
+      if (status === "cancelled") {
+        return NextResponse.json(
+          { error: "This order was cancelled." },
+          { status: 403 },
+        );
+      }
+
+      if (status !== "paid" && status !== "processing" && status !== "shipped" && status !== "delivered") {
+        return NextResponse.json(
+          { error: "Your order has not been completed yet." },
+          { status: 403 },
+        );
       }
     }
 
-    const fileRes = await fetch(fileUrl);
-    if (!fileRes.ok) {
-      return NextResponse.json({ error: "Failed to fetch file" }, { status: 502 });
-    }
-
-    const blob = await fileRes.blob();
-    const fileName =
-      product.fileName ||
-      product.name?.replace(/\s+/g, "_") ||
-      `download_${productId}`;
-
-    const ext = fileName.includes(".") ? "" : ".pdf";
-
-    return new NextResponse(blob, {
-      headers: {
-        "Content-Type": fileRes.headers.get("content-type") || "application/octet-stream",
-        "Content-Disposition": `attachment; filename="${fileName}${ext}"`,
-        "Content-Length": String(blob.size),
-      },
-    });
+    return NextResponse.json({ fileUrl });
   } catch (error: any) {
     console.error("Download error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

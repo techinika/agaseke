@@ -44,8 +44,8 @@ export function OrderTrackingModal({
     setDownloadingProduct(productId);
     try {
       await downloadProduct(productId, uid);
-    } catch {
-      toast.error("Download failed");
+    } catch (e) {
+      toast.error((e as Error).message);
     }
     setTimeout(() => setDownloadingProduct(null), 1000);
   };
@@ -202,7 +202,6 @@ export function OrderTrackingModal({
                     {order.status === "pending" && (
                       <Link
                         href={`/store/pay/${order.id}`}
-                        target="_blank"
                         className="px-4 py-2 bg-green-500 text-white rounded-lg font-bold text-sm hover:bg-green-600 transition"
                       >
                         Pay Now

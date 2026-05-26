@@ -59,8 +59,8 @@ export function MyPurchasesModal({
     setDownloadingProduct(productId);
     try {
       await downloadProduct(productId, uid);
-    } catch {
-      toast.error("Download failed");
+    } catch (e) {
+      toast.error((e as Error).message);
     }
     setTimeout(() => setDownloadingProduct(null), 1000);
   };

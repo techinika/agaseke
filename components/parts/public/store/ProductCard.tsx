@@ -172,7 +172,7 @@ export function ProductCard({
                 onClick={() => {
                   setDownloading(true);
                   downloadProduct(product.id, uid)
-                    .catch(() => toast.error("Download failed"))
+                    .catch((e) => toast.error(e.message))
                     .finally(() => setDownloading(false));
                 }}
                 className="flex-1 py-2 bg-emerald-500 text-white rounded-lg font-bold text-sm hover:bg-emerald-600 transition flex items-center justify-center gap-2"
