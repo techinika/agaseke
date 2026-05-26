@@ -2,11 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader, Check, ArrowLeft } from "lucide-react";
+import { Loader, Check, ArrowLeft, CreditCard, AlertCircle } from "lucide-react";
 import { db } from "@/db/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
+import Link from "next/link";
+
+const platformSharePercentage =
+  Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
 
 export default function PayClient() {
   const params = useParams();
@@ -14,6 +18,7 @@ export default function PayClient() {
   const orderId = params.orderId as string;
   const { user: currentUser } = useAuth();
   const [order, setOrder] = useState<any>(null);
+  const [products, setProducts] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [paid, setPaid] = useState(false);
@@ -24,16 +29,52 @@ export default function PayClient() {
     const fetchOrder = async () => {
       if (!orderId) return;
 
-      const orderDoc = await getDoc(doc(db, "storeOrders", orderId));
-      if (orderDoc.exists()) {
-        const data = orderDoc.data();
-        setOrder({ id: orderDoc.id, ...data });
+      const snap = await getDoc(doc(db, "storeOrders", orderId));
+      if (!snap.exists()) {
+        setLoading(false);
+        return;
       }
+
+      const data = { id: snap.id, ...snap.data() };
+      setOrder(data);
+
+      const items = data.items || [];
+      const map: Record<string, any> = {};
+      for (const item of items) {
+        if (item.productId && !map[item.productId]) {
+          const pSnap = await getDoc(doc(db, "storeProducts", item.productId));
+          if (pSnap.exists()) {
+            map[item.productId] = { id: pSnap.id, ...pSnap.data() };
+          }
+        }
+      }
+      setProducts(map);
       setLoading(false);
     };
 
     fetchOrder();
   }, [orderId]);
+
+  const items = order?.items || [];
+  const firstProduct = products[items[0]?.productId];
+  const creatorHandle = firstProduct?.creatorId || order?.creatorId || "";
+  const hasPhysical = items.some((i: any) => products[i.productId]?.type === "physical");
+
+  let platformFee = 0;
+  let buyerPaysMore = false;
+  for (const item of items) {
+    const product = products[item.productId];
+    const feePayer = product?.platformFeePayer || "buyer";
+    if (feePayer === "buyer") {
+      platformFee += item.price * item.quantity * platformSharePercentage;
+      buyerPaysMore = true;
+    }
+  }
+
+  const total = order?.total || 0;
+  const finalTotal = total;
+  const totalWithPlatformFee = finalTotal + platformFee;
+  const amountToPay = buyerPaysMore ? totalWithPlatformFee : finalTotal;
 
   const handlePay = async () => {
     if (!order || !currentUser?.uid) {
@@ -49,43 +90,23 @@ export default function PayClient() {
     setPaying(true);
 
     try {
-      const items = order.items && Array.isArray(order.items)
-        ? order.items
-        : order.productIds && Array.isArray(order.productIds)
-          ? order.productIds.map((p: any) => ({
-              productId: p.productId,
-              quantity: p.quantity,
-              price: p.price,
-            }))
-          : order.productId
-            ? [{ productId: order.productId, quantity: order.quantity || 1, price: order.productPrice || order.total }]
-            : [];
-
       const firstItem = items[0];
-      if (!firstItem) {
-        toast.error("No products in this order");
-        return;
-      }
-
-      const productSnap = await getDoc(doc(db, "storeProducts", firstItem.productId));
-      const productData = productSnap.exists() ? productSnap.data() : null;
-
-      const totalAmount = order.total || order.totalAmount || firstItem.price * firstItem.quantity;
 
       const payload: Record<string, any> = {
-        productId: firstItem.productId,
-        quantity: firstItem.quantity,
-        productPrice: firstItem.price,
-        productName: productData?.name || order.productName || "Product",
+        productId: firstItem?.productId,
+        quantity: items.reduce((s: number, i: any) => s + (i.quantity || 0), 0),
         supporterId: currentUser.uid,
         buyerId: currentUser.uid,
-        buyerName: currentUser.displayName || order.buyerName || order.customerName || "Customer",
-        buyerEmail: currentUser.email || order.buyerEmail || order.customerEmail || "",
+        buyerEmail: currentUser.email || order.buyerEmail || "",
+        buyerName: currentUser.displayName || order.buyerName || "Customer",
         phone: phone.replace(/\s/g, ""),
-        amount: totalAmount,
-        creatorId: order.creatorId || productData?.creatorId || "",
-        creatorUid: order.creatorUid || productData?.creatorUid || "",
-        platformFeePayer: productData?.platformFeePayer || "buyer",
+        selectedSize: firstItem?.selectedSize,
+        productPrice: firstItem?.price,
+        productName: firstItem?.productName || firstProduct?.name || "Product",
+        creatorId: creatorHandle,
+        creatorUid: firstProduct?.creatorUid || order?.creatorUid || "",
+        platformFeePayer: firstProduct?.platformFeePayer || "buyer",
+        amount: amountToPay,
         email: currentUser.email || "",
         firstName: currentUser.displayName?.split(" ")[0] || "Customer",
         lastName: currentUser.displayName?.split(" ")[1] || "",
@@ -126,7 +147,7 @@ export default function PayClient() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted">
+      <div className="min-h-[60vh] flex items-center justify-center">
         <Loader className="animate-spin text-orange-600" size={32} />
       </div>
     );
@@ -134,7 +155,7 @@ export default function PayClient() {
 
   if (!order) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted">
+      <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center p-8">
           <p className="text-red-500 font-bold">Order not found</p>
           <button onClick={() => router.push("/")} className="text-orange-600 underline mt-4 block mx-auto">
@@ -145,18 +166,23 @@ export default function PayClient() {
     );
   }
 
-  if (order.paymentStatus === "paid" || order.status === "paid") {
+  if (order.status === "paid" || order.paymentStatus === "paid") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted">
-        <div className="text-center p-8 bg-card rounded-xl shadow-lg">
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center p-8 bg-card rounded-xl shadow-lg max-w-md">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Check className="text-green-600" size={32} />
           </div>
           <h1 className="text-2xl font-bold mb-2">Already Paid</h1>
-          <p className="text-muted-foreground">This order has already been paid.</p>
-          <button onClick={() => router.push("/supporter")} className="text-orange-600 underline mt-4 block mx-auto">
+          <p className="text-muted-foreground mb-6">This order has already been paid.</p>
+          {creatorHandle && (
+            <Link href={`/${creatorHandle}?tab=store`} className="text-orange-600 underline block mb-2">
+              Back to {creatorHandle}&apos;s Store
+            </Link>
+          )}
+          <Link href="/supporter" className="text-muted-foreground underline block">
             Go to My Orders
-          </button>
+          </Link>
         </div>
       </div>
     );
@@ -164,8 +190,8 @@ export default function PayClient() {
 
   if (paid) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted">
-        <div className="text-center p-8 bg-card rounded-xl shadow-lg">
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="text-center p-8 bg-card rounded-xl shadow-lg max-w-md">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Check className="text-green-600" size={32} />
           </div>
@@ -175,83 +201,134 @@ export default function PayClient() {
               ? "Check your phone to complete the payment."
               : "You will be redirected to complete your payment."}
           </p>
-          <button onClick={() => router.push("/supporter")} className="text-orange-600 underline block mx-auto">
+          {creatorHandle && (
+            <Link href={`/${creatorHandle}?tab=store`} className="text-orange-600 underline block mb-2">
+              Back to {creatorHandle}&apos;s Store
+            </Link>
+          )}
+          <Link href="/supporter" className="text-muted-foreground underline block">
             Go to My Orders
-          </button>
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-muted">
-      <div className="max-w-md mx-auto px-4 pt-20 pb-24">
-        <button
-          onClick={() => router.back()}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition mb-6"
-        >
-          <ArrowLeft size={20} />
-          <span className="font-medium">Back</span>
-        </button>
+    <div className="min-h-[60vh] bg-muted/30">
+      <div className="max-w-lg mx-auto px-4 pt-10 pb-24">
+        {creatorHandle && (
+          <Link
+            href={`/${creatorHandle}?tab=store`}
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition mb-6"
+          >
+            <ArrowLeft size={16} />
+            Back to {creatorHandle}&apos;s Store
+          </Link>
+        )}
 
-        <div className="bg-card rounded-xl shadow-lg p-6">
-          <h1 className="text-xl font-bold mb-6">Pay Order</h1>
-
-          <div className="bg-muted rounded-lg p-4 mb-6">
-            <p className="text-sm text-muted-foreground mb-1">Order Total</p>
-            <p className="text-2xl font-bold">{(order.total || order.totalAmount || 0).toLocaleString()} RWF</p>
+        <div className="bg-card rounded-xl shadow-lg p-6 space-y-6">
+          <div>
+            <h1 className="text-xl font-bold">Complete Payment</h1>
+            <p className="text-sm text-muted-foreground">
+              Order #{order.id.slice(0, 8)}
+            </p>
           </div>
 
-          {order.items && Array.isArray(order.items) && order.items.length > 0 && (
-            <div className="mb-6 space-y-2">
-              <p className="text-sm font-bold">Items</p>
-              {order.items.map((item: any, idx: number) => (
-                <div key={idx} className="text-sm text-muted-foreground flex justify-between">
-                  <span>{item.quantity}x {item.productName || item.name || "Product"}</span>
-                  <span>{(item.price * item.quantity).toLocaleString()} RWF</span>
+          {/* Order Summary */}
+          <div className="bg-muted rounded-xl p-4 space-y-2">
+            <h4 className="font-bold text-sm">Order Summary</h4>
+            {items.length > 0 ? (
+              items.map((item: any, idx: number) => (
+                <div key={idx} className="flex justify-between text-sm">
+                  <span>
+                    {item.quantity}x {item.productName || products[item.productId]?.name || "Product"}
+                    {item.selectedSize && ` (${item.selectedSize})`}
+                  </span>
+                  <span className="font-medium">
+                    {(item.price * item.quantity).toLocaleString()} RWF
+                  </span>
                 </div>
-              ))}
+              ))
+            ) : (
+              <div className="flex justify-between text-sm">
+                <span>{order.productName || "Product"}</span>
+                <span className="font-medium">
+                  {(order.productPrice || order.total || 0).toLocaleString()} RWF
+                </span>
+              </div>
+            )}
+            <div className="border-t border-border pt-2 flex justify-between font-bold">
+              <span>Total</span>
+              <span>
+                {buyerPaysMore
+                  ? totalWithPlatformFee.toLocaleString()
+                  : finalTotal.toLocaleString()}{" "}
+                RWF
+              </span>
             </div>
-          )}
+            {buyerPaysMore && (
+              <p className="text-xs text-muted-foreground">
+                (Includes platform fee: {platformFee.toLocaleString()} RWF)
+              </p>
+            )}
+          </div>
 
-          <div className="space-y-4 mb-6">
-            <p className="font-bold">Payment Method</p>
-
-            <button
-              onClick={() => setPaymentMethod("momo")}
-              className={`w-full p-4 rounded-lg border-2 text-left transition ${
-                paymentMethod === "momo"
-                  ? "border-orange-500 bg-orange-50 dark:bg-orange-950/20"
-                  : "border-border bg-card"
-              }`}
-            >
-              <p className="font-bold">Mobile Money (MoMo)</p>
-              <p className="text-sm text-muted-foreground">Pay via MTN or Airtel Money</p>
-            </button>
-
-            <button
-              onClick={() => setPaymentMethod("card")}
-              className={`w-full p-4 rounded-lg border-2 text-left transition ${
-                paymentMethod === "card"
-                  ? "border-orange-500 bg-orange-50 dark:bg-orange-950/20"
-                  : "border-border bg-card"
-              }`}
-            >
-              <p className="font-bold">Bank Card</p>
-              <p className="text-sm text-muted-foreground">Visa, Mastercard</p>
-            </button>
+          {/* Payment Method */}
+          <div className="space-y-3">
+            <p className="font-bold text-sm">Payment Method</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setPaymentMethod("momo")}
+                className={`py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${
+                  paymentMethod === "momo"
+                    ? "border-orange-600 bg-orange-50 text-orange-600"
+                    : "border-border text-muted-foreground"
+                }`}
+              >
+                Mobile Money
+              </button>
+              <button
+                onClick={() => setPaymentMethod("card")}
+                className={`py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${
+                  paymentMethod === "card"
+                    ? "border-orange-600 bg-orange-50 text-orange-600"
+                    : "border-border text-muted-foreground"
+                }`}
+              >
+                Card Payment
+              </button>
+            </div>
           </div>
 
           {paymentMethod === "momo" && (
-            <div className="mb-6">
-              <label className="block text-sm font-bold mb-2">Phone Number</label>
+            <div className="bg-amber-50 rounded-xl p-4 flex items-start gap-3">
+              <AlertCircle size={20} className="text-amber-600 mt-0.5 shrink-0" />
+              <p className="text-sm text-amber-800">
+                Payment will be processed via Mobile Money. You will receive a prompt on your phone to complete the payment.
+              </p>
+            </div>
+          )}
+
+          {paymentMethod === "momo" && (
+            <div className="space-y-2">
+              <label className="text-sm font-bold">MTN Mobile Money Number</label>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="2507..."
-                className="w-full p-4 rounded-lg border border-border-strong bg-background text-foreground outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="07X XXX XXXX"
+                className="w-full bg-muted p-4 rounded-lg text-sm font-medium outline-none"
               />
+            </div>
+          )}
+
+          {paymentMethod === "card" && (
+            <div className="bg-blue-50 rounded-xl p-4 flex items-start gap-3">
+              <CreditCard size={20} className="text-blue-600 mt-0.5 shrink-0" />
+              <p className="text-sm text-blue-800">
+                You will be redirected to a secure payment page to complete your card payment.
+              </p>
             </div>
           )}
 
@@ -261,9 +338,15 @@ export default function PayClient() {
             className="w-full bg-green-600 text-white py-4 rounded-lg font-bold hover:bg-green-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {paying ? (
-              <Loader className="animate-spin" size={20} />
+              <>
+                <Loader className="animate-spin" size={20} />
+                Processing...
+              </>
             ) : (
-              `Pay ${(order.total || order.totalAmount || 0).toLocaleString()} RWF`
+              <>
+                <Check size={20} />
+                Pay {amountToPay.toLocaleString()} RWF
+              </>
             )}
           </button>
         </div>
