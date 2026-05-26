@@ -199,6 +199,7 @@ export default function CommunityPage({ username }: CommunityPageProps) {
             privatePosts={privatePosts}
             isSupporter={isSupporter}
             name={creatorName}
+            username={username}
           />
         </main>
       </div>
