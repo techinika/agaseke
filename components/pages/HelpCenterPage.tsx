@@ -65,7 +65,7 @@ export default function HelpCenter() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
+    <div className="min-h-screen bg-muted text-foreground pb-20">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -81,12 +81,12 @@ export default function HelpCenter() {
 
       <main className="max-w-5xl mx-auto px-6 -mt-16">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-          <div className="bg-white p-8 rounded-lg shadow-sm border border-slate-100 flex flex-col items-center text-center">
+          <div className="bg-card p-8 rounded-lg shadow-sm border border-border flex flex-col items-center text-center">
             <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-4">
               <Mail size={24} />
             </div>
             <h3 className="font-bold mb-2">Email Support</h3>
-            <p className="text-sm text-slate-500 mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
               Response within 24 hours
             </p>
             <Link
@@ -98,12 +98,12 @@ export default function HelpCenter() {
             </Link>
           </div>
 
-          <div className="bg-white p-8 rounded-lg shadow-sm border border-slate-100 flex flex-col items-center text-center">
+          <div className="bg-card p-8 rounded-lg shadow-sm border border-border flex flex-col items-center text-center">
             <div className="w-12 h-12 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center mb-4">
               <Instagram size={24} />
             </div>
             <h3 className="font-bold mb-2">Instagram DM</h3>
-            <p className="text-sm text-slate-500 mb-4">Quick community help</p>
+            <p className="text-sm text-muted-foreground mb-4">Quick community help</p>
             <Link
               href="https://instagram.com/agaseke_support"
               target="_blank"
@@ -113,12 +113,12 @@ export default function HelpCenter() {
             </Link>
           </div>
 
-          <div className="bg-white p-8 rounded-lg shadow-sm border border-slate-100 flex flex-col items-center text-center">
-            <div className="w-12 h-12 bg-slate-100 text-slate-900 rounded-full flex items-center justify-center mb-4">
+          <div className="bg-card p-8 rounded-lg shadow-sm border border-border flex flex-col items-center text-center">
+            <div className="w-12 h-12 bg-border text-foreground rounded-full flex items-center justify-center mb-4">
               <Twitter size={24} />
             </div>
             <h3 className="font-bold mb-2">X (Twitter)</h3>
-            <p className="text-sm text-slate-500 mb-4">Real-time updates</p>
+            <p className="text-sm text-muted-foreground mb-4">Real-time updates</p>
             <Link
               href="https://x.com/agaseke_support"
               target="_blank"
@@ -162,23 +162,23 @@ export default function HelpCenter() {
           <div className="space-y-12">
             {faqs.map((section) => (
               <div key={section.category}>
-                <h3 className="text-sm uppercase tracking-widest font-bold text-slate-400 mb-6">
+                <h3 className="text-sm uppercase tracking-widest font-bold text-muted-foreground mb-6">
                   {section.category}
                 </h3>
                 <div className="space-y-4">
                   {section.questions.map((item, i) => (
                     <details
                       key={i}
-                      className="group bg-white rounded-lg border border-slate-200 overflow-hidden"
+                      className="group bg-card rounded-lg border border-border-strong overflow-hidden"
                     >
-                      <summary className="flex items-center justify-between p-6 cursor-pointer list-none font-bold text-slate-800">
+                      <summary className="flex items-center justify-between p-6 cursor-pointer list-none font-bold text-foreground">
                         {item.q}
                         <ChevronRight
-                          className="group-open:rotate-90 transition-transform text-slate-400"
+                          className="group-open:rotate-90 transition-transform text-muted-foreground"
                           size={20}
                         />
                       </summary>
-                      <div className="px-6 pb-6 text-slate-600 leading-relaxed">
+                      <div className="px-6 pb-6 text-muted-foreground leading-relaxed">
                         {item.a}
                       </div>
                     </details>

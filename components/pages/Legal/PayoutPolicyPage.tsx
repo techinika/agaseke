@@ -11,7 +11,7 @@ import Footer from "@/components/parts/Footer";
 
 export default function PayoutPolicy() {
   return (
-    <div className="min-h-screen bg-white text-slate-900 pb-20">
+    <div className="min-h-screen bg-card text-foreground pb-20">
       <Navbar />
 
       <main className="max-w-3xl mx-auto px-6 py-16">
@@ -20,26 +20,26 @@ export default function PayoutPolicy() {
             <Wallet size={28} />
           </div>
           <h1 className="text-4xl font-bold mb-4">Payout Policy</h1>
-          <p className="text-slate-500 font-medium">
+          <p className="text-muted-foreground font-medium">
             Ensuring transparent and timely transfers for our creators.
           </p>
         </header>
 
         <div className="space-y-12">
           {/* Standard Schedule */}
-          <section className="bg-slate-50 p-8 rounded-lg border border-slate-100">
-            <div className="flex items-center gap-3 mb-4 text-slate-900">
+          <section className="bg-muted p-8 rounded-lg border border-border">
+            <div className="flex items-center gap-3 mb-4 text-foreground">
               <Calendar size={24} />
               <h2 className="text-2xl font-bold m-0">
                 Standard Payout Schedule
               </h2>
             </div>
-            <p className="text-slate-600 leading-relaxed mb-4">
+            <p className="text-muted-foreground leading-relaxed mb-4">
               Agaseke processes all creator payouts once a month. Standard
               transfers occur
               <strong> between the 25th and 30th of each month</strong>.
             </p>
-            <div className="flex items-center gap-2 text-sm font-bold text-slate-400">
+            <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground">
               <div className="w-2 h-2 bg-green-500 rounded-full" />
               Minimum Payout Threshold: 10,000 RWF
             </div>
@@ -51,12 +51,12 @@ export default function PayoutPolicy() {
               <Banknote className="text-orange-600" size={24} />
               <h2 className="text-2xl font-bold m-0">Early Payout Requests</h2>
             </div>
-            <p className="text-slate-600 leading-relaxed">
+            <p className="text-muted-foreground leading-relaxed">
               If your balance exceeds <strong>10,000 RWF</strong> and you
               require funds before the end-of-month cycle, you may submit a
               Payout Request through your dashboard.
             </p>
-            <ul className="list-disc pl-6 mt-4 space-y-2 text-slate-600">
+            <ul className="list-disc pl-6 mt-4 space-y-2 text-muted-foreground">
               <li>
                 Requests are reviewed by our financial team within 48 hours.
               </li>
@@ -99,7 +99,7 @@ export default function PayoutPolicy() {
           {/* Payment Channels */}
           <section>
             <h2 className="text-2xl font-bold mb-4">Supported Channels</h2>
-            <p className="text-slate-600 mb-6">
+            <p className="text-muted-foreground mb-6">
               We currently support payouts to the following channels provided
               during your verification process:
             </p>
@@ -117,8 +117,8 @@ export default function PayoutPolicy() {
           </section>
 
           {/* Contact Support */}
-          <section className="pt-10 border-t border-slate-100 text-center">
-            <p className="text-slate-500 text-sm mb-4">
+          <section className="pt-10 border-t border-border text-center">
+            <p className="text-muted-foreground text-sm mb-4">
               Questions about your specific payout?
             </p>
             <a

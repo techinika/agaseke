@@ -11,7 +11,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
-import confetti from "canvas-confetti";
+
 
 export default function PaymentCallback() {
   const searchParams = useSearchParams();
@@ -25,11 +25,13 @@ export default function PaymentCallback() {
   const merchantRef = searchParams.get("OrderMerchantReference");
 
   const triggerConfetti = useCallback(() => {
-    confetti({
-      particleCount: 150,
-      spread: 70,
-      origin: { y: 0.6 },
-      colors: ["#ea580c", "#fb923c", "#fff"],
+    void import("canvas-confetti").then((mod) => {
+      mod.default({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ["#ea580c", "#fb923c", "#fff"],
+      });
     });
   }, []);
 
@@ -67,28 +69,28 @@ export default function PaymentCallback() {
   }, [merchantRef, listenToTransaction]);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl shadow-slate-200/60 overflow-hidden border border-slate-100">
+    <div className="min-h-screen bg-muted flex flex-col items-center justify-center p-6">
+      <div className="w-full max-w-md bg-card rounded-3xl shadow-xl shadow-border-strong/60 overflow-hidden border border-border">
         <div className="p-8 text-center space-y-6">
           {status === "verifying" && (
             <div className="space-y-6 animate-in fade-in duration-500">
               <div className="relative mx-auto w-20 h-20">
-                <div className="absolute inset-0 border-4 border-slate-100 rounded-full" />
+                <div className="absolute inset-0 border-4 border-border rounded-full" />
                 <div className="absolute inset-0 border-4 border-t-orange-600 rounded-full animate-spin" />
               </div>
               <div className="space-y-2">
-                <h1 className="text-2xl font-bold text-slate-900">
+                <h1 className="text-2xl font-bold text-foreground">
                   {txData?.type === "store" 
                     ? "Confirming your order payment..." 
                     : "Confirming your gift..."}
                 </h1>
-                <p className="text-slate-500 text-sm">
+                <p className="text-muted-foreground text-sm">
                   {txData?.type === "store"
                     ? "We're verifying your order payment with the bank. This won't take long."
                     : "We're verifying your transaction with the bank. This won't take long."}
                 </p>
               </div>
-              <div className="text-[10px] font-mono text-slate-300 uppercase tracking-widest">
+              <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
                 Ref: {merchantRef}
               </div>
             </div>
@@ -100,10 +102,10 @@ export default function PaymentCallback() {
                 <Heart size={40} fill="currentColor" />
               </div>
               <div className="space-y-2">
-                <h1 className="text-3xl font-black text-slate-900">
+                <h1 className="text-3xl font-black text-foreground">
                   Thank You!
                 </h1>
-                <p className="text-slate-600 font-medium">
+                <p className="text-muted-foreground font-medium">
                   {txData?.type === "store"
                     ? `Your payment of `
                     : `Your gift of `}
@@ -118,7 +120,7 @@ export default function PaymentCallback() {
               <div className="pt-4">
                 <Link
                   href={`/${txData?.creatorId || ""}`}
-                  className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all group"
+                  className="w-full bg-foreground text-background py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all group"
                 >
                   Back to Creator{" "}
                   <ArrowRight
@@ -136,17 +138,17 @@ export default function PaymentCallback() {
                 <XCircle size={40} />
               </div>
               <div className="space-y-2">
-                <h1 className="text-2xl font-bold text-slate-900">
+                <h1 className="text-2xl font-bold text-foreground">
                   Payment Failed
                 </h1>
-                <p className="text-slate-500 text-sm">
+                <p className="text-muted-foreground text-sm">
                   We couldn&apos;t verify this transaction. It might have been
                   cancelled or declined.
                 </p>
               </div>
               <button
                 onClick={() => router.back()}
-                className="w-full bg-slate-100 text-slate-900 py-4 rounded-2xl font-bold hover:bg-slate-200 transition-all"
+                className="w-full bg-border text-foreground py-4 rounded-2xl font-bold hover:bg-border-strong transition-all"
               >
                 Go Back & Try Again
               </button>
@@ -154,11 +156,11 @@ export default function PaymentCallback() {
           )}
         </div>
 
-        <div className="bg-slate-50 p-4 border-t border-slate-100 flex items-center justify-center gap-2">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+        <div className="bg-muted p-4 border-t border-border flex items-center justify-center gap-2">
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">
             Powered by
           </span>
-          <span className="text-xs font-bold text-slate-800 tracking-tighter">
+          <span className="text-xs font-bold text-foreground tracking-tighter">
             agaseke.me
           </span>
         </div>

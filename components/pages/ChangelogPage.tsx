@@ -63,7 +63,7 @@ export default function ChangelogPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
+    <div className="min-h-screen bg-muted text-foreground pb-20">
       <div className="bg-gradient-to-br from-orange-600 to-orange-700 pt-20 pb-32 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
@@ -78,7 +78,7 @@ export default function ChangelogPage() {
       <main className="max-w-6xl mx-auto px-6 -mt-20">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div>
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="bg-card rounded-2xl shadow-sm border border-border-strong overflow-hidden">
               <div className="bg-emerald-50 border-b border-emerald-100 px-8 py-5">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center">
@@ -98,8 +98,8 @@ export default function ChangelogPage() {
               <div className="p-6">
                 {currentEntries.length === 0 ? (
                   <div className="text-center py-12">
-                    <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                    <p className="text-slate-500">
+                    <Package className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-muted-foreground">
                       No current features listed yet.
                     </p>
                   </div>
@@ -111,22 +111,22 @@ export default function ChangelogPage() {
                         className="relative pl-6 pb-6 border-l-2 border-emerald-200 last:border-l-0 last:pb-0"
                       >
                         {index !== currentEntries.length - 1 && (
-                          <div className="absolute left-[-9px] top-0 w-4 h-4 bg-emerald-500 rounded-lg border-2 border-white shadow-sm" />
+                          <div className="absolute left-[-9px] top-0 w-4 h-4 bg-emerald-500 rounded-lg border-2 border-white dark:border-foreground shadow-sm" />
                         )}
 
-                        <div className="bg-slate-50 rounded-xl p-5 hover:bg-slate-100 transition-colors">
+                        <div className="bg-muted rounded-xl p-5 hover:bg-card-hover transition-colors">
                           <div className="flex items-start justify-between gap-3 mb-2">
-                            <h3 className="font-bold text-slate-900">
+                            <h3 className="font-bold text-foreground">
                               {entry.title}
                             </h3>
                             {entry.releaseDate && (
-                              <span className="flex items-center gap-1 text-xs text-slate-500 whitespace-nowrap">
+                              <span className="flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap">
                                 <Calendar size={12} /> {entry.releaseDate}
                               </span>
                             )}
                           </div>
 
-                          <p className="text-sm text-slate-600 mb-3">
+                          <p className="text-sm text-muted-foreground mb-3">
                             {entry.description}
                           </p>
 
@@ -135,7 +135,7 @@ export default function ChangelogPage() {
                               {entry.tags.map((tag) => (
                                 <span
                                   key={tag}
-                                  className="px-2.5 py-1 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-medium"
+                                  className="px-2.5 py-1 bg-card border border-border-strong text-muted-foreground rounded-lg text-xs font-medium"
                                 >
                                   {tag}
                                 </span>
@@ -152,7 +152,7 @@ export default function ChangelogPage() {
           </div>
 
           <div>
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="bg-card rounded-2xl shadow-sm border border-border-strong overflow-hidden">
               <div className="bg-blue-50 border-b border-blue-100 px-8 py-5">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
@@ -172,8 +172,8 @@ export default function ChangelogPage() {
               <div className="p-6">
                 {plannedEntries.length === 0 ? (
                   <div className="text-center py-12">
-                    <Zap className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                    <p className="text-slate-500">
+                    <Zap className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-muted-foreground">
                       No planned features listed yet.
                     </p>
                   </div>
@@ -182,10 +182,10 @@ export default function ChangelogPage() {
                     {plannedEntries.map((entry) => (
                       <div
                         key={entry.id}
-                        className="bg-gradient-to-r from-slate-50 to-white rounded-xl p-5 border border-dashed border-slate-200 hover:border-blue-200 hover:from-blue-50/30 transition-all"
+                        className="bg-gradient-to-r from-muted to-card rounded-xl p-5 border border-dashed border-border-strong hover:border-blue-200 hover:from-blue-50/30 transition-all"
                       >
                         <div className="flex items-start justify-between gap-3 mb-2">
-                          <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                          <h3 className="font-bold text-foreground flex items-center gap-2">
                             {entry.title}
                             <ChevronRight size={14} className="text-blue-400" />
                           </h3>
@@ -198,7 +198,7 @@ export default function ChangelogPage() {
                           )}
                         </div>
 
-                        <p className="text-sm text-slate-600 mb-3">
+                        <p className="text-sm text-muted-foreground mb-3">
                           {entry.description}
                         </p>
 
@@ -221,11 +221,11 @@ export default function ChangelogPage() {
               </div>
             </div>
 
-            <div className="mt-6 bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-              <h3 className="font-bold text-slate-900 mb-3">
+            <div className="mt-6 bg-card rounded-2xl shadow-sm border border-border-strong p-6">
+              <h3 className="font-bold text-foreground mb-3">
                 Have a feature idea?
               </h3>
-              <p className="text-sm text-slate-600 mb-4">
+              <p className="text-sm text-muted-foreground mb-4">
                 We're always looking for ways to improve Agaseke. If you have a
                 feature suggestion or feedback, we'd love to hear from you.
               </p>
@@ -238,7 +238,7 @@ export default function ChangelogPage() {
                 </a>
                 <a
                   href="/help-center"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-border text-foreground rounded-xl text-sm font-bold hover:bg-border-strong transition-colors"
                 >
                   Help Center
                 </a>

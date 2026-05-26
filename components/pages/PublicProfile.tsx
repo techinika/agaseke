@@ -30,7 +30,6 @@ import { CommunityTab } from "../parts/public/CommunityTab";
 import { StoreTab } from "../parts/public/StoreTab";
 import { GiveawayTab } from "../parts/public/GiveawayTab";
 import { MessageTab } from "../parts/public/MessageTab";
-import { BookingModal } from "../parts/public/BookingModal";
 import { GatheringsTab } from "../parts/public/GatheringsTab";
 import Footer from "../parts/Footer";
 import { Building2, ExternalLink } from "lucide-react";
@@ -40,17 +39,16 @@ import { normalizeSocialUrl } from "@/lib/urlUtils";
 export default function PublicProfile({ username }: { username: string }) {
   const { user: currentUser, isLoggedIn, isCreator } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [creatorData, setCreatorData] = useState<Creator | null>(null);
+  const [creatorData, setCreatorData] = useState<any>(null);
   const [profileData, setProfileData] = useState<any>(null);
-  const [referralId, setReferralId] = useState("");
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("community");
+  const [loading, setLoading] = useState(true);
+  const [referralId, setReferralId] = useState<string | null>(null);
   const [isSupporter, setIsSupporter] = useState(false);
   const [publicPosts, setPublicPosts] = useState<any[]>([]);
   const [privatePosts, setPrivatePosts] = useState<any[]>([]);
   const [featuredPartners, setFeaturedPartners] = useState<any[]>([]);
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("community");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -83,6 +81,16 @@ export default function PublicProfile({ username }: { username: string }) {
         }
       } catch (error) {
         console.error("Error fetching creator:", error);
+        fetch("/api/log-error", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            level: "error",
+            category: "general",
+            message: "Error fetching creator in PublicProfile",
+            metadata: { username, error: String(error) },
+          }),
+        }).catch(() => {});
       } finally {
         setLoading(false);
       }
@@ -118,7 +126,7 @@ export default function PublicProfile({ username }: { username: string }) {
           where("creatorId", "==", creatorData.uid),
           where("isPrivate", "==", false),
           orderBy("createdAt", "desc"),
-          limit(20),
+          limit(3),
         );
         const publicSnap = await getDocs(publicQ);
         const publicData = publicSnap.docs.map((doc) => ({
@@ -134,7 +142,7 @@ export default function PublicProfile({ username }: { username: string }) {
             where("creatorId", "==", creatorData.uid),
             where("isPrivate", "==", true),
             orderBy("createdAt", "desc"),
-            limit(20),
+            limit(3),
           );
           const privateSnap = await getDocs(privateQ);
           const privateData = privateSnap.docs.map((doc) => ({
@@ -229,7 +237,7 @@ export default function PublicProfile({ username }: { username: string }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#FBFBFC] text-slate-900 selection:bg-orange-100">
+    <div className="min-h-screen bg-background text-foreground selection:bg-orange-100">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
@@ -254,7 +262,6 @@ export default function PublicProfile({ username }: { username: string }) {
         setIsModalOpen={setIsModalOpen}
         currentUser={currentUser}
         bookingEnabled={creatorData?.bookingEnabled === true}
-        setIsBookingModalOpen={setIsBookingModalOpen}
       />
 
       <TabManager
@@ -275,7 +282,9 @@ export default function PublicProfile({ username }: { username: string }) {
             publicPosts={publicPosts} 
             privatePosts={privatePosts}
             isSupporter={isSupporter}
-            name={creator?.name} 
+            name={creator?.name}
+            compact={true}
+            username={username}
           />
         )}
 
@@ -306,6 +315,7 @@ export default function PublicProfile({ username }: { username: string }) {
             isLoggedIn={isLoggedIn}
             isSupporter={isSupporter}
             setIsModalOpen={setIsModalOpen}
+            compact={true}
           />
         )}
 
@@ -319,6 +329,8 @@ export default function PublicProfile({ username }: { username: string }) {
             userTotalSupport={profileData?.totalSupport || 0}
             setIsModalOpen={setIsModalOpen}
             currentUserId={currentUser?.uid}
+            compact={true}
+            username={username}
           />
         )}
 
@@ -327,6 +339,8 @@ export default function PublicProfile({ username }: { username: string }) {
             creatorId={creator.uid}
             creatorHandle={username}
             isSupporter={isSupporter}
+            compact={true}
+            username={username}
           />
         )}
       </main>
@@ -335,19 +349,19 @@ export default function PublicProfile({ username }: { username: string }) {
         <section className="max-w-2xl mx-auto px-6 py-12">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200"></div>
+              <div className="w-full border-t border-border"></div>
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-[#FBFBFC] px-4 flex items-center gap-2">
+              <span className="bg-background px-4 flex items-center gap-2">
                 <Building2 size={16} className="text-orange-500" />
-                <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+                <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
                   Partners & Collaborations
                 </span>
               </span>
             </div>
           </div>
           
-          <div className="mt-8 bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+          <div className="mt-8 bg-card rounded-2xl border border-border p-6 shadow-sm">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {featuredPartners.map((partner) => (
                 <a
@@ -355,21 +369,21 @@ export default function PublicProfile({ username }: { username: string }) {
                   href={partner.website || "#"}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex items-center gap-4 p-4 bg-slate-50 rounded-xl hover:bg-orange-50 hover:border-orange-200 border border-transparent transition-all"
+                  className="group flex items-center gap-4 p-4 bg-muted rounded-xl hover:bg-orange-50 hover:border-orange-200 border border-transparent transition-all"
                 >
-                  <div className="w-14 h-14 bg-white rounded-xl overflow-hidden flex items-center justify-center shadow-sm border border-slate-100">
+                  <div className="w-14 h-14 bg-card rounded-xl overflow-hidden flex items-center justify-center shadow-sm border border-border">
                     {partner.logo ? (
                       <img src={partner.logo} alt={partner.name} className="w-full h-full object-cover" />
                     ) : (
-                      <Building2 size={24} className="text-slate-300" />
+                      <Building2 size={24} className="text-muted-foreground" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-slate-900 group-hover:text-orange-700 transition-colors truncate">
+                    <p className="font-bold text-foreground group-hover:text-orange-700 transition-colors truncate">
                       {partner.name}
                     </p>
                     {partner.description && (
-                      <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">
+                      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
                         {partner.description}
                       </p>
                     )}
@@ -406,12 +420,6 @@ export default function PublicProfile({ username }: { username: string }) {
           username={username}
         />
       )}
-
-      <BookingModal
-        isOpen={isBookingModalOpen}
-        onClose={() => setIsBookingModalOpen(false)}
-        creator={creatorData}
-      />
 
       <Footer />
     </div>

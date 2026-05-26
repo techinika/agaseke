@@ -7,7 +7,7 @@ export default function PrivacyPage() {
   const lastUpdated = "February 02, 2026";
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 pb-20">
+    <div className="min-h-screen bg-card text-foreground pb-20">
       <Navbar />
 
       <main className="max-w-3xl mx-auto px-6 py-16">
@@ -16,7 +16,7 @@ export default function PrivacyPage() {
             <ShieldCheck size={28} />
           </div>
           <h1 className="text-4xl font-bold mb-4">Privacy Policy</h1>
-          <p className="text-slate-500 font-medium">
+          <p className="text-muted-foreground font-medium">
             Last updated: {lastUpdated}
           </p>
         </header>
@@ -28,11 +28,11 @@ export default function PrivacyPage() {
                 1. Information We Collect
               </h2>
             </div>
-            <p className="text-slate-600 leading-relaxed">
+            <p className="text-muted-foreground leading-relaxed">
               To provide a seamless experience for creators and supporters in
               Rwanda, we collect:
             </p>
-            <ul className="list-disc pl-6 space-y-2 text-slate-600">
+            <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
               <li>
                 <strong>Account Information:</strong> Your name, email address,
                 and profile photo when you sign up via Google or Email.
@@ -54,11 +54,11 @@ export default function PrivacyPage() {
                 2. How We Share Your Data
               </h2>
             </div>
-            <p className="text-slate-600 leading-relaxed">
+            <p className="text-muted-foreground leading-relaxed">
               We value your privacy. We do not sell your data. However, data
               sharing occurs in the following instances:
             </p>
-            <ul className="list-disc pl-6 space-y-2 text-slate-600">
+            <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
               <li>
                 <strong>Creator-Supporter Connection:</strong> When you RSVP for
                 a gathering, your name and phone number are shared{" "}
@@ -77,7 +77,7 @@ export default function PrivacyPage() {
             <div className="flex items-center gap-3 mb-4">
               <h2 className="text-2xl font-bold m-0">3. Data Security</h2>
             </div>
-            <p className="text-slate-600 leading-relaxed">
+            <p className="text-muted-foreground leading-relaxed">
               We use industry-standard encryption and Firebase Security Rules to
               ensure that your private data (like your total support impact or
               account settings) is only accessible by you.
@@ -86,7 +86,7 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-2xl font-bold mb-4">4. Your Rights</h2>
-            <p className="text-slate-600 leading-relaxed">
+            <p className="text-muted-foreground leading-relaxed">
               Under Rwandan data protection laws, you have the right to access
               your data, request corrections, or ask for the deletion of your
               account. To exercise these rights, please contact us at the email
@@ -98,13 +98,13 @@ export default function PrivacyPage() {
             <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
               Contact Privacy Team
             </h2>
-            <p className="text-slate-400 mb-6">
+            <p className="text-muted-foreground mb-6">
               For any questions regarding your data privacy, account deletion,
               or security concerns:
             </p>
             <div className="space-y-2">
               <p className="font-bold">agasekeforcreators@gmail.com</p>
-              <p className="text-sm text-slate-500">Subject: Privacy Inquiry</p>
+              <p className="text-sm text-muted-foreground">Subject: Privacy Inquiry</p>
             </div>
           </section>
         </div>

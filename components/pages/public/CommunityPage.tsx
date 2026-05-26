@@ -126,6 +126,16 @@ export default function CommunityPage({ username }: CommunityPageProps) {
         }
       } catch (error) {
         console.error("Error checking support status:", error);
+        fetch("/api/log-error", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            level: "error",
+            category: "general",
+            message: "Error fetching community posts",
+            metadata: { username, creatorUid: creatorData?.uid, error: String(error) },
+          }),
+        }).catch(() => {});
       }
     };
 
@@ -138,9 +148,9 @@ export default function CommunityPage({ username }: CommunityPageProps) {
 
   if (!creatorData) {
     return (
-      <div className="min-h-screen bg-[#FBFBFC] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <p className="text-slate-500">Creator not found</p>
+          <p className="text-muted-foreground">Creator not found</p>
           <Link
             href="/"
             className="text-orange-500 font-bold mt-4 inline-block"
@@ -155,13 +165,13 @@ export default function CommunityPage({ username }: CommunityPageProps) {
   const creatorName = creatorData.name || profileData?.displayName || "Creator";
 
   return (
-    <div className="min-h-screen bg-[#FBFBFC]">
+    <div className="min-h-screen bg-background">
       <Navbar />
       <div className="max-w-4xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <Link
             href={`/${username}`}
-            className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition"
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition"
           >
             <ArrowLeft size={20} />
             <span className="font-medium">Back to Profile</span>
@@ -177,8 +187,8 @@ export default function CommunityPage({ username }: CommunityPageProps) {
         </div>
 
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900">Community</h1>
-          <p className="text-slate-500 mt-1">
+          <h1 className="text-3xl font-bold text-foreground">Community</h1>
+          <p className="text-muted-foreground mt-1">
             Public posts and content from {creatorName}
           </p>
         </div>
@@ -189,6 +199,7 @@ export default function CommunityPage({ username }: CommunityPageProps) {
             privatePosts={privatePosts}
             isSupporter={isSupporter}
             name={creatorName}
+            username={username}
           />
         </main>
       </div>

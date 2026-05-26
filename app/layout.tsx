@@ -4,6 +4,8 @@ import "./globals.css";
 import { AuthProvider } from "@/auth/AuthContext";
 import { Toaster } from "sonner";
 import { GoogleAnalytics } from "@next/third-parties/google";
+import PwaRegister from "@/components/parts/PwaRegister";
+import { ThemeProvider } from "next-themes";
 
 const rubik = Rubik({
   variable: "--font-rubik",
@@ -106,16 +108,25 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="scroll-smooth">
+    <html lang="en" className="scroll-smooth" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="apple-touch-icon" href="/agaseke.png" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="application-name" content="Agaseke" />
+        <meta name="apple-mobile-web-app-title" content="Agaseke" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className={`${rubik.variable} antialiased`}>
-        <AuthProvider>
-          <Toaster richColors position="top-center" />
-          {children}
-        </AuthProvider>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <AuthProvider>
+            <Toaster richColors position="top-center" />
+            {children}
+            <PwaRegister />
+          </AuthProvider>
+        </ThemeProvider>
       </body>
       <GoogleAnalytics gaId="G-6DP23NWS5P" />
     </html>

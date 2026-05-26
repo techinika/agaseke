@@ -209,7 +209,7 @@ export default function SpinningWheel({
 
   return (
     <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl overflow-hidden shadow-2xl max-w-lg w-full">
+      <div className="bg-card rounded-3xl overflow-hidden shadow-2xl max-w-lg w-full">
         {/* Header */}
         <div className="bg-gradient-to-r from-orange-600 to-amber-600 p-6 text-white">
           <div className="flex items-center justify-between">
@@ -221,7 +221,7 @@ export default function SpinningWheel({
             </div>
             <button
               onClick={onClose}
-              className="p-2 bg-white/20 rounded-full hover:bg-white/30 transition"
+              className="p-2 bg-card/20 rounded-full hover:bg-card/30 transition"
             >
               <X size={20} />
             </button>
@@ -229,7 +229,7 @@ export default function SpinningWheel({
         </div>
 
         {/* Wheel */}
-        <div className="p-6 bg-slate-50">
+        <div className="p-6 bg-muted">
           <div className="relative flex justify-center">
             <canvas
               ref={canvasRef}
@@ -260,7 +260,7 @@ export default function SpinningWheel({
                   )}
                 </div>
                 <div className="text-left">
-                  <p className="font-bold text-lg text-slate-900">{currentWinner.name}</p>
+                  <p className="font-bold text-lg text-foreground">{currentWinner.name}</p>
                   <p className="text-sm text-orange-600">Congratulations!</p>
                 </div>
               </div>
@@ -270,23 +270,23 @@ export default function SpinningWheel({
           {/* All Winners */}
           {winners.length > 0 && !currentWinner && (
             <div className="mt-6">
-              <p className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">
+              <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">
                 Selected Winners
               </p>
               <div className="space-y-2">
                 {winners.map((winner, idx) => (
-                  <div key={idx} className="flex items-center gap-3 bg-white rounded-lg p-3 border border-slate-100">
+                  <div key={idx} className="flex items-center gap-3 bg-card rounded-lg p-3 border border-border">
                     <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
                       {idx + 1}
                     </div>
-                    <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 font-bold overflow-hidden">
+                    <div className="w-8 h-8 bg-border rounded-full flex items-center justify-center text-muted-foreground font-bold overflow-hidden">
                       {winner.photo ? (
                         <img src={winner.photo} alt={winner.name} className="w-full h-full object-cover" />
                       ) : (
                         winner.name[0].toUpperCase()
                       )}
                     </div>
-                    <p className="font-medium text-slate-900">{winner.name}</p>
+                    <p className="font-medium text-foreground">{winner.name}</p>
                   </div>
                 ))}
               </div>
@@ -295,20 +295,20 @@ export default function SpinningWheel({
 
           {/* Progress */}
           <div className="mt-6 flex items-center gap-3">
-            <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+            <div className="flex-1 h-2 bg-border-strong rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-orange-500 to-amber-500 transition-all duration-500"
                 style={{ width: `${(winners.length / numberOfWinners) * 100}%` }}
               />
             </div>
-            <span className="text-sm font-bold text-slate-500">
+            <span className="text-sm font-bold text-muted-foreground">
               {winners.length}/{numberOfWinners}
             </span>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-white border-t border-slate-100">
+        <div className="p-4 bg-card border-t border-border">
           {winners.length < numberOfWinners ? (
             <button
               onClick={handleNextSpin}

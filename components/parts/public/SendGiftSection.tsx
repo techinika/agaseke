@@ -17,7 +17,6 @@ export const SendGiftSection = ({
   setIsModalOpen,
   currentUser,
   bookingEnabled,
-  setIsBookingModalOpen,
 }: {
   name: string;
   socials: {
@@ -36,15 +35,14 @@ export const SendGiftSection = ({
   setIsModalOpen: any;
   currentUser: any;
   bookingEnabled?: boolean;
-  setIsBookingModalOpen?: any;
 }) => {
   return (
     <div className="relative">
-      <div className="h-48 w-full bg-linear-to-r from-orange-100 via-orange-50 to-orange-100" />
+      <div className="h-48 w-full bg-linear-to-r from-orange-100 via-orange-50 to-orange-100 dark:from-orange-950 dark:via-orange-900/50 dark:to-orange-950" />
       <div className="max-w-2xl mx-auto px-6 -mt-16 text-center">
         <div className="relative inline-block">
-          <div className="w-32 h-32 bg-white rounded-lg p-1 shadow-2xl mx-auto">
-            <div className="w-full h-full bg-slate-100 rounded-lg flex items-center justify-center overflow-hidden">
+          <div className="w-32 h-32 bg-card rounded-lg p-1 shadow-2xl mx-auto">
+            <div className="w-full h-full bg-muted rounded-lg flex items-center justify-center overflow-hidden">
               {photoURL ? (
                 <img
                   src={photoURL}
@@ -52,16 +50,16 @@ export const SendGiftSection = ({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <User size={50} className="text-slate-300" />
+                <User size={50} className="text-muted-foreground" />
               )}
             </div>
           </div>
           {verified && (
-            <div className="absolute bottom-0 right-0 bg-green-500 w-6 h-6 border-4 border-white rounded-full shadow-lg" />
+            <div className="absolute bottom-0 right-0 bg-green-500 w-6 h-6 border-4 border-white dark:border-card rounded-full shadow-lg" />
           )}
         </div>
 
-        <h1 className="mt-6 text-4xl font-bold tracking-tight text-slate-900 flex items-center justify-center gap-2">
+        <h1 className="mt-6 text-4xl font-bold tracking-tight text-foreground flex items-center justify-center gap-2">
           {name}{" "}
           {verified && <CheckCircle2 size={20} className="text-orange-600" />}
         </h1>
@@ -69,12 +67,12 @@ export const SendGiftSection = ({
           agaseke.me/{handle}{" "}
           <button
             onClick={() => setIsShareModalOpen(true)}
-            className="ml-3 p-1.5 rounded-full bg-orange-50 text-orange-600 hover:bg-orange-100 transition-all border border-orange-100"
+            className="ml-3 p-1.5 rounded-full bg-orange-50 dark:bg-orange-900/50 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-800 transition-all border border-orange-100 dark:border-orange-800"
           >
             <Share2 size={14} />
           </button>
         </p>
-        <p className="text-slate-500 text-lg leading-relaxed max-w-lg mx-auto mb-8 font-medium">
+        <p className="text-muted-foreground text-lg leading-relaxed max-w-lg mx-auto mb-8 font-medium">
           {bio}
         </p>
 
@@ -94,10 +92,10 @@ export const SendGiftSection = ({
 
         <button
           onClick={() => setIsModalOpen(true)}
-          className="group w-full bg-slate-900 text-white p-2 rounded-lg flex items-center justify-between hover:bg-orange-600 transition-all duration-500 shadow-2xl shadow-orange-100 active:scale-95"
+          className="group w-full bg-foreground text-background p-2 rounded-lg flex items-center justify-between hover:bg-orange-600 transition-all duration-500 shadow-2xl shadow-orange-100 active:scale-95"
         >
           <div className="flex items-center gap-4 pl-4">
-            <div className="bg-white/10 p-3 rounded-lg group-hover:bg-white/20">
+            <div className="bg-background/10 p-3 rounded-lg group-hover:bg-background/20">
               <Heart
                 size={24}
                 fill="white"
@@ -108,23 +106,23 @@ export const SendGiftSection = ({
               Gift {name.split(" ")[0]}
             </span>
           </div>
-          <div className="bg-white/10 group-hover:bg-white text-white group-hover:text-orange-600 px-6 py-4 rounded-lg font-bold text-sm transition-all uppercase tracking-widest">
+          <div className="bg-background/10 group-hover:bg-background text-background group-hover:text-orange-600 px-6 py-4 rounded-lg font-bold text-sm transition-all uppercase tracking-widest">
             Send a Gift
           </div>
         </button>
 
         {bookingEnabled && (
-          <button
-            onClick={() => setIsBookingModalOpen(true)}
-            className="w-full mt-3 py-3 px-4 border border-slate-200 rounded-lg text-slate-600 font-medium text-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+          <Link
+            href={`/${handle}/booking`}
+            className="w-full mt-3 py-3 px-4 border border-border rounded-lg text-muted-foreground font-medium text-sm hover:bg-muted transition-all flex items-center justify-center gap-2"
           >
             <Calendar size={16} className="text-orange-600" />
             Book a Meeting
-          </button>
+          </Link>
         )}
 
         {!currentUser && (
-          <div className="mt-6 p-4 bg-orange-50 border border-orange-100 rounded-lg flex items-center justify-center gap-3 text-orange-800 animate-pulse">
+          <div className="mt-6 p-4 bg-orange-50 dark:bg-orange-950 border border-orange-100 dark:border-orange-800 rounded-lg flex items-center justify-center gap-3 text-orange-800 dark:text-orange-200 animate-pulse">
             <LogIn size={18} />
             <p className="text-sm font-bold">
               <Link

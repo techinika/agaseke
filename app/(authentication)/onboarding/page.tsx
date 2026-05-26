@@ -9,6 +9,26 @@ export const metadata: Metadata = {
     index: false,
     follow: false,
   },
+  openGraph: {
+    title: "Creator Onboarding | Agaseke for Creators",
+    description: "Creator Onboarding on Agaseke.",
+    url: process.env.NEXT_PUBLIC_BASE_URL || "https://agaseke.me/onboarding",
+    siteName: "Agaseke",
+    images: [
+      {
+        url: "/agaseke.png",
+        width: 1200,
+        height: 630,
+        alt: "Agaseke Onboarding",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Creator Onboarding | Agaseke for Creators",
+    description: "Creator Onboarding on Agaseke.",
+    images: ["/agaseke.png"],
+  },
 };
 
 function page() {

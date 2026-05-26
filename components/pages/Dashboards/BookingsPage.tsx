@@ -184,19 +184,19 @@ export default function BookingsPage() {
 
   if (loading)
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F9FAFB]">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader className="animate-spin text-orange-600" size={32} />
       </div>
     );
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] text-slate-900 pb-20">
+    <div className="min-h-screen bg-background text-foreground pb-20">
       <div className="max-w-5xl mx-auto px-6 pt-10">
         <header className="mb-10">
           <h1 className="text-4xl font-bold tracking-tighter uppercase">
             Book a Meeting
           </h1>
-          <p className="text-slate-500 font-medium">
+          <p className="text-muted-foreground font-medium">
             Manage booking requests and set your availability.
           </p>
         </header>
@@ -206,8 +206,8 @@ export default function BookingsPage() {
             onClick={() => setActiveTab("requests")}
             className={`px-6 py-3 rounded-lg font-black text-sm transition-all ${
               activeTab === "requests"
-                ? "bg-slate-900 text-white"
-                : "bg-white text-slate-600 hover:bg-slate-50"
+                ? "bg-foreground text-background"
+                : "bg-card text-muted-foreground hover:bg-muted"
             }`}
           >
             Booking Requests
@@ -221,8 +221,8 @@ export default function BookingsPage() {
             onClick={() => setActiveTab("availability")}
             className={`px-6 py-3 rounded-lg font-black text-sm transition-all ${
               activeTab === "availability"
-                ? "bg-slate-900 text-white"
-                : "bg-white text-slate-600 hover:bg-slate-50"
+                ? "bg-foreground text-background"
+                : "bg-card text-muted-foreground hover:bg-muted"
             }`}
           >
             Availability
@@ -231,8 +231,8 @@ export default function BookingsPage() {
             onClick={() => setActiveTab("rejected")}
             className={`px-6 py-3 rounded-lg font-black text-sm transition-all ${
               activeTab === "rejected"
-                ? "bg-slate-900 text-white"
-                : "bg-white text-slate-600 hover:bg-slate-50"
+                ? "bg-foreground text-background"
+                : "bg-card text-muted-foreground hover:bg-muted"
             }`}
           >
             Rejected
@@ -247,7 +247,7 @@ export default function BookingsPage() {
         {activeTab === "requests" && (
           <div className="space-y-8">
             {pendingBookings.length > 0 && (
-              <section className="bg-white border border-slate-100 rounded-lg p-6">
+              <section className="bg-card border border-border rounded-lg p-6">
                 <h2 className="text-lg font-black uppercase mb-4 flex items-center gap-2">
                   <Clock className="text-orange-500" size={20} />
                   Pending Requests
@@ -256,12 +256,12 @@ export default function BookingsPage() {
                   {pendingBookings.map((booking) => (
                     <div
                       key={booking.id}
-                      className="p-4 bg-slate-50 rounded-lg border border-slate-100"
+                      className="p-4 bg-muted rounded-lg border border-border"
                     >
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <p className="font-black text-lg">{booking.bookerName}</p>
-                          <div className="flex items-center gap-4 text-sm text-slate-500 mt-1">
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                             <span className="flex items-center gap-1">
                               <Mail size={14} />
                               {booking.bookerEmail}
@@ -292,26 +292,26 @@ export default function BookingsPage() {
 
                       <div className="grid grid-cols-2 gap-4 mb-4">
                         <div className="flex items-center gap-2 text-sm">
-                          <CalendarDays size={16} className="text-slate-400" />
+                          <CalendarDays size={16} className="text-muted-foreground" />
                           <span>{formatDate(booking.preferredDate)}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
-                          <Clock size={16} className="text-slate-400" />
+                          <Clock size={16} className="text-muted-foreground" />
                           <span>{booking.preferredTime}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           {booking.preferredType === "online" ? (
-                            <Video size={16} className="text-slate-400" />
+                            <Video size={16} className="text-muted-foreground" />
                           ) : (
-                            <MapPin size={16} className="text-slate-400" />
+                            <MapPin size={16} className="text-muted-foreground" />
                           )}
                           <span className="capitalize">{booking.preferredType} Meeting</span>
                         </div>
                       </div>
 
                       {booking.reason && (
-                        <div className="p-3 bg-white rounded-lg border border-slate-100">
-                          <p className="text-xs font-black uppercase text-slate-400 mb-1">Reason</p>
+                        <div className="p-3 bg-card rounded-lg border border-border">
+                          <p className="text-xs font-black uppercase text-muted-foreground mb-1">Reason</p>
                           <p className="text-sm">{booking.reason}</p>
                         </div>
                       )}
@@ -322,7 +322,7 @@ export default function BookingsPage() {
             )}
 
             {upcomingBookings.length > 0 && (
-              <section className="bg-white border border-slate-100 rounded-lg p-6">
+              <section className="bg-card border border-border rounded-lg p-6">
                 <h2 className="text-lg font-black uppercase mb-4 flex items-center gap-2">
                   <Calendar className="text-green-500" size={20} />
                   Upcoming Meetings
@@ -331,12 +331,12 @@ export default function BookingsPage() {
                   {upcomingBookings.map((booking) => (
                     <div
                       key={booking.id}
-                      className="p-4 bg-green-50 rounded-lg border border-green-100"
+                      className="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-100 dark:border-green-800"
                     >
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="font-black text-lg">{booking.bookerName}</p>
-                          <p className="text-sm text-slate-500">{booking.bookerEmail}</p>
+                          <p className="text-sm text-muted-foreground">{booking.bookerEmail}</p>
                         </div>
                         <span className="px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full">
                           Confirmed
@@ -344,18 +344,18 @@ export default function BookingsPage() {
                       </div>
                       <div className="grid grid-cols-3 gap-4 mt-4">
                         <div className="flex items-center gap-2 text-sm">
-                          <CalendarDays size={16} className="text-slate-400" />
+                          <CalendarDays size={16} className="text-muted-foreground" />
                           <span>{formatDate(booking.preferredDate)}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
-                          <Clock size={16} className="text-slate-400" />
+                          <Clock size={16} className="text-muted-foreground" />
                           <span>{booking.preferredTime}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
                           {booking.preferredType === "online" ? (
-                            <Video size={16} className="text-slate-400" />
+                            <Video size={16} className="text-muted-foreground" />
                           ) : (
-                            <MapPin size={16} className="text-slate-400" />
+                            <MapPin size={16} className="text-muted-foreground" />
                           )}
                           <span className="capitalize">{booking.preferredType}</span>
                         </div>
@@ -367,10 +367,10 @@ export default function BookingsPage() {
             )}
 
             {bookings.length === 0 && (
-              <div className="bg-white border border-slate-100 rounded-lg p-12 text-center">
-                <Calendar className="mx-auto text-slate-300 mb-4" size={48} />
-                <p className="text-slate-500 font-medium">No booking requests yet</p>
-                <p className="text-sm text-slate-400 mt-2">
+              <div className="bg-card border border-border rounded-lg p-12 text-center">
+                <Calendar className="mx-auto text-muted-foreground mb-4" size={48} />
+                <p className="text-muted-foreground font-medium">No booking requests yet</p>
+                <p className="text-sm text-muted-foreground mt-2">
                   When someone books a meeting with you, it will appear here.
                 </p>
               </div>
@@ -382,7 +382,7 @@ export default function BookingsPage() {
           <div className="space-y-6">
             {rejectedBookings.length > 0 ? (
               rejectedBookings.map((booking) => (
-                <div key={booking.id} className="bg-white border border-red-100 rounded-lg p-6">
+                <div key={booking.id} className="bg-card border border-red-100 rounded-lg p-6">
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
@@ -391,7 +391,7 @@ export default function BookingsPage() {
                           Rejected
                         </span>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-slate-500 mt-1">
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                         <span className="flex items-center gap-1">
                           <Mail size={14} />
                           {booking.bookerEmail}
@@ -399,17 +399,17 @@ export default function BookingsPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                       <div className="flex items-center gap-2 text-sm font-bold text-slate-700 mb-1">
+                       <div className="flex items-center gap-2 text-sm font-bold text-foreground mb-1">
                           <Calendar size={14} />
                           {booking.preferredDate}
                        </div>
-                       <div className="flex items-center gap-2 text-sm font-bold text-slate-500">
+                       <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground">
                           <Clock size={14} />
                           {booking.preferredTime}
                        </div>
                     </div>
                   </div>
-                  <div className="bg-slate-50 p-4 rounded-lg text-sm text-slate-600 mb-4">
+                  <div className="bg-muted p-4 rounded-lg text-sm text-muted-foreground mb-4">
                     <p className="font-bold mb-1">Reason:</p>
                     <p>{booking.reason || "No reason provided."}</p>
                   </div>
@@ -422,15 +422,15 @@ export default function BookingsPage() {
                 </div>
               ))
             ) : (
-              <div className="bg-white border border-dashed border-slate-200 rounded-3xl p-16 text-center">
-                <p className="text-slate-400 text-lg font-medium">No rejected bookings</p>
+              <div className="bg-card border border-dashed border-border rounded-3xl p-16 text-center">
+                <p className="text-muted-foreground text-lg font-medium">No rejected bookings</p>
               </div>
             )}
           </div>
         )}
 
         {activeTab === "availability" && (
-          <div className="bg-white border border-slate-100 rounded-lg p-8 space-y-8">
+          <div className="bg-card border border-border rounded-lg p-8 space-y-8">
             <div>
               <h2 className="text-lg font-black uppercase mb-4">Available Days</h2>
               <div className="flex gap-3 flex-wrap">
@@ -441,7 +441,7 @@ export default function BookingsPage() {
                     className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${
                       availability.daysOfWeek.includes(index)
                         ? "bg-orange-500 text-white"
-                        : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                        : "bg-muted text-muted-foreground hover:bg-border-strong"
                     }`}
                   >
                     {day.slice(0, 3)}
@@ -460,7 +460,7 @@ export default function BookingsPage() {
                     className={`px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 ${
                       availability.bookingType === type
                         ? "bg-orange-500 text-white"
-                        : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                        : "bg-muted text-muted-foreground hover:bg-border-strong"
                     }`}
                   >
                     {type === "online" && <Video size={16} />}
@@ -480,7 +480,7 @@ export default function BookingsPage() {
                   value={availability.location || ""}
                   onChange={(e) => setAvailability((prev) => ({ ...prev, location: e.target.value }))}
                   placeholder="Enter meeting location or address"
-                  className="w-full bg-slate-50 p-4 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-white transition-all"
+                  className="w-full bg-muted p-4 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-card transition-all"
                 />
               </div>
             )}
@@ -493,7 +493,7 @@ export default function BookingsPage() {
                   value={availability.onlineLink || ""}
                   onChange={(e) => setAvailability((prev) => ({ ...prev, onlineLink: e.target.value }))}
                   placeholder="Zoom, Google Meet, or video call link"
-                  className="w-full bg-slate-50 p-4 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-white transition-all"
+                  className="w-full bg-muted p-4 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-card transition-all"
                 />
               </div>
             )}
@@ -504,15 +504,15 @@ export default function BookingsPage() {
                 {availability.defaultSlots.map((slot) => (
                   <div
                     key={slot.id}
-                    className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg"
+                    className="flex items-center gap-4 p-3 bg-muted rounded-lg"
                   >
-                    <Clock size={18} className="text-slate-400" />
+                    <Clock size={18} className="text-muted-foreground" />
                     <span className="font-medium">
                       {slot.startTime} - {slot.endTime}
                     </span>
                     <button
                       onClick={() => removeTimeSlot(slot.id)}
-                      className="ml-auto p-1 text-slate-400 hover:text-red-500 transition-all"
+                      className="ml-auto p-1 text-muted-foreground hover:text-red-500 transition-all"
                     >
                       <X size={16} />
                     </button>
@@ -525,14 +525,14 @@ export default function BookingsPage() {
                       type="time"
                       value={newSlot.startTime}
                       onChange={(e) => setNewSlot((prev) => ({ ...prev, startTime: e.target.value }))}
-                      className="bg-white p-2 rounded-lg text-sm font-medium"
+                      className="bg-card p-2 rounded-lg text-sm font-medium"
                     />
-                    <span className="text-slate-400">to</span>
+                    <span className="text-muted-foreground">to</span>
                     <input
                       type="time"
                       value={newSlot.endTime}
                       onChange={(e) => setNewSlot((prev) => ({ ...prev, endTime: e.target.value }))}
-                      className="bg-white p-2 rounded-lg text-sm font-medium"
+                      className="bg-card p-2 rounded-lg text-sm font-medium"
                     />
                     <button
                       onClick={addTimeSlot}
@@ -542,7 +542,7 @@ export default function BookingsPage() {
                     </button>
                     <button
                       onClick={() => setShowAddSlot(false)}
-                      className="p-2 text-slate-400 hover:text-slate-600"
+                      className="p-2 text-muted-foreground hover:text-muted-foreground"
                     >
                       <X size={16} />
                     </button>
@@ -571,7 +571,7 @@ export default function BookingsPage() {
               <button
                 onClick={saveAvailability}
                 disabled={saving}
-                className="flex-1 bg-slate-900 text-white px-8 py-3 rounded-lg font-black flex items-center justify-center gap-2 hover:bg-orange-600 transition-all shadow-xl disabled:opacity-50"
+                className="flex-1 bg-foreground text-background px-8 py-3 rounded-lg font-black flex items-center justify-center gap-2 hover:bg-orange-600 transition-all shadow-xl disabled:opacity-50"
               >
                 {saving ? (
                   <Loader className="animate-spin" size={18} />

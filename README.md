@@ -96,16 +96,22 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
 ### For Supporters
 
 - **Public Profiles**: Browse creator content at `/[username]`
-- **Public Profile Subpages**: Full-page versions of each tab:
+- **Public Profile Subpages**: Full-page versions of each tab with SEO-friendly URLs:
   - `/[username]/community` - All public posts and supporter-only content
+  - `/[username]/community/[postId]` - Individual post detail with comments and likes
   - `/[username]/store` - Browse products, track orders, view purchased items
+  - `/[username]/store/[productId]` - Individual product detail page
   - `/[username]/gatherings` - Upcoming events and past gatherings
-  - **Giveaways**: Enter giveaways and view winner announcements
+  - `/[username]/gatherings/[gatheringId]` - Individual event detail with RSVP
   - `/[username]/giveaways` - Active and past giveaways with winners
+  - `/[username]/giveaways/[giveawayId]` - Individual giveaway detail with enter/share/winners
+  - `/[username]/booking` - Book a meeting with the creator
   - `/[username]/messaging` - Direct message the creator
+- **Community Interaction**: Like posts and leave comments on creator content
 - **Support**: One-time payments via mobile money (MomoPay) or card (credit/debit)
 - **Gift Once**: Quick support button available on all subpages
 - **Winner Notification**: Congratulatory message when winning a giveaway
+- **Progressive Web App**: Install Agaseke as a standalone app on your device
 
 ### Admin Dashboard (`/admin`)
 
@@ -233,9 +239,14 @@ agaseke/
 │   │       └── verify/           # Identity verification
 │   ├── [username]/               # Public creator profiles
 │   │   ├── community/             # Full community page
-│   │   ├── gatherings/           # Full gatherings page
+│   │   │   └── [postId]/          # Individual post detail with comments/likes
+│   │   ├── gatherings/            # Full gatherings page
+│   │   │   └── [gatheringId]/     # Individual event detail
 │   │   ├── store/                 # Full store page
+│   │   │   └── [productId]/       # Individual product detail
 │   │   ├── giveaways/             # Full giveaways page
+│   │   │   └── [giveawayId]/      # Individual giveaway detail
+│   │   ├── booking/               # Book a meeting page
 │   │   └── messaging/             # Full messaging page
 │   └── api/
 │       ├── comms/email/          # Email notification APIs
@@ -561,10 +572,50 @@ For issues or feature requests, please open an issue on GitHub.
 
 ### SEO & Discovery Enhancements (May 2025)
 - **Dynamic Metadata**: Server-side `generateMetadata` for all creator profile pages (`/[username]`, `/[username]/community`, `/[username]/store`, `/[username]/gatherings`, `/[username]/giveaways`, `/[username]/messaging`)
-- **Sitemap**: Auto-generated sitemap includes all creator profiles AND their enabled subpages (community, store, gatherings, giveaways, messaging) based on creator settings
+- **Sitemap**: Auto-generated sitemap includes all creator profiles, enabled subpages, AND individual detail pages (products, posts, giveaways, gatherings) with UID-to-username mapping
 - **baseUrl**: Separated `baseUrl` utility to `lib/baseUrl.ts` to avoid firebase-admin being bundled in client components
 - **Payment Confirmation**: Different confirmation messages for store payments ("Confirming your order payment..." / "Your payment of X RWF has been processed successfully.") vs support gifts ("Confirming your gift..." / "Your gift of X RWF has been sent successfully.")
+
+### Detail Pages & PWA (May 2026)
+- **Product Detail Pages**: `/[username]/store/[productId]` — Full product view instead of modal, with add-to-cart, size selection, bulk pricing
+- **Post Detail Pages**: `/[username]/community/[postId]` — Full post view with comments and likes system
+- **Giveaway Detail Pages**: `/[username]/giveaways/[giveawayId]` — Full giveaway view with enter, share, and winner viewing
+- **Event Detail Pages**: `/[username]/gatherings/[gatheringId]` — Full event view with RSVP, capacity, and location info
+- **Booking Page**: `/[username]/booking` — Standalone booking page instead of modal, with calendar picker, time slots, and meeting type selection
+- **Comments & Likes**: Added real-time comments and likes to community posts (Firestore subcollections)
+- **Progressive Web App**: Added manifest.json, service worker with cache-first strategy for static assets, and install prompts
+
+### Performance & SEO Improvements (May 2026)
+- **Server-Side JSON-LD**: Schema components (`HomeSchema`, `ExploreSchema`, `CreatorSchema`) migrated from client-side `document.createElement` to server-rendered `<script>` tags — structured data now visible to all crawlers
+- **Full SEO Metadata Coverage**: Added `openGraph` + `twitter:card` metadata to 13 previously-missing pages (changelog, help-center, payout-policy, profile, login, onboarding, dashboard index pages)
+- **Twitter Cards on Detail Pages**: Added twitter metadata to all 5 detail page types (`[postId]`, `[productId]`, `[giveawayId]`, `[gatheringId]`, `booking`)
+- **Home Page Metadata**: Added explicit `export const metadata` to root landing page with OG/Twitter tags
+- **Server Components**: Converted legal pages (`TermsPage`), `loading.tsx`, and all SEO schema components from client to server components — reducing JS bundle
+- **Dynamic Imports**: Code-split heavy libraries — `framer-motion` on error/404 pages, `qrcode.react` on share page, `canvas-confetti` loaded lazily
+- **Memoized Handlers**: Added `useCallback` to 11 event handlers in `PostDetailPage` and `StoreTab` to prevent unnecessary re-renders
+- **Async Memo Fix**: Replaced async `useMemo` anti-pattern (returning Promises) with proper `useEffect` + `Promise.all` in `SupportersPage`
+- **Heading Hierarchy**: Added missing `<h1>` to 4 dashboard pages; fixed `<h1>`→`<h3>` jump in `NoticesPage`
+- **Alt Text**: Fixed 9 empty `alt=""` attributes on profile/content images across the platform
+- **Sitemap Partitioning**: Split sitemap into 6 category files via `generateSitemaps` (static, creators, products, posts, giveaways, gatherings) — all links preserved, under 50K per file
+- **Noindex on Dashboards**: Added `robots: noindex` to 21 dashboard/admin sub-pages to prevent private routes from appearing in search results
+- **Sitemap Coverage**: Added `/changelog` to sitemap static pages
+- **Admin Description Fix**: Corrected copy-paste error on admin dashboard metadata
+- **Notification Icons**: Added missing `new_like` and `new_comment` icon entries in `NotificationDrawer`
 
 ### Bug Fixes (May 2025)
 - **Store Checkout**: Fixed creator ID mismatch - now uses `creatorHandle` (username) for `creatorId` field and `creatorUid` for `creatorUid` field when processing store orders
 - **Payment Transaction**: Fixed transaction lookup by ensuring proper reference matching in IPN handler
+
+### Data Model Unification & Views Fix (May 2026)
+- **Views Not Incrementing Fix**: Supporter feed (`/supporter`) IntersectionObserver filtered posts by `f.type === "content"`, excluding types like "image", "video", "document". Changed to `f.type !== "gathering"` — all content types now count views.
+- **Observer Optimization**: Replaced `seenPosts` state with `useRef` to prevent re-render loops where every view disconnected/reconnected the observer. Local feed state now updates immediately when a view is counted.
+- **Comment/Like Data Model Unification**: Supporter pages now use subcollections (`creatorContent/{postId}/comments`, `creatorContent/{postId}/likes`) matching public/community pages, instead of separate top-level collections (`postComments`, `postLikes`). Comments and likes are now visible across all pages (supporter feed, supporter post detail, public profile, community page).
+- **Removed Inefficient Global Comment Query**: `getDocs(collection(db, "postComments"))` previously fetched every comment in the app to tally per-post counts. Replaced with a denormalized `commentCount` field on each `creatorContent` doc, updated atomically via Firestore `increment()`.
+- **Real-Time Comments & Likes**: Supporter post detail page (`/supporter/[postId]`) now uses `onSnapshot` for both comments and likes (was one-time `getDocs`), matching the public `PostDetailPage` pattern. Like counts update in real-time when others interact.
+- **Tailwind CSS v4 Theme Variables**: Added `card`, `card-hover`, `border`, `border-strong`, `muted`, `muted-foreground` CSS variables to `globals.css` for consistent component theming.
+- **Gift Once Button on Booking Page**: Added "Gift Once" quick support button and `SupportModal` to the booking page (`/[username]/booking`), matching the pattern on other public subpages.
+
+### Dark Mode Theme-ification (May 2026)
+- **Replaced hardcoded colors with CSS variable theme classes across 40+ files**: All page backgrounds (`bg-[#FBFBFC]`/`bg-[#F9FAFB]`/`bg-white`), text colors (`text-gray-*`/`text-slate-*`), borders (`border-gray-*`/`border-slate-*`), and surface backgrounds (`bg-gray-*`/`bg-slate-*`) replaced with theme-aware classes (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-card`, `bg-muted`, `bg-foreground`).
+- Dark mode now works across all pages: supporter dashboard, creator dashboard, admin dashboard, public profile pages, navigation, footer, modals, and UI components.
+- Uses Tailwind v4's `@custom-variant dark` with class-based toggling via `next-themes` — `.dark` class on `<html>` switches all CSS variables to the dark palette.

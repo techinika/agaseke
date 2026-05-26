@@ -1,8 +1,27 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
+  --background: #FBFBFC;
   --foreground: #171717;
+  --card: #ffffff;
+  --card-hover: #f8fafc;
+  --border: #f1f5f9;
+  --border-strong: #e2e8f0;
+  --muted: #f8fafc;
+  --muted-foreground: #64748b;
+}
+
+.dark {
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --card: #1e293b;
+  --card-hover: #334155;
+  --border: #1e293b;
+  --border-strong: #334155;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
 }
 
 * {
@@ -12,6 +31,12 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-hover: var(--card-hover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
   --font-sans: var(--font-rubik);
   --font-mono: var(--font-rubik);
 }

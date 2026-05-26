@@ -57,10 +57,12 @@ const iconMap: Record<NotificationType, React.ReactNode> = {
   new_creator: <UserCheck size={18} className="text-green-500" />,
   new_transaction: <CreditCard size={18} className="text-purple-500" />,
   withdrawal: <Wallet size={18} className="text-orange-500" />,
+  new_like: <Heart size={18} className="text-red-500" />,
+  new_comment: <MessageSquare size={18} className="text-blue-500" />,
 };
 
 const getIcon = (type: NotificationType): React.ReactNode => {
-  return iconMap[type] || <Bell size={18} className="text-slate-500" />;
+  return iconMap[type] || <Bell size={18} className="text-muted-foreground" />;
 };
 
 export default function NotificationDrawer({
@@ -171,26 +173,26 @@ export default function NotificationDrawer({
   return (
     <div className="fixed inset-0 z-[200]">
       <div
-        className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+        className="fixed inset-0 bg-foreground/40 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
 
       <div
         ref={drawerRef}
-        className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl transform transition-transform duration-300 ease-in-out translate-x-0"
+        className="fixed right-0 top-0 h-full w-full max-w-md bg-card shadow-2xl transform transition-transform duration-300 ease-in-out translate-x-0"
       >
         <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between px-6 py-5 border-b border-slate-200">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-border">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center">
-                <Bell size={20} className="text-orange-600" />
+              <div className="w-10 h-10 bg-orange-50 dark:bg-orange-950 rounded-xl flex items-center justify-center">
+                <Bell size={20} className="text-orange-600 dark:text-orange-400" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-slate-900">
+                <h2 className="text-lg font-bold text-foreground">
                   Notifications
                 </h2>
                 {unreadCount > 0 && (
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted-foreground">
                     {unreadCount} unread
                   </p>
                 )}
@@ -202,7 +204,7 @@ export default function NotificationDrawer({
                 <button
                   onClick={markAllAsRead}
                   disabled={markingAllRead}
-                  className="text-xs font-medium text-orange-600 hover:text-orange-700 transition-colors disabled:opacity-50 flex items-center gap-1"
+                  className="text-xs font-medium text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 transition-colors disabled:opacity-50 flex items-center gap-1"
                 >
                   {markingAllRead ? (
                     <Loader size={12} className="animate-spin" />
@@ -214,9 +216,9 @@ export default function NotificationDrawer({
               )}
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-muted rounded-lg transition-colors"
               >
-                <X size={18} className="text-slate-500" />
+                <X size={18} className="text-muted-foreground" />
               </button>
             </div>
           </div>
@@ -228,47 +230,47 @@ export default function NotificationDrawer({
               </div>
             ) : notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 px-8 text-center">
-                <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-4">
-                  <Bell size={28} className="text-slate-400" />
+                <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mb-4">
+                  <Bell size={28} className="text-muted-foreground" />
                 </div>
-                <h3 className="text-sm font-bold text-slate-700 mb-1">
+                <h3 className="text-sm font-bold text-foreground mb-1">
                   No notifications yet
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   We'll notify you when something happens
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-border">
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
                     onClick={() => handleNotificationClick(notification)}
                     className={`px-6 py-4 transition-colors cursor-pointer group ${
                       !notification.read
-                        ? "bg-orange-50/50 hover:bg-orange-50"
-                        : "hover:bg-slate-50"
+                        ? "bg-orange-50/50 dark:bg-orange-950/30 hover:bg-orange-50 dark:hover:bg-orange-950/50"
+                        : "hover:bg-muted"
                     }`}
                   >
                     <div className="flex gap-4">
                       <div className="relative flex-shrink-0">
                         <div
                           className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                            !notification.read ? "bg-white shadow-sm" : "bg-slate-50"
+                            !notification.read ? "bg-card shadow-sm" : "bg-muted"
                           }`}
                         >
                           {notification.imageUrl ? (
                             <img
                               src={notification.imageUrl}
-                              alt=""
-                              className="w-10 h-10 rounded-xl object-cover"
+              alt="Notification image"
+              className="w-10 h-10 rounded-xl object-cover"
                             />
                           ) : (
                             getIcon(notification.type as NotificationType)
                           )}
                         </div>
                         {!notification.read && (
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full border-2 border-white" />
+                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full border-2 border-white dark:border-foreground" />
                         )}
                       </div>
 
@@ -277,8 +279,8 @@ export default function NotificationDrawer({
                           <p
                             className={`text-sm ${
                               !notification.read
-                                ? "font-bold text-slate-900"
-                                : "font-medium text-slate-700"
+                                ? "font-bold text-foreground"
+                                : "font-medium text-foreground"
                             }`}
                           >
                             {notification.title}
@@ -286,23 +288,23 @@ export default function NotificationDrawer({
                           {!notification.read && (
                             <button
                               onClick={(e) => markAsRead(notification.id, e)}
-                              className="flex-shrink-0 text-slate-400 hover:text-slate-600 transition-colors"
+                              className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                             >
                               <CheckCircle size={14} />
                             </button>
                           )}
                         </div>
 
-                        <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                           {notification.message}
                         </p>
 
                         <div className="flex items-center justify-between mt-2">
-                          <span className="text-[10px] text-slate-400 font-medium">
+                          <span className="text-[10px] text-muted-foreground font-medium">
                             {formatTime(notification.createdAt)}
                           </span>
                           {notification.link && (
-                            <span className="text-[10px] text-orange-600 font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span className="text-[10px] text-orange-600 dark:text-orange-400 font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               View <ArrowRight size={10} />
                             </span>
                           )}

@@ -5,15 +5,15 @@ import { FaCcVisa, FaCcMastercard, FaCcAmex } from "react-icons/fa";
 
 export function PaymentMethods() {
   return (
-    <section className="py-12 border-b border-slate-50">
+    <section className="py-12 border-b border-border">
       <div className="max-w-6xl mx-auto px-6">
         <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16">
           
           <div className="text-center md:text-left">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mb-1">
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground mb-1">
               Supported Methods
             </p>
-            <h3 className="text-sm font-bold text-slate-900">Get paid via:</h3>
+            <h3 className="text-sm font-bold text-foreground">Get paid via:</h3>
           </div>
 
           <div className="flex flex-wrap justify-center items-center gap-8 md:gap-12 opacity-60 grayscale hover:grayscale-0 transition-all duration-700">
@@ -21,7 +21,7 @@ export function PaymentMethods() {
             {/* Mobile Money - The most important one */}
             <div className="flex items-center gap-2 group cursor-default">
               <div className="bg-yellow-400 p-1.5 rounded-md group-hover:shadow-lg transition-all">
-                <Smartphone size={18} className="text-slate-900" />
+                <Smartphone size={18} className="text-foreground" />
               </div>
               <span className="font-black text-xs uppercase tracking-tighter">Mobile Money</span>
             </div>
@@ -34,9 +34,9 @@ export function PaymentMethods() {
             </div>
 
             {/* Coming Soon */}
-            <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-full border border-dashed border-slate-200">
-              <Plus size={12} className="text-slate-400" />
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">More coming</span>
+            <div className="flex items-center gap-2 px-4 py-2 bg-muted rounded-full border border-dashed border-border-strong">
+              <Plus size={12} className="text-muted-foreground" />
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">More coming</span>
             </div>
 
           </div>

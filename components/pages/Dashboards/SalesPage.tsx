@@ -261,21 +261,21 @@ export default function SalesPage() {
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-black text-slate-900">
+          <h1 className="text-2xl md:text-3xl font-black text-foreground">
             Sales
           </h1>
-          <p className="text-slate-500 mt-1">
+          <p className="text-muted-foreground mt-1">
             Track your product sales and earnings
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+        <div className="bg-card rounded-2xl p-5 border border-border shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-500">Total Sales</p>
-              <p className="text-2xl md:text-3xl font-black text-slate-900 mt-1">
+              <p className="text-sm font-medium text-muted-foreground">Total Sales</p>
+              <p className="text-2xl md:text-3xl font-black text-foreground mt-1">
                 {totalSales.toLocaleString()} RWF
               </p>
             </div>
@@ -285,13 +285,13 @@ export default function SalesPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+        <div className="bg-card rounded-2xl p-5 border border-border shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-500">
+              <p className="text-sm font-medium text-muted-foreground">
                 Your Earnings
               </p>
-              <p className="text-2xl md:text-3xl font-black text-slate-900 mt-1">
+              <p className="text-2xl md:text-3xl font-black text-foreground mt-1">
                 {totalEarnings.toLocaleString()} RWF
               </p>
             </div>
@@ -301,11 +301,11 @@ export default function SalesPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+        <div className="bg-card rounded-2xl p-5 border border-border shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-500">Total Orders</p>
-              <p className="text-2xl md:text-3xl font-black text-slate-900 mt-1">
+              <p className="text-sm font-medium text-muted-foreground">Total Orders</p>
+              <p className="text-2xl md:text-3xl font-black text-foreground mt-1">
                 {totalOrders}
               </p>
             </div>
@@ -315,13 +315,13 @@ export default function SalesPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
+        <div className="bg-card rounded-2xl p-5 border border-border shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-500">
+              <p className="text-sm font-medium text-muted-foreground">
                 Unique Buyers
               </p>
-              <p className="text-2xl md:text-3xl font-black text-slate-900 mt-1">
+              <p className="text-2xl md:text-3xl font-black text-foreground mt-1">
                 {uniqueBuyers}
               </p>
             </div>
@@ -333,25 +333,25 @@ export default function SalesPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-slate-100">
+        <div className="lg:col-span-2 bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+          <div className="p-5 border-b border-border">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <h2 className="text-lg font-bold text-slate-900">Recent Sales</h2>
+              <h2 className="text-lg font-bold text-foreground">Recent Sales</h2>
               <div className="flex flex-wrap items-center gap-3">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input
                     type="text"
                     placeholder="Search sales..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                    className="pl-10 pr-4 py-2 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
                   />
                 </div>
                 <select
                   value={timeFilter}
                   onChange={(e) => setTimeFilter(e.target.value as any)}
-                  className="px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                  className="px-3 py-2 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
                 >
                   <option value="all">All Time</option>
                   <option value="week">This Week</option>
@@ -365,40 +365,40 @@ export default function SalesPage() {
           <div className="overflow-x-auto">
             {filteredSales.length === 0 ? (
               <div className="text-center py-12">
-                <Package className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-                <p className="text-slate-500">No sales found</p>
+                <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No sales found</p>
               </div>
             ) : (
               <table className="w-full">
-                <thead className="bg-slate-50">
+                <thead className="bg-muted">
                   <tr>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Product
                     </th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Buyer
                     </th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Qty
                     </th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Type
                     </th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Total
                     </th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Earnings
                     </th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Method
                     </th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Date
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-border">
                   {filteredSales.slice(0, 50).map((sale) => {
                     const product = products[sale.productId];
                     const profile = profiles[sale.buyerId];
@@ -411,7 +411,7 @@ export default function SalesPage() {
                     return (
                       <tr
                         key={sale.id}
-                        className="hover:bg-slate-50 transition-colors"
+                        className="hover:bg-muted transition-colors"
                       >
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
@@ -422,11 +422,11 @@ export default function SalesPage() {
                                 className="w-10 h-10 rounded-lg object-cover"
                               />
                             ) : (
-                              <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                                <Package className="w-5 h-5 text-slate-400" />
+                              <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                                <Package className="w-5 h-5 text-muted-foreground" />
                               </div>
                             )}
-                            <div className="font-medium text-slate-900">
+                            <div className="font-medium text-foreground">
                               {productName}
                             </div>
                           </div>
@@ -440,21 +440,21 @@ export default function SalesPage() {
                                 className="w-8 h-8 rounded-full object-cover"
                               />
                             ) : (
-                              <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-                                <Users className="w-4 h-4 text-slate-400" />
+                              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                                <Users className="w-4 h-4 text-muted-foreground" />
                               </div>
                             )}
                             <div>
-                              <div className="font-medium text-slate-900">
+                              <div className="font-medium text-foreground">
                                 {buyerName}
                               </div>
-                              <div className="text-sm text-slate-500">
+                              <div className="text-sm text-muted-foreground">
                                 {profile?.email || sale.buyerEmail || ""}
                               </div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-5 py-4 text-slate-600">
+                        <td className="px-5 py-4 text-muted-foreground">
                           {sale.quantity || 1}
                         </td>
                         <td className="px-5 py-4">
@@ -469,7 +469,7 @@ export default function SalesPage() {
                           </span>
                         </td>
                         <td className="px-5 py-4">
-                          <span className="font-bold text-slate-900">
+                          <span className="font-bold text-foreground">
                             {sale.totalAmount?.toLocaleString() || 0} RWF
                           </span>
                         </td>
@@ -479,12 +479,12 @@ export default function SalesPage() {
                           </span>
                         </td>
                         <td className="px-5 py-4">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-700">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-muted text-foreground">
                             {paymentMethods[sale.paymentMethod] ||
                               sale.paymentMethod}
                           </span>
                         </td>
-                        <td className="px-5 py-4 text-sm text-slate-500">
+                        <td className="px-5 py-4 text-sm text-muted-foreground">
                           {sale.createdAt
                             ? sale.createdAt.toDate
                               ? new Date(
@@ -502,22 +502,22 @@ export default function SalesPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-slate-100">
-            <h2 className="text-lg font-bold text-slate-900">Top Products</h2>
+        <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+          <div className="p-5 border-b border-border">
+            <h2 className="text-lg font-bold text-foreground">Top Products</h2>
           </div>
 
           {topProducts.length === 0 ? (
             <div className="text-center py-12">
-              <Package className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-              <p className="text-slate-500">No product sales yet</p>
+              <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No product sales yet</p>
             </div>
           ) : (
             <div className="p-5 space-y-4">
               {topProducts.map((product, index) => (
                 <div
                   key={product.id}
-                  className="flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors"
+                  className="flex items-center justify-between p-3 rounded-xl bg-muted hover:bg-muted transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <div className="relative">
@@ -528,8 +528,8 @@ export default function SalesPage() {
                           className="w-12 h-12 rounded-xl object-cover"
                         />
                       ) : (
-                        <div className="w-12 h-12 rounded-xl bg-slate-200 flex items-center justify-center">
-                          <Package className="w-6 h-6 text-slate-400" />
+                        <div className="w-12 h-12 rounded-xl bg-border-strong flex items-center justify-center">
+                          <Package className="w-6 h-6 text-muted-foreground" />
                         </div>
                       )}
                       <div
@@ -537,7 +537,7 @@ export default function SalesPage() {
                           index === 0
                             ? "bg-orange-500 text-white"
                             : index === 1
-                              ? "bg-slate-400 text-white"
+                              ? "bg-muted text-white"
                               : "bg-amber-500 text-white"
                         }`}
                       >
@@ -545,10 +545,10 @@ export default function SalesPage() {
                       </div>
                     </div>
                     <div>
-                      <p className="font-medium text-slate-900 text-sm">
+                      <p className="font-medium text-foreground text-sm">
                         {product.name}
                       </p>
-                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span>{product.quantity} units sold</span>
                         <span>•</span>
                         <span
@@ -564,7 +564,7 @@ export default function SalesPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-slate-900">
+                    <p className="font-bold text-foreground">
                       {product.total.toLocaleString()} RWF
                     </p>
                     <p className="text-xs text-green-600">
