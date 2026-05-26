@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader, Check, ArrowLeft, CreditCard, AlertCircle } from "lucide-react";
+import {
+  Loader,
+  Check,
+  ArrowLeft,
+  CreditCard,
+  AlertCircle,
+} from "lucide-react";
 import { db } from "@/db/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { collection, query, where, getDocs } from "firebase/firestore";
@@ -41,7 +47,7 @@ export default function PayClient() {
 
       const data: any = { id: snap.id, ...snap.data() };
       setOrder(data);
-      setIsPaid(data.paymentStatus === "paid");
+      setIsPaid(data.status === "paid");
 
       const orderItems: any[] = data.items || [];
       const map: Record<string, any> = {};
@@ -184,7 +190,10 @@ export default function PayClient() {
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center p-8">
           <p className="text-red-500 font-bold">Order not found</p>
-          <button onClick={() => router.push("/")} className="text-orange-600 underline mt-4 block mx-auto">
+          <button
+            onClick={() => router.push("/")}
+            className="text-orange-600 underline mt-4 block mx-auto"
+          >
             Go Home
           </button>
         </div>
@@ -229,7 +238,10 @@ export default function PayClient() {
               items.map((item: any, idx: number) => (
                 <div key={idx} className="flex justify-between text-sm">
                   <span>
-                    {item.quantity}x {item.productName || products[item.productId]?.name || "Product"}
+                    {item.quantity}x{" "}
+                    {item.productName ||
+                      products[item.productId]?.name ||
+                      "Product"}
                     {item.selectedSize && ` (${item.selectedSize})`}
                   </span>
                   <span className="font-medium">
@@ -241,15 +253,14 @@ export default function PayClient() {
               <div className="flex justify-between text-sm">
                 <span>{order.productName || "Product"}</span>
                 <span className="font-medium">
-                  {(order.productPrice || order.total || 0).toLocaleString()} RWF
+                  {(order.productPrice || order.total || 0).toLocaleString()}{" "}
+                  RWF
                 </span>
               </div>
             )}
             <div className="border-t border-border pt-2 flex justify-between font-bold">
               <span>Total</span>
-              <span>
-                {(order.total || 0).toLocaleString()} RWF
-              </span>
+              <span>{(order.total || 0).toLocaleString()} RWF</span>
             </div>
           </div>
 
@@ -257,11 +268,14 @@ export default function PayClient() {
           <div className="bg-muted rounded-xl p-4 space-y-1">
             <h4 className="font-bold text-sm mb-2">Buyer</h4>
             <p className="text-sm">{order.buyerName || "N/A"}</p>
-            <p className="text-sm text-muted-foreground">{order.buyerEmail || ""}</p>
+            <p className="text-sm text-muted-foreground">
+              {order.buyerEmail || ""}
+            </p>
             {order.shippingAddress && (
               <>
                 <p className="text-sm text-muted-foreground mt-2">
-                  {order.shippingAddress.address}, {order.shippingAddress.city}, {order.shippingAddress.country}
+                  {order.shippingAddress.address}, {order.shippingAddress.city},{" "}
+                  {order.shippingAddress.country}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   Phone: {order.shippingAddress.phone}
@@ -275,7 +289,9 @@ export default function PayClient() {
             <div className="bg-green-50 rounded-xl p-4 flex items-start gap-3">
               <Check size={20} className="text-green-600 mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-bold text-green-800">Payment Completed</p>
+                <p className="text-sm font-bold text-green-800">
+                  Payment Completed
+                </p>
                 <p className="text-xs text-green-600 mt-1">
                   This order has been paid successfully.
                 </p>
@@ -285,11 +301,13 @@ export default function PayClient() {
             <div className="bg-green-50 rounded-xl p-4 flex items-start gap-3">
               <Check size={20} className="text-green-600 mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-bold text-green-800">Payment Initiated</p>
+                <p className="text-sm font-bold text-green-800">
+                  Payment Initiated
+                </p>
                 <p className="text-xs text-green-600 mt-1">
                   {paymentMethod === "momo"
-                        ? "Check your phone to complete the payment."
-                        : "You will be redirected to complete your payment."}
+                    ? "Check your phone to complete the payment."
+                    : "You will be redirected to complete your payment."}
                 </p>
               </div>
             </div>
@@ -324,16 +342,22 @@ export default function PayClient() {
 
               {paymentMethod === "momo" && (
                 <div className="bg-amber-50 rounded-xl p-4 flex items-start gap-3">
-                  <AlertCircle size={20} className="text-amber-600 mt-0.5 shrink-0" />
+                  <AlertCircle
+                    size={20}
+                    className="text-amber-600 mt-0.5 shrink-0"
+                  />
                   <p className="text-sm text-amber-800">
-                    Payment will be processed via Mobile Money. You will receive a prompt on your phone to complete the payment.
+                    Payment will be processed via Mobile Money. You will receive
+                    a prompt on your phone to complete the payment.
                   </p>
                 </div>
               )}
 
               {paymentMethod === "momo" && (
                 <div className="space-y-2">
-                  <label className="text-sm font-bold">MTN Mobile Money Number</label>
+                  <label className="text-sm font-bold">
+                    MTN Mobile Money Number
+                  </label>
                   <input
                     type="tel"
                     value={phone}
@@ -346,9 +370,13 @@ export default function PayClient() {
 
               {paymentMethod === "card" && (
                 <div className="bg-blue-50 rounded-xl p-4 flex items-start gap-3">
-                  <CreditCard size={20} className="text-blue-600 mt-0.5 shrink-0" />
+                  <CreditCard
+                    size={20}
+                    className="text-blue-600 mt-0.5 shrink-0"
+                  />
                   <p className="text-sm text-blue-800">
-                    You will be redirected to a secure payment page to complete your card payment.
+                    You will be redirected to a secure payment page to complete
+                    your card payment.
                   </p>
                 </div>
               )}
