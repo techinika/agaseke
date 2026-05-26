@@ -8,7 +8,6 @@ import {
   User,
   MapPin,
   X,
-  CheckCircle2,
   Eye,
   FileText,
   ShoppingBag,
@@ -18,12 +17,7 @@ import {
   Send,
   ChevronLeft,
   ChevronRight,
-  Play,
   Paperclip,
-  Calendar,
-  TrendingUp,
-  Sparkles,
-  Download,
 } from "lucide-react";
 import Navbar from "@/components/parts/Navigation";
 import { useAuth } from "@/auth/AuthContext";

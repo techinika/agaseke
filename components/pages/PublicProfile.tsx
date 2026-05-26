@@ -119,11 +119,11 @@ export default function PublicProfile({ username }: { username: string }) {
         if (!creatorData?.uid) return;
 
         const contentRef = collection(db, "creatorContent");
-        
+
         // Fetch public posts (for everyone)
         const publicQ = query(
           contentRef,
-          where("creatorId", "==", creatorData.uid),
+          where("creatorId", "==", creatorData.handle || creatorData.uid),
           where("isPrivate", "==", false),
           orderBy("createdAt", "desc"),
           limit(3),
@@ -139,7 +139,7 @@ export default function PublicProfile({ username }: { username: string }) {
         if (!querySnapshot.empty) {
           const privateQ = query(
             contentRef,
-            where("creatorId", "==", creatorData.uid),
+            where("creatorId", "==", creatorData.handle || creatorData.uid),
             where("isPrivate", "==", true),
             orderBy("createdAt", "desc"),
             limit(3),
@@ -169,7 +169,7 @@ export default function PublicProfile({ username }: { username: string }) {
         const partnersQ = query(
           partnersRef,
           where("creatorId", "==", creatorData.uid),
-          where("featured", "==", true)
+          where("featured", "==", true),
         );
         const partnersSnap = await getDocs(partnersQ);
         const partnersData = partnersSnap.docs.map((doc) => ({
@@ -198,7 +198,10 @@ export default function PublicProfile({ username }: { username: string }) {
       : profileData?.photoURL,
     socials: {
       twitter: normalizeSocialUrl(creatorData.socials?.twitter, "twitter"),
-      instagram: normalizeSocialUrl(creatorData.socials?.instagram, "instagram"),
+      instagram: normalizeSocialUrl(
+        creatorData.socials?.instagram,
+        "instagram",
+      ),
       linkedin: normalizeSocialUrl(creatorData.socials?.linkedin, "linkedin"),
       youtube: normalizeSocialUrl(creatorData.socials?.youtube, "youtube"),
       tiktok: normalizeSocialUrl(creatorData.socials?.tiktok, "tiktok"),
@@ -243,9 +246,9 @@ export default function PublicProfile({ username }: { username: string }) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
       />
 
-      <SeoUpdater 
-        data={{ creator: creatorData, profile: profileData }} 
-        username={username} 
+      <SeoUpdater
+        data={{ creator: creatorData, profile: profileData }}
+        username={username}
       />
 
       <Navbar />
@@ -278,8 +281,8 @@ export default function PublicProfile({ username }: { username: string }) {
 
       <main className="max-w-2xl mx-auto px-6 mt-8 min-h-[500px]">
         {activeTab === "community" && (
-          <CommunityTab 
-            publicPosts={publicPosts} 
+          <CommunityTab
+            publicPosts={publicPosts}
             privatePosts={privatePosts}
             isSupporter={isSupporter}
             name={creator?.name}
@@ -360,7 +363,7 @@ export default function PublicProfile({ username }: { username: string }) {
               </span>
             </div>
           </div>
-          
+
           <div className="mt-8 bg-card rounded-2xl border border-border p-6 shadow-sm">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {featuredPartners.map((partner) => (
@@ -373,7 +376,11 @@ export default function PublicProfile({ username }: { username: string }) {
                 >
                   <div className="w-14 h-14 bg-card rounded-xl overflow-hidden flex items-center justify-center shadow-sm border border-border">
                     {partner.logo ? (
-                      <img src={partner.logo} alt={partner.name} className="w-full h-full object-cover" />
+                      <img
+                        src={partner.logo}
+                        alt={partner.name}
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <Building2 size={24} className="text-muted-foreground" />
                     )}
