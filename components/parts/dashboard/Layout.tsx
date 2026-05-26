@@ -40,6 +40,7 @@ import { doc, onSnapshot, collection, query, where } from "firebase/firestore";
 import { Creator } from "@/types/creator";
 import NotificationDrawer from "@/components/ui/NotificationDrawer";
 import { NavItem } from "./layout-parts/index";
+import ThemeToggle from "../ThemeToggle";
 
 export default function DashboardLayout({
   children,
@@ -301,6 +302,7 @@ export default function DashboardLayout({
           </div>
 
           <div className="flex items-center gap-3 md:gap-6">
+            <ThemeToggle />
             <button
               onClick={() => setShowNotifications(true)}
               className="relative p-2 hover:bg-muted rounded-lg transition-colors"
