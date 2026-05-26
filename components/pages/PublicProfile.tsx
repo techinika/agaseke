@@ -313,7 +313,7 @@ export default function PublicProfile({ username }: { username: string }) {
             isLoggedIn={isLoggedIn}
             isSupporter={isSupporter}
             setIsModalOpen={setIsModalOpen}
-            compact={true}
+            compact={false}
           />
         )}
 

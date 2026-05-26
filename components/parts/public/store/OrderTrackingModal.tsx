@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Truck, X, Check, Download, Loader } from "lucide-react";
 import Link from "next/link";
 import { Timestamp } from "firebase/firestore";
-import { Order } from "./types";
+import { Order, Product } from "./types";
 
 const statusSteps = ["pending", "paid", "processing", "shipped", "delivered"];
 const statusLabels: Record<string, string> = {
@@ -23,9 +23,11 @@ const statusColors: Record<string, string> = {
 
 export function OrderTrackingModal({
   orders,
+  products = [],
   onClose,
 }: {
   orders: Order[];
+  products?: Product[];
   onClose: () => void;
 }) {
   const [downloadingProduct, setDownloadingProduct] = useState<string | null>(
@@ -34,16 +36,13 @@ export function OrderTrackingModal({
 
   const getStatusIndex = (status: string) => statusSteps.indexOf(status);
 
-  const handleDownload = async (productId: string, fileUrl: string) => {
+  const handleDownload = async (productId: string) => {
     setDownloadingProduct(productId);
-    try {
-      if (!fileUrl) {
-        return;
-      }
-      window.open(fileUrl, "_blank");
-    } finally {
-      setTimeout(() => setDownloadingProduct(null), 1000);
+    const product = products.find((p) => p.id === productId);
+    if (product?.fileUrl) {
+      window.open(product.fileUrl, "_blank");
     }
+    setTimeout(() => setDownloadingProduct(null), 1000);
   };
 
   return (
@@ -129,7 +128,7 @@ export function OrderTrackingModal({
                           {order.status !== "cancelled" && item.productId && (
                             <button
                               onClick={() =>
-                                handleDownload(item.productId, "")
+                                handleDownload(item.productId)
                               }
                               className="text-green-600 hover:bg-green-50 p-1 rounded transition"
                               title="Download"

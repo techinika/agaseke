@@ -427,6 +427,7 @@ export const StoreTab = ({
     return (
       <OrderTrackingModal
         orders={userOrders}
+        products={products}
         onClose={() => setShowOrderTracking(false)}
       />
     );
