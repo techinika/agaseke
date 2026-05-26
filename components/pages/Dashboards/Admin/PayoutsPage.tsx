@@ -244,7 +244,7 @@ export default function AdminPayouts() {
                       <button
                         onClick={() => setConfirmPayout(creator)}
                         disabled={processingId === creator.id}
-                        className="bg-foreground text-white px-5 py-2.5 rounded-lg text-xs font-bold hover:bg-orange-600 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 ml-auto"
+                        className="bg-foreground text-background px-5 py-2.5 rounded-lg text-xs font-bold hover:bg-orange-600 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 ml-auto"
                       >
                         {processingId === creator.id ? (
                           <Loader2 size={14} className="animate-spin" />

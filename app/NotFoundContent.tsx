@@ -73,7 +73,7 @@ const NotFoundContent = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/"
-              className="flex items-center justify-center gap-3 bg-foreground text-white px-8 py-4 rounded-lg font-bold transition-all hover:bg-orange-600 active:scale-95 shadow-xl shadow-border-strong"
+              className="flex items-center justify-center gap-3 bg-foreground text-background px-8 py-4 rounded-lg font-bold transition-all hover:bg-orange-600 active:scale-95 shadow-xl shadow-border-strong"
             >
               <Home size={18} /> Go To Home
             </Link>

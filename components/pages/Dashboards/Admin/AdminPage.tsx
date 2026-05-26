@@ -778,7 +778,7 @@ export default function AdminDashboard() {
           </div>
           <button
             onClick={fetchData}
-            className="flex items-center gap-2 px-4 py-2 bg-foreground text-white rounded-lg text-sm font-medium hover:bg-card transition"
+            className="flex items-center gap-2 px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:bg-card transition"
           >
             <Loader size={16} />
             Refresh
@@ -911,7 +911,7 @@ export default function AdminDashboard() {
                   onClick={() => setGrowthFilter(filter.key as any)}
                   className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${
                     growthFilter === filter.key
-                      ? "bg-foreground text-white"
+                      ? "bg-foreground text-background"
                       : "bg-muted text-muted-foreground hover:bg-border-strong"
                   }`}
                 >
@@ -986,7 +986,7 @@ export default function AdminDashboard() {
                   onClick={() => setTransactionFilter(filter.key as any)}
                   className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${
                     transactionFilter === filter.key
-                      ? "bg-foreground text-white"
+                      ? "bg-foreground text-background"
                       : "bg-muted text-muted-foreground hover:bg-border-strong"
                   }`}
                 >
@@ -1197,7 +1197,7 @@ export default function AdminDashboard() {
                             category: "verification",
                           })
                         }
-                        className="bg-foreground text-white text-[10px] font-black uppercase px-4 py-2 rounded-lg hover:bg-emerald-600 transition-all"
+                        className="bg-foreground text-background text-[10px] font-black uppercase px-4 py-2 rounded-lg hover:bg-emerald-600 transition-all"
                       >
                         Approve
                       </button>
@@ -1226,7 +1226,7 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <section className="bg-card p-8 rounded-3xl border border-border shadow-sm">
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-foreground rounded-lg text-white">
+              <div className="p-2 bg-foreground rounded-lg text-background">
                 <BarChart3 size={20} />
               </div>
               <h2 className="text-xl font-bold uppercase">Top Earners</h2>

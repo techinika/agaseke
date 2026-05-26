@@ -573,7 +573,7 @@ export default function ProductModal({
           <button
             onClick={handleSubmit}
             disabled={saving}
-            className="w-full bg-foreground text-white py-5 rounded-lg font-bold text-lg shadow-xl hover:bg-orange-600 transition-all flex items-center justify-center gap-2"
+            className="w-full bg-foreground text-background py-5 rounded-lg font-bold text-lg shadow-xl hover:bg-orange-600 transition-all flex items-center justify-center gap-2"
           >
             {saving ? <Loader className="animate-spin" /> : <Check size={20} />}
             {product ? "Update Product" : "Create Product"}

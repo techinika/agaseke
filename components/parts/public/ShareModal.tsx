@@ -51,7 +51,7 @@ export const ShareModal = ({
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-widest transition-all ${
               copySuccess
                 ? "bg-green-500 text-white"
-                : "bg-foreground text-white hover:bg-orange-600"
+                : "bg-foreground text-background hover:bg-orange-600"
             }`}
           >
             {copySuccess ? (

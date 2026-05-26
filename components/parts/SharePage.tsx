@@ -198,7 +198,7 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
                       crossOrigin="anonymous"
                     />
                   ) : (
-                    <div className="w-full h-full rounded-[1.2rem] bg-foreground flex items-center justify-center text-white text-3xl font-black">
+                    <div className="w-full h-full rounded-[1.2rem] bg-foreground flex items-center justify-center text-background text-3xl font-black">
                       {creator?.name?.charAt(0)}
                     </div>
                   )}

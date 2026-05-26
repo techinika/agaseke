@@ -826,7 +826,7 @@ export default function SupporterSpace() {
           </div>
           <Link
             href={auth?.isCreator ? "/creator" : "/onboarding"}
-            className="bg-foreground text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-foreground/90 transition flex items-center gap-2"
+            className="bg-foreground text-background px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-foreground/90 transition flex items-center gap-2"
           >
             <Zap size={16} />
             {auth?.isCreator ? "Go to Creator" : "Become Creator"}
@@ -844,7 +844,7 @@ export default function SupporterSpace() {
               onClick={() => setFeedFilter(filter.key as any)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                 feedFilter === filter.key
-                  ? "bg-foreground text-white"
+                  ? "bg-foreground text-background"
                   : "bg-card text-muted-foreground border border-border hover:bg-muted"
               }`}
             >
@@ -1239,7 +1239,7 @@ export default function SupporterSpace() {
 
       {viewingDocument && (
         <div className="fixed inset-0 z-[100] bg-black/90 flex flex-col animate-in fade-in duration-200">
-          <div className="flex items-center justify-between p-4 bg-foreground text-white">
+          <div className="flex items-center justify-between p-4 bg-foreground text-background">
             <div className="flex items-center gap-3">
               <FileText size={24} />
               <span className="font-medium truncate max-w-md">

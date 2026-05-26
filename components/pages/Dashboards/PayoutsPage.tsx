@@ -153,7 +153,7 @@ export default function PayoutsPage() {
                 onClick={handleWithdrawInit}
                 className={`px-8 py-4 rounded-lg font-black text-sm transition shadow-xl flex items-center gap-2 ${
                   pendingAmount >= WITHDRAW_THRESHOLD
-                    ? "bg-foreground text-white hover:bg-orange-600"
+                    ? "bg-foreground text-background hover:bg-orange-600"
                     : "bg-border-strong text-muted-foreground cursor-not-allowed"
                 }`}
               >
@@ -408,7 +408,7 @@ export default function PayoutsPage() {
                 <button
                   onClick={submitRequest}
                   disabled={isSubmitting}
-                  className="w-full bg-foreground text-white py-6 rounded-lg font-black text-xl flex items-center justify-center gap-3 shadow-xl hover:bg-orange-600 transition-all disabled:opacity-50"
+                  className="w-full bg-foreground text-background py-6 rounded-lg font-black text-xl flex items-center justify-center gap-3 shadow-xl hover:bg-orange-600 transition-all disabled:opacity-50"
                 >
                   {isSubmitting ? (
                     <Loader className="animate-spin" />
@@ -420,7 +420,7 @@ export default function PayoutsPage() {
             )}
 
             {withdrawStep === 2 && (
-              <div className="text-center space-y-8 bg-foreground p-12 rounded-lg shadow-2xl text-white">
+              <div className="text-center space-y-8 bg-foreground p-12 rounded-lg shadow-2xl text-background">
                 <div className="w-24 h-24 bg-green-500 rounded-lg flex items-center justify-center mx-auto rotate-12">
                   <CheckCircle2 size={48} />
                 </div>

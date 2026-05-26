@@ -120,7 +120,7 @@ export default function PaymentCallback() {
               <div className="pt-4">
                 <Link
                   href={`/${txData?.creatorId || ""}`}
-                  className="w-full bg-foreground text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all group"
+                  className="w-full bg-foreground text-background py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all group"
                 >
                   Back to Creator{" "}
                   <ArrowRight

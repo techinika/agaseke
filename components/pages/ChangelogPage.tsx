@@ -111,7 +111,7 @@ export default function ChangelogPage() {
                         className="relative pl-6 pb-6 border-l-2 border-emerald-200 last:border-l-0 last:pb-0"
                       >
                         {index !== currentEntries.length - 1 && (
-                          <div className="absolute left-[-9px] top-0 w-4 h-4 bg-emerald-500 rounded-lg border-2 border-white shadow-sm" />
+                          <div className="absolute left-[-9px] top-0 w-4 h-4 bg-emerald-500 rounded-lg border-2 border-white dark:border-foreground shadow-sm" />
                         )}
 
                         <div className="bg-muted rounded-xl p-5 hover:bg-card-hover transition-colors">

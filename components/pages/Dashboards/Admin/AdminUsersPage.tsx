@@ -602,7 +602,7 @@ export default function AdminUsersPage() {
                       href={`/${selectedUser.username || selectedUser.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 py-3 bg-foreground text-white rounded-lg font-bold text-sm hover:bg-card transition text-center"
+                      className="flex-1 py-3 bg-foreground text-background rounded-lg font-bold text-sm hover:bg-card transition text-center"
                     >
                       View Profile
                     </a>

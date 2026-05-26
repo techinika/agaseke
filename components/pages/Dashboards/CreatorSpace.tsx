@@ -151,7 +151,7 @@ export default function CreatorDashboard() {
 
       {/* Stats Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <div className="bg-foreground text-white p-8 rounded-lg shadow-xl shadow-border">
+        <div className="bg-foreground text-background p-8 rounded-lg shadow-xl shadow-border">
           <div className="flex items-center justify-between mb-4">
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               Available Balance

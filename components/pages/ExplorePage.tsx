@@ -199,7 +199,7 @@ export default function ExplorePage() {
                     <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                       View Profile
                     </span>
-                    <div className="w-10 h-10 rounded-full bg-foreground text-white flex items-center justify-center group-hover:bg-orange-600 transition-colors">
+                    <div className="w-10 h-10 rounded-full bg-foreground text-background flex items-center justify-center group-hover:bg-orange-600 transition-colors">
                       <ArrowRight size={18} />
                     </div>
                   </div>

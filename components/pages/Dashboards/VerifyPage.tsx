@@ -135,7 +135,7 @@ export const VerificationPage = () => {
       <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
           {creator?.verificationStatus === "approved" && !isEditing && (
-            <div className="bg-foreground text-white p-6 rounded-lg flex justify-between items-center">
+            <div className="bg-slate-900 text-white p-6 rounded-lg flex justify-between items-center">
               <div>
                 <p className="font-bold text-lg">Verified Account</p>
                 <p className="text-sm opacity-70">
@@ -152,7 +152,7 @@ export const VerificationPage = () => {
           )}
 
           {creator?.verificationStatus === "pending" && !isEditing && (
-            <div className="bg-foreground text-white p-6 rounded-lg flex justify-between items-center">
+            <div className="bg-slate-900 text-white p-6 rounded-lg flex justify-between items-center">
               <div>
                 <p className="font-bold text-lg">Pending Verification</p>
                 <p className="text-sm opacity-70">
@@ -170,7 +170,7 @@ export const VerificationPage = () => {
           )}
 
           {creator?.verificationStatus === "rejected" && !isEditing && (
-            <div className="bg-foreground text-white p-6 rounded-lg flex justify-between items-center">
+            <div className="bg-slate-900 text-white p-6 rounded-lg flex justify-between items-center">
               <div>
                 <p className="font-bold text-lg">Rejected Verification</p>
                 <p className="text-sm opacity-70">
@@ -288,7 +288,7 @@ export const VerificationPage = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-foreground text-white py-5 rounded-lg font-bold hover:opacity-90 transition active:scale-[0.98] disabled:bg-muted"
+                  className="w-full bg-foreground text-background py-5 rounded-lg font-bold hover:opacity-90 transition active:scale-[0.98] disabled:bg-muted"
                 >
                   {loading ? "Processing..." : "Submit Verification Request"}
                 </button>
@@ -336,7 +336,7 @@ export const VerificationPage = () => {
                   />
                   <button
                     onClick={handleVerifyOTP}
-                    className="w-full bg-foreground text-white py-3 rounded-lg text-sm font-bold"
+                    className="w-full bg-foreground text-background py-3 rounded-lg text-sm font-bold"
                   >
                     Verify Number
                   </button>
@@ -345,7 +345,7 @@ export const VerificationPage = () => {
             </div>
           </div>
 
-          <div className="bg-foreground p-8 rounded-lg text-white">
+          <div className="bg-foreground p-8 rounded-lg text-background">
             <h3 className="font-bold mb-2">Why Verify?</h3>
             <p className="text-xs text-white/50 leading-relaxed">
               Verification protects Agaseke from fraud and ensures your revenue

@@ -206,7 +206,7 @@ export default function BookingsPage() {
             onClick={() => setActiveTab("requests")}
             className={`px-6 py-3 rounded-lg font-black text-sm transition-all ${
               activeTab === "requests"
-                ? "bg-foreground text-white"
+                ? "bg-foreground text-background"
                 : "bg-card text-muted-foreground hover:bg-muted"
             }`}
           >
@@ -221,7 +221,7 @@ export default function BookingsPage() {
             onClick={() => setActiveTab("availability")}
             className={`px-6 py-3 rounded-lg font-black text-sm transition-all ${
               activeTab === "availability"
-                ? "bg-foreground text-white"
+                ? "bg-foreground text-background"
                 : "bg-card text-muted-foreground hover:bg-muted"
             }`}
           >
@@ -231,7 +231,7 @@ export default function BookingsPage() {
             onClick={() => setActiveTab("rejected")}
             className={`px-6 py-3 rounded-lg font-black text-sm transition-all ${
               activeTab === "rejected"
-                ? "bg-foreground text-white"
+                ? "bg-foreground text-background"
                 : "bg-card text-muted-foreground hover:bg-muted"
             }`}
           >
@@ -571,7 +571,7 @@ export default function BookingsPage() {
               <button
                 onClick={saveAvailability}
                 disabled={saving}
-                className="flex-1 bg-foreground text-white px-8 py-3 rounded-lg font-black flex items-center justify-center gap-2 hover:bg-orange-600 transition-all shadow-xl disabled:opacity-50"
+                className="flex-1 bg-foreground text-background px-8 py-3 rounded-lg font-black flex items-center justify-center gap-2 hover:bg-orange-600 transition-all shadow-xl disabled:opacity-50"
               >
                 {saving ? (
                   <Loader className="animate-spin" size={18} />

@@ -108,7 +108,7 @@ export default function BookingPage({ username, creator }: { username: string; c
 
         {step === "form" && (
           <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
-            <div className="bg-foreground p-6 text-white">
+            <div className="bg-foreground p-6 text-background">
               <h1 className="text-2xl font-bold">Book a Meeting</h1>
               <p className="text-muted-foreground text-sm mt-1">with {creator?.name || username}</p>
             </div>
@@ -209,7 +209,7 @@ export default function BookingPage({ username, creator }: { username: string; c
                   </div>
 
                   <button onClick={handleSubmit} disabled={submitting || !selectedDate || !selectedTime}
-                    className="w-full bg-foreground text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all disabled:opacity-50">
+                    className="w-full bg-foreground text-background py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all disabled:opacity-50">
                     {submitting ? <Loader className="animate-spin" size={18} /> : <Calendar size={18} />}
                     Submit Request
                   </button>
@@ -227,7 +227,7 @@ export default function BookingPage({ username, creator }: { username: string; c
             <h2 className="text-2xl font-bold text-foreground mb-2">Request Sent!</h2>
             <p className="text-muted-foreground mb-6">Your booking request has been sent to {creator?.name || username}. You'll receive an email once they respond.</p>
             <Link href={`/${username}`}
-              className="bg-foreground text-white px-8 py-3 rounded-lg font-bold hover:bg-orange-600 transition-all inline-block">
+              className="bg-foreground text-background px-8 py-3 rounded-lg font-bold hover:bg-orange-600 transition-all inline-block">
               Back to Profile
             </Link>
           </div>
@@ -241,7 +241,7 @@ export default function BookingPage({ username, creator }: { username: string; c
             <h2 className="text-2xl font-bold text-foreground mb-2">Something went wrong</h2>
             <p className="text-muted-foreground mb-6">We couldn't submit your booking request. Please try again.</p>
             <button onClick={() => setStep("form")}
-              className="bg-foreground text-white px-8 py-3 rounded-lg font-bold hover:bg-orange-600 transition-all">
+              className="bg-foreground text-background px-8 py-3 rounded-lg font-bold hover:bg-orange-600 transition-all">
               Try Again
             </button>
           </div>

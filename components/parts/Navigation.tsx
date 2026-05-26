@@ -60,7 +60,7 @@ const Navbar = () => {
 
   return (
     <>
-     <nav className="sticky top-0 z-50 w-full bg-card/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-border">
+     <nav className="sticky top-0 z-50 w-full bg-card/80 dark:bg-background/80 backdrop-blur-md border-b border-border">
       <div className="flex items-center justify-between px-6 py-3.5 mx-auto container">
         {/* LEFT: Logo & Brand */}
         <div className="flex items-center gap-8">
@@ -239,7 +239,7 @@ const Navbar = () => {
               </Link>
               <Link
                 href={"/login"}
-                className="group relative flex items-center gap-2 px-3 md:px-6 py-2.5 bg-foreground text-white rounded-lg text-sm font-bold hover:bg-orange-600 transition-all active:scale-95 shadow-lg shadow-border-strong"
+                className="group relative flex items-center gap-2 px-3 md:px-6 py-2.5 bg-foreground text-background rounded-lg text-sm font-bold hover:bg-orange-600 transition-all active:scale-95 shadow-lg shadow-border-strong"
               >
                 <LogIn className="h-4 w-4" />
                 <span className="hidden md:inline">Sign In</span>

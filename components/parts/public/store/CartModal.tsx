@@ -78,7 +78,7 @@ export function CartModal({
                   >
                     <X size={16} />
                   </button>
-                  <div className="flex items-center bg-white rounded-lg">
+                  <div className="flex items-center bg-card rounded-lg">
                     <button
                       onClick={() =>
                         onUpdateQuantity(item.product.id, item.selectedSize, -1)

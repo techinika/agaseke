@@ -340,7 +340,7 @@ export default function GatheringsPage() {
                 }}
                 className={`px-4 py-2 rounded-lg font-bold text-sm transition ${
                   activeTab === "upcoming"
-                    ? "bg-foreground text-white"
+                    ? "bg-foreground text-background"
                     : "bg-card text-muted-foreground hover:bg-muted"
                 }`}
               >
@@ -353,7 +353,7 @@ export default function GatheringsPage() {
                 }}
                 className={`px-4 py-2 rounded-lg font-bold text-sm transition ${
                   activeTab === "past"
-                    ? "bg-foreground text-white"
+                    ? "bg-foreground text-background"
                     : "bg-card text-muted-foreground hover:bg-muted"
                 }`}
               >
@@ -471,7 +471,7 @@ export default function GatheringsPage() {
               </div>
 
               <div className="space-y-6">
-                <div className="bg-foreground p-6 rounded-lg text-white">
+                <div className="bg-foreground p-6 rounded-lg text-background">
                   <div className="flex items-center justify-between mb-4">
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                       Entry Requirement
@@ -735,7 +735,7 @@ export default function GatheringsPage() {
                 <button
                   onClick={handleCreate}
                   disabled={!formData.title || isSimulating}
-                  className="w-full bg-foreground text-white py-5 rounded-lg font-bold text-lg shadow-xl hover:bg-orange-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full bg-foreground text-background py-5 rounded-lg font-bold text-lg shadow-xl hover:bg-orange-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {isSimulating ? (
                     <Loader className="animate-spin" />

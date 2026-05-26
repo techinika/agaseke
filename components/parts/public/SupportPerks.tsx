@@ -45,22 +45,22 @@ export const SupportPerks = ({ name }: { name: string }) => {
           {creator.events.map((event: any, i: number) => (
             <div
               key={i}
-              className="bg-white border border-slate-100 p-6 rounded-lg flex items-center justify-between group hover:border-orange-500 transition-all cursor-pointer"
+              className="bg-card border border-border p-6 rounded-lg flex items-center justify-between group hover:border-orange-500 transition-all cursor-pointer"
             >
               <div className="flex items-center gap-4">
-                <div className="bg-slate-50 p-4 rounded-lg group-hover:bg-orange-50 group-hover:text-orange-600 transition-colors">
+                <div className="bg-muted p-4 rounded-lg group-hover:bg-orange-50 group-hover:text-orange-600 transition-colors">
                   <Calendar size={24} />
                 </div>
                 <div>
                   <h4 className="font-bold text-lg">{event.title}</h4>
-                  <p className="text-sm text-slate-500 font-bold uppercase tracking-widest flex items-center gap-2">
+                  <p className="text-sm text-muted-foreground font-bold uppercase tracking-widest flex items-center gap-2">
                     {event.date}{" "}
-                    <span className="w-1 h-1 bg-slate-300 rounded-full" />{" "}
+                    <span className="w-1 h-1 bg-muted-foreground rounded-full" />{" "}
                     {event.type}
                   </p>
                 </div>
               </div>
-              <button className="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase group-hover:bg-orange-600 transition-colors">
+              <button className="bg-foreground text-background px-4 py-2 rounded-lg text-xs font-bold uppercase group-hover:bg-orange-600 group-hover:text-white transition-colors">
                 Join
               </button>
             </div>

@@ -52,7 +52,7 @@ export default function FeedbackFAB() {
         className="fixed bottom-6 right-6 z-[50] bg-card border border-border text-muted-foreground p-3 rounded-full shadow-lg hover:bg-muted hover:text-orange-600 transition-all active:scale-95 group"
       >
         <MessageSquare size={24} />
-        <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-foreground text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap uppercase tracking-widest">
+        <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-foreground text-background text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap uppercase tracking-widest">
           Feedback
         </span>
       </button>
@@ -150,7 +150,7 @@ export default function FeedbackFAB() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 bg-foreground text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all disabled:opacity-50"
+                className="w-full py-4 bg-foreground text-background rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all disabled:opacity-50"
               >
                 {loading ? (
                   <Loader className="animate-spin" size={20} />

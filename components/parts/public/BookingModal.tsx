@@ -159,7 +159,7 @@ export function BookingModal({
 
         {step === "form" && (
           <>
-            <div className="bg-foreground p-6 text-white rounded-t-xl">
+            <div className="bg-foreground p-6 text-background rounded-t-xl">
               <h2 className="text-xl font-bold">Book a Meeting</h2>
               <p className="text-muted-foreground text-sm mt-1">with {creator.name}</p>
             </div>
@@ -331,7 +331,7 @@ export function BookingModal({
               <button
                 onClick={handleSubmit}
                 disabled={submitting || !selectedDate || !selectedTime || !availability || availability.daysOfWeek.length === 0}
-                className="w-full bg-foreground text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-foreground text-background py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? (
                   <Loader className="animate-spin" size={18} />
@@ -355,7 +355,7 @@ export function BookingModal({
             </p>
             <button
               onClick={onClose}
-              className="bg-foreground text-white px-8 py-3 rounded-lg font-bold hover:bg-orange-600 transition-all"
+              className="bg-foreground text-background px-8 py-3 rounded-lg font-bold hover:bg-orange-600 transition-all"
             >
               Close
             </button>
@@ -373,7 +373,7 @@ export function BookingModal({
             </p>
             <button
               onClick={() => setStep("form")}
-              className="bg-foreground text-white px-8 py-3 rounded-lg font-bold hover:bg-orange-600 transition-all"
+              className="bg-foreground text-background px-8 py-3 rounded-lg font-bold hover:bg-orange-600 transition-all"
             >
               Try Again
             </button>

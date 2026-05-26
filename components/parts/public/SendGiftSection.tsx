@@ -55,7 +55,7 @@ export const SendGiftSection = ({
             </div>
           </div>
           {verified && (
-            <div className="absolute bottom-0 right-0 bg-green-500 w-6 h-6 border-4 border-white rounded-full shadow-lg" />
+            <div className="absolute bottom-0 right-0 bg-green-500 w-6 h-6 border-4 border-white dark:border-card rounded-full shadow-lg" />
           )}
         </div>
 
@@ -92,7 +92,7 @@ export const SendGiftSection = ({
 
         <button
           onClick={() => setIsModalOpen(true)}
-          className="group w-full bg-foreground text-white p-2 rounded-lg flex items-center justify-between hover:bg-orange-600 transition-all duration-500 shadow-2xl shadow-orange-100 active:scale-95"
+          className="group w-full bg-foreground text-background p-2 rounded-lg flex items-center justify-between hover:bg-orange-600 transition-all duration-500 shadow-2xl shadow-orange-100 active:scale-95"
         >
           <div className="flex items-center gap-4 pl-4">
             <div className="bg-white/10 p-3 rounded-lg group-hover:bg-white/20">

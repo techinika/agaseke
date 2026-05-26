@@ -171,7 +171,7 @@ export default function AdminLogsPage() {
             </button>
             <button
               onClick={exportLogs}
-              className="flex items-center gap-2 px-4 py-2 bg-foreground text-white rounded-lg text-sm font-medium hover:bg-card transition"
+              className="flex items-center gap-2 px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:bg-card transition"
             >
               <Download size={16} />
               Export

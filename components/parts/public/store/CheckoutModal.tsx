@@ -281,7 +281,7 @@ export function CheckoutModal({
                   <button
                     onClick={applyCoupon}
                     disabled={applyingCoupon || !!appliedCoupon}
-                    className="bg-foreground text-white px-4 rounded-lg font-bold text-sm disabled:opacity-50"
+                    className="bg-foreground text-background px-4 rounded-lg font-bold text-sm disabled:opacity-50"
                   >
                     {applyingCoupon ? (
                       <Loader size={16} className="animate-spin" />

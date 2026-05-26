@@ -118,7 +118,7 @@ export default function NoticesPage() {
             onClick={() => setFilter("all")}
             className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${
               filter === "all"
-                ? "bg-foreground text-white"
+                ? "bg-foreground text-background"
                 : "bg-card border border-border text-muted-foreground hover:bg-muted"
             }`}
           >
@@ -128,7 +128,7 @@ export default function NoticesPage() {
             onClick={() => setFilter("unread")}
             className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${
               filter === "unread"
-                ? "bg-foreground text-white"
+                ? "bg-foreground text-background"
                 : "bg-card border border-border text-muted-foreground hover:bg-muted"
             }`}
           >

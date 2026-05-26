@@ -159,7 +159,7 @@ export default function CreatorSettings() {
           <button
             onClick={saveSettings}
             disabled={saving || uploading}
-            className="bg-foreground text-white px-8 py-3 rounded-lg font-black flex items-center gap-2 hover:bg-orange-600 transition-all shadow-xl disabled:opacity-50"
+            className="bg-foreground text-background px-8 py-3 rounded-lg font-black flex items-center gap-2 hover:bg-orange-600 transition-all shadow-xl disabled:opacity-50"
           >
             {saving ? (
               <Loader className="animate-spin" size={18} />
@@ -199,7 +199,7 @@ export default function CreatorSettings() {
                 {/* Profile Picture Upload */}
                 <div className="flex items-center gap-6">
                   <div className="relative group">
-                    <div className="w-24 h-24 rounded-lg bg-muted overflow-hidden border-4 border-white shadow-lg">
+                    <div className="w-24 h-24 rounded-lg bg-muted overflow-hidden border-4 border-white dark:border-foreground shadow-lg">
                       {uploading ? (
                         <div className="w-full h-full flex items-center justify-center bg-foreground/50">
                           <Loader className="animate-spin text-white" />
@@ -217,7 +217,7 @@ export default function CreatorSettings() {
                     </div>
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      className="absolute -bottom-2 -right-2 p-2 bg-foreground text-white rounded-lg shadow-lg hover:bg-orange-600 transition-all"
+                      className="absolute -bottom-2 -right-2 p-2 bg-foreground text-background rounded-lg shadow-lg hover:bg-orange-600 transition-all"
                     >
                       <Camera size={16} />
                     </button>
@@ -271,7 +271,7 @@ export default function CreatorSettings() {
                   />
                 </div>
 
-                <div className="p-6 bg-foreground rounded-lg text-white flex items-center justify-between shadow-xl">
+                <div className="p-6 bg-foreground rounded-lg text-background flex items-center justify-between shadow-xl">
                   <div className="flex items-center gap-4">
                     <div
                       className={`p-3 rounded-lg ${creatorData?.verified ? "bg-green-500" : "bg-card"}`}

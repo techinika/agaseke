@@ -246,7 +246,7 @@ export default function AdminComms() {
 
               <button
                 disabled={sending}
-                className="w-full bg-foreground text-white py-5 rounded-2xl font-black text-lg shadow-xl hover:bg-orange-600 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                className="w-full bg-foreground text-background py-5 rounded-2xl font-black text-lg shadow-xl hover:bg-orange-600 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
               >
                 {sending ? (
                   <Loader className="animate-spin" />

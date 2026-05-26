@@ -368,7 +368,7 @@ export default function ContentManager() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap ${activeTab === tab ? "bg-foreground text-white" : "bg-muted text-muted-foreground hover:bg-muted"}`}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap ${activeTab === tab ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted"}`}
             >
               {tab}
             </button>
@@ -612,7 +612,7 @@ export default function ContentManager() {
                 </button>
               </div>
 
-              <button onClick={handleAddContent} disabled={!newPost.title || isUploading} className="w-full bg-foreground text-white py-3 rounded-lg font-medium hover:bg-orange-500 transition disabled:opacity-50 flex items-center justify-center gap-2">
+              <button onClick={handleAddContent} disabled={!newPost.title || isUploading} className="w-full bg-foreground text-background py-3 rounded-lg font-medium hover:bg-orange-500 transition disabled:opacity-50 flex items-center justify-center gap-2">
                 {isUploading ? <Loader className="animate-spin" size={18} /> : editingPost ? "Save Changes" : "Publish"}
               </button>
             </div>

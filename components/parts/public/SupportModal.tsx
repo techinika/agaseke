@@ -425,7 +425,7 @@ export function SupportModal({
               </p>
               <button
                 onClick={handleClose}
-                className="w-full bg-foreground text-white py-4 rounded-lg font-bold hover:bg-orange-600 transition-colors"
+                className="w-full bg-foreground text-background py-4 rounded-lg font-bold hover:bg-orange-600 transition-colors"
               >
                 Back to Profile
               </button>

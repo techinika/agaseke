@@ -325,7 +325,7 @@ export default function CreatorOnboarding() {
             <button
               onClick={nextStep}
               disabled={!formData.username || usernameStatus !== "available"}
-              className="w-full bg-foreground text-white py-5 rounded-lg font-bold text-lg flex items-center justify-center gap-2 hover:bg-orange-600 transition-all active:scale-95 disabled:opacity-50 disabled:hover:bg-foreground"
+              className="w-full bg-foreground text-background py-5 rounded-lg font-bold text-lg flex items-center justify-center gap-2 hover:bg-orange-600 transition-all active:scale-95 disabled:opacity-50 disabled:hover:bg-foreground"
             >
               Continue <ArrowRight size={20} />
             </button>
@@ -372,7 +372,7 @@ export default function CreatorOnboarding() {
               <button
                 onClick={nextStep}
                 disabled={!formData.fullName}
-                className="flex-1 bg-foreground text-white py-5 rounded-lg font-bold text-lg hover:bg-orange-600 transition-all"
+                className="flex-1 bg-foreground text-background py-5 rounded-lg font-bold text-lg hover:bg-orange-600 transition-all"
               >
                 Continue
               </button>
@@ -510,7 +510,7 @@ export default function CreatorOnboarding() {
               </button>
               <button
                 onClick={nextStep}
-                className="flex-1 bg-foreground text-white py-5 rounded-lg font-bold text-lg hover:bg-orange-600 transition-all"
+                className="flex-1 bg-foreground text-background py-5 rounded-lg font-bold text-lg hover:bg-orange-600 transition-all"
               >
                 Continue
               </button>
@@ -569,7 +569,7 @@ export default function CreatorOnboarding() {
               <button
                 onClick={nextStep}
                 disabled={!formData.momoNumber}
-                className="flex-1 bg-foreground text-white py-5 rounded-lg font-bold text-lg hover:bg-orange-600 transition-all"
+                className="flex-1 bg-foreground text-background py-5 rounded-lg font-bold text-lg hover:bg-orange-600 transition-all"
               >
                 Save Number
               </button>

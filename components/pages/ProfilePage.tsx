@@ -244,7 +244,7 @@ export default function ProfileEditPage() {
             <button
               onClick={handleUpdate}
               disabled={saving}
-              className="w-full bg-foreground text-white py-5 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors disabled:opacity-50"
+              className="w-full bg-foreground text-background py-5 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors disabled:opacity-50"
             >
               {saving ? (
                 <Loader className="animate-spin" />
