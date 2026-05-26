@@ -250,7 +250,7 @@ export default function SupportersPage() {
         </div>
         <h1 className="text-xl font-bold uppercase">Supporters</h1>
 
-        <div className="bg-orange-50 rounded-lg p-4 mt-6 mb-6">
+        <div className="bg-orange-50 dark:bg-orange-950/50 rounded-lg p-4 mt-6 mb-6">
           <p className="text-[10px] font-bold uppercase text-orange-600 tracking-widest mb-1">
             Total Support
           </p>

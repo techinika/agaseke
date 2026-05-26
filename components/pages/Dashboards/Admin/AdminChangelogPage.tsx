@@ -28,6 +28,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { toast } from "sonner";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import Loading from "@/app/loading";
 
 interface ChangelogEntry {
@@ -70,6 +71,7 @@ export default function AdminChangelogPage() {
   const [filter, setFilter] = useState<"all" | "current" | "planned">("all");
   const [tagFilter, setTagFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -169,11 +171,15 @@ export default function AdminChangelogPage() {
   };
 
   const handleDelete = async (entryId: string) => {
-    if (!confirm("Are you sure you want to delete this entry?")) return;
+    setDeleteConfirm(entryId);
+  };
 
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
     try {
-      await deleteDoc(doc(db, "changelog", entryId));
+      await deleteDoc(doc(db, "changelog", deleteConfirm));
       toast.success("Entry deleted successfully");
+      setDeleteConfirm(null);
     } catch (error) {
       console.error("Failed to delete entry:", error);
       toast.error("Failed to delete entry");
@@ -593,6 +599,15 @@ export default function AdminChangelogPage() {
           </div>
         </div>
       </main>
+      <ConfirmModal
+        isOpen={deleteConfirm !== null}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={confirmDelete}
+        title="Delete Entry?"
+        message="Are you sure you want to delete this entry? This action cannot be undone."
+        confirmText="Delete"
+        variant="danger"
+      />
     </div>
   );
 }

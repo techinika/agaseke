@@ -345,7 +345,7 @@ export const VerificationPage = () => {
             </div>
           </div>
 
-          <div className="bg-foreground p-8 rounded-lg text-background">
+          <div className="bg-slate-900 p-8 rounded-lg text-white">
             <h3 className="font-bold mb-2">Why Verify?</h3>
             <p className="text-xs text-white/50 leading-relaxed">
               Verification protects Agaseke from fraud and ensures your revenue

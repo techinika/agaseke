@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import Navbar from "@/components/parts/Navigation";
 import Footer from "@/components/parts/Footer";
 import DetailSkeleton from "@/components/ui/DetailSkeleton";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 export default function PostDetailPage({ username, postId }: { username: string; postId: string }) {
   const { user: currentUser, profile } = useAuth();
@@ -24,6 +25,7 @@ export default function PostDetailPage({ username, postId }: { username: string;
   const [submittingComment, setSubmittingComment] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editCommentContent, setEditCommentContent] = useState("");
+  const [deleteCommentId, setDeleteCommentId] = useState<string | null>(null);
   const viewCounted = useRef(false);
 
   useEffect(() => {
@@ -144,12 +146,17 @@ export default function PostDetailPage({ username, postId }: { username: string;
   }, [currentUser, newComment, postId, profile, creatorData, post, username]);
 
   const handleDeleteComment = useCallback(async (commentId: string) => {
-    if (!confirm("Delete this comment?")) return;
+    setDeleteCommentId(commentId);
+  }, []);
+
+  const confirmDeleteComment = useCallback(async () => {
+    if (!deleteCommentId) return;
     try {
-      await deleteDoc(doc(db, "creatorContent", postId, "comments", commentId));
+      await deleteDoc(doc(db, "creatorContent", postId, "comments", deleteCommentId));
       toast.success("Comment deleted");
+      setDeleteCommentId(null);
     } catch { toast.error("Failed to delete comment"); }
-  }, [postId]);
+  }, [postId, deleteCommentId]);
 
   const handleEditComment = useCallback(async (commentId: string) => {
     if (!editCommentContent.trim()) return;
@@ -292,6 +299,16 @@ export default function PostDetailPage({ username, postId }: { username: string;
         </div>
       </div>
       <Footer />
+
+      <ConfirmModal
+        isOpen={deleteCommentId !== null}
+        onClose={() => setDeleteCommentId(null)}
+        onConfirm={confirmDeleteComment}
+        title="Delete Comment?"
+        message="Are you sure you want to delete this comment? This action cannot be undone."
+        confirmText="Delete"
+        variant="danger"
+      />
     </div>
   );
 }

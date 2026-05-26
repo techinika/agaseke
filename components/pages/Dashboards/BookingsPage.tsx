@@ -331,7 +331,7 @@ export default function BookingsPage() {
                   {upcomingBookings.map((booking) => (
                     <div
                       key={booking.id}
-                      className="p-4 bg-green-50 rounded-lg border border-green-100"
+                      className="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-100 dark:border-green-800"
                     >
                       <div className="flex justify-between items-start">
                         <div>
