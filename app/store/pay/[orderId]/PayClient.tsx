@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Loader, Check, ArrowLeft, CreditCard, AlertCircle } from "lucide-react";
 import { db } from "@/db/firebase";
 import { doc, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -35,12 +36,12 @@ export default function PayClient() {
         return;
       }
 
-      const data = { id: snap.id, ...snap.data() };
+      const data: any = { id: snap.id, ...snap.data() };
       setOrder(data);
 
-      const items = data.items || [];
+      const orderItems: any[] = data.items || [];
       const map: Record<string, any> = {};
-      for (const item of items) {
+      for (const item of orderItems) {
         if (item.productId && !map[item.productId]) {
           const pSnap = await getDoc(doc(db, "storeProducts", item.productId));
           if (pSnap.exists()) {
@@ -55,9 +56,34 @@ export default function PayClient() {
     fetchOrder();
   }, [orderId]);
 
-  const items = order?.items || [];
+  const items: any[] = order?.items || [];
   const firstProduct = products[items[0]?.productId];
-  const creatorHandle = firstProduct?.creatorId || order?.creatorId || "";
+
+  // resolve handle from uid stored in creatorId
+  const [creatorHandle, setCreatorHandle] = useState("");
+  useEffect(() => {
+    const resolveHandle = async () => {
+      const uid =
+        firstProduct?.creatorUid ||
+        order?.creatorUid ||
+        firstProduct?.creatorId ||
+        order?.creatorId ||
+        "";
+      if (!uid) return;
+      if (uid.length < 20) {
+        setCreatorHandle(uid);
+        return;
+      }
+      const q = query(collection(db, "profiles"), where("uid", "==", uid));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const doc = snap.docs[0];
+        const data = doc.data();
+        setCreatorHandle(doc.id || data.handle || data.username || "");
+      }
+    };
+    if (firstProduct || order) resolveHandle();
+  }, [firstProduct, order]);
   const hasPhysical = items.some((i: any) => products[i.productId]?.type === "physical");
 
   let platformFee = 0;
