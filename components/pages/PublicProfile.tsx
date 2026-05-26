@@ -99,8 +99,28 @@ export default function PublicProfile({ username }: { username: string }) {
   }, [username]);
 
   useEffect(() => {
-    const checkSupportStatus = async () => {
-      if (!isLoggedIn || !currentUser?.uid || !username) {
+    const fetchPosts = async () => {
+      if (!creatorData?.uid || !username) return;
+
+      const contentRef = collection(db, "creatorContent");
+
+      // Always fetch public posts (regardless of login status)
+      try {
+        const publicQ = query(
+          contentRef,
+          where("creatorId", "in", [creatorData.handle, creatorData.uid]),
+          where("isPrivate", "==", false),
+          orderBy("createdAt", "desc"),
+          limit(3),
+        );
+        const publicSnap = await getDocs(publicQ);
+        setPublicPosts(publicSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      } catch (error) {
+        console.error("Error fetching public posts:", error);
+      }
+
+      // Only check support status and fetch private posts if logged in
+      if (!isLoggedIn || !currentUser?.uid) {
         setIsSupporter(false);
         return;
       }
@@ -113,29 +133,8 @@ export default function PublicProfile({ username }: { username: string }) {
           where("creatorId", "==", username),
         );
         const querySnapshot = await getDocs(q);
-
         setIsSupporter(!querySnapshot.empty);
 
-        if (!creatorData?.uid) return;
-
-        const contentRef = collection(db, "creatorContent");
-
-        // Fetch public posts (for everyone)
-        const publicQ = query(
-          contentRef,
-          where("creatorId", "in", [creatorData.handle, creatorData.uid]),
-          where("isPrivate", "==", false),
-          orderBy("createdAt", "desc"),
-          limit(3),
-        );
-        const publicSnap = await getDocs(publicQ);
-        const publicData = publicSnap.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setPublicPosts(publicData);
-
-        // Fetch private posts (only for supporters)
         if (!querySnapshot.empty) {
           const privateQ = query(
             contentRef,
@@ -145,18 +144,14 @@ export default function PublicProfile({ username }: { username: string }) {
             limit(3),
           );
           const privateSnap = await getDocs(privateQ);
-          const privateData = privateSnap.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setPrivatePosts(privateData);
+          setPrivatePosts(privateSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
         }
       } catch (error) {
         console.error("Error checking support status:", error);
       }
     };
 
-    checkSupportStatus();
+    fetchPosts();
   }, [isLoggedIn, currentUser, creatorData?.uid, username]);
 
   // Fetch featured partners when creatorData is available

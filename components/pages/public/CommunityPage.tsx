@@ -76,8 +76,38 @@ export default function CommunityPage({ username }: CommunityPageProps) {
   }, [username]);
 
   useEffect(() => {
-    const checkSupportStatus = async () => {
-      if (!currentUser?.uid || !username || !creatorData?.uid) {
+    const fetchPosts = async () => {
+      if (!creatorData?.uid || !username) return;
+
+      const contentRef = collection(db, "creatorContent");
+
+      // Always fetch public posts (regardless of login status)
+      try {
+        const publicQ = query(
+          contentRef,
+          where("creatorId", "in", [creatorData.handle, creatorData.uid]),
+          where("isPrivate", "==", false),
+          orderBy("createdAt", "desc"),
+          limit(20),
+        );
+        const publicSnap = await getDocs(publicQ);
+        setPublicPosts(publicSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      } catch (error) {
+        console.error("Error fetching public posts:", error);
+        fetch("/api/log-error", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            level: "error",
+            category: "general",
+            message: "Error fetching public posts",
+            metadata: { username, creatorUid: creatorData?.uid, error: String(error) },
+          }),
+        }).catch(() => {});
+      }
+
+      // Only check support status and fetch private posts if logged in
+      if (!currentUser?.uid) {
         setIsSupporter(false);
         return;
       }
@@ -90,24 +120,7 @@ export default function CommunityPage({ username }: CommunityPageProps) {
           where("creatorId", "==", username),
         );
         const querySnapshot = await getDocs(q);
-
         setIsSupporter(!querySnapshot.empty);
-
-        const contentRef = collection(db, "creatorContent");
-
-        const publicQ = query(
-          contentRef,
-          where("creatorId", "in", [creatorData.handle, creatorData.uid]),
-          where("isPrivate", "==", false),
-          orderBy("createdAt", "desc"),
-          limit(20),
-        );
-        const publicSnap = await getDocs(publicQ);
-        const publicData = publicSnap.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setPublicPosts(publicData);
 
         if (!querySnapshot.empty) {
           const privateQ = query(
@@ -118,11 +131,7 @@ export default function CommunityPage({ username }: CommunityPageProps) {
             limit(20),
           );
           const privateSnap = await getDocs(privateQ);
-          const privateData = privateSnap.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setPrivatePosts(privateData);
+          setPrivatePosts(privateSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
         }
       } catch (error) {
         console.error("Error checking support status:", error);
@@ -132,14 +141,14 @@ export default function CommunityPage({ username }: CommunityPageProps) {
           body: JSON.stringify({
             level: "error",
             category: "general",
-            message: "Error fetching community posts",
+            message: "Error checking support status",
             metadata: { username, creatorUid: creatorData?.uid, error: String(error) },
           }),
         }).catch(() => {});
       }
     };
 
-    checkSupportStatus();
+    fetchPosts();
   }, [currentUser, creatorData?.uid, username]);
 
   if (loading) {
