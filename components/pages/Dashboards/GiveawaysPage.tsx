@@ -259,12 +259,12 @@ export default function GiveawaysPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] text-slate-900">
-      <aside className="w-full bg-white border-b border-slate-200 hidden md:flex items-center justify-between p-6">
+    <div className="min-h-screen bg-muted text-foreground">
+      <aside className="w-full bg-card border-b border-border-strong hidden md:flex items-center justify-between p-6">
         <div className="flex items-center gap-4">
           <button
             onClick={() => window.history.back()}
-            className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition font-bold text-xs uppercase tracking-widest"
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition font-bold text-xs uppercase tracking-widest"
           >
             <ArrowLeft size={16} /> Back
           </button>
@@ -282,16 +282,16 @@ export default function GiveawaysPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400">
+              <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
                 All Giveaways ({giveaways.length})
               </h3>
             </div>
 
             {giveaways.length === 0 ? (
-              <div className="bg-white rounded-xl border border-slate-100 p-12 text-center">
-                <Gift size={48} className="mx-auto text-slate-200 mb-4" />
-                <p className="text-slate-500 font-medium">No giveaways yet</p>
-                <p className="text-slate-400 text-sm mt-2">
+              <div className="bg-card rounded-xl border border-border p-12 text-center">
+                <Gift size={48} className="mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground font-medium">No giveaways yet</p>
+                <p className="text-muted-foreground text-sm mt-2">
                   Create your first giveaway to engage your audience
                 </p>
                 <button
@@ -318,22 +318,22 @@ export default function GiveawaysPage() {
                     <div
                       key={giveaway.id}
                       onClick={() => setSelectedGiveaway(giveaway)}
-                      className={`bg-white rounded-xl border p-6 cursor-pointer transition-all ${
+                      className={`bg-card rounded-xl border p-6 cursor-pointer transition-all ${
                         selectedGiveaway?.id === giveaway.id
                           ? "border-orange-500 shadow-lg"
-                          : "border-slate-100 hover:border-slate-200"
+                          : "border-border hover:border-border-strong"
                       }`}
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-3">
                           <div
-                            className={`p-3 rounded-lg ${isActive ? "bg-green-100 text-green-600" : "bg-slate-100 text-slate-600"}`}
+                            className={`p-3 rounded-lg ${isActive ? "bg-green-100 text-green-600" : "bg-border text-muted-foreground"}`}
                           >
                             <Gift size={20} />
                           </div>
                           <div>
                             <h4 className="font-bold">{giveaway.title}</h4>
-                            <p className="text-xs text-slate-500">
+                            <p className="text-xs text-muted-foreground">
                               {isActive
                                 ? "Active"
                                 : isEnded
@@ -357,11 +357,11 @@ export default function GiveawaysPage() {
                         </span>
                       </div>
 
-                      <p className="text-sm text-slate-600 mb-4 line-clamp-2">
+                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
                         {giveaway.description}
                       </p>
 
-                      <div className="flex items-center gap-4 text-xs text-slate-400">
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Users size={14} />{" "}
                           {entries[giveaway.id]?.length || 0} participants
@@ -397,10 +397,10 @@ export default function GiveawaysPage() {
                 creatorHandle={creator?.handle || ""}
               />
             ) : (
-              <div className="bg-white rounded-xl border border-slate-100 p-8 text-center">
-                <Trophy size={40} className="mx-auto text-slate-200 mb-4" />
-                <p className="text-slate-500 font-medium">Select a giveaway</p>
-                <p className="text-slate-400 text-sm mt-2">
+              <div className="bg-card rounded-xl border border-border p-8 text-center">
+                <Trophy size={40} className="mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground font-medium">Select a giveaway</p>
+                <p className="text-muted-foreground text-sm mt-2">
                   Click on a giveaway to view details
                 </p>
               </div>

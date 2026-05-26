@@ -23,13 +23,13 @@ export function CartModal({
   total: number;
 }) {
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-      <div className="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 max-h-[90vh] flex flex-col">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+    <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+      <div className="bg-card w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 max-h-[90vh] flex flex-col">
+        <div className="p-6 border-b border-border flex justify-between items-center">
           <h2 className="text-xl font-bold">Your Cart</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-full transition"
+            className="p-2 hover:bg-card-hover rounded-full transition"
           >
             <X size={20} />
           </button>
@@ -38,16 +38,16 @@ export function CartModal({
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {cart.length === 0 ? (
             <div className="text-center py-12">
-              <ShoppingCart size={48} className="mx-auto text-slate-200 mb-4" />
-              <p className="text-slate-500 font-medium">Your cart is empty</p>
+              <ShoppingCart size={48} className="mx-auto text-border-strong mb-4" />
+              <p className="text-muted-foreground font-medium">Your cart is empty</p>
             </div>
           ) : (
             cart.map((item) => (
               <div
                 key={`${item.product.id}-${item.selectedSize}`}
-                className="flex gap-4 p-4 bg-slate-50 rounded-xl"
+                className="flex gap-4 p-4 bg-muted rounded-xl"
               >
-                <div className="w-20 h-20 bg-white rounded-lg overflow-hidden flex-shrink-0">
+                <div className="w-20 h-20 bg-card rounded-lg overflow-hidden flex-shrink-0">
                   {item.product.imageUrl ? (
                     <img
                       src={item.product.imageUrl}
@@ -56,14 +56,14 @@ export function CartModal({
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <Package size={24} className="text-slate-200" />
+                      <Package size={24} className="text-border-strong" />
                     </div>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 className="font-bold truncate">{item.product.name}</h4>
                   {item.selectedSize && (
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                       Size: {item.selectedSize}
                     </p>
                   )}
@@ -74,7 +74,7 @@ export function CartModal({
                 <div className="flex flex-col items-end justify-between">
                   <button
                     onClick={() => onRemove(item.product.id, item.selectedSize)}
-                    className="text-slate-300 hover:text-red-500 transition"
+                    className="text-muted-foreground hover:text-red-500 transition"
                   >
                     <X size={16} />
                   </button>
@@ -83,7 +83,7 @@ export function CartModal({
                       onClick={() =>
                         onUpdateQuantity(item.product.id, item.selectedSize, -1)
                       }
-                      className="p-1 hover:bg-slate-100 rounded transition"
+                      className="p-1 hover:bg-muted rounded transition"
                     >
                       <Minus size={12} />
                     </button>
@@ -94,7 +94,7 @@ export function CartModal({
                       onClick={() =>
                         onUpdateQuantity(item.product.id, item.selectedSize, 1)
                       }
-                      className="p-1 hover:bg-slate-100 rounded transition"
+                      className="p-1 hover:bg-muted rounded transition"
                     >
                       <Plus size={12} />
                     </button>
@@ -106,7 +106,7 @@ export function CartModal({
         </div>
 
         {cart.length > 0 && (
-          <div className="p-6 border-t border-slate-100 space-y-4">
+          <div className="p-6 border-t border-border space-y-4">
             <div className="flex justify-between text-lg font-bold">
               <span>Total</span>
               <span>{total.toLocaleString()} RWF</span>

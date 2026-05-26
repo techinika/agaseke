@@ -16,7 +16,7 @@ export function MessageInput({
   chatroomEnabled: boolean;
 }) {
   return (
-    <div className="p-4 bg-white border-t border-slate-100">
+    <div className="p-4 bg-card border-t border-border">
       {!chatroomEnabled && (
         <div className="mb-3 p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-600">
           <Ban size={16} />
@@ -25,14 +25,14 @@ export function MessageInput({
           </p>
         </div>
       )}
-      <div className="flex gap-2 bg-slate-100 p-2 rounded-2xl">
+      <div className="flex gap-2 bg-muted p-2 rounded-2xl">
         <input
           type="text"
           placeholder="Write a message..."
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && onSend()}
-          className="flex-1 bg-transparent border-none px-4 py-3 text-sm focus:ring-0 outline-none text-slate-800 placeholder:text-slate-400"
+          className="flex-1 bg-transparent border-none px-4 py-3 text-sm focus:ring-0 outline-none text-foreground placeholder:text-muted-foreground"
           disabled={sending || !chatroomEnabled}
         />
         <button

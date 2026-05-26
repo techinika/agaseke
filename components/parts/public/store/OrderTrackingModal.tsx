@@ -17,7 +17,7 @@ const statusColors: Record<string, string> = {
   paid: "bg-green-100 text-green-700",
   processing: "bg-blue-100 text-blue-700",
   shipped: "bg-orange-100 text-orange-700",
-  delivered: "bg-slate-100 text-slate-700",
+  delivered: "bg-muted text-foreground",
   cancelled: "bg-red-100 text-red-700",
 };
 
@@ -62,9 +62,9 @@ export function OrderTrackingModal({
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {orders.length === 0 ? (
             <div className="text-center py-12">
-              <Truck size={48} className="mx-auto text-slate-200 mb-4" />
-              <p className="text-slate-500 font-medium">No orders yet</p>
-              <p className="text-slate-400 text-sm mt-2">
+              <Truck size={48} className="mx-auto text-border-strong mb-4" />
+              <p className="text-muted-foreground font-medium">No orders yet</p>
+              <p className="text-muted-foreground text-sm mt-2">
                 Your orders will appear here
               </p>
             </div>
@@ -78,13 +78,13 @@ export function OrderTrackingModal({
                     : 0;
 
               return (
-                <div key={order.id} className="bg-slate-50 rounded-xl p-6">
+                <div key={order.id} className="bg-muted rounded-xl p-6">
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-muted-foreground">
                         Order #{order.id.slice(0, 8)}
                       </p>
-                      <p className="text-sm text-slate-400">
+                      <p className="text-sm text-muted-foreground">
                         {order.createdAt instanceof Timestamp
                           ? order.createdAt.toDate().toLocaleDateString()
                           : new Date(
@@ -94,7 +94,7 @@ export function OrderTrackingModal({
                       </p>
                     </div>
                     <span
-                      className={`text-xs font-bold px-3 py-1 rounded-full ${statusColors[order.status] || "bg-slate-100 text-slate-700"}`}
+                      className={`text-xs font-bold px-3 py-1 rounded-full ${statusColors[order.status] || "bg-muted text-foreground"}`}
                     >
                       {(order.status || "unknown").toUpperCase()}
                     </span>
@@ -151,7 +151,7 @@ export function OrderTrackingModal({
                               className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold ${
                                 getStatusIndex(order.status) >= idx
                                   ? "bg-orange-500 text-white"
-                                  : "bg-slate-200 text-slate-400"
+                                  : "bg-border-strong text-muted-foreground"
                               }`}
                             >
                               {getStatusIndex(order.status) > idx ? (
@@ -165,14 +165,14 @@ export function OrderTrackingModal({
                                 className={`w-8 h-0.5 ${
                                   getStatusIndex(order.status) > idx
                                     ? "bg-orange-500"
-                                    : "bg-slate-200"
+                                    : "bg-border-strong"
                                 }`}
                               />
                             )}
                           </div>
                         ))}
                       </div>
-                      <div className="flex justify-between text-[10px] text-slate-400">
+                      <div className="flex justify-between text-[10px] text-muted-foreground">
                         {statusSteps.map((step) => (
                           <span key={step}>{statusLabels[step]}</span>
                         ))}
@@ -191,7 +191,7 @@ export function OrderTrackingModal({
                     </div>
                   )}
 
-                  <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-200">
+                  <div className="flex justify-between items-center mt-4 pt-4 border-t border-border-strong">
                     <span className="font-bold">
                       Total: {safeTotal.toLocaleString()} RWF
                     </span>

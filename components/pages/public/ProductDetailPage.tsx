@@ -106,7 +106,7 @@ export default function ProductDetailPage({ username, productId }: { username: s
                 <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <Package size={80} className="text-slate-200" />
+                  <Package size={80} className="text-muted-foreground" />
                 </div>
               )}
             </div>
@@ -154,7 +154,7 @@ export default function ProductDetailPage({ username, productId }: { username: s
                   <div className="flex flex-wrap gap-2">
                     {product.sizes.map((size) => (
                       <button key={size} onClick={() => setSelectedSize(size)}
-                        className={`px-4 py-2 font-bold rounded-lg transition ${selectedSize === size ? "bg-orange-500 text-white" : "bg-muted hover:bg-slate-200"}`}>
+                        className={`px-4 py-2 font-bold rounded-lg transition ${selectedSize === size ? "bg-orange-500 text-white" : "bg-muted hover:bg-border-strong"}`}>
                         {size}
                       </button>
                     ))}
@@ -181,10 +181,10 @@ export default function ProductDetailPage({ username, productId }: { username: s
                   <div className="flex items-center gap-4">
                     <div className="flex items-center bg-muted rounded-lg">
                       <button onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                        className="p-3 hover:bg-slate-200 rounded-l-lg transition"><Minus size={16} /></button>
+                        className="p-3 hover:bg-border-strong rounded-l-lg transition"><Minus size={16} /></button>
                       <span className="w-12 text-center font-bold">{quantity}</span>
                       <button onClick={() => setQuantity(quantity + 1)}
-                        className="p-3 hover:bg-slate-200 rounded-r-lg transition"><Plus size={16} /></button>
+                        className="p-3 hover:bg-border-strong rounded-r-lg transition"><Plus size={16} /></button>
                     </div>
                     <button onClick={handleAddToCart}
                       disabled={!isLoggedIn || (product.type === "physical" && product.stock <= 0)}

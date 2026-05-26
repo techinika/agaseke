@@ -266,7 +266,7 @@ export function SupportModal({
                   <input
                     type="number"
                     placeholder="1000"
-                    className="w-full text-center text-6xl font-bold text-foreground outline-none placeholder:text-slate-100"
+                    className="w-full text-center text-6xl font-bold text-foreground outline-none placeholder:text-muted-foreground"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                   />

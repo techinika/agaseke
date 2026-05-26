@@ -19,7 +19,7 @@ export default function NavLink({
       className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
         active
           ? "text-orange-600 bg-orange-50 dark:bg-orange-950 dark:text-orange-400"
-          : "text-muted-foreground dark:text-slate-400 hover:text-foreground dark:hover:text-white hover:bg-muted dark:hover:bg-slate-800"
+          : "text-muted-foreground hover:text-foreground hover:bg-muted"
       }`}
     >
       {icon}

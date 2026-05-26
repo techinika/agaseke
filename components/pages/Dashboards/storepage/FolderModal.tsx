@@ -81,14 +81,14 @@ export default function FolderModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-      <div className="bg-white w-full max-w-lg rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-slate-100">
+      <div className="bg-card w-full max-w-lg rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-border">
           <h2 className="text-xl font-bold">
             {folder ? "Edit Folder" : "Create Product Folder"}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-full"
+            className="p-2 hover:bg-card-hover rounded-full"
           >
             <X size={20} />
           </button>
@@ -96,7 +96,7 @@ export default function FolderModal({
 
         <div className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">
+            <label className="block text-sm font-bold text-foreground mb-2">
               Folder Name *
             </label>
             <input
@@ -106,12 +106,12 @@ export default function FolderModal({
                 setFormData({ ...formData, name: e.target.value })
               }
               placeholder="e.g., Summer Bundle, Music Pack, T-Shirt Set"
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 font-bold"
+              className="w-full bg-muted border border-border-strong rounded-lg px-4 py-3 font-bold"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">
+            <label className="block text-sm font-bold text-foreground mb-2">
               Description
             </label>
             <textarea
@@ -120,15 +120,15 @@ export default function FolderModal({
                 setFormData({ ...formData, description: e.target.value })
               }
               placeholder="What's included in this bundle..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 h-20"
+              className="w-full bg-muted border border-border-strong rounded-lg px-4 py-3 h-20"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">
+            <label className="block text-sm font-bold text-foreground mb-2">
               Folder Image
             </label>
-            <div className="border-2 border-dashed border-slate-200 rounded-lg p-4 text-center">
+            <div className="border-2 border-dashed border-border-strong rounded-lg p-4 text-center">
               {formData.imageUrl ? (
                 <div className="relative inline-block">
                   <img
@@ -151,10 +151,10 @@ export default function FolderModal({
                     size={28}
                     className="mx-auto text-slate-300 mb-2"
                   />
-                  <p className="text-xs text-slate-500 mb-3">
+                  <p className="text-xs text-muted-foreground mb-3">
                     Upload a cover image for this folder
                   </p>
-                  <label className="cursor-pointer bg-slate-100 px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-200 transition inline-flex items-center gap-2">
+                  <label className="cursor-pointer bg-border px-4 py-2 rounded-lg text-sm font-bold hover:bg-border-strong transition inline-flex items-center gap-2">
                     <Upload size={14} />
                     {isUploading ? "Uploading..." : "Choose File"}
                     <input
@@ -171,17 +171,17 @@ export default function FolderModal({
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">
+            <label className="block text-sm font-bold text-foreground mb-2">
               Select Products *
             </label>
-            <p className="text-xs text-slate-500 mb-2">
+            <p className="text-xs text-muted-foreground mb-2">
               Choose products to include in this folder
             </p>
-            <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-lg">
+            <div className="max-h-48 overflow-y-auto border border-border-strong rounded-lg">
               {products.map((product) => (
                 <label
                   key={product.id}
-                  className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0"
+                  className="flex items-center gap-3 p-3 hover:bg-muted cursor-pointer border-b border-border last:border-0"
                 >
                   <input
                     type="checkbox"
@@ -190,7 +190,7 @@ export default function FolderModal({
                     className="w-4 h-4"
                   />
                   <span className="font-medium">{product.name}</span>
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-muted-foreground">
                     {product.price.toLocaleString()} RWF
                   </span>
                 </label>
@@ -199,8 +199,8 @@ export default function FolderModal({
           </div>
 
           {formData.productIds.length > 0 && (
-            <div className="p-4 bg-slate-50 rounded-lg space-y-1">
-              <p className="text-sm text-slate-500">
+            <div className="p-4 bg-muted rounded-lg space-y-1">
+              <p className="text-sm text-muted-foreground">
                 Sum of products: {totalPrice.toLocaleString()} RWF
               </p>
               {formData.bundlePrice > 0 && (
@@ -212,7 +212,7 @@ export default function FolderModal({
           )}
 
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">
+            <label className="block text-sm font-bold text-foreground mb-2">
               Fixed Bundle Price (optional)
             </label>
             <input
@@ -225,18 +225,18 @@ export default function FolderModal({
                 })
               }
               placeholder="Leave empty to use sum of product prices"
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3"
+              className="w-full bg-muted border border-border-strong rounded-lg px-4 py-3"
             />
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Set a custom price for the entire bundle instead of using the sum
               of individual product prices
             </p>
           </div>
 
-          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+          <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
             <div>
               <p className="font-bold">Bundle Discount</p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Apply discount when buying all products together
               </p>
             </div>
@@ -253,7 +253,7 @@ export default function FolderModal({
               }`}
             >
               <div
-                className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                className={`w-5 h-5 bg-card rounded-full shadow transition-transform ${
                   formData.discountEnabled ? "translate-x-6" : "translate-x-0.5"
                 }`}
               />
@@ -262,7 +262,7 @@ export default function FolderModal({
 
           {formData.discountEnabled && (
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">
+              <label className="block text-sm font-bold text-foreground mb-2">
                 Discount Percentage
               </label>
               <input
@@ -275,7 +275,7 @@ export default function FolderModal({
                   })
                 }
                 placeholder="e.g., 10 for 10%"
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3"
+                className="w-full bg-muted border border-border-strong rounded-lg px-4 py-3"
               />
               {formData.discountPercentage > 0 && effectivePrice > 0 && (
                 <p className="text-sm text-green-600 mt-2">
@@ -286,10 +286,10 @@ export default function FolderModal({
             </div>
           )}
 
-          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+          <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
             <div>
               <p className="font-bold">Active</p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Customers can purchase this bundle
               </p>
             </div>
@@ -303,7 +303,7 @@ export default function FolderModal({
               }`}
             >
               <div
-                className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                className={`w-5 h-5 bg-card rounded-full shadow transition-transform ${
                   formData.active ? "translate-x-6" : "translate-x-0.5"
                 }`}
               />
@@ -311,7 +311,7 @@ export default function FolderModal({
           </div>
         </div>
 
-        <div className="p-6 border-t border-slate-100">
+        <div className="p-6 border-t border-border">
           <button
             onClick={handleSubmit}
             disabled={

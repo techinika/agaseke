@@ -374,7 +374,7 @@ export default function AdminChangelogPage() {
                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                           formData.tags.includes(tag)
                             ? "bg-orange-100 text-orange-700"
-                            : "bg-muted text-muted-foreground hover:bg-slate-200"
+                            : "bg-muted text-muted-foreground hover:bg-border-strong"
                         }`}
                       >
                         {tag}

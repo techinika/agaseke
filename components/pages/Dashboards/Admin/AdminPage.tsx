@@ -778,7 +778,7 @@ export default function AdminDashboard() {
           </div>
           <button
             onClick={fetchData}
-            className="flex items-center gap-2 px-4 py-2 bg-foreground text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition"
+            className="flex items-center gap-2 px-4 py-2 bg-foreground text-white rounded-lg text-sm font-medium hover:bg-card transition"
           >
             <Loader size={16} />
             Refresh
@@ -912,7 +912,7 @@ export default function AdminDashboard() {
                   className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${
                     growthFilter === filter.key
                       ? "bg-foreground text-white"
-                      : "bg-muted text-muted-foreground hover:bg-slate-200"
+                      : "bg-muted text-muted-foreground hover:bg-border-strong"
                   }`}
                 >
                   {filter.label}
@@ -941,7 +941,7 @@ export default function AdminDashboard() {
                           title={`Current: ${userGrowthData.current[index]}`}
                         />
                         <div
-                          className="w-3 sm:w-4 md:w-5 lg:w-6 bg-slate-300 rounded-t"
+                          className="w-3 sm:w-4 md:w-5 lg:w-6 bg-muted-foreground rounded-t"
                           style={{ height: `${Math.max(prevHeight, 2)}%` }}
                           title={`Previous: ${userGrowthData.previous[index]}`}
                         />
@@ -962,7 +962,7 @@ export default function AdminDashboard() {
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-slate-300 rounded" />
+                <div className="w-3 h-3 bg-muted-foreground rounded" />
                 <span className="text-muted-foreground">
                   {growthFilter === "7d" ? "Last Week" : growthFilter === "weekly" ? "Last Week" : growthFilter === "monthly" ? "Last Year" : growthFilter === "annual" ? "Last Year" : "-"}
                 </span>
@@ -987,7 +987,7 @@ export default function AdminDashboard() {
                   className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${
                     transactionFilter === filter.key
                       ? "bg-foreground text-white"
-                      : "bg-muted text-muted-foreground hover:bg-slate-200"
+                      : "bg-muted text-muted-foreground hover:bg-border-strong"
                   }`}
                 >
                   {filter.label}
@@ -1080,7 +1080,7 @@ export default function AdminDashboard() {
         {/* PENDING REQUESTS SECTION */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           <section className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-slate-50 bg-muted/50 flex justify-between items-center">
+            <div className="p-6 border-b border-border bg-muted/50 flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <Wallet className="text-orange-600" size={20} />
                 <h2 className="font-bold uppercase tracking-tight">
@@ -1150,7 +1150,7 @@ export default function AdminDashboard() {
           </section>
 
           <section className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-slate-50 bg-muted/50 flex justify-between items-center">
+            <div className="p-6 border-b border-border bg-muted/50 flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <ShieldAlert className="text-blue-600" size={20} />
                 <h2 className="font-bold uppercase tracking-tight">

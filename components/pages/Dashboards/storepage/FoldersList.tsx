@@ -15,10 +15,10 @@ export default function FoldersList({
 }) {
   if (folders.length === 0) {
     return (
-      <div className="text-center py-20 bg-white rounded-lg border border-slate-100">
+      <div className="text-center py-20 bg-card rounded-lg border border-border">
         <FileText size={48} className="mx-auto text-slate-200 mb-4" />
-        <p className="text-slate-500 font-medium">No folders yet</p>
-        <p className="text-slate-400 text-sm mt-2">
+        <p className="text-muted-foreground font-medium">No folders yet</p>
+        <p className="text-muted-foreground text-sm mt-2">
           Group products together for bundle sales
         </p>
       </div>
@@ -37,7 +37,7 @@ export default function FoldersList({
       {folders.map((folder) => (
         <div
           key={folder.id}
-          className="bg-white rounded-lg border border-slate-100 overflow-hidden"
+          className="bg-card rounded-lg border border-border overflow-hidden"
         >
           <div className="aspect-video bg-gradient-to-br from-orange-50 to-amber-50 relative">
             {folder.imageUrl ? (
@@ -55,7 +55,7 @@ export default function FoldersList({
               className={`absolute top-3 right-3 text-[10px] font-bold px-2 py-1 rounded-full ${
                 folder.active
                   ? "bg-green-100 text-green-600"
-                  : "bg-slate-100 text-slate-500"
+                  : "bg-border text-muted-foreground"
               }`}
             >
               {folder.active ? "ACTIVE" : "INACTIVE"}
@@ -64,10 +64,10 @@ export default function FoldersList({
           <div className="p-6">
             <h3 className="font-bold text-lg">{folder.name}</h3>
             {folder.description && (
-              <p className="text-sm text-slate-500 mt-1">{folder.description}</p>
+              <p className="text-sm text-muted-foreground mt-1">{folder.description}</p>
             )}
             <div className="flex items-center gap-3 mt-3">
-              <p className="text-lg font-bold text-slate-900">
+              <p className="text-lg font-bold text-foreground">
                 {folder.productIds?.length || 0} products
               </p>
               {folder.discountEnabled && (
@@ -81,13 +81,13 @@ export default function FoldersList({
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-400 mt-2 line-clamp-2">
+            <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
               {getProductNames(folder.productIds || [])}
             </p>
             <div className="flex gap-2 mt-4">
               <button
                 onClick={() => onEdit(folder)}
-                className="flex-1 py-2 text-xs font-bold border border-slate-200 text-slate-500 rounded-lg hover:bg-slate-50 transition"
+                className="flex-1 py-2 text-xs font-bold border border-border-strong text-muted-foreground rounded-lg hover:bg-muted transition"
               >
                 <Edit size={14} className="inline mr-1" /> Edit
               </button>

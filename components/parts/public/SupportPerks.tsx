@@ -5,7 +5,7 @@ export const SupportPerks = ({ name }: { name: string }) => {
   return (
     <div className="max-w-2xl mx-auto px-6 mt-16 space-y-12">
       {/* SUPPORT PERKS SECTION */}
-      <section className="bg-white border border-slate-100 p-8 rounded-lg shadow-sm">
+      <section className="bg-card border border-border p-8 rounded-lg shadow-sm">
         <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-orange-600 mb-8 flex items-center gap-2">
           <Star size={14} fill="currentColor" /> Why Send a Gift to{" "}
           {name.split(" ")[0]}?

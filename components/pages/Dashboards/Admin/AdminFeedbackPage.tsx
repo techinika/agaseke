@@ -123,7 +123,7 @@ export default function AdminFeedbackPage() {
               {search ? "No feedback matches your search." : "No feedback yet."}
             </div>
           ) : (
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-border">
               {filtered.map((item) => (
                 <div key={item.id} className="p-6 hover:bg-muted/50 transition-colors">
                   <div className="flex items-start justify-between gap-4 mb-3">

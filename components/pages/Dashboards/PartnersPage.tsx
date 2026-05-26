@@ -111,12 +111,12 @@ export default function PartnersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] flex flex-col text-slate-900">
-      <aside className="w-full bg-white border-b border-slate-200 hidden md:flex items-center justify-between p-6">
+    <div className="min-h-screen bg-muted flex flex-col text-foreground">
+      <aside className="w-full bg-card border-b border-border-strong hidden md:flex items-center justify-between p-6">
         <div className="flex items-center gap-4">
           <button
             onClick={() => window.history.back()}
-            className="flex items-center gap-2 text-slate-400 hover:text-slate-900 transition font-bold text-xs uppercase tracking-widest"
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition font-bold text-xs uppercase tracking-widest"
           >
             <ArrowLeft size={16} /> Back
           </button>
@@ -135,20 +135,20 @@ export default function PartnersPage() {
 
       <main className="flex-1 p-8">
         <div className="mb-8">
-          <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-2">
+          <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-2">
             Your Partners
           </h3>
-          <p className="text-slate-500">
+          <p className="text-muted-foreground">
             Manage brands and businesses you work with. Featured partners will
             be highlighted on your public profile.
           </p>
         </div>
 
         {partners.length === 0 ? (
-          <div className="bg-white rounded-xl border border-slate-100 p-12 text-center">
-            <Building2 size={48} className="mx-auto text-slate-200 mb-4" />
-            <p className="text-slate-500 font-medium">No partners yet</p>
-            <p className="text-slate-400 text-sm mt-2">
+          <div className="bg-card rounded-xl border border-border p-12 text-center">
+            <Building2 size={48} className="mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground font-medium">No partners yet</p>
+            <p className="text-muted-foreground text-sm mt-2">
               Add brands and businesses you collaborate with
             </p>
             <button
@@ -163,10 +163,10 @@ export default function PartnersPage() {
             {partners.map((partner) => (
               <div
                 key={partner.id}
-                className={`bg-white rounded-xl border overflow-hidden ${
+                className={`bg-card rounded-xl border overflow-hidden ${
                   partner.featured
                     ? "border-orange-500 shadow-lg"
-                    : "border-slate-100"
+                    : "border-border"
                 }`}
               >
                 {partner.featured && (
@@ -176,7 +176,7 @@ export default function PartnersPage() {
                 )}
                 <div className="p-6">
                   <div className="flex items-start gap-4 mb-4">
-                    <div className="w-16 h-16 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0">
+                    <div className="w-16 h-16 bg-border rounded-lg overflow-hidden flex-shrink-0">
                       {partner.logo ? (
                         <img
                           src={partner.logo}
@@ -185,7 +185,7 @@ export default function PartnersPage() {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Building2 size={24} className="text-slate-300" />
+                          <Building2 size={24} className="text-muted-foreground" />
                         </div>
                       )}
                     </div>
@@ -207,7 +207,7 @@ export default function PartnersPage() {
                   </div>
 
                   {partner.description && (
-                    <p className="text-sm text-slate-500 line-clamp-2 mb-4">
+                    <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
                       {partner.description}
                     </p>
                   )}
@@ -217,7 +217,7 @@ export default function PartnersPage() {
                       onClick={() => toggleFeatured(partner)}
                       className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${
                         partner.featured
-                          ? "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                          ? "bg-border text-muted-foreground hover:bg-border-strong"
                           : "bg-orange-50 text-orange-600 hover:bg-orange-100"
                       }`}
                     >
@@ -228,7 +228,7 @@ export default function PartnersPage() {
                         setEditingPartner(partner);
                         setShowModal(true);
                       }}
-                      className="p-2 text-slate-400 hover:text-slate-600 border border-slate-200 rounded-lg transition"
+                      className="p-2 text-muted-foreground hover:text-muted-foreground border border-border-strong rounded-lg transition"
                     >
                       <Edit size={14} />
                     </button>

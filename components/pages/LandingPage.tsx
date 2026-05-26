@@ -175,7 +175,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 selection:bg-orange-100 font-sans">
+    <div className="min-h-screen bg-card text-foreground selection:bg-orange-100 font-sans">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -200,7 +200,7 @@ export default function LandingPage() {
           <div className="bg-orange-50 text-orange-700 px-4 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest mb-2">
             Built for Rwandan Creators
           </div>
-          <p className="text-sm font-medium text-slate-500 max-w-sm">
+          <p className="text-sm font-medium text-muted-foreground max-w-sm">
             The home for <strong>Influencers, Podcasters, Artists, </strong>
             and <strong>Content Creators</strong> in Rwanda.
           </p>
@@ -211,7 +211,7 @@ export default function LandingPage() {
           <span className="text-orange-600">Doing what you love</span>
         </h1>
 
-        <p className="text-lg md:text-xl text-slate-600 mb-12 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-lg md:text-xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed">
           Agaseke is a simple link you put in your Bio. Your fans use it to
           <strong> send you gifts and tips</strong>, buy your digital products
           or merchs, or join your private community.
@@ -227,15 +227,15 @@ export default function LandingPage() {
                 <span>Go to my Creator Space</span>
                 <ArrowRight className="group-hover:translate-x-2 transition-transform" />
               </button>
-              <p className="mt-4 text-slate-400 font-bold text-xs uppercase tracking-widest text-center">
+              <p className="mt-4 text-muted-foreground font-bold text-xs uppercase tracking-widest text-center">
                 Welcome back, {user?.displayName?.split(" ")[0] || "Creator"}!
               </p>
             </div>
           ) : (
             <>
-              <div className="flex flex-col sm:flex-row items-center bg-white p-2 rounded-lg border-2 border-slate-100 focus-within:border-orange-500 focus-within:ring-8 focus-within:ring-orange-50 transition-all w-full max-w-xl shadow-2xl shadow-slate-200">
+              <div className="flex flex-col sm:flex-row items-center bg-card p-2 rounded-lg border-2 border-border focus-within:border-orange-500 focus-within:ring-8 focus-within:ring-orange-50 transition-all w-full max-w-xl shadow-2xl shadow-border-strong">
                 <div className="relative flex items-center flex-1 w-full px-4">
-                  <span className="text-slate-400 font-bold select-none text-lg">
+                  <span className="text-muted-foreground font-bold select-none text-lg">
                     agaseke.me/
                   </span>
                   <input
@@ -282,7 +282,7 @@ export default function LandingPage() {
                   Start for Free
                 </button>
               </div>
-              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest flex items-center gap-2">
+              <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest flex items-center gap-2">
                 <ShieldCheck size={14} className="text-green-600" /> It takes 1
                 minute to set up.
               </p>
@@ -293,15 +293,15 @@ export default function LandingPage() {
 
       <PaymentMethods />
 
-      <section className="bg-slate-50 py-24 px-6 border-y border-slate-100">
+      <section className="bg-muted py-24 px-6 border-y border-border">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter mb-4">
               One link, Many ways to earn
             </h2>
-            <p className="text-slate-500">
-              No need for complicated websites. Just use Agaseke.
-            </p>
+            <p className="text-muted-foreground">
+               No need for complicated websites. Just use Agaseke.
+             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -339,7 +339,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="py-24 px-6 bg-white">
+      <section className="py-24 px-6 bg-card">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl font-black uppercase tracking-tighter mb-12 text-orange-600">
             As easy as...

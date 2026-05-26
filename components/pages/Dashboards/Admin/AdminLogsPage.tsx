@@ -171,7 +171,7 @@ export default function AdminLogsPage() {
             </button>
             <button
               onClick={exportLogs}
-              className="flex items-center gap-2 px-4 py-2 bg-foreground text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition"
+              className="flex items-center gap-2 px-4 py-2 bg-foreground text-white rounded-lg text-sm font-medium hover:bg-card transition"
             >
               <Download size={16} />
               Export
@@ -296,7 +296,7 @@ export default function AdminLogsPage() {
         <div className="bg-card rounded-xl border border-border overflow-hidden">
           {filteredLogs.length === 0 ? (
             <div className="text-center py-20">
-              <Activity size={48} className="mx-auto text-slate-200 mb-4" />
+              <Activity size={48} className="mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground font-medium">No logs found</p>
               <p className="text-muted-foreground text-sm mt-1">
                 {searchTerm || levelFilter !== "all" || categoryFilter !== "all"
@@ -305,7 +305,7 @@ export default function AdminLogsPage() {
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-slate-50">
+            <div className="divide-y divide-border">
               {filteredLogs.map((log) => (
                 <div key={log.id} className="p-4 hover:bg-muted transition">
                   <div className="flex items-start gap-4">

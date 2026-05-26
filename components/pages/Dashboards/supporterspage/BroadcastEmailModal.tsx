@@ -18,19 +18,19 @@ export default function BroadcastEmailModal({
 }) {
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6 overflow-y-auto">
-      <div className="bg-white w-full max-w-xl rounded-lg p-8 shadow-2xl animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+      <div className="bg-card w-full max-w-xl rounded-lg p-8 shadow-2xl animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h2 className="text-2xl font-bold uppercase tracking-tighter">
               Broadcast Email
             </h2>
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Send an email to {recipientCount} supporter{recipientCount !== 1 ? "s" : ""}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-full transition"
+            className="p-2 hover:bg-card-hover rounded-full transition"
           >
             <X size={20} />
           </button>
@@ -38,7 +38,7 @@ export default function BroadcastEmailModal({
 
         <div className="space-y-6">
           <div>
-            <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest block mb-2">
+            <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest block mb-2">
               Subject *
             </label>
             <input
@@ -47,16 +47,16 @@ export default function BroadcastEmailModal({
               onChange={(e) =>
                 setEmailForm({ ...emailForm, subject: e.target.value })
               }
-              className="w-full bg-slate-50 p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
+              className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
               placeholder="Enter email subject"
             />
           </div>
 
           <div>
-            <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest block mb-2">
+            <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest block mb-2">
               Message *
             </label>
-            <p className="text-xs text-slate-400 mb-2">
+            <p className="text-xs text-muted-foreground mb-2">
               Use [NAME] to personalize with supporter&apos;s name
             </p>
             <textarea
@@ -64,7 +64,7 @@ export default function BroadcastEmailModal({
               onChange={(e) =>
                 setEmailForm({ ...emailForm, message: e.target.value })
               }
-              className="w-full bg-slate-50 p-4 rounded-lg text-sm font-medium outline-none focus:ring-2 focus:ring-orange-100 h-48 resize-none"
+              className="w-full bg-muted p-4 rounded-lg text-sm font-medium outline-none focus:ring-2 focus:ring-orange-100 h-48 resize-none"
               placeholder="Write your message here..."
             />
           </div>
@@ -79,7 +79,7 @@ export default function BroadcastEmailModal({
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="flex-1 py-4 border border-slate-200 rounded-lg font-bold hover:bg-slate-50 transition"
+              className="flex-1 py-4 border border-border-strong rounded-lg font-bold hover:bg-muted transition"
             >
               Cancel
             </button>

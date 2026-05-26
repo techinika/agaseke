@@ -83,7 +83,7 @@ export default function PayClient() {
             <Check className="text-green-600" size={32} />
           </div>
           <h1 className="text-2xl font-bold mb-2">Already Paid</h1>
-          <p className="text-slate-500">This order has already been paid.</p>
+          <p className="text-muted-foreground">This order has already been paid.</p>
           <Link href="/" className="text-orange-600 underline mt-4 block">
             Go Home
           </Link>
@@ -100,7 +100,7 @@ export default function PayClient() {
             <Check className="text-green-600" size={32} />
           </div>
           <h1 className="text-2xl font-bold mb-2">Payment Successful!</h1>
-          <p className="text-slate-500 mb-4">Your order has been confirmed.</p>
+          <p className="text-muted-foreground mb-4">Your order has been confirmed.</p>
           <Link href="/" className="text-orange-600 underline">
             Go Home
           </Link>
@@ -110,12 +110,12 @@ export default function PayClient() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
-      <div className="max-w-md mx-auto bg-white rounded-xl shadow-lg p-6">
+    <div className="min-h-screen bg-muted p-8">
+      <div className="max-w-md mx-auto bg-card rounded-xl shadow-lg p-6">
         <h1 className="text-xl font-bold mb-6">Pay Order</h1>
         
-        <div className="bg-slate-50 rounded-lg p-4 mb-6">
-          <p className="text-sm text-slate-500 mb-2">Order Total</p>
+        <div className="bg-muted rounded-lg p-4 mb-6">
+          <p className="text-sm text-muted-foreground mb-2">Order Total</p>
           <p className="text-2xl font-bold">{order.total.toLocaleString()} RWF</p>
         </div>
 
@@ -127,11 +127,11 @@ export default function PayClient() {
             className={`w-full p-4 rounded-lg border-2 transition ${
               paymentMethod === "momo"
                 ? "border-orange-500 bg-orange-50"
-                : "border-slate-100"
+                : "border-border"
             }`}
           >
             <p className="font-bold">Mobile Money (MoMo)</p>
-            <p className="text-sm text-slate-500">Pay via MTN or Airtel Money</p>
+            <p className="text-sm text-muted-foreground">Pay via MTN or Airtel Money</p>
           </button>
           
           <button
@@ -139,11 +139,11 @@ export default function PayClient() {
             className={`w-full p-4 rounded-lg border-2 transition ${
               paymentMethod === "card"
                 ? "border-orange-500 bg-orange-50"
-                : "border-slate-100"
+                : "border-border"
             }`}
           >
             <p className="font-bold">Bank Card</p>
-            <p className="text-sm text-slate-500">Visa, Mastercard</p>
+            <p className="text-sm text-muted-foreground">Visa, Mastercard</p>
           </button>
         </div>
 
@@ -155,7 +155,7 @@ export default function PayClient() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="2507..."
-              className="w-full p-4 rounded-lg border border-slate-200"
+              className="w-full p-4 rounded-lg border border-border-strong"
             />
           </div>
         )}

@@ -204,7 +204,7 @@ export default function AdminComms() {
                       className={`flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border-2 transition-all font-bold text-xs ${
                         target === item.id
                           ? "border-orange-600 bg-orange-50 text-orange-600 shadow-sm"
-                          : "border-slate-50 bg-muted text-muted-foreground hover:border-border"
+                          : "border-border bg-muted text-muted-foreground hover:border-border"
                       }`}
                     >
                       {item.icon}
@@ -300,7 +300,7 @@ export default function AdminComms() {
                     <h3 className="font-bold text-sm text-foreground truncate mb-1 pr-6">
                       {log.subject}
                     </h3>
-                    <div className="flex items-center justify-between mt-4 border-t border-slate-50 pt-3">
+                    <div className="flex items-center justify-between mt-4 border-t border-border pt-3">
                       <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
                         {log.sentAt?.toDate().toLocaleDateString("en-GB")}
                       </p>

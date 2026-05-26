@@ -179,20 +179,20 @@ export default function NotificationDrawer({
 
       <div
         ref={drawerRef}
-        className="fixed right-0 top-0 h-full w-full max-w-md bg-card dark:bg-slate-900 shadow-2xl transform transition-transform duration-300 ease-in-out translate-x-0"
+        className="fixed right-0 top-0 h-full w-full max-w-md bg-card shadow-2xl transform transition-transform duration-300 ease-in-out translate-x-0"
       >
         <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between px-6 py-5 border-b border-border dark:border-slate-700">
+          <div className="flex items-center justify-between px-6 py-5 border-b border-border">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-orange-50 dark:bg-orange-950 rounded-xl flex items-center justify-center">
                 <Bell size={20} className="text-orange-600 dark:text-orange-400" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-foreground dark:text-white">
+                <h2 className="text-lg font-bold text-foreground">
                   Notifications
                 </h2>
                 {unreadCount > 0 && (
-                  <p className="text-xs text-muted-foreground dark:text-slate-400">
+                  <p className="text-xs text-muted-foreground">
                     {unreadCount} unread
                   </p>
                 )}
@@ -216,9 +216,9 @@ export default function NotificationDrawer({
               )}
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-muted dark:hover:bg-slate-800 rounded-lg transition-colors"
+                className="p-2 hover:bg-muted rounded-lg transition-colors"
               >
-                <X size={18} className="text-muted-foreground dark:text-slate-400" />
+                <X size={18} className="text-muted-foreground" />
               </button>
             </div>
           </div>
@@ -230,18 +230,18 @@ export default function NotificationDrawer({
               </div>
             ) : notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 px-8 text-center">
-                <div className="w-16 h-16 bg-muted dark:bg-slate-800 rounded-2xl flex items-center justify-center mb-4">
-                  <Bell size={28} className="text-muted-foreground dark:text-slate-500" />
+                <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mb-4">
+                  <Bell size={28} className="text-muted-foreground" />
                 </div>
-                <h3 className="text-sm font-bold text-foreground dark:text-slate-300 mb-1">
+                <h3 className="text-sm font-bold text-foreground mb-1">
                   No notifications yet
                 </h3>
-                <p className="text-xs text-muted-foreground dark:text-slate-400">
+                <p className="text-xs text-muted-foreground">
                   We'll notify you when something happens
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-border dark:divide-slate-800">
+              <div className="divide-y divide-border">
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
@@ -249,14 +249,14 @@ export default function NotificationDrawer({
                     className={`px-6 py-4 transition-colors cursor-pointer group ${
                       !notification.read
                         ? "bg-orange-50/50 dark:bg-orange-950/30 hover:bg-orange-50 dark:hover:bg-orange-950/50"
-                        : "hover:bg-muted dark:hover:bg-slate-800"
+                        : "hover:bg-muted"
                     }`}
                   >
                     <div className="flex gap-4">
                       <div className="relative flex-shrink-0">
                         <div
                           className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                            !notification.read ? "bg-card dark:bg-slate-800 shadow-sm" : "bg-muted dark:bg-slate-800/50"
+                            !notification.read ? "bg-card shadow-sm" : "bg-muted"
                           }`}
                         >
                           {notification.imageUrl ? (
@@ -270,7 +270,7 @@ export default function NotificationDrawer({
                           )}
                         </div>
                         {!notification.read && (
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full border-2 border-white dark:border-slate-900" />
+                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full border-2 border-white dark:border-foreground" />
                         )}
                       </div>
 
@@ -279,8 +279,8 @@ export default function NotificationDrawer({
                           <p
                             className={`text-sm ${
                               !notification.read
-                                ? "font-bold text-foreground dark:text-white"
-                                : "font-medium text-foreground dark:text-slate-300"
+                                ? "font-bold text-foreground"
+                                : "font-medium text-foreground"
                             }`}
                           >
                             {notification.title}
@@ -288,19 +288,19 @@ export default function NotificationDrawer({
                           {!notification.read && (
                             <button
                               onClick={(e) => markAsRead(notification.id, e)}
-                              className="flex-shrink-0 text-muted-foreground hover:text-foreground dark:hover:text-slate-300 transition-colors"
+                              className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                             >
                               <CheckCircle size={14} />
                             </button>
                           )}
                         </div>
 
-                        <p className="text-xs text-muted-foreground dark:text-slate-400 mt-1 line-clamp-2">
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                           {notification.message}
                         </p>
 
                         <div className="flex items-center justify-between mt-2">
-                          <span className="text-[10px] text-muted-foreground dark:text-slate-500 font-medium">
+                          <span className="text-[10px] text-muted-foreground font-medium">
                             {formatTime(notification.createdAt)}
                           </span>
                           {notification.link && (

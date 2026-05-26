@@ -150,7 +150,7 @@ export default function BookingPage({ username, creator }: { username: string; c
                           const isAvailable = calendarDates.includes(dateStr);
                           nodes.push(
                             <button key={dateStr} onClick={() => isAvailable && setSelectedDate(dateStr)} disabled={!isAvailable}
-                              className={`p-2 rounded-lg text-center text-sm transition-all ${selectedDate === dateStr ? "bg-orange-500 text-white font-bold" : isAvailable ? "bg-muted text-foreground hover:bg-slate-200" : "text-muted-foreground cursor-not-allowed"}`}>
+                              className={`p-2 rounded-lg text-center text-sm transition-all ${selectedDate === dateStr ? "bg-orange-500 text-white font-bold" : isAvailable ? "bg-muted text-foreground hover:bg-border-strong" : "text-muted-foreground cursor-not-allowed"}`}>
                               {d}
                             </button>
                           );
@@ -166,7 +166,7 @@ export default function BookingPage({ username, creator }: { username: string; c
                       <div className="flex flex-wrap gap-2">
                         {availability.defaultSlots.map(slot => (
                           <button key={slot.id} onClick={() => setSelectedTime(`${slot.startTime} - ${slot.endTime}`)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedTime === `${slot.startTime} - ${slot.endTime}` ? "bg-orange-500 text-white" : "bg-muted text-muted-foreground hover:bg-slate-200"}`}>
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedTime === `${slot.startTime} - ${slot.endTime}` ? "bg-orange-500 text-white" : "bg-muted text-muted-foreground hover:bg-border-strong"}`}>
                             {slot.startTime} - {slot.endTime}
                           </button>
                         ))}
@@ -179,11 +179,11 @@ export default function BookingPage({ username, creator }: { username: string; c
                       <label className="block text-sm font-bold text-foreground mb-2">Meeting Type</label>
                       <div className="flex gap-3">
                         <button onClick={() => setSelectedType("online")}
-                          className={`flex-1 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${selectedType === "online" ? "bg-orange-500 text-white" : "bg-muted text-muted-foreground hover:bg-slate-200"}`}>
+                          className={`flex-1 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${selectedType === "online" ? "bg-orange-500 text-white" : "bg-muted text-muted-foreground hover:bg-border-strong"}`}>
                           <Video size={16} /> Online
                         </button>
                         <button onClick={() => setSelectedType("physical")}
-                          className={`flex-1 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${selectedType === "physical" ? "bg-orange-500 text-white" : "bg-muted text-muted-foreground hover:bg-slate-200"}`}>
+                          className={`flex-1 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${selectedType === "physical" ? "bg-orange-500 text-white" : "bg-muted text-muted-foreground hover:bg-border-strong"}`}>
                           <MapPin size={16} /> In Person
                         </button>
                       </div>
@@ -194,18 +194,18 @@ export default function BookingPage({ username, creator }: { username: string; c
                     <label className="block text-sm font-bold text-foreground mb-2">Your Information</label>
                     <div className="space-y-2">
                       <input type="text" placeholder="Your name" value={name} onChange={e => setName(e.target.value)}
-                        className="w-full bg-muted p-3 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-white transition-all" />
+                        className="w-full bg-muted p-3 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-card transition-all" />
                       <input type="email" placeholder="Your email" value={email} onChange={e => setEmail(e.target.value)}
-                        className="w-full bg-muted p-3 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-white transition-all" />
+                        className="w-full bg-muted p-3 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-card transition-all" />
                       <input type="tel" placeholder="Phone (optional)" value={phone} onChange={e => setPhone(e.target.value)}
-                        className="w-full bg-muted p-3 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-white transition-all" />
+                        className="w-full bg-muted p-3 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-card transition-all" />
                     </div>
                   </div>
 
                   <div>
                     <label className="block text-sm font-bold text-foreground mb-2">Reason for Meeting (optional)</label>
                     <textarea placeholder="Briefly describe what you'd like to discuss..." value={reason} onChange={e => setReason(e.target.value)} rows={2}
-                      className="w-full bg-muted p-3 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-white transition-all resize-none" />
+                      className="w-full bg-muted p-3 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-card transition-all resize-none" />
                   </div>
 
                   <button onClick={handleSubmit} disabled={submitting || !selectedDate || !selectedTime}

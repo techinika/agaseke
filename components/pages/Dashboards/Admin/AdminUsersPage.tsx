@@ -274,7 +274,7 @@ export default function AdminUsersPage() {
         <div className="bg-card rounded-xl border border-border overflow-hidden">
           {filteredUsers.length === 0 ? (
             <div className="text-center py-20">
-              <Users size={48} className="mx-auto text-slate-200 mb-4" />
+              <Users size={48} className="mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground font-medium">No users found</p>
               <p className="text-muted-foreground text-sm mt-1">
                 {searchTerm || typeFilter !== "all"
@@ -308,7 +308,7 @@ export default function AdminUsersPage() {
                   {filteredUsers.map((user) => (
                     <tr
                       key={user.id}
-                      className="border-b border-slate-50 hover:bg-muted transition"
+                      className="border-b border-border hover:bg-muted transition"
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -477,7 +477,7 @@ export default function AdminUsersPage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setVerifyingUser(null)}
-                  className="flex-1 py-3 bg-muted text-foreground rounded-lg font-bold text-sm hover:bg-slate-200 transition"
+                  className="flex-1 py-3 bg-muted text-foreground rounded-lg font-bold text-sm hover:bg-border-strong transition"
                 >
                   Cancel
                 </button>
@@ -602,7 +602,7 @@ export default function AdminUsersPage() {
                       href={`/${selectedUser.username || selectedUser.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 py-3 bg-foreground text-white rounded-lg font-bold text-sm hover:bg-slate-800 transition text-center"
+                      className="flex-1 py-3 bg-foreground text-white rounded-lg font-bold text-sm hover:bg-card transition text-center"
                     >
                       View Profile
                     </a>

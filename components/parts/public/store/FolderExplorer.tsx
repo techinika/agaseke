@@ -33,14 +33,14 @@ export function FolderExplorer({
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={onBack}
-          className="p-2 hover:bg-slate-100 rounded-lg transition"
+          className="p-2 hover:bg-card-hover rounded-lg transition"
         >
           <ChevronRight size={20} className="rotate-180" />
         </button>
         <div>
           <h2 className="text-xl font-bold">{folder.name}</h2>
           {folder.description && (
-            <p className="text-sm text-slate-500">{folder.description}</p>
+            <p className="text-sm text-muted-foreground">{folder.description}</p>
           )}
         </div>
       </div>
@@ -49,11 +49,11 @@ export function FolderExplorer({
         <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 mb-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-lg font-bold text-slate-900">
+              <p className="text-lg font-bold text-foreground">
                 Bundle Total: {folderTotal.toLocaleString()} RWF
               </p>
               {folderPlatformFee > 0 && (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   + Platform fee: {folderPlatformFee.toLocaleString()} RWF
                 </p>
               )}
@@ -81,9 +81,9 @@ export function FolderExplorer({
       )}
 
       {products.length === 0 ? (
-        <div className="text-center py-20 bg-white border border-slate-100 rounded-3xl">
-          <Package size={48} className="mx-auto text-slate-200 mb-4" />
-          <p className="text-slate-500 font-medium">
+        <div className="text-center py-20 bg-card border border-border rounded-3xl">
+          <Package size={48} className="mx-auto text-border-strong mb-4" />
+          <p className="text-muted-foreground font-medium">
             No products in this bundle
           </p>
         </div>

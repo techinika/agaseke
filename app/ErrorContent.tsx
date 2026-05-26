@@ -101,21 +101,21 @@ const ErrorContent = ({ error, reset }: ErrorContentProps) => {
           <div className="flex flex-wrap gap-4 justify-center">
             <button
               onClick={() => reset()}
-              className="flex items-center justify-center gap-3 bg-foreground text-white px-8 py-4 rounded-lg font-bold transition-all hover:bg-red-600 active:scale-95 shadow-xl shadow-slate-200"
+              className="flex items-center justify-center gap-3 bg-foreground text-white px-8 py-4 rounded-lg font-bold transition-all hover:bg-red-600 active:scale-95 shadow-xl shadow-border-strong"
             >
               <Loader size={18} /> Try Again
             </button>
 
             <Link
               href="/"
-className="flex items-center justify-center gap-3 bg-card border border-border text-muted-foreground px-8 py-4 rounded-lg font-bold transition-all hover:border-slate-900 hover:text-foreground active:scale-95"
+className="flex items-center justify-center gap-3 bg-card border border-border text-muted-foreground px-8 py-4 rounded-lg font-bold transition-all hover:border-foreground hover:text-foreground active:scale-95"
               >
                 <Home size={18} /> Go To Home
             </Link>
 
             <button
               onClick={() => router.refresh()}
-className="flex items-center justify-center gap-3 bg-card border border-border text-muted-foreground px-8 py-4 rounded-lg font-bold transition-all hover:border-slate-900 hover:text-foreground active:scale-95"
+className="flex items-center justify-center gap-3 bg-card border border-border text-muted-foreground px-8 py-4 rounded-lg font-bold transition-all hover:border-foreground hover:text-foreground active:scale-95"
               >
                 <ArrowLeft size={18} /> Refresh Page
             </button>

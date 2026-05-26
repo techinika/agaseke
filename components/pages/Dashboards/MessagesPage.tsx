@@ -227,7 +227,7 @@ export default function MessagesPage() {
         <div className="flex-1 overflow-y-auto px-3 space-y-1">
           {filteredChatrooms.length === 0 ? (
             <div className="text-center py-12 px-4">
-              <MessageSquare size={40} className="mx-auto text-slate-200 mb-4" />
+              <MessageSquare size={40} className="mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground font-medium">
                 {searchQuery ? "No conversations found" : "No messages yet"}
               </p>
@@ -296,7 +296,7 @@ export default function MessagesPage() {
       <main className="flex-1 flex flex-col bg-card">
         {selectedChatroom ? (
           <>
-            <header className="p-4 md:p-6 border-b border-slate-50 flex justify-between items-center bg-gradient-to-r from-slate-50 to-orange-50">
+            <header className="p-4 md:p-6 border-b border-border flex justify-between items-center bg-gradient-to-r from-muted to-orange-50">
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => setSelectedChatId(null)}
@@ -405,7 +405,7 @@ export default function MessagesPage() {
               )}
             </div>
 
-            <footer className="p-4 md:p-6 bg-card border-t border-slate-50">
+            <footer className="p-4 md:p-6 bg-card border-t border-border">
               <div className="flex items-center gap-3 bg-muted p-2 pl-4 rounded-2xl">
                 <input
                   type="text"

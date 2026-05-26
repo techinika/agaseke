@@ -74,12 +74,12 @@ export default function CreateOrderModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-      <div className="bg-white w-full max-w-lg rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-slate-100">
+      <div className="bg-card w-full max-w-lg rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-border">
           <h2 className="text-xl font-bold">Create Order</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-full"
+            className="p-2 hover:bg-card-hover rounded-full"
           >
             <X size={20} />
           </button>
@@ -87,7 +87,7 @@ export default function CreateOrderModal({
 
         <div className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">
+            <label className="block text-sm font-bold text-foreground mb-2">
               Customer Name *
             </label>
             <input
@@ -97,12 +97,12 @@ export default function CreateOrderModal({
                 setFormData({ ...formData, customerName: e.target.value })
               }
               placeholder="Customer name"
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3"
+              className="w-full bg-muted border border-border-strong rounded-lg px-4 py-3"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">
+            <label className="block text-sm font-bold text-foreground mb-2">
               Customer Email *
             </label>
             <input
@@ -112,12 +112,12 @@ export default function CreateOrderModal({
                 setFormData({ ...formData, customerEmail: e.target.value })
               }
               placeholder="customer@example.com"
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3"
+              className="w-full bg-muted border border-border-strong rounded-lg px-4 py-3"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">
+            <label className="block text-sm font-bold text-foreground mb-2">
               Add Products *
             </label>
             <select
@@ -125,7 +125,7 @@ export default function CreateOrderModal({
                 if (e.target.value) addProduct(e.target.value);
                 e.target.value = "";
               }}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3"
+              className="w-full bg-muted border border-border-strong rounded-lg px-4 py-3"
             >
               <option value="">Select a product to add</option>
               {products.map((product) => (
@@ -138,7 +138,7 @@ export default function CreateOrderModal({
 
           {formData.productIds.length > 0 && (
             <div className="space-y-2">
-              <label className="block text-sm font-bold text-slate-700">
+              <label className="block text-sm font-bold text-foreground">
                 Order Items
               </label>
               {formData.productIds.map((item) => {
@@ -146,11 +146,11 @@ export default function CreateOrderModal({
                 return (
                   <div
                     key={item.productId}
-                    className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg"
+                    className="flex items-center gap-3 p-3 bg-muted rounded-lg"
                   >
                     <div className="flex-1">
                       <p className="font-medium">{product?.name}</p>
-                      <p className="text-sm text-slate-500">
+                      <p className="text-sm text-muted-foreground">
                         {product?.price.toLocaleString()} RWF each
                       </p>
                     </div>
@@ -161,7 +161,7 @@ export default function CreateOrderModal({
                       onChange={(e) =>
                         updateQuantity(item.productId, parseInt(e.target.value))
                       }
-                      className="w-16 bg-white border border-slate-200 rounded-lg px-2 py-1 text-center"
+                      className="w-16 bg-card border border-border-strong rounded-lg px-2 py-1 text-center"
                     />
                     <p className="font-bold w-24 text-right">
                       {(item.price * item.quantity).toLocaleString()} RWF
@@ -188,7 +188,7 @@ export default function CreateOrderModal({
           )}
 
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">
+            <label className="block text-sm font-bold text-foreground mb-2">
               Notes
             </label>
             <textarea
@@ -197,12 +197,12 @@ export default function CreateOrderModal({
                 setFormData({ ...formData, notes: e.target.value })
               }
               placeholder="Order notes..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 h-20"
+              className="w-full bg-muted border border-border-strong rounded-lg px-4 py-3 h-20"
             />
           </div>
         </div>
 
-        <div className="p-6 border-t border-slate-100">
+        <div className="p-6 border-t border-border">
           <button
             onClick={handleSubmit}
             disabled={

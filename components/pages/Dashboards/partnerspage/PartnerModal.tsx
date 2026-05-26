@@ -120,14 +120,14 @@ export default function PartnerModal({
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-      <div className="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+      <div className="bg-card w-full max-w-md rounded-2xl overflow-hidden shadow-2xl">
+        <div className="p-6 border-b border-border flex justify-between items-center">
           <h2 className="text-xl font-bold uppercase tracking-tight">
             {partner ? "Edit Partner" : "Add Partner"}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-full"
+            className="p-2 hover:bg-card-hover rounded-full"
           >
             <X size={20} />
           </button>
@@ -136,7 +136,7 @@ export default function PartnerModal({
         <div className="p-6 space-y-6">
           <div className="flex justify-center">
             <div className="relative">
-              <div className="w-24 h-24 bg-slate-100 rounded-lg overflow-hidden border-2 border-dashed border-slate-200">
+              <div className="w-24 h-24 bg-border rounded-lg overflow-hidden border-2 border-dashed border-border-strong">
                 {formData.logo ? (
                   <img
                     src={formData.logo}
@@ -163,7 +163,7 @@ export default function PartnerModal({
           </div>
 
           <div>
-            <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+            <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
               Partner Name *
             </label>
             <input
@@ -172,13 +172,13 @@ export default function PartnerModal({
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, name: e.target.value }))
               }
-              className="w-full bg-slate-50 p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
+              className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
               placeholder="e.g., Gym Master Rwanda"
             />
           </div>
 
           <div>
-            <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+            <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
               Website
             </label>
             <input
@@ -187,13 +187,13 @@ export default function PartnerModal({
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, website: e.target.value }))
               }
-              className="w-full bg-slate-50 p-4 rounded-lg text-sm font-medium outline-none focus:ring-2 focus:ring-orange-100"
+              className="w-full bg-muted p-4 rounded-lg text-sm font-medium outline-none focus:ring-2 focus:ring-orange-100"
               placeholder="https://example.com"
             />
           </div>
 
           <div>
-            <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+            <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
               Description
             </label>
             <textarea
@@ -204,7 +204,7 @@ export default function PartnerModal({
                   description: e.target.value,
                 }))
               }
-              className="w-full bg-slate-50 p-4 rounded-lg text-sm outline-none resize-none h-24 focus:ring-2 focus:ring-orange-100"
+              className="w-full bg-muted p-4 rounded-lg text-sm outline-none resize-none h-24 focus:ring-2 focus:ring-orange-100"
               placeholder="Brief description of the partnership..."
             />
           </div>
@@ -215,11 +215,11 @@ export default function PartnerModal({
                 setFormData((prev) => ({ ...prev, featured: !prev.featured }))
               }
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                formData.featured ? "bg-orange-500" : "bg-slate-200"
+                formData.featured ? "bg-orange-500" : "bg-border-strong"
               }`}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                className={`inline-block h-4 w-4 transform rounded-full bg-card shadow-sm transition-transform ${
                   formData.featured ? "translate-x-6" : "translate-x-1"
                 }`}
               />
@@ -228,7 +228,7 @@ export default function PartnerModal({
           </label>
         </div>
 
-        <div className="p-6 border-t border-slate-100">
+        <div className="p-6 border-t border-border">
           <button
             onClick={handleSubmit}
             disabled={saving}

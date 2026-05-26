@@ -82,7 +82,7 @@ export function ProductCard({
             </span>
           )}
           {isOutOfStock && (
-            <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+            <div className="absolute inset-0 bg-card/80 flex items-center justify-center">
               <span className="bg-red-100 text-red-600 px-3 py-1 rounded-full text-xs font-bold">Out of Stock</span>
             </div>
           )}
@@ -105,7 +105,7 @@ export function ProductCard({
             </span>
           )}
           {isOutOfStock && (
-            <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+            <div className="absolute inset-0 bg-card/80 flex items-center justify-center">
               <span className="bg-red-100 text-red-600 px-3 py-1 rounded-full text-xs font-bold">Out of Stock</span>
             </div>
           )}

@@ -15,13 +15,13 @@ export function MessageBubble({
         className={`max-w-[80%] px-4 py-3 rounded-2xl ${
           isOwn
             ? "bg-orange-500 text-white rounded-br-md"
-            : "bg-white border border-slate-100 text-slate-800 rounded-bl-md shadow-sm"
+            : "bg-card border border-border text-foreground rounded-bl-md shadow-sm"
         }`}
       >
         <p className="text-sm whitespace-pre-wrap">{message.content}</p>
         <p
           className={`text-[10px] mt-1 ${
-            isOwn ? "text-orange-100" : "text-slate-400"
+            isOwn ? "text-orange-100" : "text-muted-foreground"
           }`}
         >
           {message.createdAt?.toDate?.().toLocaleTimeString([], {

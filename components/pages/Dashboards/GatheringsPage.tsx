@@ -370,7 +370,7 @@ export default function GatheringsPage() {
               <Loader className="animate-spin mx-auto text-muted-foreground" />
             ) : events.length === 0 ? (
               <div className="text-center py-12 bg-card rounded-lg border border-border">
-                <Calendar className="mx-auto text-slate-200 mb-4" size={40} />
+                <Calendar className="mx-auto text-muted-foreground mb-4" size={40} />
                 <p className="text-muted-foreground font-medium">No events yet</p>
                 <p className="text-sm text-muted-foreground mt-2">
                   Create your first event to get started
@@ -411,7 +411,7 @@ export default function GatheringsPage() {
                         className={`text-[10px] font-bold px-2 py-1 rounded-lg uppercase transition ${
                           event.status === "Upcoming"
                             ? "bg-green-50 text-green-600 hover:bg-green-100"
-                            : "bg-slate-200 text-muted-foreground hover:bg-slate-300"
+                            : "bg-border-strong text-muted-foreground hover:bg-muted"
                         }`}
                         title={
                           event.status === "Upcoming"
@@ -428,7 +428,7 @@ export default function GatheringsPage() {
                     <MapPin size={14} className="text-muted-foreground" />{" "}
                     {event.location}
                   </p>
-                  <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+                  <div className="flex items-center justify-between pt-4 border-t border-border">
                     <div className="text-xs font-bold text-muted-foreground">
                       {event.attendeesCount || 0} RSVPs
                     </div>
@@ -493,7 +493,7 @@ export default function GatheringsPage() {
                       ? `Min. Support: ${activeEvent.minSupportTier} RWF`
                       : "Open to Everyone"}
                   </h2>
-                  <div className="mt-4 pt-4 border-t border-slate-700 flex items-center justify-between">
+                  <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
                     <div className="text-sm">
                       <span className="text-green-400 font-bold">
                         {attendees.length}
@@ -631,7 +631,7 @@ export default function GatheringsPage() {
                   type="text"
                   placeholder="Gathering Title"
                   value={formData.title}
-                  className="w-full text-xl font-bold outline-none border-b-2 border-slate-50 pb-2 focus:border-orange-500 transition placeholder:text-slate-200"
+                  className="w-full text-xl font-bold outline-none border-b-2 border-border pb-2 focus:border-orange-500 transition placeholder:text-muted-foreground"
                   onChange={(e) =>
                     setFormData({ ...formData, title: e.target.value })
                   }
@@ -640,7 +640,7 @@ export default function GatheringsPage() {
                   type="text"
                   placeholder="Location (Physical or Digital link)"
                   value={formData.location}
-                  className="w-full text-sm font-bold outline-none border-b border-slate-50 pb-2 focus:border-orange-500 transition"
+                  className="w-full text-sm font-bold outline-none border-b border-border pb-2 focus:border-orange-500 transition"
                   onChange={(e) =>
                     setFormData({ ...formData, location: e.target.value })
                   }
@@ -721,7 +721,7 @@ export default function GatheringsPage() {
                       setFormData({ ...formData, active: !formData.active })
                     }
                     className={`w-12 h-6 rounded-full transition-colors ${
-                      formData.active ? "bg-green-500" : "bg-slate-300"
+                      formData.active ? "bg-green-500" : "bg-muted"
                     }`}
                   >
                     <div
@@ -809,7 +809,7 @@ export default function GatheringsPage() {
               <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-3">
                 {filteredAttendees.length === 0 ? (
                   <div className="text-center py-12">
-                    <Users size={40} className="mx-auto text-slate-200 mb-4" />
+                    <Users size={40} className="mx-auto text-muted-foreground mb-4" />
                     <p className="text-muted-foreground font-medium">
                       {searchQuery ? "No matching attendees" : "No RSVPs yet"}
                     </p>

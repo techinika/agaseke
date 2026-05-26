@@ -13,10 +13,10 @@ export default function ProductsList({
 }) {
   if (products.length === 0) {
     return (
-      <div className="text-center py-20 bg-white rounded-lg border border-slate-100">
+      <div className="text-center py-20 bg-card rounded-lg border border-border">
         <Package size={48} className="mx-auto text-slate-200 mb-4" />
-        <p className="text-slate-500 font-medium">No products yet</p>
-        <p className="text-slate-400 text-sm mt-2">
+        <p className="text-muted-foreground font-medium">No products yet</p>
+        <p className="text-muted-foreground text-sm mt-2">
           Add your first product to start selling
         </p>
       </div>
@@ -28,9 +28,9 @@ export default function ProductsList({
       {products.map((product) => (
         <div
           key={product.id}
-          className="bg-white rounded-lg border border-slate-100 overflow-hidden shadow-sm"
+          className="bg-card rounded-lg border border-border overflow-hidden shadow-sm"
         >
-          <div className="aspect-square bg-slate-50 relative">
+          <div className="aspect-square bg-muted relative">
             {product.imageUrl ? (
               <img
                 src={product.imageUrl}
@@ -52,14 +52,14 @@ export default function ProductsList({
               {product.type === "digital" ? "Digital" : "Physical"}
             </span>
             {!product.active && (
-              <span className="absolute top-2 right-2 text-[10px] font-bold px-2 py-1 rounded-full bg-slate-100 text-slate-500">
+              <span className="absolute top-2 right-2 text-[10px] font-bold px-2 py-1 rounded-full bg-border text-muted-foreground">
                 Inactive
               </span>
             )}
           </div>
           <div className="p-4">
             <h4 className="font-bold text-lg truncate">{product.name}</h4>
-            <p className="text-sm text-slate-500 truncate mt-1">
+            <p className="text-sm text-muted-foreground truncate mt-1">
               {product.description}
             </p>
             <div className="flex items-center justify-between mt-4">
@@ -67,7 +67,7 @@ export default function ProductsList({
                 {product.price.toLocaleString()} RWF
               </span>
               {product.type === "physical" && (
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-muted-foreground">
                   {product.stock} in stock
                 </span>
               )}
@@ -75,7 +75,7 @@ export default function ProductsList({
             <div className="flex gap-2 mt-4">
               <button
                 onClick={() => onEdit(product)}
-                className="flex-1 py-2 text-xs font-bold border border-slate-200 rounded-lg hover:bg-slate-50 transition"
+                className="flex-1 py-2 text-xs font-bold border border-border-strong rounded-lg hover:bg-muted transition"
               >
                 <Edit size={14} className="inline mr-1" /> Edit
               </button>

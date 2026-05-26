@@ -47,14 +47,14 @@ export default function CouponModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-      <div className="bg-white w-full max-w-lg rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-slate-100">
+      <div className="bg-card w-full max-w-lg rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-border">
           <h2 className="text-xl font-bold">
             {coupon ? "Edit Coupon" : "Create Coupon"}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-full"
+            className="p-2 hover:bg-card-hover rounded-full"
           >
             <X size={20} />
           </button>
@@ -62,7 +62,7 @@ export default function CouponModal({
 
         <div className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">
+            <label className="block text-sm font-bold text-foreground mb-2">
               Coupon Code *
             </label>
             <input
@@ -72,13 +72,13 @@ export default function CouponModal({
                 setFormData({ ...formData, code: e.target.value.toUpperCase() })
               }
               placeholder="e.g., SUMMER20"
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 font-bold"
+              className="w-full bg-muted border border-border-strong rounded-lg px-4 py-3 font-bold"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">
+              <label className="block text-sm font-bold text-foreground mb-2">
                 Discount Type
               </label>
               <select
@@ -89,14 +89,14 @@ export default function CouponModal({
                     discountType: e.target.value as any,
                   })
                 }
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3"
+                className="w-full bg-muted border border-border-strong rounded-lg px-4 py-3"
               >
                 <option value="percentage">Percentage</option>
                 <option value="fixed">Fixed Amount</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">
+              <label className="block text-sm font-bold text-foreground mb-2">
                 Discount Value *
               </label>
               <input
@@ -108,14 +108,14 @@ export default function CouponModal({
                     discountValue: parseInt(e.target.value) || 0,
                   })
                 }
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3"
+                className="w-full bg-muted border border-border-strong rounded-lg px-4 py-3"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">
+              <label className="block text-sm font-bold text-foreground mb-2">
                 Min. Purchase (RWF)
               </label>
               <input
@@ -128,11 +128,11 @@ export default function CouponModal({
                   })
                 }
                 placeholder="0 for no minimum"
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3"
+                className="w-full bg-muted border border-border-strong rounded-lg px-4 py-3"
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">
+              <label className="block text-sm font-bold text-foreground mb-2">
                 Max Uses
               </label>
               <input
@@ -145,23 +145,23 @@ export default function CouponModal({
                   })
                 }
                 placeholder="Empty for unlimited"
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3"
+                className="w-full bg-muted border border-border-strong rounded-lg px-4 py-3"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2">
+            <label className="block text-sm font-bold text-foreground mb-2">
               Apply to Products (optional)
             </label>
-            <p className="text-xs text-slate-500 mb-2">
+            <p className="text-xs text-muted-foreground mb-2">
               Leave empty to apply to all products
             </p>
-            <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-lg">
+            <div className="max-h-40 overflow-y-auto border border-border-strong rounded-lg">
               {products.map((product) => (
                 <label
                   key={product.id}
-                  className="flex items-center gap-3 p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0"
+                  className="flex items-center gap-3 p-3 hover:bg-muted cursor-pointer border-b border-border last:border-0"
                 >
                   <input
                     type="checkbox"
@@ -170,7 +170,7 @@ export default function CouponModal({
                     className="w-4 h-4"
                   />
                   <span className="font-medium">{product.name}</span>
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-muted-foreground">
                     {product.price.toLocaleString()} RWF
                   </span>
                 </label>
@@ -178,10 +178,10 @@ export default function CouponModal({
             </div>
           </div>
 
-          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+          <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
             <div>
               <p className="font-bold">Active</p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Customers can use this coupon
               </p>
             </div>
@@ -195,7 +195,7 @@ export default function CouponModal({
               }`}
             >
               <div
-                className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
+                className={`w-5 h-5 bg-card rounded-full shadow transition-transform ${
                   formData.active ? "translate-x-6" : "translate-x-0.5"
                 }`}
               />
@@ -203,7 +203,7 @@ export default function CouponModal({
           </div>
         </div>
 
-        <div className="p-6 border-t border-slate-100">
+        <div className="p-6 border-t border-border">
           <button
             onClick={handleSubmit}
             disabled={saving || !formData.code || !formData.discountValue}

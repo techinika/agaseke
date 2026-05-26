@@ -35,7 +35,7 @@ export function FolderCard({
   return (
     <div
       onClick={onEnter}
-      className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all cursor-pointer group"
+      className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all cursor-pointer group"
     >
       <div className="aspect-square bg-gradient-to-br from-orange-50 to-amber-50 relative flex items-center justify-center">
         {folder.imageUrl ? (
@@ -64,7 +64,7 @@ export function FolderCard({
       <div className="p-4">
         <h3 className="font-bold text-lg truncate">{folder.name}</h3>
         {folder.description && (
-          <p className="text-sm text-slate-500 line-clamp-2 mt-1">
+          <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
             {folder.description}
           </p>
         )}
@@ -74,9 +74,9 @@ export function FolderCard({
               key={p.id}
               className="flex items-center justify-between text-xs"
             >
-              <span className="text-slate-600 truncate flex-1">{p.name}</span>
+              <span className="text-muted-foreground truncate flex-1">{p.name}</span>
               <span
-                className={`font-medium ml-2 ${purchasedProductIds.has(p.id) ? "text-green-500" : "text-slate-900"}`}
+                className={`font-medium ml-2 ${purchasedProductIds.has(p.id) ? "text-green-500" : "text-foreground"}`}
               >
                 {purchasedProductIds.has(p.id)
                   ? "Owned"
@@ -85,7 +85,7 @@ export function FolderCard({
             </div>
           ))}
           {folderProducts.length > 3 && (
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-muted-foreground">
               +{folderProducts.length - 3} more items
             </p>
           )}
@@ -93,7 +93,7 @@ export function FolderCard({
         {unpurchased.length > 0 && (
           <div className="mt-4 flex items-center justify-between">
             <div>
-              <p className="text-lg font-bold text-slate-900">
+              <p className="text-lg font-bold text-foreground">
                 {discountedPrice.toLocaleString()} RWF
               </p>
               {folder.discountEnabled && (

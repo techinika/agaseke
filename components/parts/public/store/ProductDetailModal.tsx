@@ -56,10 +56,10 @@ export function ProductDetailModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-      <div className="bg-white w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95">
+    <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+      <div className="bg-card w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95">
         <div className="md:flex">
-          <div className="md:w-1/2 bg-slate-50 aspect-square">
+          <div className="md:w-1/2 bg-muted aspect-square">
             {product.imageUrl ? (
               <img
                 src={product.imageUrl}
@@ -68,7 +68,7 @@ export function ProductDetailModal({
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <Package size={64} className="text-slate-200" />
+                <Package size={64} className="text-border-strong" />
               </div>
             )}
           </div>
@@ -93,21 +93,21 @@ export function ProductDetailModal({
               )}
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-slate-100 rounded-full transition"
+                className="p-2 hover:bg-card-hover rounded-full transition"
               >
                 <X size={20} />
               </button>
             </div>
 
             <h2 className="text-2xl font-bold">{product.name}</h2>
-            <p className="text-slate-600">{product.description}</p>
+            <p className="text-muted-foreground">{product.description}</p>
 
             <div>
               <div className="text-3xl font-bold">
                 {product.price.toLocaleString()} RWF
               </div>
               {product.platformFeePayer === "buyer" && (
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   {priceWithFee.toLocaleString()} RWF with platform fee
                 </p>
               )}
@@ -143,7 +143,7 @@ export function ProductDetailModal({
                       className={`px-4 py-2 font-bold rounded-lg transition ${
                         selectedSize === size
                           ? "bg-orange-500 text-white"
-                          : "bg-slate-100 hover:bg-slate-200"
+                          : "bg-muted hover:bg-border-strong"
                       }`}
                     >
                       {size}
@@ -173,17 +173,17 @@ export function ProductDetailModal({
               </div>
             ) : (
               <div className="flex items-center gap-4">
-                <div className="flex items-center bg-slate-100 rounded-lg">
+                <div className="flex items-center bg-muted rounded-lg">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="p-3 hover:bg-slate-200 rounded-l-lg transition"
+                    className="p-3 hover:bg-border-strong rounded-l-lg transition"
                   >
                     <Minus size={16} />
                   </button>
                   <span className="w-12 text-center font-bold">{quantity}</span>
                   <button
                     onClick={() => setQuantity(quantity + 1)}
-                    className="p-3 hover:bg-slate-200 rounded-r-lg transition"
+                    className="p-3 hover:bg-border-strong rounded-r-lg transition"
                   >
                     <Plus size={16} />
                   </button>

@@ -13,10 +13,10 @@ export default function CouponsList({
 }) {
   if (coupons.length === 0) {
     return (
-      <div className="text-center py-20 bg-white rounded-lg border border-slate-100">
+      <div className="text-center py-20 bg-card rounded-lg border border-border">
         <Tag size={48} className="mx-auto text-slate-200 mb-4" />
-        <p className="text-slate-500 font-medium">No coupons yet</p>
-        <p className="text-slate-400 text-sm mt-2">
+        <p className="text-muted-foreground font-medium">No coupons yet</p>
+        <p className="text-muted-foreground text-sm mt-2">
           Create discount coupons for your customers
         </p>
       </div>
@@ -28,7 +28,7 @@ export default function CouponsList({
       {coupons.map((coupon) => (
         <div
           key={coupon.id}
-          className="bg-white rounded-lg border border-slate-100 p-6"
+          className="bg-card rounded-lg border border-border p-6"
         >
           <div className="flex items-start justify-between mb-4">
             <div className="bg-orange-100 text-orange-600 px-3 py-1 rounded-lg font-bold text-lg">
@@ -38,30 +38,30 @@ export default function CouponsList({
               className={`text-[10px] font-bold px-2 py-1 rounded-full ${
                 coupon.active
                   ? "bg-green-100 text-green-600"
-                  : "bg-slate-100 text-slate-500"
+                  : "bg-border text-muted-foreground"
               }`}
             >
               {coupon.active ? "ACTIVE" : "INACTIVE"}
             </span>
           </div>
-          <p className="text-2xl font-bold text-slate-900 mb-2">
+          <p className="text-2xl font-bold text-foreground mb-2">
             {coupon.discountType === "percentage"
               ? `${coupon.discountValue}% OFF`
               : `${coupon.discountValue.toLocaleString()} RWF OFF`}
           </p>
           {coupon.minPurchase && (
-            <p className="text-xs text-slate-500 mb-2">
+            <p className="text-xs text-muted-foreground mb-2">
               Min. purchase: {coupon.minPurchase.toLocaleString()} RWF
             </p>
           )}
-          <p className="text-xs text-slate-400 mb-4">
+          <p className="text-xs text-muted-foreground mb-4">
             Used {coupon.usedCount} times
             {coupon.maxUses ? ` / ${coupon.maxUses}` : ""}
           </p>
           <div className="flex gap-2">
             <button
               onClick={() => onEdit(coupon)}
-              className="flex-1 py-2 text-xs font-bold border border-slate-200 text-slate-500 rounded-lg hover:bg-slate-50 transition"
+              className="flex-1 py-2 text-xs font-bold border border-border-strong text-muted-foreground rounded-lg hover:bg-muted transition"
             >
               <Edit size={14} className="inline mr-1" /> Edit
             </button>

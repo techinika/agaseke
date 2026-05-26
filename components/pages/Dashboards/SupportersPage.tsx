@@ -306,7 +306,7 @@ export default function SupportersPage() {
 
         {filteredSupporters.length === 0 ? (
           <div className="text-center py-20 bg-card rounded-lg border border-border">
-            <Users size={48} className="mx-auto text-slate-200 mb-4" />
+            <Users size={48} className="mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground font-medium">
               {searchTerm || filterAmount !== "all"
                 ? "No supporters match your filters"
@@ -345,7 +345,7 @@ export default function SupportersPage() {
                   {filteredSupporters.map((supporter, index) => (
                     <tr
                       key={supporter.supporterId}
-                      className={`border-b border-slate-50 last:border-0 hover:bg-muted ${
+                      className={`border-b border-border last:border-0 hover:bg-muted ${
                         index % 2 === 0 ? "bg-card" : "bg-slate-25"
                       }`}
                     >

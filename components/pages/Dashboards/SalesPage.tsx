@@ -365,7 +365,7 @@ export default function SalesPage() {
           <div className="overflow-x-auto">
             {filteredSales.length === 0 ? (
               <div className="text-center py-12">
-                <Package className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">No sales found</p>
               </div>
             ) : (
@@ -509,7 +509,7 @@ export default function SalesPage() {
 
           {topProducts.length === 0 ? (
             <div className="text-center py-12">
-              <Package className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+              <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">No product sales yet</p>
             </div>
           ) : (
@@ -528,7 +528,7 @@ export default function SalesPage() {
                           className="w-12 h-12 rounded-xl object-cover"
                         />
                       ) : (
-                        <div className="w-12 h-12 rounded-xl bg-slate-200 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-xl bg-border-strong flex items-center justify-center">
                           <Package className="w-6 h-6 text-muted-foreground" />
                         </div>
                       )}
@@ -537,7 +537,7 @@ export default function SalesPage() {
                           index === 0
                             ? "bg-orange-500 text-white"
                             : index === 1
-                              ? "bg-slate-400 text-white"
+                              ? "bg-muted text-white"
                               : "bg-amber-500 text-white"
                         }`}
                       >

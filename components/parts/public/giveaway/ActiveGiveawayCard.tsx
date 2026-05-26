@@ -38,7 +38,7 @@ export function ActiveGiveawayCard({
       <div className="bg-gradient-to-r from-orange-600 to-amber-600 p-6 text-white">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold">
+            <span className="bg-card/20 px-3 py-1 rounded-full text-xs font-bold">
               {giveaway.type === "random" ? "Lucky Draw" : "Challenge"}
             </span>
             <span className="bg-green-500/80 px-2 py-1 rounded-full text-xs font-bold">
@@ -47,7 +47,7 @@ export function ActiveGiveawayCard({
           </div>
           <button
             onClick={onShare}
-            className="p-2 bg-white/20 rounded-full hover:bg-white/30 transition"
+            className="p-2 bg-card/20 rounded-full hover:bg-card/30 transition"
           >
             <Share2 size={18} />
           </button>
@@ -61,7 +61,7 @@ export function ActiveGiveawayCard({
             {giveaway.partners.map((partner: any) => (
               <div
                 key={partner.id}
-                className="flex items-center gap-1.5 bg-white/20 px-2 py-1 rounded-full"
+                className="flex items-center gap-1.5 bg-card/20 px-2 py-1 rounded-full"
               >
                 {partner.logo && (
                   <img

@@ -108,8 +108,8 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
         </div>
 
         <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
-          <div className={`p-8 ${isUpcoming ? "bg-gradient-to-r from-orange-500 to-amber-500" : "bg-slate-200"} text-white`}>
-            <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+          <div className={`p-8 ${isUpcoming ? "bg-gradient-to-r from-orange-500 to-amber-500" : "bg-border-strong"} text-white`}>
+            <span className="bg-card/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
               {isUpcoming ? "Upcoming" : "Past Event"}
             </span>
             <h1 className="text-3xl font-bold mt-4 mb-2">{gathering.title}</h1>

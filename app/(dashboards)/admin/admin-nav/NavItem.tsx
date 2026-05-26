@@ -14,7 +14,7 @@ export default function NavItem({ href, children }: { href: string; children: Re
       className={`text-xs font-black uppercase tracking-widest pb-4 -mb-4 whitespace-nowrap transition-colors ${
         isActive
           ? "text-orange-600 border-b-2 border-orange-600"
-          : "text-slate-400 hover:text-slate-900"
+          : "text-muted-foreground hover:text-foreground"
       }`}
     >
       {children}

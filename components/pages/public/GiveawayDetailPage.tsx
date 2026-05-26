@@ -130,17 +130,17 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
         <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
           <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-8 text-white">
             <div className="flex items-center justify-between mb-4">
-              <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+              <span className="bg-card/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
                 {isActive ? "Active" : "Ended"}
               </span>
-              <button onClick={shareGiveaway} className="bg-white/20 p-2 rounded-full hover:bg-white/30 transition">
+              <button onClick={shareGiveaway} className="bg-card/20 p-2 rounded-full hover:bg-white/30 transition">
                 <Share2 size={16} />
               </button>
             </div>
             <h1 className="text-3xl font-bold mb-2">{giveaway.title}</h1>
             <p className="text-white/80">{giveaway.description}</p>
             {isActive && (
-              <div className="flex items-center gap-2 mt-4 bg-white/15 px-4 py-2 rounded-lg inline-flex">
+              <div className="flex items-center gap-2 mt-4 bg-card/15 px-4 py-2 rounded-lg inline-flex">
                 <Clock size={16} />
                 <span className="text-sm font-bold">{daysLeft} days left</span>
               </div>

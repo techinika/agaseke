@@ -143,20 +143,20 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
             <div className="p-2 bg-orange-100 rounded-lg">
               <Share2 size={20} className="text-orange-600" />
             </div>
-            <h3 className="font-black text-slate-800 tracking-tight">
+            <h3 className="font-black text-foreground tracking-tight">
               Social Share Picture
             </h3>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
+            className="p-2 hover:bg-border-strong rounded-lg transition-colors"
           >
             <X size={20} />
           </button>
         </div>
 
         <div className="flex flex-col lg:flex-row">
-          <div className="lg:w-1/2 p-6 flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+          <div className="lg:w-1/2 p-6 flex items-center justify-center bg-gradient-to-br from-muted to-border">
             <div
               ref={cardRef}
               className="w-[320px] h-[420px] bg-card relative overflow-hidden border border-border shadow-2xl flex flex-col"
@@ -189,7 +189,7 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
               </div>
 
               <div className="flex justify-evenly items-center px-8 -mt-4 relative z-10">
-                <div className="w-20 h-20 bg-card p-1.5 rounded-lg shadow-xl border border-slate-50">
+                <div className="w-20 h-20 bg-card p-1.5 rounded-lg shadow-xl border border-border">
                   {safeProfileImage ? (
                     <img
                       src={safeProfileImage}
@@ -239,7 +239,7 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
               </div>
 
               <div
-                className="py-2 border-t border-slate-50 text-center"
+                className="py-2 border-t border-border text-center"
                 style={{ backgroundColor: lightVariant }}
               >
                 <span
@@ -315,7 +315,7 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
                     onClick={() => handleColorSelect(preset.color)}
                     className={`w-10 h-10 rounded-lg transition-all ${
                       accentColor === preset.color
-                        ? "ring-2 ring-offset-2 ring-slate-400 scale-110"
+                        ? "ring-2 ring-offset-2 ring-border-strong scale-110"
                         : "hover:scale-105"
                     }`}
                     style={{ backgroundColor: preset.color }}
@@ -347,13 +347,13 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
                   navigator.clipboard.writeText(shareUrl);
                   toast.success("Link copied!");
                 }}
-                className="bg-muted text-muted-foreground py-3 rounded-lg font-bold text-sm hover:bg-slate-200 transition-all border border-border"
+                className="bg-muted text-muted-foreground py-3 rounded-lg font-bold text-sm hover:bg-border-strong transition-all border border-border"
               >
                 Copy Link
               </button>
               <button
                 onClick={onClose}
-                className="bg-muted text-muted-foreground py-3 rounded-lg font-bold text-sm hover:bg-slate-200 transition-all border border-border"
+                className="bg-muted text-muted-foreground py-3 rounded-lg font-bold text-sm hover:bg-border-strong transition-all border border-border"
               >
                 Close
               </button>

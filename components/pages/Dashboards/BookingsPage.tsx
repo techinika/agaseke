@@ -441,7 +441,7 @@ export default function BookingsPage() {
                     className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${
                       availability.daysOfWeek.includes(index)
                         ? "bg-orange-500 text-white"
-                        : "bg-muted text-muted-foreground hover:bg-slate-200"
+                        : "bg-muted text-muted-foreground hover:bg-border-strong"
                     }`}
                   >
                     {day.slice(0, 3)}
@@ -460,7 +460,7 @@ export default function BookingsPage() {
                     className={`px-4 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 ${
                       availability.bookingType === type
                         ? "bg-orange-500 text-white"
-                        : "bg-muted text-muted-foreground hover:bg-slate-200"
+                        : "bg-muted text-muted-foreground hover:bg-border-strong"
                     }`}
                   >
                     {type === "online" && <Video size={16} />}

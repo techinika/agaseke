@@ -274,7 +274,7 @@ export default function CreatorSettings() {
                 <div className="p-6 bg-foreground rounded-lg text-white flex items-center justify-between shadow-xl">
                   <div className="flex items-center gap-4">
                     <div
-                      className={`p-3 rounded-lg ${creatorData?.verified ? "bg-green-500" : "bg-slate-700"}`}
+                      className={`p-3 rounded-lg ${creatorData?.verified ? "bg-green-500" : "bg-card"}`}
                     >
                       {creatorData?.verified ? (
                         <Check size={24} />
@@ -413,7 +413,7 @@ export default function CreatorSettings() {
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
                           creatorData?.storeEnabled
                             ? "bg-orange-500"
-                            : "bg-slate-200"
+                            : "bg-border-strong"
                         }`}
                         role="switch"
                         aria-checked={creatorData?.storeEnabled}
@@ -447,7 +447,7 @@ export default function CreatorSettings() {
                             className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
                               creatorData?.storePublic
                                 ? "bg-orange-500"
-                                : "bg-slate-200"
+                                : "bg-border-strong"
                             }`}
                             role="switch"
                             aria-checked={creatorData?.storePublic}
@@ -503,7 +503,7 @@ export default function CreatorSettings() {
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
                         creatorData?.giveawayEnabled
                           ? "bg-orange-500"
-                          : "bg-slate-200"
+                          : "bg-border-strong"
                       }`}
                       role="switch"
                       aria-checked={creatorData?.giveawayEnabled}
@@ -556,7 +556,7 @@ export default function CreatorSettings() {
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
                         creatorData?.bookingEnabled
                           ? "bg-orange-500"
-                          : "bg-slate-200"
+                          : "bg-border-strong"
                       }`}
                       role="switch"
                       aria-checked={creatorData?.bookingEnabled}
@@ -592,7 +592,7 @@ export default function CreatorSettings() {
                           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
                             creatorData?.bookingAccess === "supporters"
                               ? "bg-orange-500"
-                              : "bg-slate-200"
+                              : "bg-border-strong"
                           }`}
                           role="switch"
                           aria-checked={
@@ -643,7 +643,7 @@ export default function CreatorSettings() {
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
                         creatorData?.gatheringsEnabled
                           ? "bg-orange-500"
-                          : "bg-slate-200"
+                          : "bg-border-strong"
                       }`}
                       role="switch"
                       aria-checked={creatorData?.gatheringsEnabled}
@@ -694,7 +694,7 @@ export default function CreatorSettings() {
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
                       creatorData?.messagingEnabled
                         ? "bg-orange-500"
-                        : "bg-slate-200"
+                        : "bg-border-strong"
                     }`}
                     role="switch"
                     aria-checked={creatorData?.messagingEnabled}
@@ -731,7 +731,7 @@ export default function CreatorSettings() {
                           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
                             creatorData?.messagingAllowAll
                               ? "bg-orange-500"
-                              : "bg-slate-200"
+                              : "bg-border-strong"
                           }`}
                           role="switch"
                           aria-checked={creatorData?.messagingAllowAll}

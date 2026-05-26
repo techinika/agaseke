@@ -115,7 +115,7 @@ export default function DashboardLayout({
 
   return (
     // Changed "flex" to "block md:flex" to prevent the sidebar from taking space on mobile
-    <div className="min-h-screen bg-[#F9FAFB] block md:flex text-foreground overflow-x-hidden">
+    <div className="min-h-screen bg-muted block md:flex text-foreground overflow-x-hidden">
       {/* 1. Mobile Overlay */}
       {isSidebarOpen && (
         <div

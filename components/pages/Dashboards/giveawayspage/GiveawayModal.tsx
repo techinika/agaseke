@@ -243,14 +243,14 @@ export default function GiveawayModal({
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6 overflow-y-auto">
-      <div className="bg-white w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+      <div className="bg-card w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col">
+        <div className="p-6 border-b border-border flex justify-between items-center">
           <h2 className="text-2xl font-bold uppercase tracking-tighter">
             {giveaway ? "Edit Giveaway" : "New Giveaway"}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-full"
+            className="p-2 hover:bg-card-hover rounded-full"
           >
             <X size={20} />
           </button>
@@ -258,7 +258,7 @@ export default function GiveawayModal({
 
         <div className="p-6 space-y-6 overflow-y-auto flex-1">
           <div>
-            <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+            <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
               Title *
             </label>
             <input
@@ -267,13 +267,13 @@ export default function GiveawayModal({
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, title: e.target.value }))
               }
-              className="w-full bg-slate-50 p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
+              className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
               placeholder="Win a year's gym membership!"
             />
           </div>
 
           <div>
-            <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+            <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
               Description
             </label>
             <textarea
@@ -284,14 +284,14 @@ export default function GiveawayModal({
                   description: e.target.value,
                 }))
               }
-              className="w-full bg-slate-50 p-4 rounded-lg text-sm outline-none resize-none h-24"
+              className="w-full bg-muted p-4 rounded-lg text-sm outline-none resize-none h-24"
               placeholder="Tell people about this amazing opportunity..."
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+              <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
                 Type
               </label>
               <select
@@ -302,7 +302,7 @@ export default function GiveawayModal({
                     type: e.target.value as GiveawayType,
                   }))
                 }
-                className="w-full bg-slate-50 p-4 rounded-lg text-sm font-bold outline-none"
+                className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none"
               >
                 <option value="random">Random Draw</option>
                 <option value="challenge">Challenge Based</option>
@@ -310,7 +310,7 @@ export default function GiveawayModal({
             </div>
 
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+              <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
                 Access
               </label>
               <select
@@ -321,7 +321,7 @@ export default function GiveawayModal({
                     access: e.target.value as GiveawayAccess,
                   }))
                 }
-                className="w-full bg-slate-50 p-4 rounded-lg text-sm font-bold outline-none"
+                className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none"
               >
                 <option value="public">Public (Everyone)</option>
                 <option value="supporters">Supporters Only</option>
@@ -332,7 +332,7 @@ export default function GiveawayModal({
 
           {formData.access === "tier" && (
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+              <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
                 Minimum Support (RWF)
               </label>
               <input
@@ -344,7 +344,7 @@ export default function GiveawayModal({
                     minSupportAmount: parseInt(e.target.value) || 0,
                   }))
                 }
-                className="w-full bg-slate-50 p-4 rounded-lg text-sm font-bold outline-none"
+                className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none"
                 placeholder="5000"
               />
             </div>
@@ -352,7 +352,7 @@ export default function GiveawayModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+              <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
                 Max Winners
               </label>
               <input
@@ -364,13 +364,13 @@ export default function GiveawayModal({
                     maxWinners: parseInt(e.target.value) || 1,
                   }))
                 }
-                className="w-full bg-slate-50 p-4 rounded-lg text-sm font-bold outline-none"
+                className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none"
                 min={1}
               />
             </div>
 
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+              <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
                 Duration
               </label>
               <select
@@ -381,7 +381,7 @@ export default function GiveawayModal({
                     daysUntilEnd: parseInt(e.target.value),
                   }))
                 }
-                className="w-full bg-slate-50 p-4 rounded-lg text-sm font-bold outline-none"
+                className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none"
               >
                 <option value={1}>1 day</option>
                 <option value={3}>3 days</option>
@@ -394,7 +394,7 @@ export default function GiveawayModal({
 
           <div>
             <div className="flex justify-between items-center mb-3">
-              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+              <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
                 Rewards
               </label>
               <button
@@ -406,7 +406,7 @@ export default function GiveawayModal({
             </div>
             <div className="space-y-3">
               {formData.rewards.map((reward, idx) => (
-                <div key={idx} className="bg-slate-50 p-4 rounded-lg space-y-3">
+                <div key={idx} className="bg-muted p-4 rounded-lg space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-bold">Reward #{idx + 1}</span>
                     {formData.rewards.length > 1 && (
@@ -424,7 +424,7 @@ export default function GiveawayModal({
                       onChange={(e) =>
                         updateReward(idx, "type", e.target.value)
                       }
-                      className="bg-white p-3 rounded-lg text-sm outline-none"
+                      className="bg-card p-3 rounded-lg text-sm outline-none"
                     >
                       {rewardTypes.map((t) => (
                         <option key={t.value} value={t.value}>
@@ -442,7 +442,7 @@ export default function GiveawayModal({
                           parseInt(e.target.value) || 1,
                         )
                       }
-                      className="bg-white p-3 rounded-lg text-sm outline-none w-20"
+                      className="bg-card p-3 rounded-lg text-sm outline-none w-20"
                       placeholder="Qty"
                       min={1}
                     />
@@ -451,7 +451,7 @@ export default function GiveawayModal({
                     type="text"
                     value={reward.title}
                     onChange={(e) => updateReward(idx, "title", e.target.value)}
-                    className="w-full bg-white p-3 rounded-lg text-sm outline-none"
+                    className="w-full bg-card p-3 rounded-lg text-sm outline-none"
                     placeholder="Reward title (e.g., $100 Gift Card)"
                   />
                 </div>
@@ -461,7 +461,7 @@ export default function GiveawayModal({
 
           <div>
             <div className="flex justify-between items-center mb-3">
-              <label className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+              <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
                 Partners / Sponsors
               </label>
               <button
@@ -474,7 +474,7 @@ export default function GiveawayModal({
 
             {existingPartners.length > 0 && (
               <div className="mb-3">
-                <p className="text-xs text-slate-400 mb-2">
+                <p className="text-xs text-muted-foreground mb-2">
                   Select from your partners:
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -490,7 +490,7 @@ export default function GiveawayModal({
                         className={`flex items-center gap-2 px-3 py-2 rounded-full text-xs font-medium transition ${
                           isAdded
                             ? "bg-orange-100 text-orange-400 cursor-not-allowed"
-                            : "bg-slate-100 text-slate-600 hover:bg-orange-50 hover:text-orange-600"
+                            : "bg-border text-muted-foreground hover:bg-orange-50 hover:text-orange-600"
                         }`}
                       >
                         {partner.logo && (
@@ -538,7 +538,7 @@ export default function GiveawayModal({
             {showPartnerForm && (
               <form
                 onSubmit={addPartner}
-                className="bg-slate-50 p-4 rounded-lg space-y-3"
+                className="bg-muted p-4 rounded-lg space-y-3"
               >
                 <input
                   type="text"
@@ -546,7 +546,7 @@ export default function GiveawayModal({
                   onChange={(e) =>
                     setNewPartner((prev) => ({ ...prev, name: e.target.value }))
                   }
-                  className="w-full bg-white p-3 rounded-lg text-sm outline-none"
+                  className="w-full bg-card p-3 rounded-lg text-sm outline-none"
                   placeholder="Partner name (e.g., Gym Master Rwanda)"
                   required
                 />
@@ -559,7 +559,7 @@ export default function GiveawayModal({
                       website: e.target.value,
                     }))
                   }
-                  className="w-full bg-white p-3 rounded-lg text-sm outline-none"
+                  className="w-full bg-card p-3 rounded-lg text-sm outline-none"
                   placeholder="Website URL (optional)"
                 />
                 <textarea
@@ -570,7 +570,7 @@ export default function GiveawayModal({
                       description: e.target.value,
                     }))
                   }
-                  className="w-full bg-white p-3 rounded-lg text-sm outline-none resize-none h-20"
+                  className="w-full bg-card p-3 rounded-lg text-sm outline-none resize-none h-20"
                   placeholder="Description (optional)"
                 />
                 <button
@@ -584,7 +584,7 @@ export default function GiveawayModal({
           </div>
         </div>
 
-        <div className="p-6 border-t border-slate-100">
+        <div className="p-6 border-t border-border">
           <button
             onClick={handleSubmit}
             disabled={saving}

@@ -60,7 +60,7 @@ const Navbar = () => {
 
   return (
     <>
-     <nav className="sticky top-0 z-50 w-full bg-card/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-border dark:border-slate-800">
+     <nav className="sticky top-0 z-50 w-full bg-card/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-border">
       <div className="flex items-center justify-between px-6 py-3.5 mx-auto container">
         {/* LEFT: Logo & Brand */}
         <div className="flex items-center gap-8">
@@ -100,9 +100,9 @@ const Navbar = () => {
              <div className="flex items-center gap-3">
                 <button
                   onClick={() => setShowNotifications(true)}
-                  className="relative p-2 hover:bg-muted dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  className="relative p-2 hover:bg-muted rounded-lg transition-colors"
                 >
-                  <Bell size={20} className="text-muted-foreground dark:text-slate-400" />
+                  <Bell size={20} className="text-muted-foreground" />
                  {unreadCount > 0 && (
                    <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] bg-orange-500 text-white text-[10px] font-bold rounded-full px-1">
                      {unreadCount > 99 ? "99+" : unreadCount}
@@ -113,9 +113,9 @@ const Navbar = () => {
                <div className="relative">
                  <button
                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className="flex items-center gap-2 p-1 pr-3 rounded-lg border border-border dark:border-slate-700 hover:border-orange-200 dark:hover:border-orange-800 hover:bg-white dark:hover:bg-slate-800 transition-all group relative z-50 shadow-sm"
+                    className="flex items-center gap-2 p-1 pr-3 rounded-lg border border-border hover:border-orange-200 dark:hover:border-orange-800 hover:bg-card transition-all group relative z-50 shadow-sm"
                  >
-                  <div className="w-8 h-8 rounded-lg bg-muted dark:bg-slate-800 flex items-center justify-center text-muted-foreground dark:text-slate-500 overflow-hidden font-bold text-xs ring-2 ring-transparent group-hover:ring-orange-100 dark:group-hover:ring-orange-900 transition-all">
+                  <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground overflow-hidden font-bold text-xs ring-2 ring-transparent group-hover:ring-orange-100 dark:group-hover:ring-orange-900 transition-all">
                     {auth?.profile?.photoURL || auth?.user?.photoURL ? (
                       <img
                         src={auth?.profile?.photoURL || auth?.user?.photoURL || undefined as (string | undefined)}
@@ -127,10 +127,10 @@ const Navbar = () => {
                     )}
                   </div>
                   <div className="hidden sm:flex flex-col items-start leading-tight">
-                    <span className="text-[9px] font-black text-muted-foreground dark:text-slate-500 uppercase tracking-widest">
+                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">
                       {auth?.profile?.type || "User"}
                     </span>
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    <span className="text-xs font-bold text-foreground">
                       {auth?.profile?.displayName?.split(" ")[0] || "Account"}
                     </span>
                   </div>
@@ -147,9 +147,9 @@ const Navbar = () => {
                       onClick={() => setIsDropdownOpen(false)}
                     />
 
-                    <div className="absolute right-0 mt-3 w-64 bg-card dark:bg-slate-900 rounded-lg shadow-2xl border border-border dark:border-slate-800 p-2 animate-in fade-in slide-in-from-top-2 z-50">
-                      <div className="px-4 py-3 mb-2 bg-muted dark:bg-slate-800/50 rounded-lg">
-                        <p className="text-[10px] font-black text-muted-foreground dark:text-slate-500 uppercase tracking-[0.2em] mb-1">
+                    <div className="absolute right-0 mt-3 w-64 bg-card rounded-lg shadow-2xl border border-border p-2 animate-in fade-in slide-in-from-top-2 z-50">
+                      <div className="px-4 py-3 mb-2 bg-muted/50 rounded-lg">
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-1">
                           Personal Space
                         </p>
                         <p className="text-xs font-bold text-muted-foreground truncate">
@@ -225,7 +225,7 @@ const Navbar = () => {
           ) : (
             <div className="flex items-center gap-2">
               {/* Explore icon visible on mobile for guests */}
-              <Link href="/explore" className="md:hidden p-2 text-muted-foreground dark:text-slate-400">
+              <Link href="/explore" className="md:hidden p-2 text-muted-foreground">
                 <Search size={20} />
               </Link>
               <Link
@@ -239,7 +239,7 @@ const Navbar = () => {
               </Link>
               <Link
                 href={"/login"}
-                className="group relative flex items-center gap-2 px-3 md:px-6 py-2.5 bg-foreground dark:bg-slate-800 text-white rounded-lg text-sm font-bold hover:bg-orange-600 dark:hover:bg-orange-600 transition-all active:scale-95 shadow-lg shadow-slate-200 dark:shadow-slate-800"
+                className="group relative flex items-center gap-2 px-3 md:px-6 py-2.5 bg-foreground text-white rounded-lg text-sm font-bold hover:bg-orange-600 transition-all active:scale-95 shadow-lg shadow-border-strong"
               >
                 <LogIn className="h-4 w-4" />
                 <span className="hidden md:inline">Sign In</span>

@@ -11,12 +11,12 @@ export default function WinnersModal({
 }) {
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-      <div className="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+      <div className="bg-card w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl">
+        <div className="p-6 border-b border-border flex justify-between items-center">
           <h2 className="text-xl font-bold">Winners</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-full"
+            className="p-2 hover:bg-card-hover rounded-full"
           >
             <X size={20} />
           </button>
@@ -26,7 +26,7 @@ export default function WinnersModal({
           {giveaway.winners.length === 0 ? (
             <div className="text-center py-12">
               <Trophy size={40} className="mx-auto text-slate-200 mb-4" />
-              <p className="text-slate-500">No winners selected yet</p>
+              <p className="text-muted-foreground">No winners selected yet</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -48,7 +48,7 @@ export default function WinnersModal({
                   </div>
                   <div className="flex-1">
                     <p className="font-bold">{winner.winnerName}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                       Won: {winner.rewardTitle}
                     </p>
                   </div>

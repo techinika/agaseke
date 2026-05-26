@@ -41,12 +41,12 @@ export default function GiveawayDetail({
   const hasWinners = giveaway.winners.length > 0;
 
   return (
-    <div className="bg-white rounded-xl border border-slate-100 p-6 sticky top-8">
+    <div className="bg-card rounded-xl border border-border p-6 sticky top-8">
       <div className="flex justify-between items-start mb-6">
         <h3 className="font-bold text-lg">{giveaway.title}</h3>
         <button
           onClick={onEdit}
-          className="p-2 text-slate-400 hover:text-slate-600"
+          className="p-2 text-muted-foreground hover:text-muted-foreground"
         >
           <Edit size={18} />
         </button>
@@ -54,14 +54,14 @@ export default function GiveawayDetail({
 
       <div className="space-y-4 mb-6">
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-slate-50 p-4 rounded-lg">
-            <p className="text-[10px] font-bold text-slate-400 uppercase">
+          <div className="bg-muted p-4 rounded-lg">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase">
               Participants
             </p>
             <p className="text-2xl font-bold">{entries.length}</p>
           </div>
-          <div className="bg-slate-50 p-4 rounded-lg">
-            <p className="text-[10px] font-bold text-slate-400 uppercase">
+          <div className="bg-muted p-4 rounded-lg">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase">
               Winners
             </p>
             <p className="text-2xl font-bold">
@@ -84,7 +84,7 @@ export default function GiveawayDetail({
         </div>
 
         <div className="space-y-2">
-          <p className="text-[10px] font-bold text-slate-400 uppercase">
+          <p className="text-[10px] font-bold text-muted-foreground uppercase">
             Rewards
           </p>
           {giveaway.rewards.map((reward) => (
@@ -110,14 +110,14 @@ export default function GiveawayDetail({
 
         {giveaway.partners.length > 0 && (
           <div className="space-y-2">
-            <p className="text-[10px] font-bold text-slate-400 uppercase">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase">
               Partners
             </p>
             <div className="flex flex-wrap gap-2">
               {giveaway.partners.map((partner) => (
                 <div
                   key={partner.id}
-                  className="flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-full text-xs font-medium"
+                  className="flex items-center gap-2 bg-border px-3 py-1 rounded-full text-xs font-medium"
                 >
                   {partner.logo && (
                     <img
@@ -137,7 +137,7 @@ export default function GiveawayDetail({
       <div className="space-y-2">
         <button
           onClick={onCopyLink}
-          className="w-full py-3 bg-slate-100 text-slate-700 rounded-lg font-bold text-sm hover:bg-slate-200 transition flex items-center justify-center gap-2"
+          className="w-full py-3 bg-border text-foreground rounded-lg font-bold text-sm hover:bg-border-strong transition flex items-center justify-center gap-2"
         >
           <Copy size={16} /> Share Link
         </button>
@@ -171,7 +171,7 @@ export default function GiveawayDetail({
             </button>
             <button
               onClick={onEnd}
-              className="w-full py-3 border border-slate-200 text-slate-600 rounded-lg font-bold text-sm hover:bg-slate-50 transition"
+              className="w-full py-3 border border-border-strong text-muted-foreground rounded-lg font-bold text-sm hover:bg-muted transition"
             >
               End Now
             </button>

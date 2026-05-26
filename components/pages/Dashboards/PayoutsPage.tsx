@@ -154,7 +154,7 @@ export default function PayoutsPage() {
                 className={`px-8 py-4 rounded-lg font-black text-sm transition shadow-xl flex items-center gap-2 ${
                   pendingAmount >= WITHDRAW_THRESHOLD
                     ? "bg-foreground text-white hover:bg-orange-600"
-                    : "bg-slate-200 text-muted-foreground cursor-not-allowed"
+                    : "bg-border-strong text-muted-foreground cursor-not-allowed"
                 }`}
               >
                 Request to Withdraw <ArrowUpRight size={18} />
@@ -253,7 +253,7 @@ export default function PayoutsPage() {
 
             {/* History Section */}
             <div className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
-              <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-muted/50">
+              <div className="p-8 border-b border-border flex items-center justify-between bg-muted/50">
                 <div className="flex gap-4">
                   <button
                     onClick={() => setHistoryTab("payouts")}
@@ -270,7 +270,7 @@ export default function PayoutsPage() {
                 </div>
               </div>
 
-              <div className="divide-y divide-slate-50">
+              <div className="divide-y divide-border">
                 {historyTab === "payouts" ? (
                   payouts.length === 0 ? (
                     <EmptyState msg="No payout history found" />
