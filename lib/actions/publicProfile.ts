@@ -55,11 +55,11 @@ export async function getStoreProducts(creatorId: string, limitCount = 3) {
   }
 }
 
-export async function getCreatorPosts(creatorUid: string, limitCount = 3) {
+export async function getCreatorPosts(creatorUid: string, creatorHandle: string, limitCount = 3) {
   try {
     const snap = await adminDb
       .collection("creatorContent")
-      .where("creatorId", "==", creatorUid)
+      .where("creatorId", "in", [creatorHandle, creatorUid])
       .where("isPrivate", "==", false)
       .orderBy("createdAt", "desc")
       .limit(limitCount)

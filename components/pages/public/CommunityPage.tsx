@@ -97,7 +97,7 @@ export default function CommunityPage({ username }: CommunityPageProps) {
 
         const publicQ = query(
           contentRef,
-          where("creatorId", "==", creatorData.uid),
+          where("creatorId", "in", [creatorData.handle, creatorData.uid]),
           where("isPrivate", "==", false),
           orderBy("createdAt", "desc"),
           limit(20),
@@ -112,7 +112,7 @@ export default function CommunityPage({ username }: CommunityPageProps) {
         if (!querySnapshot.empty) {
           const privateQ = query(
             contentRef,
-            where("creatorId", "==", creatorData.uid),
+            where("creatorId", "in", [creatorData.handle, creatorData.uid]),
             where("isPrivate", "==", true),
             orderBy("createdAt", "desc"),
             limit(20),

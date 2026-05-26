@@ -123,7 +123,7 @@ export default function PublicProfile({ username }: { username: string }) {
         // Fetch public posts (for everyone)
         const publicQ = query(
           contentRef,
-          where("creatorId", "==", creatorData.handle || creatorData.uid),
+          where("creatorId", "in", [creatorData.handle, creatorData.uid]),
           where("isPrivate", "==", false),
           orderBy("createdAt", "desc"),
           limit(3),
@@ -139,7 +139,7 @@ export default function PublicProfile({ username }: { username: string }) {
         if (!querySnapshot.empty) {
           const privateQ = query(
             contentRef,
-            where("creatorId", "==", creatorData.handle || creatorData.uid),
+            where("creatorId", "in", [creatorData.handle, creatorData.uid]),
             where("isPrivate", "==", true),
             orderBy("createdAt", "desc"),
             limit(3),
