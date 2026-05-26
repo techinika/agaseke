@@ -77,15 +77,10 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
         const creatorSnap = await getDoc(creatorRef);
         if (creatorSnap.exists()) setCreator(creatorSnap.data());
 
-        const likeRef = collection(db, "postLikes");
-        const q = query(likeRef, where("postId", "==", postId));
-        const likeSnap = await getDocs(q);
-        setLikeCount(likeSnap.size);
-
         if (currentUser?.uid) {
+          const likeRef = collection(db, "creatorContent", postId, "likes");
           const userLikeQ = query(
             likeRef,
-            where("postId", "==", postId),
             where("userId", "==", currentUser.uid),
           );
           const userLikeSnap = await getDocs(userLikeQ);
@@ -108,42 +103,45 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
 
   useEffect(() => {
     if (!postId) return;
-    const fetchComments = async () => {
-      try {
-        const q = query(
-          collection(db, "postComments"),
-          where("postId", "==", postId),
-          orderBy("createdAt", "desc"),
-        );
-        const snap = await getDocs(q);
-        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Comment[];
-        const organized: Comment[] = [];
-        const replyMap: Record<string, Comment[]> = {};
-        list.forEach((c) => {
-          if (c.parentId) {
-            if (!replyMap[c.parentId]) replyMap[c.parentId] = [];
-            replyMap[c.parentId].push(c);
-          } else {
-            organized.push(c);
-          }
-        });
-        organized.forEach((c) => { c.replies = replyMap[c.id] || []; });
-        setComments(organized);
-      } catch (e) { console.error(e); }
-    };
-    fetchComments();
+    const commentsRef = collection(db, "creatorContent", postId, "comments");
+    const q = query(commentsRef, orderBy("createdAt", "desc"));
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Comment[];
+      const organized: Comment[] = [];
+      const replyMap: Record<string, Comment[]> = {};
+      list.forEach((c) => {
+        if (c.parentId) {
+          if (!replyMap[c.parentId]) replyMap[c.parentId] = [];
+          replyMap[c.parentId].push(c);
+        } else {
+          organized.push(c);
+        }
+      });
+      organized.forEach((c) => { c.replies = replyMap[c.id] || []; });
+      setComments(organized);
+    });
+    return () => unsub();
+  }, [postId]);
+
+  useEffect(() => {
+    if (!postId) return;
+    const likesRef = collection(db, "creatorContent", postId, "likes");
+    const unsub = onSnapshot(likesRef, (snap) => {
+      setLikeCount(snap.size);
+    });
+    return () => unsub();
   }, [postId]);
 
   const handleLike = async () => {
     if (!currentUser?.uid) { toast.error("Please login"); return; }
     try {
       if (liked && likeDocId) {
-        await deleteDoc(doc(db, "postLikes", likeDocId));
+        await deleteDoc(doc(db, "creatorContent", postId, "likes", likeDocId));
         setLiked(false);
         setLikeCount((c) => Math.max(0, c - 1));
         setLikeDocId(null);
       } else {
-        const ref = await addDoc(collection(db, "postLikes"), {
+        const ref = await addDoc(collection(db, "creatorContent", postId, "likes"), {
           postId,
           userId: currentUser.uid,
           createdAt: serverTimestamp(),
@@ -158,13 +156,16 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
   const handleComment = async () => {
     if (!currentUser?.uid || !commentText.trim()) return;
     try {
-      await addDoc(collection(db, "postComments"), {
+      await addDoc(collection(db, "creatorContent", postId, "comments"), {
         postId,
         text: commentText.trim(),
         userId: currentUser.uid,
         userName: authProfile?.displayName || "Anonymous",
         userPhoto: authProfile?.photoURL || null,
         createdAt: serverTimestamp(),
+      });
+      await updateDoc(doc(db, "creatorContent", postId), {
+        commentCount: increment(1),
       });
       setCommentText("");
       toast.success("Comment added");
@@ -174,7 +175,7 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
   const handleReply = async (parentId: string) => {
     if (!currentUser?.uid || !replyText[parentId]?.trim()) return;
     try {
-      await addDoc(collection(db, "postComments"), {
+      await addDoc(collection(db, "creatorContent", postId, "comments"), {
         postId,
         parentId,
         text: replyText[parentId].trim(),
@@ -182,6 +183,9 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
         userName: authProfile?.displayName || "Anonymous",
         userPhoto: authProfile?.photoURL || null,
         createdAt: serverTimestamp(),
+      });
+      await updateDoc(doc(db, "creatorContent", postId), {
+        commentCount: increment(1),
       });
       setReplyText((prev) => ({ ...prev, [parentId]: "" }));
       setReplyingTo(null);

@@ -605,3 +605,12 @@ For issues or feature requests, please open an issue on GitHub.
 ### Bug Fixes (May 2025)
 - **Store Checkout**: Fixed creator ID mismatch - now uses `creatorHandle` (username) for `creatorId` field and `creatorUid` for `creatorUid` field when processing store orders
 - **Payment Transaction**: Fixed transaction lookup by ensuring proper reference matching in IPN handler
+
+### Data Model Unification & Views Fix (May 2026)
+- **Views Not Incrementing Fix**: Supporter feed (`/supporter`) IntersectionObserver filtered posts by `f.type === "content"`, excluding types like "image", "video", "document". Changed to `f.type !== "gathering"` — all content types now count views.
+- **Observer Optimization**: Replaced `seenPosts` state with `useRef` to prevent re-render loops where every view disconnected/reconnected the observer. Local feed state now updates immediately when a view is counted.
+- **Comment/Like Data Model Unification**: Supporter pages now use subcollections (`creatorContent/{postId}/comments`, `creatorContent/{postId}/likes`) matching public/community pages, instead of separate top-level collections (`postComments`, `postLikes`). Comments and likes are now visible across all pages (supporter feed, supporter post detail, public profile, community page).
+- **Removed Inefficient Global Comment Query**: `getDocs(collection(db, "postComments"))` previously fetched every comment in the app to tally per-post counts. Replaced with a denormalized `commentCount` field on each `creatorContent` doc, updated atomically via Firestore `increment()`.
+- **Real-Time Comments & Likes**: Supporter post detail page (`/supporter/[postId]`) now uses `onSnapshot` for both comments and likes (was one-time `getDocs`), matching the public `PostDetailPage` pattern. Like counts update in real-time when others interact.
+- **Tailwind CSS v4 Theme Variables**: Added `card`, `card-hover`, `border`, `border-strong`, `muted`, `muted-foreground` CSS variables to `globals.css` for consistent component theming.
+- **Gift Once Button on Booking Page**: Added "Gift Once" quick support button and `SupportModal` to the booking page (`/[username]/booking`), matching the pattern on other public subpages.

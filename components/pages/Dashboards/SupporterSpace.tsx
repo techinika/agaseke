@@ -30,6 +30,7 @@ import { useAuth } from "@/auth/AuthContext";
 import Loading from "@/app/loading";
 import {
   collection,
+  collectionGroup,
   doc,
   getDocs,
   query,
@@ -108,10 +109,7 @@ export default function SupporterSpace() {
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [likedDocIds, setLikedDocIds] = useState<Record<string, string>>({});
   const [showCommentFor, setShowCommentFor] = useState<string | null>(null);
-  const [seenPosts, setSeenPosts] = useState<Set<string>>(new Set());
-  const [commentCounts, setCommentCounts] = useState<Record<string, number>>(
-    {},
-  );
+  const viewedPosts = useRef<Set<string>>(new Set());
   const [viewingDocument, setViewingDocument] = useState<{
     url: string;
     title: string;
@@ -150,7 +148,6 @@ export default function SupporterSpace() {
           gatheringSnap,
           creatorsSnap,
           purchasesSnap,
-          commentsSnap,
         ] = await Promise.all([
           getDocs(
             query(
@@ -166,15 +163,7 @@ export default function SupporterSpace() {
           ),
           getDocs(collection(db, "creators")),
           getDocs(purchasesQuery),
-          getDocs(collection(db, "postComments")),
         ]);
-
-        const counts: Record<string, number> = {};
-        commentsSnap.docs.forEach((d) => {
-          const postId = d.data().postId;
-          counts[postId] = (counts[postId] || 0) + 1;
-        });
-        setCommentCounts(counts);
 
         let profileMap = new Map();
         if (supportedCreatorUids.size > 0) {
@@ -245,7 +234,7 @@ export default function SupporterSpace() {
             isFollowing,
             isPublic: !item.isPrivate,
             likes: item.stats?.likes || 0,
-            commentCount: counts[item.id] || 0,
+            commentCount: item.commentCount || 0,
           };
         });
 
@@ -308,15 +297,17 @@ export default function SupporterSpace() {
   useEffect(() => {
     if (!auth.user?.uid) return;
 
-    const likedRef = collection(db, "postLikes");
+    const likedRef = collectionGroup(db, "likes");
     const likedQuery = query(likedRef, where("userId", "==", auth.user.uid));
     const unsubscribe = onSnapshot(likedQuery, (snap) => {
       const liked = new Set<string>();
       const docIds: Record<string, string> = {};
       snap.docs.forEach((d) => {
-        const postId = d.data().postId;
-        liked.add(postId);
-        docIds[postId] = d.id;
+        const postId = d.data().postId || d.ref.parent.parent?.id;
+        if (postId) {
+          liked.add(postId);
+          docIds[postId] = d.id;
+        }
       });
       setLikedPosts(liked);
       setLikedDocIds(docIds);
@@ -330,16 +321,21 @@ export default function SupporterSpace() {
       (entries) => {
         entries.forEach((entry) => {
           const postId = entry.target.getAttribute("data-post-id");
-          if (postId && entry.isIntersecting && !seenPosts.has(postId)) {
-            setSeenPosts((prev) => new Set(prev).add(postId));
+          if (postId && entry.isIntersecting && !viewedPosts.current.has(postId)) {
+            viewedPosts.current.add(postId);
 
             const item = feed.find(
-              (f) => f.id === postId && f.type === "content",
+              (f) => f.id === postId && f.type !== "gathering",
             );
             if (item) {
               updateDoc(doc(db, "creatorContent", postId), {
                 views: increment(1),
               }).catch(() => {});
+              setFeed((prev) =>
+                prev.map((f) =>
+                  f.id === postId ? { ...f, views: (f.views || 0) + 1 } : f,
+                ),
+              );
             }
           }
         });
@@ -352,15 +348,14 @@ export default function SupporterSpace() {
     });
 
     return () => observer.disconnect();
-  }, [feed, seenPosts]);
+  }, [feed]);
 
   const fetchComments = async (postId: string) => {
     if (comments[postId] && comments[postId].length > 0) return;
     setLoadingComments((prev) => ({ ...prev, [postId]: true }));
     try {
       const q = query(
-        collection(db, "postComments"),
-        where("postId", "==", postId),
+        collection(db, "creatorContent", postId, "comments"),
         orderBy("createdAt", "desc"),
       );
       const snap = await getDocs(q);
@@ -404,8 +399,16 @@ export default function SupporterSpace() {
         userPhoto: auth.profile?.photoURL || null,
         createdAt: serverTimestamp(),
       };
-      await addDoc(collection(db, "postComments"), newComment);
+      await addDoc(collection(db, "creatorContent", postId, "comments"), newComment);
+      await updateDoc(doc(db, "creatorContent", postId), {
+        commentCount: increment(1),
+      });
       setCommentText((prev) => ({ ...prev, [postId]: "" }));
+      setFeed((prev) =>
+        prev.map((f) =>
+          f.id === postId ? { ...f, commentCount: (f.commentCount || 0) + 1 } : f,
+        ),
+      );
       fetchComments(postId);
       toast.success("Comment added");
     } catch (e) {
@@ -425,7 +428,10 @@ export default function SupporterSpace() {
         userPhoto: auth.profile?.photoURL || null,
         createdAt: serverTimestamp(),
       };
-      await addDoc(collection(db, "postComments"), newReply);
+      await addDoc(collection(db, "creatorContent", postId, "comments"), newReply);
+      await updateDoc(doc(db, "creatorContent", postId), {
+        commentCount: increment(1),
+      });
       setReplyText((prev) => ({ ...prev, [parentId]: "" }));
       setReplyingTo((prev) => ({ ...prev, [parentId]: null }));
       setComments((prev) => {
@@ -434,10 +440,11 @@ export default function SupporterSpace() {
         return newComments;
       });
       fetchComments(postId);
-      setCommentCounts((prev) => ({
-        ...prev,
-        [postId]: (prev[postId] || 0) + 1,
-      }));
+      setFeed((prev) =>
+        prev.map((f) =>
+          f.id === postId ? { ...f, commentCount: (f.commentCount || 0) + 1 } : f,
+        ),
+      );
     } catch (e) {
       toast.error("Failed to add reply");
     }
@@ -451,7 +458,7 @@ export default function SupporterSpace() {
       const likeDocId = likedDocIds[postKey];
       if (likeDocId) {
         try {
-          await deleteDoc(doc(db, "postLikes", likeDocId));
+          await deleteDoc(doc(db, "creatorContent", item.id, "likes", likeDocId));
           await updateDoc(doc(db, "creatorContent", item.id), {
             "stats.likes": increment(-1),
           });
@@ -477,7 +484,7 @@ export default function SupporterSpace() {
     );
 
     try {
-      const docRef = await addDoc(collection(db, "postLikes"), {
+      const docRef = await addDoc(collection(db, "creatorContent", item.id, "likes"), {
         postId: item.id,
         userId: auth.user.uid,
         createdAt: serverTimestamp(),
@@ -1021,7 +1028,7 @@ export default function SupporterSpace() {
                             className={`flex items-center gap-1.5 text-sm ${showCommentFor === item.id ? "text-blue-500" : "text-gray-500 hover:text-blue-500"}`}
                           >
                             <MessageCircle size={18} />
-                            {commentCounts[item.id] || 0}
+                            {item.commentCount || 0}
                           </button>
                           <span className="flex items-center gap-1.5 text-sm text-gray-400">
                             <Eye size={16} /> {item.views || 0}

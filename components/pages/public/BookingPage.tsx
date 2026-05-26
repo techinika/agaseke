@@ -2,12 +2,13 @@
 "use client";
 
 import { useAuth } from "@/auth/AuthContext";
-import { Calendar, Clock, Video, MapPin, Loader, Check, AlertCircle, ChevronLeft, ChevronRight, CalendarDays, ArrowLeft } from "lucide-react";
+import { Calendar, Clock, Video, MapPin, Loader, Check, AlertCircle, ChevronLeft, ChevronRight, CalendarDays, ArrowLeft, Heart } from "lucide-react";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import Navbar from "@/components/parts/Navigation";
 import Footer from "@/components/parts/Footer";
+import { SupportModal } from "@/components/parts/public/SupportModal";
 import { BookingAvailability, BookingType } from "@/types/booking";
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -16,6 +17,7 @@ const MONTHS = ["January", "February", "March", "April", "May", "June", "July", 
 export default function BookingPage({ username, creator }: { username: string; creator: any }) {
   const { user } = useAuth();
   const [step, setStep] = useState<"form" | "success" | "error">("form");
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
@@ -93,10 +95,16 @@ export default function BookingPage({ username, creator }: { username: string; c
     <div className="min-h-screen bg-[#FBFBFC]">
       <Navbar />
       <div className="max-w-2xl mx-auto px-6 py-8">
-        <Link href={`/${username}`} className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition mb-8 inline-flex">
-          <ArrowLeft size={20} />
-          <span className="font-medium">Back to Profile</span>
-        </Link>
+        <div className="flex items-center justify-between mb-8">
+          <Link href={`/${username}`} className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition">
+            <ArrowLeft size={20} />
+            <span className="font-medium">Back to Profile</span>
+          </Link>
+          <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-orange-700 transition">
+            <Heart size={18} className="fill-current" />
+            Gift Once
+          </button>
+        </div>
 
         {step === "form" && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
@@ -240,6 +248,15 @@ export default function BookingPage({ username, creator }: { username: string; c
         )}
       </div>
       <Footer />
+
+      <SupportModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        creatorName={creator?.name || username}
+        creatorId={username}
+        uid={creator?.uid || ""}
+        includeReferral={false}
+      />
     </div>
   );
 }
