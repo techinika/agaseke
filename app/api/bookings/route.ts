@@ -4,7 +4,7 @@ import { adminDb, admin } from "@/db/firebaseAdmin";
 
 export async function POST(request: NextRequest) {
   try {
-    const { creatorHandle, bookerId, bookerName, bookerEmail, bookerPhone, reason, preferredDate, preferredTime, preferredType } = await request.json();
+    const { creatorHandle, bookerId, bookerName, bookerEmail, bookerPhone, reason, preferredDate, preferredTime, preferredType, tierId, tierName, paymentAmount } = await request.json();
 
     if (!creatorHandle || !bookerName || !bookerEmail) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -37,6 +37,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const isPaidTier = Number(paymentAmount) > 0;
+    const txRef = isPaidTier ? `AGS-BOOK-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` : "";
+
     const bookingRef = await adminDb.collection("bookingRequests").add({
       creatorId: creatorDoc.id,
       creatorName: creatorData.name,
@@ -50,8 +53,31 @@ export async function POST(request: NextRequest) {
       preferredTime: preferredTime || "",
       preferredType: preferredType || "both",
       status: "pending",
+      tierId: tierId || null,
+      tierName: tierName || null,
+      paymentAmount: isPaidTier ? Number(paymentAmount) : 0,
+      paymentStatus: isPaidTier ? "pending" : "none",
+      txRef: txRef || null,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
+
+    if (isPaidTier) {
+      // Create a pending transaction record for webhook processing
+      await adminDb.collection("transactions").doc(txRef).set({
+        ref: txRef,
+        amount: Number(paymentAmount),
+        bookingId: bookingRef.id,
+        creatorId: creatorDoc.id,
+        creatorUid: creatorData.uid || "",
+        creatorName: creatorData.name || "",
+        bookerName,
+        bookerEmail,
+        bookerId: bookerId || "anonymous",
+        status: "pending",
+        type: "booking",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
 
     if (creatorData.email) {
       try {
@@ -74,7 +100,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, bookingId: bookingRef.id });
+    return NextResponse.json({
+      success: true,
+      bookingId: bookingRef.id,
+      paymentRequired: isPaidTier,
+      amount: isPaidTier ? Number(paymentAmount) : 0,
+      txRef: isPaidTier ? txRef : null,
+    });
   } catch (error) {
     console.error("Booking error:", error);
     return NextResponse.json({ error: "Failed to create booking" }, { status: 500 });

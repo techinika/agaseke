@@ -25,9 +25,11 @@ export async function POST(req: Request) {
        buyerName,
        email,
        buyerEmail,
-     } = await req.json();
+       bookingId,
+      } = await req.json();
 
     const isStoreTransaction = !!productId;
+    const isBookingTransaction = !!bookingId;
     const platformSharePercentage = Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
     const price = Number(productPrice) || 0;
     const qty = Number(quantity) || 1;
@@ -101,24 +103,31 @@ export async function POST(req: Request) {
         message: message ?? "",
         referralUid: referralUid ?? "",
         referralId: referralId ?? "",
-        type: isStoreTransaction ? "store" : "support",
+        type: isBookingTransaction ? "booking" : isStoreTransaction ? "store" : "support",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       };
 
-       if (isStoreTransaction) {
-         txData.productId = productId;
-         txData.productPrice = price;
-         txData.productName = productName || "";
-         txData.quantity = qty;
-         txData.selectedSize = selectedSize || "";
-         txData.platformFee = platformFee;
-         txData.creatorEarnings = creatorEarnings;
-         txData.referralEarnings = referralEarnings;
-         txData.platformFeePayer = feePayer;
-         txData.buyerId = supporterId || "anonymous";
-         txData.buyerName = buyerName || "";
-         txData.buyerEmail = buyerEmail || email || "";
-       }
+        if (isStoreTransaction) {
+          txData.productId = productId;
+          txData.productPrice = price;
+          txData.productName = productName || "";
+          txData.quantity = qty;
+          txData.selectedSize = selectedSize || "";
+          txData.platformFee = platformFee;
+          txData.creatorEarnings = creatorEarnings;
+          txData.referralEarnings = referralEarnings;
+          txData.platformFeePayer = feePayer;
+          txData.buyerId = supporterId || "anonymous";
+          txData.buyerName = buyerName || "";
+          txData.buyerEmail = buyerEmail || email || "";
+        }
+
+        if (isBookingTransaction) {
+          txData.bookingId = bookingId;
+          txData.buyerId = supporterId || "anonymous";
+          txData.buyerName = buyerName || "";
+          txData.buyerEmail = buyerEmail || email || "";
+        }
 
       await adminDb.collection("transactions").add(txData);
 
@@ -128,7 +137,7 @@ export async function POST(req: Request) {
           userId: adminDoc.id,
           type: "new_transaction",
           title: "New Transaction",
-          message: `${isStoreTransaction ? "Store purchase" : "Support"} of ${totalAmount.toLocaleString()} RWF initiated`,
+          message: `${isBookingTransaction ? "Booking payment" : isStoreTransaction ? "Store purchase" : "Support"} of ${totalAmount.toLocaleString()} RWF initiated`,
           link: "/admin/payouts",
         });
       }

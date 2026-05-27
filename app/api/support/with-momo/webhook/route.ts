@@ -179,81 +179,157 @@ export async function POST(req: Request) {
            actorId: txData.buyerId || undefined,
          });
        }
-     } else {
-      const platformSharePercentage = txData.includeReferral
-        ? Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL)
-        : Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE);
-      const platformShare = totalAmount * platformSharePercentage;
-      const creatorShare = totalAmount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE);
-      const referralShare = totalAmount * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE);
+      } else if (txType === "booking") {
+        const bookingId = txData.bookingId;
+        if (bookingId) {
+          const platformSharePercentage = txData.includeReferral
+            ? Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL)
+            : Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE);
+          const platformShare = totalAmount * platformSharePercentage;
+          const creatorShare = totalAmount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE);
+          const referralShare = totalAmount * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE);
 
-      batch.set(adminDb.collection("platformIncome").doc(), {
-        amount: platformShare,
-        txRef: ref,
-        reason: "flat_fee",
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+          batch.set(adminDb.collection("platformIncome").doc(), {
+            amount: platformShare,
+            txRef: ref,
+            reason: "booking_fee",
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
 
-      batch.set(adminDb.collection("creatorIncome").doc(), {
-        creatorUid: txData.creatorUid,
-        amount: creatorShare,
-        txRef: ref,
-        reason: "support",
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+          batch.set(adminDb.collection("creatorIncome").doc(), {
+            creatorUid: txData.creatorUid,
+            amount: creatorShare,
+            txRef: ref,
+            reason: "booking_payment",
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
 
-      batch.set(adminDb.collection("supportedCreators").doc(), {
-        creatorId: txData.creatorId,
-        amount: totalAmount,
-        supporterId: txData.supporterId || null,
-        supporterPhoneNumber: client,
-        txRef: ref,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
+          batch.update(adminDb.collection("creators").doc(txData.creatorId), {
+            totalEarnings: admin.firestore.FieldValue.increment(creatorShare),
+            pendingPayout: admin.firestore.FieldValue.increment(creatorShare),
+          });
 
-      batch.update(adminDb.collection("creators").doc(txData.creatorId), {
-        totalEarnings: admin.firestore.FieldValue.increment(creatorShare),
-        totalSupporters: admin.firestore.FieldValue.increment(1),
-        pendingPayout: admin.firestore.FieldValue.increment(creatorShare),
-      });
+          if (txData.includeReferral && txData.referralUid) {
+            batch.set(adminDb.collection("creatorIncome").doc(), {
+              creatorUid: txData.referralUid,
+              amount: referralShare,
+              txRef: ref,
+              reason: "referral_commission",
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            batch.update(adminDb.collection("creators").doc(txData.referralId), {
+              totalEarnings: admin.firestore.FieldValue.increment(referralShare),
+              pendingPayout: admin.firestore.FieldValue.increment(referralShare),
+            });
+          }
 
-      if (txData.includeReferral && txData.referralUid) {
-        batch.set(adminDb.collection("creatorIncome").doc(), {
-          creatorUid: txData.referralUid,
-          amount: referralShare,
-          txRef: ref,
-          reason: "referral_commission",
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-        batch.update(adminDb.collection("creators").doc(txData.referralId), {
-          totalEarnings: admin.firestore.FieldValue.increment(referralShare),
-          pendingPayout: admin.firestore.FieldValue.increment(referralShare),
-        });
-      }
+          batch.update(adminDb.collection("bookingRequests").doc(bookingId), {
+            paymentStatus: "paid",
+            status: "pending",
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
 
-      if (txData.supporterId && txData.supporterId !== "anonymous") {
-        batch.update(adminDb.collection("profiles").doc(txData.supporterId), {
-          totalSupport: admin.firestore.FieldValue.increment(totalAmount),
-          totalSupportedCreators: admin.firestore.FieldValue.increment(1),
-        });
-      }
+          const buyerId = txData.buyerId || txData.supporterId || "";
+          if (buyerId && buyerId !== "anonymous") {
+            batch.update(adminDb.collection("profiles").doc(buyerId), {
+              totalSupport: admin.firestore.FieldValue.increment(totalAmount),
+              totalSupportedCreators: admin.firestore.FieldValue.increment(1),
+            });
+          }
 
-        if (txData.creatorUid) {
-          await createNotification({
-           userId: txData.creatorUid,
-           type: "support_received",
-           title: "New Support Received!",
-           message: `You received ${totalAmount.toLocaleString()} RWF in support${txData.supporterId && txData.supporterId !== "anonymous" ? "" : " from an anonymous supporter"}`,
-           metadata: {
-             txRef: ref,
-             amount: totalAmount,
-             creatorShare: creatorShare,
-           },
-           link: "/creator/supporters",
-           actorId: txData.supporterId !== "anonymous" ? txData.supporterId : undefined,
+          if (txData.creatorUid) {
+            await createNotification({
+              userId: txData.creatorUid,
+              type: "booking_paid",
+              title: "Booking Payment Received!",
+              message: `Booking payment of ${totalAmount.toLocaleString()} RWF received from ${txData.buyerName || "a client"}`,
+              metadata: {
+                txRef: ref,
+                bookingId,
+                amount: totalAmount,
+                creatorShare,
+              },
+              link: "/creator/bookings",
+              actorName: txData.buyerName || undefined,
+              actorId: txData.buyerId || undefined,
+            });
+          }
+        }
+      } else {
+       const platformSharePercentage = txData.includeReferral
+         ? Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL)
+         : Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE);
+       const platformShare = totalAmount * platformSharePercentage;
+       const creatorShare = totalAmount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE);
+       const referralShare = totalAmount * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE);
+
+       batch.set(adminDb.collection("platformIncome").doc(), {
+         amount: platformShare,
+         txRef: ref,
+         reason: "flat_fee",
+         createdAt: admin.firestore.FieldValue.serverTimestamp(),
+       });
+
+       batch.set(adminDb.collection("creatorIncome").doc(), {
+         creatorUid: txData.creatorUid,
+         amount: creatorShare,
+         txRef: ref,
+         reason: "support",
+         createdAt: admin.firestore.FieldValue.serverTimestamp(),
+       });
+
+       batch.set(adminDb.collection("supportedCreators").doc(), {
+         creatorId: txData.creatorId,
+         amount: totalAmount,
+         supporterId: txData.supporterId || null,
+         supporterPhoneNumber: client,
+         txRef: ref,
+         createdAt: admin.firestore.FieldValue.serverTimestamp(),
+       });
+
+       batch.update(adminDb.collection("creators").doc(txData.creatorId), {
+         totalEarnings: admin.firestore.FieldValue.increment(creatorShare),
+         totalSupporters: admin.firestore.FieldValue.increment(1),
+         pendingPayout: admin.firestore.FieldValue.increment(creatorShare),
+       });
+
+       if (txData.includeReferral && txData.referralUid) {
+         batch.set(adminDb.collection("creatorIncome").doc(), {
+           creatorUid: txData.referralUid,
+           amount: referralShare,
+           txRef: ref,
+           reason: "referral_commission",
+           createdAt: admin.firestore.FieldValue.serverTimestamp(),
+         });
+         batch.update(adminDb.collection("creators").doc(txData.referralId), {
+           totalEarnings: admin.firestore.FieldValue.increment(referralShare),
+           pendingPayout: admin.firestore.FieldValue.increment(referralShare),
          });
        }
-     }
+
+       if (txData.supporterId && txData.supporterId !== "anonymous") {
+         batch.update(adminDb.collection("profiles").doc(txData.supporterId), {
+           totalSupport: admin.firestore.FieldValue.increment(totalAmount),
+           totalSupportedCreators: admin.firestore.FieldValue.increment(1),
+         });
+       }
+
+         if (txData.creatorUid) {
+           await createNotification({
+            userId: txData.creatorUid,
+            type: "support_received",
+            title: "New Support Received!",
+            message: `You received ${totalAmount.toLocaleString()} RWF in support${txData.supporterId && txData.supporterId !== "anonymous" ? "" : " from an anonymous supporter"}`,
+            metadata: {
+              txRef: ref,
+              amount: totalAmount,
+              creatorShare: creatorShare,
+            },
+            link: "/creator/supporters",
+            actorId: txData.supporterId !== "anonymous" ? txData.supporterId : undefined,
+          });
+        }
+      }
 
      await batch.commit();
   } else {
