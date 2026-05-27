@@ -11,7 +11,6 @@ import {
 } from "lucide-react";
 import { db } from "@/db/firebase";
 import { doc, getDoc } from "firebase/firestore";
-import { collection, query, where, getDocs } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -61,7 +60,7 @@ export default function PayClient() {
       }
       setProducts(map);
 
-      // resolve creator handle from uid
+      // resolve creator handle from uid (profiles/{uid} doc has username field)
       const firstItem = orderItems[0];
       const pData = map[firstItem?.productId];
       const uid =
@@ -70,17 +69,15 @@ export default function PayClient() {
         pData?.creatorId ||
         data.creatorId ||
         "";
-      if (uid && uid.length >= 20) {
-        const q = query(collection(db, "profiles"), where("uid", "==", uid));
-        const ps = await getDocs(q);
-        if (!ps.empty) {
-          const d = ps.docs[0];
-          const pd = d.data();
-          const h = d.id || pd.handle || pd.username || "";
-          if (h.length > 0 && h.length < 30) setCreatorHandle(h);
+      if (uid) {
+        const profileSnap = await getDoc(doc(db, "profiles", uid));
+        if (profileSnap.exists()) {
+          const profile = profileSnap.data();
+          const h = profile.username || "";
+          if (h) setCreatorHandle(h);
+        } else if (uid.length < 20) {
+          setCreatorHandle(uid);
         }
-      } else if (uid) {
-        setCreatorHandle(uid);
       }
 
       setLoading(false);
