@@ -86,14 +86,17 @@ export default function PostDetailPage({ username, postId }: { username: string;
 
   const handleLike = useCallback(async () => {
     if (!currentUser?.uid) { toast.error("Please log in to like"); return; }
+    const postRef = doc(db, "creatorContent", postId);
     const likeRef = collection(db, "creatorContent", postId, "likes");
     const q = query(likeRef, where("userId", "==", currentUser.uid));
     const snap = await getDocs(q);
     if (!snap.empty) {
       await deleteDoc(snap.docs[0].ref);
+      await updateDoc(postRef, { "stats.likes": increment(-1) });
       setUserLiked(false);
     } else {
       await addDoc(likeRef, { userId: currentUser.uid, createdAt: serverTimestamp() });
+      await updateDoc(postRef, { "stats.likes": increment(1) });
       setUserLiked(true);
       if (currentUser.uid !== creatorData?.uid) {
         fetch("/api/comms/post/notification", {
@@ -124,6 +127,9 @@ export default function PostDetailPage({ username, postId }: { username: string;
         userPhoto: profile?.photoURL || currentUser.photoURL || "",
         content: newComment.trim(),
         createdAt: serverTimestamp(),
+      });
+      await updateDoc(doc(db, "creatorContent", postId), {
+        commentCount: increment(1),
       });
       setNewComment("");
       if (currentUser.uid !== creatorData?.uid) {

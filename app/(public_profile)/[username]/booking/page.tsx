@@ -48,7 +48,7 @@ export async function generateMetadata({
 
 async function page({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
-  const creator = await getCreatorData(username);
+  const creator = JSON.parse(JSON.stringify(await getCreatorData(username)));
   return <BookingPage username={username} creator={creator} />;
 }
 

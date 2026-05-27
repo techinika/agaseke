@@ -8,9 +8,11 @@ import {
   Download,
   X,
   Package,
+  Loader,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Product } from "./types";
+import { downloadProduct } from "@/lib/downloadProduct";
 
 const platformSharePercentage =
   Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
@@ -22,6 +24,7 @@ export function ProductDetailModal({
   isLoggedIn,
   isPurchased,
   fileUrl,
+  uid,
 }: {
   product: Product;
   onClose: () => void;
@@ -29,7 +32,9 @@ export function ProductDetailModal({
   isLoggedIn: boolean;
   isPurchased: boolean;
   fileUrl?: string;
+  uid?: string;
 }) {
+  const [downloading, setDownloading] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<string | undefined>(
     product.sizes?.[0],
@@ -156,14 +161,18 @@ export function ProductDetailModal({
             {isPurchased ? (
               <div className="flex gap-3">
                 {product.type === "digital" && fileUrl && (
-                  <a
-                    href={fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={() => {
+                      setDownloading(true);
+                      downloadProduct(product.id, uid)
+                        .catch((e) => toast.error(e.message))
+                        .finally(() => setDownloading(false));
+                    }}
                     className="flex-1 py-3 bg-emerald-500 text-white rounded-lg font-bold hover:bg-emerald-600 transition flex items-center justify-center gap-2"
                   >
-                    <Download size={18} /> Download
-                  </a>
+                    {downloading ? <Loader size={18} className="animate-spin" /> : <Download size={18} />}
+                    {downloading ? "Downloading..." : "Download"}
+                  </button>
                 )}
                 {product.type === "physical" && (
                   <span className="flex-1 py-3 bg-blue-50 text-blue-600 rounded-lg font-bold flex items-center justify-center gap-2">

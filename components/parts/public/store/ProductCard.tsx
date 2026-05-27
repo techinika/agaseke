@@ -8,10 +8,12 @@ import {
   Download,
   Lock,
   Package,
+  Loader,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Product } from "./types";
+import { downloadProduct } from "@/lib/downloadProduct";
 
 const platformSharePercentage =
   Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
@@ -24,6 +26,7 @@ export function ProductCard({
   isLoggedIn,
   isPurchased,
   fileUrl,
+  uid,
 }: {
   product: Product;
   onAddToCart: (product: Product, quantity?: number, size?: string) => void;
@@ -32,7 +35,9 @@ export function ProductCard({
   isLoggedIn: boolean;
   isPurchased: boolean;
   fileUrl?: string;
+  uid?: string;
 }) {
+  const [downloading, setDownloading] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<string | undefined>(
     product.sizes?.[0],
@@ -163,14 +168,18 @@ export function ProductCard({
         {isPurchased ? (
           <div className="flex gap-2 mt-4">
             {product.type === "digital" && fileUrl && (
-              <a
-                href={fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={() => {
+                  setDownloading(true);
+                  downloadProduct(product.id, uid)
+                    .catch((e) => toast.error(e.message))
+                    .finally(() => setDownloading(false));
+                }}
                 className="flex-1 py-2 bg-emerald-500 text-white rounded-lg font-bold text-sm hover:bg-emerald-600 transition flex items-center justify-center gap-2"
               >
-                <Download size={14} /> Download
-              </a>
+                {downloading ? <Loader size={14} className="animate-spin" /> : <Download size={14} />}
+                {downloading ? "Downloading..." : "Download"}
+              </button>
             )}
             {product.type === "physical" && (
               <span className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-sm flex items-center justify-center gap-2">

@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Truck, X, Check, Download, Loader } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Timestamp } from "firebase/firestore";
-import { Order } from "./types";
+import { Order, Product } from "./types";
+import { downloadProduct } from "@/lib/downloadProduct";
 
 const statusSteps = ["pending", "paid", "processing", "shipped", "delivered"];
 const statusLabels: Record<string, string> = {
@@ -23,9 +25,13 @@ const statusColors: Record<string, string> = {
 
 export function OrderTrackingModal({
   orders,
+  products = [],
+  uid,
   onClose,
 }: {
   orders: Order[];
+  products?: Product[];
+  uid?: string;
   onClose: () => void;
 }) {
   const [downloadingProduct, setDownloadingProduct] = useState<string | null>(
@@ -34,16 +40,14 @@ export function OrderTrackingModal({
 
   const getStatusIndex = (status: string) => statusSteps.indexOf(status);
 
-  const handleDownload = async (productId: string, fileUrl: string) => {
+  const handleDownload = async (productId: string) => {
     setDownloadingProduct(productId);
     try {
-      if (!fileUrl) {
-        return;
-      }
-      window.open(fileUrl, "_blank");
-    } finally {
-      setTimeout(() => setDownloadingProduct(null), 1000);
+      await downloadProduct(productId, uid);
+    } catch (e) {
+      toast.error((e as Error).message);
     }
+    setTimeout(() => setDownloadingProduct(null), 1000);
   };
 
   return (
@@ -129,7 +133,7 @@ export function OrderTrackingModal({
                           {order.status !== "cancelled" && item.productId && (
                             <button
                               onClick={() =>
-                                handleDownload(item.productId, "")
+                                handleDownload(item.productId)
                               }
                               className="text-green-600 hover:bg-green-50 p-1 rounded transition"
                               title="Download"
@@ -198,7 +202,6 @@ export function OrderTrackingModal({
                     {order.status === "pending" && (
                       <Link
                         href={`/store/pay/${order.id}`}
-                        target="_blank"
                         className="px-4 py-2 bg-green-500 text-white rounded-lg font-bold text-sm hover:bg-green-600 transition"
                       >
                         Pay Now

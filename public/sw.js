@@ -25,6 +25,9 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
+
+  if (request.method !== "GET") return;
+
   const url = new URL(request.url);
 
   if (url.pathname.startsWith("/_next/static/")) {
@@ -60,7 +63,7 @@ async function networkFirst(request) {
     const response = await fetch(request);
     if (response.ok) {
       const cache = await caches.open(CACHE);
-      cache.put(request, response.clone());
+      if (request.method === "GET") cache.put(request, response.clone());
     }
     return response;
   } catch {

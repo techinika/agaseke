@@ -427,6 +427,8 @@ export const StoreTab = ({
     return (
       <OrderTrackingModal
         orders={userOrders}
+        products={products}
+        uid={currentUser?.uid}
         onClose={() => setShowOrderTracking(false)}
       />
     );
@@ -438,6 +440,7 @@ export const StoreTab = ({
         orders={userOrders}
         products={products}
         creatorHandle={creatorHandle}
+        uid={currentUser?.uid}
         onClose={() => setShowMyPurchases(false)}
       />
     );
@@ -469,6 +472,7 @@ export const StoreTab = ({
                   isLoggedIn={isLoggedIn}
                   isPurchased={purchasedProductIds.has(product.id)}
                   fileUrl={product.fileUrl}
+                  uid={currentUser?.uid}
                 />
               ))}
             </div>
@@ -493,6 +497,7 @@ export const StoreTab = ({
             isLoggedIn={isLoggedIn}
             isPurchased={purchasedProductIds.has(selectedProduct.id)}
             fileUrl={selectedProduct.fileUrl}
+            uid={currentUser?.uid}
           />
         )}
       </div>
@@ -597,6 +602,7 @@ export const StoreTab = ({
                     isLoggedIn={isLoggedIn}
                     isPurchased={purchasedProductIds.has(product.id)}
                     fileUrl={product.fileUrl}
+                    uid={currentUser?.uid}
                   />
                 ))}
               </div>
@@ -613,6 +619,7 @@ export const StoreTab = ({
           isLoggedIn={isLoggedIn}
           isPurchased={purchasedProductIds.has(selectedProduct.id)}
           fileUrl={selectedProduct.fileUrl}
+          uid={currentUser?.uid}
         />
       )}
     </div>

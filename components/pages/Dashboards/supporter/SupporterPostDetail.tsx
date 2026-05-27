@@ -137,6 +137,7 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
     try {
       if (liked && likeDocId) {
         await deleteDoc(doc(db, "creatorContent", postId, "likes", likeDocId));
+        await updateDoc(doc(db, "creatorContent", postId), { "stats.likes": increment(-1) });
         setLiked(false);
         setLikeCount((c) => Math.max(0, c - 1));
         setLikeDocId(null);
@@ -146,6 +147,7 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
           userId: currentUser.uid,
           createdAt: serverTimestamp(),
         });
+        await updateDoc(doc(db, "creatorContent", postId), { "stats.likes": increment(1) });
         setLiked(true);
         setLikeDocId(ref.id);
         setLikeCount((c) => c + 1);
