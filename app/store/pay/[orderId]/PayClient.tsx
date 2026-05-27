@@ -159,7 +159,7 @@ export default function PayClient() {
       }
 
       if (paymentMethod === "card" && data.redirect_url) {
-        window.location.href = data.redirect_url;
+        window.open(data.redirect_url, "_blank");
         return;
       }
 
@@ -203,7 +203,7 @@ export default function PayClient() {
       <div className="max-w-lg mx-auto px-4 pt-10 pb-24">
         {creatorHandle && (
           <Link
-            href={`/${creatorHandle}?tab=store`}
+            href={`/${creatorHandle}/store`}
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition mb-6"
           >
             <ArrowLeft size={16} />

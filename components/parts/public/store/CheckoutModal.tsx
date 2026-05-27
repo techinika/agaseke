@@ -194,7 +194,7 @@ export function CheckoutModal({
       }
 
       if (paymentMethod === "card" && paymentData.redirect_url) {
-        window.location.href = paymentData.redirect_url;
+        window.open(paymentData.redirect_url, "_blank");
         return;
       }
 
