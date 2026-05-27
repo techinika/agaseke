@@ -7,7 +7,10 @@ import BookingPage from "@/components/pages/public/BookingPage";
 async function getCreatorData(username: string) {
   try {
     const snap = await adminDb.collection("creators").doc(username).get();
-    return snap.exists ? snap.data() : null;
+    if (snap.exists) return snap.data();
+    const q = await adminDb.collection("creators").where("uid", "==", username).limit(1).get();
+    if (!q.empty) return q.docs[0].data();
+    return null;
   } catch { return null; }
 }
 

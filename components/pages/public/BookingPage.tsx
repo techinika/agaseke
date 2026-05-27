@@ -89,7 +89,7 @@ export default function BookingPage({ username, creator }: { username: string; c
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          creatorHandle: username,
+          creatorHandle: creator?.handle || username,
           bookerId: user?.uid || null,
           bookerName: name,
           bookerEmail: email,
@@ -123,7 +123,7 @@ export default function BookingPage({ username, creator }: { username: string; c
       <Navbar />
       <div className="max-w-2xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
-          <Link href={`/${username}`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition">
+          <Link href={`/${creator?.handle || username}`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition">
             <ArrowLeft size={20} />
             <span className="font-medium">Back to Profile</span>
           </Link>
@@ -332,7 +332,7 @@ export default function BookingPage({ username, creator }: { username: string; c
                 ? "Your booking request is pending payment. Complete payment to confirm your booking."
                 : `Your booking request has been sent to ${creator?.name || username}. You'll receive an email once they respond.`}
             </p>
-            <Link href={`/${username}`}
+            <Link href={`/${creator?.handle || username}`}
               className="bg-foreground text-background px-8 py-3 rounded-lg font-bold hover:bg-orange-600 transition-all inline-block">
               Back to Profile
             </Link>
@@ -359,7 +359,7 @@ export default function BookingPage({ username, creator }: { username: string; c
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         creatorName={creator?.name || username}
-        creatorId={username}
+        creatorId={creator?.handle || username}
         uid={creator?.uid || ""}
         includeReferral={false}
       />

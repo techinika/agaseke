@@ -10,9 +10,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const creatorDoc = await adminDb.collection("creators").doc(creatorHandle).get();
+    let creatorDoc = await adminDb.collection("creators").doc(creatorHandle).get();
     if (!creatorDoc.exists) {
-      return NextResponse.json({ error: "Creator not found" }, { status: 404 });
+      const q = await adminDb.collection("creators").where("uid", "==", creatorHandle).limit(1).get();
+      if (q.empty) {
+        return NextResponse.json({ error: "Creator not found" }, { status: 404 });
+      }
+      creatorDoc = q.docs[0];
     }
 
     const creatorData = creatorDoc.data();
