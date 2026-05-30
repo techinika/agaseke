@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/db/firebaseAdmin";
 import { createNotification } from "@/lib/adminNotifications";
+import { transporter } from "@/lib/emailTransporter";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export async function POST(req: Request) {
@@ -277,6 +278,59 @@ export async function POST(req: Request) {
                 actorName: txData.buyerName || undefined,
                 actorId: txData.buyerId || undefined,
               });
+            }
+
+            // Notify buyer/supporter that payment was successful
+            if (buyerId && buyerId !== "anonymous") {
+              await createNotification({
+                userId: buyerId,
+                type: "booking_paid",
+                title: "Payment Confirmed!",
+                message: `Your payment of ${totalAmount.toLocaleString()} RWF for booking with ${txData.creatorName || "creator"} is confirmed.`,
+                metadata: { txRef: OrderMerchantReference, bookingId, amount: totalAmount },
+                link: `/${txData.creatorId}/booking`,
+                actorName: txData.creatorName || undefined,
+                actorId: txData.creatorUid || undefined,
+              });
+            }
+
+            // Email to buyer if email is available
+            if (txData.bookerEmail) {
+              try {
+                await transporter.sendMail({
+                  from: `"Agaseke" <${process.env.SMTP_USER}>`,
+                  to: txData.bookerEmail,
+                  subject: `Payment confirmed for your booking with ${txData.creatorName || "creator"}`,
+                  html: `
+                    <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
+                      <h2 style="color: #22c55e;">Payment Received!</h2>
+                      <p>Hi ${txData.buyerName || txData.bookerName || ""},</p>
+                      <p>Your payment of <strong>${totalAmount.toLocaleString()} RWF</strong> for your booking with <strong>${txData.creatorName || "creator"}</strong> has been confirmed.</p>
+                      <p>The creator will review and confirm your meeting shortly.</p>
+                      <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+                      <p style="color: #64748b; font-size: 12px;">Agaseke Platform</p>
+                    </div>
+                  `,
+                });
+              } catch (emailErr) {
+                console.error("Failed to send payment confirmation email to buyer:", emailErr);
+              }
+            }
+
+            // Notify admin about the successful booking transaction
+            try {
+              const adminsSnap = await adminDb.collection("profiles").where("isAdmin", "==", true).get();
+              for (const adminDoc of adminsSnap.docs) {
+                await createNotification({
+                  userId: adminDoc.id,
+                  type: "new_transaction",
+                  title: "Booking Payment Completed",
+                  message: `Booking payment of ${totalAmount.toLocaleString()} RWF from ${txData.buyerName || "a client"} to ${txData.creatorName || "creator"}`,
+                  link: "/admin/transactions",
+                });
+              }
+            } catch (adminNotifErr) {
+              console.error("Failed to notify admins:", adminNotifErr);
             }
           }
         } else {

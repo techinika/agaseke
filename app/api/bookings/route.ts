@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb, admin } from "@/db/firebaseAdmin";
 import { BookingAvailability, BookingTier } from "@/types/booking";
 import { encrypt } from "@/lib/encryption";
+import { createNotification } from "@/lib/adminNotifications";
+import { transporter } from "@/lib/emailTransporter";
 
 function parseTimeRange(preferredTime: string): { start: string; end: string } | null {
   const parts = preferredTime.split(" - ");
@@ -207,6 +209,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Email to creator (already existed)
     if (creatorData.email) {
       try {
         await fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/comms/email/booking/request`, {
@@ -225,6 +228,60 @@ export async function POST(request: NextRequest) {
         });
       } catch (emailError) {
         console.error("Failed to send booking notification email:", emailError);
+      }
+    }
+
+    // In-app notification to creator
+    if (creatorData.uid) {
+      await createNotification({
+        userId: creatorData.uid,
+        type: "booking_request",
+        title: "New Booking Request",
+        message: `${bookerName} wants to book a meeting on ${preferredDate} at ${preferredTime}`,
+        link: "/creator/bookings",
+        actorName: bookerName,
+        metadata: { bookingId: bookingRef.id },
+      });
+    }
+
+    // In-app notification + email to booker (confirm request was sent)
+    if (bookerId) {
+      await createNotification({
+        userId: bookerId,
+        type: "booking_request",
+        title: "Booking Request Sent",
+        message: `Your booking request with ${creatorData.name} on ${preferredDate} at ${preferredTime} has been sent.`,
+        link: `/${creatorHandle}`,
+        actorName: creatorData.name,
+        metadata: { bookingId: bookingRef.id },
+      });
+    }
+
+    if (bookerEmail) {
+      try {
+        await transporter.sendMail({
+          from: `"Agaseke" <${process.env.SMTP_USER}>`,
+          to: bookerEmail,
+          subject: `Booking request sent to ${creatorData.name}`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
+              <h2 style="color: #ea580c;">Request Sent!</h2>
+              <p>Hi ${bookerName},</p>
+              <p>Your booking request with <strong>${creatorData.name}</strong> has been received.</p>
+              <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 16px 0;">
+                <p><strong>Date:</strong> ${preferredDate}</p>
+                <p><strong>Time:</strong> ${preferredTime}</p>
+                <p><strong>Type:</strong> ${preferredType === "online" ? "Online" : preferredType === "physical" ? "In Person" : "Either"}</p>
+                ${reason ? `<p><strong>Message:</strong> ${reason}</p>` : ""}
+              </div>
+              <p>You will receive an email once ${creatorData.name} responds to your request.</p>
+              <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+              <p style="color: #64748b; font-size: 12px;">Agaseke Platform</p>
+            </div>
+          `,
+        });
+      } catch (emailError) {
+        console.error("Failed to send booking confirmation email to booker:", emailError);
       }
     }
 
