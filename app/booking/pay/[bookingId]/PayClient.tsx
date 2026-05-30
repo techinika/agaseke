@@ -208,6 +208,19 @@ export default function BookingPayClient() {
               )}
               <span className="capitalize">{booking.preferredType} Meeting</span>
             </div>
+            {booking.meetingLocation && (
+              <div className="flex items-start gap-2 text-sm">
+                {booking.preferredType === "online" ? (
+                  <Video size={16} className="text-orange-500 shrink-0 mt-0.5" />
+                ) : (
+                  <MapPin size={16} className="text-orange-500 shrink-0 mt-0.5" />
+                )}
+                <span className="text-muted-foreground break-all">
+                  {booking.preferredType === "online" ? "Link: " : "Location: "}
+                  {booking.meetingLocation}
+                </span>
+              </div>
+            )}
             <div className="border-t border-border pt-3 flex justify-between font-bold">
               <span>Amount</span>
               <span className="text-orange-600">

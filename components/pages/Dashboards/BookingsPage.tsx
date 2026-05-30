@@ -46,6 +46,8 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 const DAYS_OF_WEEK = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
+const isEncrypted = (text: string) => /^[0-9a-f]{32}:[0-9a-f]{32}:/i.test(text);
+
 function SlotAdder({ onAdd }: { onAdd: (slot: { startTime: string; endTime: string }) => void }) {
   const [open, setOpen] = useState(false);
   const [start, setStart] = useState("09:00");
@@ -69,6 +71,7 @@ function SlotAdder({ onAdd }: { onAdd: (slot: { startTime: string; endTime: stri
 export default function BookingsPage() {
   const { creator, user, profile } = useAuth();
   const [bookings, setBookings] = useState<BookingRequest[]>([]);
+  const [decryptedReasons, setDecryptedReasons] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [showClearModal, setShowClearModal] = useState(false);
   const [activeTab, setActiveTab] = useState<"requests" | "rejected" | "availability" | "tiers">("requests");
@@ -103,8 +106,22 @@ export default function BookingsPage() {
     const bookingsRef = collection(db, "bookingRequests");
     const q = query(bookingsRef, where("creatorHandle", "==", creator.handle), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, {
-      next: (snapshot) => {
-        setBookings(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as BookingRequest[]);
+      next: async (snapshot) => {
+        const raw = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as BookingRequest[];
+        setBookings(raw);
+        const map: Record<string, string> = {};
+        await Promise.all(raw.map(async (b) => {
+          if (!b.reason) return;
+          try {
+            const res = await fetch("/api/decrypt", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ encrypted: b.reason }),
+            });
+            const d = await res.json();
+            if (d.plaintext) map[b.id] = d.plaintext;
+          } catch { /* use encrypted fallback */ }
+        }));
+        setDecryptedReasons(map);
         setLoading(false);
       },
       error: () => setLoading(false),
@@ -120,7 +137,19 @@ export default function BookingsPage() {
         await fetch("/api/comms/email/booking/response", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ bookerEmail: booking.bookerEmail, bookerName: booking.bookerName, creatorName: creator?.name, status, bookingDate: booking.preferredDate, bookingTime: booking.preferredTime, note }),
+          body: JSON.stringify({
+            bookerEmail: booking.bookerEmail,
+            bookerName: booking.bookerName,
+            creatorName: creator?.name,
+            status,
+            bookingDate: booking.preferredDate,
+            bookingTime: booking.preferredTime,
+            note,
+            meetingLocation: booking.meetingLocation || "",
+            preferredType: booking.preferredType,
+            tierName: booking.tierName || "",
+            creatorHandle: creator?.handle || "",
+          }),
         });
       }
       toast.success(`Booking ${status}`);
@@ -248,10 +277,13 @@ export default function BookingsPage() {
                           {booking.tierName && <span className="text-xs font-bold bg-orange-100 text-orange-700 px-2 py-1 rounded">{booking.tierName}</span>}
                           {booking.paymentStatus === "paid" && <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-1 rounded">Paid</span>}
                           {booking.paymentStatus === "pending" && <span className="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-1 rounded">Payment Pending</span>}
-                          {booking.paymentAmount > 0 && <span className="text-xs text-muted-foreground">{(booking.paymentAmount || 0).toLocaleString()} RWF</span>}
+                          {(booking.paymentAmount || 0) > 0 && <span className="text-xs text-muted-foreground">{(booking.paymentAmount || 0).toLocaleString()} RWF</span>}
                         </div>
                       )}
-                      {booking.reason && <div className="p-3 bg-card rounded-lg border border-border"><p className="text-xs font-black uppercase text-muted-foreground mb-1">Reason</p><p className="text-sm">{booking.reason}</p></div>}
+                      {(() => {
+                        const r = decryptedReasons[booking.id] || (!isEncrypted(booking.reason || "") ? booking.reason : "");
+                        return r ? <div className="p-3 bg-card rounded-lg border border-border"><p className="text-xs font-black uppercase text-muted-foreground mb-1">Reason</p><p className="text-sm">{r}</p></div> : null;
+                      })()}
                     </div>
                   ))}
                 </div>
@@ -295,7 +327,7 @@ export default function BookingsPage() {
                     <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground"><Clock size={14} />{booking.preferredTime}</div>
                   </div>
                 </div>
-                <div className="bg-muted p-4 rounded-lg text-sm text-muted-foreground mb-4"><p className="font-bold mb-1">Reason:</p><p>{booking.reason || "No reason provided."}</p></div>
+                <div className="bg-muted p-4 rounded-lg text-sm text-muted-foreground mb-4"><p className="font-bold mb-1">Reason:</p><p>{decryptedReasons[booking.id] || (!isEncrypted(booking.reason || "") ? booking.reason : null) || "No reason provided."}</p></div>
                 {booking.responseNote && <div className="bg-red-50 p-3 rounded-lg text-sm text-red-700"><p className="font-bold mb-1">Note:</p><p>{booking.responseNote}</p></div>}
               </div>
             )) : <div className="bg-card border border-dashed border-border rounded-3xl p-16 text-center"><p className="text-muted-foreground text-lg font-medium">No rejected bookings</p></div>}

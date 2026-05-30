@@ -54,9 +54,11 @@ export interface BookingRequest {
   preferredType: BookingType;
   preferredDate: string;
   preferredTime: string;
+  meetingLocation?: string;
   status: BookingStatus;
   tierId?: string;
   tierName?: string;
+  tierDuration?: number;
   paymentAmount?: number;
   paymentStatus?: "none" | "pending" | "paid" | "failed";
   txRef?: string;
