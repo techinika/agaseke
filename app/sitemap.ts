@@ -2,8 +2,6 @@ import { MetadataRoute } from "next";
 import { adminDb } from "@/db/firebaseAdmin";
 import { baseUrl } from "@/lib/baseUrl";
 
-export { baseUrl };
-
 export async function generateSitemaps() {
   return [
     { id: "static" },

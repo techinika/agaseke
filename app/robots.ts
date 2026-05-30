@@ -1,5 +1,5 @@
 import { MetadataRoute } from "next";
-import { baseUrl } from "./sitemap";
+import { baseUrl } from "@/lib/baseUrl";
 
 export default function robots(): MetadataRoute.Robots {
   return {

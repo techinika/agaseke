@@ -85,6 +85,11 @@ export default function CreatorOnboarding() {
             formData.username === "help-center" ||
             formData.username === "api" ||
             formData.username === "test" ||
+            formData.username === "sitemap" ||
+            formData.username === "sitemap.xml" ||
+            formData.username === "robots" ||
+            formData.username === "robots.txt" ||
+            formData.username === "robot" ||
             formData.username === "profile" ||
             formData.username === "payout" ||
             formData.username === "payout-policy" ||
@@ -298,7 +303,10 @@ export default function CreatorOnboarding() {
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2">
                 {usernameStatus === "checking" && (
-                  <Loader className="animate-spin text-muted-foreground" size={20} />
+                  <Loader
+                    className="animate-spin text-muted-foreground"
+                    size={20}
+                  />
                 )}
                 {usernameStatus === "available" && (
                   <Check className="text-green-500" size={20} />
