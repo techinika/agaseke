@@ -63,11 +63,19 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - Email notifications for new messages
 - **Book a Meeting** (`/creator/bookings`):
   - Booking requests management with accept/decline actions
-  - Set availability (days of week, time slots)
+  - Set availability (days of week, time slots, date range)
   - Configure meeting type (online, in-person, or both)
   - Location or video link settings
+  - Paid tiered booking system with tier selection (choose a tier with a price)
+  - Calendar integration: Google Calendar, Yahoo Calendar, Apple/Outlook (.ics) buttons in response email
+  - Meeting location/link displayed in booking summary and confirmation email
+  - Server-side validation: date range, day-of-week, time slot matching, and price verification
+  - Duration-aware conflict detection (overlapping time ranges instead of exact string match)
+  - Reason encryption at rest using AES-256-GCM (key from `ENCRYPTION_KEY` env var)
+  - In-app notifications sent to both creator and booker on request, payment, and response
+  - Confirmation email sent to booker on successful booking request
   - Automatic email notifications for booking responses
-  - "Book a Meeting" button on public profiles (simple text button, shown when availability is set)
+  - "Book a Meeting" button on public profiles (shown when availability is set)
   - Clear availability to temporarily disable booking feature
 - **Gatherings** (`/creator/gatherings`):
   - Enable/disable via Perks settings (hidden from sidebar when disabled)
@@ -209,7 +217,17 @@ NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
 
+# Encryption (booking reasons at rest)
+ENCRYPTION_KEY=your_secret_key_min_16_chars
+
+# SMTP (email notifications)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_app_password
+
 # App
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
 ```
 
@@ -352,14 +370,21 @@ interface BookingRequest {
   bookerName: string;
   bookerEmail: string;
   bookerPhone: string;
-  reason: string;
+  reason: string;                   // Encrypted at rest (AES-256-GCM)
   preferredType: "online" | "physical" | "both";
   preferredDate: string;
   preferredTime: string;
+  meetingLocation?: string;         // URL for online, address for physical
   status: "pending" | "accepted" | "declined" | "completed" | "cancelled";
   createdAt: Timestamp;
   respondedAt?: Timestamp;
   responseNote?: string;
+  paid?: boolean;                   // True if a paid tier booking
+  tierId?: string;                  // Selected tier for paid booking
+  tierPrice?: number;
+  tierDuration?: string;            // e.g., "30min", "60min"
+  paymentTxRef?: string;            // Payment transaction reference
+  paymentMethod?: string;           // "card" or "momo"
 }
 
 interface BookingAvailability {
@@ -368,6 +393,7 @@ interface BookingAvailability {
   startDate?: string;
   endDate?: string;
   defaultSlots: BookingTimeSlot[];
+  tiers?: BookingTier[];          // Paid tiers with prices
   location?: string;
   onlineLink?: string;
 }
@@ -376,6 +402,14 @@ interface BookingTimeSlot {
   id: string;
   startTime: string;
   endTime: string;
+}
+
+interface BookingTier {
+  id: string;
+  name: string;
+  price: number;
+  duration: string;               // e.g., "30min", "60min"
+  description?: string;
 }
 ```
 
@@ -463,7 +497,12 @@ interface GiveawayReward {
 - `POST /api/comms/email/booking/response` - Booking response notification to booker
 
 ### Bookings
-- `POST /api/bookings` - Submit a booking request
+- `POST /api/bookings` - Submit a booking request (validates availability, price, conflicts; encrypts reason)
+- `POST /api/encrypt` - Encrypt text with AES-256-GCM (server-side utility)
+- `POST /api/decrypt` - Decrypt text with AES-256-GCM (server-side utility)
+- `GET /booking/pay/[bookingId]` - Paid booking payment page
+- `POST /api/support/with-card/ipn` - IPN webhook for card booking payments (notifies buyer + admin)
+- `POST /api/support/with-momo/webhook` - Webhook for MoMo booking payments (notifies buyer + admin)
 
 ### File Uploads
 - `POST /api/upload/content/image` - Image upload
@@ -619,3 +658,15 @@ For issues or feature requests, please open an issue on GitHub.
 - **Replaced hardcoded colors with CSS variable theme classes across 40+ files**: All page backgrounds (`bg-[#FBFBFC]`/`bg-[#F9FAFB]`/`bg-white`), text colors (`text-gray-*`/`text-slate-*`), borders (`border-gray-*`/`border-slate-*`), and surface backgrounds (`bg-gray-*`/`bg-slate-*`) replaced with theme-aware classes (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-card`, `bg-muted`, `bg-foreground`).
 - Dark mode now works across all pages: supporter dashboard, creator dashboard, admin dashboard, public profile pages, navigation, footer, modals, and UI components.
 - Uses Tailwind v4's `@custom-variant dark` with class-based toggling via `next-themes` — `.dark` class on `<html>` switches all CSS variables to the dark palette.
+
+### Booking System Enhancements (May 2026)
+- **Paid Tiered Booking**: Creators can set paid tiers with prices and durations; bookers select a tier during booking and pay before the request is submitted
+- **Server-Side Validation**: Booking API validates date range, day-of-week, time slot matching, and price verification against Firestore tiers
+- **Conflict Detection**: Duration-aware overlap detection instead of exact string match for time slot conflicts
+- **Reason Encryption**: Booking reasons encrypted at rest using AES-256-GCM with per-message random IV; decrypted client-side when viewing the dashboard
+- **Encryption API**: Reusable `/api/encrypt` and `/api/decrypt` endpoints using AES-256-GCM with SHA-256 derived key from `ENCRYPTION_KEY` env var
+- **Calendar Links**: Response email includes Google Calendar, Yahoo Calendar, and Apple/Outlook (.ics) download buttons
+- **Meeting Location**: Location/link displayed in booking summary, confirmation email, and response email with type label
+- **In-App Notifications**: Creator receives `booking_request` notification; booker (if logged in) receives notification and confirmation email on booking request
+- **Payment Notifications**: Both IPN (card) and MoMo webhooks send `booking_paid` notification to buyer, confirmation email to booker, and `new_transaction` notification to all admin profiles
+- **Robust Creator Lookup**: Profiles collection fallback resolves handle → uid → creator document, fixing null document ID mismatches
