@@ -506,27 +506,26 @@ export async function POST(req: Request) {
            createdAt: admin.firestore.FieldValue.serverTimestamp(),
          });
 
-         batch.update(adminDb.collection("creators").doc(txData.creatorId), {
-           totalEarnings: admin.firestore.FieldValue.increment(creatorShare),
-           totalSupporters: admin.firestore.FieldValue.increment(1),
-           pendingPayout: admin.firestore.FieldValue.increment(creatorShare),
-         });
+          batch.update(adminDb.collection("creators").doc(txData.creatorId), {
+            totalEarnings: admin.firestore.FieldValue.increment(creatorShare),
+            pendingPayout: admin.firestore.FieldValue.increment(creatorShare),
+          });
 
-         if (txData.includeReferral && txData.referralUid) {
-           batch.set(adminDb.collection("creatorIncome").doc(), {
-             creatorUid: txData.referralUid,
-             amount: referralShare,
-             txRef: OrderMerchantReference,
-             reason: "referral_commission",
-             createdAt: admin.firestore.FieldValue.serverTimestamp(),
-           });
-           batch.update(adminDb.collection("creators").doc(txData.referralId), {
-             totalEarnings: admin.firestore.FieldValue.increment(referralShare),
-             pendingPayout: admin.firestore.FieldValue.increment(referralShare),
-           });
-         }
+          if (txData.includeReferral && txData.referralUid) {
+            batch.set(adminDb.collection("creatorIncome").doc(), {
+              creatorUid: txData.referralUid,
+              amount: referralShare,
+              txRef: OrderMerchantReference,
+              reason: "referral_commission",
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            batch.update(adminDb.collection("creators").doc(txData.referralId), {
+              totalEarnings: admin.firestore.FieldValue.increment(referralShare),
+              pendingPayout: admin.firestore.FieldValue.increment(referralShare),
+            });
+          }
 
-         if (txData.supporterId && txData.supporterId !== "anonymous") {
+          if (txData.supporterId && txData.supporterId !== "anonymous") {
            batch.update(adminDb.collection("profiles").doc(txData.supporterId), {
              totalSupport: admin.firestore.FieldValue.increment(totalAmount),
              totalSupportedCreators: admin.firestore.FieldValue.increment(1),

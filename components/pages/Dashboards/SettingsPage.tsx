@@ -125,6 +125,7 @@ export default function CreatorSettings() {
         bookingEnabled: creatorData.bookingEnabled ?? false,
         bookingAccess: creatorData.bookingAccess ?? "public",
         gatheringsEnabled: creatorData.gatheringsEnabled ?? false,
+        focus: creatorData.focus || "",
       };
 
       await updateDoc(doc(db, "creators", creator.handle), updateData);
@@ -269,6 +270,22 @@ export default function CreatorSettings() {
                     placeholder="Tell your supporters who you are..."
                     className="w-full h-32 bg-muted p-4 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none resize-none border border-transparent focus:bg-card transition-all"
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
+                    Creator Focus
+                  </label>
+                  <input
+                    type="text"
+                    value={creatorData?.focus || ""}
+                    onChange={(e) => handleUpdate("focus", e.target.value)}
+                    placeholder="e.g. Music, Art, Fashion, Tech, Fitness..."
+                    className="w-full bg-muted p-4 rounded-lg text-sm font-bold focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-card transition-all"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    What do you create? This helps supporters understand your content niche.
+                  </p>
                 </div>
 
                 <div className="p-6 bg-foreground rounded-lg text-background flex items-center justify-between shadow-xl">

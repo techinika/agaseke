@@ -199,6 +199,7 @@ export async function POST(req: Request) {
 
       return NextResponse.json({
         redirect_url: payData.redirect_url,
+        ref: merchantRef,
         merchant_reference: payData.merchant_reference,
       });
     }
