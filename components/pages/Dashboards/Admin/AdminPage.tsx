@@ -60,6 +60,8 @@ export default function AdminDashboard() {
     totalTransactionAmount: 0,
     successfulTransactionCount: 0,
     averageTransactionAmount: 0,
+    failedTransactionCount: 0,
+    pendingTransactionCount: 0,
   });
   const [rejectionReason, setRejectionReason] = useState("");
   const [timeFilter, setTimeFilter] = useState<"all" | "7d" | "30d">("all");
@@ -326,6 +328,8 @@ export default function AdminDashboard() {
       let txProducts = 0;
       let totalSuccessfulAmount = 0;
       let successfulCount = 0;
+      let failedCount = 0;
+      let pendingCount = 0;
       allTransactions.forEach((tx) => {
         if (tx.status === "successful" || tx.status === "success") {
           const amt = Number(tx.amount) || 0;
@@ -336,6 +340,10 @@ export default function AdminDashboard() {
           } else if (tx.type === "product") {
             txProducts += 1;
           }
+        } else if (tx.status === "failed") {
+          failedCount += 1;
+        } else if (tx.status === "pending") {
+          pendingCount += 1;
         }
       });
       const avgAmount = successfulCount > 0 ? Math.round(totalSuccessfulAmount / successfulCount) : 0;
@@ -392,6 +400,8 @@ export default function AdminDashboard() {
         totalTransactionAmount: totalSuccessfulAmount,
         successfulTransactionCount: successfulCount,
         averageTransactionAmount: avgAmount,
+        failedTransactionCount: failedCount,
+        pendingTransactionCount: pendingCount,
       });
       setTopEarners(earnersSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
       setTopViewed(viewsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -847,6 +857,12 @@ export default function AdminDashboard() {
             value={`${stats.averageTransactionAmount.toLocaleString()} RWF`}
             icon={<BarChart3 className="text-sky-600" />}
             color="bg-sky-50"
+          />
+          <StatCard
+            label="Failed Transactions"
+            value={`${(stats.failedTransactionCount + stats.pendingTransactionCount).toLocaleString()}`}
+            icon={<XCircle className="text-red-600" />}
+            color="bg-red-50"
           />
         </div>
 

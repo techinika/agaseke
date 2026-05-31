@@ -581,6 +581,75 @@ export async function POST(req: Request) {
       } catch (adminNotifErr) {
         console.error("Failed to notify admins:", adminNotifErr);
       }
+
+      // Send ticket confirmation email to attendee
+      if (txData.attendeeEmail) {
+        try {
+          const gatheringSnap = await adminDb.collection("creatorGatherings").doc(txData.gatheringId).get();
+          const gData = gatheringSnap.exists ? gatheringSnap.data() : null;
+          const creatorProfileSnap = await adminDb.collection("profiles").doc(txData.creatorUid).get();
+          const creatorName = creatorProfileSnap.exists ? creatorProfileSnap.data()?.displayName || txData.creatorId : txData.creatorId;
+
+          await transporter.sendMail({
+            from: `"Agaseke" <${process.env.SMTP_USER}>`,
+            to: txData.attendeeEmail,
+            subject: `Your Ticket for ${gData?.title || "Event"} - Confirmed!`,
+            html: `
+              <!DOCTYPE html>
+              <html>
+                <head>
+                  <style>
+                    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1e293b; }
+                    .container { max-width: 480px; margin: 0 auto; padding: 20px; }
+                    .header { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: white; padding: 30px; border-radius: 12px 12px 0 0; text-align: center; }
+                    .content { background: #f8fafc; padding: 30px; border-radius: 0 0 12px 12px; }
+                    .event-card { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #22c55e; }
+                    .event-card p { margin: 8px 0; }
+                    .cta { display: inline-block; background: #f97316; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin-top: 20px; }
+                    .footer { text-align: center; color: #64748b; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+                  </style>
+                </head>
+                <body>
+                  <div class="container">
+                    <div class="header">
+                      <h1 style="margin: 0; font-size: 24px;">Ticket Confirmed! 🎫</h1>
+                    </div>
+                    <div class="content">
+                      <p>Hi ${txData.attendeeName || "there"},</p>
+                      <p>Your ticket for <strong>${gData?.title || "the event"}</strong> has been confirmed!</p>
+                      <div class="event-card">
+                        <p><strong>Event:</strong> ${gData?.title || "N/A"}</p>
+                        <p><strong>Date:</strong> ${gData?.date || "N/A"}</p>
+                        <p><strong>Time:</strong> ${gData?.time || "N/A"}</p>
+                        <p><strong>Location:</strong> ${gData?.location || "N/A"}</p>
+                        <p><strong>Ticket:</strong> ${totalAmount.toLocaleString()} RWF</p>
+                        <p><strong>Hosted by:</strong> ${creatorName}</p>
+                      </div>
+                      <p style="text-align: center;">
+                        <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://agaseke.me"}/${txData.creatorId}/gatherings/${txData.gatheringId}" class="cta">View Your Ticket</a>
+                      </p>
+                      <p style="font-size: 13px; color: #64748b;">Please show your QR code ticket at the event for check-in. You can access it from the event page.</p>
+                      <div class="footer">
+                        <p>This email was sent by Agaseke Platform</p>
+                        <p>© ${new Date().getFullYear()} Agaseke. All rights reserved.</p>
+                      </div>
+                    </div>
+                  </div>
+                </body>
+              </html>
+            `,
+          });
+        } catch (emailErr) {
+          console.error("Failed to send ticket confirmation email:", emailErr);
+          await adminDb.collection("activityLogs").add({
+            level: "error",
+            category: "payment",
+            message: `Momo webhook: Failed to send ticket email for ref ${ref}`,
+            metadata: { ref, gatheringId: txData.gatheringId, attendeeEmail: txData.attendeeEmail, error: String(emailErr) },
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+      }
     } else {
       const platformSharePercentage = txData.includeReferral
         ? Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL)

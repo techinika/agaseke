@@ -46,12 +46,12 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
           try {
             const attendanceQuery = query(
               collection(db, "gatheringsAttendance"),
-              where("gatheringId", "==", g.id),
               where("supporterId", "==", user.uid),
             );
             const attendanceSnap = await getDocs(attendanceQuery);
-            if (!attendanceSnap.empty) {
-              setAttendanceDocId(attendanceSnap.docs[0].id);
+            const match = attendanceSnap.docs.find(d => d.data().gatheringId === g.id);
+            if (match) {
+              setAttendanceDocId(match.id);
             }
           } catch (e) {
             console.error("Failed to query attendance doc:", e);
@@ -92,10 +92,11 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
           setUserTotalSupport(total);
 
           const attendanceRef = collection(db, "gatheringsAttendance");
-          const rq = query(attendanceRef, where("supporterId", "==", user.uid), where("creatorHandle", "==", username));
+          const rq = query(attendanceRef, where("supporterId", "==", user.uid));
           const rs = await getDocs(rq);
-          setIsRsvped(rs.docs.some(d => d.data().gatheringId === gatheringId));
-          const existingDoc = rs.docs.find(d => d.data().gatheringId === gatheringId);
+          const creatorDocs = rs.docs.filter(d => d.data().creatorHandle === username);
+          setIsRsvped(creatorDocs.some(d => d.data().gatheringId === gatheringId));
+          const existingDoc = creatorDocs.find(d => d.data().gatheringId === gatheringId);
           if (existingDoc) {
             setAttendanceDocId(existingDoc.id);
           }

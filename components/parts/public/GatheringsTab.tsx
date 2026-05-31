@@ -89,16 +89,16 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
           const attendanceRef = collection(db, "gatheringsAttendance");
           const rsvpQuery = query(
             attendanceRef,
-            where("supporterId", "==", user.uid),
-            where("creatorHandle", "==", creatorHandle)
+            where("supporterId", "==", user.uid)
           );
           const rsvpSnapshot = await getDocs(rsvpQuery);
-          const rsvped = new Set(rsvpSnapshot.docs.map((doc) => doc.data().gatheringId));
+          const creatorDocs = rsvpSnapshot.docs.filter(d => d.data().creatorHandle === creatorHandle);
+          const rsvped = new Set(creatorDocs.map((doc) => doc.data().gatheringId));
           setRsvpedIds(rsvped);
 
           const docIds: Record<string, string> = {};
           const statusMap: Record<string, { checkedIn: boolean; checkInDeclined: boolean }> = {};
-          rsvpSnapshot.docs.forEach((doc) => {
+          creatorDocs.forEach((doc) => {
             const data = doc.data();
             docIds[data.gatheringId] = doc.id;
             statusMap[data.gatheringId] = {
@@ -244,12 +244,12 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
           try {
             const attendanceQuery = query(
               collection(db, "gatheringsAttendance"),
-              where("gatheringId", "==", gathering.id),
               where("supporterId", "==", user.uid),
             );
             const attendanceSnap = await getDocs(attendanceQuery);
-            if (!attendanceSnap.empty) {
-              setAttendanceDocIds((prev) => ({ ...prev, [gathering.id]: attendanceSnap.docs[0].id }));
+            const match = attendanceSnap.docs.find(d => d.data().gatheringId === gathering.id);
+            if (match) {
+              setAttendanceDocIds((prev) => ({ ...prev, [gathering.id]: match.id }));
             }
           } catch (e) {
             console.error("Failed to query attendance doc:", e);
