@@ -32,6 +32,7 @@ export default function BookingPayClient() {
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [paid, setPaid] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"momo" | "card">("momo");
   const [phone, setPhone] = useState("");
 
@@ -45,7 +46,7 @@ export default function BookingPayClient() {
       }
       const data: any = { id: snap.id, ...snap.data() };
       setBooking(data);
-      if (data.paymentStatus === "paid") setPaid(true);
+      if (data.paymentStatus === "paid") { setPaid(true); setConfirmed(true); }
       if (!data.paymentAmount || data.paymentAmount <= 0) {
         router.push(`/${data.creatorHandle || ""}/booking`);
         return;
@@ -54,6 +55,22 @@ export default function BookingPayClient() {
     };
     fetchBooking();
   }, [bookingId]);
+
+  // Poll Firestore for payment confirmation after initiating payment
+  useEffect(() => {
+    if (!paid || confirmed || !bookingId) return;
+    const interval = setInterval(async () => {
+      try {
+        const snap = await getDoc(doc(db, "bookingRequests", bookingId));
+        if (snap.exists() && snap.data().paymentStatus === "paid") {
+          setConfirmed(true);
+          setBooking((prev: any) => ({ ...prev, paymentStatus: "paid" }));
+          clearInterval(interval);
+        }
+      } catch { /* ignore polling errors */ }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [paid, confirmed, bookingId]);
 
   const handlePay = async () => {
     if (!booking || !currentUser?.uid) {
@@ -104,6 +121,7 @@ export default function BookingPayClient() {
       if (paymentMethod === "card" && data.redirect_url) {
         window.open(data.redirect_url, "_blank");
         toast.success("Payment page opened in a new tab");
+        setPaid(true);
         return;
       }
 
@@ -240,7 +258,7 @@ export default function BookingPayClient() {
           </div>
 
           {/* Payment section */}
-          {isPaid ? (
+          {isPaid || confirmed ? (
             <div className="bg-green-50 rounded-xl p-4 flex items-start gap-3">
               <Check size={20} className="text-green-600 mt-0.5 shrink-0" />
               <div>
@@ -253,16 +271,16 @@ export default function BookingPayClient() {
               </div>
             </div>
           ) : paid ? (
-            <div className="bg-green-50 rounded-xl p-4 flex items-start gap-3">
-              <Check size={20} className="text-green-600 mt-0.5 shrink-0" />
+            <div className="bg-amber-50 rounded-xl p-4 flex items-start gap-3">
+              <Loader size={20} className="animate-spin text-amber-600 mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-bold text-green-800">
-                  Payment Initiated
+                <p className="text-sm font-bold text-amber-800">
+                  Waiting for Payment Confirmation
                 </p>
-                <p className="text-xs text-green-600 mt-1">
+                <p className="text-xs text-amber-600 mt-1">
                   {paymentMethod === "momo"
-                    ? "Check your phone to complete the payment."
-                    : "Complete your payment in the new tab."}
+                    ? "Please check your phone to complete the payment. Waiting for confirmation..."
+                    : "Waiting for card payment confirmation..."}
                 </p>
               </div>
             </div>

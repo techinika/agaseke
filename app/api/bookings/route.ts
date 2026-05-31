@@ -81,15 +81,21 @@ export async function POST(request: NextRequest) {
 
     // Resolve creator email from profiles collection (creators doc has no email field)
     let creatorEmail = "";
+    console.log(`[BOOKING_EMAIL] Resolving email for creator handle=${creatorHandle}, uid=${creatorData?.uid}`);
     if (creatorData?.uid) {
       try {
         const profileSnap = await adminDb.collection("profiles").doc(creatorData.uid).get();
         if (profileSnap.exists) {
           creatorEmail = profileSnap.data()?.email || "";
+          console.log(`[BOOKING_EMAIL] Found profile for uid=${creatorData.uid}, email="${creatorEmail}"`);
+        } else {
+          console.log(`[BOOKING_EMAIL] No profile doc exists for uid=${creatorData.uid}`);
         }
       } catch (err) {
-        console.error("Failed to fetch creator profile for email:", err);
+        console.error("[BOOKING_EMAIL] Failed to fetch creator profile for email:", err);
       }
+    } else {
+      console.log(`[BOOKING_EMAIL] Creator has no uid field, cannot look up profile`);
     }
 
     if (!creatorData?.bookingEnabled) {
@@ -222,26 +228,70 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Email to creator
-    if (creatorEmail) {
+    // Email to creator (deferred to webhook for paid tiers — sent after payment confirmation)
+    console.log(`[BOOKING_EMAIL] Decision: creatorEmail="${creatorEmail}", isPaidTier=${isPaidTier}, willSend=${!!creatorEmail && !isPaidTier}`);
+    if (creatorEmail && !isPaidTier) {
+      console.log(`[BOOKING_EMAIL] Sending creator email to "${creatorEmail}" for booker "${bookerName}"`);
       try {
-        await fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/comms/email/booking/request`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            creatorEmail,
-            creatorName: creatorData.name,
-            bookerName,
-            bookerEmail,
-            reason,
-            preferredDate,
-            preferredTime,
-            preferredType,
-          }),
+        const emailHtml = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1e293b; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; padding: 30px; border-radius: 12px 12px 0 0; text-align: center; }
+                .content { background: #f8fafc; padding: 30px; border-radius: 0 0 12px 12px; }
+                .booking-card { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f97316; }
+                .booking-card p { margin: 8px 0; }
+                .reason { background: #fff7ed; padding: 15px; border-radius: 8px; margin: 20px 0; }
+                .cta { display: inline-block; background: #f97316; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 10px 5px; }
+                .footer { text-align: center; color: #64748b; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h1 style="margin: 0; font-size: 24px;">New Booking Request</h1>
+                </div>
+                <div class="content">
+                  <p>Hi ${creatorData.name},</p>
+                  <p><strong>${bookerName}</strong> has requested to book a meeting with you!</p>
+                  <div class="booking-card">
+                    <p><strong>Name:</strong> ${bookerName}</p>
+                    <p><strong>Email:</strong> ${bookerEmail}</p>
+                    <p><strong>Date:</strong> ${preferredDate || "Not specified"}</p>
+                    <p><strong>Time:</strong> ${preferredTime || "Not specified"}</p>
+                    <p><strong>Type:</strong> ${preferredType === "online" ? "Online" : preferredType === "physical" ? "In Person" : "Either"}</p>
+                  </div>
+                  ${reason ? `<div class="reason"><strong>Message from ${bookerName}:</strong><br>${reason}</div>` : ""}
+                  <p>Please log in to your dashboard to accept or decline this request.</p>
+                  <div style="text-align: center; margin-top: 20px;">
+                    <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://agaseke.me"}/creator/bookings" class="cta">Manage Bookings</a>
+                  </div>
+                  <div class="footer">
+                    <p>This email was sent by Agaseke Platform</p>
+                    <p>© ${new Date().getFullYear()} Agaseke. All rights reserved.</p>
+                  </div>
+                </div>
+              </div>
+            </body>
+          </html>
+        `;
+        const info = await transporter.sendMail({
+          from: `"Agaseke" <${process.env.SMTP_USER}>`,
+          to: creatorEmail,
+          subject: `New booking request from ${bookerName}`,
+          html: emailHtml,
         });
+        console.log(`[BOOKING_EMAIL] Email sent successfully to "${creatorEmail}", messageId=${info.messageId}`);
       } catch (emailError) {
-        console.error("Failed to send booking notification email:", emailError);
+        console.error("[BOOKING_EMAIL] Failed to send booking notification email:", emailError);
       }
+    } else if (!creatorEmail) {
+      console.log(`[BOOKING_EMAIL] Skipping creator email — no email address resolved for creator handle="${creatorHandle}"`);
+    } else {
+      console.log(`[BOOKING_EMAIL] Skipping creator email — paid tier (will be sent via webhook after payment)`);
     }
 
     // In-app notification to creator
