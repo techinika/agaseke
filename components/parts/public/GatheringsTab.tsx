@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { GatheringCard, PastGatheringCard } from "./gatherings";
 import type { Gathering } from "./gatherings";
 import { logError, logInfo } from "@/lib/logger";
+import { QRCodeCanvas } from "qrcode.react";
 
 interface GatheringsTabProps {
   creatorId: string;
@@ -42,6 +43,9 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
   const [showPast, setShowPast] = useState(false);
   const [myRsvpStatus, setMyRsvpStatus] = useState<Record<string, { checkedIn: boolean; checkInDeclined: boolean }>>({});
   const [userTotalSupport, setUserTotalSupport] = useState(0);
+  const [attendanceDocIds, setAttendanceDocIds] = useState<Record<string, string>>({});
+  const [ticketModalGathering, setTicketModalGathering] = useState<Gathering | null>(null);
+  const [ticketModalDocId, setTicketModalDocId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserSupport = async () => {
@@ -92,14 +96,17 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
           const rsvped = new Set(rsvpSnapshot.docs.map((doc) => doc.data().gatheringId));
           setRsvpedIds(rsvped);
 
+          const docIds: Record<string, string> = {};
           const statusMap: Record<string, { checkedIn: boolean; checkInDeclined: boolean }> = {};
           rsvpSnapshot.docs.forEach((doc) => {
             const data = doc.data();
+            docIds[data.gatheringId] = doc.id;
             statusMap[data.gatheringId] = {
               checkedIn: data.checkedIn || false,
               checkInDeclined: data.checkInDeclined || false,
             };
           });
+          setAttendanceDocIds(docIds);
           setMyRsvpStatus(statusMap);
         }
       } catch (error) {
@@ -161,7 +168,7 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
 
     setRsvping(gathering.id);
     try {
-      await addDoc(collection(db, "gatheringsAttendance"), {
+      const docRef = await addDoc(collection(db, "gatheringsAttendance"), {
         gatheringId: gathering.id,
         supporterId: user.uid,
         supporterName: profile.displayName || user.email,
@@ -171,6 +178,8 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
         createdAt: serverTimestamp(),
         checkedIn: false,
       });
+
+      setAttendanceDocIds((prev) => ({ ...prev, [gathering.id]: docRef.id }));
 
       await updateDoc(doc(db, "creatorGatherings", gathering.id), {
         attendeesCount: (gathering.attendeesCount || 0) + 1,
@@ -222,7 +231,7 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
   const listenForTransaction = useCallback((ref: string, gathering: Gathering) => {
     const txRef = collection(db, "transactions");
     const q = query(txRef, where("ref", "==", ref), orderBy("createdAt", "desc"), fsLimit(1));
-    const unsub = onSnapshot(q, (snap) => {
+    const unsub = onSnapshot(q, async (snap) => {
       if (snap.empty) return;
       const tx = snap.docs[0].data();
       if (tx.status === "successful") {
@@ -230,6 +239,23 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
         setPayingGathering(null);
         setRsvpedIds((prev) => new Set(prev).add(gathering.id));
         setMyRsvpStatus((prev) => ({ ...prev, [gathering.id]: { checkedIn: false, checkInDeclined: false } }));
+
+        if (user?.uid) {
+          try {
+            const attendanceQuery = query(
+              collection(db, "gatheringsAttendance"),
+              where("gatheringId", "==", gathering.id),
+              where("supporterId", "==", user.uid),
+            );
+            const attendanceSnap = await getDocs(attendanceQuery);
+            if (!attendanceSnap.empty) {
+              setAttendanceDocIds((prev) => ({ ...prev, [gathering.id]: attendanceSnap.docs[0].id }));
+            }
+          } catch (e) {
+            console.error("Failed to query attendance doc:", e);
+          }
+        }
+
         unsub();
       } else if (tx.status === "failed") {
         toast.error("Payment failed. Please try again.");
@@ -246,7 +272,7 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
         toast.error("Payment timed out. Please try again.");
       }
     }, 120000);
-  }, [paying]);
+  }, [paying, user]);
 
   const handlePaidRSVP = async (gathering: Gathering) => {
     if (!user || !profile) {
@@ -376,6 +402,11 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
             onRSVP={() => handleRSVP(gathering)}
             userId={user?.uid}
             creatorHandle={creatorHandle}
+            showTicket={!!attendanceDocIds[gathering.id]}
+            onViewTicket={() => {
+              setTicketModalGathering(gathering);
+              setTicketModalDocId(attendanceDocIds[gathering.id]);
+            }}
           />
         );
       })}
@@ -485,6 +516,30 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
                 {paying ? <Loader size={20} className="animate-spin" /> : null}
                 {paying ? "Processing..." : `Pay ${payingGathering.ticketPrice?.toLocaleString()} RWF`}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ticket Modal */}
+      {ticketModalGathering && ticketModalDocId && (
+        <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+          <div className="bg-card w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-border flex justify-between items-center">
+              <h2 className="text-xl font-bold">Your Ticket</h2>
+              <button onClick={() => { setTicketModalGathering(null); setTicketModalDocId(null); }} className="p-2 hover:bg-muted rounded-full">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 flex flex-col items-center gap-4">
+              <div className="bg-white p-4 rounded-xl shadow-inner">
+                <QRCodeCanvas value={ticketModalDocId} size={200} />
+              </div>
+              <p className="font-bold text-lg text-center">{ticketModalGathering.title}</p>
+              <p className="text-sm text-muted-foreground">{ticketModalGathering.date} at {ticketModalGathering.time}</p>
+              <p className="text-xs text-muted-foreground text-center">
+                Show this QR code at the event for check-in
+              </p>
             </div>
           </div>
         </div>

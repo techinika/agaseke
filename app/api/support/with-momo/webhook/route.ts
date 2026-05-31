@@ -551,19 +551,15 @@ export async function POST(req: Request) {
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      const buyerId = txData.supporterId || "";
-      if (buyerId && buyerId !== "anonymous") {
-        batch.update(adminDb.collection("profiles").doc(buyerId), {
-          totalSupport: admin.firestore.FieldValue.increment(totalAmount),
-          totalSupportedCreators: admin.firestore.FieldValue.increment(1),
-        });
-      }
+      batch.update(adminDb.collection("creatorGatherings").doc(txData.gatheringId), {
+        attendeesCount: admin.firestore.FieldValue.increment(1),
+      });
 
       if (txData.creatorUid) {
         await createNotification({
           userId: txData.creatorUid,
           type: "new_gathering",
-          title: "New RSVP with Payment!",
+          title: "New Ticket Sale!",
           message: `${txData.attendeeName || "Someone"} purchased a ticket for your gathering`,
           metadata: { txRef: ref, gatheringId: txData.gatheringId, amount: totalAmount, creatorShare },
           link: "/creator/gatherings",
@@ -577,8 +573,8 @@ export async function POST(req: Request) {
           await createNotification({
             userId: adminDoc.id,
             type: "new_transaction",
-            title: "Gathering Ticket Payment",
-            message: `Gathering ticket of ${totalAmount.toLocaleString()} RWF from ${txData.attendeeName || "someone"}`,
+            title: "Ticket Sale",
+            message: `Ticket sale of ${totalAmount.toLocaleString()} RWF from ${txData.attendeeName || "someone"}`,
             link: "/admin/transactions",
           });
         }

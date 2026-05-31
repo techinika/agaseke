@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Calendar,
   MapPin,
@@ -18,6 +18,8 @@ import {
   Search,
   Check,
   Send,
+  Wallet,
+  ArrowRight,
 } from "lucide-react";
 import { db } from "@/db/firebase";
 import {
@@ -32,12 +34,15 @@ import {
   orderBy,
   getDocs,
   updateDoc,
+  getDoc,
 } from "firebase/firestore";
+import { Html5Qrcode } from "html5-qrcode";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Edit } from "lucide-react";
 import { logActivity } from "@/lib/logger";
+import Link from "next/link";
 
 export default function GatheringsPage() {
   const { creator } = useAuth();
@@ -55,6 +60,10 @@ export default function GatheringsPage() {
   const [deleting, setDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
   const creatingRef = useRef(false);
+  const [scanMode, setScanMode] = useState(false);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const activeEventRef = useRef<any>(null);
+  const handleCheckInRef = useRef<any>(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -94,6 +103,7 @@ export default function GatheringsPage() {
   const displayEvents = activeTab === "upcoming" ? upcomingEvents : pastEvents;
   const activeEvent = displayEvents[selectedEventIndex];
   const currentEventId = activeEvent?.id;
+  activeEventRef.current = activeEvent;
 
   useEffect(() => {
     if (!currentEventId) {
@@ -322,6 +332,7 @@ export default function GatheringsPage() {
       setCheckingIn(null);
     }
   };
+  handleCheckInRef.current = handleCheckIn;
 
   const handleDeclineCheckIn = async (attendee: any) => {
     setCheckingIn(attendee.id);
@@ -429,6 +440,133 @@ export default function GatheringsPage() {
 
   const checkedInCount = attendees.filter((a) => a.checkedIn).length;
   const declinedCount = attendees.filter((a) => a.checkInDeclined).length;
+
+  // Manage QR scanner lifecycle
+  useEffect(() => {
+    if (!showCheckIn) {
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch(() => {});
+        scannerRef.current = null;
+      }
+      return;
+    }
+
+    if (!scanMode) {
+      if (scannerRef.current) {
+        scannerRef.current.stop().catch(() => {});
+        scannerRef.current = null;
+      }
+      return;
+    }
+
+    const scanner = new Html5Qrcode("qr-reader");
+    scannerRef.current = scanner;
+
+    scanner
+      .start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        async (decodedText) => {
+          const ev = activeEventRef.current;
+          const checkIn = handleCheckInRef.current;
+          if (!ev) return;
+
+          await scanner.stop().catch(() => {});
+          scannerRef.current = null;
+
+          try {
+            const docRef = doc(db, "gatheringsAttendance", decodedText);
+            const docSnap = await getDoc(docRef);
+
+            if (!docSnap.exists()) {
+              toast.error("Invalid ticket: not found");
+              setScanMode(false);
+              return;
+            }
+
+            const data = docSnap.data();
+            if (data.gatheringId !== ev.id) {
+              toast.error("This ticket is for a different event");
+              setScanMode(false);
+              return;
+            }
+
+            if (data.checkedIn) {
+              toast.info(`${data.supporterName || "Someone"} is already checked in`);
+              setScanMode(false);
+              return;
+            }
+
+            await checkIn({ id: decodedText, ...data });
+            toast.success(`${data.supporterName || "Attendee"} checked in via QR!`);
+            setScanMode(false);
+          } catch (e) {
+            console.error("QR scan error:", e);
+            toast.error("Failed to process ticket");
+            setScanMode(false);
+          }
+        },
+        () => {},
+      )
+      .catch((err) => {
+        console.error("QR scanner start failed:", err);
+        toast.error("Camera access failed. Check permissions.");
+        setScanMode(false);
+      });
+
+    return () => {
+      scanner.stop().catch(() => {});
+      scannerRef.current = null;
+    };
+  }, [showCheckIn, scanMode]);
+
+  const handleQrScan = useCallback(async (attendanceDocId: string) => {
+    if (!activeEvent) return;
+
+    if (scannerRef.current) {
+      await scannerRef.current.stop().catch(() => {});
+      scannerRef.current = null;
+    }
+
+    try {
+      const docRef = doc(db, "gatheringsAttendance", attendanceDocId);
+      const docSnap = await getDoc(docRef);
+
+      if (!docSnap.exists()) {
+        toast.error("Invalid ticket: not found");
+        setScanMode(false);
+        return;
+      }
+
+      const data = docSnap.data();
+      if (data.gatheringId !== activeEvent.id) {
+        toast.error("This ticket is for a different event");
+        setScanMode(false);
+        return;
+      }
+
+      if (data.checkedIn) {
+        toast.info(`${data.supporterName || "Someone"} is already checked in`);
+        setScanMode(false);
+        return;
+      }
+
+      await handleCheckIn({ id: attendanceDocId, ...data });
+      toast.success(`${data.supporterName || "Attendee"} checked in via QR!`);
+      setScanMode(false);
+    } catch (e) {
+      console.error("QR scan error:", e);
+      toast.error("Failed to process ticket");
+      setScanMode(false);
+    }
+  }, [activeEvent]);
+  const totalTicketRevenue = attendees
+    .filter((a) => a.paid)
+    .reduce((sum, a) => sum + (a.amount || 0), 0);
+  const platformSharePct = Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.1;
+  const creatorSharePct = Number(process.env.NEXT_PUBLIC_CREATOR_SHARE) || 0.9;
+  const platformFee = totalTicketRevenue * platformSharePct;
+  const creatorNet = totalTicketRevenue * creatorSharePct;
 
   return (
     <div className="min-h-screen bg-background flex flex-col text-foreground">
@@ -660,6 +798,49 @@ export default function GatheringsPage() {
                     </div>
                   </div>
                 )}
+
+                {/* Finance Overview */}
+                <div className="bg-gradient-to-br from-emerald-50 to-green-50 p-4 rounded-lg border border-emerald-200">
+                  {activeEvent.ticketPrice > 0 ? (
+                    <>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Wallet size={18} className="text-emerald-600" />
+                        <p className="text-sm font-bold text-emerald-800">Ticket Sales</p>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-emerald-700">Total collected</span>
+                          <span className="font-bold text-emerald-800">
+                            {totalTicketRevenue.toLocaleString()} RWF
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-emerald-700">Platform fee ({(platformSharePct * 100).toFixed(0)}%)</span>
+                          <span className="font-bold text-amber-600">
+                            -{platformFee.toLocaleString()} RWF
+                          </span>
+                        </div>
+                        <div className="border-t border-emerald-300 pt-2 flex justify-between">
+                          <span className="font-bold text-emerald-800">You receive</span>
+                          <span className="font-bold text-emerald-900">
+                            {creatorNet.toLocaleString()} RWF
+                          </span>
+                        </div>
+                      </div>
+                      <Link
+                        href="/creator/payouts"
+                        className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-emerald-700 hover:text-emerald-800 transition"
+                      >
+                        Withdraw earnings <ArrowRight size={12} />
+                      </Link>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <Wallet size={18} className="text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">No ticket set for this event</p>
+                    </div>
+                  )}
+                </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-4">
@@ -936,6 +1117,7 @@ export default function GatheringsPage() {
                   onClick={() => {
                     setShowCheckIn(false);
                     setSearchQuery("");
+                    setScanMode(false);
                   }}
                   className="p-2 hover:bg-muted rounded-full transition"
                 >
@@ -943,114 +1125,150 @@ export default function GatheringsPage() {
                 </button>
               </div>
 
-              <div className="p-6">
-                <div className="relative">
-                  <Search
-                    size={18}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Search by name or email..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-muted border border-border rounded-lg py-3 pl-12 pr-4 text-sm outline-none focus:ring-2 focus:ring-orange-100"
-                  />
+              <div className="px-6 pt-2 pb-0">
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={() => setScanMode(false)}
+                    className={`flex-1 py-2 rounded-lg font-bold text-sm transition ${
+                      !scanMode
+                        ? "bg-foreground text-background"
+                        : "bg-muted text-muted-foreground hover:bg-card"
+                    }`}
+                  >
+                    Manual
+                  </button>
+                  <button
+                    onClick={() => setScanMode(true)}
+                    className={`flex-1 py-2 rounded-lg font-bold text-sm transition ${
+                      scanMode
+                        ? "bg-foreground text-background"
+                        : "bg-muted text-muted-foreground hover:bg-card"
+                    }`}
+                  >
+                    <QrCode size={14} className="inline mr-1" /> Scan QR
+                  </button>
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-3">
-                {filteredAttendees.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Users size={40} className="mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground font-medium">
-                      {searchQuery ? "No matching attendees" : "No RSVPs yet"}
-                    </p>
-                  </div>
-                ) : (
-                  filteredAttendees.map((attendee) => (
-                    <div
-                      key={attendee.id}
-                      className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
-                        attendee.checkedIn
-                          ? "bg-green-50 border-green-200"
-                          : "bg-card border-border hover:border-border"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 font-bold overflow-hidden">
-                          {attendee.supporterPhoto ? (
-                            <img
-                              src={attendee.supporterPhoto}
-                              alt={attendee.supporterName}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            attendee.supporterName?.[0] || <User size={16} />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-bold">{attendee.supporterName}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {attendee.supporterEmail}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {attendee.checkedIn ? (
-                          <div className="flex items-center gap-2">
-                            <span className="flex items-center gap-1 text-green-600 text-sm font-bold">
-                              <Check size={16} /> Checked In
-                            </span>
-                            <button
-                              onClick={() => handleUndoCheckIn(attendee)}
-                              disabled={checkingIn === attendee.id}
-                              className="text-xs text-muted-foreground hover:text-muted-foreground underline"
-                            >
-                              Undo
-                            </button>
-                          </div>
-                        ) : attendee.checkInDeclined ? (
-                          <div className="flex items-center gap-2">
-                            <span className="flex items-center gap-1 text-red-500 text-sm font-bold">
-                              <X size={16} /> Declined
-                            </span>
-                            <button
-                              onClick={() => handleUndoCheckIn(attendee)}
-                              disabled={checkingIn === attendee.id}
-                              className="text-xs text-muted-foreground hover:text-muted-foreground underline"
-                            >
-                              Undo
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleCheckIn(attendee)}
-                              disabled={checkingIn === attendee.id}
-                              className="flex items-center gap-1 bg-green-500 text-white px-3 py-2 rounded-lg text-sm font-bold hover:bg-green-600 transition disabled:opacity-50"
-                            >
-                              {checkingIn === attendee.id ? (
-                                <Loader size={14} className="animate-spin" />
-                              ) : (
-                                <Check size={14} />
-                              )}
-                              Check In
-                            </button>
-                            <button
-                              onClick={() => handleDeclineCheckIn(attendee)}
-                              disabled={checkingIn === attendee.id}
-                              className="flex items-center gap-1 bg-red-100 text-red-600 px-3 py-2 rounded-lg text-sm font-bold hover:bg-red-200 transition disabled:opacity-50"
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
-                        )}
-                      </div>
+              {scanMode ? (
+                <div className="flex-1 flex flex-col items-center justify-center px-6 pb-6">
+                  <div id="qr-reader" className="w-full max-w-xs" />
+                  <p className="text-xs text-muted-foreground text-center mt-4">
+                    Point the camera at an attendee&apos;s QR ticket
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="p-6">
+                    <div className="relative">
+                      <Search
+                        size={18}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Search by name or email..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full bg-muted border border-border rounded-lg py-3 pl-12 pr-4 text-sm outline-none focus:ring-2 focus:ring-orange-100"
+                      />
                     </div>
-                  ))
-                )}
-              </div>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-3">
+                    {filteredAttendees.length === 0 ? (
+                      <div className="text-center py-12">
+                        <Users size={40} className="mx-auto text-muted-foreground mb-4" />
+                        <p className="text-muted-foreground font-medium">
+                          {searchQuery ? "No matching attendees" : "No RSVPs yet"}
+                        </p>
+                      </div>
+                    ) : (
+                      filteredAttendees.map((attendee) => (
+                        <div
+                          key={attendee.id}
+                          className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
+                            attendee.checkedIn
+                              ? "bg-green-50 border-green-200"
+                              : "bg-card border-border hover:border-border"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 font-bold overflow-hidden">
+                              {attendee.supporterPhoto ? (
+                                <img
+                                  src={attendee.supporterPhoto}
+                                  alt={attendee.supporterName}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                attendee.supporterName?.[0] || <User size={16} />
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-bold">{attendee.supporterName}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {attendee.supporterEmail}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {attendee.checkedIn ? (
+                              <div className="flex items-center gap-2">
+                                <span className="flex items-center gap-1 text-green-600 text-sm font-bold">
+                                  <Check size={16} /> Checked In
+                                </span>
+                                <button
+                                  onClick={() => handleUndoCheckIn(attendee)}
+                                  disabled={checkingIn === attendee.id}
+                                  className="text-xs text-muted-foreground hover:text-muted-foreground underline"
+                                >
+                                  Undo
+                                </button>
+                              </div>
+                            ) : attendee.checkInDeclined ? (
+                              <div className="flex items-center gap-2">
+                                <span className="flex items-center gap-1 text-red-500 text-sm font-bold">
+                                  <X size={16} /> Declined
+                                </span>
+                                <button
+                                  onClick={() => handleUndoCheckIn(attendee)}
+                                  disabled={checkingIn === attendee.id}
+                                  className="text-xs text-muted-foreground hover:text-muted-foreground underline"
+                                >
+                                  Undo
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleCheckIn(attendee)}
+                                  disabled={checkingIn === attendee.id}
+                                  className="flex items-center gap-1 bg-green-500 text-white px-3 py-2 rounded-lg text-sm font-bold hover:bg-green-600 transition disabled:opacity-50"
+                                >
+                                  {checkingIn === attendee.id ? (
+                                    <Loader size={14} className="animate-spin" />
+                                  ) : (
+                                    <Check size={14} />
+                                  )}
+                                  Check In
+                                </button>
+                                <button
+                                  onClick={() => handleDeclineCheckIn(attendee)}
+                                  disabled={checkingIn === attendee.id}
+                                  className="flex items-center gap-1 bg-red-100 text-red-600 px-3 py-2 rounded-lg text-sm font-bold hover:bg-red-200 transition disabled:opacity-50"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}

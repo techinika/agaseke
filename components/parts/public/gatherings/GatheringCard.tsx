@@ -1,4 +1,4 @@
-import { Calendar, MapPin, Clock, Users, Check, Loader, X, ArrowRight } from "lucide-react";
+import { Calendar, MapPin, Clock, Users, Check, Loader, X, ArrowRight, QrCode } from "lucide-react";
 import Link from "next/link";
 import { Gathering } from "./types";
 
@@ -11,6 +11,8 @@ export function GatheringCard({
   onRSVP,
   userId,
   creatorHandle,
+  showTicket,
+  onViewTicket,
 }: {
   gathering: Gathering;
   isRsvped: boolean;
@@ -20,6 +22,8 @@ export function GatheringCard({
   onRSVP: () => void;
   userId?: string;
   creatorHandle?: string;
+  showTicket?: boolean;
+  onViewTicket?: () => void;
 }) {
   return (
     <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
@@ -110,6 +114,14 @@ export function GatheringCard({
             ) : (
               "RSVP Now"
             )}
+          </button>
+        )}
+        {showTicket && (
+          <button
+            onClick={onViewTicket}
+            className="flex items-center gap-1 px-3 py-2 border border-emerald-300 text-emerald-700 rounded-lg text-sm font-bold hover:bg-emerald-50 transition"
+          >
+            <QrCode size={14} /> Ticket
           </button>
         )}
         <Link

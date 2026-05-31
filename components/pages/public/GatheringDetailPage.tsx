@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Heart, Loader, Calendar, MapPin, Users, CheckCircle, XCircle, Clock, Lock, Smartphone, CreditCard, X } from "lucide-react";
+import { ArrowLeft, Heart, Loader, Calendar, MapPin, Users, CheckCircle, XCircle, Clock, Lock, Smartphone, CreditCard, X, QrCode } from "lucide-react";
 import { db } from "@/db/firebase";
 import { doc, getDoc, getDocs, collection, query, where, addDoc, serverTimestamp, updateDoc, orderBy, limit as fsLimit, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
@@ -13,6 +13,7 @@ import Footer from "@/components/parts/Footer";
 import DetailSkeleton from "@/components/ui/DetailSkeleton";
 import type { Gathering } from "@/components/parts/public/gatherings";
 import { logError, logInfo } from "@/lib/logger";
+import { QRCodeCanvas } from "qrcode.react";
 
 export default function GatheringDetailPage({ username, gatheringId }: { username: string; gatheringId: string }) {
   const { user, profile } = useAuth();
@@ -27,17 +28,36 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
   const [payMethod, setPayMethod] = useState<"momo" | "card">("momo");
   const [payPhone, setPayPhone] = useState("");
   const [paying, setPaying] = useState(false);
+  const [attendanceDocId, setAttendanceDocId] = useState<string | null>(null);
+  const [showTicket, setShowTicket] = useState(false);
 
   const listenForTransaction = useCallback((ref: string, g: Gathering) => {
     const txRef = collection(db, "transactions");
     const q = query(txRef, where("ref", "==", ref), orderBy("createdAt", "desc"), fsLimit(1));
-    const unsub = onSnapshot(q, (snap) => {
+    const unsub = onSnapshot(q, async (snap) => {
       if (snap.empty) return;
       const tx = snap.docs[0].data();
       if (tx.status === "successful") {
         toast.success("Payment successful! You're now attending!");
         setPayingGathering(null);
         setIsRsvped(true);
+
+        if (user?.uid) {
+          try {
+            const attendanceQuery = query(
+              collection(db, "gatheringsAttendance"),
+              where("gatheringId", "==", g.id),
+              where("supporterId", "==", user.uid),
+            );
+            const attendanceSnap = await getDocs(attendanceQuery);
+            if (!attendanceSnap.empty) {
+              setAttendanceDocId(attendanceSnap.docs[0].id);
+            }
+          } catch (e) {
+            console.error("Failed to query attendance doc:", e);
+          }
+        }
+
         unsub();
       } else if (tx.status === "failed") {
         toast.error("Payment failed. Please try again.");
@@ -47,7 +67,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
       }
     });
     setTimeout(() => { unsub(); setPaying(false); setPayingGathering(null); toast.error("Payment timed out."); }, 120000);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const fetch = async () => {
@@ -75,6 +95,10 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
           const rq = query(attendanceRef, where("supporterId", "==", user.uid), where("creatorHandle", "==", username));
           const rs = await getDocs(rq);
           setIsRsvped(rs.docs.some(d => d.data().gatheringId === gatheringId));
+          const existingDoc = rs.docs.find(d => d.data().gatheringId === gatheringId);
+          if (existingDoc) {
+            setAttendanceDocId(existingDoc.id);
+          }
         }
       } catch (e) {
         console.error(e);
@@ -98,7 +122,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
 
     setRsvping(true);
     try {
-      await addDoc(collection(db, "gatheringsAttendance"), {
+      const docRef = await addDoc(collection(db, "gatheringsAttendance"), {
         gatheringId: gathering.id,
         supporterId: user.uid,
         supporterName: profile.displayName || user.email,
@@ -108,6 +132,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
         createdAt: serverTimestamp(),
         checkedIn: false,
       });
+      setAttendanceDocId(docRef.id);
       await updateDoc(doc(db, "creatorGatherings", gathering.id), {
         attendeesCount: (gathering.attendeesCount || 0) + 1,
       });
@@ -268,9 +293,21 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
             {isUpcoming && (
               <div className="border-t border-border pt-5">
                 {isRsvped ? (
-                  <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center gap-3">
-                    <CheckCircle size={20} className="text-emerald-500" />
-                    <p className="text-sm font-bold text-emerald-700">You're attending! {isFull && " (Limited spots remaining)"}</p>
+                  <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle size={20} className="text-emerald-500" />
+                        <p className="text-sm font-bold text-emerald-700">You're attending! {isFull && " (Limited spots remaining)"}</p>
+                      </div>
+                      {attendanceDocId && (
+                        <button
+                          onClick={() => setShowTicket(true)}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition"
+                        >
+                          <QrCode size={14} /> View Ticket
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ) : isFull ? (
                   <div className="bg-red-50 border border-red-200 p-4 rounded-xl flex items-center gap-3">
@@ -368,6 +405,30 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
                 {paying ? <Loader size={20} className="animate-spin" /> : null}
                 {paying ? "Processing..." : `Pay ${payingGathering.ticketPrice?.toLocaleString()} RWF`}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ticket Modal */}
+      {showTicket && attendanceDocId && gathering && (
+        <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+          <div className="bg-card w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-border flex justify-between items-center">
+              <h2 className="text-xl font-bold">Your Ticket</h2>
+              <button onClick={() => setShowTicket(false)} className="p-2 hover:bg-muted rounded-full">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 flex flex-col items-center gap-4">
+              <div className="bg-white p-4 rounded-xl shadow-inner">
+                <QRCodeCanvas value={attendanceDocId} size={200} />
+              </div>
+              <p className="font-bold text-lg text-center">{gathering.title}</p>
+              <p className="text-sm text-muted-foreground">{gathering.date} at {gathering.time}</p>
+              <p className="text-xs text-muted-foreground text-center">
+                Show this QR code at the event for check-in
+              </p>
             </div>
           </div>
         </div>
