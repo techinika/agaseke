@@ -145,12 +145,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ ref: payData.ref });
     }
 
+    await adminDb.collection("activityLogs").add({
+      level: "error",
+      category: "payment",
+      message: "Momo pay: Payment failed to initiate - no ref returned",
+      metadata: { phone, amount: totalAmount, creatorId },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     return NextResponse.json(
       { error: "Payment failed to initiate" },
       { status: 400 },
     );
   } catch (error: any) {
     console.error("Payment Initiation Error:", error);
+    await adminDb.collection("activityLogs").add({
+      level: "error",
+      category: "payment",
+      message: "Momo pay: Payment initiation failed",
+      metadata: { error: error.message, stack: error.stack?.slice(0, 2000) || "" },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 },

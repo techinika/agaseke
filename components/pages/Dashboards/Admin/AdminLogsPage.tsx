@@ -15,6 +15,8 @@ import {
   Shield,
   Download,
   RefreshCw,
+  X,
+  ExternalLink,
 } from "lucide-react";
 import { db } from "@/db/firebase";
 import {
@@ -52,6 +54,7 @@ export default function AdminLogsPage() {
     "all",
   );
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<LogItem | null>(null);
 
   useEffect(() => {
     const logsRef = collection(db, "activityLogs");
@@ -307,7 +310,7 @@ export default function AdminLogsPage() {
           ) : (
             <div className="divide-y divide-border">
               {filteredLogs.map((log) => (
-                <div key={log.id} className="p-4 hover:bg-muted transition">
+                <div key={log.id} className="p-4 hover:bg-muted transition cursor-pointer" onClick={() => setSelectedLog(log)}>
                   <div className="flex items-start gap-4">
                     <div
                       className={`p-2 rounded-lg ${getLogLevelColor(log.level)}`}
@@ -347,6 +350,105 @@ export default function AdminLogsPage() {
             </div>
           )}
         </div>
+
+        {/* Side Panel */}
+        {selectedLog && (
+          <>
+            <div
+              className="fixed inset-0 bg-black/40 z-40"
+              onClick={() => setSelectedLog(null)}
+            />
+            <div className="fixed top-0 right-0 h-full w-full max-w-lg bg-background border-l border-border z-50 shadow-2xl overflow-y-auto">
+              <div className="sticky top-0 bg-background border-b border-border px-6 py-4 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-foreground uppercase">Log Details</h2>
+                <button
+                  onClick={() => setSelectedLog(null)}
+                  className="p-2 hover:bg-muted rounded-lg transition"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-6 space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${getLogLevelColor(selectedLog.level)}`}>
+                    {getLevelIcon(selectedLog.level)}
+                  </div>
+                  <div>
+                    <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded ${getCategoryColor(selectedLog.category)}`}>
+                      {selectedLog.category}
+                    </span>
+                    <p className="text-sm text-muted-foreground mt-1 capitalize">{selectedLog.level}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-1">Message</p>
+                  <p className="text-sm text-foreground bg-muted p-3 rounded-lg">{selectedLog.message}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-1">Timestamp</p>
+                    <p className="text-sm text-foreground flex items-center gap-1">
+                      <Calendar size={14} className="text-muted-foreground" />
+                      {selectedLog.createdAt?.toDate().toLocaleString() || "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-1">Log ID</p>
+                    <p className="text-sm text-foreground font-mono">{selectedLog.id}</p>
+                  </div>
+                </div>
+
+                {(selectedLog.userEmail || selectedLog.userName || selectedLog.userId) && (
+                  <div>
+                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-2">User</p>
+                    <div className="bg-muted p-3 rounded-lg space-y-1">
+                      {selectedLog.userEmail && (
+                        <p className="text-sm text-foreground flex items-center gap-1">
+                          <User size={14} className="text-muted-foreground" />
+                          {selectedLog.userEmail}
+                        </p>
+                      )}
+                      {selectedLog.userName && (
+                        <p className="text-sm text-muted-foreground ml-5">{selectedLog.userName}</p>
+                      )}
+                      {selectedLog.userId && (
+                        <p className="text-sm text-muted-foreground ml-5 font-mono">ID: {selectedLog.userId}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {(selectedLog.creatorHandle || selectedLog.creatorId) && (
+                  <div>
+                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-2">Creator</p>
+                    <div className="bg-muted p-3 rounded-lg space-y-1">
+                      {selectedLog.creatorHandle && (
+                        <p className="text-sm text-foreground flex items-center gap-1">
+                          <Shield size={14} className="text-muted-foreground" />
+                          @{selectedLog.creatorHandle}
+                        </p>
+                      )}
+                      {selectedLog.creatorId && (
+                        <p className="text-sm text-muted-foreground ml-5 font-mono">ID: {selectedLog.creatorId}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {selectedLog.metadata && Object.keys(selectedLog.metadata).length > 0 && (
+                  <div>
+                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-2">Metadata</p>
+                    <pre className="bg-muted p-3 rounded-lg text-xs text-foreground overflow-x-auto whitespace-pre-wrap font-mono">
+                      {JSON.stringify(selectedLog.metadata, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </main>
     </div>
   );

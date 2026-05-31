@@ -190,8 +190,23 @@ export async function POST(req: Request) {
         merchant_reference: payData.merchant_reference,
       });
     }
+    await adminDb.collection("activityLogs").add({
+      level: "error",
+      category: "payment",
+      message: "Card pay: Payment failed to initiate - no redirect_url",
+      metadata: { merchantRef, amount: totalAmount, creatorId },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     return NextResponse.json({ error: "Failed to initiate" }, { status: 400 });
   } catch (error: any) {
+    console.error("Card pay initiation error:", error);
+    await adminDb.collection("activityLogs").add({
+      level: "error",
+      category: "payment",
+      message: "Card pay: Payment initiation failed",
+      metadata: { error: error.message, stack: error.stack?.slice(0, 2000) || "" },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 },

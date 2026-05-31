@@ -20,6 +20,13 @@ export async function POST(req: Request) {
     .digest("base64");
 
   if (hash !== signature) {
+    await adminDb.collection("activityLogs").add({
+      level: "error",
+      category: "payment",
+      message: "Momo webhook: Invalid signature",
+      metadata: { signature, expectedHash: hash },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
@@ -33,6 +40,13 @@ export async function POST(req: Request) {
     .get();
 
   if (txQuery.empty) {
+    await adminDb.collection("activityLogs").add({
+      level: "error",
+      category: "payment",
+      message: "Momo webhook: Transaction not found",
+      metadata: { ref },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     return NextResponse.json({ error: "Tx not found" }, { status: 404 });
   }
 
@@ -323,6 +337,13 @@ export async function POST(req: Request) {
                   `[WEBHOOK_MOMO_EMAIL] Failed to fetch booking details for ${bookingId}:`,
                   bookingFetchErr,
                 );
+                await adminDb.collection("activityLogs").add({
+                  level: "error",
+                  category: "payment",
+                  message: `Momo webhook: Failed to fetch booking details for ${bookingId}`,
+                  metadata: { ref, bookingId, errorData: JSON.stringify(bookingFetchErr, Object.getOwnPropertyNames(bookingFetchErr)).slice(0, 5000) },
+                  createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
               }
 
               try {
@@ -385,6 +406,13 @@ export async function POST(req: Request) {
                   `[WEBHOOK_MOMO_EMAIL] transporter.sendMail failed for "${creatorProfileEmail}":`,
                   sendErr,
                 );
+                await adminDb.collection("activityLogs").add({
+                  level: "error",
+                  category: "payment",
+                  message: `Momo webhook: Failed to send creator email for booking ${bookingId}`,
+                  metadata: { ref, bookingId, creatorEmail: creatorProfileEmail, error: String(sendErr) },
+                  createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
               }
             }
           } catch (emailErr) {
@@ -392,6 +420,13 @@ export async function POST(req: Request) {
               "[WEBHOOK_MOMO_EMAIL] Unexpected error in creator email block:",
               emailErr,
             );
+            await adminDb.collection("activityLogs").add({
+              level: "error",
+              category: "payment",
+              message: `Momo webhook: Unexpected error in creator email block for ref ${ref}`,
+              metadata: { ref, bookingId, error: String(emailErr) },
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
           }
         } else {
           console.log(
@@ -422,6 +457,13 @@ export async function POST(req: Request) {
               "Failed to send payment confirmation email to buyer:",
               emailErr,
             );
+            await adminDb.collection("activityLogs").add({
+              level: "error",
+              category: "payment",
+              message: `Momo webhook: Failed to send buyer email for ref ${ref}`,
+              metadata: { ref, bookingId, bookerEmail: txData.bookerEmail, error: String(emailErr) },
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
           }
         }
 
@@ -442,6 +484,13 @@ export async function POST(req: Request) {
           }
         } catch (adminNotifErr) {
           console.error("Failed to notify admins:", adminNotifErr);
+          await adminDb.collection("activityLogs").add({
+            level: "error",
+            category: "payment",
+            message: `Momo webhook: Failed to notify admins for ref ${ref}`,
+            metadata: { ref, bookingId, error: String(adminNotifErr) },
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
         }
       }
     } else {

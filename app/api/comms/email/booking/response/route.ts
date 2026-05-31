@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import { adminDb, admin } from "@/db/firebaseAdmin";
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -69,6 +70,13 @@ export async function POST(request: NextRequest) {
     const { bookerEmail, bookerName, creatorName, status, bookingDate, bookingTime, note, meetingLocation, preferredType, tierName, creatorHandle } = await request.json();
 
     if (!bookerEmail || !bookerName || !creatorName) {
+      await adminDb.collection("activityLogs").add({
+        level: "warning",
+        category: "payment",
+        message: "Booking response email: Missing required fields",
+        metadata: { creatorName, bookerName, bookerEmail, status },
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -193,6 +201,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Booking response email error:", error);
+    await adminDb.collection("activityLogs").add({
+      level: "error",
+      category: "payment",
+      message: "Booking response email: Failed to send",
+      metadata: { errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     return NextResponse.json({ error: "Failed to send email" }, { status: 500 });
   }
 }

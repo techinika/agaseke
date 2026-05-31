@@ -1,5 +1,5 @@
 import PublicProfile from "@/components/pages/PublicProfile";
-import { adminDb } from "@/db/firebaseAdmin";
+import { adminDb, admin } from "@/db/firebaseAdmin";
 import { Metadata } from "next";
 import { baseUrl } from "@/lib/baseUrl";
 
@@ -17,6 +17,13 @@ async function getCreatorData(username: string) {
     return { creator, profile };
   } catch (error) {
     console.error("Error fetching creator:", error);
+    await adminDb.collection("activityLogs").add({
+      level: "error",
+      category: "system",
+      message: `Public profile: Failed to fetch creator data for "${username}"`,
+      metadata: { username, error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack?.slice(0, 2000) : "" },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     return null;
   }
 }

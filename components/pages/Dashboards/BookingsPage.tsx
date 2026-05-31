@@ -43,6 +43,7 @@ import {
   BookingTier,
 } from "@/types/booking";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { logError } from "@/lib/logger";
 
 const DAYS_OF_WEEK = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -119,7 +120,13 @@ export default function BookingsPage() {
             });
             const d = await res.json();
             if (d.plaintext) map[b.id] = d.plaintext;
-          } catch { /* use encrypted fallback */ }
+          } catch {
+            logError("payment", "BookingsPage: Failed to decrypt booking reason", {
+              creatorHandle: creator?.handle,
+              creatorId: creator?.uid,
+              metadata: { bookingId: b.id },
+            });
+          }
         }));
         setDecryptedReasons(map);
         setLoading(false);
@@ -153,7 +160,14 @@ export default function BookingsPage() {
         });
       }
       toast.success(`Booking ${status}`);
-    } catch { toast.error("Failed to respond"); }
+    } catch {
+      toast.error("Failed to respond");
+      logError("payment", "BookingsPage: Failed to respond to booking", {
+        creatorHandle: creator?.handle,
+        creatorId: creator?.uid,
+        metadata: { bookingId, status, note, creatorName: creator?.name },
+      });
+    }
   };
 
   const toggleDay = (day: number) => setAvailability((p) => ({ ...p, daysOfWeek: p.daysOfWeek.includes(day) ? p.daysOfWeek.filter((d) => d !== day) : [...p.daysOfWeek, day].sort() }));
@@ -172,7 +186,14 @@ export default function BookingsPage() {
     try {
       await updateDoc(doc(db, "creators", creator.handle), { bookingAvailability: availability, bookingMode });
       toast.success("Availability saved!");
-    } catch { toast.error("Failed to save"); }
+    } catch {
+      toast.error("Failed to save");
+      logError("payment", "BookingsPage: Failed to save availability", {
+        creatorHandle: creator?.handle,
+        creatorId: creator?.uid,
+        metadata: { creatorName: creator?.name },
+      });
+    }
     finally { setSaving(false); }
   };
 
@@ -198,7 +219,14 @@ export default function BookingsPage() {
     try {
       await updateDoc(doc(db, "creators", creator.handle), { bookingTiers: tiers.filter((t) => t.name.trim()), bookingMode });
       toast.success("Tiers saved!");
-    } catch { toast.error("Failed to save"); }
+    } catch {
+      toast.error("Failed to save");
+      logError("payment", "BookingsPage: Failed to save tiers", {
+        creatorHandle: creator?.handle,
+        creatorId: creator?.uid,
+        metadata: { creatorName: creator?.name },
+      });
+    }
     finally { setSaving(false); }
   };
 
@@ -209,7 +237,14 @@ export default function BookingsPage() {
     try {
       await updateDoc(doc(db, "creators", creator.handle), { bookingMode: mode });
       toast.success(`Switched to ${mode} booking`);
-    } catch { toast.error("Failed to save"); }
+    } catch {
+      toast.error("Failed to save");
+      logError("payment", "BookingsPage: Failed to switch booking mode", {
+        creatorHandle: creator?.handle,
+        creatorId: creator?.uid,
+        metadata: { mode, creatorName: creator?.name },
+      });
+    }
     finally { setSaving(false); }
   };
 
@@ -489,7 +524,14 @@ export default function BookingsPage() {
             setAvailability({ daysOfWeek: [], bookingType: "both", startDate: "", endDate: "", defaultSlots: [] });
             toast.success("Availability cleared");
             setShowClearModal(false);
-          } catch { toast.error("Failed to clear"); }
+          } catch {
+            toast.error("Failed to clear");
+            logError("payment", "BookingsPage: Failed to clear availability", {
+              creatorHandle: creator?.handle,
+              creatorId: creator?.uid,
+              metadata: { creatorName: creator?.name },
+            });
+          }
           finally { setSaving(false); }
         }}
         title="Clear Availability?"

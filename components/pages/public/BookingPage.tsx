@@ -11,6 +11,7 @@ import Navbar from "@/components/parts/Navigation";
 import Footer from "@/components/parts/Footer";
 import { SupportModal } from "@/components/parts/public/SupportModal";
 import { BookingAvailability, BookingType, BookingTier } from "@/types/booking";
+import { logError } from "@/lib/logger";
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -117,7 +118,16 @@ export default function BookingPage({ username, creator }: { username: string; c
         toast.error(data.error || "Failed to submit booking");
         setStep("error");
       }
-    } catch { toast.error("Something went wrong"); setStep("error"); }
+    } catch (err) {
+      toast.error("Something went wrong"); setStep("error");
+      logError("payment", "BookingPage: Failed to submit booking", {
+        userName: user?.displayName || name,
+        userEmail: user?.email || email,
+        creatorHandle: creator?.handle || username,
+        creatorId: creator?.uid,
+        metadata: { creatorName: creator?.name, preferredDate: selectedDate, preferredTime: selectedTime, tierName: selectedTier?.name, tierPrice: selectedTier?.price, error: String(err) },
+      });
+    }
     finally { setSubmitting(false); }
   };
 

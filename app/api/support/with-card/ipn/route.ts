@@ -50,6 +50,13 @@ export async function POST(req: Request) {
       .get();
 
     if (txQuery.empty) {
+      await adminDb.collection("activityLogs").add({
+        level: "error",
+        category: "payment",
+        message: "Card IPN: Transaction not found",
+        metadata: { ref: OrderMerchantReference },
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
       return NextResponse.json(
         { error: "Transaction not found" },
         { status: 404 },
@@ -322,6 +329,13 @@ export async function POST(req: Request) {
                   }
                 } catch (bookingFetchErr) {
                   console.error(`[WEBHOOK_CARD_EMAIL] Failed to fetch booking details for ${bookingId}:`, bookingFetchErr);
+                  await adminDb.collection("activityLogs").add({
+                    level: "error",
+                    category: "payment",
+                    message: `Card IPN: Failed to fetch booking details for ${bookingId}`,
+                    metadata: { ref: OrderMerchantReference, bookingId, errorData: JSON.stringify(bookingFetchErr, Object.getOwnPropertyNames(bookingFetchErr)).slice(0, 5000) },
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                  });
                 }
 
                 try {
@@ -379,11 +393,25 @@ export async function POST(req: Request) {
                   console.log(`[WEBHOOK_CARD_EMAIL] Email sent successfully to "${creatorProfileEmail}", messageId=${info.messageId}`);
                 } catch (sendErr) {
                   console.error(`[WEBHOOK_CARD_EMAIL] transporter.sendMail failed for "${creatorProfileEmail}":`, sendErr);
+                  await adminDb.collection("activityLogs").add({
+                    level: "error",
+                    category: "payment",
+                    message: `Card IPN: Failed to send creator email for booking ${bookingId}`,
+                    metadata: { ref: OrderMerchantReference, bookingId, creatorEmail: creatorProfileEmail, errorData: JSON.stringify(sendErr, Object.getOwnPropertyNames(sendErr)).slice(0, 5000) },
+                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                  });
                 }
               }
-            } catch (emailErr) {
-              console.error("[WEBHOOK_CARD_EMAIL] Unexpected error in creator email block:", emailErr);
-            }
+              } catch (emailErr) {
+                console.error("[WEBHOOK_CARD_EMAIL] Unexpected error in creator email block:", emailErr);
+                await adminDb.collection("activityLogs").add({
+                  level: "error",
+                  category: "payment",
+                  message: `Card IPN: Unexpected error in creator email block for ref ${OrderMerchantReference}`,
+                  metadata: { ref: OrderMerchantReference, bookingId, errorData: JSON.stringify(emailErr, Object.getOwnPropertyNames(emailErr)).slice(0, 5000) },
+                  createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
+              }
           } else {
             console.log(`[WEBHOOK_CARD_EMAIL] No creatorUid in txData, cannot send creator email`);
           }
@@ -408,6 +436,13 @@ export async function POST(req: Request) {
                 });
               } catch (emailErr) {
                 console.error("Failed to send payment confirmation email to buyer:", emailErr);
+                await adminDb.collection("activityLogs").add({
+                  level: "error",
+                  category: "payment",
+                  message: `Card IPN: Failed to send buyer email for ref ${OrderMerchantReference}`,
+                  metadata: { ref: OrderMerchantReference, bookingId, bookerEmail: txData.bookerEmail, errorData: JSON.stringify(emailErr, Object.getOwnPropertyNames(emailErr)).slice(0, 5000) },
+                  createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
               }
             }
 
@@ -423,9 +458,16 @@ export async function POST(req: Request) {
                   link: "/admin/transactions",
                 });
               }
-            } catch (adminNotifErr) {
-              console.error("Failed to notify admins:", adminNotifErr);
-            }
+              } catch (adminNotifErr) {
+                console.error("Failed to notify admins:", adminNotifErr);
+                await adminDb.collection("activityLogs").add({
+                  level: "error",
+                  category: "payment",
+                  message: `Card IPN: Failed to notify admins for ref ${OrderMerchantReference}`,
+                  metadata: { ref: OrderMerchantReference, bookingId, errorData: JSON.stringify(adminNotifErr, Object.getOwnPropertyNames(adminNotifErr)).slice(0, 5000) },
+                  createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                });
+              }
           }
         } else {
          const platformSharePercentage = txData.includeReferral
@@ -520,6 +562,13 @@ export async function POST(req: Request) {
     });
   } catch (error: any) {
     console.error("CRITICAL_IPN_ERROR:", error.message);
+    await adminDb.collection("activityLogs").add({
+      level: "error",
+      category: "payment",
+      message: "Card IPN: Critical processing error",
+      metadata: { errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     return NextResponse.json(
       { error: "Internal processing error" },
       { status: 500 },
