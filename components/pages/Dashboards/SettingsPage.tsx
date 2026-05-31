@@ -24,7 +24,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { db, auth } from "@/db/firebase";
-import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, collection, getDocs, query, orderBy } from "firebase/firestore";
 import { Creator } from "@/types/creator";
 import { useAuth } from "@/auth/AuthContext";
 import { useRouter } from "next/navigation";
@@ -41,6 +41,7 @@ export default function CreatorSettings() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
+  const [categories, setCategories] = useState<string[]>([]);
 
   useEffect(() => {
     if (!creator) return;
@@ -55,6 +56,17 @@ export default function CreatorSettings() {
     );
     return () => unsubscribe();
   }, [creator]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const q = query(collection(db, "categories"), orderBy("createdAt", "desc"));
+        const snap = await getDocs(q);
+        setCategories(snap.docs.map((d) => d.data().name || "").filter(Boolean));
+      } catch { /* silently fail */ }
+    };
+    fetchCategories();
+  }, []);
 
   const handleUpdate = (field: string, value: any) => {
     setCreatorData((prev) => {
@@ -276,13 +288,16 @@ export default function CreatorSettings() {
                   <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
                     Creator Focus
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={creatorData?.focus || ""}
                     onChange={(e) => handleUpdate("focus", e.target.value)}
-                    placeholder="e.g. Music, Art, Fashion, Tech, Fitness..."
-                    className="w-full bg-muted p-4 rounded-lg text-sm font-bold focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-card transition-all"
-                  />
+                    className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100 border border-transparent focus:bg-card transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="">None selected</option>
+                    {categories.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
                   <p className="text-xs text-muted-foreground">
                     What do you create? This helps supporters understand your content niche.
                   </p>
