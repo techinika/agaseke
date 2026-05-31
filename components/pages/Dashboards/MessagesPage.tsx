@@ -66,6 +66,40 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const decryptedCache = useRef<Map<string, string>>(new Map());
+
+  const decryptMessage = async (id: string, encrypted: string): Promise<string> => {
+    const cached = decryptedCache.current.get(id);
+    if (cached) return cached;
+    if (!encrypted || !encrypted.includes(":")) return encrypted;
+    try {
+      const res = await fetch("/api/decrypt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ encrypted }),
+      });
+      const data = await res.json();
+      if (data.plaintext) {
+        decryptedCache.current.set(id, data.plaintext);
+        return data.plaintext;
+      }
+    } catch { /* ignore */ }
+    return encrypted;
+  };
+
+  const encryptMessage = async (text: string): Promise<string> => {
+    try {
+      const res = await fetch("/api/encrypt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      return data.encrypted || text;
+    } catch {
+      return text;
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -97,19 +131,57 @@ export default function MessagesPage() {
     return () => unsubscribe();
   }, [creator?.uid]);
 
+  // Decrypt lastMessage for chatroom sidebar
+  useEffect(() => {
+    if (chatrooms.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const updated = await Promise.all(
+        chatrooms.map(async (chat) => {
+          if (!chat.lastMessage || !chat.lastMessage.includes(":")) return chat;
+          const key = `room_${chat.id}`;
+          const cached = decryptedCache.current.get(key);
+          if (cached) return { ...chat, lastMessage: cached };
+          try {
+            const res = await fetch("/api/decrypt", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ encrypted: chat.lastMessage }),
+            });
+            const data = await res.json();
+            if (data.plaintext) {
+              decryptedCache.current.set(key, data.plaintext);
+              return { ...chat, lastMessage: data.plaintext };
+            }
+          } catch { /* ignore */ }
+          return chat;
+        })
+      );
+      if (!cancelled) setChatrooms(updated);
+    })();
+    return () => { cancelled = true; };
+  }, [chatrooms]);
+
   useEffect(() => {
     if (!selectedChatId) return;
 
     const messagesRef = collection(db, "chatrooms", selectedChatId, "messages");
     const q = query(messagesRef, orderBy("createdAt", "asc"));
 
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const msgs = snapshot.docs.map((doc) => ({
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const rawMsgs = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       })) as Message[];
-      setMessages(msgs);
-      scrollToBottom();
+
+      Promise.all(
+        rawMsgs.map(async (msg) => {
+          const decrypted = await decryptMessage(msg.id, msg.content);
+          return { ...msg, content: decrypted };
+        })
+      ).then((decryptedMsgs) => {
+        setMessages(decryptedMsgs);
+        scrollToBottom();
 
       const unreadMsgs = msgs.filter(
         (m) => m.senderType === "supporter" && !m.read
@@ -139,18 +211,21 @@ export default function MessagesPage() {
 
     setSending(true);
     try {
+      const encryptedContent = await encryptMessage(newMessage.trim());
+      const encryptedLastMessage = await encryptMessage(newMessage.trim());
+
       const messagesRef = collection(db, "chatrooms", selectedChatId, "messages");
       await addDoc(messagesRef, {
         senderId: creator.uid,
         senderName: creator.name,
         senderType: "creator",
-        content: newMessage.trim(),
+        content: encryptedContent,
         createdAt: serverTimestamp(),
         read: false,
       });
 
       await updateDoc(doc(db, "chatrooms", selectedChatId), {
-        lastMessage: newMessage.trim(),
+        lastMessage: encryptedLastMessage,
         lastMessageAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });

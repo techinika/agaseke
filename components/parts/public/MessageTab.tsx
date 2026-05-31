@@ -66,6 +66,40 @@ export const MessageTab = ({
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const decryptedCache = useRef<Map<string, string>>(new Map());
+
+  const decryptMessage = async (id: string, encrypted: string): Promise<string> => {
+    const cached = decryptedCache.current.get(id);
+    if (cached) return cached;
+    if (!encrypted || !encrypted.includes(":")) return encrypted;
+    try {
+      const res = await fetch("/api/decrypt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ encrypted }),
+      });
+      const data = await res.json();
+      if (data.plaintext) {
+        decryptedCache.current.set(id, data.plaintext);
+        return data.plaintext;
+      }
+    } catch { /* ignore */ }
+    return encrypted;
+  };
+
+  const encryptMessage = async (text: string): Promise<string> => {
+    try {
+      const res = await fetch("/api/encrypt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      return data.encrypted || text;
+    } catch {
+      return text;
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -153,11 +187,17 @@ export const MessageTab = ({
     const q = query(messagesRef, orderBy("createdAt", "asc"));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map((doc) => ({
+      const rawMsgs = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       })) as Message[];
-      setMessages(msgs);
+
+      Promise.all(
+        rawMsgs.map(async (msg) => {
+          const decrypted = await decryptMessage(msg.id, msg.content);
+          return { ...msg, content: decrypted };
+        })
+      ).then(setMessages);
     });
 
     return () => unsubscribe();
@@ -195,18 +235,21 @@ export const MessageTab = ({
 
     setSending(true);
     try {
+      const encryptedContent = await encryptMessage(newMessage.trim());
+      const encryptedLastMessage = await encryptMessage(newMessage.trim());
+
       const messagesRef = collection(db, "chatrooms", chatroomId, "messages");
       await addDoc(messagesRef, {
         senderId: currentUserId,
         senderName: currentUserName,
         senderType: "supporter",
-        content: newMessage.trim(),
+        content: encryptedContent,
         createdAt: serverTimestamp(),
         read: false,
       });
 
       await updateDoc(doc(db, "chatrooms", chatroomId), {
-        lastMessage: newMessage.trim(),
+        lastMessage: encryptedLastMessage,
         lastMessageAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         unreadCount: 0,
