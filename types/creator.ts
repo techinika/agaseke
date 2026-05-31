@@ -45,5 +45,5 @@ export interface Creator {
   bookingMode?: "simple" | "tiered";
   bookingTiers?: import("./booking").BookingTier[];
   gatheringsEnabled?: boolean;
-  focus?: string;
+  focus?: string[];
 }

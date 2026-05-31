@@ -137,7 +137,7 @@ export default function CreatorSettings() {
         bookingEnabled: creatorData.bookingEnabled ?? false,
         bookingAccess: creatorData.bookingAccess ?? "public",
         gatheringsEnabled: creatorData.gatheringsEnabled ?? false,
-        focus: creatorData.focus || "",
+        focus: creatorData.focus || [],
       };
 
       await updateDoc(doc(db, "creators", creator.handle), updateData);
@@ -288,19 +288,36 @@ export default function CreatorSettings() {
                   <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
                     Creator Focus
                   </label>
-                  <select
-                    value={creatorData?.focus || ""}
-                    onChange={(e) => handleUpdate("focus", e.target.value)}
-                    className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100 border border-transparent focus:bg-card transition-all appearance-none cursor-pointer"
-                  >
-                    <option value="">None selected</option>
-                    {categories.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-muted-foreground">
-                    What do you create? This helps supporters understand your content niche.
-                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {categories.map((cat) => {
+                      const selected = (creatorData?.focus || []).includes(cat);
+                      return (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => {
+                            const current = creatorData?.focus || [];
+                            const next = selected
+                              ? current.filter((c) => c !== cat)
+                              : [...current, cat];
+                            handleUpdate("focus", next);
+                          }}
+                          className={`px-4 py-2 rounded-lg text-sm font-bold border-2 transition-all ${
+                            selected
+                              ? "bg-orange-500 text-white border-orange-500"
+                              : "bg-muted text-muted-foreground border-border hover:border-orange-300"
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {(!creatorData?.focus || creatorData.focus.length === 0) && (
+                    <p className="text-xs text-muted-foreground">
+                      Select one or more categories that describe your content.
+                    </p>
+                  )}
                 </div>
 
                 <div className="p-6 bg-foreground rounded-lg text-background flex items-center justify-between shadow-xl">
