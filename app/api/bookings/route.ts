@@ -5,6 +5,7 @@ import { BookingAvailability, BookingTier } from "@/types/booking";
 import { encrypt } from "@/lib/encryption";
 import { createNotification } from "@/lib/adminNotifications";
 import { transporter } from "@/lib/emailTransporter";
+import { baseUrl } from "@/lib/baseUrl";
 
 function parseTimeRange(preferredTime: string): { start: string; end: string } | null {
   const parts = preferredTime.split(" - ");
@@ -222,10 +223,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Email to creator
-    if (creatorEmail) {
+    // Email to creator (deferred to webhook for paid tiers — sent after payment confirmation)
+    if (creatorEmail && !isPaidTier) {
       try {
-        await fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/comms/email/booking/request`, {
+        await fetch(`${baseUrl}/api/comms/email/booking/request`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
