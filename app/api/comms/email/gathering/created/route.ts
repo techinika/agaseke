@@ -97,11 +97,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Create in-app notifications for supporters
+    // Create in-app notifications for supporters (deduplicated)
     if (!supportsSnap.empty) {
-      const supporterIds = supportsSnap.docs.map((doc) => doc.data().supporterId);
+      const uniqueSupporterIds = [...new Set(supportsSnap.docs.map((doc) => doc.data().supporterId))];
       const notificationsBatch = adminDb.batch();
-      supporterIds.slice(0, 10).forEach((supporterId) => {
+      uniqueSupporterIds.slice(0, 10).forEach((supporterId) => {
         const notifRef = adminDb.collection("notifications").doc();
         notificationsBatch.set(notifRef, {
           userId: supporterId,

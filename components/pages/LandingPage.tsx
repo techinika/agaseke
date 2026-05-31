@@ -77,6 +77,7 @@ export default function LandingPage() {
             username === "help-center" ||
             username === "api" ||
             username === "test" ||
+            username === "offline" ||
             username === "sitemap" ||
             username === "sitemap.xml" ||
             username === "robots" ||

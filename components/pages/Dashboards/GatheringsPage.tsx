@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Calendar,
   MapPin,
@@ -54,6 +54,7 @@ export default function GatheringsPage() {
   const [checkingIn, setCheckingIn] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
+  const creatingRef = useRef(false);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -119,7 +120,8 @@ export default function GatheringsPage() {
   }, [currentEventId]);
 
   const handleCreate = async () => {
-    if (!creator || !formData.title) return;
+    if (!creator || !formData.title || creatingRef.current) return;
+    creatingRef.current = true;
 
     setIsSimulating(true);
     try {
@@ -194,6 +196,7 @@ export default function GatheringsPage() {
       toast.error("Failed to save event");
     } finally {
       setIsSimulating(false);
+      creatingRef.current = false;
     }
   };
 
