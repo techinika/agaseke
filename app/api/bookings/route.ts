@@ -81,15 +81,21 @@ export async function POST(request: NextRequest) {
 
     // Resolve creator email from profiles collection (creators doc has no email field)
     let creatorEmail = "";
+    console.log(`[BOOKING_EMAIL] Resolving email for creator handle=${creatorHandle}, uid=${creatorData?.uid}`);
     if (creatorData?.uid) {
       try {
         const profileSnap = await adminDb.collection("profiles").doc(creatorData.uid).get();
         if (profileSnap.exists) {
           creatorEmail = profileSnap.data()?.email || "";
+          console.log(`[BOOKING_EMAIL] Found profile for uid=${creatorData.uid}, email="${creatorEmail}"`);
+        } else {
+          console.log(`[BOOKING_EMAIL] No profile doc exists for uid=${creatorData.uid}`);
         }
       } catch (err) {
-        console.error("Failed to fetch creator profile for email:", err);
+        console.error("[BOOKING_EMAIL] Failed to fetch creator profile for email:", err);
       }
+    } else {
+      console.log(`[BOOKING_EMAIL] Creator has no uid field, cannot look up profile`);
     }
 
     if (!creatorData?.bookingEnabled) {
@@ -223,7 +229,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Email to creator (deferred to webhook for paid tiers — sent after payment confirmation)
+    console.log(`[BOOKING_EMAIL] Decision: creatorEmail="${creatorEmail}", isPaidTier=${isPaidTier}, willSend=${!!creatorEmail && !isPaidTier}`);
     if (creatorEmail && !isPaidTier) {
+      console.log(`[BOOKING_EMAIL] Sending creator email to "${creatorEmail}" for booker "${bookerName}"`);
       try {
         const emailHtml = `
           <!DOCTYPE html>
@@ -270,15 +278,20 @@ export async function POST(request: NextRequest) {
             </body>
           </html>
         `;
-        await transporter.sendMail({
+        const info = await transporter.sendMail({
           from: `"Agaseke" <${process.env.SMTP_USER}>`,
           to: creatorEmail,
           subject: `New booking request from ${bookerName}`,
           html: emailHtml,
         });
+        console.log(`[BOOKING_EMAIL] Email sent successfully to "${creatorEmail}", messageId=${info.messageId}`);
       } catch (emailError) {
-        console.error("Failed to send booking notification email:", emailError);
+        console.error("[BOOKING_EMAIL] Failed to send booking notification email:", emailError);
       }
+    } else if (!creatorEmail) {
+      console.log(`[BOOKING_EMAIL] Skipping creator email — no email address resolved for creator handle="${creatorHandle}"`);
+    } else {
+      console.log(`[BOOKING_EMAIL] Skipping creator email — paid tier (will be sent via webhook after payment)`);
     }
 
     // In-app notification to creator

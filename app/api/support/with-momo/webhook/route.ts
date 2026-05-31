@@ -271,12 +271,18 @@ export async function POST(req: Request) {
           }
 
           // Email to creator — booking request notification after payment confirmed
+          console.log(`[WEBHOOK_MOMO_EMAIL] Processing creator email for bookingId=${bookingId}, creatorUid=${txData.creatorUid}`);
           if (txData.creatorUid) {
             try {
               const profileSnap = await adminDb.collection("profiles").doc(txData.creatorUid).get();
+              if (!profileSnap.exists) {
+                console.log(`[WEBHOOK_MOMO_EMAIL] No profile doc for creatorUid=${txData.creatorUid}`);
+              }
               const creatorProfileEmail = profileSnap.exists ? profileSnap.data()?.email || "" : "";
-              if (creatorProfileEmail) {
-                // Fetch booking details for the email content
+              console.log(`[WEBHOOK_MOMO_EMAIL] Resolved email="${creatorProfileEmail}" for creatorUid=${txData.creatorUid}`);
+              if (!creatorProfileEmail) {
+                console.log(`[WEBHOOK_MOMO_EMAIL] No email found for creatorUid=${txData.creatorUid}, skipping email`);
+              } else {
                 let bookingDate = "";
                 let bookingTime = "";
                 let bookingType = "";
@@ -290,63 +296,72 @@ export async function POST(req: Request) {
                     bookingType = bd?.preferredType || "both";
                     bookingReason = bd?.reason || "";
                   }
-                } catch { /* ignore */ }
+                } catch (bookingFetchErr) {
+                  console.error(`[WEBHOOK_MOMO_EMAIL] Failed to fetch booking details for ${bookingId}:`, bookingFetchErr);
+                }
 
-                await transporter.sendMail({
-                  from: `"Agaseke" <${process.env.SMTP_USER}>`,
-                  to: creatorProfileEmail,
-                  subject: `New booking request from ${txData.buyerName || txData.bookerName || "a client"}`,
-                  html: `
-                    <!DOCTYPE html>
-                    <html>
-                      <head>
-                        <style>
-                          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1e293b; }
-                          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                          .header { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; padding: 30px; border-radius: 12px 12px 0 0; text-align: center; }
-                          .content { background: #f8fafc; padding: 30px; border-radius: 0 0 12px 12px; }
-                          .booking-card { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f97316; }
-                          .booking-card p { margin: 8px 0; }
-                          .reason { background: #fff7ed; padding: 15px; border-radius: 8px; margin: 20px 0; }
-                          .cta { display: inline-block; background: #f97316; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 10px 5px; }
-                          .footer { text-align: center; color: #64748b; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
-                        </style>
-                      </head>
-                      <body>
-                        <div class="container">
-                          <div class="header">
-                            <h1 style="margin: 0; font-size: 24px;">New Booking Request</h1>
+                try {
+                  const info = await transporter.sendMail({
+                    from: `"Agaseke" <${process.env.SMTP_USER}>`,
+                    to: creatorProfileEmail,
+                    subject: `New booking request from ${txData.buyerName || txData.bookerName || "a client"}`,
+                    html: `
+                      <!DOCTYPE html>
+                      <html>
+                        <head>
+                          <style>
+                            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1e293b; }
+                            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                            .header { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; padding: 30px; border-radius: 12px 12px 0 0; text-align: center; }
+                            .content { background: #f8fafc; padding: 30px; border-radius: 0 0 12px 12px; }
+                            .booking-card { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f97316; }
+                            .booking-card p { margin: 8px 0; }
+                            .reason { background: #fff7ed; padding: 15px; border-radius: 8px; margin: 20px 0; }
+                            .cta { display: inline-block; background: #f97316; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; margin: 10px 5px; }
+                            .footer { text-align: center; color: #64748b; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+                          </style>
+                        </head>
+                        <body>
+                          <div class="container">
+                            <div class="header">
+                              <h1 style="margin: 0; font-size: 24px;">New Booking Request</h1>
+                            </div>
+                            <div class="content">
+                              <p>Hi ${txData.creatorName || "Creator"},</p>
+                              <p><strong>${txData.buyerName || txData.bookerName || "A client"}</strong> has booked a meeting with you!</p>
+                              <div class="booking-card">
+                                <p><strong>Name:</strong> ${txData.buyerName || txData.bookerName || "N/A"}</p>
+                                <p><strong>Email:</strong> ${txData.bookerEmail || "N/A"}</p>
+                                <p><strong>Date:</strong> ${bookingDate || "N/A"}</p>
+                                <p><strong>Time:</strong> ${bookingTime || "N/A"}</p>
+                                <p><strong>Type:</strong> ${bookingType === "online" ? "Online" : bookingType === "physical" ? "In Person" : "Either"}</p>
+                                <p><strong>Paid:</strong> ${totalAmount.toLocaleString()} RWF</p>
+                              </div>
+                              ${bookingReason ? `<div class="reason"><strong>Message:</strong><br>${bookingReason}</div>` : ""}
+                              <p>Please log in to your dashboard to accept or decline this request.</p>
+                              <div style="text-align: center; margin-top: 20px;">
+                                <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://agaseke.com"}/creator/bookings" class="cta">Manage Bookings</a>
+                              </div>
+                              <div class="footer">
+                                <p>This email was sent by Agaseke Platform</p>
+                                <p>© ${new Date().getFullYear()} Agaseke. All rights reserved.</p>
+                              </div>
+                            </div>
                           </div>
-                          <div class="content">
-                            <p>Hi ${txData.creatorName || "Creator"},</p>
-                            <p><strong>${txData.buyerName || txData.bookerName || "A client"}</strong> has booked a meeting with you!</p>
-                            <div class="booking-card">
-                              <p><strong>Name:</strong> ${txData.buyerName || txData.bookerName || "N/A"}</p>
-                              <p><strong>Email:</strong> ${txData.bookerEmail || "N/A"}</p>
-                              <p><strong>Date:</strong> ${bookingDate || "N/A"}</p>
-                              <p><strong>Time:</strong> ${bookingTime || "N/A"}</p>
-                              <p><strong>Type:</strong> ${bookingType === "online" ? "Online" : bookingType === "physical" ? "In Person" : "Either"}</p>
-                              <p><strong>Paid:</strong> ${totalAmount.toLocaleString()} RWF</p>
-                            </div>
-                            ${bookingReason ? `<div class="reason"><strong>Message:</strong><br>${bookingReason}</div>` : ""}
-                            <p>Please log in to your dashboard to accept or decline this request.</p>
-                            <div style="text-align: center; margin-top: 20px;">
-                              <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://agaseke.com"}/creator/bookings" class="cta">Manage Bookings</a>
-                            </div>
-                            <div class="footer">
-                              <p>This email was sent by Agaseke Platform</p>
-                              <p>© ${new Date().getFullYear()} Agaseke. All rights reserved.</p>
-                            </div>
-                          </div>
-                        </div>
-                      </body>
-                    </html>
-                  `,
-                });
+                        </body>
+                      </html>
+                    `,
+                  });
+                  console.log(`[WEBHOOK_MOMO_EMAIL] Email sent successfully to "${creatorProfileEmail}", messageId=${info.messageId}`);
+                } catch (sendErr) {
+                  console.error(`[WEBHOOK_MOMO_EMAIL] transporter.sendMail failed for "${creatorProfileEmail}":`, sendErr);
+                }
               }
             } catch (emailErr) {
-              console.error("Failed to send booking request email to creator after payment:", emailErr);
+              console.error("[WEBHOOK_MOMO_EMAIL] Unexpected error in creator email block:", emailErr);
             }
+          } else {
+            console.log(`[WEBHOOK_MOMO_EMAIL] No creatorUid in txData, cannot send creator email`);
           }
 
           // Email to buyer if email is available
