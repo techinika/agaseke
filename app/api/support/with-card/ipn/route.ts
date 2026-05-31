@@ -469,6 +469,96 @@ export async function POST(req: Request) {
                 });
               }
           }
+        } else if (txType === "gathering") {
+         const platformSharePercentage = txData.includeReferral
+           ? Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL)
+           : Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE);
+         const platformShare = totalAmount * platformSharePercentage;
+         const creatorShare = totalAmount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE);
+         const referralShare = totalAmount * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE);
+
+         batch.set(adminDb.collection("platformIncome").doc(), {
+           amount: platformShare,
+           txRef: OrderMerchantReference,
+           reason: "gathering_ticket",
+           createdAt: admin.firestore.FieldValue.serverTimestamp(),
+         });
+
+         batch.set(adminDb.collection("creatorIncome").doc(), {
+           creatorUid: txData.creatorUid,
+           amount: creatorShare,
+           txRef: OrderMerchantReference,
+           reason: "gathering_ticket",
+           createdAt: admin.firestore.FieldValue.serverTimestamp(),
+         });
+
+         batch.set(adminDb.collection("gatheringsAttendance").doc(), {
+           gatheringId: txData.gatheringId,
+           supporterId: txData.supporterId || "anonymous",
+           supporterName: txData.attendeeName || "Anonymous",
+           supporterEmail: txData.attendeeEmail || "",
+           supporterPhoto: txData.attendeePhoto || "",
+           creatorHandle: txData.creatorId,
+           paid: true,
+           amount: totalAmount,
+           paymentRef: OrderMerchantReference,
+           checkedIn: false,
+           createdAt: admin.firestore.FieldValue.serverTimestamp(),
+         });
+
+         batch.update(adminDb.collection("creators").doc(txData.creatorId), {
+           totalEarnings: admin.firestore.FieldValue.increment(creatorShare),
+           totalSupporters: admin.firestore.FieldValue.increment(1),
+           pendingPayout: admin.firestore.FieldValue.increment(creatorShare),
+         });
+
+         if (txData.includeReferral && txData.referralUid) {
+           batch.set(adminDb.collection("creatorIncome").doc(), {
+             creatorUid: txData.referralUid,
+             amount: referralShare,
+             txRef: OrderMerchantReference,
+             reason: "referral_commission",
+             createdAt: admin.firestore.FieldValue.serverTimestamp(),
+           });
+           batch.update(adminDb.collection("creators").doc(txData.referralId), {
+             totalEarnings: admin.firestore.FieldValue.increment(referralShare),
+             pendingPayout: admin.firestore.FieldValue.increment(referralShare),
+           });
+         }
+
+         if (txData.supporterId && txData.supporterId !== "anonymous") {
+           batch.update(adminDb.collection("profiles").doc(txData.supporterId), {
+             totalSupport: admin.firestore.FieldValue.increment(totalAmount),
+             totalSupportedCreators: admin.firestore.FieldValue.increment(1),
+           });
+         }
+
+         if (txData.creatorUid) {
+           await createNotification({
+             userId: txData.creatorUid,
+             type: "new_gathering",
+             title: "New RSVP with Payment!",
+             message: `${txData.attendeeName || "Someone"} purchased a ticket for your gathering`,
+             metadata: { txRef: OrderMerchantReference, gatheringId: txData.gatheringId, amount: totalAmount, creatorShare },
+             link: "/creator/gatherings",
+             actorName: txData.attendeeName || undefined,
+           });
+         }
+
+         try {
+           const adminsSnap = await adminDb.collection("profiles").where("isAdmin", "==", true).get();
+           for (const adminDoc of adminsSnap.docs) {
+             await createNotification({
+               userId: adminDoc.id,
+               type: "new_transaction",
+               title: "Gathering Ticket Payment",
+               message: `Gathering ticket of ${totalAmount.toLocaleString()} RWF from ${txData.attendeeName || "someone"}`,
+               link: "/admin/transactions",
+             });
+           }
+         } catch (adminNotifErr) {
+           console.error("Failed to notify admins:", adminNotifErr);
+         }
         } else {
          const platformSharePercentage = txData.includeReferral
            ? Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL)

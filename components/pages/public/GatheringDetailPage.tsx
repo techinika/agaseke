@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Heart, Loader, Calendar, MapPin, Users, CheckCircle, XCircle, Clock, Video } from "lucide-react";
+import { ArrowLeft, Heart, Loader, Calendar, MapPin, Users, CheckCircle, XCircle, Clock, Lock } from "lucide-react";
 import { db } from "@/db/firebase";
 import { doc, getDoc, getDocs, collection, query, where, addDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
@@ -12,6 +12,7 @@ import Navbar from "@/components/parts/Navigation";
 import Footer from "@/components/parts/Footer";
 import DetailSkeleton from "@/components/ui/DetailSkeleton";
 import type { Gathering } from "@/components/parts/public/gatherings";
+import { logError, logInfo } from "@/lib/logger";
 
 export default function GatheringDetailPage({ username, gatheringId }: { username: string; gatheringId: string }) {
   const { user, profile } = useAuth();
@@ -21,6 +22,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
   const [isSupporter, setIsSupporter] = useState(false);
   const [isRsvped, setIsRsvped] = useState(false);
   const [rsvping, setRsvping] = useState(false);
+  const [userTotalSupport, setUserTotalSupport] = useState(0);
 
   useEffect(() => {
     const fetch = async () => {
@@ -38,14 +40,23 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
         if (user) {
           const supportRef = collection(db, "supportedCreators");
           const sq = query(supportRef, where("supporterId", "==", user.uid), where("creatorId", "==", username));
-          setIsSupporter(!(await getDocs(sq)).empty);
+          const supportSnap = await getDocs(sq);
+          setIsSupporter(!supportSnap.empty);
+          let total = 0;
+          supportSnap.forEach((d) => { total += d.data().amount || 0; });
+          setUserTotalSupport(total);
 
           const attendanceRef = collection(db, "gatheringsAttendance");
           const rq = query(attendanceRef, where("supporterId", "==", user.uid), where("creatorHandle", "==", username));
           const rs = await getDocs(rq);
           setIsRsvped(rs.docs.some(d => d.data().gatheringId === gatheringId));
         }
-      } catch (e) { console.error(e); }
+      } catch (e) {
+        console.error(e);
+        logError("support", "GatheringDetailPage: Error loading gathering", {
+          metadata: { username, gatheringId, errorData: JSON.stringify(e, Object.getOwnPropertyNames(e)).slice(0, 5000) },
+        });
+      }
       finally { setLoading(false); }
     };
     fetch();
@@ -69,10 +80,41 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
         attendeesCount: (gathering.attendeesCount || 0) + 1,
       });
       setIsRsvped(true);
+
+      logInfo("support", `RSVP confirmed for gathering: "${gathering.title}"`, {
+        userId: user.uid,
+        userEmail: user.email || undefined,
+        creatorHandle: username,
+        metadata: { gatheringId: gathering.id },
+      });
+
+      fetch("/api/comms/email/gathering/rsvp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          supporterName: profile.displayName || user.email,
+          supporterEmail: user.email,
+          creatorHandle: username,
+          creatorId: gathering.creatorId,
+          gatheringId: gathering.id,
+          gatheringTitle: gathering.title,
+          gatheringDate: gathering.date,
+          gatheringTime: gathering.time,
+        }),
+      }).catch(() => {});
+
       toast.success("RSVP confirmed!");
-    } catch { toast.error("Failed to RSVP"); }
+    } catch (e) {
+      logError("support", "GatheringDetailPage: RSVP failed", {
+        userId: user?.uid,
+        metadata: { gatheringId, errorData: JSON.stringify(e, Object.getOwnPropertyNames(e)).slice(0, 5000) },
+      });
+      toast.error("Failed to RSVP");
+    }
     finally { setRsvping(false); }
   };
+
+  const meetsTier = gathering?.minSupportTier ? userTotalSupport >= gathering.minSupportTier : true;
 
   if (loading) return <DetailSkeleton />;
   if (!gathering || !creatorData) {
@@ -163,6 +205,17 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
                   <div className="bg-red-50 border border-red-200 p-4 rounded-xl flex items-center gap-3">
                     <XCircle size={20} className="text-red-500" />
                     <p className="text-sm font-bold text-red-700">This event is full</p>
+                  </div>
+                ) : !meetsTier && user ? (
+                  <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center gap-3">
+                    <Lock size={20} className="text-amber-500" />
+                    <p className="text-sm font-bold text-amber-700">
+                      Support this creator with at least {gathering.minSupportTier} RWF to RSVP
+                    </p>
+                  </div>
+                ) : !user ? (
+                  <div className="bg-muted p-4 rounded-xl text-center">
+                    <p className="text-sm text-muted-foreground">Please log in to RSVP</p>
                   </div>
                 ) : (
                   <button onClick={handleRSVP} disabled={rsvping}

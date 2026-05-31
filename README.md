@@ -79,13 +79,17 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - Clear availability to temporarily disable booking feature
 - **Gatherings** (`/creator/gatherings`):
   - Enable/disable via Perks settings (hidden from sidebar when disabled)
-  - Event creation with date, time, location
+  - Event creation with date, time, location, and description
   - Edit and update existing events
   - Enable/disable individual events (disabled events not shown publicly)
+  - Paid gatherings with ticket pricing (Momo/Card payment integration)
+  - Minimum support tier access control for gated events
   - RSVP capacity limits
-  - Guest check-in with search
-  - Email notifications for check-ins
+  - Guest check-in with search and real-time attendee list via `onSnapshot`
+  - Email notifications for check-ins, new gatherings (to supporters), and RSVPs (to creator)
+  - In-app notifications for new gatherings and RSVPs
   - Public profile shows Events tab when gatherings are enabled
+  - Location visible after RSVP (not after check-in)
 - **Supporters Perks**:
   - Configurable minimum support tiers
   - Store access control (public or supporters-only)
@@ -130,11 +134,12 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - Recent activity feed
   - Top earners and most viewed creators
 - **User Management** (`/admin/users`):
-  - View all platform users
+  - View all platform users with pagination (25 per page, cursor-based)
   - Filter by user type (creator, supporter)
   - Search by name or email
   - Make users admins or remove admin status (using `isAdmin` boolean field)
-  - View user details and support history
+  - Click user row to open side panel with full profile details and phone number
+  - Creator profile (from `creators` collection) displayed in side panel if exists
 - **Payouts** (`/admin/payouts`):
   - View and process withdrawal requests
   - Approve or reject payouts
@@ -147,6 +152,9 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - Filter by category (auth, payment, payout, support, etc.)
   - Search logs
   - Export logs to CSV
+  - Click any log row to open detail side panel with full message, timestamp, user/creator info, and formatted metadata JSON
+  - Comprehensive error logging: all server catch blocks log full error data to Firestore `activityLogs` with creator name + current user context
+  - Client-side error logging via `logError` from `@/lib/logger` in all booking and payment components
 
 ### SEO & Discovery
 
@@ -490,6 +498,8 @@ interface GiveawayReward {
 - `POST /api/comms/email/gathering/checkin` - Check-in notification
 - `POST /api/comms/email/gathering/declined` - Gathering declined notification
 - `POST /api/comms/email/gathering/undo` - Gathering undo notification
+- `POST /api/comms/email/gathering/created` - Notify all supporters + in-app notification when gathering is published
+- `POST /api/comms/email/gathering/rsvp` - Notify creator + in-app notification when someone RSVPs
 - `POST /api/comms/email/broadcast` - Broadcast email to supporters
 - `POST /api/comms/email/payout/processed` - Payout processed notification
 - `POST /api/comms/email/content/new` - Notify supporters of new content
@@ -640,6 +650,32 @@ For issues or feature requests, please open an issue on GitHub.
 - **Sitemap Coverage**: Added `/changelog` to sitemap static pages
 - **Admin Description Fix**: Corrected copy-paste error on admin dashboard metadata
 - **Notification Icons**: Added missing `new_like` and `new_comment` icon entries in `NotificationDrawer`
+
+### Gatherings & Event Perfection (May 2026)
+- **Description Field**: Added `description` textarea to gathering create/edit form on creator dashboard; displayed on gathering cards
+- **Paid Gatherings**: `ticketPrice` field in create/edit form — paid gatherings visible to everyone, payment flows through existing Momo/Card pay routes with `type: "gathering"`; webhooks/IPNs create `gatheringsAttendance` with `paid: true` on confirmation
+- **Payment Modal in GatheringsTab**: Paid gatherings trigger a payment modal (Momo/Card toggle, phone input, pay button) before creating attendance record; listens to `transactions` collection via `onSnapshot` for confirmation with 2-minute timeout
+- **Min Support Tier Access Control**: Events gated by `minSupportTier` hidden from non-qualifying users; shown as locked with minimum amount message
+- **Location Visibility**: Changed from "after check-in" to "after RSVP"
+- **Real-Time Attendees**: Switched from `getDocs` to `onSnapshot` for live attendee list on creator dashboard
+- **Optimized Past Query**: Uses `where("status", "in", ["Disabled", "Past"])` instead of client-side filtering
+- **Supporter Notifications**: All supporters notified via email + in-app notification when a gathering is created
+- **Creator Notifications**: Creator notified via email + in-app notification when someone RSVPs (free or paid)
+- **Dashboard Logging**: All gathering actions (create, update, delete, check-in, decline, undo) logged via `logActivity`
+
+### Comprehensive Error Logging (May 2026)
+- **Server-Side Firestore Logging**: Every catch block in all API routes now writes to `activityLogs` collection via `adminDb.collection("activityLogs").add()` with:
+  - Creator name (`creatorName`) and current logged-in user info (`userId`, `userEmail`, `userName`)
+  - Full error serialization via `JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000)`
+  - Routes covered: bookings, booking request/response email, Momo pay/webhook, Card pay/IPN, public profile
+- **Client-Side Logging**: `logError` from `@/lib/logger` added to all catch blocks in `BookingPage`, `BookingModal`, `BookingsPage` (6 catches), `PayClient` (4 paths), `GatheringsTab`, and `GatheringDetailPage`
+- **Admin Logs Detail Panel**: Click any log row to open slide-in side panel with full entry details and formatted metadata JSON
+
+### Admin Panel Enhancements (May 2026)
+- **User Side Panel**: Clicking a user row opens a slide-in side panel showing full profile (from `profiles` collection) and creator profile (from `creators` collection) if exists
+- **User Pagination**: Replaced `onSnapshot` with `getDocs` + `startAfter` cursor-based pagination (25 per page)
+- **Phone Number Display**: Added `phoneNumber` field to `UserProfile` interface and displayed in side panel
+- **Log Detail Panel**: Added slide-in side panel to `AdminLogsPage` showing full log entry details on click
 
 ### Bug Fixes (May 2025)
 - **Store Checkout**: Fixed creator ID mismatch - now uses `creatorHandle` (username) for `creatorId` field and `creatorUid` for `creatorUid` field when processing store orders

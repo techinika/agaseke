@@ -37,6 +37,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Edit } from "lucide-react";
+import { logActivity } from "@/lib/logger";
 
 export default function GatheringsPage() {
   const { creator } = useAuth();
@@ -56,10 +57,12 @@ export default function GatheringsPage() {
 
   const [formData, setFormData] = useState({
     title: "",
+    description: "",
     date: "",
     time: "",
     location: "",
     minSupportTier: 0,
+    ticketPrice: 0,
     capacity: 20,
     creatorId: creator?.uid,
     active: true,
@@ -97,7 +100,6 @@ export default function GatheringsPage() {
       return;
     }
 
-    let mounted = true;
     const attendanceRef = collection(db, "gatheringsAttendance");
     const q = query(
       attendanceRef,
@@ -105,8 +107,7 @@ export default function GatheringsPage() {
       orderBy("createdAt", "desc"),
     );
 
-    getDocs(q).then((snapshot) => {
-      if (!mounted) return;
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const attendeeData = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
@@ -114,9 +115,7 @@ export default function GatheringsPage() {
       setAttendees(attendeeData);
     });
 
-    return () => {
-      mounted = false;
-    };
+    return () => unsubscribe();
   }, [currentEventId]);
 
   const handleCreate = async () => {
@@ -130,9 +129,16 @@ export default function GatheringsPage() {
           status: formData.active ? "Upcoming" : "Disabled",
         });
         toast.success("Event updated!");
+        logActivity({
+          level: "info",
+          category: "support",
+          message: `Gathering updated: "${formData.title}"`,
+          creatorId: creator.uid,
+          metadata: { gatheringId: editingEvent.id },
+        });
         setEditingEvent(null);
       } else {
-        await addDoc(collection(db, "creatorGatherings"), {
+        const docRef = await addDoc(collection(db, "creatorGatherings"), {
           ...formData,
           creatorId: creator?.uid,
           attendeesCount: 0,
@@ -140,20 +146,51 @@ export default function GatheringsPage() {
           createdAt: serverTimestamp(),
         });
         toast.success("Event created!");
+        logActivity({
+          level: "info",
+          category: "support",
+          message: `Gathering created: "${formData.title}"`,
+          creatorId: creator.uid,
+          metadata: { gatheringId: docRef.id },
+        });
+        fetch("/api/comms/email/gathering/created", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            creatorId: creator.uid,
+            creatorName: creator.name,
+            creatorHandle: creator.handle,
+            gatheringId: docRef.id,
+            gatheringTitle: formData.title,
+            gatheringDate: formData.date,
+            gatheringTime: formData.time,
+            gatheringLocation: formData.location,
+            gatheringDescription: formData.description,
+          }),
+        }).catch(() => {});
       }
       setIsCreating(false);
       setFormData({
         title: "",
+        description: "",
         date: "",
         time: "",
         location: "",
         minSupportTier: 0,
+        ticketPrice: 0,
         capacity: 20,
         creatorId: creator?.uid,
         active: true,
       });
     } catch (e) {
       console.error(e);
+      logActivity({
+        level: "error",
+        category: "support",
+        message: `Gathering: Failed to ${editingEvent ? "update" : "create"} event`,
+        creatorId: creator?.uid,
+        metadata: { errorData: JSON.stringify(e, Object.getOwnPropertyNames(e)).slice(0, 5000) },
+      });
       toast.error("Failed to save event");
     } finally {
       setIsSimulating(false);
@@ -168,8 +205,22 @@ export default function GatheringsPage() {
       toast.success(
         `Event ${newStatus === "Upcoming" ? "enabled" : "disabled"}`,
       );
+      logActivity({
+        level: "info",
+        category: "support",
+        message: `Gathering ${newStatus === "Upcoming" ? "enabled" : "disabled"}: "${activeEvent?.title}"`,
+        creatorId: creator?.uid,
+        metadata: { gatheringId: eventId, newStatus },
+      });
     } catch (error) {
       console.error("Status update error:", error);
+      logActivity({
+        level: "error",
+        category: "support",
+        message: "Gathering: Failed to update status",
+        creatorId: creator?.uid,
+        metadata: { gatheringId: eventId, errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
+      });
       toast.error("Failed to update status");
     }
   };
@@ -180,10 +231,24 @@ export default function GatheringsPage() {
     try {
       await deleteDoc(doc(db, "creatorGatherings", isDeleting));
       toast.success("Event deleted");
+      logActivity({
+        level: "warning",
+        category: "support",
+        message: `Gathering deleted: "${activeEvent?.title}"`,
+        creatorId: creator?.uid,
+        metadata: { gatheringId: isDeleting },
+      });
       setIsDeleting(null);
       setSelectedEventIndex(0);
     } catch (error) {
       console.error("Delete error:", error);
+      logActivity({
+        level: "error",
+        category: "support",
+        message: "Gathering: Failed to delete event",
+        creatorId: creator?.uid,
+        metadata: { gatheringId: isDeleting, errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
+      });
       toast.error("Failed to delete");
     } finally {
       setDeleting(false);
@@ -194,10 +259,12 @@ export default function GatheringsPage() {
     setEditingEvent(event);
     setFormData({
       title: event.title || "",
+      description: event.description || "",
       date: event.date || "",
       time: event.time || "",
       location: event.location || "",
       minSupportTier: event.minSupportTier || 0,
+      ticketPrice: event.ticketPrice || 0,
       capacity: event.capacity || 0,
       creatorId: event.creatorId || creator?.uid,
       active: event.status === "Upcoming",
@@ -227,9 +294,24 @@ export default function GatheringsPage() {
         }),
       }).catch(() => {});
 
+      logActivity({
+        level: "success",
+        category: "support",
+        message: `Gathering check-in: ${attendee.supporterName} checked into "${activeEvent.title}"`,
+        creatorId: creator?.uid,
+        metadata: { gatheringId: currentEventId, attendeeId: attendee.id },
+      });
+
       toast.success(`${attendee.supporterName} checked in!`);
     } catch (error) {
       console.error("Check-in error:", error);
+      logActivity({
+        level: "error",
+        category: "support",
+        message: `Gathering: Failed to check in ${attendee.supporterName}`,
+        creatorId: creator?.uid,
+        metadata: { gatheringId: currentEventId, attendeeId: attendee.id, errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
+      });
       toast.error("Failed to check in guest");
     } finally {
       setCheckingIn(null);
@@ -258,9 +340,24 @@ export default function GatheringsPage() {
         }),
       }).catch(() => {});
 
+      logActivity({
+        level: "warning",
+        category: "support",
+        message: `Gathering check-in declined: ${attendee.supporterName} for "${activeEvent.title}"`,
+        creatorId: creator?.uid,
+        metadata: { gatheringId: currentEventId, attendeeId: attendee.id },
+      });
+
       toast.success(`${attendee.supporterName} declined`);
     } catch (error) {
       console.error("Decline error:", error);
+      logActivity({
+        level: "error",
+        category: "support",
+        message: `Gathering: Failed to decline check-in for ${attendee.supporterName}`,
+        creatorId: creator?.uid,
+        metadata: { gatheringId: currentEventId, attendeeId: attendee.id, errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
+      });
       toast.error("Failed to update");
     } finally {
       setCheckingIn(null);
@@ -291,9 +388,24 @@ export default function GatheringsPage() {
         }),
       }).catch(() => {});
 
+      logActivity({
+        level: "info",
+        category: "support",
+        message: `Gathering check-in undone: ${attendee.supporterName} for "${activeEvent?.title}"`,
+        creatorId: creator?.uid,
+        metadata: { gatheringId: currentEventId, attendeeId: attendee.id },
+      });
+
       toast.success(`Undo for ${attendee.supporterName}`);
     } catch (error) {
       console.error("Undo error:", error);
+      logActivity({
+        level: "error",
+        category: "support",
+        message: `Gathering: Failed to undo check-in for ${attendee.supporterName}`,
+        creatorId: creator?.uid,
+        metadata: { gatheringId: currentEventId, attendeeId: attendee.id, errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
+      });
       toast.error("Failed to undo");
     } finally {
       setCheckingIn(null);
@@ -611,11 +723,13 @@ export default function GatheringsPage() {
                     setEditingEvent(null);
                     setFormData({
                       title: "",
+                      description: "",
                       date: "",
                       time: "",
                       location: "",
                       creatorId: creator?.uid,
                       minSupportTier: 0,
+                      ticketPrice: 0,
                       capacity: 20,
                       active: true,
                     });
@@ -634,6 +748,15 @@ export default function GatheringsPage() {
                   className="w-full text-xl font-bold outline-none border-b-2 border-border pb-2 focus:border-orange-500 transition placeholder:text-muted-foreground"
                   onChange={(e) =>
                     setFormData({ ...formData, title: e.target.value })
+                  }
+                />
+                <textarea
+                  placeholder="Description (optional)"
+                  value={formData.description}
+                  rows={3}
+                  className="w-full text-sm outline-none border-b border-border pb-2 focus:border-orange-500 transition placeholder:text-muted-foreground resize-none"
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
                   }
                 />
                 <input
@@ -684,6 +807,27 @@ export default function GatheringsPage() {
                   <p className="text-[10px] text-muted-foreground">
                     If set, only supporters who have contributed this amount or
                     more can see this.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
+                    Ticket Price (Optional)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="0 = Free (set price in RWF for paid gatherings)"
+                    value={formData.ticketPrice || ""}
+                    className="w-full bg-muted p-4 rounded-lg text-sm outline-none font-bold focus:ring-2 focus:ring-orange-100"
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        ticketPrice: parseInt(e.target.value) || 0,
+                      })
+                    }
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Non-supporters can pay to attend. Free gatherings are open to all.
                   </p>
                 </div>
 
