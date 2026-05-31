@@ -210,7 +210,19 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
     }
   };
 
-  const meetsTier = (gathering?.ticketPrice && gathering.ticketPrice > 0) ? true : (gathering?.minSupportTier ? userTotalSupport >= gathering.minSupportTier : true);
+  const meetsTier = (() => {
+    const g = gathering;
+    if (!g) return false;
+    const et = g.eventType;
+    if (et === "public") return true;
+    if (et === "ticketed") return true;
+    if (et === "supporters") return !!user && userTotalSupport > 0;
+    if (et === "supporters_tiered") return !!user && (g.minSupportTier || 0) <= userTotalSupport;
+    if (g.ticketPrice && g.ticketPrice > 0) return true;
+    if (!g.minSupportTier) return true;
+    if (!user) return false;
+    return g.minSupportTier <= userTotalSupport;
+  })();
 
   if (loading) return <DetailSkeleton />;
   if (!gathering || !creatorData) {

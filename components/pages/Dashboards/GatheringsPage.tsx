@@ -17,14 +17,14 @@ import {
   User,
   Search,
   Check,
-  Send,
   Wallet,
   ArrowRight,
+  Globe,
+  Ticket,
 } from "lucide-react";
 import { db } from "@/db/firebase";
 import {
   collection,
-  addDoc,
   query,
   where,
   onSnapshot,
@@ -43,15 +43,27 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Edit } from "lucide-react";
 import { logActivity } from "@/lib/logger";
 import Link from "next/link";
+import type { EventType } from "@/components/parts/public/gatherings/types";
+
+const EVENT_TYPE_ICONS: Record<string, React.ReactNode> = {
+  public: <Globe size={16} />,
+  supporters: <ShieldCheck size={16} />,
+  supporters_tiered: <ShieldCheck size={16} />,
+  ticketed: <Ticket size={16} />,
+};
+
+const EVENT_TYPE_LABELS_SHORT: Record<string, string> = {
+  public: "Public",
+  supporters: "Supporters",
+  supporters_tiered: "Tiered",
+  ticketed: "Ticketed",
+};
 
 export default function GatheringsPage() {
   const { creator } = useAuth();
-  const [isCreating, setIsCreating] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
-  const [editingEvent, setEditingEvent] = useState<any | null>(null);
   const [showCheckIn, setShowCheckIn] = useState(false);
   const [selectedEventIndex, setSelectedEventIndex] = useState(0);
-  const [isSimulating, setIsSimulating] = useState(false);
   const [events, setEvents] = useState<any[]>([]);
   const [attendees, setAttendees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,24 +71,10 @@ export default function GatheringsPage() {
   const [checkingIn, setCheckingIn] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
-  const creatingRef = useRef(false);
   const [scanMode, setScanMode] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const activeEventRef = useRef<any>(null);
   const handleCheckInRef = useRef<any>(null);
-
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    date: "",
-    time: "",
-    location: "",
-    minSupportTier: 0,
-    ticketPrice: 0,
-    capacity: 20,
-    creatorId: creator?.uid,
-    active: true,
-  });
   useEffect(() => {
     if (!creator?.uid) return;
 
@@ -128,87 +126,6 @@ export default function GatheringsPage() {
 
     return () => unsubscribe();
   }, [currentEventId]);
-
-  const handleCreate = async () => {
-    if (!creator || !formData.title || creatingRef.current) return;
-    creatingRef.current = true;
-
-    setIsSimulating(true);
-    try {
-      if (editingEvent) {
-        await updateDoc(doc(db, "creatorGatherings", editingEvent.id), {
-          ...formData,
-          status: formData.active ? "Upcoming" : "Disabled",
-        });
-        toast.success("Event updated!");
-        logActivity({
-          level: "info",
-          category: "support",
-          message: `Gathering updated: "${formData.title}"`,
-          creatorId: creator.uid,
-          metadata: { gatheringId: editingEvent.id },
-        });
-        setEditingEvent(null);
-      } else {
-        const docRef = await addDoc(collection(db, "creatorGatherings"), {
-          ...formData,
-          creatorId: creator?.uid,
-          attendeesCount: 0,
-          status: formData.active ? "Upcoming" : "Disabled",
-          createdAt: serverTimestamp(),
-        });
-        toast.success("Event created!");
-        logActivity({
-          level: "info",
-          category: "support",
-          message: `Gathering created: "${formData.title}"`,
-          creatorId: creator.uid,
-          metadata: { gatheringId: docRef.id },
-        });
-        fetch("/api/comms/email/gathering/created", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            creatorId: creator.uid,
-            creatorName: creator.name,
-            creatorHandle: creator.handle,
-            gatheringId: docRef.id,
-            gatheringTitle: formData.title,
-            gatheringDate: formData.date,
-            gatheringTime: formData.time,
-            gatheringLocation: formData.location,
-            gatheringDescription: formData.description,
-          }),
-        }).catch(() => {});
-      }
-      setIsCreating(false);
-      setFormData({
-        title: "",
-        description: "",
-        date: "",
-        time: "",
-        location: "",
-        minSupportTier: 0,
-        ticketPrice: 0,
-        capacity: 20,
-        creatorId: creator?.uid,
-        active: true,
-      });
-    } catch (e) {
-      console.error(e);
-      logActivity({
-        level: "error",
-        category: "support",
-        message: `Gathering: Failed to ${editingEvent ? "update" : "create"} event`,
-        creatorId: creator?.uid,
-        metadata: { errorData: JSON.stringify(e, Object.getOwnPropertyNames(e)).slice(0, 5000) },
-      });
-      toast.error("Failed to save event");
-    } finally {
-      setIsSimulating(false);
-      creatingRef.current = false;
-    }
-  };
 
   const handleUpdateStatus = async (eventId: string, newStatus: string) => {
     try {
@@ -269,20 +186,7 @@ export default function GatheringsPage() {
   };
 
   const startEdit = (event: any) => {
-    setEditingEvent(event);
-    setFormData({
-      title: event.title || "",
-      description: event.description || "",
-      date: event.date || "",
-      time: event.time || "",
-      location: event.location || "",
-      minSupportTier: event.minSupportTier || 0,
-      ticketPrice: event.ticketPrice || 0,
-      capacity: event.capacity || 0,
-      creatorId: event.creatorId || creator?.uid,
-      active: event.status === "Upcoming",
-    });
-    setIsCreating(true);
+    window.location.href = `/creator/gatherings/${event.id}/edit`;
   };
 
   const handleCheckIn = async (attendee: any) => {
@@ -580,12 +484,12 @@ export default function GatheringsPage() {
           </button>
           <h2 className="text-xl font-bold uppercase">Gatherings</h2>
         </div>
-        <button
-          onClick={() => setIsCreating(true)}
+        <Link
+          href="/creator/gatherings/new"
           className="bg-orange-600 text-white px-6 py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:bg-orange-700 transition shadow-lg"
         >
           <Plus size={18} /> Plan Event
-        </button>
+        </Link>
       </aside>
 
       <main className="flex-1 flex flex-col md:flex-row">
@@ -647,14 +551,13 @@ export default function GatheringsPage() {
                   }`}
                 >
                   <div className="flex justify-between items-start mb-4">
-                    <div
-                      className={`p-3 rounded-lg ${event.minSupportTier > 0 ? "bg-amber-50 text-amber-600" : "bg-muted text-foreground"}`}
-                    >
-                      {event.minSupportTier > 0 ? (
-                        <ShieldCheck size={20} />
-                      ) : (
-                        <Calendar size={20} />
-                      )}
+                    <div className="flex items-center gap-2">
+                      <div className={`p-3 rounded-lg ${event.eventType === "supporters_tiered" || event.minSupportTier > 0 ? "bg-amber-50 text-amber-600" : "bg-muted text-foreground"}`}>
+                        {EVENT_TYPE_ICONS[event.eventType] || (event.ticketPrice > 0 ? <Ticket size={20} /> : <Calendar size={20} />)}
+                      </div>
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase bg-muted px-2 py-1 rounded">
+                        {EVENT_TYPE_LABELS_SHORT[event.eventType] || (event.ticketPrice > 0 ? "Ticketed" : "Public")}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
@@ -733,7 +636,7 @@ export default function GatheringsPage() {
                 <div className="bg-foreground p-6 rounded-lg text-background">
                   <div className="flex items-center justify-between mb-4">
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                      Entry Requirement
+                      {EVENT_TYPE_LABELS_SHORT[activeEvent.eventType] || (activeEvent.ticketPrice > 0 ? "Ticketed" : "Public")}
                     </p>
                     <span
                       className={`text-[10px] font-bold px-2 py-0.5 rounded ${
@@ -748,8 +651,12 @@ export default function GatheringsPage() {
                     </span>
                   </div>
                   <h2 className="text-xl font-bold">
-                    {activeEvent.minSupportTier > 0
-                      ? `Min. Support: ${activeEvent.minSupportTier} RWF`
+                    {activeEvent.eventType === "ticketed" || activeEvent.ticketPrice > 0
+                      ? `${(activeEvent.ticketPrice || 0).toLocaleString()} RWF Ticket`
+                      : activeEvent.eventType === "supporters_tiered" || activeEvent.minSupportTier > 0
+                      ? `Min. Support: ${(activeEvent.minSupportTier || 0).toLocaleString()} RWF`
+                      : activeEvent.eventType === "supporters"
+                      ? "Supporters Only"
                       : "Open to Everyone"}
                   </h2>
                   <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
@@ -898,191 +805,6 @@ export default function GatheringsPage() {
             </div>
           )}
         </div>
-
-        {/* --- Create Event Modal --- */}
-        {isCreating && (
-          <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-            <div className="bg-card w-full max-w-lg rounded-lg p-10 shadow-2xl animate-in zoom-in-95">
-              <div className="flex justify-between items-center mb-8">
-                <h2 className="text-2xl font-bold uppercase tracking-tighter">
-                  {editingEvent ? "Edit Event" : "Plan Gathering"}
-                </h2>
-                <button
-                  onClick={() => {
-                    setIsCreating(false);
-                    setEditingEvent(null);
-                    setFormData({
-                      title: "",
-                      description: "",
-                      date: "",
-                      time: "",
-                      location: "",
-                      creatorId: creator?.uid,
-                      minSupportTier: 0,
-                      ticketPrice: 0,
-                      capacity: 20,
-                      active: true,
-                    });
-                  }}
-                  className="p-2 hover:bg-muted rounded-full transition"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              <div className="space-y-6">
-                <input
-                  type="text"
-                  placeholder="Gathering Title"
-                  value={formData.title}
-                  className="w-full text-xl font-bold outline-none border-b-2 border-border pb-2 focus:border-orange-500 transition placeholder:text-muted-foreground"
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
-                />
-                <textarea
-                  placeholder="Description (optional)"
-                  value={formData.description}
-                  rows={3}
-                  className="w-full text-sm outline-none border-b border-border pb-2 focus:border-orange-500 transition placeholder:text-muted-foreground resize-none"
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                />
-                <input
-                  type="text"
-                  placeholder="Location (Physical or Digital link)"
-                  value={formData.location}
-                  className="w-full text-sm font-bold outline-none border-b border-border pb-2 focus:border-orange-500 transition"
-                  onChange={(e) =>
-                    setFormData({ ...formData, location: e.target.value })
-                  }
-                />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <input
-                    type="date"
-                    value={formData.date}
-                    className="bg-muted p-4 rounded-lg text-sm outline-none font-bold"
-                    onChange={(e) =>
-                      setFormData({ ...formData, date: e.target.value })
-                    }
-                  />
-                  <input
-                    type="time"
-                    value={formData.time}
-                    className="bg-muted p-4 rounded-lg text-sm outline-none font-bold"
-                    onChange={(e) =>
-                      setFormData({ ...formData, time: e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
-                    Entry Threshold (Support Amount)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="Min. RWF support to qualify (0 for all)"
-                    value={formData.minSupportTier || ""}
-                    className="w-full bg-muted p-4 rounded-lg text-sm outline-none font-bold focus:ring-2 focus:ring-orange-100"
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        minSupportTier: parseInt(e.target.value) || 0,
-                      })
-                    }
-                  />
-                  <p className="text-[10px] text-muted-foreground">
-                    If set, only supporters who have contributed this amount or
-                    more can see this.
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
-                    Ticket Price (Optional)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="0 = Free (set price in RWF for paid gatherings)"
-                    value={formData.ticketPrice || ""}
-                    className="w-full bg-muted p-4 rounded-lg text-sm outline-none font-bold focus:ring-2 focus:ring-orange-100"
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        ticketPrice: parseInt(e.target.value) || 0,
-                      })
-                    }
-                  />
-                  <p className="text-[10px] text-muted-foreground">
-                    Non-supporters can pay to attend. Free gatherings are open to all.
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
-                    Event Capacity (Optional)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="Max attendees (leave empty for unlimited)"
-                    value={formData.capacity || ""}
-                    className="w-full bg-muted p-4 rounded-lg text-sm outline-none font-bold focus:ring-2 focus:ring-orange-100"
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        capacity: parseInt(e.target.value) || 0,
-                      })
-                    }
-                  />
-                  <p className="text-[10px] text-muted-foreground">
-                    Set a limit on how many supporters can RSVP.
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                  <div>
-                    <p className="font-bold text-sm">Publish Event</p>
-                    <p className="text-xs text-muted-foreground">
-                      Make visible to supporters
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFormData({ ...formData, active: !formData.active })
-                    }
-                    className={`w-12 h-6 rounded-full transition-colors ${
-                      formData.active ? "bg-green-500" : "bg-muted"
-                    }`}
-                  >
-                    <div
-                      className={`w-5 h-5 bg-card rounded-full shadow transition-transform ${
-                        formData.active ? "translate-x-6" : "translate-x-0.5"
-                      }`}
-                    />
-                  </button>
-                </div>
-
-                <button
-                  onClick={handleCreate}
-                  disabled={!formData.title || isSimulating}
-                  className="w-full bg-foreground text-background py-5 rounded-lg font-bold text-lg shadow-xl hover:bg-orange-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {isSimulating ? (
-                    <Loader className="animate-spin" />
-                  ) : editingEvent ? (
-                    "Update Event"
-                  ) : (
-                    "Publish Gathering"
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* --- Delete Confirmation Modal --- */}
         <ConfirmModal

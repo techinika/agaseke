@@ -333,6 +333,11 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
   };
 
   const meetsTier = (gathering: Gathering) => {
+    const et = gathering.eventType;
+    if (et === "public") return true;
+    if (et === "ticketed") return true;
+    if (et === "supporters") return !!user && userTotalSupport > 0;
+    if (et === "supporters_tiered") return !!user && (gathering.minSupportTier || 0) <= userTotalSupport;
     if (gathering.ticketPrice && gathering.ticketPrice > 0) return true;
     if (!gathering.minSupportTier) return true;
     if (!user) return false;

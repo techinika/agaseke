@@ -1,6 +1,13 @@
-import { Calendar, MapPin, Clock, Users, Check, Loader, X, ArrowRight, QrCode } from "lucide-react";
+import { Calendar, MapPin, Clock, Users, Check, Loader, X, ArrowRight, QrCode, Globe, ShieldCheck, Ticket } from "lucide-react";
 import Link from "next/link";
-import { Gathering } from "./types";
+import { Gathering, type EventType } from "./types";
+
+const EVENT_TYPE_CONFIG: Record<string, { icon: React.ReactNode; label: string; className: string }> = {
+  public: { icon: <Globe size={12} />, label: "Public", className: "bg-blue-50 text-blue-600" },
+  supporters: { icon: <ShieldCheck size={12} />, label: "Supporters", className: "bg-purple-50 text-purple-600" },
+  supporters_tiered: { icon: <ShieldCheck size={12} />, label: "Tiered", className: "bg-amber-50 text-amber-600" },
+  ticketed: { icon: <Ticket size={12} />, label: "Ticketed", className: "bg-green-50 text-green-600" },
+};
 
 export function GatheringCard({
   gathering,
@@ -37,6 +44,25 @@ export function GatheringCard({
               {gathering.title}
             </h3>
           </Link>
+          <div className="flex items-center gap-2 mb-2">
+            {(() => {
+              const et = gathering.eventType;
+              const cfg = et && EVENT_TYPE_CONFIG[et] ? EVENT_TYPE_CONFIG[et] : ((gathering.ticketPrice ?? 0) > 0 ? EVENT_TYPE_CONFIG.ticketed : null);
+              if (cfg) {
+                return (
+                  <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${cfg.className}`}>
+                    {cfg.icon} {cfg.label}
+                  </span>
+                );
+              }
+              return null;
+            })()}
+            {(gathering.ticketPrice ?? 0) > 0 && (
+              <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
+                {(gathering.ticketPrice ?? 0).toLocaleString()} RWF
+              </span>
+            )}
+          </div>
           {gathering.description && (
             <p className="text-muted-foreground text-sm mb-4 line-clamp-2">
               {gathering.description}
@@ -96,9 +122,13 @@ export function GatheringCard({
             </span>
           ) : (
             <span className="text-sm text-muted-foreground">
-              {gathering.capacity
+              {(gathering.capacity)
                 ? `${gathering.capacity - (gathering.attendeesCount || 0)} spots left`
-                : "Open to all supporters"}
+                : (gathering.eventType === "ticketed" || (gathering.ticketPrice ?? 0) > 0)
+                ? `Buy ticket for ${(gathering.ticketPrice ?? 0).toLocaleString()} RWF`
+                : gathering.eventType === "supporters" || gathering.eventType === "supporters_tiered" || (gathering.minSupportTier ?? 0) > 0
+                ? "Open to supporters"
+                : "Open to everyone"}
             </span>
           )}
         </div>
@@ -111,6 +141,8 @@ export function GatheringCard({
           >
             {rsvping ? (
               <Loader size={16} className="animate-spin" />
+            ) : (gathering.ticketPrice ?? 0) > 0 ? (
+              "Buy Ticket"
             ) : (
               "RSVP Now"
             )}
