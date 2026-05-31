@@ -10,10 +10,11 @@ import {
   onSnapshot,
   addDoc,
   deleteDoc,
+  updateDoc,
   doc,
   serverTimestamp,
 } from "firebase/firestore";
-import { Tag, Plus, Loader2, Trash2, X } from "lucide-react";
+import { Tag, Plus, Loader2, Trash2, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface Category {
@@ -27,6 +28,8 @@ export default function AdminCategoriesPage() {
   const [newName, setNewName] = useState("");
   const [adding, setAdding] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
 
   useEffect(() => {
     const q = query(collection(db, "categories"), orderBy("createdAt", "desc"));
@@ -58,6 +61,25 @@ export default function AdminCategoriesPage() {
       toast.success("Category deleted");
       setConfirmDelete(null);
     } catch { toast.error("Failed to delete"); }
+  };
+
+  const startEdit = (cat: Category) => {
+    setEditingId(cat.id);
+    setEditName(cat.name);
+  };
+
+  const handleEdit = async () => {
+    const name = editName.trim();
+    if (!name) { toast.error("Category name cannot be empty"); return; }
+    if (categories.some((c) => c.name.toLowerCase() === name.toLowerCase() && c.id !== editingId)) {
+      toast.error("Category already exists"); return;
+    }
+    try {
+      await updateDoc(doc(db, "categories", editingId!), { name });
+      toast.success("Category updated");
+      setEditingId(null);
+      setEditName("");
+    } catch { toast.error("Failed to update"); }
   };
 
   return (
@@ -109,11 +131,30 @@ export default function AdminCategoriesPage() {
           <div className="space-y-2">
             {categories.map((cat) => (
               <div key={cat.id} className="bg-card border border-border rounded-lg p-4 flex items-center justify-between group">
-                <div className="flex items-center gap-3">
-                  <Tag size={16} className="text-orange-500" />
-                  <span className="font-bold">{cat.name}</span>
-                </div>
-                {confirmDelete === cat.id ? (
+                {editingId === cat.id ? (
+                  <div className="flex items-center gap-2 flex-1 mr-3">
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleEdit()}
+                      className="flex-1 bg-muted p-2 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
+                      autoFocus
+                    />
+                    <button onClick={handleEdit} className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition">
+                      <Check size={16} />
+                    </button>
+                    <button onClick={() => setEditingId(null)} className="p-2 text-muted-foreground hover:bg-muted rounded-lg transition">
+                      <X size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <Tag size={16} className="text-orange-500" />
+                    <span className="font-bold">{cat.name}</span>
+                  </div>
+                )}
+                {editingId !== cat.id && (confirmDelete === cat.id ? (
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleDelete(cat.id)}
@@ -129,13 +170,15 @@ export default function AdminCategoriesPage() {
                     </button>
                   </div>
                 ) : (
-                  <button
-                    onClick={() => setConfirmDelete(cat.id)}
-                    className="opacity-0 group-hover:opacity-100 p-2 text-muted-foreground hover:text-red-500 transition"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                )}
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                    <button onClick={() => startEdit(cat)} className="p-2 text-muted-foreground hover:text-orange-500 transition">
+                      <Pencil size={16} />
+                    </button>
+                    <button onClick={() => setConfirmDelete(cat.id)} className="p-2 text-muted-foreground hover:text-red-500 transition">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
               </div>
             ))}
           </div>
