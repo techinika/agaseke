@@ -121,6 +121,7 @@ export default function BookingPayClient() {
       if (paymentMethod === "card" && data.redirect_url) {
         window.open(data.redirect_url, "_blank");
         toast.success("Payment page opened in a new tab");
+        setPaid(true);
         return;
       }
 
