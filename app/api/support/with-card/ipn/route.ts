@@ -364,7 +364,7 @@ export async function POST(req: Request) {
                               ${bookingReason ? `<div class="reason"><strong>Message:</strong><br>${bookingReason}</div>` : ""}
                               <p>Please log in to your dashboard to accept or decline this request.</p>
                               <div style="text-align: center; margin-top: 20px;">
-                                <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://agaseke.com"}/creator/bookings" class="cta">Manage Bookings</a>
+                                <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://agaseke.me"}/creator/bookings" class="cta">Manage Bookings</a>
                               </div>
                               <div class="footer">
                                 <p>This email was sent by Agaseke Platform</p>

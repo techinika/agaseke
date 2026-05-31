@@ -147,7 +147,11 @@ export async function POST(req: Request) {
         pendingPayout: admin.firestore.FieldValue.increment(creatorEarnings),
       });
 
-      if (productId && productData?.type === "physical" && productData?.stock !== undefined) {
+      if (
+        productId &&
+        productData?.type === "physical" &&
+        productData?.stock !== undefined
+      ) {
         batch.update(adminDb.collection("storeProducts").doc(productId), {
           stock: admin.firestore.FieldValue.increment(-quantity),
         });
@@ -160,152 +164,173 @@ export async function POST(req: Request) {
         });
       }
 
+      if (txData.creatorUid) {
+        await createNotification({
+          userId: txData.creatorUid,
+          type: "new_sale",
+          title: "New Sale!",
+          message: `${txData.buyerName || "Someone"} purchased ${txData.productName || "a product"} for ${totalAmount.toLocaleString()} RWF`,
+          metadata: {
+            txRef: ref,
+            productId: productId,
+            productName: txData.productName,
+            buyerName: txData.buyerName,
+            buyerEmail: txData.buyerEmail,
+            amount: totalAmount,
+            creatorEarnings: creatorEarnings,
+          },
+          link: "/creator/sales",
+          actorName: txData.buyerName || undefined,
+          actorId: txData.buyerId || undefined,
+        });
+      }
+    } else if (txType === "booking") {
+      const bookingId = txData.bookingId;
+      if (bookingId) {
+        const platformSharePercentage = txData.includeReferral
+          ? Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL)
+          : Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE);
+        const platformShare = totalAmount * platformSharePercentage;
+        const creatorShare =
+          totalAmount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE);
+        const referralShare =
+          totalAmount * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE);
+
+        batch.set(adminDb.collection("platformIncome").doc(), {
+          amount: platformShare,
+          txRef: ref,
+          reason: "booking_fee",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        batch.set(adminDb.collection("creatorIncome").doc(), {
+          creatorUid: txData.creatorUid,
+          amount: creatorShare,
+          txRef: ref,
+          reason: "booking_payment",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        batch.update(adminDb.collection("creators").doc(txData.creatorId), {
+          totalEarnings: admin.firestore.FieldValue.increment(creatorShare),
+          pendingPayout: admin.firestore.FieldValue.increment(creatorShare),
+        });
+
+        if (txData.includeReferral && txData.referralUid) {
+          batch.set(adminDb.collection("creatorIncome").doc(), {
+            creatorUid: txData.referralUid,
+            amount: referralShare,
+            txRef: ref,
+            reason: "referral_commission",
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          batch.update(adminDb.collection("creators").doc(txData.referralId), {
+            totalEarnings: admin.firestore.FieldValue.increment(referralShare),
+            pendingPayout: admin.firestore.FieldValue.increment(referralShare),
+          });
+        }
+
+        batch.update(adminDb.collection("bookingRequests").doc(bookingId), {
+          paymentStatus: "paid",
+          status: "pending",
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        const buyerId = txData.buyerId || txData.supporterId || "";
+        if (buyerId && buyerId !== "anonymous") {
+          batch.update(adminDb.collection("profiles").doc(buyerId), {
+            totalSupport: admin.firestore.FieldValue.increment(totalAmount),
+            totalSupportedCreators: admin.firestore.FieldValue.increment(1),
+          });
+        }
+
         if (txData.creatorUid) {
           await createNotification({
-           userId: txData.creatorUid,
-           type: "new_sale",
-           title: "New Sale!",
-           message: `${txData.buyerName || "Someone"} purchased ${txData.productName || "a product"} for ${totalAmount.toLocaleString()} RWF`,
-           metadata: {
-             txRef: ref,
-             productId: productId,
-             productName: txData.productName,
-             buyerName: txData.buyerName,
-             buyerEmail: txData.buyerEmail,
-             amount: totalAmount,
-             creatorEarnings: creatorEarnings,
-           },
-           link: "/creator/sales",
-           actorName: txData.buyerName || undefined,
-           actorId: txData.buyerId || undefined,
-         });
-       }
-      } else if (txType === "booking") {
-        const bookingId = txData.bookingId;
-        if (bookingId) {
-          const platformSharePercentage = txData.includeReferral
-            ? Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL)
-            : Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE);
-          const platformShare = totalAmount * platformSharePercentage;
-          const creatorShare = totalAmount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE);
-          const referralShare = totalAmount * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE);
-
-          batch.set(adminDb.collection("platformIncome").doc(), {
-            amount: platformShare,
-            txRef: ref,
-            reason: "booking_fee",
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-
-          batch.set(adminDb.collection("creatorIncome").doc(), {
-            creatorUid: txData.creatorUid,
-            amount: creatorShare,
-            txRef: ref,
-            reason: "booking_payment",
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-
-          batch.update(adminDb.collection("creators").doc(txData.creatorId), {
-            totalEarnings: admin.firestore.FieldValue.increment(creatorShare),
-            pendingPayout: admin.firestore.FieldValue.increment(creatorShare),
-          });
-
-          if (txData.includeReferral && txData.referralUid) {
-            batch.set(adminDb.collection("creatorIncome").doc(), {
-              creatorUid: txData.referralUid,
-              amount: referralShare,
+            userId: txData.creatorUid,
+            type: "booking_paid",
+            title: "Booking Payment Received!",
+            message: `Booking payment of ${totalAmount.toLocaleString()} RWF received from ${txData.buyerName || "a client"}`,
+            metadata: {
               txRef: ref,
-              reason: "referral_commission",
-              createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            });
-            batch.update(adminDb.collection("creators").doc(txData.referralId), {
-              totalEarnings: admin.firestore.FieldValue.increment(referralShare),
-              pendingPayout: admin.firestore.FieldValue.increment(referralShare),
-            });
-          }
-
-          batch.update(adminDb.collection("bookingRequests").doc(bookingId), {
-            paymentStatus: "paid",
-            status: "pending",
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+              bookingId,
+              amount: totalAmount,
+              creatorShare,
+            },
+            link: "/creator/bookings",
+            actorName: txData.buyerName || undefined,
+            actorId: txData.buyerId || undefined,
           });
+        }
 
-          const buyerId = txData.buyerId || txData.supporterId || "";
-          if (buyerId && buyerId !== "anonymous") {
-            batch.update(adminDb.collection("profiles").doc(buyerId), {
-              totalSupport: admin.firestore.FieldValue.increment(totalAmount),
-              totalSupportedCreators: admin.firestore.FieldValue.increment(1),
-            });
-          }
+        // Notify buyer/supporter that payment was successful
+        if (buyerId && buyerId !== "anonymous") {
+          await createNotification({
+            userId: buyerId,
+            type: "booking_paid",
+            title: "Payment Confirmed!",
+            message: `Your payment of ${totalAmount.toLocaleString()} RWF for booking with ${txData.creatorName || "creator"} is confirmed.`,
+            metadata: { txRef: ref, bookingId, amount: totalAmount },
+            link: `/${txData.creatorId}/booking`,
+            actorName: txData.creatorName || undefined,
+            actorId: txData.creatorUid || undefined,
+          });
+        }
 
-          if (txData.creatorUid) {
-            await createNotification({
-              userId: txData.creatorUid,
-              type: "booking_paid",
-              title: "Booking Payment Received!",
-              message: `Booking payment of ${totalAmount.toLocaleString()} RWF received from ${txData.buyerName || "a client"}`,
-              metadata: {
-                txRef: ref,
-                bookingId,
-                amount: totalAmount,
-                creatorShare,
-              },
-              link: "/creator/bookings",
-              actorName: txData.buyerName || undefined,
-              actorId: txData.buyerId || undefined,
-            });
-          }
-
-          // Notify buyer/supporter that payment was successful
-          if (buyerId && buyerId !== "anonymous") {
-            await createNotification({
-              userId: buyerId,
-              type: "booking_paid",
-              title: "Payment Confirmed!",
-              message: `Your payment of ${totalAmount.toLocaleString()} RWF for booking with ${txData.creatorName || "creator"} is confirmed.`,
-              metadata: { txRef: ref, bookingId, amount: totalAmount },
-              link: `/${txData.creatorId}/booking`,
-              actorName: txData.creatorName || undefined,
-              actorId: txData.creatorUid || undefined,
-            });
-          }
-
-          // Email to creator — booking request notification after payment confirmed
-          console.log(`[WEBHOOK_MOMO_EMAIL] Processing creator email for bookingId=${bookingId}, creatorUid=${txData.creatorUid}`);
-          if (txData.creatorUid) {
-            try {
-              const profileSnap = await adminDb.collection("profiles").doc(txData.creatorUid).get();
-              if (!profileSnap.exists) {
-                console.log(`[WEBHOOK_MOMO_EMAIL] No profile doc for creatorUid=${txData.creatorUid}`);
-              }
-              const creatorProfileEmail = profileSnap.exists ? profileSnap.data()?.email || "" : "";
-              console.log(`[WEBHOOK_MOMO_EMAIL] Resolved email="${creatorProfileEmail}" for creatorUid=${txData.creatorUid}`);
-              if (!creatorProfileEmail) {
-                console.log(`[WEBHOOK_MOMO_EMAIL] No email found for creatorUid=${txData.creatorUid}, skipping email`);
-              } else {
-                let bookingDate = "";
-                let bookingTime = "";
-                let bookingType = "";
-                let bookingReason = "";
-                try {
-                  const bookingSnap = await adminDb.collection("bookingRequests").doc(bookingId).get();
-                  if (bookingSnap.exists) {
-                    const bd = bookingSnap.data();
-                    bookingDate = bd?.preferredDate || "";
-                    bookingTime = bd?.preferredTime || "";
-                    bookingType = bd?.preferredType || "both";
-                    bookingReason = bd?.reason || "";
-                  }
-                } catch (bookingFetchErr) {
-                  console.error(`[WEBHOOK_MOMO_EMAIL] Failed to fetch booking details for ${bookingId}:`, bookingFetchErr);
+        // Email to creator — booking request notification after payment confirmed
+        console.log(
+          `[WEBHOOK_MOMO_EMAIL] Processing creator email for bookingId=${bookingId}, creatorUid=${txData.creatorUid}`,
+        );
+        if (txData.creatorUid) {
+          try {
+            const profileSnap = await adminDb
+              .collection("profiles")
+              .doc(txData.creatorUid)
+              .get();
+            if (!profileSnap.exists) {
+              console.log(
+                `[WEBHOOK_MOMO_EMAIL] No profile doc for creatorUid=${txData.creatorUid}`,
+              );
+            }
+            const creatorProfileEmail = profileSnap.exists
+              ? profileSnap.data()?.email || ""
+              : "";
+            console.log(
+              `[WEBHOOK_MOMO_EMAIL] Resolved email="${creatorProfileEmail}" for creatorUid=${txData.creatorUid}`,
+            );
+            if (!creatorProfileEmail) {
+              console.log(
+                `[WEBHOOK_MOMO_EMAIL] No email found for creatorUid=${txData.creatorUid}, skipping email`,
+              );
+            } else {
+              let bookingDate = "";
+              let bookingTime = "";
+              let bookingType = "";
+              let bookingReason = "";
+              try {
+                const bookingSnap = await adminDb
+                  .collection("bookingRequests")
+                  .doc(bookingId)
+                  .get();
+                if (bookingSnap.exists) {
+                  const bd = bookingSnap.data();
+                  bookingDate = bd?.preferredDate || "";
+                  bookingTime = bd?.preferredTime || "";
+                  bookingType = bd?.preferredType || "both";
+                  bookingReason = bd?.reason || "";
                 }
+              } catch (bookingFetchErr) {
+                console.error(
+                  `[WEBHOOK_MOMO_EMAIL] Failed to fetch booking details for ${bookingId}:`,
+                  bookingFetchErr,
+                );
+              }
 
-                try {
-                  const info = await transporter.sendMail({
-                    from: `"Agaseke" <${process.env.SMTP_USER}>`,
-                    to: creatorProfileEmail,
-                    subject: `New booking request from ${txData.buyerName || txData.bookerName || "a client"}`,
-                    html: `
+              try {
+                const info = await transporter.sendMail({
+                  from: `"Agaseke" <${process.env.SMTP_USER}>`,
+                  to: creatorProfileEmail,
+                  subject: `New booking request from ${txData.buyerName || txData.bookerName || "a client"}`,
+                  html: `
                       <!DOCTYPE html>
                       <html>
                         <head>
@@ -340,7 +365,7 @@ export async function POST(req: Request) {
                               ${bookingReason ? `<div class="reason"><strong>Message:</strong><br>${bookingReason}</div>` : ""}
                               <p>Please log in to your dashboard to accept or decline this request.</p>
                               <div style="text-align: center; margin-top: 20px;">
-                                <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://agaseke.com"}/creator/bookings" class="cta">Manage Bookings</a>
+                                <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://agaseke.me"}/creator/bookings" class="cta">Manage Bookings</a>
                               </div>
                               <div class="footer">
                                 <p>This email was sent by Agaseke Platform</p>
@@ -351,27 +376,37 @@ export async function POST(req: Request) {
                         </body>
                       </html>
                     `,
-                  });
-                  console.log(`[WEBHOOK_MOMO_EMAIL] Email sent successfully to "${creatorProfileEmail}", messageId=${info.messageId}`);
-                } catch (sendErr) {
-                  console.error(`[WEBHOOK_MOMO_EMAIL] transporter.sendMail failed for "${creatorProfileEmail}":`, sendErr);
-                }
+                });
+                console.log(
+                  `[WEBHOOK_MOMO_EMAIL] Email sent successfully to "${creatorProfileEmail}", messageId=${info.messageId}`,
+                );
+              } catch (sendErr) {
+                console.error(
+                  `[WEBHOOK_MOMO_EMAIL] transporter.sendMail failed for "${creatorProfileEmail}":`,
+                  sendErr,
+                );
               }
-            } catch (emailErr) {
-              console.error("[WEBHOOK_MOMO_EMAIL] Unexpected error in creator email block:", emailErr);
             }
-          } else {
-            console.log(`[WEBHOOK_MOMO_EMAIL] No creatorUid in txData, cannot send creator email`);
+          } catch (emailErr) {
+            console.error(
+              "[WEBHOOK_MOMO_EMAIL] Unexpected error in creator email block:",
+              emailErr,
+            );
           }
+        } else {
+          console.log(
+            `[WEBHOOK_MOMO_EMAIL] No creatorUid in txData, cannot send creator email`,
+          );
+        }
 
-          // Email to buyer if email is available
-          if (txData.bookerEmail) {
-            try {
-              await transporter.sendMail({
-                from: `"Agaseke" <${process.env.SMTP_USER}>`,
-                to: txData.bookerEmail,
-                subject: `Payment confirmed for your booking with ${txData.creatorName || "creator"}`,
-                html: `
+        // Email to buyer if email is available
+        if (txData.bookerEmail) {
+          try {
+            await transporter.sendMail({
+              from: `"Agaseke" <${process.env.SMTP_USER}>`,
+              to: txData.bookerEmail,
+              subject: `Payment confirmed for your booking with ${txData.creatorName || "creator"}`,
+              html: `
                   <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
                     <h2 style="color: #22c55e;">Payment Received!</h2>
                     <p>Hi ${txData.buyerName || txData.bookerName || ""},</p>
@@ -381,105 +416,114 @@ export async function POST(req: Request) {
                     <p style="color: #64748b; font-size: 12px;">Agaseke Platform</p>
                   </div>
                 `,
-              });
-            } catch (emailErr) {
-              console.error("Failed to send payment confirmation email to buyer:", emailErr);
-            }
-          }
-
-          // Notify admin about the successful booking transaction
-          try {
-            const adminsSnap = await adminDb.collection("profiles").where("isAdmin", "==", true).get();
-            for (const adminDoc of adminsSnap.docs) {
-              await createNotification({
-                userId: adminDoc.id,
-                type: "new_transaction",
-                title: "Booking Payment Completed",
-                message: `Booking payment of ${totalAmount.toLocaleString()} RWF from ${txData.buyerName || "a client"} to ${txData.creatorName || "creator"}`,
-                link: "/admin/transactions",
-              });
-            }
-          } catch (adminNotifErr) {
-            console.error("Failed to notify admins:", adminNotifErr);
+            });
+          } catch (emailErr) {
+            console.error(
+              "Failed to send payment confirmation email to buyer:",
+              emailErr,
+            );
           }
         }
-      } else {
-       const platformSharePercentage = txData.includeReferral
-         ? Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL)
-         : Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE);
-       const platformShare = totalAmount * platformSharePercentage;
-       const creatorShare = totalAmount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE);
-       const referralShare = totalAmount * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE);
 
-       batch.set(adminDb.collection("platformIncome").doc(), {
-         amount: platformShare,
-         txRef: ref,
-         reason: "flat_fee",
-         createdAt: admin.firestore.FieldValue.serverTimestamp(),
-       });
-
-       batch.set(adminDb.collection("creatorIncome").doc(), {
-         creatorUid: txData.creatorUid,
-         amount: creatorShare,
-         txRef: ref,
-         reason: "support",
-         createdAt: admin.firestore.FieldValue.serverTimestamp(),
-       });
-
-       batch.set(adminDb.collection("supportedCreators").doc(), {
-         creatorId: txData.creatorId,
-         amount: totalAmount,
-         supporterId: txData.supporterId || null,
-         supporterPhoneNumber: client,
-         txRef: ref,
-         createdAt: admin.firestore.FieldValue.serverTimestamp(),
-       });
-
-       batch.update(adminDb.collection("creators").doc(txData.creatorId), {
-         totalEarnings: admin.firestore.FieldValue.increment(creatorShare),
-         totalSupporters: admin.firestore.FieldValue.increment(1),
-         pendingPayout: admin.firestore.FieldValue.increment(creatorShare),
-       });
-
-       if (txData.includeReferral && txData.referralUid) {
-         batch.set(adminDb.collection("creatorIncome").doc(), {
-           creatorUid: txData.referralUid,
-           amount: referralShare,
-           txRef: ref,
-           reason: "referral_commission",
-           createdAt: admin.firestore.FieldValue.serverTimestamp(),
-         });
-         batch.update(adminDb.collection("creators").doc(txData.referralId), {
-           totalEarnings: admin.firestore.FieldValue.increment(referralShare),
-           pendingPayout: admin.firestore.FieldValue.increment(referralShare),
-         });
-       }
-
-       if (txData.supporterId && txData.supporterId !== "anonymous") {
-         batch.update(adminDb.collection("profiles").doc(txData.supporterId), {
-           totalSupport: admin.firestore.FieldValue.increment(totalAmount),
-           totalSupportedCreators: admin.firestore.FieldValue.increment(1),
-         });
-       }
-
-         if (txData.creatorUid) {
-           await createNotification({
-            userId: txData.creatorUid,
-            type: "support_received",
-            title: "New Support Received!",
-            message: `You received ${totalAmount.toLocaleString()} RWF in support${txData.supporterId && txData.supporterId !== "anonymous" ? "" : " from an anonymous supporter"}`,
-            metadata: {
-              txRef: ref,
-              amount: totalAmount,
-              creatorShare: creatorShare,
-            },
-            link: "/creator/supporters",
-            actorId: txData.supporterId !== "anonymous" ? txData.supporterId : undefined,
-          });
+        // Notify admin about the successful booking transaction
+        try {
+          const adminsSnap = await adminDb
+            .collection("profiles")
+            .where("isAdmin", "==", true)
+            .get();
+          for (const adminDoc of adminsSnap.docs) {
+            await createNotification({
+              userId: adminDoc.id,
+              type: "new_transaction",
+              title: "Booking Payment Completed",
+              message: `Booking payment of ${totalAmount.toLocaleString()} RWF from ${txData.buyerName || "a client"} to ${txData.creatorName || "creator"}`,
+              link: "/admin/transactions",
+            });
+          }
+        } catch (adminNotifErr) {
+          console.error("Failed to notify admins:", adminNotifErr);
         }
       }
+    } else {
+      const platformSharePercentage = txData.includeReferral
+        ? Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL)
+        : Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE);
+      const platformShare = totalAmount * platformSharePercentage;
+      const creatorShare =
+        totalAmount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE);
+      const referralShare =
+        totalAmount * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE);
 
-     await batch.commit();
+      batch.set(adminDb.collection("platformIncome").doc(), {
+        amount: platformShare,
+        txRef: ref,
+        reason: "flat_fee",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      batch.set(adminDb.collection("creatorIncome").doc(), {
+        creatorUid: txData.creatorUid,
+        amount: creatorShare,
+        txRef: ref,
+        reason: "support",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      batch.set(adminDb.collection("supportedCreators").doc(), {
+        creatorId: txData.creatorId,
+        amount: totalAmount,
+        supporterId: txData.supporterId || null,
+        supporterPhoneNumber: client,
+        txRef: ref,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      batch.update(adminDb.collection("creators").doc(txData.creatorId), {
+        totalEarnings: admin.firestore.FieldValue.increment(creatorShare),
+        totalSupporters: admin.firestore.FieldValue.increment(1),
+        pendingPayout: admin.firestore.FieldValue.increment(creatorShare),
+      });
+
+      if (txData.includeReferral && txData.referralUid) {
+        batch.set(adminDb.collection("creatorIncome").doc(), {
+          creatorUid: txData.referralUid,
+          amount: referralShare,
+          txRef: ref,
+          reason: "referral_commission",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        batch.update(adminDb.collection("creators").doc(txData.referralId), {
+          totalEarnings: admin.firestore.FieldValue.increment(referralShare),
+          pendingPayout: admin.firestore.FieldValue.increment(referralShare),
+        });
+      }
+
+      if (txData.supporterId && txData.supporterId !== "anonymous") {
+        batch.update(adminDb.collection("profiles").doc(txData.supporterId), {
+          totalSupport: admin.firestore.FieldValue.increment(totalAmount),
+          totalSupportedCreators: admin.firestore.FieldValue.increment(1),
+        });
+      }
+
+      if (txData.creatorUid) {
+        await createNotification({
+          userId: txData.creatorUid,
+          type: "support_received",
+          title: "New Support Received!",
+          message: `You received ${totalAmount.toLocaleString()} RWF in support${txData.supporterId && txData.supporterId !== "anonymous" ? "" : " from an anonymous supporter"}`,
+          metadata: {
+            txRef: ref,
+            amount: totalAmount,
+            creatorShare: creatorShare,
+          },
+          link: "/creator/supporters",
+          actorId:
+            txData.supporterId !== "anonymous" ? txData.supporterId : undefined,
+        });
+      }
+    }
+
+    await batch.commit();
   } else {
     await txDoc.ref.update({ status: "failed" });
   }

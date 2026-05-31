@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { baseUrl } from "@/lib/baseUrl";
 import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
               <p>Please log in to your dashboard to accept or decline this request.</p>
               
               <div style="text-align: center; margin-top: 20px;">
-                <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://agaseke.com"}/creator/bookings" class="cta">
+                <a href="${baseUrl}/creator/bookings" class="cta">
                   Manage Bookings
                 </a>
               </div>
