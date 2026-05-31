@@ -79,6 +79,19 @@ export async function POST(request: NextRequest) {
 
     const creatorData = creatorDoc.data();
 
+    // Resolve creator email from profiles collection (creators doc has no email field)
+    let creatorEmail = "";
+    if (creatorData?.uid) {
+      try {
+        const profileSnap = await adminDb.collection("profiles").doc(creatorData.uid).get();
+        if (profileSnap.exists) {
+          creatorEmail = profileSnap.data()?.email || "";
+        }
+      } catch (err) {
+        console.error("Failed to fetch creator profile for email:", err);
+      }
+    }
+
     if (!creatorData?.bookingEnabled) {
       return NextResponse.json({ error: "Booking is not enabled for this creator" }, { status: 403 });
     }
@@ -209,14 +222,14 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Email to creator (already existed)
-    if (creatorData.email) {
+    // Email to creator
+    if (creatorEmail) {
       try {
         await fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/comms/email/booking/request`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            creatorEmail: creatorData.email,
+            creatorEmail,
             creatorName: creatorData.name,
             bookerName,
             bookerEmail,
