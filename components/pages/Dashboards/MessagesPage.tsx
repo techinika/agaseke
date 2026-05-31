@@ -201,6 +201,7 @@ export default function MessagesPage() {
           });
         }
       });
+    });
 
     return () => unsubscribe();
   }, [selectedChatId]);
