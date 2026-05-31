@@ -14,6 +14,7 @@ import {
   updateDoc,
   serverTimestamp,
   getDocs,
+  writeBatch,
 } from "firebase/firestore";
 import { ProtectedSection } from "./ProtectedSection";
 import { toast } from "sonner";
@@ -211,15 +212,14 @@ export const MessageTab = ({
     );
 
     if (unreadMessages.length > 0) {
-      const markAsRead = async () => {
-        for (const msg of unreadMessages) {
-          await updateDoc(
-            doc(db, "chatrooms", chatroomId, "messages", msg.id),
-            { read: true }
-          );
-        }
-      };
-      markAsRead();
+      const batch = writeBatch(db);
+      for (const msg of unreadMessages) {
+        batch.update(
+          doc(db, "chatrooms", chatroomId, "messages", msg.id),
+          { read: true }
+        );
+      }
+      batch.commit();
     }
   }, [messages, chatroomId, currentUserId]);
 

@@ -23,11 +23,14 @@ import {
   query,
   where,
   orderBy,
+  limit,
   onSnapshot,
   updateDoc,
   serverTimestamp,
-  getDoc,
+  getDocs,
   Timestamp,
+  writeBatch,
+  startAfter,
 } from "firebase/firestore";
 import { toast } from "sonner";
 
@@ -61,12 +64,18 @@ export default function MessagesPage() {
   const [chatrooms, setChatrooms] = useState<Chatroom[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(initialChatId);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [decryptedRooms, setDecryptedRooms] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesTopRef = useRef<HTMLDivElement>(null);
   const decryptedCache = useRef<Map<string, string>>(new Map());
+  const oldestCursorRef = useRef<{ createdAt: Timestamp; id: string } | null>(null);
 
   const decryptMessage = async (id: string, encrypted: string): Promise<string> => {
     const cached = decryptedCache.current.get(id);
@@ -131,80 +140,137 @@ export default function MessagesPage() {
     return () => unsubscribe();
   }, [creator?.uid]);
 
-  // Decrypt lastMessage for chatroom sidebar
+  // Warm up decryption cache for chatroom sidebar and trigger re-render when done
   useEffect(() => {
     if (chatrooms.length === 0) return;
-    let cancelled = false;
-    (async () => {
-      const updated = await Promise.all(
-        chatrooms.map(async (chat) => {
-          if (!chat.lastMessage || !chat.lastMessage.includes(":")) return chat;
-          const key = `room_${chat.id}`;
-          const cached = decryptedCache.current.get(key);
-          if (cached) return { ...chat, lastMessage: cached };
-          try {
-            const res = await fetch("/api/decrypt", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ encrypted: chat.lastMessage }),
-            });
-            const data = await res.json();
-            if (data.plaintext) {
-              decryptedCache.current.set(key, data.plaintext);
-              return { ...chat, lastMessage: data.plaintext };
-            }
-          } catch { /* ignore */ }
-          return chat;
-        })
-      );
-      if (!cancelled) setChatrooms(updated);
-    })();
-    return () => { cancelled = true; };
+    const todo = chatrooms.filter(
+      (c) => c.lastMessage && c.lastMessage.includes(":") && !decryptedCache.current.has(`room_${c.id}`)
+    );
+    if (todo.length === 0) return;
+    Promise.all(
+      todo.map(async (chat) => {
+        const key = `room_${chat.id}`;
+        try {
+          const res = await fetch("/api/decrypt", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ encrypted: chat.lastMessage }),
+          });
+          const data = await res.json();
+          if (data.plaintext) decryptedCache.current.set(key, data.plaintext);
+        } catch { /* ignore */ }
+      })
+    ).then(() => {
+      setDecryptedRooms(new Set(todo.map((c) => c.id)));
+    });
   }, [chatrooms]);
 
   useEffect(() => {
-    if (!selectedChatId) return;
+    if (!selectedChatId) {
+      setMessages([]);
+      return;
+    }
+
+    setMessagesLoading(true);
+    setMessages([]);
+    setHasMoreMessages(false);
+    oldestCursorRef.current = null;
 
     const messagesRef = collection(db, "chatrooms", selectedChatId, "messages");
-    const q = query(messagesRef, orderBy("createdAt", "asc"));
+    const recentQuery = query(messagesRef, orderBy("createdAt", "desc"), orderBy("__name__", "desc"), limit(10));
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const rawMsgs = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Message[];
-
+    const unsubscribe = onSnapshot(recentQuery, (snapshot) => {
       Promise.all(
-        rawMsgs.map(async (msg) => {
-          const decrypted = await decryptMessage(msg.id, msg.content);
-          return { ...msg, content: decrypted };
+        snapshot.docs.map(async (d) => {
+          const data = d.data();
+          const decrypted = await decryptMessage(d.id, data.content || "");
+          return { id: d.id, ...data, content: decrypted } as Message;
         })
       ).then((decryptedMsgs) => {
-        setMessages(decryptedMsgs);
+        setMessages((prev) => {
+          const map = new Map<string, Message>();
+          for (const m of prev) map.set(m.id, m);
+          for (const m of decryptedMsgs) map.set(m.id, m);
+          const all = Array.from(map.values());
+          all.sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
+          if (all.length > 0) {
+            const oldest = all[0];
+            oldestCursorRef.current = { createdAt: oldest.createdAt as Timestamp, id: oldest.id };
+            setHasMoreMessages(true);
+          }
+          return all;
+        });
+        setMessagesLoading(false);
         scrollToBottom();
-
-        const unreadMsgs = decryptedMsgs.filter(
-          (m) => m.senderType === "supporter" && !m.read
-        );
-        if (unreadMsgs.length > 0) {
-          Promise.all(
-            unreadMsgs.map((msg) =>
-              updateDoc(
-                doc(db, "chatrooms", selectedChatId, "messages", msg.id),
-                { read: true }
-              )
-            )
-          ).then(() => {
-            updateDoc(doc(db, "chatrooms", selectedChatId), {
-              unreadCount: 0,
-            });
-          });
-        }
       });
     });
 
     return () => unsubscribe();
   }, [selectedChatId]);
+
+  // Mark unread supporter messages as read (separate from snapshot to avoid re-trigger loop)
+  useEffect(() => {
+    if (!selectedChatId || messages.length === 0) return;
+
+    const unreadMsgs = messages.filter(
+      (m) => m.senderType === "supporter" && !m.read
+    );
+    if (unreadMsgs.length === 0) return;
+
+    const batch = writeBatch(db);
+    for (const msg of unreadMsgs) {
+      batch.update(
+        doc(db, "chatrooms", selectedChatId, "messages", msg.id),
+        { read: true }
+      );
+    }
+    batch.update(doc(db, "chatrooms", selectedChatId), { unreadCount: 0 });
+    batch.commit();
+  }, [messages, selectedChatId]);
+
+  const loadMoreMessages = async () => {
+    if (!selectedChatId || loadingMore || !oldestCursorRef.current) return;
+    setLoadingMore(true);
+    try {
+      const messagesRef = collection(db, "chatrooms", selectedChatId, "messages");
+      const q = query(
+        messagesRef,
+        orderBy("createdAt", "desc"),
+        orderBy("__name__", "desc"),
+        limit(10),
+        startAfter(oldestCursorRef.current.createdAt, oldestCursorRef.current.id)
+      );
+      const snapshot = await getDocs(q);
+      const older = await Promise.all(
+        snapshot.docs.map(async (d) => {
+          const data = d.data();
+          const decrypted = await decryptMessage(d.id, data.content || "");
+          return { id: d.id, ...data, content: decrypted } as Message;
+        })
+      );
+      if (older.length === 0) {
+        setHasMoreMessages(false);
+      } else {
+        setMessages((prev) => {
+          const map = new Map<string, Message>();
+          for (const m of prev) map.set(m.id, m);
+          for (const m of older) map.set(m.id, m);
+          const all = Array.from(map.values());
+          all.sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
+          if (all.length > 0) {
+            const oldest = all[0];
+            oldestCursorRef.current = { createdAt: oldest.createdAt as Timestamp, id: oldest.id };
+          }
+          setHasMoreMessages(older.length === 10);
+          return all;
+        });
+      }
+    } catch (e) {
+      console.error("Failed to load older messages:", e);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedChatId || !creator?.name) return;
@@ -359,7 +425,7 @@ export default function MessagesPage() {
                         : "text-muted-foreground"
                     }`}
                   >
-                    {chat.lastMessage || "No messages yet"}
+                    {decryptedCache.current.get(`room_${chat.id}`) || chat.lastMessage || "No messages yet"}
                   </p>
                 </div>
               </button>
@@ -430,7 +496,17 @@ export default function MessagesPage() {
             </header>
 
             <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-muted/30">
-              {messages.length === 0 ? (
+              {messagesLoading ? (
+                <div className="flex flex-col items-center justify-center h-full gap-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex w-full max-w-[80%] gap-3 animate-pulse">
+                      <div className={`flex-1 ${i % 2 === 0 ? "ml-auto" : ""}`}>
+                        <div className="h-12 bg-muted rounded-2xl" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center">
                   <div className="w-16 h-16 bg-card rounded-full flex items-center justify-center mb-4 shadow-sm">
                     <MessageSquare size={24} className="text-muted-foreground" />
@@ -445,6 +521,25 @@ export default function MessagesPage() {
                 </div>
               ) : (
                 <>
+                  {hasMoreMessages && (
+                    <div className="text-center">
+                      <button
+                        onClick={loadMoreMessages}
+                        disabled={loadingMore}
+                        className="text-xs font-medium text-muted-foreground hover:text-foreground px-4 py-2 rounded-lg hover:bg-muted transition disabled:opacity-50"
+                      >
+                        {loadingMore ? (
+                          <span className="flex items-center gap-2">
+                            <Loader size={12} className="animate-spin" />
+                            Loading...
+                          </span>
+                        ) : (
+                          "Load older messages"
+                        )}
+                      </button>
+                    </div>
+                  )}
+                  <div ref={messagesTopRef} />
                   {messages.map((msg) => (
                     <div
                       key={msg.id}
