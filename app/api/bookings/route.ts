@@ -322,29 +322,63 @@ export async function POST(request: NextRequest) {
 
     if (bookerEmail) {
       try {
+        const payUrl = isPaidTier
+          ? `${process.env.NEXT_PUBLIC_APP_URL || "https://agaseke.me"}/booking/pay/${bookingRef.id}`
+          : null;
+
+        const subject = isPaidTier
+          ? `Payment required to confirm your booking with ${creatorData.name}`
+          : `Booking request sent to ${creatorData.name}`;
+
+        const bookerHtml = isPaidTier ? `
+          <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #ea580c;">Payment Required</h2>
+            <p>Hi ${bookerName},</p>
+            <p>Your booking request with <strong>${creatorData.name}</strong> has been received.</p>
+            <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 16px 0;">
+              <p><strong>Date:</strong> ${preferredDate}</p>
+              <p><strong>Time:</strong> ${preferredTime}</p>
+              <p><strong>Type:</strong> ${preferredType === "online" ? "Online" : preferredType === "physical" ? "In Person" : "Either"}</p>
+              <p><strong>Amount:</strong> ${verifiedPaymentAmount.toLocaleString()} RWF</p>
+              ${reason ? `<p><strong>Message:</strong> ${reason}</p>` : ""}
+            </div>
+            <p>This booking requires payment before it can be confirmed. Please complete your payment using the link below:</p>
+            <div style="text-align: center; margin: 24px 0;">
+              <a href="${payUrl}" style="display: inline-block; background: #f97316; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">
+                Pay ${verifiedPaymentAmount.toLocaleString()} RWF Now
+              </a>
+            </div>
+            <p style="color: #64748b; font-size: 13px;">Your booking will be confirmed once payment is received.</p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <p style="color: #64748b; font-size: 12px;">Agaseke Platform</p>
+          </div>
+        ` : `
+          <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #ea580c;">Request Sent!</h2>
+            <p>Hi ${bookerName},</p>
+            <p>Your booking request with <strong>${creatorData.name}</strong> has been received.</p>
+            <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 16px 0;">
+              <p><strong>Date:</strong> ${preferredDate}</p>
+              <p><strong>Time:</strong> ${preferredTime}</p>
+              <p><strong>Type:</strong> ${preferredType === "online" ? "Online" : preferredType === "physical" ? "In Person" : "Either"}</p>
+              ${reason ? `<p><strong>Message:</strong> ${reason}</p>` : ""}
+            </div>
+            <p>You will receive an email once ${creatorData.name} responds to your request.</p>
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+            <p style="color: #64748b; font-size: 12px;">Agaseke Platform</p>
+          </div>
+        `;
+
         await transporter.sendMail({
           from: `"Agaseke" <${process.env.SMTP_USER}>`,
           to: bookerEmail,
-          subject: `Booking request sent to ${creatorData.name}`,
-          html: `
-            <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 20px;">
-              <h2 style="color: #ea580c;">Request Sent!</h2>
-              <p>Hi ${bookerName},</p>
-              <p>Your booking request with <strong>${creatorData.name}</strong> has been received.</p>
-              <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 16px 0;">
-                <p><strong>Date:</strong> ${preferredDate}</p>
-                <p><strong>Time:</strong> ${preferredTime}</p>
-                <p><strong>Type:</strong> ${preferredType === "online" ? "Online" : preferredType === "physical" ? "In Person" : "Either"}</p>
-                ${reason ? `<p><strong>Message:</strong> ${reason}</p>` : ""}
-              </div>
-              <p>You will receive an email once ${creatorData.name} responds to your request.</p>
-              <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-              <p style="color: #64748b; font-size: 12px;">Agaseke Platform</p>
-            </div>
-          `,
+          subject,
+          html: bookerHtml,
         });
+
+        console.log(`[BOOKING_EMAIL] ${isPaidTier ? "Payment-required" : "Confirmation"} email sent to booker "${bookerEmail}"`);
       } catch (emailError) {
-        console.error("Failed to send booking confirmation email to booker:", emailError);
+        console.error("[BOOKING_EMAIL] Failed to send booking email to booker:", emailError);
       }
     }
 
