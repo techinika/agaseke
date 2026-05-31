@@ -57,7 +57,9 @@ export default function AdminDashboard() {
     totalGiveaways: 0,
     totalOrders: 0,
     recentGrowth: 0,
-    totalTransactionAmount: 0, // New state for total transaction amount
+    totalTransactionAmount: 0,
+    successfulTransactionCount: 0,
+    averageTransactionAmount: 0,
   });
   const [rejectionReason, setRejectionReason] = useState("");
   const [timeFilter, setTimeFilter] = useState<"all" | "7d" | "30d">("all");
@@ -317,13 +319,18 @@ export default function AdminDashboard() {
       setRawIncome(allPlatformIncome);
       setRawPayouts(allPayouts);
 
-      // Get transaction counts by type from transactions collection
+      // Get transaction counts and aggregates by type from transactions collection
       const transactionsSnap = await getDocs(collection(db, "transactions"));
       const allTransactions = transactionsSnap.docs.map((d) => d.data());
       let txSupports = 0;
       let txProducts = 0;
+      let totalSuccessfulAmount = 0;
+      let successfulCount = 0;
       allTransactions.forEach((tx) => {
         if (tx.status === "successful" || tx.status === "success") {
+          const amt = Number(tx.amount) || 0;
+          totalSuccessfulAmount += amt;
+          successfulCount += 1;
           if (tx.type === "support") {
             txSupports += 1;
           } else if (tx.type === "product") {
@@ -331,6 +338,7 @@ export default function AdminDashboard() {
           }
         }
       });
+      const avgAmount = successfulCount > 0 ? Math.round(totalSuccessfulAmount / successfulCount) : 0;
 
       // Top earners
       const earnersQuery = query(
@@ -381,7 +389,9 @@ export default function AdminDashboard() {
         totalGiveaways,
         totalOrders,
         recentGrowth: Math.floor(Math.random() * 20) + 5,
-        totalTransactionAmount: totalIncome + totalPayoutsProcessed,
+        totalTransactionAmount: totalSuccessfulAmount,
+        successfulTransactionCount: successfulCount,
+        averageTransactionAmount: avgAmount,
       });
       setTopEarners(earnersSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
       setTopViewed(viewsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -790,14 +800,14 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-3 mb-2 opacity-90">
             <Activity size={20} />
             <p className="text-xs font-bold uppercase tracking-widest">
-              Total Transaction Value (Since Inception)
+              Total Successful Transactions (All Time)
             </p>
           </div>
           <p className="text-5xl font-black tracking-tight">
             {stats.totalTransactionAmount.toLocaleString()} RWF
           </p>
           <p className="text-xs font-medium opacity-75 mt-2">
-            Income + Payouts
+            {stats.successfulTransactionCount} successful transactions
           </p>
         </div>
 
@@ -831,6 +841,12 @@ export default function AdminDashboard() {
             value={stats.totalViews.toLocaleString()}
             icon={<Eye className="text-purple-600" />}
             color="bg-purple-50"
+          />
+          <StatCard
+            label="Avg Transaction"
+            value={`${stats.averageTransactionAmount.toLocaleString()} RWF`}
+            icon={<BarChart3 className="text-sky-600" />}
+            color="bg-sky-50"
           />
         </div>
 

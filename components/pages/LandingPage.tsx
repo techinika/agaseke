@@ -18,7 +18,7 @@ import {
   Check,
   XCircle,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/db/firebase";
@@ -32,6 +32,7 @@ import {
 export default function LandingPage() {
   const { isCreator, user } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [username, setUsername] = useState("");
   const [usernameStatus, setUsernameStatus] = useState<
     "idle" | "checking" | "available" | "taken" | "invalid"
@@ -144,7 +145,7 @@ export default function LandingPage() {
 
   const handleClaim = () => {
     if (username.length > 2) {
-      router.push(`/login?username=${username}`);
+      router.push(`/login?username=${username}&redirect=${encodeURIComponent(pathname)}`);
     } else {
       toast.info("Please enter a username (at least 3 characters).");
     }

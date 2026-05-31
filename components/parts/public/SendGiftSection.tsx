@@ -2,6 +2,7 @@
 
 import { Calendar, CheckCircle2, Heart, LogIn, Share2, User } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { SocialPill } from "../profile/SocialPill";
 import { getIcon } from "../profile/GetLink";
 
@@ -36,6 +37,7 @@ export const SendGiftSection = ({
   currentUser: any;
   bookingEnabled?: boolean;
 }) => {
+  const pathname = usePathname();
   return (
     <div className="relative">
       <div className="h-48 w-full bg-linear-to-r from-orange-100 via-orange-50 to-orange-100 dark:from-orange-950 dark:via-orange-900/50 dark:to-orange-950" />
@@ -126,7 +128,7 @@ export const SendGiftSection = ({
             <LogIn size={18} />
             <p className="text-sm font-bold">
               <Link
-                href={`/login?referral=${handle}`}
+                href={`/login?referral=${handle}&redirect=${encodeURIComponent(pathname)}`}
                 className="underline decoration-2"
               >
                 Log in

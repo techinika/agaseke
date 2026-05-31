@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ArrowLeft, Heart, Loader, Gift, Star, Trophy, Users, Clock, Share2 } from "lucide-react";
 import { db } from "@/db/firebase";
 import { doc, getDoc, getDocs, collection, query, where, addDoc, Timestamp } from "firebase/firestore";
@@ -15,6 +16,7 @@ import { WinnersModal } from "@/components/parts/public/giveaway";
 import type { Giveaway } from "@/components/parts/public/giveaway";
 
 export default function GiveawayDetailPage({ username, giveawayId }: { username: string; giveawayId: string }) {
+  const pathname = usePathname();
   const { user: currentUser, isLoggedIn } = useAuth();
   const [loading, setLoading] = useState(true);
   const [giveaway, setGiveaway] = useState<Giveaway | null>(null);
@@ -193,7 +195,7 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
             {isActive && (
               <div className="border-t border-border pt-6">
                 {!isLoggedIn ? (
-                  <Link href={`/login?referral=${username}`}
+                  <Link href={`/login?referral=${username}&redirect=${encodeURIComponent(pathname)}`}
                     className="block w-full py-3 bg-orange-500 text-white rounded-xl font-bold text-center hover:bg-orange-600 transition">
                     Log in to Enter
                   </Link>

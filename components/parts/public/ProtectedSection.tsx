@@ -1,5 +1,8 @@
+"use client";
+
 import { Heart, Lock } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const ProtectedSection = ({
@@ -15,6 +18,7 @@ export const ProtectedSection = ({
   setIsModalOpen: any;
   handle?: string;
 }) => {
+  const pathname = usePathname();
   if (!isLoggedIn) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in">
@@ -24,7 +28,7 @@ export const ProtectedSection = ({
           Please log in to access this feature and connect with the creator.
         </p>
         <Link
-          href={`/login?referral=${handle}`}
+          href={`/login?referral=${handle}&redirect=${encodeURIComponent(pathname)}`}
           className="bg-slate-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-orange-600 transition-all"
         >
           Log In to Agaseke
