@@ -183,25 +183,24 @@ export default function MessagesPage() {
         setMessages(decryptedMsgs);
         scrollToBottom();
 
-      const unreadMsgs = msgs.filter(
-        (m) => m.senderType === "supporter" && !m.read
-      );
-      if (unreadMsgs.length > 0) {
-        const batch: Promise<void>[] = [];
-        unreadMsgs.forEach((msg) => {
-          batch.push(
-            updateDoc(
-              doc(db, "chatrooms", selectedChatId, "messages", msg.id),
-              { read: true }
+        const unreadMsgs = decryptedMsgs.filter(
+          (m) => m.senderType === "supporter" && !m.read
+        );
+        if (unreadMsgs.length > 0) {
+          Promise.all(
+            unreadMsgs.map((msg) =>
+              updateDoc(
+                doc(db, "chatrooms", selectedChatId, "messages", msg.id),
+                { read: true }
+              )
             )
-          );
-        });
-        await Promise.all(batch);
-        await updateDoc(doc(db, "chatrooms", selectedChatId), {
-          unreadCount: 0,
-        });
-      }
-    });
+          ).then(() => {
+            updateDoc(doc(db, "chatrooms", selectedChatId), {
+              unreadCount: 0,
+            });
+          });
+        }
+      });
 
     return () => unsubscribe();
   }, [selectedChatId]);
