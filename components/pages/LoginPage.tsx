@@ -7,11 +7,21 @@ import { PerkItem } from "./loginpage/index";
 import { handleGoogleLogin } from "../../db/functions/GoogleLogin";
 import { useSearchParams } from "next/navigation";
 
+function getFallbackRedirect(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return sessionStorage.getItem("login_redirect");
+  } catch {
+    return null;
+  }
+}
+
 export default function LoginPage() {
   const [loading, setLoading] = React.useState(false);
   const searchParams = useSearchParams();
   const reservedUsername = searchParams.get("username") || null;
   const referralCreator = searchParams.get("referral") || null;
+  const redirect = searchParams.get("redirect") || getFallbackRedirect();
 
   return (
     <div className="min-h-screen bg-card flex flex-wrap-reverse md:flex-row">
@@ -74,7 +84,7 @@ export default function LoginPage() {
             className="w-full flex items-center justify-center gap-3 bg-card border-2 border-border py-4 px-6 rounded-lg font-bold text-foreground hover:bg-muted hover:border-border-strong transition-all active:scale-[0.98]"
             onClick={async () => {
               setLoading(true);
-              await handleGoogleLogin(reservedUsername ?? null, referralCreator ?? null);
+              await handleGoogleLogin(reservedUsername ?? null, referralCreator ?? null, redirect);
               setLoading(false);
             }}
           >

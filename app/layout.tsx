@@ -5,6 +5,7 @@ import { AuthProvider } from "@/auth/AuthContext";
 import { Toaster } from "sonner";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import PwaRegister from "@/components/parts/PwaRegister";
+import LoginRedirectCapture from "@/auth/LoginRedirectCapture";
 import { ThemeProvider } from "next-themes";
 
 const rubik = Rubik({
@@ -125,6 +126,7 @@ export default function RootLayout({
             <Toaster richColors position="top-center" />
             {children}
             <PwaRegister />
+            <LoginRedirectCapture />
           </AuthProvider>
         </ThemeProvider>
       </body>

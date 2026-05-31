@@ -238,7 +238,7 @@ const Navbar = () => {
                 <span className="hidden md:inline">Book Demo</span>
               </Link>
               <Link
-                href={"/login"}
+                href={`/login?redirect=${encodeURIComponent(pathname)}`}
                 className="group relative flex items-center gap-2 px-3 md:px-6 py-2.5 bg-foreground text-background rounded-lg text-sm font-bold hover:bg-orange-600 transition-all active:scale-95 shadow-lg shadow-border-strong"
               >
                 <LogIn className="h-4 w-4" />

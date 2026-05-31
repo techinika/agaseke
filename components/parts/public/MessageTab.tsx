@@ -259,10 +259,11 @@ export const MessageTab = ({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          creatorEmail: creatorData?.email || "",
+          creatorId,
           creatorName: name,
           supporterName: currentUserName,
           message: newMessage.trim(),
+          chatroomId,
           chatroomUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/creator/messages?chat=${chatroomId}`,
         }),
       }).catch((e) => console.error("Failed to send email notification:", e));

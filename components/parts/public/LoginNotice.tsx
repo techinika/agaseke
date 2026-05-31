@@ -1,5 +1,8 @@
+"use client";
+
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export const LoginNotice = ({
   handle,
@@ -8,13 +11,14 @@ export const LoginNotice = ({
   handle: string;
   loggedIn: boolean;
 }) => {
+  const pathname = usePathname();
   return (
     <div className="fixed bottom-2 right-2 flex justify-center z-[100] pointer-events-none">
       <Link
         href={
           loggedIn
             ? `/onboarding?referral=${handle}`
-            : `/login?referral=${handle}`
+            : `/login?referral=${handle}&redirect=${encodeURIComponent(pathname)}`
         }
         className="pointer-events-auto flex items-center gap-3 bg-foreground text-background px-4 py-2 rounded-lg shadow-2xl shadow-orange-500/20 hover:bg-orange-600 hover:-translate-y-1 transition-all duration-300 group"
       >
