@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import Navbar from "@/components/parts/Navigation";
 import Footer from "@/components/parts/Footer";
+import { logError } from "@/lib/logger";
 
 export default function BookingPayClient() {
   const params = useParams();
@@ -42,6 +43,11 @@ export default function BookingPayClient() {
       const snap = await getDoc(doc(db, "bookingRequests", bookingId));
       if (!snap.exists()) {
         setLoading(false);
+        logError("payment", "PayClient: Booking not found", {
+          userId: currentUser?.uid || undefined,
+          userEmail: currentUser?.email || undefined,
+          metadata: { bookingId },
+        });
         return;
       }
       const data: any = { id: snap.id, ...snap.data() };
@@ -67,7 +73,14 @@ export default function BookingPayClient() {
           setBooking((prev: any) => ({ ...prev, paymentStatus: "paid" }));
           clearInterval(interval);
         }
-      } catch { /* ignore polling errors */ }
+      } catch {
+        logError("payment", "PayClient: Polling error while waiting for payment confirmation", {
+          userId: currentUser?.uid || undefined,
+          userEmail: currentUser?.email || undefined,
+          userName: currentUser?.displayName || undefined,
+          metadata: { bookingId, creatorHandle: booking?.creatorHandle, creatorName: booking?.creatorName },
+        });
+      }
     }, 3000);
     return () => clearInterval(interval);
   }, [paid, confirmed, bookingId]);
@@ -115,6 +128,12 @@ export default function BookingPayClient() {
 
       if (!res.ok) {
         toast.error(data.error || "Payment failed to initiate");
+        logError("payment", "PayClient: Payment failed to initiate", {
+          userId: currentUser?.uid || undefined,
+          userEmail: currentUser?.email || undefined,
+          userName: currentUser?.displayName || undefined,
+          metadata: { bookingId, creatorHandle: booking?.creatorHandle, creatorName: booking?.creatorName, paymentMethod, amount: booking?.paymentAmount, apiError: data.error },
+        });
         return;
       }
 
@@ -130,6 +149,12 @@ export default function BookingPayClient() {
     } catch (error) {
       console.error("Payment error:", error);
       toast.error("Payment failed");
+      logError("payment", "PayClient: Payment initiation threw exception", {
+        userId: currentUser?.uid || undefined,
+        userEmail: currentUser?.email || undefined,
+        userName: currentUser?.displayName || undefined,
+        metadata: { bookingId, creatorHandle: booking?.creatorHandle, creatorName: booking?.creatorName, paymentMethod, amount: booking?.paymentAmount, error: String(error) },
+      });
     } finally {
       setPaying(false);
     }

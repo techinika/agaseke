@@ -66,7 +66,7 @@ export function GatheringCard({
             !myRsvpStatus.checkedIn &&
             !myRsvpStatus.checkInDeclined && (
               <p className="text-xs text-orange-600 font-medium mt-2">
-                Location will be shared after check-in
+                Location visible after RSVP
               </p>
             )}
         </div>

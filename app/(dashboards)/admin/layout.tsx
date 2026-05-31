@@ -20,6 +20,7 @@ export default function RootLayout({
           <NavItem href="/admin/comms">Broadcast</NavItem>
           <NavItem href="/admin/changelog">Changelog</NavItem>
           <NavItem href="/admin/feedback">Feedback</NavItem>
+          <NavItem href="/admin/categories">Categories</NavItem>
           <NavItem href="/admin/logs">Activity Logs</NavItem>
         </div>
       </nav>

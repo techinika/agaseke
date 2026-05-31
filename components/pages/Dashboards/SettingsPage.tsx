@@ -24,7 +24,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { db, auth } from "@/db/firebase";
-import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, collection, getDocs, query, orderBy } from "firebase/firestore";
 import { Creator } from "@/types/creator";
 import { useAuth } from "@/auth/AuthContext";
 import { useRouter } from "next/navigation";
@@ -41,6 +41,7 @@ export default function CreatorSettings() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
+  const [categories, setCategories] = useState<string[]>([]);
 
   useEffect(() => {
     if (!creator) return;
@@ -55,6 +56,17 @@ export default function CreatorSettings() {
     );
     return () => unsubscribe();
   }, [creator]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const q = query(collection(db, "categories"), orderBy("createdAt", "desc"));
+        const snap = await getDocs(q);
+        setCategories(snap.docs.map((d) => d.data().name || "").filter(Boolean));
+      } catch { /* silently fail */ }
+    };
+    fetchCategories();
+  }, []);
 
   const handleUpdate = (field: string, value: any) => {
     setCreatorData((prev) => {
@@ -125,6 +137,7 @@ export default function CreatorSettings() {
         bookingEnabled: creatorData.bookingEnabled ?? false,
         bookingAccess: creatorData.bookingAccess ?? "public",
         gatheringsEnabled: creatorData.gatheringsEnabled ?? false,
+        focus: creatorData.focus || [],
       };
 
       await updateDoc(doc(db, "creators", creator.handle), updateData);
@@ -269,6 +282,42 @@ export default function CreatorSettings() {
                     placeholder="Tell your supporters who you are..."
                     className="w-full h-32 bg-muted p-4 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none resize-none border border-transparent focus:bg-card transition-all"
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
+                    Creator Focus
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {categories.map((cat) => {
+                      const selected = (creatorData?.focus || []).includes(cat);
+                      return (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => {
+                            const current = creatorData?.focus || [];
+                            const next = selected
+                              ? current.filter((c) => c !== cat)
+                              : [...current, cat];
+                            handleUpdate("focus", next);
+                          }}
+                          className={`px-4 py-2 rounded-lg text-sm font-bold border-2 transition-all ${
+                            selected
+                              ? "bg-orange-500 text-white border-orange-500"
+                              : "bg-muted text-muted-foreground border-border hover:border-orange-300"
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {(!creatorData?.focus || creatorData.focus.length === 0) && (
+                    <p className="text-xs text-muted-foreground">
+                      Select one or more categories that describe your content.
+                    </p>
+                  )}
                 </div>
 
                 <div className="p-6 bg-foreground rounded-lg text-background flex items-center justify-between shadow-xl">

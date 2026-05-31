@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect } from "react";
-import { Calendar, Loader, ArrowRight } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Calendar, Loader, ArrowRight, Lock, X, Smartphone, CreditCard } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/db/firebase";
 import {
@@ -14,19 +14,15 @@ import {
   doc,
   updateDoc,
   serverTimestamp,
+  onSnapshot,
+  orderBy,
+  limit as fsLimit,
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { GatheringCard, PastGatheringCard } from "./gatherings";
 import type { Gathering } from "./gatherings";
-
-function logErrorToServer(message: string, metadata?: Record<string, unknown>) {
-  fetch("/api/log-error", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ level: "error", category: "general", message, metadata }),
-  }).catch(() => {});
-}
+import { logError, logInfo } from "@/lib/logger";
 
 interface GatheringsTabProps {
   creatorId: string;
@@ -45,6 +41,22 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
   const [rsvpedIds, setRsvpedIds] = useState<Set<string>>(new Set());
   const [showPast, setShowPast] = useState(false);
   const [myRsvpStatus, setMyRsvpStatus] = useState<Record<string, { checkedIn: boolean; checkInDeclined: boolean }>>({});
+  const [userTotalSupport, setUserTotalSupport] = useState(0);
+
+  useEffect(() => {
+    const fetchUserSupport = async () => {
+      if (!user) { setUserTotalSupport(0); return; }
+      try {
+        const supportRef = collection(db, "supportedCreators");
+        const sq = query(supportRef, where("supporterId", "==", user.uid), where("creatorId", "==", creatorHandle));
+        const snap = await getDocs(sq);
+        let total = 0;
+        snap.forEach((d) => { total += d.data().amount || 0; });
+        setUserTotalSupport(total);
+      } catch { setUserTotalSupport(0); }
+    };
+    fetchUserSupport();
+  }, [user, creatorHandle]);
 
   useEffect(() => {
     const fetchGatherings = async () => {
@@ -92,7 +104,10 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
         }
       } catch (error) {
         console.error("Error fetching gatherings:", error);
-        logErrorToServer("Error fetching gatherings", { creatorId, error: String(error) });
+        logError("support", "GatheringsTab: Error fetching gatherings", {
+          creatorId,
+          metadata: { errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
+        });
       } finally {
         setLoading(false);
       }
@@ -103,15 +118,15 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
         const gatheringsRef = collection(db, "creatorGatherings");
         const q = query(
           gatheringsRef,
-          where("creatorId", "==", creatorId)
+          where("creatorId", "==", creatorId),
+          where("status", "in", ["Disabled", "Past"])
         );
         const snapshot = await getDocs(q);
-        const allGatherings = snapshot.docs.map((doc) => ({
+        const past = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         })) as Gathering[];
 
-        const past = allGatherings.filter((g) => g.status !== "Upcoming");
         const sortedPast = past.sort((a, b) => {
           const dateA = new Date(a.date);
           const dateB = new Date(b.date);
@@ -121,7 +136,10 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
         setPastGatherings(sortedPast);
       } catch (error) {
         console.error("Error fetching past gatherings:", error);
-        logErrorToServer("Error fetching past gatherings", { creatorId, error: String(error) });
+        logError("support", "GatheringsTab: Error fetching past gatherings", {
+          creatorId,
+          metadata: { errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
+        });
       }
     };
 
@@ -132,6 +150,12 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
   const handleRSVP = async (gathering: Gathering) => {
     if (!user || !profile) {
       toast.error("Please log in to RSVP");
+      return;
+    }
+
+    if (gathering.ticketPrice && gathering.ticketPrice > 0) {
+      setPayingGathering(gathering);
+      setPayPhone(profile.phoneNumber || "");
       return;
     }
 
@@ -153,13 +177,36 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
       });
 
       setRsvpedIds((prev) => new Set(prev).add(gathering.id));
+
+      logInfo("support", `RSVP confirmed for gathering: "${gathering.title}"`, {
+        userId: user.uid,
+        userEmail: user.email || undefined,
+        creatorHandle,
+        metadata: { gatheringId: gathering.id },
+      });
+
+      fetch("/api/comms/email/gathering/rsvp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          supporterName: profile.displayName || user.email,
+          supporterEmail: user.email,
+          creatorHandle,
+          creatorId,
+          gatheringId: gathering.id,
+          gatheringTitle: gathering.title,
+          gatheringDate: gathering.date,
+          gatheringTime: gathering.time,
+        }),
+      }).catch(() => {});
+
       toast.success("RSVP confirmed!");
     } catch (error) {
       console.error("RSVP error:", error);
-      logErrorToServer("RSVP error", {
-        gatheringId: gathering.id,
+      logError("support", "GatheringsTab: RSVP failed", {
         userId: user?.uid,
-        error: String(error),
+        creatorHandle,
+        metadata: { gatheringId: gathering.id, errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
       });
       toast.error("Failed to RSVP. Please try again.");
     } finally {
@@ -167,8 +214,116 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
     }
   };
 
-  const displayGatherings = compact ? gatherings.slice(0, 2) : gatherings;
-  const hasMoreGatherings = compact && gatherings.length > 2;
+  const [payingGathering, setPayingGathering] = useState<Gathering | null>(null);
+  const [payMethod, setPayMethod] = useState<"momo" | "card">("momo");
+  const [payPhone, setPayPhone] = useState("");
+  const [paying, setPaying] = useState(false);
+
+  const listenForTransaction = useCallback((ref: string, gathering: Gathering) => {
+    const txRef = collection(db, "transactions");
+    const q = query(txRef, where("ref", "==", ref), orderBy("createdAt", "desc"), fsLimit(1));
+    const unsub = onSnapshot(q, (snap) => {
+      if (snap.empty) return;
+      const tx = snap.docs[0].data();
+      if (tx.status === "successful") {
+        toast.success("Payment successful! You're now attending!");
+        setPayingGathering(null);
+        setRsvpedIds((prev) => new Set(prev).add(gathering.id));
+        setMyRsvpStatus((prev) => ({ ...prev, [gathering.id]: { checkedIn: false, checkInDeclined: false } }));
+        unsub();
+      } else if (tx.status === "failed") {
+        toast.error("Payment failed. Please try again.");
+        setPayingGathering(null);
+        setPaying(false);
+        unsub();
+      }
+    });
+    setTimeout(() => {
+      unsub();
+      if (paying) {
+        setPaying(false);
+        setPayingGathering(null);
+        toast.error("Payment timed out. Please try again.");
+      }
+    }, 120000);
+  }, [paying]);
+
+  const handlePaidRSVP = async (gathering: Gathering) => {
+    if (!user || !profile) {
+      toast.error("Please log in to RSVP");
+      return;
+    }
+    if (!payPhone && payMethod === "momo") {
+      toast.error("Please enter your phone number");
+      return;
+    }
+    setPaying(true);
+    try {
+      const amount = gathering.ticketPrice || 0;
+      const endpoint = payMethod === "momo" ? "/api/support/with-momo/pay" : "/api/support/with-card/pay";
+      const body: any = {
+        amount,
+        creatorId: creatorHandle,
+        creatorUid: creatorId,
+        supporterId: user.uid,
+        gatheringId: gathering.id,
+        attendeeName: profile.displayName || user.email,
+        attendeeEmail: user.email,
+        includeReferral: false,
+      };
+      if (payMethod === "momo") {
+        body.phone = payPhone;
+      } else {
+        body.email = user.email;
+        body.firstName = profile.displayName || user.email || "User";
+        body.lastName = "";
+      }
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Payment failed to initiate");
+        setPaying(false);
+        return;
+      }
+      const ref = data.ref || data.merchant_reference;
+      if (payMethod === "card" && data.redirect_url) {
+        window.open(data.redirect_url, "_blank");
+      }
+      listenForTransaction(ref, gathering);
+      toast.success("Payment initiated. Waiting for confirmation...");
+    } catch (error) {
+      console.error("Payment error:", error);
+      logError("support", "GatheringsTab: Paid RSVP payment error", {
+        userId: user?.uid,
+        metadata: { gatheringId: gathering.id, error: String(error) },
+      });
+      toast.error("Payment failed. Please try again.");
+      setPaying(false);
+    }
+  };
+
+  const meetsTier = (gathering: Gathering) => {
+    if (gathering.ticketPrice && gathering.ticketPrice > 0) return true;
+    if (!gathering.minSupportTier) return true;
+    if (!user) return false;
+    return gathering.minSupportTier <= userTotalSupport;
+  };
+
+  const isCreatorViewing = user?.uid === creatorId;
+
+  const visibleGatherings = isCreatorViewing
+    ? gatherings
+    : gatherings.filter((g) => meetsTier(g));
+  const displayGatherings = compact ? visibleGatherings.slice(0, 2) : visibleGatherings;
+  const hasMoreGatherings = compact && visibleGatherings.length > 2;
+
+  const lockedGatherings = !isCreatorViewing
+    ? gatherings.filter((g) => !meetsTier(g))
+    : [];
 
   if (loading) {
     return (
@@ -185,6 +340,18 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
         <p className="text-muted-foreground font-medium">No upcoming events</p>
         <p className="text-sm text-muted-foreground mt-2">
           Check back later for new gatherings and events.
+        </p>
+      </div>
+    );
+  }
+
+  if (visibleGatherings.length === 0 && lockedGatherings.length > 0) {
+    return (
+      <div className="text-center py-12">
+        <Lock className="mx-auto text-muted-foreground mb-4" size={48} />
+        <p className="text-muted-foreground font-medium">Exclusive events available</p>
+        <p className="text-sm text-muted-foreground mt-2">
+          Support this creator to unlock access to their private gatherings.
         </p>
       </div>
     );
@@ -224,6 +391,22 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
         </div>
       )}
 
+      {lockedGatherings.length > 0 && visibleGatherings.length > 0 && (
+        <div className="mt-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Lock size={16} className="text-muted-foreground" />
+            <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+              {lockedGatherings.length} locked event{lockedGatherings.length !== 1 ? "s" : ""}
+            </p>
+          </div>
+          <div className="bg-muted/50 rounded-xl border border-border p-4">
+            <p className="text-sm text-muted-foreground">
+              Support this creator with at least {Math.min(...lockedGatherings.map(g => g.minSupportTier || 0))} RWF to unlock exclusive gatherings.
+            </p>
+          </div>
+        </div>
+      )}
+
       {!compact && (pastGatherings.length > 0 || showPast) && (
         <div className="mt-8">
           <button
@@ -245,6 +428,65 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Payment Modal for Paid Gatherings */}
+      {payingGathering && (
+        <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+          <div className="bg-card w-full max-w-md rounded-2xl overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-border flex justify-between items-center">
+              <h2 className="text-xl font-bold">Buy Ticket</h2>
+              <button onClick={() => { setPayingGathering(null); setPaying(false); }} className="p-2 hover:bg-muted rounded-full">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-muted p-4 rounded-lg">
+                <p className="text-sm text-muted-foreground">Event</p>
+                <p className="font-bold">{payingGathering.title}</p>
+                <p className="text-2xl font-bold text-orange-600 mt-2">{payingGathering.ticketPrice?.toLocaleString()} RWF</p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPayMethod("momo")}
+                  className={`flex-1 p-3 rounded-lg border-2 font-bold text-sm flex items-center justify-center gap-2 transition ${
+                    payMethod === "momo" ? "border-orange-500 bg-orange-50 text-orange-600" : "border-border text-muted-foreground"
+                  }`}
+                >
+                  <Smartphone size={18} /> MoMo
+                </button>
+                <button
+                  onClick={() => setPayMethod("card")}
+                  className={`flex-1 p-3 rounded-lg border-2 font-bold text-sm flex items-center justify-center gap-2 transition ${
+                    payMethod === "card" ? "border-orange-500 bg-orange-50 text-orange-600" : "border-border text-muted-foreground"
+                  }`}
+                >
+                  <CreditCard size={18} /> Card
+                </button>
+              </div>
+
+              {payMethod === "momo" && (
+                <input
+                  type="tel"
+                  placeholder="Phone number (e.g. 078xxxxxxx)"
+                  value={payPhone}
+                  onChange={(e) => setPayPhone(e.target.value)}
+                  className="w-full bg-muted p-4 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-100"
+                />
+              )}
+
+              <button
+                onClick={() => handlePaidRSVP(payingGathering)}
+                disabled={paying || (payMethod === "momo" && !payPhone)}
+                className="w-full py-4 bg-orange-600 text-white rounded-xl font-bold text-lg hover:bg-orange-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {paying ? <Loader size={20} className="animate-spin" /> : null}
+                {paying ? "Processing..." : `Pay ${payingGathering.ticketPrice?.toLocaleString()} RWF`}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

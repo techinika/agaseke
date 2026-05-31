@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Search,
   Users,
@@ -13,6 +13,8 @@ import {
   X,
   DollarSign,
   ExternalLink,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { db } from "@/db/firebase";
 import {
@@ -20,11 +22,12 @@ import {
   query,
   orderBy,
   limit,
-  onSnapshot,
+  startAfter,
   where,
   doc,
   updateDoc,
   getDocs,
+  getDoc,
   Timestamp,
 } from "firebase/firestore";
 import { toast } from "sonner";
@@ -41,6 +44,7 @@ interface UserProfile {
   username?: string;
   isAdmin: boolean;
   onboarded: boolean;
+  phoneNumber?: string | null;
   totalSupport: number;
   totalSupportedCreators: number;
   createdAt?: Timestamp;
@@ -58,22 +62,63 @@ export default function AdminUsersPage() {
   const [makingAdmin, setMakingAdmin] = useState<string | null>(null);
   const [verifyingUser, setVerifyingUser] = useState<UserProfile | null>(null);
   const [verifyLoading, setVerifyLoading] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const lastDocsRef = useRef<(any | null)[]>([null]);
+  const [creatorProfile, setCreatorProfile] = useState<any>(null);
+  const [creatorLoading, setCreatorLoading] = useState(false);
+  const PAGE_SIZE = 25;
+
+  const fetchUsers = useCallback(async (pageNum: number) => {
+    setLoading(true);
+    const profilesRef = collection(db, "profiles");
+    let q;
+    if (pageNum === 0) {
+      q = query(profilesRef, orderBy("createdAt", "desc"), limit(PAGE_SIZE));
+    } else {
+      q = query(profilesRef, orderBy("createdAt", "desc"), startAfter(lastDocsRef.current[pageNum]), limit(PAGE_SIZE));
+    }
+    const snapshot = await getDocs(q);
+    const userData = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as UserProfile[];
+    setUsers(userData);
+    setHasMore(snapshot.docs.length === PAGE_SIZE);
+    if (snapshot.docs.length > 0) {
+      lastDocsRef.current[pageNum + 1] = snapshot.docs[snapshot.docs.length - 1];
+    }
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    const profilesRef = collection(db, "profiles");
-    const q = query(profilesRef, orderBy("createdAt", "desc"), limit(500));
+    fetchUsers(page);
+  }, [page, fetchUsers]);
 
-    const unsub = onSnapshot(q, (snapshot) => {
-      const userData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as UserProfile[];
-      setUsers(userData);
-      setLoading(false);
-    });
-
-    return () => unsub();
-  }, []);
+  useEffect(() => {
+    if (!selectedUser) {
+      setCreatorProfile(null);
+      return;
+    }
+    const fetchCreator = async () => {
+      setCreatorLoading(true);
+      try {
+        const username = selectedUser.username || selectedUser.id;
+        const creatorRef = doc(db, "creators", username);
+        const creatorSnap = await getDoc(creatorRef);
+        if (creatorSnap.exists()) {
+          setCreatorProfile({ id: creatorSnap.id, ...creatorSnap.data() });
+        } else {
+          setCreatorProfile(null);
+        }
+      } catch {
+        setCreatorProfile(null);
+      } finally {
+        setCreatorLoading(false);
+      }
+    };
+    fetchCreator();
+  }, [selectedUser]);
 
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
@@ -308,7 +353,8 @@ export default function AdminUsersPage() {
                   {filteredUsers.map((user) => (
                     <tr
                       key={user.id}
-                      className="border-b border-border hover:bg-muted transition"
+                      onClick={() => setSelectedUser(user)}
+                      className="border-b border-border hover:bg-muted transition cursor-pointer"
                     >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -430,6 +476,31 @@ export default function AdminUsersPage() {
               </table>
             </div>
           )}
+
+          {/* Pagination */}
+          <div className="flex items-center justify-between px-6 py-4 border-t border-border">
+            <p className="text-sm text-muted-foreground">
+              Page {page + 1}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-muted hover:bg-border-strong transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft size={16} />
+                Previous
+              </button>
+              <button
+                onClick={() => setPage((p) => p + 1)}
+                disabled={!hasMore}
+                className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-muted hover:bg-border-strong transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Next
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
         </div>
       </main>
 
@@ -495,22 +566,27 @@ export default function AdminUsersPage() {
         </div>
       )}
 
-      {/* User Details Modal */}
+      {/* User Details Side Panel */}
       {selectedUser && (
-        <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-          <div className="bg-card w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl">
-            <div className="p-6 border-b border-border flex justify-between items-center">
-              <h2 className="text-xl font-bold">User Details</h2>
+        <>
+          <div
+            className="fixed inset-0 bg-black/40 z-40"
+            onClick={() => setSelectedUser(null)}
+          />
+          <div className="fixed top-0 right-0 h-full w-full max-w-lg bg-background border-l border-border z-50 shadow-2xl overflow-y-auto">
+            <div className="sticky top-0 bg-background border-b border-border px-6 py-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-foreground uppercase">User Details</h2>
               <button
                 onClick={() => setSelectedUser(null)}
-                className="p-2 hover:bg-muted rounded-full"
+                className="p-2 hover:bg-muted rounded-lg transition"
               >
                 <X size={20} />
               </button>
             </div>
-            <div className="p-6">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center text-2xl font-bold overflow-hidden">
+            <div className="p-6 space-y-6">
+              {/* Profile Header */}
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center text-2xl font-bold overflow-hidden shrink-0">
                   {selectedUser.photoURL ? (
                     <img
                       src={selectedUser.photoURL}
@@ -523,11 +599,11 @@ export default function AdminUsersPage() {
                       "?")[0].toUpperCase()
                   )}
                 </div>
-                <div>
-                  <p className="font-bold text-lg">
+                <div className="min-w-0">
+                  <p className="font-bold text-lg truncate">
                     {selectedUser.displayName || "No name"}
                   </p>
-                  <p className="text-sm text-muted-foreground">{selectedUser.email}</p>
+                  <p className="text-sm text-muted-foreground truncate">{selectedUser.email}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <span
                       className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
@@ -546,72 +622,160 @@ export default function AdminUsersPage() {
                   </div>
                 </div>
               </div>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-muted rounded-lg p-4">
-                    <p className="text-[10px] font-bold uppercase text-muted-foreground">
-                      Total Supported
-                    </p>
-                    <p className="text-xl font-bold mt-1">
-                      {selectedUser.totalSupport.toLocaleString()} RWF
-                    </p>
-                  </div>
-                  <div className="bg-muted rounded-lg p-4">
-                    <p className="text-[10px] font-bold uppercase text-muted-foreground">
-                      Creators Supported
-                    </p>
-                    <p className="text-xl font-bold mt-1">
-                      {selectedUser.totalSupportedCreators}
-                    </p>
-                  </div>
+
+              {/* Profile Stats */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-muted rounded-lg p-4">
+                  <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                    Total Supported
+                  </p>
+                  <p className="text-xl font-bold mt-1">
+                    {selectedUser.totalSupport.toLocaleString()} RWF
+                  </p>
                 </div>
                 <div className="bg-muted rounded-lg p-4">
                   <p className="text-[10px] font-bold uppercase text-muted-foreground">
-                    User ID
+                    Creators Supported
                   </p>
-                  <p className="text-sm font-mono mt-1 break-all">
-                    {selectedUser.id}
+                  <p className="text-xl font-bold mt-1">
+                    {selectedUser.totalSupportedCreators}
                   </p>
                 </div>
-                <div className="flex gap-3">
-                  {selectedUser.type === "creator" && (
-                    <button
-                      onClick={() => {
-                        setVerifyingUser(selectedUser);
-                        setSelectedUser(null);
-                      }}
-                      className="flex-1 py-3 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition"
-                    >
-                      Verify User
-                    </button>
-                  )}
-                  {!selectedUser.isAdmin && (
-                    <button
-                      onClick={() => {
-                        toggleAdmin(selectedUser);
-                        setSelectedUser(null);
-                      }}
-                      disabled={makingAdmin === selectedUser.id}
-                      className="flex-1 py-3 bg-orange-600 text-white rounded-lg font-bold text-sm hover:bg-orange-700 transition"
-                    >
-                      Make Admin
-                    </button>
-                  )}
-                  {selectedUser.type === "creator" && (
-                    <a
-                      href={`/${selectedUser.username || selectedUser.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 py-3 bg-foreground text-background rounded-lg font-bold text-sm hover:bg-card transition text-center"
-                    >
-                      View Profile
-                    </a>
+              </div>
+
+              <div className="bg-muted rounded-lg p-4">
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                  User ID
+                </p>
+                <p className="text-sm font-mono mt-1 break-all">
+                  {selectedUser.id}
+                </p>
+              </div>
+
+              <div className="bg-muted rounded-lg p-4">
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                  Phone Number
+                </p>
+                <p className="text-sm mt-1">
+                  {selectedUser.phoneNumber || "—"}
+                </p>
+              </div>
+
+              {/* Creator Profile Section */}
+              {selectedUser.type === "creator" && (
+                <div>
+                  <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-3">
+                    Creator Profile
+                  </p>
+                  {creatorLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader size={20} className="animate-spin text-muted-foreground" />
+                    </div>
+                  ) : creatorProfile ? (
+                    <div className="bg-muted rounded-lg p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Handle</p>
+                        <p className="text-sm font-medium">@{creatorProfile.id}</p>
+                      </div>
+                      {creatorProfile.displayName && (
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Display Name</p>
+                          <p className="text-sm">{creatorProfile.displayName}</p>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Verified</p>
+                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                          creatorProfile.verified
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-amber-100 text-amber-700"
+                        }`}>
+                          {creatorProfile.verified ? "Verified" : "Unverified"}
+                        </span>
+                      </div>
+                      {creatorProfile.views !== undefined && (
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Profile Views</p>
+                          <p className="text-sm font-bold">{creatorProfile.views.toLocaleString()}</p>
+                        </div>
+                      )}
+                      {creatorProfile.bio && (
+                        <div>
+                          <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-1">Bio</p>
+                          <p className="text-sm text-muted-foreground">{creatorProfile.bio}</p>
+                        </div>
+                      )}
+                      {creatorProfile.coverURL && (
+                        <div>
+                          <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-1">Cover</p>
+                          <img src={creatorProfile.coverURL} alt="Cover" className="w-full h-24 object-cover rounded-lg" />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="bg-muted rounded-lg p-4 text-center">
+                      <p className="text-sm text-muted-foreground">No creator profile found</p>
+                    </div>
                   )}
                 </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex flex-col gap-3">
+                {selectedUser.type === "creator" && (
+                  <button
+                    onClick={() => {
+                      setVerifyingUser(selectedUser);
+                      setSelectedUser(null);
+                    }}
+                    className="w-full py-3 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition"
+                  >
+                    Verify User
+                  </button>
+                )}
+                {!selectedUser.isAdmin ? (
+                  <button
+                    onClick={() => {
+                      toggleAdmin(selectedUser);
+                      setSelectedUser(null);
+                    }}
+                    disabled={makingAdmin === selectedUser.id}
+                    className="w-full py-3 bg-orange-600 text-white rounded-lg font-bold text-sm hover:bg-orange-700 transition flex items-center justify-center gap-2"
+                  >
+                    {makingAdmin === selectedUser.id ? (
+                      <Loader size={16} className="animate-spin" />
+                    ) : null}
+                    Make Admin
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      toggleAdmin(selectedUser);
+                      setSelectedUser(null);
+                    }}
+                    disabled={makingAdmin === selectedUser.id}
+                    className="w-full py-3 bg-red-600 text-white rounded-lg font-bold text-sm hover:bg-red-700 transition flex items-center justify-center gap-2"
+                  >
+                    {makingAdmin === selectedUser.id ? (
+                      <Loader size={16} className="animate-spin" />
+                    ) : null}
+                    Remove Admin
+                  </button>
+                )}
+                {selectedUser.type === "creator" && (
+                  <a
+                    href={`/${selectedUser.username || selectedUser.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-3 bg-foreground text-background rounded-lg font-bold text-sm hover:bg-card transition text-center"
+                  >
+                    View Public Profile
+                  </a>
+                )}
               </div>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

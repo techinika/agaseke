@@ -61,10 +61,24 @@ export async function POST(request: NextRequest) {
     const { creatorHandle, bookerId, bookerName, bookerEmail, bookerPhone, reason, preferredDate, preferredTime, preferredType, tierId, tierName, paymentAmount } = await request.json();
 
     if (!creatorHandle || !bookerName || !bookerEmail) {
+      await adminDb.collection("activityLogs").add({
+        level: "warning",
+        category: "payment",
+        message: "Booking: Missing required fields",
+        metadata: { creatorHandle, bookerName, bookerEmail, bookerId: bookerId || null },
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     if (!preferredDate || !preferredTime) {
+      await adminDb.collection("activityLogs").add({
+        level: "warning",
+        category: "payment",
+        message: "Booking: Date and time are required",
+        metadata: { creatorHandle, bookerName, bookerEmail },
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
       return NextResponse.json({ error: "Date and time are required" }, { status: 400 });
     }
 
@@ -72,6 +86,13 @@ export async function POST(request: NextRequest) {
     if (!creatorDoc.exists) {
       const q = await adminDb.collection("creators").where("uid", "==", creatorHandle).limit(1).get();
       if (q.empty) {
+        await adminDb.collection("activityLogs").add({
+          level: "warning",
+          category: "payment",
+          message: "Booking: Creator not found",
+          metadata: { creatorHandle, bookerName, bookerEmail },
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
         return NextResponse.json({ error: "Creator not found" }, { status: 404 });
       }
       creatorDoc = q.docs[0];
@@ -93,12 +114,26 @@ export async function POST(request: NextRequest) {
         }
       } catch (err) {
         console.error("[BOOKING_EMAIL] Failed to fetch creator profile for email:", err);
+        await adminDb.collection("activityLogs").add({
+          level: "error",
+          category: "payment",
+          message: "Booking: Failed to fetch creator profile for email",
+          metadata: { creatorHandle, creatorUid: creatorData?.uid, errorData: JSON.stringify(err, Object.getOwnPropertyNames(err)).slice(0, 5000) },
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
       }
     } else {
       console.log(`[BOOKING_EMAIL] Creator has no uid field, cannot look up profile`);
     }
 
     if (!creatorData?.bookingEnabled) {
+      await adminDb.collection("activityLogs").add({
+        level: "warning",
+        category: "payment",
+        message: "Booking: Booking not enabled for creator",
+        metadata: { creatorHandle, creatorName: creatorData?.name, bookerName, bookerEmail },
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
       return NextResponse.json({ error: "Booking is not enabled for this creator" }, { status: 403 });
     }
 
@@ -113,6 +148,13 @@ export async function POST(request: NextRequest) {
         (t: BookingTier) => t.id === tierId && t.active
       );
       if (!effectiveTier) {
+        await adminDb.collection("activityLogs").add({
+          level: "warning",
+          category: "payment",
+          message: "Booking: Invalid or inactive tier",
+          metadata: { creatorHandle, creatorName: creatorData?.name, tierId, bookerName, bookerEmail },
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
         return NextResponse.json({ error: "Invalid or inactive tier" }, { status: 400 });
       }
       effectiveAvail = effectiveTier.availability;
@@ -120,6 +162,13 @@ export async function POST(request: NextRequest) {
       duration = effectiveTier.duration;
 
       if (Number(paymentAmount) !== verifiedPaymentAmount) {
+        await adminDb.collection("activityLogs").add({
+          level: "warning",
+          category: "payment",
+          message: "Booking: Price mismatch",
+          metadata: { creatorHandle, creatorName: creatorData?.name, tierId, tierName: effectiveTier.name, expectedPrice: verifiedPaymentAmount, receivedPrice: Number(paymentAmount), bookerName, bookerEmail },
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
         return NextResponse.json({ error: "Price mismatch. Please try again." }, { status: 400 });
       }
     } else if (creatorData.bookingAvailability) {
@@ -134,11 +183,25 @@ export async function POST(request: NextRequest) {
 
     // Validate availability exists
     if (!effectiveAvail) {
+      await adminDb.collection("activityLogs").add({
+        level: "warning",
+        category: "payment",
+        message: "Booking: No availability configured",
+        metadata: { creatorHandle, creatorName: creatorData?.name, bookerName, bookerEmail },
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
       return NextResponse.json({ error: "No availability configured" }, { status: 400 });
     }
 
     // Validate date is within availability
     if (!getAvailabilityForDate(effectiveAvail, preferredDate)) {
+      await adminDb.collection("activityLogs").add({
+        level: "warning",
+        category: "payment",
+        message: "Booking: Selected date not available",
+        metadata: { creatorHandle, creatorName: creatorData?.name, preferredDate, bookerName, bookerEmail },
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
       return NextResponse.json(
         { error: "The selected date is not available. Please choose a different date." },
         { status: 400 }
@@ -147,6 +210,13 @@ export async function POST(request: NextRequest) {
 
     // Validate time slot
     if (!isSlotValid(effectiveAvail, preferredTime)) {
+      await adminDb.collection("activityLogs").add({
+        level: "warning",
+        category: "payment",
+        message: "Booking: Selected time slot not available",
+        metadata: { creatorHandle, creatorName: creatorData?.name, preferredDate, preferredTime, bookerName, bookerEmail },
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
       return NextResponse.json(
         { error: "The selected time slot is not available. Please choose a different time." },
         { status: 400 }
@@ -156,6 +226,13 @@ export async function POST(request: NextRequest) {
     // Duration-aware conflict detection
     const bookingRange = parseTimeRange(preferredTime);
     if (!bookingRange) {
+      await adminDb.collection("activityLogs").add({
+        level: "warning",
+        category: "payment",
+        message: "Booking: Invalid time format",
+        metadata: { creatorHandle, creatorName: creatorData?.name, preferredTime, bookerName, bookerEmail },
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
       return NextResponse.json({ error: "Invalid time format" }, { status: 400 });
     }
 
@@ -171,6 +248,13 @@ export async function POST(request: NextRequest) {
       const existingRange = parseTimeRange(existing.preferredTime);
       if (existingRange) {
         if (hasOverlap(bookingRange.start, bookingRange.end, existingRange.start, existingRange.end)) {
+          await adminDb.collection("activityLogs").add({
+            level: "warning",
+            category: "payment",
+            message: "Booking: Time slot overlaps with existing booking",
+            metadata: { creatorHandle, creatorName: creatorData?.name, preferredDate, preferredTime, existingBookingId: doc.id, bookerName, bookerEmail },
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
           return NextResponse.json(
             { error: "This time slot overlaps with an existing booking. Please choose a different time." },
             { status: 409 }
@@ -287,6 +371,13 @@ export async function POST(request: NextRequest) {
         console.log(`[BOOKING_EMAIL] Email sent successfully to "${creatorEmail}", messageId=${info.messageId}`);
       } catch (emailError) {
         console.error("[BOOKING_EMAIL] Failed to send booking notification email:", emailError);
+        await adminDb.collection("activityLogs").add({
+          level: "error",
+          category: "payment",
+          message: "Booking: Failed to send creator notification email",
+          metadata: { creatorHandle, creatorEmail, bookerName, errorData: JSON.stringify(emailError, Object.getOwnPropertyNames(emailError)).slice(0, 5000) },
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
       }
     } else if (!creatorEmail) {
       console.log(`[BOOKING_EMAIL] Skipping creator email — no email address resolved for creator handle="${creatorHandle}"`);
@@ -379,6 +470,13 @@ export async function POST(request: NextRequest) {
         console.log(`[BOOKING_EMAIL] ${isPaidTier ? "Payment-required" : "Confirmation"} email sent to booker "${bookerEmail}"`);
       } catch (emailError) {
         console.error("[BOOKING_EMAIL] Failed to send booking email to booker:", emailError);
+        await adminDb.collection("activityLogs").add({
+          level: "error",
+          category: "payment",
+          message: "Booking: Failed to send booker email",
+          metadata: { creatorHandle, bookerEmail, bookerName, errorData: JSON.stringify(emailError, Object.getOwnPropertyNames(emailError)).slice(0, 5000) },
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
       }
     }
 
@@ -391,6 +489,13 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Booking error:", error);
+    await adminDb.collection("activityLogs").add({
+      level: "error",
+      category: "payment",
+      message: "Booking: Failed to create booking",
+      metadata: { errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     return NextResponse.json({ error: "Failed to create booking" }, { status: 500 });
   }
 }

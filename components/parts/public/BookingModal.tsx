@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Creator } from "@/types/creator";
 import { BookingAvailability, BookingType } from "@/types/booking";
+import { logError } from "@/lib/logger";
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -126,6 +127,13 @@ export function BookingModal({
       console.error("Booking error:", error);
       toast.error("Something went wrong. Please try again.");
       setStep("error");
+      logError("payment", "BookingModal: Failed to submit booking", {
+        userName: user?.displayName || name,
+        userEmail: user?.email || email,
+        creatorHandle: creator?.handle,
+        creatorId: creator?.uid,
+        metadata: { creatorName: creator?.name, preferredDate: selectedDate, preferredTime: selectedTime, error: String(error) },
+      });
     } finally {
       setSubmitting(false);
     }
