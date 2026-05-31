@@ -34,9 +34,11 @@ export async function POST(req: Request) {
       platformFeePayer,
       buyerName,
       buyerId,
+      bookingId,
     } = body;
 
     const isStoreTransaction = !!productId;
+    const isBookingTransaction = !!bookingId;
     const platformSharePercentage =
       Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
     const price = Number(productPrice) || 0;
@@ -143,7 +145,7 @@ export async function POST(req: Request) {
         includeReferral: !!includeReferral,
         referralUid: referralUid || "",
         referralId: referralId || "",
-        type: isStoreTransaction ? "store" : "support",
+        type: isBookingTransaction ? "booking" : isStoreTransaction ? "store" : "support",
         paymentMethod: "card",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       };
@@ -163,6 +165,13 @@ export async function POST(req: Request) {
         if (email) txData.buyerEmail = email;
       }
 
+      if (isBookingTransaction) {
+        txData.bookingId = bookingId;
+        txData.buyerId = buyerId || supporterId || "anonymous";
+        txData.buyerName = buyerName || "";
+        if (email) txData.buyerEmail = email;
+      }
+
       await adminDb.collection("transactions").doc(merchantRef).set(txData);
 
       const adminsSnap = await adminDb.collection("profiles").where("isAdmin", "==", true).get();
@@ -171,7 +180,7 @@ export async function POST(req: Request) {
           userId: adminDoc.id,
           type: "new_transaction",
           title: "New Transaction",
-          message: `${isStoreTransaction ? "Store purchase" : "Support"} of ${totalAmount.toLocaleString()} RWF initiated`,
+          message: `${isBookingTransaction ? "Booking payment" : isStoreTransaction ? "Store purchase" : "Support"} of ${totalAmount.toLocaleString()} RWF initiated`,
           link: "/admin/payouts",
         });
       }

@@ -2,40 +2,17 @@ import { MetadataRoute } from "next";
 import { adminDb } from "@/db/firebaseAdmin";
 import { baseUrl } from "@/lib/baseUrl";
 
-export { baseUrl };
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const entries: MetadataRoute.Sitemap = [];
 
-export async function generateSitemaps() {
-  return [
-    { id: "static" },
-    { id: "creators" },
-    { id: "products" },
-    { id: "posts" },
-    { id: "giveaways" },
-    { id: "gatherings" },
-  ];
-}
+  entries.push(...getStaticPages());
+  entries.push(...(await getCreatorPages()));
+  entries.push(...(await getProductPages()));
+  entries.push(...(await getPostPages()));
+  entries.push(...(await getGiveawayPages()));
+  entries.push(...(await getGatheringPages()));
 
-export default async function sitemap({
-  id,
-}: {
-  id: string;
-}): Promise<MetadataRoute.Sitemap> {
-  switch (id) {
-    case "static":
-      return getStaticPages();
-    case "creators":
-      return getCreatorPages();
-    case "products":
-      return getProductPages();
-    case "posts":
-      return getPostPages();
-    case "giveaways":
-      return getGiveawayPages();
-    case "gatherings":
-      return getGatheringPages();
-    default:
-      return [];
-  }
+  return entries;
 }
 
 function getStaticPages(): MetadataRoute.Sitemap {

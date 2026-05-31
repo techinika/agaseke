@@ -7,25 +7,38 @@ export type BookingStatus = "pending" | "accepted" | "declined" | "completed" | 
 
 export interface BookingTimeSlot {
   id: string;
-  startTime: string; // "09:00"
-  endTime: string; // "10:00"
+  startTime: string;
+  endTime: string;
 }
 
 export interface BookingSpecificDate {
   id: string;
-  date: string; // "2024-03-15"
+  date: string;
   slots: BookingTimeSlot[];
 }
 
 export interface BookingAvailability {
-  daysOfWeek: number[]; // 0 = Sunday, 6 = Saturday
-  bookingType: BookingType; // physical, online, or both
-  startDate: string; // "2024-03-01"
-  endDate: string; // "2024-03-31"
+  daysOfWeek: number[];
+  bookingType: BookingType;
+  startDate: string;
+  endDate: string;
   defaultSlots: BookingTimeSlot[];
   specificDates?: BookingSpecificDate[];
-  location?: string; // For physical meetings
-  onlineLink?: string; // For online meetings
+  location?: string;
+  onlineLink?: string;
+}
+
+export interface BookingTier {
+  id: string;
+  name: string;
+  description: string;
+  purpose: string;
+  price: number;
+  duration: number;
+  access: BookingAccess;
+  offers: string[];
+  availability: BookingAvailability;
+  active: boolean;
 }
 
 export interface BookingRequest {
@@ -41,7 +54,14 @@ export interface BookingRequest {
   preferredType: BookingType;
   preferredDate: string;
   preferredTime: string;
+  meetingLocation?: string;
   status: BookingStatus;
+  tierId?: string;
+  tierName?: string;
+  tierDuration?: number;
+  paymentAmount?: number;
+  paymentStatus?: "none" | "pending" | "paid" | "failed";
+  txRef?: string;
   createdAt: Timestamp | Date;
   respondedAt?: Timestamp | Date;
   responseNote?: string;
@@ -50,5 +70,7 @@ export interface BookingRequest {
 export interface BookingSettings {
   enabled: boolean;
   access: BookingAccess;
+  mode: "simple" | "tiered";
   availability?: BookingAvailability;
+  tiers?: BookingTier[];
 }

@@ -58,13 +58,16 @@ export function BookingModal({
     }
 
     const dates: string[] = [];
+    const startRaw = avail.startDate ? new Date(avail.startDate + "T00:00:00") : new Date();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    startRaw.setHours(0, 0, 0, 0);
+    const start = startRaw > today ? startRaw : today;
     
-    const endDate = avail.endDate ? new Date(avail.endDate) : new Date(today);
-    endDate.setMonth(endDate.getMonth() + 2);
+    const endDate = avail.endDate ? new Date(avail.endDate + "T23:59:59") : new Date(today);
+    if (!avail.endDate) endDate.setMonth(endDate.getMonth() + 2);
 
-    for (let d = new Date(today); d <= endDate; d.setDate(d.getDate() + 1)) {
+    for (let d = new Date(start); d <= endDate; d.setDate(d.getDate() + 1)) {
       if (avail.daysOfWeek.includes(d.getDay())) {
         dates.push(d.toISOString().split("T")[0]);
       }

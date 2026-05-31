@@ -76,6 +76,11 @@ export default function LandingPage() {
             username === "help-center" ||
             username === "api" ||
             username === "test" ||
+            username === "sitemap" ||
+            username === "sitemap.xml" ||
+            username === "robots" ||
+            username === "robots.txt" ||
+            username === "robot" ||
             username === "profile" ||
             username === "payout" ||
             username === "payout-policy" ||

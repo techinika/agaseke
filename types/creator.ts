@@ -42,5 +42,7 @@ export interface Creator {
   bookingEnabled?: boolean;
   bookingAccess?: "public" | "supporters";
   bookingAvailability?: import("./booking").BookingAvailability;
+  bookingMode?: "simple" | "tiered";
+  bookingTiers?: import("./booking").BookingTier[];
   gatheringsEnabled?: boolean;
 }

@@ -51,6 +51,7 @@ const iconMap: Record<NotificationType, React.ReactNode> = {
   booking_request: <CalendarClock size={18} className="text-indigo-500" />,
   booking_accepted: <CheckCircle size={18} className="text-green-500" />,
   booking_declined: <XCircle size={18} className="text-red-500" />,
+  booking_paid: <CreditCard size={18} className="text-green-500" />,
   payout_processed: <Wallet size={18} className="text-emerald-500" />,
   broadcast_received: <Megaphone size={18} className="text-orange-500" />,
   new_user: <UserPlus size={18} className="text-blue-500" />,
