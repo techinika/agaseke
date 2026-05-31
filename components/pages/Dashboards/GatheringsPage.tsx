@@ -274,6 +274,7 @@ export default function GatheringsPage() {
 
   const handleCheckIn = async (attendee: any) => {
     setCheckingIn(attendee.id);
+    setAttendees((prev) => prev.map((a) => a.id === attendee.id ? { ...a, checkedIn: true, checkedInAt: new Date(), checkInDeclined: false } : a));
     try {
       await updateDoc(doc(db, "gatheringsAttendance", attendee.id), {
         checkedIn: true,
@@ -304,6 +305,7 @@ export default function GatheringsPage() {
 
       toast.success(`${attendee.supporterName} checked in!`);
     } catch (error) {
+      setAttendees((prev) => prev.map((a) => a.id === attendee.id ? { ...a, checkedIn: attendee.checkedIn, checkedInAt: attendee.checkedInAt, checkInDeclined: attendee.checkInDeclined } : a));
       console.error("Check-in error:", error);
       logActivity({
         level: "error",
@@ -320,6 +322,7 @@ export default function GatheringsPage() {
 
   const handleDeclineCheckIn = async (attendee: any) => {
     setCheckingIn(attendee.id);
+    setAttendees((prev) => prev.map((a) => a.id === attendee.id ? { ...a, checkedIn: false, checkInDeclined: true } : a));
     try {
       await updateDoc(doc(db, "gatheringsAttendance", attendee.id), {
         checkedIn: false,
@@ -350,6 +353,7 @@ export default function GatheringsPage() {
 
       toast.success(`${attendee.supporterName} declined`);
     } catch (error) {
+      setAttendees((prev) => prev.map((a) => a.id === attendee.id ? { ...a, checkedIn: attendee.checkedIn, checkInDeclined: attendee.checkInDeclined } : a));
       console.error("Decline error:", error);
       logActivity({
         level: "error",
@@ -366,6 +370,7 @@ export default function GatheringsPage() {
 
   const handleUndoCheckIn = async (attendee: any) => {
     setCheckingIn(attendee.id);
+    setAttendees((prev) => prev.map((a) => a.id === attendee.id ? { ...a, checkedIn: false, checkInDeclined: false, checkedInAt: null, checkInDeclinedAt: null } : a));
     try {
       await updateDoc(doc(db, "gatheringsAttendance", attendee.id), {
         checkedIn: false,
@@ -398,6 +403,7 @@ export default function GatheringsPage() {
 
       toast.success(`Undo for ${attendee.supporterName}`);
     } catch (error) {
+      setAttendees((prev) => prev.map((a) => a.id === attendee.id ? { ...a, checkedIn: attendee.checkedIn, checkInDeclined: attendee.checkInDeclined, checkedInAt: attendee.checkedInAt, checkInDeclinedAt: attendee.checkInDeclinedAt } : a));
       console.error("Undo error:", error);
       logActivity({
         level: "error",
