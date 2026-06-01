@@ -14,6 +14,7 @@ export const SendGiftSection = ({
   verified,
   handle,
   bio,
+  bannerURL,
   setIsShareModalOpen,
   setIsModalOpen,
   currentUser,
@@ -32,6 +33,7 @@ export const SendGiftSection = ({
   verified: boolean;
   handle: string;
   bio: string;
+  bannerURL?: string;
   setIsShareModalOpen: any;
   setIsModalOpen: any;
   currentUser: any;
@@ -40,7 +42,21 @@ export const SendGiftSection = ({
   const pathname = usePathname();
   return (
     <div className="relative">
-      <div className="h-48 w-full bg-linear-to-r from-orange-100 via-orange-50 to-orange-100 dark:from-orange-950 dark:via-orange-900/50 dark:to-orange-950" />
+      <div className={`h-48 w-full relative overflow-hidden ${bannerURL ? "" : "bg-linear-to-r from-orange-100 via-orange-50 to-orange-100 dark:from-orange-950 dark:via-orange-900/50 dark:to-orange-950"}`}>
+        {bannerURL ? (
+          <>
+            <img src={bannerURL} className="w-full h-full object-cover" alt="" />
+            <div className="absolute inset-0 bg-black/30" />
+            <p className="absolute bottom-3 right-4 text-white/15 text-4xl font-black tracking-tighter truncate max-w-[80%] select-none pointer-events-none">
+              {name}
+            </p>
+          </>
+        ) : (
+          <p className="absolute bottom-3 right-4 text-orange-200 dark:text-orange-800/40 text-4xl font-black tracking-tighter truncate max-w-[80%] select-none pointer-events-none">
+            {name}
+          </p>
+        )}
+      </div>
       <div className="max-w-2xl mx-auto px-6 -mt-16 text-center">
         <div className="relative inline-block">
           <div className="w-32 h-32 bg-card rounded-lg p-1 shadow-2xl mx-auto">

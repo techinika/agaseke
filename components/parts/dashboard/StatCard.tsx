@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export function StatCard({ label, value, icon, color }: any) {
+export function StatCard({ label, value, icon, color, detail }: any) {
   return (
     <div className="bg-card p-6 rounded-lg border border-border shadow-sm hover:shadow-md transition-shadow">
       <div
@@ -11,6 +11,9 @@ export function StatCard({ label, value, icon, color }: any) {
         {label}
       </p>
       <h3 className="text-2xl font-bold text-foreground">{value}</h3>
+      {detail && (
+        <p className="text-xs text-muted-foreground mt-1">{detail}</p>
+      )}
     </div>
   );
 }

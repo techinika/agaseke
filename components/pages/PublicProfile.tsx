@@ -256,6 +256,7 @@ export default function PublicProfile({ username }: { username: string }) {
         verified={creatorData?.verified}
         handle={username}
         bio={creator?.bio}
+        bannerURL={creatorData?.bannerURL}
         setIsShareModalOpen={setIsShareModalOpen}
         setIsModalOpen={setIsModalOpen}
         currentUser={currentUser}

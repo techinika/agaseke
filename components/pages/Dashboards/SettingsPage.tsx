@@ -22,6 +22,7 @@ import {
   ShoppingBag,
   Gift,
   Calendar,
+  ImageIcon,
 } from "lucide-react";
 import { db, auth } from "@/db/firebase";
 import { doc, onSnapshot, updateDoc, collection, getDocs, query, orderBy } from "firebase/firestore";
@@ -35,6 +36,7 @@ export default function CreatorSettings() {
   const { creator } = useAuth();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bannerFileInputRef = useRef<HTMLInputElement>(null);
 
   const [creatorData, setCreatorData] = useState<Creator | null>(null);
   const [loading, setLoading] = useState(true);
@@ -103,7 +105,35 @@ export default function CreatorSettings() {
           handleUpdate("profilePicture", data.url);
           toast.success("Photo uploaded! Remember to save changes.");
         }
-      } catch (err) {
+      } catch {
+        toast.error("Upload failed");
+      } finally {
+        setUploading(false);
+      }
+    };
+  };
+
+  const handleBannerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+
+    reader.onloadend = async () => {
+      try {
+        const res = await fetch("/api/upload/banner", {
+          method: "POST",
+          body: JSON.stringify({ image: reader.result }),
+          headers: { "Content-Type": "application/json" },
+        });
+        const data = await res.json();
+        if (data.url) {
+          handleUpdate("bannerURL", data.url);
+          toast.success("Cover image uploaded! Remember to save changes.");
+        }
+      } catch {
         toast.error("Upload failed");
       } finally {
         setUploading(false);
@@ -126,6 +156,7 @@ export default function CreatorSettings() {
       const updateData: Record<string, any> = {
         name: creatorData.name || "",
         bio: creatorData.bio || "",
+        bannerURL: creatorData.bannerURL || "",
         profilePicture: creatorData.profilePicture || "",
         socials: creatorData.socials || {},
         messagingEnabled: creatorData.messagingEnabled ?? false,
@@ -209,6 +240,56 @@ export default function CreatorSettings() {
           <main className="flex-1 space-y-8">
             {activeTab === "profile" && (
               <section className="bg-card border border-border rounded-lg p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4">
+                {/* Cover Image Upload */}
+                <div>
+                  <h4 className="font-black text-lg mb-1">Cover Image</h4>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Recommended: 1200x400px JPEG or PNG.
+                  </p>
+                  <div className="relative group rounded-lg overflow-hidden">
+                    <div className="h-40 bg-linear-to-r from-orange-100 via-orange-50 to-orange-100 dark:from-orange-950 dark:via-orange-900/50 dark:to-orange-950 flex items-center justify-center">
+                      {uploading ? (
+                        <Loader className="animate-spin text-orange-600" size={32} />
+                      ) : creatorData?.bannerURL ? (
+                        <img
+                          src={creatorData.bannerURL}
+                          className="w-full h-full object-cover"
+                          alt="Cover"
+                        />
+                      ) : (
+                        <ImageIcon size={40} className="text-orange-300 dark:text-orange-700" />
+                      )}
+                      {creatorData?.bannerURL && (
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <button
+                            onClick={() => bannerFileInputRef.current?.click()}
+                            className="p-3 bg-white/20 backdrop-blur rounded-lg hover:bg-white/30 transition-all"
+                          >
+                            <Camera size={24} className="text-white" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {!creatorData?.bannerURL && (
+                      <button
+                        onClick={() => bannerFileInputRef.current?.click()}
+                        className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20"
+                      >
+                        <div className="p-3 bg-white/20 backdrop-blur rounded-lg">
+                          <Camera size={24} className="text-white" />
+                        </div>
+                      </button>
+                    )}
+                    <input
+                      type="file"
+                      ref={bannerFileInputRef}
+                      onChange={handleBannerUpload}
+                      className="hidden"
+                      accept="image/*"
+                    />
+                  </div>
+                </div>
+
                 {/* Profile Picture Upload */}
                 <div className="flex items-center gap-6">
                   <div className="relative group">
