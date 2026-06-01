@@ -52,10 +52,11 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
       if (!user) { setUserTotalSupport(0); return; }
       try {
         const supportRef = collection(db, "supportedCreators");
-        const sq = query(supportRef, where("supporterId", "==", user.uid), where("creatorId", "==", creatorHandle));
+        const sq = query(supportRef, where("supporterId", "==", user.uid));
         const snap = await getDocs(sq);
+        const creatorSupport = snap.docs.filter(d => d.data().creatorId === creatorHandle);
         let total = 0;
-        snap.forEach((d) => { total += d.data().amount || 0; });
+        creatorSupport.forEach((d) => { total += d.data().amount || 0; });
         setUserTotalSupport(total);
       } catch { setUserTotalSupport(0); }
     };

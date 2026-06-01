@@ -83,22 +83,31 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
         setGathering({ id: gSnap.id, ...gSnap.data() } as Gathering);
 
         if (user) {
-          const supportRef = collection(db, "supportedCreators");
-          const sq = query(supportRef, where("supporterId", "==", user.uid), where("creatorId", "==", username));
-          const supportSnap = await getDocs(sq);
-          setIsSupporter(!supportSnap.empty);
-          let total = 0;
-          supportSnap.forEach((d) => { total += d.data().amount || 0; });
-          setUserTotalSupport(total);
+          try {
+            const supportRef = collection(db, "supportedCreators");
+            const sq = query(supportRef, where("supporterId", "==", user.uid));
+            const supportSnap = await getDocs(sq);
+            const creatorSupport = supportSnap.docs.filter(d => d.data().creatorId === username);
+            setIsSupporter(creatorSupport.length > 0);
+            let total = 0;
+            creatorSupport.forEach((d) => { total += d.data().amount || 0; });
+            setUserTotalSupport(total);
+          } catch (e) {
+            console.error("Failed to fetch support data:", e);
+          }
 
-          const attendanceRef = collection(db, "gatheringsAttendance");
-          const rq = query(attendanceRef, where("supporterId", "==", user.uid));
-          const rs = await getDocs(rq);
-          const creatorDocs = rs.docs.filter(d => d.data().creatorHandle === username);
-          setIsRsvped(creatorDocs.some(d => d.data().gatheringId === gatheringId));
-          const existingDoc = creatorDocs.find(d => d.data().gatheringId === gatheringId);
-          if (existingDoc) {
-            setAttendanceDocId(existingDoc.id);
+          try {
+            const attendanceRef = collection(db, "gatheringsAttendance");
+            const rq = query(attendanceRef, where("supporterId", "==", user.uid));
+            const rs = await getDocs(rq);
+            const creatorDocs = rs.docs.filter(d => d.data().creatorHandle === username);
+            setIsRsvped(creatorDocs.some(d => d.data().gatheringId === gatheringId));
+            const existingDoc = creatorDocs.find(d => d.data().gatheringId === gatheringId);
+            if (existingDoc) {
+              setAttendanceDocId(existingDoc.id);
+            }
+          } catch (e) {
+            console.error("Failed to fetch attendance data:", e);
           }
         }
       } catch (e) {
