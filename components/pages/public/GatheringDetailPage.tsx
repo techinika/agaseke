@@ -71,6 +71,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
 
   useEffect(() => {
     const fetch = async () => {
+      // 1. Fetch creator + gathering (isolated)
       try {
         const creatorRef = doc(db, "creators", username);
         const creatorSnap = await getDoc(creatorRef);
@@ -81,42 +82,51 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
         const gSnap = await getDoc(gRef);
         if (!gSnap.exists()) { setLoading(false); return; }
         setGathering({ id: gSnap.id, ...gSnap.data() } as Gathering);
-
-        if (user) {
-          try {
-            const supportRef = collection(db, "supportedCreators");
-            const sq = query(supportRef, where("supporterId", "==", user.uid));
-            const supportSnap = await getDocs(sq);
-            const creatorSupport = supportSnap.docs.filter(d => d.data().creatorId === username);
-            setIsSupporter(creatorSupport.length > 0);
-            let total = 0;
-            creatorSupport.forEach((d) => { total += d.data().amount || 0; });
-            setUserTotalSupport(total);
-          } catch (e) {
-            console.error("Failed to fetch support data:", e);
-          }
-
-          try {
-            const attendanceRef = collection(db, "gatheringsAttendance");
-            const rq = query(attendanceRef, where("supporterId", "==", user.uid));
-            const rs = await getDocs(rq);
-            const creatorDocs = rs.docs.filter(d => d.data().creatorHandle === username);
-            setIsRsvped(creatorDocs.some(d => d.data().gatheringId === gatheringId));
-            const existingDoc = creatorDocs.find(d => d.data().gatheringId === gatheringId);
-            if (existingDoc) {
-              setAttendanceDocId(existingDoc.id);
-            }
-          } catch (e) {
-            console.error("Failed to fetch attendance data:", e);
-          }
-        }
       } catch (e) {
         console.error(e);
         logError("gathering", "GatheringDetailPage: Error loading gathering", {
           metadata: { username, gatheringId, errorData: JSON.stringify(e, Object.getOwnPropertyNames(e)).slice(0, 5000) },
         });
+        setLoading(false);
+        return;
       }
-      finally { setLoading(false); }
+
+      // 2. Fetch support + attendance (isolated, user-dependent)
+      if (user) {
+        try {
+          const supportRef = collection(db, "supportedCreators");
+          const sq = query(supportRef, where("supporterId", "==", user.uid));
+          const supportSnap = await getDocs(sq);
+          const creatorSupport = supportSnap.docs.filter(d => d.data().creatorId === username);
+          setIsSupporter(creatorSupport.length > 0);
+          let total = 0;
+          creatorSupport.forEach((d) => { total += d.data().amount || 0; });
+          setUserTotalSupport(total);
+        } catch (e) {
+          console.error("Failed to fetch support data:", e);
+        }
+
+        try {
+          const attendanceRef = collection(db, "gatheringsAttendance");
+          const rq = query(attendanceRef, where("supporterId", "==", user.uid));
+          const rs = await getDocs(rq);
+          const creatorDocs = rs.docs.filter(d => d.data().creatorHandle === username);
+          setIsRsvped(creatorDocs.some(d => d.data().gatheringId === gatheringId));
+          const existingDoc = creatorDocs.find(d => d.data().gatheringId === gatheringId);
+          if (existingDoc) {
+            setAttendanceDocId(existingDoc.id);
+          }
+        } catch (e) {
+          console.error("Failed to fetch attendance data:", e);
+        }
+      } else {
+        setIsSupporter(false);
+        setUserTotalSupport(0);
+        setIsRsvped(false);
+        setAttendanceDocId(null);
+      }
+
+      setLoading(false);
     };
     fetch();
   }, [username, gatheringId, user]);

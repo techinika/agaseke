@@ -48,23 +48,8 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
   const [ticketModalDocId, setTicketModalDocId] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchUserSupport = async () => {
-      if (!user) { setUserTotalSupport(0); return; }
-      try {
-        const supportRef = collection(db, "supportedCreators");
-        const sq = query(supportRef, where("supporterId", "==", user.uid));
-        const snap = await getDocs(sq);
-        const creatorSupport = snap.docs.filter(d => d.data().creatorId === creatorHandle);
-        let total = 0;
-        creatorSupport.forEach((d) => { total += d.data().amount || 0; });
-        setUserTotalSupport(total);
-      } catch { setUserTotalSupport(0); }
-    };
-    fetchUserSupport();
-  }, [user, creatorHandle]);
-
-  useEffect(() => {
-    const fetchGatherings = async () => {
+    const fetchAll = async () => {
+      // 1. Fetch upcoming gatherings (isolated)
       try {
         const gatheringsRef = collection(db, "creatorGatherings");
         const q = query(
@@ -85,8 +70,34 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
         });
 
         setGatherings(sortedGatherings);
+      } catch (error) {
+        console.error("Error fetching gatherings:", error);
+        logError("gathering", "GatheringsTab: Error fetching gatherings", {
+          creatorId,
+          metadata: { errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
+        });
+      }
 
-        if (user) {
+      // 2. Fetch user support total (isolated)
+      if (user) {
+        try {
+          const supportRef = collection(db, "supportedCreators");
+          const sq = query(supportRef, where("supporterId", "==", user.uid));
+          const snap = await getDocs(sq);
+          const creatorSupport = snap.docs.filter(d => d.data().creatorId === creatorHandle);
+          let total = 0;
+          creatorSupport.forEach((d) => { total += d.data().amount || 0; });
+          setUserTotalSupport(total);
+        } catch {
+          setUserTotalSupport(0);
+        }
+      } else {
+        setUserTotalSupport(0);
+      }
+
+      // 3. Fetch attendance (isolated)
+      if (user) {
+        try {
           const attendanceRef = collection(db, "gatheringsAttendance");
           const rsvpQuery = query(
             attendanceRef,
@@ -109,16 +120,20 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
           });
           setAttendanceDocIds(docIds);
           setMyRsvpStatus(statusMap);
+        } catch (error) {
+          console.error("Error fetching attendance:", error);
+          logError("gathering", "GatheringsTab: Error fetching attendance", {
+            creatorId,
+            metadata: { errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
+          });
         }
-      } catch (error) {
-        console.error("Error fetching gatherings:", error);
-        logError("gathering", "GatheringsTab: Error fetching gatherings", {
-          creatorId,
-          metadata: { errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
-        });
-      } finally {
-        setLoading(false);
+      } else {
+        setRsvpedIds(new Set());
+        setAttendanceDocIds({});
+        setMyRsvpStatus({});
       }
+
+      setLoading(false);
     };
 
     const fetchPastGatherings = async () => {
@@ -151,7 +166,7 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
       }
     };
 
-    fetchGatherings();
+    fetchAll();
     fetchPastGatherings();
   }, [creatorId, creatorHandle, user]);
 
@@ -337,7 +352,7 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
     const et = gathering.eventType;
     if (et === "public") return true;
     if (et === "ticketed") return true;
-    if (et === "supporters") return !!user && userTotalSupport > 0;
+    if (et === "supporters") return !!user && (isSupporter || userTotalSupport > 0);
     if (et === "supporters_tiered") return !!user && (gathering.minSupportTier || 0) <= userTotalSupport;
     if (gathering.ticketPrice && gathering.ticketPrice > 0) return true;
     if (!gathering.minSupportTier) return true;
