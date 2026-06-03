@@ -284,6 +284,7 @@ agaseke/
 │   │   └── PublicProfile.tsx     # Public profile page
 │   ├── parts/
 │   │   ├── dashboard/           # Dashboard UI parts
+│   │   │   └── gatherings/      # Gathering sub-components (ListPanel, DetailPanel, CheckInModal)
 │   │   └── public/              # Public profile parts
 │   │       ├── CommunityTab.tsx  # Content display
 │   │       ├── MessageTab.tsx    # Messaging UI
@@ -662,6 +663,10 @@ For issues or feature requests, please open an issue on GitHub.
 - **Supporter Notifications**: All supporters notified via email + in-app notification when a gathering is created
 - **Creator Notifications**: Creator notified via email + in-app notification when someone RSVPs (free or paid)
 - **Dashboard Logging**: All gathering actions (create, update, delete, check-in, decline, undo) logged via `logActivity`
+- **Activity Logs in Email Routes**: All gathering email routes (`checkin`, `declined`, `undo`, `created`, `rsvp`) now write success/error entries to `activityLogs` collection with `category: "gathering"`
+- **ticketSales Subcollection**: `handleGatheringPayment.ts` writes a `ticketSales` document on successful payment, and the dashboard listens for cumulative revenue/count across all events
+- **Dashboard Refactored**: Monolithic `GatheringsPage.tsx` (1026 lines) split into focused sub-components (`GatheringListPanel`, `GatheringDetailPanel`, `CheckInModal`) under `components/parts/dashboard/gatherings/`
+- **Log Category Fix**: `GatheringsForm.tsx` and all gathering-related `logActivity` calls use `category: "gathering"` instead of `"general"`
 
 ### Comprehensive Error Logging (May 2026)
 - **Server-Side Firestore Logging**: Every catch block in all API routes now writes to `activityLogs` collection via `adminDb.collection("activityLogs").add()` with:

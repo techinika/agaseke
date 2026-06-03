@@ -10,12 +10,16 @@ export async function handleGatheringPayment(
   txRef: string,
   batch: admin.firestore.WriteBatch,
 ) {
+  console.log(`[GATHERING_PAYMENT] Starting for txRef=${txRef}, gatheringId=${txData.gatheringId}, amount=${totalAmount}, buyer=${txData.attendeeName || "anonymous"}`);
+
   const platformSharePercentage = txData.includeReferral
     ? Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL)
     : Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE);
   const platformShare = totalAmount * platformSharePercentage;
   const creatorShare = totalAmount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE);
   const referralShare = totalAmount * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE);
+
+  console.log(`[GATHERING_PAYMENT] Splits: platform=${platformShare}, creator=${creatorShare}, referral=${referralShare}, txRef=${txRef}`);
 
   batch.set(adminDb.collection("platformIncome").doc(), {
     amount: platformShare,
@@ -38,6 +42,7 @@ export async function handleGatheringPayment(
   });
 
   if (txData.includeReferral && txData.referralUid) {
+    console.log(`[GATHERING_PAYMENT] Including referral: uid=${txData.referralUid}, amount=${referralShare}`);
     batch.set(adminDb.collection("creatorIncome").doc(), {
       creatorUid: txData.referralUid,
       amount: referralShare,
@@ -52,6 +57,7 @@ export async function handleGatheringPayment(
   }
 
   const attendanceDocRef = adminDb.collection("gatheringsAttendance").doc();
+  console.log(`[GATHERING_PAYMENT] Creating attendance: docId=${attendanceDocRef.id}, gatheringId=${txData.gatheringId}`);
   batch.set(attendanceDocRef, {
     gatheringId: txData.gatheringId,
     supporterId: txData.supporterId || "anonymous",
@@ -66,6 +72,7 @@ export async function handleGatheringPayment(
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
+  console.log(`[GATHERING_PAYMENT] Creating ticketSales record: gatheringId=${txData.gatheringId}, amount=${totalAmount}`);
   batch.set(adminDb.collection("ticketSales").doc(), {
     creatorHandle: txData.creatorId,
     buyerId: txData.supporterId || "anonymous",
@@ -80,6 +87,7 @@ export async function handleGatheringPayment(
   });
 
   if (txData.creatorUid) {
+    console.log(`[GATHERING_PAYMENT] Notifying creator ${txData.creatorUid} of new ticket sale`);
     await createNotification({
       userId: txData.creatorUid,
       type: "new_gathering",
@@ -93,6 +101,7 @@ export async function handleGatheringPayment(
 
   try {
     const adminsSnap = await adminDb.collection("profiles").where("isAdmin", "==", true).get();
+    console.log(`[GATHERING_PAYMENT] Notifying ${adminsSnap.size} admins of ticket sale`);
     for (const adminDoc of adminsSnap.docs) {
       await createNotification({
         userId: adminDoc.id,
@@ -103,11 +112,12 @@ export async function handleGatheringPayment(
       });
     }
   } catch (adminNotifErr) {
-    console.error("Failed to notify admins:", adminNotifErr);
+    console.error("[GATHERING_PAYMENT] Failed to notify admins:", adminNotifErr);
   }
 
   // Send ticket confirmation email to attendee
   if (txData.attendeeEmail) {
+    console.log(`[GATHERING_PAYMENT] Sending ticket email to ${txData.attendeeEmail} for ref ${txRef}`);
     try {
       const gatheringSnap = await adminDb.collection("creatorGatherings").doc(txData.gatheringId).get();
       const gData = gatheringSnap.exists ? gatheringSnap.data() : null;
@@ -204,8 +214,9 @@ export async function handleGatheringPayment(
           </html>
         `,
       });
+      console.log(`[GATHERING_PAYMENT] Ticket email sent successfully to ${txData.attendeeEmail} for ref ${txRef}`);
     } catch (emailErr) {
-      console.error("Failed to send ticket confirmation email:", emailErr);
+      console.error(`[GATHERING_PAYMENT] Failed to send ticket email for ref ${txRef}:`, emailErr);
       await adminDb.collection("activityLogs").add({
         level: "error",
         category: "payment",
@@ -214,5 +225,9 @@ export async function handleGatheringPayment(
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     }
+  } else {
+    console.log(`[GATHERING_PAYMENT] No attendeeEmail provided for ref ${txRef}, skipping ticket email`);
   }
+
+  console.log(`[GATHERING_PAYMENT] Completed for txRef=${txRef}`);
 }

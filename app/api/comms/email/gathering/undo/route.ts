@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import { adminDb, admin } from "@/db/firebaseAdmin";
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -67,9 +68,25 @@ export async function POST(request: NextRequest) {
       html: emailHtml,
     });
 
+    console.log(`[GATHERING_EMAIL_UNDO] Undo email sent to ${supporterEmail} for "${eventTitle}"`);
+    await adminDb.collection("activityLogs").add({
+      level: "info",
+      category: "gathering",
+      message: `Undo email sent to ${supporterEmail} for "${eventTitle}"`,
+      metadata: { supporterEmail, supporterName, eventTitle },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Undo email error:", error);
+    console.error(`[GATHERING_EMAIL_UNDO] Failed to send undo email:`, error);
+    await adminDb.collection("activityLogs").add({
+      level: "error",
+      category: "gathering",
+      message: `Failed to send undo email`,
+      metadata: { error: String(error) },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     return NextResponse.json({ error: "Failed to send email" }, { status: 500 });
   }
 }

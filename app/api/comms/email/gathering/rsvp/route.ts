@@ -101,9 +101,10 @@ export async function POST(req: NextRequest) {
       metadata: { gatheringId, gatheringTitle },
     });
 
+    console.log(`[GATHERING_EMAIL_RSVP] Notified ${creatorName} that ${supporterName} RSVP'd to "${gatheringTitle}"`);
     await logActivity({
       level: "success",
-      category: "support",
+      category: "gathering",
       message: `RSVP notification sent to ${creatorName} for gathering "${gatheringTitle}" from ${supporterName}`,
       creatorId: creatorId,
       creatorHandle,
@@ -112,10 +113,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error("RSVP notification error:", error);
+    console.error(`[GATHERING_EMAIL_RSVP] Error sending RSVP notification:`, error);
     await logActivity({
       level: "error",
-      category: "support",
+      category: "gathering",
       message: `Failed to send RSVP notification: ${error.message}`,
       metadata: { errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
     });

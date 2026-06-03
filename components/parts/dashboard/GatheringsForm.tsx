@@ -111,9 +111,10 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
       if (isEditing) {
         await updateDoc(doc(db, "creatorGatherings", gatheringId), eventData);
         toast.success("Event updated!");
-        logActivity({
+        console.log(`[GATHERING_FORM] Updated gathering "${formData.title}" (${gatheringId})`);
+      logActivity({
           level: "info",
-          category: "support",
+          category: "gathering",
           message: `Gathering updated: "${formData.title}"`,
           creatorId: creator.uid,
           metadata: { gatheringId },
@@ -125,9 +126,10 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
           createdAt: serverTimestamp(),
         });
         toast.success("Event created!");
+        console.log(`[GATHERING_FORM] Created gathering "${formData.title}" (${docRef.id})`);
         logActivity({
           level: "info",
-          category: "support",
+          category: "gathering",
           message: `Gathering created: "${formData.title}"`,
           creatorId: creator.uid,
           metadata: { gatheringId: docRef.id },
@@ -152,9 +154,10 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
       router.push("/creator/gatherings");
     } catch (e) {
       console.error(e);
+      console.error(`[GATHERING_FORM] Failed to ${isEditing ? "update" : "create"} event:`, e);
       logActivity({
         level: "error",
-        category: "support",
+        category: "gathering",
         message: `Gathering: Failed to ${isEditing ? "update" : "create"} event`,
         creatorId: creator?.uid,
         metadata: { errorData: JSON.stringify(e, Object.getOwnPropertyNames(e)).slice(0, 5000) },

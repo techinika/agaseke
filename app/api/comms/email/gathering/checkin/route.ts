@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import { adminDb, admin } from "@/db/firebaseAdmin";
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -17,6 +18,8 @@ export async function POST(request: NextRequest) {
     if (!supporterEmail || !supporterName || !creatorName || !eventTitle) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
+
+    console.log(`[GATHERING_EMAIL_CHECKIN] Sending to ${supporterEmail} for "${eventTitle}"`);
 
     const emailHtml = `
 <!DOCTYPE html>
@@ -77,9 +80,25 @@ export async function POST(request: NextRequest) {
       html: emailHtml,
     });
 
+    console.log(`[GATHERING_EMAIL_CHECKIN] Check-in email sent to ${supporterEmail} for "${eventTitle}"`);
+    await adminDb.collection("activityLogs").add({
+      level: "info",
+      category: "gathering",
+      message: `Check-in email sent to ${supporterEmail} for "${eventTitle}"`,
+      metadata: { supporterEmail, supporterName, eventTitle },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Check-in email error:", error);
+    console.error(`[GATHERING_EMAIL_CHECKIN] Failed to send check-in email:`, error);
+    await adminDb.collection("activityLogs").add({
+      level: "error",
+      category: "gathering",
+      message: `Failed to send check-in email`,
+      metadata: { error: String(error) },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     return NextResponse.json({ error: "Failed to send email" }, { status: 500 });
   }
 }

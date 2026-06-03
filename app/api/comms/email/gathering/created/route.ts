@@ -118,9 +118,10 @@ export async function POST(req: NextRequest) {
       await notificationsBatch.commit();
     }
 
+    console.log(`[GATHERING_EMAIL_CREATED] Notified ${supporterSentCount} supporters about "${gatheringTitle}" (failures=${supporterFailedCount})`);
     await logActivity({
       level: "success",
-      category: "support",
+      category: "gathering",
       message: `Gathering created notification sent: "${gatheringTitle}" by ${creatorName} to ${supporterSentCount} supporters`,
       creatorId,
       creatorHandle,
@@ -129,10 +130,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, supporterSentCount, supporterFailedCount });
   } catch (error: any) {
-    console.error("Gathering created notification error:", error);
+    console.error(`[GATHERING_EMAIL_CREATED] Error sending gathering created notification:`, error);
     await logActivity({
       level: "error",
-      category: "support",
+      category: "gathering",
       message: `Failed to send gathering created notification: ${error.message}`,
       metadata: { errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
     });
