@@ -9,6 +9,7 @@ export type LogCategory =
   | "support"
   | "store"
   | "giveaway"
+  | "gathering"
   | "messaging"
   | "verification"
   | "admin"
@@ -101,6 +102,8 @@ export function getCategoryColor(category: LogCategory): string {
       return "text-cyan-600 bg-cyan-50";
     case "giveaway":
       return "text-pink-600 bg-pink-50";
+    case "gathering":
+      return "text-violet-600 bg-violet-50";
     case "messaging":
       return "text-orange-600 bg-orange-50";
     case "verification":

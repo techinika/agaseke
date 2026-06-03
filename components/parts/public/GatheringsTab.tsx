@@ -112,7 +112,7 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
         }
       } catch (error) {
         console.error("Error fetching gatherings:", error);
-        logError("support", "GatheringsTab: Error fetching gatherings", {
+        logError("gathering", "GatheringsTab: Error fetching gatherings", {
           creatorId,
           metadata: { errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
         });
@@ -144,7 +144,7 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
         setPastGatherings(sortedPast);
       } catch (error) {
         console.error("Error fetching past gatherings:", error);
-        logError("support", "GatheringsTab: Error fetching past gatherings", {
+        logError("gathering", "GatheringsTab: Error fetching past gatherings", {
           creatorId,
           metadata: { errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
         });
@@ -188,7 +188,7 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
 
       setRsvpedIds((prev) => new Set(prev).add(gathering.id));
 
-      logInfo("support", `RSVP confirmed for gathering: "${gathering.title}"`, {
+      logInfo("gathering", `RSVP confirmed for gathering: "${gathering.title}"`, {
         userId: user.uid,
         userEmail: user.email || undefined,
         creatorHandle,
@@ -213,7 +213,7 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
       toast.success("RSVP confirmed!");
     } catch (error) {
       console.error("RSVP error:", error);
-      logError("support", "GatheringsTab: RSVP failed", {
+      logError("gathering", "GatheringsTab: RSVP failed", {
         userId: user?.uid,
         creatorHandle,
         metadata: { gatheringId: gathering.id, errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
@@ -324,7 +324,7 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
       toast.success("Payment initiated. Waiting for confirmation...");
     } catch (error) {
       console.error("Payment error:", error);
-      logError("support", "GatheringsTab: Paid RSVP payment error", {
+      logError("gathering", "GatheringsTab: Paid RSVP payment error", {
         userId: user?.uid,
         metadata: { gatheringId: gathering.id, error: String(error) },
       });
@@ -383,7 +383,7 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
         <Lock className="mx-auto text-muted-foreground mb-4" size={48} />
         <p className="text-muted-foreground font-medium">Exclusive events available</p>
         <p className="text-sm text-muted-foreground mt-2">
-          Support this creator to unlock access to their private gatherings.
+          Contribute to unlock access to their private gatherings.
         </p>
       </div>
     );
@@ -438,7 +438,7 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
           </div>
           <div className="bg-muted/50 rounded-xl border border-border p-4">
             <p className="text-sm text-muted-foreground">
-              Support this creator with at least {Math.min(...lockedGatherings.map(g => g.minSupportTier || 0))} RWF to unlock exclusive gatherings.
+              A minimum contribution of {Math.min(...lockedGatherings.map(g => g.minSupportTier || 0))} RWF is required to unlock exclusive gatherings.
             </p>
           </div>
         </div>

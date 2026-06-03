@@ -112,7 +112,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
         }
       } catch (e) {
         console.error(e);
-        logError("support", "GatheringDetailPage: Error loading gathering", {
+        logError("gathering", "GatheringDetailPage: Error loading gathering", {
           metadata: { username, gatheringId, errorData: JSON.stringify(e, Object.getOwnPropertyNames(e)).slice(0, 5000) },
         });
       }
@@ -148,7 +148,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
       });
       setIsRsvped(true);
 
-      logInfo("support", `RSVP confirmed for gathering: "${gathering.title}"`, {
+      logInfo("gathering", `RSVP confirmed for gathering: "${gathering.title}"`, {
         userId: user.uid,
         userEmail: user.email || undefined,
         creatorHandle: username,
@@ -172,7 +172,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
 
       toast.success("RSVP confirmed!");
     } catch (e) {
-      logError("support", "GatheringDetailPage: RSVP failed", {
+      logError("gathering", "GatheringDetailPage: RSVP failed", {
         userId: user?.uid,
         metadata: { gatheringId, errorData: JSON.stringify(e, Object.getOwnPropertyNames(e)).slice(0, 5000) },
       });
@@ -212,7 +212,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
       listenForTransaction(ref, g);
       toast.success("Payment initiated. Waiting for confirmation...");
     } catch (e) {
-      logError("support", "GatheringDetailPage: Paid RSVP error", {
+      logError("gathering", "GatheringDetailPage: Paid RSVP error", {
         userId: user?.uid, metadata: { gatheringId: g.id, error: String(e) },
       });
       toast.error("Payment failed");
@@ -346,7 +346,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
                   <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center gap-3">
                     <Lock size={20} className="text-amber-500" />
                     <p className="text-sm font-bold text-amber-700">
-                      Support this creator with at least {gathering.minSupportTier} RWF to RSVP
+                      A minimum contribution of {gathering.minSupportTier} RWF is required to attend
                     </p>
                   </div>
                 ) : !user ? (
