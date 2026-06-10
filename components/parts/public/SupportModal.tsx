@@ -36,6 +36,7 @@ export function SupportModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [popupBlocked, setPopupBlocked] = useState(false);
   const [redirectUrl, setRedirectUrl] = useState("");
+  const [isClosing, setIsClosing] = useState(false);
 
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
@@ -155,7 +156,11 @@ export function SupportModal({
 
   const handleClose = () => {
     if (unsubscribeRef.current) unsubscribeRef.current();
-    onClose();
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsClosing(false);
+      onClose();
+    }, 250);
   };
 
   const listenToTransaction = (reference: string) => {
@@ -241,8 +246,8 @@ export function SupportModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-foreground/60 backdrop-blur-md">
-      <div className="bg-card w-full max-w-lg rounded-t-2xl sm:rounded-lg shadow-2xl animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
+    <div className={`fixed inset-0 z-[100] flex items-end sm:items-center justify-center ${isClosing ? "animate-out fade-out duration-200" : "animate-in fade-in duration-200"} bg-foreground/60 backdrop-blur-md`}>
+      <div className={`bg-card w-full max-w-lg rounded-t-2xl sm:rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto ${isClosing ? "animate-out slide-out-to-bottom-full sm:zoom-out-95 duration-200" : "animate-in slide-in-from-bottom-full sm:zoom-in-95 duration-200"}`}>
         <div className="sticky top-0 bg-card z-10 p-4 sm:p-6 pb-0 flex justify-between items-center">
           <h3 className="text-xl sm:text-2xl font-bold tracking-tight">
             Send gift to {creatorName.split(" ")[0]}
