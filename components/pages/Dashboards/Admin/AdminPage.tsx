@@ -754,6 +754,21 @@ export default function AdminDashboard() {
           verificationStatus: isApprove ? "approved" : "rejected",
         });
 
+        const pendingVerifications = query(
+          collection(db, "verificationRequests"),
+          where("uid", "==", target.uid),
+          where("status", "==", "pending"),
+          orderBy("createdAt", "desc"),
+          limit(1),
+        );
+        const pendingSnap = await getDocs(pendingVerifications);
+        if (!pendingSnap.empty) {
+          await updateDoc(doc(db, "verificationRequests", pendingSnap.docs[0].id), {
+            status: isApprove ? "approved" : "rejected",
+            updatedAt: serverTimestamp(),
+          });
+        }
+
         await fetch("/api/comms/email/feedback/verify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

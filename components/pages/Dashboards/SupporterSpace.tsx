@@ -113,8 +113,6 @@ export default function SupporterSpace() {
   );
   const postRefs = useRef<Record<string, HTMLDivElement>>({});
 
-  let supportedCreatorUids = new Set<string>();
-
   useEffect(() => {
     const fetchSupporterData = async () => {
       if (!auth.user?.uid) return;
@@ -128,7 +126,7 @@ export default function SupporterSpace() {
         );
         const supportSnap = await getDocs(qSupport);
 
-        supportedCreatorUids = new Set(
+        const supportedCreatorHandles = new Set(
           supportSnap.docs.map((d) => d.data().creatorId),
         );
 
@@ -160,6 +158,23 @@ export default function SupporterSpace() {
         ]);
 
         let profileMap = new Map();
+        const supportedCreatorUids = new Set<string>();
+        const supportedHandles = new Set<string>();
+        const creatorMap = new Map();
+        creatorsSnap.docs.forEach((d) => {
+          const data = d.data();
+          creatorMap.set(d.id, {
+            name: data.name,
+            handle: d.id,
+            uid: data.uid,
+            photoURL: data.profilePicture || null,
+          });
+          if (supportedCreatorHandles.has(d.id)) {
+            supportedHandles.add(d.id);
+            if (data.uid) supportedCreatorUids.add(data.uid);
+          }
+        });
+
         if (supportedCreatorUids.size > 0) {
           const profilesSnap = await getDocs(
             query(
@@ -172,21 +187,6 @@ export default function SupporterSpace() {
             profileMap.set(data.uid, data.photoURL);
           });
         }
-
-        const creatorMap = new Map();
-        const supportedHandles = new Set<string>();
-        creatorsSnap.docs.forEach((d) => {
-          const data = d.data();
-          creatorMap.set(d.id, {
-            name: data.name,
-            handle: d.id,
-            uid: data.uid,
-            photoURL: data.profilePicture || profileMap.get(data.uid) || null,
-          });
-          if (supportedCreatorUids.has(data.uid)) {
-            supportedHandles.add(d.id);
-          }
-        });
 
         const contents = contentSnap.docs
           .map((d) => ({ id: d.id, ...d.data() }))
@@ -233,7 +233,7 @@ export default function SupporterSpace() {
         });
 
         const favoritesData = creatorsSnap.docs
-          .filter((d) => supportedCreatorUids.has(d.data().uid))
+          .filter((d) => supportedCreatorHandles.has(d.id))
           .map((d) => {
             const data = d.data();
             return {
@@ -275,7 +275,7 @@ export default function SupporterSpace() {
               photoURL: data.profilePicture || null,
             };
           })
-          .filter((c: any) => !supportedCreatorUids.has(c.uid));
+          .filter((c: any) => !supportedCreatorHandles.has(c.handle));
         setCreators(discoveryList);
       } catch (error) {
         console.error("Fetch Supporter Space Error:", error);

@@ -19,6 +19,7 @@ import {
   where,
   onSnapshot,
   orderBy,
+  limit,
   addDoc,
   serverTimestamp,
 } from "firebase/firestore";
@@ -39,10 +40,17 @@ export default function PayoutsPage() {
 
   const [withdrawType, setWithdrawType] = useState<"all" | "custom">("all");
   const [customAmount, setCustomAmount] = useState<string>("");
+  const [verificationRequest, setVerificationRequest] = useState<any>(null);
 
   const pendingAmount = creator?.pendingPayout || 0;
   const isVerified = creator?.verified || false;
   const WITHDRAW_THRESHOLD = 10000;
+  const payoutPref = String(
+    verificationRequest?.payoutPreference ?? "",
+  ).toLowerCase();
+
+  const prefLabel = payoutPref === "bank" ? "Bank Account" : "Mobile Money";
+  const prefShort = payoutPref === "bank" ? "BANK" : "MOMO";
 
   useEffect(() => {
     if (!creator) return;
@@ -68,9 +76,23 @@ export default function PayoutsPage() {
       setRequests(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
 
+    const qVerification = query(
+      collection(db, "verificationRequests"),
+      where("uid", "==", creator.uid),
+      orderBy("createdAt", "desc"),
+      limit(1),
+    );
+
+    const unsubVerification = onSnapshot(qVerification, (snap) => {
+      if (!snap.empty) {
+        setVerificationRequest({ id: snap.docs[0].id, ...snap.docs[0].data() });
+      }
+    });
+
     return () => {
       unsubPayouts();
       unsubRequests();
+      unsubVerification();
     };
   }, []);
 
@@ -192,7 +214,9 @@ export default function PayoutsPage() {
                 </p>
                 <h2 className="text-4xl font-black">
                   {pendingAmount.toLocaleString()}{" "}
-                  <span className="text-sm font-bold text-muted-foreground">RWF</span>
+                  <span className="text-sm font-bold text-muted-foreground">
+                    RWF
+                  </span>
                 </h2>
               </div>
               <div className="bg-card p-8 rounded-lg border border-border shadow-sm">
@@ -201,28 +225,42 @@ export default function PayoutsPage() {
                 </p>
                 <h2 className="text-4xl font-black">
                   {(creator?.totalEarnings || 0).toLocaleString()}{" "}
-                  <span className="text-sm font-bold text-muted-foreground">RWF</span>
+                  <span className="text-sm font-bold text-muted-foreground">
+                    RWF
+                  </span>
                 </h2>
-             </div>
-             <div className="bg-card p-8 rounded-lg border border-border shadow-sm">
+              </div>
+              <div className="bg-card p-8 rounded-lg border border-border shadow-sm">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">
                   Destination
                 </p>
-                {isVerified ? (
+                {isVerified && verificationRequest ? (
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center font-black text-xs">
-                      {creator?.network || "MTN"}
+                      {prefShort}
                     </div>
-                    <span className="text-sm font-bold">
-                      {creator?.payoutNumber}
-                    </span>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold">
+                        {verificationRequest.bankName || prefLabel}
+                      </span>
+                      {verificationRequest.accountName && (
+                        <span className="text-xs text-muted-foreground">
+                          {verificationRequest.accountName}
+                        </span>
+                      )}
+                      {verificationRequest.accountNumber && (
+                        <span className="text-xs text-muted-foreground font-mono">
+                          {verificationRequest.accountNumber}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <span
                     className="text-sm font-bold text-muted-foreground underline cursor-pointer"
                     onClick={() => router.push("/creator/verify")}
                   >
-                    Not Set
+                    Not Verified
                   </span>
                 )}
               </div>
@@ -235,13 +273,16 @@ export default function PayoutsPage() {
                   Progress to Payout Threshold
                 </p>
                 <p className="text-sm font-bold text-foreground">
-                  {pendingAmount.toLocaleString()} / {WITHDRAW_THRESHOLD.toLocaleString()} RWF
+                  {pendingAmount.toLocaleString()} /{" "}
+                  {WITHDRAW_THRESHOLD.toLocaleString()} RWF
                 </p>
               </div>
               <div className="w-full bg-muted rounded-full h-3 mb-3">
                 <div
                   className="bg-orange-600 h-3 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min((pendingAmount / WITHDRAW_THRESHOLD) * 100, 100)}%` }}
+                  style={{
+                    width: `${Math.min((pendingAmount / WITHDRAW_THRESHOLD) * 100, 100)}%`,
+                  }}
                 />
               </div>
               <p className="text-xs text-muted-foreground">
@@ -450,5 +491,3 @@ export default function PayoutsPage() {
     </div>
   );
 }
-
-

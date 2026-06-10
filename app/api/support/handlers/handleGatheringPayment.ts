@@ -10,16 +10,22 @@ export async function handleGatheringPayment(
   txRef: string,
   batch: admin.firestore.WriteBatch,
 ) {
-  console.log(`[GATHERING_PAYMENT] Starting for txRef=${txRef}, gatheringId=${txData.gatheringId}, amount=${totalAmount}, buyer=${txData.attendeeName || "anonymous"}`);
+  console.log(
+    `[GATHERING_PAYMENT] Starting for txRef=${txRef}, gatheringId=${txData.gatheringId}, amount=${totalAmount}, buyer=${txData.attendeeName || "anonymous"}`,
+  );
 
   const platformSharePercentage = txData.includeReferral
     ? Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL)
     : Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE);
   const platformShare = totalAmount * platformSharePercentage;
-  const creatorShare = totalAmount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE);
-  const referralShare = totalAmount * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE);
+  const creatorShare =
+    totalAmount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE);
+  const referralShare =
+    totalAmount * Number(process.env.NEXT_PUBLIC_REFERRAL_SHARE);
 
-  console.log(`[GATHERING_PAYMENT] Splits: platform=${platformShare}, creator=${creatorShare}, referral=${referralShare}, txRef=${txRef}`);
+  console.log(
+    `[GATHERING_PAYMENT] Splits: platform=${platformShare}, creator=${creatorShare}, referral=${referralShare}, txRef=${txRef}`,
+  );
 
   batch.set(adminDb.collection("platformIncome").doc(), {
     amount: platformShare,
@@ -42,7 +48,9 @@ export async function handleGatheringPayment(
   });
 
   if (txData.includeReferral && txData.referralUid) {
-    console.log(`[GATHERING_PAYMENT] Including referral: uid=${txData.referralUid}, amount=${referralShare}`);
+    console.log(
+      `[GATHERING_PAYMENT] Including referral: uid=${txData.referralUid}, amount=${referralShare}`,
+    );
     batch.set(adminDb.collection("creatorIncome").doc(), {
       creatorUid: txData.referralUid,
       amount: referralShare,
@@ -57,7 +65,9 @@ export async function handleGatheringPayment(
   }
 
   const attendanceDocRef = adminDb.collection("gatheringsAttendance").doc();
-  console.log(`[GATHERING_PAYMENT] Creating attendance: docId=${attendanceDocRef.id}, gatheringId=${txData.gatheringId}`);
+  console.log(
+    `[GATHERING_PAYMENT] Creating attendance: docId=${attendanceDocRef.id}, gatheringId=${txData.gatheringId}`,
+  );
   batch.set(attendanceDocRef, {
     gatheringId: txData.gatheringId,
     supporterId: txData.supporterId || "anonymous",
@@ -72,7 +82,9 @@ export async function handleGatheringPayment(
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  console.log(`[GATHERING_PAYMENT] Creating ticketSales record: gatheringId=${txData.gatheringId}, amount=${totalAmount}`);
+  console.log(
+    `[GATHERING_PAYMENT] Creating ticketSales record: gatheringId=${txData.gatheringId}, amount=${totalAmount}`,
+  );
   batch.set(adminDb.collection("ticketSales").doc(), {
     creatorHandle: txData.creatorId,
     buyerId: txData.supporterId || "anonymous",
@@ -82,26 +94,41 @@ export async function handleGatheringPayment(
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  batch.update(adminDb.collection("creatorGatherings").doc(txData.gatheringId), {
-    attendeesCount: admin.firestore.FieldValue.increment(1),
-  });
+  batch.update(
+    adminDb.collection("creatorGatherings").doc(txData.gatheringId),
+    {
+      attendeesCount: admin.firestore.FieldValue.increment(1),
+    },
+  );
 
   if (txData.creatorUid) {
-    console.log(`[GATHERING_PAYMENT] Notifying creator ${txData.creatorUid} of new ticket sale`);
+    console.log(
+      `[GATHERING_PAYMENT] Notifying creator ${txData.creatorUid} of new ticket sale`,
+    );
     await createNotification({
       userId: txData.creatorUid,
       type: "new_gathering",
       title: "New Ticket Sale!",
       message: `${txData.attendeeName || "Someone"} purchased a ticket for your gathering`,
-      metadata: { txRef, gatheringId: txData.gatheringId, amount: totalAmount, creatorShare },
+      metadata: {
+        txRef,
+        gatheringId: txData.gatheringId,
+        amount: totalAmount,
+        creatorShare,
+      },
       link: "/creator/gatherings",
       actorName: txData.attendeeName || undefined,
     });
   }
 
   try {
-    const adminsSnap = await adminDb.collection("profiles").where("isAdmin", "==", true).get();
-    console.log(`[GATHERING_PAYMENT] Notifying ${adminsSnap.size} admins of ticket sale`);
+    const adminsSnap = await adminDb
+      .collection("profiles")
+      .where("isAdmin", "==", true)
+      .get();
+    console.log(
+      `[GATHERING_PAYMENT] Notifying ${adminsSnap.size} admins of ticket sale`,
+    );
     for (const adminDoc of adminsSnap.docs) {
       await createNotification({
         userId: adminDoc.id,
@@ -112,21 +139,40 @@ export async function handleGatheringPayment(
       });
     }
   } catch (adminNotifErr) {
-    console.error("[GATHERING_PAYMENT] Failed to notify admins:", adminNotifErr);
+    console.error(
+      "[GATHERING_PAYMENT] Failed to notify admins:",
+      adminNotifErr,
+    );
   }
 
   // Send ticket confirmation email to attendee
   if (txData.attendeeEmail) {
-    console.log(`[GATHERING_PAYMENT] Sending ticket email to ${txData.attendeeEmail} for ref ${txRef}`);
+    console.log(
+      `[GATHERING_PAYMENT] Sending ticket email to ${txData.attendeeEmail} for ref ${txRef}`,
+    );
     try {
-      const gatheringSnap = await adminDb.collection("creatorGatherings").doc(txData.gatheringId).get();
+      const gatheringSnap = await adminDb
+        .collection("creatorGatherings")
+        .doc(txData.gatheringId)
+        .get();
       const gData = gatheringSnap.exists ? gatheringSnap.data() : null;
-      const creatorProfileSnap = await adminDb.collection("profiles").doc(txData.creatorUid).get();
-      const creatorName = creatorProfileSnap.exists ? creatorProfileSnap.data()?.displayName || txData.creatorId : txData.creatorId;
+      const creatorProfileSnap = await adminDb
+        .collection("profiles")
+        .doc(txData.creatorUid)
+        .get();
+      const creatorName = creatorProfileSnap.exists
+        ? creatorProfileSnap.data()?.displayName || txData.creatorId
+        : txData.creatorId;
 
-      const eventStart = gData?.date && gData?.time ? new Date(`${gData.date} ${gData.time}`) : null;
-      const eventEnd = eventStart ? new Date(eventStart.getTime() + 2 * 60 * 60 * 1000) : null;
-      const fmtGoogle = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+      const eventStart =
+        gData?.date && gData?.time
+          ? new Date(`${gData.date} ${gData.time}`)
+          : null;
+      const eventEnd = eventStart
+        ? new Date(eventStart.getTime() + 2 * 60 * 60 * 1000)
+        : null;
+      const fmtGoogle = (d: Date) =>
+        d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
       const enc = (s: string) => encodeURIComponent(s || "");
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://agaseke.me";
 
@@ -195,14 +241,18 @@ export async function handleGatheringPayment(
                     <a href="${appUrl}/${txData.creatorId}/gatherings/${txData.gatheringId}" class="cta">View Your Ticket</a>
                   </p>
 
-                  ${googleCalUrl ? `
+                  ${
+                    googleCalUrl
+                      ? `
                   <div style="text-align: center; margin: 24px 0;">
                     <p style="font-weight: bold; margin-bottom: 12px;">Add to Calendar</p>
                     <a href="${googleCalUrl}" target="_blank" class="cal-btn cal-google">Google Calendar</a>
                     <a href="data:text/calendar;charset=utf-8,${icsContent}" download="event.ics" class="cal-btn cal-ical">Apple iCal</a>
                     <a href="${outlookUrl}" target="_blank" class="cal-btn cal-outlook">Outlook</a>
                   </div>
-                  ` : ""}
+                  `
+                      : ""
+                  }
 
                   <div class="footer">
                     <p>This email was sent by Agaseke Platform</p>
@@ -214,19 +264,31 @@ export async function handleGatheringPayment(
           </html>
         `,
       });
-      console.log(`[GATHERING_PAYMENT] Ticket email sent successfully to ${txData.attendeeEmail} for ref ${txRef}`);
+      console.log(
+        `[GATHERING_PAYMENT] Ticket email sent successfully to ${txData.attendeeEmail} for ref ${txRef}`,
+      );
     } catch (emailErr) {
-      console.error(`[GATHERING_PAYMENT] Failed to send ticket email for ref ${txRef}:`, emailErr);
+      console.error(
+        `[GATHERING_PAYMENT] Failed to send ticket email for ref ${txRef}:`,
+        emailErr,
+      );
       await adminDb.collection("activityLogs").add({
         level: "error",
         category: "payment",
         message: `Failed to send ticket email for ref ${txRef}`,
-        metadata: { txRef, gatheringId: txData.gatheringId, attendeeEmail: txData.attendeeEmail, error: String(emailErr) },
+        metadata: {
+          txRef,
+          gatheringId: txData.gatheringId,
+          attendeeEmail: txData.attendeeEmail,
+          error: String(emailErr),
+        },
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     }
   } else {
-    console.log(`[GATHERING_PAYMENT] No attendeeEmail provided for ref ${txRef}, skipping ticket email`);
+    console.log(
+      `[GATHERING_PAYMENT] No attendeeEmail provided for ref ${txRef}, skipping ticket email`,
+    );
   }
 
   console.log(`[GATHERING_PAYMENT] Completed for txRef=${txRef}`);

@@ -686,6 +686,13 @@ For issues or feature requests, please open an issue on GitHub.
 - **Store Checkout**: Fixed creator ID mismatch - now uses `creatorHandle` (username) for `creatorId` field and `creatorUid` for `creatorUid` field when processing store orders
 - **Payment Transaction**: Fixed transaction lookup by ensuring proper reference matching in IPN handler
 
+### Verification & Payouts Fix (June 2026)
+- **Payouts Destination Display**: Changed from showing `payoutNumber` to showing the payout type (`Bank Account`, `Mobile Money`, `Airtel Money`) from the creator's `verificationRequests` submission, including account name and number. Shows "Not Verified" when not verified.
+- **Admin Verification Approval**: Admin approve/reject now updates the corresponding `verificationRequests` document's `status` to `"approved"` or `"rejected"` alongside the existing `creators` doc update.
+- **Supporter Following List Fixed**: The supporter sidebar "Following" list was empty because `supportedCreators` stores handles while content uses UIDs. Now properly maps handles → UIDs when building the following list and content filters.
+- **Gathering Email Routes**: All three gathering email routes (`checkin`, `declined`, `undo`) now use the shared `transporter` from `@/lib/emailTransporter` instead of defining their own local transporter.
+- **Gathering Attendance Lookup**: Changed attendance queries from `where("supporterId", ...)` to `where("gatheringId", ...)` with local filtering, fixing page refresh issues where paid tickets weren't detected after reload.
+
 ### Data Model Unification & Views Fix (May 2026)
 - **Views Not Incrementing Fix**: Supporter feed (`/supporter`) IntersectionObserver filtered posts by `f.type === "content"`, excluding types like "image", "video", "document". Changed to `f.type !== "gathering"` — all content types now count views.
 - **Observer Optimization**: Replaced `seenPosts` state with `useRef` to prevent re-render loops where every view disconnected/reconnected the observer. Local feed state now updates immediately when a view is counted.
