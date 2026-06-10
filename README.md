@@ -686,11 +686,13 @@ For issues or feature requests, please open an issue on GitHub.
 - **Store Checkout**: Fixed creator ID mismatch - now uses `creatorHandle` (username) for `creatorId` field and `creatorUid` for `creatorUid` field when processing store orders
 - **Payment Transaction**: Fixed transaction lookup by ensuring proper reference matching in IPN handler
 
-### Content Formatting, Gift Once & Post Detail Alignment (June 2026)
+### Content Formatting, Gift Once & Media Enhancements (June 2026)
 - **Whitespace preservation**: Added `whitespace-pre-wrap` to comment text, reply text, and gathering description elements across supporter and public pages so newlines and spaces render correctly in non-HTML content
 - **Gift Once button**: Added "Gift Once" quick support button to gathering detail page and community post detail page, matching the pattern on other public subpages
 - **Post detail page alignment**: Public `PostDetailPage` now shows creator avatar, name, and handle at the top; image uses `object-contain`; video uses `aspect-video` with `controlsList="nodownload"`; document viewer added with page navigation — matching `/supporter` layout
-- Files updated: `SupporterSpace.tsx`, `SupporterPostDetail.tsx`, `PostDetailPage.tsx`, `ContentPage.tsx`, `CommunityTab.tsx`, `GatheringDetailPage.tsx`
+- **Media enhancements on community pages**: YouTube links in video-type posts now show embedded preview; images are click-to-zoom; videos are playable inline with `controlsList="nodownload"`; documents open in Google Docs viewer via "Read Document" button
+- **Supporter View nav link**: Added explicit `/supporter` link to navbar dropdown; dropdown closes on outside click via mousedown listener
+- Files updated: `SupporterSpace.tsx`, `SupporterPostDetail.tsx`, `PostDetailPage.tsx`, `ContentPage.tsx`, `CommunityTab.tsx`, `GatheringDetailPage.tsx`, `Navigation.tsx`
 
 ### Verification & Payouts Fix (June 2026)
 - **Payouts Destination Display**: Changed from showing `payoutNumber` to showing the payout type (`Bank Account`, `Mobile Money`, `Airtel Money`) from the creator's `verificationRequests` submission, including account name and number. Shows "Not Verified" when not verified.

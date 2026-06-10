@@ -29,6 +29,7 @@ export default function PostDetailPage({ username, postId }: { username: string;
   const [editCommentContent, setEditCommentContent] = useState("");
   const [deleteCommentId, setDeleteCommentId] = useState<string | null>(null);
   const [documentIndex, setDocumentIndex] = useState(0);
+  const [viewingImage, setViewingImage] = useState<{ url: string } | null>(null);
   const viewCounted = useRef(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -254,15 +255,34 @@ export default function PostDetailPage({ username, postId }: { username: string;
             </div>
 
             {post.type === "image" && !Array.isArray(post.contentUrl) && post.contentUrl && (
-              <div className="rounded-lg overflow-hidden bg-muted mb-4">
-                <img src={post.contentUrl} alt={post.title} className="w-full max-h-[500px] object-contain" />
+              <div className="rounded-lg overflow-hidden bg-muted mb-4 cursor-zoom-in" onClick={() => setViewingImage({ url: post.contentUrl })}>
+                <img src={post.contentUrl} alt={post.title} className="w-full max-h-[500px] object-contain hover:opacity-90 transition-opacity" />
               </div>
             )}
 
-            {post.type === "video" && post.contentUrl && (
-              <div className="rounded-lg overflow-hidden bg-black mb-4">
-                <video src={post.contentUrl} controls controlsList="nodownload" className="w-full aspect-video" />
-              </div>
+            {post.type === "video" && (
+              <>
+                {post.contentUrl ? (
+                  <div className="rounded-lg overflow-hidden bg-black mb-4">
+                    <video src={post.contentUrl} controls controlsList="nodownload" className="w-full aspect-video" />
+                  </div>
+                ) : (() => {
+                  const text = post.description || post.content || "";
+                  const urlPattern = /https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)[^\s]+/gi;
+                  const match = text.match(urlPattern);
+                  const youtubeUrl = match ? match[0] : null;
+                  if (!youtubeUrl) return null;
+                  const patterns = [/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s?]+)/, /youtube\.com\/shorts\/([^&\s?]+)/];
+                  let videoId: string | null = null;
+                  for (const p of patterns) { const m = youtubeUrl.match(p); if (m) { videoId = m[1]; break; } }
+                  if (!videoId) return null;
+                  return (
+                    <div className="rounded-lg overflow-hidden bg-black mb-4">
+                      <iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full aspect-video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                    </div>
+                  );
+                })()}
+              </>
             )}
 
             {post.type === "document" && (() => {
@@ -355,6 +375,15 @@ export default function PostDetailPage({ username, postId }: { username: string;
           </div>
         </div>
       </div>
+      {viewingImage && (
+        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setViewingImage(null)}>
+          <button className="absolute top-4 right-4 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition" onClick={() => setViewingImage(null)}>
+            <X size={28} />
+          </button>
+          <img src={viewingImage.url} alt="Full size" className="max-w-full max-h-full object-contain animate-in zoom-in-95 duration-200" />
+        </div>
+      )}
+
       <SupportModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

@@ -7,10 +7,9 @@ import {
   Lock,
   Globe,
   Heart,
-  ChevronDown,
-  ChevronUp,
   ArrowRight,
   MessageCircle,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { LinkifyText } from "@/components/ui/LinkifyText";
@@ -35,6 +34,27 @@ export const CommunityTab = ({
   username = "",
 }: CommunityTabProps) => {
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
+  const [viewingImage, setViewingImage] = useState<{ url: string } | null>(null);
+  const [viewingDocument, setViewingDocument] = useState<{ url: string; title: string } | null>(null);
+
+  const extractYouTubeId = (url: string): string | null => {
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s?]+)/,
+      /youtube\.com\/shorts\/([^&\s?]+)/,
+    ];
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) return match[1];
+    }
+    return null;
+  };
+
+  const hasYouTubeLink = (text: string): string | null => {
+    const urlPattern = /https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)[^\s]+/gi;
+    const match = text.match(urlPattern);
+    if (match) return match[0];
+    return null;
+  };
 
   const toggleExpand = (postId: string) => {
     setExpandedPosts((prev) => {
@@ -171,38 +191,67 @@ export const CommunityTab = ({
             </div>
 
             {item.type === "image" && item.contentUrl && (
-              <div className="mb-3 rounded-lg overflow-hidden">
+              <div className="mb-3 rounded-lg overflow-hidden cursor-zoom-in" onClick={() => setViewingImage({ url: item.contentUrl })}>
                 <img
                   src={item.contentUrl}
                   alt={item.title}
-                  className="w-full max-h-64 object-cover"
+                  className="w-full h-48 object-cover hover:opacity-90 transition-opacity"
                 />
               </div>
             )}
 
-            {item.type === "video" && item.contentUrl && (
-              <div className="mb-3 rounded-lg overflow-hidden">
-                <video
-                  src={item.contentUrl}
-                  controls
-                  className="w-full max-h-64 object-cover bg-black"
-                />
-              </div>
+            {item.type === "video" && (
+              <>
+                {item.contentUrl ? (
+                  <div className="mb-3 rounded-lg overflow-hidden bg-black">
+                    <video
+                      src={item.contentUrl}
+                      controls
+                      controlsList="nodownload"
+                      className="w-full aspect-video"
+                    />
+                  </div>
+                ) : (() => {
+                  const text = item.description || item.content || "";
+                  const youtubeUrl = hasYouTubeLink(text);
+                  const videoId = youtubeUrl ? extractYouTubeId(youtubeUrl) : null;
+                  if (!videoId) return null;
+                  return (
+                    <div className="mb-3 rounded-lg overflow-hidden bg-black">
+                      <iframe
+                        src={`https://www.youtube.com/embed/${videoId}`}
+                        className="w-full aspect-video"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                  );
+                })()}
+              </>
             )}
 
-            {item.type === "document" && item.contentUrl && (
-              <a
-                href={item.contentUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mb-3 flex items-center gap-3 p-4 bg-muted rounded-lg border border-border hover:bg-card-hover transition-colors"
-              >
-                <FileText size={24} className="text-orange-500" />
-                <span className="text-sm font-medium text-foreground">
-                  Download Document
-                </span>
-              </a>
-            )}
+            {item.type === "document" && item.contentUrl && (() => {
+              const pages = Array.isArray(item.contentUrl) ? item.contentUrl : [item.contentUrl];
+              return (
+                <div className="mb-3 bg-muted rounded-lg p-4 border border-border">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                      <FileText size={24} className="text-orange-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-sm text-foreground">Document</p>
+                      <p className="text-xs text-muted-foreground">{pages.length} page{pages.length > 1 ? "s" : ""}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setViewingDocument({ url: pages[0], title: item.title })}
+                    className="block w-full text-center py-2.5 bg-orange-500 text-white rounded-lg font-medium text-sm hover:bg-orange-600 transition"
+                  >
+                    Read Document
+                  </button>
+                </div>
+              );
+            })()}
 
             <Link href={`/${username}/community/${item.id}`} className="block group">
               <h4 className="font-bold text-lg mb-2 group-hover:text-orange-600 transition-colors">{item.title}</h4>
@@ -274,6 +323,30 @@ export const CommunityTab = ({
           >
             See All Posts <ArrowRight size={16} />
           </Link>
+        </div>
+      )}
+
+      {viewingImage && (
+        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setViewingImage(null)}>
+          <button className="absolute top-4 right-4 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition" onClick={() => setViewingImage(null)}>
+            <X size={28} />
+          </button>
+          <img src={viewingImage.url} alt="Full size" className="max-w-full max-h-full object-contain animate-in zoom-in-95 duration-200" />
+        </div>
+      )}
+
+      {viewingDocument && (
+        <div className="fixed inset-0 z-[100] bg-foreground/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200" onClick={() => setViewingDocument(null)}>
+          <div className="bg-card w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <h3 className="font-bold text-foreground truncate">{viewingDocument.title}</h3>
+              <div className="flex items-center gap-2">
+                <a href={viewingDocument.url} target="_blank" rel="noopener noreferrer" className="text-xs text-orange-600 font-medium hover:underline">Open original</a>
+                <button onClick={() => setViewingDocument(null)} className="p-2 hover:bg-muted rounded-full"><X size={20} /></button>
+              </div>
+            </div>
+            <iframe src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocument.url)}&embedded=true`} className="w-full h-[80vh] bg-card" title="Document Viewer" />
+          </div>
         </div>
       )}
     </div>
