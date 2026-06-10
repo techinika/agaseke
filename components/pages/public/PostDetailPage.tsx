@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { ArrowLeft, Heart, Loader, FileText, Lock, Globe, MessageCircle, Share2, Pencil, Trash2, Check, X } from "lucide-react";
+import { SupportModal } from "@/components/parts/public/SupportModal";
 import { db } from "@/db/firebase";
 import { doc, getDoc, getDocs, collection, query, where, orderBy, addDoc, deleteDoc, updateDoc, onSnapshot, serverTimestamp, increment } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
@@ -28,6 +29,7 @@ export default function PostDetailPage({ username, postId }: { username: string;
   const [editCommentContent, setEditCommentContent] = useState("");
   const [deleteCommentId, setDeleteCommentId] = useState<string | null>(null);
   const viewCounted = useRef(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const fetch = async () => {
@@ -201,10 +203,20 @@ export default function PostDetailPage({ username, postId }: { username: string;
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="max-w-3xl mx-auto px-6 py-8">
-        <Link href={`/${username}`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition mb-8 inline-flex">
-          <ArrowLeft size={20} />
-          <span className="font-medium">Back to Profile</span>
-        </Link>
+        <div className="flex items-center justify-between mb-8">
+          <Link href={`/${username}`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition inline-flex">
+            <ArrowLeft size={20} />
+            <span className="font-medium">Back to Profile</span>
+          </Link>
+
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-orange-700 transition"
+          >
+            <Heart size={18} className="fill-current" />
+            Gift Once
+          </button>
+        </div>
 
         <div className="bg-card border border-border p-6 rounded-2xl shadow-sm">
           <div className="flex items-center justify-between mb-4">
@@ -305,6 +317,15 @@ export default function PostDetailPage({ username, postId }: { username: string;
           </div>
         </div>
       </div>
+      <SupportModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        creatorName={creatorData?.name || username}
+        creatorId={username}
+        uid={creatorData?.uid || ""}
+        includeReferral={false}
+      />
+
       <Footer />
 
       <ConfirmModal

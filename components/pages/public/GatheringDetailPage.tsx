@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, Heart, Loader, Calendar, MapPin, Users, CheckCircle, XCircle, Clock, Lock, Smartphone, CreditCard, X, QrCode } from "lucide-react";
+import { SupportModal } from "@/components/parts/public/SupportModal";
 import { db } from "@/db/firebase";
 import { doc, getDoc, getDocs, collection, query, where, addDoc, serverTimestamp, updateDoc, orderBy, limit as fsLimit, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
@@ -31,6 +32,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
   const [paying, setPaying] = useState(false);
   const [attendanceDocId, setAttendanceDocId] = useState<string | null>(null);
   const [showTicket, setShowTicket] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const listenForTransaction = useCallback((ref: string, g: Gathering) => {
     const txRef = collection(db, "transactions");
@@ -275,6 +277,14 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
             <ArrowLeft size={20} />
             <span className="font-medium">Back to Events</span>
           </Link>
+
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-orange-700 transition"
+          >
+            <Heart size={18} className="fill-current" />
+            Gift Once
+          </button>
         </div>
 
         <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
@@ -465,6 +475,15 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
           </div>
         </div>
       )}
+
+      <SupportModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        creatorName={creatorData?.name || username}
+        creatorId={username}
+        uid={creatorData?.uid || ""}
+        includeReferral={false}
+      />
 
       <Footer />
     </div>
