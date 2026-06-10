@@ -10,6 +10,8 @@ import {
   ArrowRight,
   MessageCircle,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 import { LinkifyText } from "@/components/ui/LinkifyText";
@@ -36,6 +38,7 @@ export const CommunityTab = ({
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
   const [viewingImage, setViewingImage] = useState<{ url: string } | null>(null);
   const [viewingDocument, setViewingDocument] = useState<{ url: string; title: string } | null>(null);
+  const [documentIndex, setDocumentIndex] = useState<Record<string, number>>({});
 
   const extractYouTubeId = (url: string): string | null => {
     const patterns = [
@@ -200,38 +203,16 @@ export const CommunityTab = ({
               </div>
             )}
 
-            {item.type === "video" && (
-              <>
-                {item.contentUrl ? (
-                  <div className="mb-3 rounded-lg overflow-hidden bg-black">
-                    <video
-                      src={item.contentUrl}
-                      controls
-                      controlsList="nodownload"
-                      className="w-full aspect-video"
-                    />
-                  </div>
-                ) : (() => {
-                  const text = item.description || item.content || "";
-                  const youtubeUrl = hasYouTubeLink(text);
-                  const videoId = youtubeUrl ? extractYouTubeId(youtubeUrl) : null;
-                  if (!videoId) return null;
-                  return (
-                    <div className="mb-3 rounded-lg overflow-hidden bg-black">
-                      <iframe
-                        src={`https://www.youtube.com/embed/${videoId}`}
-                        className="w-full aspect-video"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      />
-                    </div>
-                  );
-                })()}
-              </>
+            {item.type === "video" && item.contentUrl && (
+              <div className="mb-3 rounded-lg overflow-hidden bg-black">
+                <video src={item.contentUrl} controls controlsList="nodownload" className="w-full aspect-video" />
+              </div>
             )}
 
             {item.type === "document" && item.contentUrl && (() => {
               const pages = Array.isArray(item.contentUrl) ? item.contentUrl : [item.contentUrl];
+              const currentIndex = documentIndex[item.id] || 0;
+              const currentUrl = pages[currentIndex] || pages[0];
               return (
                 <div className="mb-3 bg-muted rounded-lg p-4 border border-border">
                   <div className="flex items-center gap-3 mb-3">
@@ -243,8 +224,15 @@ export const CommunityTab = ({
                       <p className="text-xs text-muted-foreground">{pages.length} page{pages.length > 1 ? "s" : ""}</p>
                     </div>
                   </div>
+                  {pages.length > 1 && (
+                    <div className="flex items-center justify-between mb-3">
+                      <button onClick={(e) => { e.stopPropagation(); setDocumentIndex((prev) => ({ ...prev, [item.id]: Math.max(0, currentIndex - 1) })); }} disabled={currentIndex === 0} className="p-1.5 bg-card border rounded-lg disabled:opacity-50"><ChevronLeft size={16} /></button>
+                      <span className="text-sm text-muted-foreground">{currentIndex + 1} of {pages.length}</span>
+                      <button onClick={(e) => { e.stopPropagation(); setDocumentIndex((prev) => ({ ...prev, [item.id]: Math.min(pages.length - 1, currentIndex + 1) })); }} disabled={currentIndex === pages.length - 1} className="p-1.5 bg-card border rounded-lg disabled:opacity-50"><ChevronRight size={16} /></button>
+                    </div>
+                  )}
                   <button
-                    onClick={() => setViewingDocument({ url: pages[0], title: item.title })}
+                    onClick={() => setViewingDocument({ url: currentUrl, title: item.title })}
                     className="block w-full text-center py-2.5 bg-orange-500 text-white rounded-lg font-medium text-sm hover:bg-orange-600 transition"
                   >
                     Read Document
@@ -285,6 +273,19 @@ export const CommunityTab = ({
                 )}
               </div>
             ) : null}
+
+            {(() => {
+              const text = item.description || item.content || "";
+              const youtubeUrl = hasYouTubeLink(text);
+              if (!youtubeUrl) return null;
+              const videoId = extractYouTubeId(youtubeUrl);
+              if (!videoId) return null;
+              return (
+                <div className="mt-3 rounded-lg overflow-hidden bg-black">
+                  <iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full aspect-video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                </div>
+              );
+            })()}
 
             <div className="mt-4 pt-3 border-t border-border flex items-center gap-3 text-xs text-muted-foreground">
               <span>
