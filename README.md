@@ -681,6 +681,7 @@ For issues or feature requests, please open an issue on GitHub.
 - **User Pagination**: Replaced `onSnapshot` with `getDocs` + `startAfter` cursor-based pagination (25 per page)
 - **Phone Number Display**: Added `phoneNumber` field to `UserProfile` interface and displayed in side panel
 - **Log Detail Panel**: Added slide-in side panel to `AdminLogsPage` showing full log entry details on click
+- **Transaction Breakdown**: Added time-filtered (Day/Week/Month/Annual) transaction breakdown table by type (Support, Store, Booking, Gathering) and status (Successful/Failed/Pending) with totals row to admin dashboard
 
 ### Bug Fixes (May 2025)
 - **Store Checkout**: Fixed creator ID mismatch - now uses `creatorHandle` (username) for `creatorId` field and `creatorUid` for `creatorUid` field when processing store orders
