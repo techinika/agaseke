@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import { ArrowLeft, Heart, Loader, FileText, Lock, Globe, MessageCircle, Share2, Pencil, Trash2, Check, X } from "lucide-react";
+import { ArrowLeft, Heart, Loader, FileText, Lock, MessageCircle, Pencil, Trash2, Check, X, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { SupportModal } from "@/components/parts/public/SupportModal";
 import { db } from "@/db/firebase";
 import { doc, getDoc, getDocs, collection, query, where, orderBy, addDoc, deleteDoc, updateDoc, onSnapshot, serverTimestamp, increment } from "firebase/firestore";
@@ -28,6 +28,7 @@ export default function PostDetailPage({ username, postId }: { username: string;
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editCommentContent, setEditCommentContent] = useState("");
   const [deleteCommentId, setDeleteCommentId] = useState<string | null>(null);
+  const [documentIndex, setDocumentIndex] = useState(0);
   const viewCounted = useRef(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -218,53 +219,90 @@ export default function PostDetailPage({ username, postId }: { username: string;
           </button>
         </div>
 
-        <div className="bg-card border border-border p-6 rounded-2xl shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-[10px] font-bold bg-muted px-2 py-1 rounded uppercase tracking-widest text-muted-foreground">
-              {post.type === "video" ? "Video" : post.type === "image" ? "Image" : post.type === "document" ? "Document" : "Post"}
-            </span>
-            <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest ${post.isPrivate ? "bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400" : "bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400"}`}>
-              {post.isPrivate ? <><Lock size={10} /> Supporters Only</> : <><Globe size={10} /> Public</>}
-            </span>
-          </div>
-
-          {post.type === "image" && post.contentUrl && (
-            <div className="mb-4 rounded-lg overflow-hidden">
-              <img src={post.contentUrl} alt={post.title} className="w-full max-h-[500px] object-cover" />
+        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+          <div className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Link href={`/${username}`} className="shrink-0">
+                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-medium">
+                  {creatorData?.name?.[0] || "?"}
+                </div>
+              </Link>
+              <div>
+                <Link href={`/${username}`} className="font-semibold text-foreground hover:text-orange-600">
+                  {creatorData?.name || username}
+                </Link>
+                <p className="text-xs text-muted-foreground">
+                  @{username} &middot; {post.createdAt?.toDate?.().toLocaleDateString()}
+                </p>
+              </div>
+              <div className="ml-auto flex items-center gap-2">
+                <span className="text-[10px] font-bold bg-muted px-2 py-1 rounded uppercase tracking-widest text-muted-foreground">
+                  {post.type === "video" ? "Video" : post.type === "image" ? "Image" : post.type === "document" ? "Document" : "Post"}
+                </span>
+                {post.isPrivate && (
+                  <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
+                    <Lock size={10} /> Supporters Only
+                  </span>
+                )}
+              </div>
             </div>
-          )}
-          {post.type === "video" && post.contentUrl && (
-            <div className="mb-4 rounded-lg overflow-hidden">
-              <video src={post.contentUrl} controls className="w-full max-h-[500px] object-cover bg-foreground" />
-            </div>
-          )}
-          {post.type === "document" && post.contentUrl && (
-            <a href={post.contentUrl} target="_blank" rel="noopener noreferrer"
-              className="mb-4 flex items-center gap-3 p-4 bg-muted rounded-lg border border-border hover:bg-card-hover transition-colors">
-              <FileText size={24} className="text-orange-500" />
-              <span className="text-sm font-medium text-foreground">Download Document</span>
-            </a>
-          )}
 
-          <h1 className="text-2xl font-bold mb-3 text-foreground">{post.title}</h1>
-          {(post.description || post.content) && (
-            <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
+            <h1 className="text-2xl font-bold text-foreground mb-3">{post.title}</h1>
+
+            <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed mb-4">
               <LinkifyText text={post.description || post.content} />
             </div>
-          )}
 
-          <div className="mt-6 pt-4 border-t border-border flex items-center gap-4 text-sm text-muted-foreground">
-            <span>{post.createdAt?.toDate?.().toLocaleDateString() || "Recently"}</span>
-            {post.views && <span>{post.views} views</span>}
-          </div>
+            {post.type === "image" && !Array.isArray(post.contentUrl) && post.contentUrl && (
+              <div className="rounded-lg overflow-hidden bg-muted mb-4">
+                <img src={post.contentUrl} alt={post.title} className="w-full max-h-[500px] object-contain" />
+              </div>
+            )}
 
-          <div className="mt-4 flex items-center gap-4 pt-4 border-t border-border">
-            <button onClick={handleLike} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition ${userLiked ? "bg-red-50 dark:bg-red-950 text-red-500 dark:text-red-400" : "bg-muted text-muted-foreground hover:bg-card-hover"}`}>
-              <Heart size={16} className={userLiked ? "fill-current" : ""} /> {likes.size}
-            </button>
-            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-muted text-muted-foreground">
-              <MessageCircle size={16} /> {comments.length}
-            </span>
+            {post.type === "video" && post.contentUrl && (
+              <div className="rounded-lg overflow-hidden bg-black mb-4">
+                <video src={post.contentUrl} controls controlsList="nodownload" className="w-full aspect-video" />
+              </div>
+            )}
+
+            {post.type === "document" && (() => {
+              const pages = post.contentUrl && Array.isArray(post.contentUrl) ? post.contentUrl : post.contentUrl ? [post.contentUrl] : [];
+              if (pages.length === 0) return null;
+              return (
+                <div className="bg-muted rounded-lg p-4 border border-border mb-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                      <FileText size={24} className="text-orange-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-sm text-foreground">Document</p>
+                      <p className="text-xs text-muted-foreground">{pages.length} page{pages.length > 1 ? "s" : ""}</p>
+                    </div>
+                  </div>
+                  {pages.length > 1 && (
+                    <div className="flex items-center justify-between mb-3">
+                      <button onClick={() => setDocumentIndex((i) => Math.max(0, i - 1))} disabled={documentIndex === 0} className="p-1.5 bg-card border rounded-lg disabled:opacity-50"><ChevronLeft size={16} /></button>
+                      <span className="text-sm text-muted-foreground">{documentIndex + 1} of {pages.length}</span>
+                      <button onClick={() => setDocumentIndex((i) => Math.min(pages.length - 1, i + 1))} disabled={documentIndex === pages.length - 1} className="p-1.5 bg-card border rounded-lg disabled:opacity-50"><ChevronRight size={16} /></button>
+                    </div>
+                  )}
+                  <iframe src={`https://docs.google.com/viewer?url=${encodeURIComponent(pages[documentIndex])}&embedded=true`} className="w-full h-[500px] rounded-lg bg-card" title="Document" />
+                </div>
+              );
+            })()}
+
+            <div className="flex items-center gap-4 pt-4 border-t border-border text-sm text-muted-foreground">
+              <span className="flex items-center gap-1.5"><Eye size={16} /> {post.views || 0}</span>
+            </div>
+
+            <div className="flex items-center gap-4 mt-4">
+              <button onClick={handleLike} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition ${userLiked ? "bg-red-50 text-red-500" : "bg-muted text-muted-foreground hover:bg-gray-200"}`}>
+                <Heart size={18} className={userLiked ? "fill-current" : ""} /> {likes.size}
+              </button>
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-muted text-muted-foreground">
+                <MessageCircle size={18} /> {comments.length}
+              </span>
+            </div>
           </div>
         </div>
 
