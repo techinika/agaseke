@@ -13,6 +13,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { LinkifyText } from "@/components/ui/LinkifyText";
 import { db } from "@/db/firebase";
 import { collection, getCountFromServer, doc, updateDoc, increment } from "firebase/firestore";
 
@@ -211,9 +212,8 @@ export const CommunityTab = ({
                 {(item.description || item.content).length > 200 &&
                 !expandedPosts.has(item.id) ? (
                   <>
-                    <span>
-                      {(item.description || item.content).slice(0, 200)}...
-                    </span>
+                    <LinkifyText text={(item.description || item.content).slice(0, 200)} />
+                    <span>...</span>
                     <button
                       onClick={() => toggleExpand(item.id)}
                       className="ml-1 text-orange-600 font-medium hover:underline"
@@ -223,7 +223,7 @@ export const CommunityTab = ({
                   </>
                 ) : (
                   <>
-                    <span>{item.description || item.content}</span>
+                    <LinkifyText text={item.description || item.content} />
                     {(item.description || item.content).length > 200 && (
                       <button
                         onClick={() => toggleExpand(item.id)}

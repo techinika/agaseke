@@ -13,6 +13,7 @@ import Footer from "@/components/parts/Footer";
 import DetailSkeleton from "@/components/ui/DetailSkeleton";
 import type { Gathering } from "@/components/parts/public/gatherings";
 import { logError, logInfo } from "@/lib/logger";
+import { LinkifyText } from "@/components/ui/LinkifyText";
 import { QRCodeCanvas } from "qrcode.react";
 
 export default function GatheringDetailPage({ username, gatheringId }: { username: string; gatheringId: string }) {
@@ -282,7 +283,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
               {isUpcoming ? "Upcoming" : "Past Event"}
             </span>
             <h1 className="text-3xl font-bold mt-4 mb-2">{gathering.title}</h1>
-            {gathering.description && <p className="text-white/80">{gathering.description}</p>}
+            {gathering.description && <p className="text-white/80 whitespace-pre-wrap"><LinkifyText text={gathering.description} /></p>}
           </div>
 
           <div className="p-6 space-y-5">

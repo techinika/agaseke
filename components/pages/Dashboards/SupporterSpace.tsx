@@ -41,6 +41,7 @@ import { db } from "@/db/firebase";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { LinkifyText } from "@/components/ui/LinkifyText";
 
 interface Comment {
   id: string;
@@ -634,7 +635,7 @@ export default function SupporterSpace() {
     if (isExpanded || text.length <= 200) {
       return (
         <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-          {text}
+          <LinkifyText text={text} />
         </p>
       );
     }
@@ -643,7 +644,8 @@ export default function SupporterSpace() {
 
     return (
       <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-        {firstPart}...
+        <LinkifyText text={firstPart} />
+        <span>...</span>
         <button
           onClick={() => setExpandedPostId(itemId)}
           className="text-orange-500 hover:underline font-medium"
@@ -696,7 +698,7 @@ export default function SupporterSpace() {
                       {comment.createdAt?.toDate?.()?.toLocaleDateString()}
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">{comment.text}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap"><LinkifyText text={comment.text} /></p>
                   <button
                     onClick={() =>
                       setReplyingTo((prev) => ({
@@ -759,7 +761,7 @@ export default function SupporterSpace() {
                               Owner
                             </span>
                           )}
-                          <p className="text-xs text-muted-foreground">{reply.text}</p>
+                          <p className="text-xs text-muted-foreground whitespace-pre-wrap"><LinkifyText text={reply.text} /></p>
                         </div>
                       </div>
                     </div>

@@ -12,6 +12,7 @@ import Navbar from "@/components/parts/Navigation";
 import Footer from "@/components/parts/Footer";
 import DetailSkeleton from "@/components/ui/DetailSkeleton";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { LinkifyText } from "@/components/ui/LinkifyText";
 
 export default function PostDetailPage({ username, postId }: { username: string; postId: string }) {
   const { user: currentUser, profile } = useAuth();
@@ -236,7 +237,7 @@ export default function PostDetailPage({ username, postId }: { username: string;
           <h1 className="text-2xl font-bold mb-3 text-foreground">{post.title}</h1>
           {(post.description || post.content) && (
             <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-              {post.description || post.content}
+              <LinkifyText text={post.description || post.content} />
             </div>
           )}
 
@@ -274,7 +275,7 @@ export default function PostDetailPage({ username, postId }: { username: string;
                       <button onClick={() => { setEditingCommentId(null); setEditCommentContent(""); }} className="p-1.5 text-muted-foreground hover:bg-muted dark:hover:bg-card-hover rounded-lg transition"><X size={16} /></button>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground mt-0.5">{c.content}</p>
+                    <p className="text-sm text-muted-foreground mt-0.5 whitespace-pre-wrap"><LinkifyText text={c.content} /></p>
                   )}
                   <div className="flex items-center gap-3 mt-1">
                     <p className="text-[10px] text-muted-foreground">{c.createdAt?.toDate?.().toLocaleDateString() || ""}</p>
