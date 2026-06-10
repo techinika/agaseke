@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   User,
   LayoutDashboard,
@@ -36,6 +36,19 @@ const Navbar = () => {
   const [loggingOut, setLoggingOut] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    if (isDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isDropdownOpen]);
 
   useEffect(() => {
     if (!auth?.user?.uid) return;
@@ -141,13 +154,7 @@ const Navbar = () => {
                 </button>
 
                 {isDropdownOpen && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40 cursor-default"
-                      onClick={() => setIsDropdownOpen(false)}
-                    />
-
-                    <div className="absolute right-0 mt-3 w-64 bg-card rounded-lg shadow-2xl border border-border p-2 animate-in fade-in slide-in-from-top-2 z-50">
+                  <div ref={dropdownRef} className="absolute right-0 mt-3 w-64 bg-card rounded-lg shadow-2xl border border-border p-2 animate-in fade-in slide-in-from-top-2 z-50">
                       <div className="px-4 py-3 mb-2 bg-muted/50 rounded-lg">
                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-1">
                           Personal Space
@@ -190,6 +197,12 @@ const Navbar = () => {
                             onClick={() => setIsDropdownOpen(false)}
                           />
                         <DropdownLink
+                          href="/supporter"
+                          icon={<LayoutDashboard size={18} />}
+                          label="Supporter View"
+                          onClick={() => setIsDropdownOpen(false)}
+                        />
+                        <DropdownLink
                           href="/supporter/notices"
                           icon={<Megaphone size={18} />}
                           label="Notices"
@@ -218,7 +231,6 @@ const Navbar = () => {
                         <LogOut size={18} /> Log out
                       </button>
                     </div>
-                  </>
                 )}
               </div>
             </div>
