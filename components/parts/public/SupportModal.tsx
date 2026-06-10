@@ -241,32 +241,32 @@ export function SupportModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-foreground/60 backdrop-blur-md p-6">
-      <div className="bg-card w-full max-w-lg rounded-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
-        <div className="p-8 pb-0 flex justify-between items-center">
-          <h3 className="text-3xl font-bold tracking-tight">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-foreground/60 backdrop-blur-md">
+      <div className="bg-card w-full max-w-lg rounded-t-2xl sm:rounded-lg shadow-2xl animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-card z-10 p-4 sm:p-6 pb-0 flex justify-between items-center">
+          <h3 className="text-xl sm:text-2xl font-bold tracking-tight">
             Send gift to {creatorName.split(" ")[0]}
           </h3>
           <button
             onClick={handleClose}
-            className="p-3 bg-muted rounded-full text-muted-foreground hover:text-foreground transition-colors"
+            className="p-2 sm:p-3 bg-muted rounded-full text-muted-foreground hover:text-foreground transition-colors"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
 
-        <div className="p-10">
+        <div className="p-4 sm:p-6">
           {step === "input" && (
-            <div className="space-y-8">
+            <div className="space-y-5 sm:space-y-8">
               <div className="text-center">
-                <p className="text-muted-foreground text-sm font-medium mb-4">
+                <p className="text-muted-foreground text-xs sm:text-sm font-medium mb-3 sm:mb-4">
                   How much would you like to gift {creatorName.split(" ")[0]}?
                 </p>
                 <div className="relative">
                   <input
                     type="number"
                     placeholder="1000"
-                    className="w-full text-center text-6xl font-bold text-foreground outline-none placeholder:text-muted-foreground"
+                    className="w-full text-center text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground outline-none placeholder:text-muted-foreground"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                   />
@@ -277,126 +277,126 @@ export function SupportModal({
               </div>
 
               {/* Payment Method Selector */}
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <button
-                  onClick={() => setPaymentMethod("momo")}
-                  className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
-                    paymentMethod === "momo"
-                      ? "border-orange-500 bg-orange-50"
-                      : "border-border hover:border-border"
-                  }`}
-                >
-                  <Smartphone
-                    size={24}
-                    className={
-                      paymentMethod === "momo"
-                        ? "text-orange-600"
-                        : "text-muted-foreground"
-                    }
-                  />
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-widest ${paymentMethod === "momo" ? "text-orange-900" : "text-muted-foreground"}`}
-                  >
-                    MoMo
-                  </span>
-                </button>
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+            <button
+              onClick={() => setPaymentMethod("momo")}
+              className={`flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-xl border-2 transition-all ${
+                paymentMethod === "momo"
+                  ? "border-orange-500 bg-orange-50"
+                  : "border-border hover:border-border"
+              }`}
+            >
+              <Smartphone
+                size={20}
+                className={
+                  paymentMethod === "momo"
+                    ? "text-orange-600"
+                    : "text-muted-foreground"
+                }
+              />
+              <span
+                className={`text-[10px] font-bold uppercase tracking-widest ${paymentMethod === "momo" ? "text-orange-900" : "text-muted-foreground"}`}
+              >
+                MoMo
+              </span>
+            </button>
 
-                <button
-                  onClick={() => setPaymentMethod("card")}
-                  className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+            <button
+              onClick={() => setPaymentMethod("card")}
+              className={`flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-xl border-2 transition-all ${
+                paymentMethod === "card"
+                  ? "border-orange-500 bg-orange-50"
+                  : "border-border hover:border-border"
+              }`}
+            >
+              <div className="flex gap-1">
+                <ShieldCheck
+                  size={20}
+                  className={
                     paymentMethod === "card"
-                      ? "border-orange-500 bg-orange-50"
-                      : "border-border hover:border-border"
-                  }`}
-                >
-                  <div className="flex gap-1">
-                    <ShieldCheck
-                      size={24}
-                      className={
-                        paymentMethod === "card"
-                          ? "text-orange-600"
-                          : "text-muted-foreground"
-                      }
-                    />
-                  </div>
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-widest ${paymentMethod === "card" ? "text-orange-900" : "text-muted-foreground"}`}
-                  >
-                    Bank Cards
-                  </span>
-                </button>
+                      ? "text-orange-600"
+                      : "text-muted-foreground"
+                  }
+                />
               </div>
+              <span
+                className={`text-[10px] font-bold uppercase tracking-widest ${paymentMethod === "card" ? "text-orange-900" : "text-muted-foreground"}`}
+              >
+                Bank Cards
+              </span>
+            </button>
+          </div>
 
-              <div className="space-y-4">
-                {paymentMethod === "momo" && (
-                  <>
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      MoMo Phone Number
-                    </label>
-                    <div className="relative">
-                      <Smartphone
-                        className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
-                        size={18}
-                      />
-                      <input
-                        type="tel"
-                        placeholder="078 000 0000"
-                        className="w-full bg-muted border-2 border-border p-4 pl-12 rounded-lg font-bold focus:border-orange-500 outline-none transition-all"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                      />
-                    </div>
-                  </>
-                )}
-                <div>
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                    Heartfelt Message{" "}
-                    <Heart size={10} className="text-pink-500" />
-                  </label>
-                  <textarea
-                    placeholder="Write a nice note to the creator..."
-                    className="w-full mt-1 bg-muted border-2 border-border p-4 rounded-lg font-medium text-sm focus:border-orange-500 outline-none transition-all resize-none h-24"
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
+          <div className="space-y-3 sm:space-y-4">
+            {paymentMethod === "momo" && (
+              <>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  MoMo Phone Number
+                </label>
+                <div className="relative">
+                  <Smartphone
+                    className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    size={16}
+                  />
+                  <input
+                    type="tel"
+                    placeholder="078 000 0000"
+                    className="w-full bg-muted border-2 border-border p-3 sm:p-4 pl-10 sm:pl-12 rounded-lg font-bold focus:border-orange-500 outline-none transition-all text-sm sm:text-base"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
                   />
                 </div>
-              </div>
+              </>
+            )}
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                Heartfelt Message{" "}
+                <Heart size={10} className="text-pink-500" />
+              </label>
+              <textarea
+                placeholder="Write a nice note to the creator..."
+                className="w-full mt-1 bg-muted border-2 border-border p-3 sm:p-4 rounded-lg font-medium text-sm focus:border-orange-500 outline-none transition-all resize-none h-20 sm:h-24"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+              />
+            </div>
+          </div>
 
-              <button
-                onClick={
-                  paymentMethod === "momo"
-                    ? handleSupport
-                    : handlePesapalSupport
-                }
-                disabled={
-                  !amount ||
-                  parseInt(amount) < 100 ||
-                  (paymentMethod === "momo" && !phone) ||
-                  isSubmitting
-                }
-                className="w-full bg-orange-600 text-white py-6 rounded-lg font-bold text-xl shadow-xl shadow-orange-100 hover:bg-orange-700 transition-all flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
-              >
-                {isSubmitting ? (
-                  <Loader className="w-6 h-6 rounded-full animate-spin" />
-                ) : (
-                  <>
-                    {paymentMethod === "momo"
-                      ? "Gift with MoMo"
-                      : "Gift with Card"}
-                  </>
-                )}
-              </button>
+          <button
+            onClick={
+              paymentMethod === "momo"
+                ? handleSupport
+                : handlePesapalSupport
+            }
+            disabled={
+              !amount ||
+              parseInt(amount) < 100 ||
+              (paymentMethod === "momo" && !phone) ||
+              isSubmitting
+            }
+            className="w-full bg-orange-600 text-white py-4 sm:py-6 rounded-lg font-bold text-base sm:text-xl shadow-xl shadow-orange-100 hover:bg-orange-700 transition-all flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
+          >
+            {isSubmitting ? (
+              <Loader className="w-5 h-5 sm:w-6 sm:h-6 rounded-full animate-spin" />
+            ) : (
+              <>
+                {paymentMethod === "momo"
+                  ? "Gift with MoMo"
+                  : "Gift with Card"}
+              </>
+            )}
+          </button>
             </div>
           )}
 
           {step === "processing" && (
-            <div className="py-12 text-center space-y-6">
-              <div className="relative mx-auto w-20 h-20">
+            <div className="py-8 sm:py-12 text-center space-y-4 sm:space-y-6">
+              <div className="relative mx-auto w-16 h-16 sm:w-20 sm:h-20">
                 <div className="absolute inset-0 border-4 border-border rounded-full" />
                 <div className="absolute inset-0 border-4 border-t-orange-600 rounded-full animate-spin" />
               </div>
-              <h4 className="text-xl font-bold">Verifying Payment...</h4>
-              <p className="text-muted-foreground font-medium leading-relaxed">
+              <h4 className="text-lg sm:text-xl font-bold">Verifying Payment...</h4>
+              <p className="text-muted-foreground font-medium leading-relaxed text-sm sm:text-base">
                 {paymentMethod === "momo" ? (
                   <>
                     We sent a MoMo prompt to <b>{phone}</b>.<br />
@@ -413,19 +413,19 @@ export function SupportModal({
           )}
 
           {step === "success" && (
-            <div className="py-12 text-center space-y-6 animate-in fade-in zoom-in">
-              <div className="w-24 h-24 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                <ShieldCheck size={48} />
+            <div className="py-8 sm:py-12 text-center space-y-4 sm:space-y-6 animate-in fade-in zoom-in">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                <ShieldCheck size={40} />
               </div>
-              <h4 className="text-3xl font-bold text-foreground">
+              <h4 className="text-2xl sm:text-3xl font-bold text-foreground">
                 Payment Verified!
               </h4>
-              <p className="text-muted-foreground font-medium leading-relaxed">
+              <p className="text-muted-foreground font-medium leading-relaxed text-sm sm:text-base">
                 Your gift of <b>{amount} RWF</b> was delivered.
               </p>
               <button
                 onClick={handleClose}
-                className="w-full bg-foreground text-background py-4 rounded-lg font-bold hover:bg-orange-600 transition-colors"
+                className="w-full bg-foreground text-background py-3 sm:py-4 rounded-lg font-bold text-sm sm:text-base hover:bg-orange-600 transition-colors"
               >
                 Back to Profile
               </button>
@@ -433,26 +433,26 @@ export function SupportModal({
           )}
 
           {step === "error" && (
-            <div className="py-12 text-center space-y-6 animate-in fade-in zoom-in">
-              <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
-                <X size={40} />
+            <div className="py-8 sm:py-12 text-center space-y-4 sm:space-y-6 animate-in fade-in zoom-in">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                <X size={32} />
               </div>
-              <h4 className="text-2xl font-bold text-foreground">
+              <h4 className="text-xl sm:text-2xl font-bold text-foreground">
                 Payment Failed
               </h4>
-              <p className="text-muted-foreground font-medium">{errorMessage}</p>
+              <p className="text-muted-foreground font-medium text-sm sm:text-base">{errorMessage}</p>
               {popupBlocked && (
                 <Link
                   href={redirectUrl}
                   target="_blank"
-                  className="w-full bg-orange-600 text-center text-white py-4 rounded-lg font-bold block"
+                  className="w-full bg-orange-600 text-center text-white py-3 sm:py-4 rounded-lg font-bold text-sm sm:text-base block"
                 >
                   Open Payment Window
                 </Link>
               )}
               <button
                 onClick={() => setStep("input")}
-                className="w-full bg-muted text-foreground py-4 rounded-lg font-bold hover:bg-muted transition-colors"
+                className="w-full bg-muted text-foreground py-3 sm:py-4 rounded-lg font-bold text-sm sm:text-base hover:bg-muted transition-colors"
               >
                 Try Again
               </button>
