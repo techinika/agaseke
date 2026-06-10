@@ -686,9 +686,10 @@ For issues or feature requests, please open an issue on GitHub.
 - **Store Checkout**: Fixed creator ID mismatch - now uses `creatorHandle` (username) for `creatorId` field and `creatorUid` for `creatorUid` field when processing store orders
 - **Payment Transaction**: Fixed transaction lookup by ensuring proper reference matching in IPN handler
 
-### Content Formatting & Gift Once on Detail Pages (June 2026)
+### Content Formatting, Gift Once & Post Detail Alignment (June 2026)
 - **Whitespace preservation**: Added `whitespace-pre-wrap` to comment text, reply text, and gathering description elements across supporter and public pages so newlines and spaces render correctly in non-HTML content
 - **Gift Once button**: Added "Gift Once" quick support button to gathering detail page and community post detail page, matching the pattern on other public subpages
+- **Post detail page alignment**: Public `PostDetailPage` now shows creator avatar, name, and handle at the top; image uses `object-contain`; video uses `aspect-video` with `controlsList="nodownload"`; document viewer added with page navigation — matching `/supporter` layout
 - Files updated: `SupporterSpace.tsx`, `SupporterPostDetail.tsx`, `PostDetailPage.tsx`, `ContentPage.tsx`, `CommunityTab.tsx`, `GatheringDetailPage.tsx`
 
 ### Verification & Payouts Fix (June 2026)
