@@ -15,6 +15,25 @@ import DetailSkeleton from "@/components/ui/DetailSkeleton";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { LinkifyText } from "@/components/ui/LinkifyText";
 
+const extractYouTubeId = (url: string): string | null => {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s?]+)/,
+    /youtube\.com\/shorts\/([^&\s?]+)/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+};
+
+const hasYouTubeLink = (text: string): string | null => {
+  const urlPattern = /https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)[^\s]+/gi;
+  const match = text.match(urlPattern);
+  if (match) return match[0];
+  return null;
+};
+
 export default function PostDetailPage({ username, postId }: { username: string; postId: string }) {
   const { user: currentUser, profile } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -254,35 +273,29 @@ export default function PostDetailPage({ username, postId }: { username: string;
               <LinkifyText text={post.description || post.content} />
             </div>
 
+            {(() => {
+              const text = post.description || post.content || "";
+              const youtubeUrl = hasYouTubeLink(text);
+              if (!youtubeUrl) return null;
+              const videoId = extractYouTubeId(youtubeUrl);
+              if (!videoId) return null;
+              return (
+                <div className="rounded-lg overflow-hidden bg-black mb-4">
+                  <iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full aspect-video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                </div>
+              );
+            })()}
+
             {post.type === "image" && !Array.isArray(post.contentUrl) && post.contentUrl && (
               <div className="rounded-lg overflow-hidden bg-muted mb-4 cursor-zoom-in" onClick={() => setViewingImage({ url: post.contentUrl })}>
                 <img src={post.contentUrl} alt={post.title} className="w-full max-h-[500px] object-contain hover:opacity-90 transition-opacity" />
               </div>
             )}
 
-            {post.type === "video" && (
-              <>
-                {post.contentUrl ? (
-                  <div className="rounded-lg overflow-hidden bg-black mb-4">
-                    <video src={post.contentUrl} controls controlsList="nodownload" className="w-full aspect-video" />
-                  </div>
-                ) : (() => {
-                  const text = post.description || post.content || "";
-                  const urlPattern = /https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)[^\s]+/gi;
-                  const match = text.match(urlPattern);
-                  const youtubeUrl = match ? match[0] : null;
-                  if (!youtubeUrl) return null;
-                  const patterns = [/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s?]+)/, /youtube\.com\/shorts\/([^&\s?]+)/];
-                  let videoId: string | null = null;
-                  for (const p of patterns) { const m = youtubeUrl.match(p); if (m) { videoId = m[1]; break; } }
-                  if (!videoId) return null;
-                  return (
-                    <div className="rounded-lg overflow-hidden bg-black mb-4">
-                      <iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full aspect-video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-                    </div>
-                  );
-                })()}
-              </>
+            {post.type === "video" && post.contentUrl && (
+              <div className="rounded-lg overflow-hidden bg-black mb-4">
+                <video src={post.contentUrl} controls controlsList="nodownload" className="w-full aspect-video" />
+              </div>
             )}
 
             {post.type === "document" && (() => {

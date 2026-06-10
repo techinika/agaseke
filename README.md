@@ -690,7 +690,7 @@ For issues or feature requests, please open an issue on GitHub.
 - **Whitespace preservation**: Added `whitespace-pre-wrap` to comment text, reply text, and gathering description elements across supporter and public pages so newlines and spaces render correctly in non-HTML content
 - **Gift Once button**: Added "Gift Once" quick support button to gathering detail page and community post detail page, matching the pattern on other public subpages
 - **Post detail page alignment**: Public `PostDetailPage` now shows creator avatar, name, and handle at the top; image uses `object-contain`; video uses `aspect-video` with `controlsList="nodownload"`; document viewer added with page navigation — matching `/supporter` layout
-- **Media enhancements on community pages**: YouTube links in any post type now show embedded preview (not just video-type); images are click-to-zoom with full-screen lightbox; videos are playable inline with `controlsList="nodownload"`; documents open in Google Docs viewer via "Read Document" button with modal overlay and per-post page pagination
+- **Media enhancements on community pages & post detail**: YouTube links in any post type now show embedded preview (not just video-type); images are click-to-zoom with full-screen lightbox; videos are playable inline with `controlsList="nodownload"`; documents open in Google Docs viewer via "Read Document" button with modal overlay and per-post page pagination
 - **Supporter View nav link**: Added explicit `/supporter` link to navbar dropdown; dropdown closes on outside click via mousedown listener
 - Files updated: `SupporterSpace.tsx`, `SupporterPostDetail.tsx`, `PostDetailPage.tsx`, `ContentPage.tsx`, `CommunityTab.tsx`, `GatheringDetailPage.tsx`, `Navigation.tsx`
 
