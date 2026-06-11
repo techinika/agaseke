@@ -4,15 +4,15 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, Heart, Loader, Calendar, MapPin, Users, CheckCircle, XCircle, Clock, Lock, Smartphone, CreditCard, X, QrCode } from "lucide-react";
+import { SupportModal } from "@/components/parts/public/SupportModal";
 import { db } from "@/db/firebase";
 import { doc, getDoc, getDocs, collection, query, where, addDoc, serverTimestamp, updateDoc, orderBy, limit as fsLimit, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
-import Navbar from "@/components/parts/Navigation";
-import Footer from "@/components/parts/Footer";
 import DetailSkeleton from "@/components/ui/DetailSkeleton";
 import type { Gathering } from "@/components/parts/public/gatherings";
 import { logError, logInfo } from "@/lib/logger";
+import { LinkifyText } from "@/components/ui/LinkifyText";
 import { QRCodeCanvas } from "qrcode.react";
 
 export default function GatheringDetailPage({ username, gatheringId }: { username: string; gatheringId: string }) {
@@ -30,6 +30,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
   const [paying, setPaying] = useState(false);
   const [attendanceDocId, setAttendanceDocId] = useState<string | null>(null);
   const [showTicket, setShowTicket] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const listenForTransaction = useCallback((ref: string, g: Gathering) => {
     const txRef = collection(db, "transactions");
@@ -46,10 +47,10 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
           try {
             const attendanceQuery = query(
               collection(db, "gatheringsAttendance"),
-              where("supporterId", "==", user.uid),
+              where("gatheringId", "==", g.id),
             );
             const attendanceSnap = await getDocs(attendanceQuery);
-            const match = attendanceSnap.docs.find(d => d.data().gatheringId === g.id);
+            const match = attendanceSnap.docs.find(d => d.data().supporterId === user.uid);
             if (match) {
               setAttendanceDocId(match.id);
             }
@@ -108,13 +109,12 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
 
         try {
           const attendanceRef = collection(db, "gatheringsAttendance");
-          const rq = query(attendanceRef, where("supporterId", "==", user.uid));
+          const rq = query(attendanceRef, where("gatheringId", "==", gatheringId));
           const rs = await getDocs(rq);
-          const creatorDocs = rs.docs.filter(d => d.data().creatorHandle === username);
-          setIsRsvped(creatorDocs.some(d => d.data().gatheringId === gatheringId));
-          const existingDoc = creatorDocs.find(d => d.data().gatheringId === gatheringId);
-          if (existingDoc) {
-            setAttendanceDocId(existingDoc.id);
+          const userDoc = rs.docs.find(d => d.data().supporterId === user.uid);
+          setIsRsvped(!!userDoc);
+          if (userDoc) {
+            setAttendanceDocId(userDoc.id);
           }
         } catch (e) {
           console.error("Failed to fetch attendance data:", e);
@@ -247,13 +247,11 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
   if (loading) return <DetailSkeleton />;
   if (!gathering || !creatorData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Navbar />
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <p className="text-muted-foreground">Event not found</p>
           <Link href={`/${username}`} className="text-orange-500 font-bold mt-4 inline-block">Go Back</Link>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -267,14 +265,21 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
   });
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+    <>
       <div className="max-w-3xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <Link href={`/${username}/gatherings`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition">
             <ArrowLeft size={20} />
             <span className="font-medium">Back to Events</span>
           </Link>
+
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-orange-700 transition"
+          >
+            <Heart size={18} className="fill-current" />
+            Gift Once
+          </button>
         </div>
 
         <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
@@ -283,7 +288,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
               {isUpcoming ? "Upcoming" : "Past Event"}
             </span>
             <h1 className="text-3xl font-bold mt-4 mb-2">{gathering.title}</h1>
-            {gathering.description && <p className="text-white/80">{gathering.description}</p>}
+            {gathering.description && <p className="text-white/80 whitespace-pre-wrap"><LinkifyText text={gathering.description} /></p>}
           </div>
 
           <div className="p-6 space-y-5">
@@ -466,7 +471,14 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
         </div>
       )}
 
-      <Footer />
-    </div>
+      <SupportModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        creatorName={creatorData?.name || username}
+        creatorId={username}
+        uid={creatorData?.uid || ""}
+        includeReferral={false}
+      />
+    </>
   );
 }

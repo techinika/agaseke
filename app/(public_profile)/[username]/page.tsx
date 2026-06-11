@@ -1,3 +1,5 @@
+export const revalidate = 300;
+
 import PublicProfile from "@/components/pages/PublicProfile";
 import { adminDb, admin } from "@/db/firebaseAdmin";
 import { Metadata } from "next";

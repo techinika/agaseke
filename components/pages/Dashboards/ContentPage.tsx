@@ -40,6 +40,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/auth/AuthContext";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { LinkifyText } from "@/components/ui/LinkifyText";
 
 interface Comment {
   id: string;
@@ -476,7 +477,7 @@ export default function ContentManager() {
               )}
 
               <div className="p-4 lg:p-6">
-                <div className="prose max-w-none text-foreground whitespace-pre-wrap text-sm lg:text-base">{selectedPost.description}</div>
+                <div className="prose max-w-none text-foreground whitespace-pre-wrap text-sm lg:text-base"><LinkifyText text={selectedPost.description} /></div>
 
                 {selectedPost.type === "document" && selectedPost.contentUrl && (
                   <a href={selectedPost.contentUrl} target="_blank" rel="noopener noreferrer" className="mt-4 flex items-center gap-3 p-4 bg-muted rounded-lg border border-border hover:bg-muted transition">
@@ -506,7 +507,7 @@ export default function ContentManager() {
                             )}
                             <span className="text-xs text-muted-foreground">{comment.createdAt?.toDate?.()?.toLocaleDateString()}</span>
                           </div>
-                          <p className="text-sm text-muted-foreground mt-1">{comment.text}</p>
+                          <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap"><LinkifyText text={comment.text} /></p>
                           <button onClick={() => setReplyingTo((prev) => ({ ...prev, [comment.id]: comment.id }))} className="text-xs text-blue-500 mt-1">Reply</button>
                           
                           {replyingTo[comment.id] && (
@@ -527,7 +528,7 @@ export default function ContentManager() {
                                   {reply.userId === creator?.uid && (
                                     <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full ml-1">Owner</span>
                                   )}
-                                  <p className="text-sm text-muted-foreground">{reply.text}</p>
+                                  <p className="text-sm text-muted-foreground whitespace-pre-wrap"><LinkifyText text={reply.text} /></p>
                                 </div>
                               </div>
                             </div>

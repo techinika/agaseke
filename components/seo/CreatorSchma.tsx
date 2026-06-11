@@ -1,34 +1,43 @@
 import { baseUrl } from "@/lib/baseUrl";
-import { Creator } from "@/types/creator";
 
 export default function CreatorSchema({
   creator,
   handle,
 }: {
-  creator: Creator;
+  creator: any;
   handle: string;
 }) {
-  const schema = {
+  const schema: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Person",
-    name: creator.name,
+    name: creator.name || handle,
+    alternateName: handle,
     url: `${baseUrl}/${handle}`,
+    image: creator.profilePicture || `${baseUrl}/agaseke.png`,
     jobTitle: "Creator",
-    description: creator.bio,
+    description: creator.bio || `Content creator on Agaseke`,
     identifier: handle,
     mainEntityOfPage: {
       "@type": "WebPage",
       "@id": `${baseUrl}/${handle}`,
     },
     sameAs: [
-      creator.socials.twitter
+      creator.socials?.twitter
         ? `https://x.com/${creator.socials.twitter}`
         : null,
-      creator.socials.instagram
+      creator.socials?.instagram
         ? `https://instagram.com/${creator.socials.instagram}`
         : null,
     ].filter(Boolean),
   };
+
+  if (creator.views) {
+    schema.interactionStatistic = {
+      "@type": "InteractionCounter",
+      interactionType: "https://schema.org/WatchAction",
+      userInteractionCount: creator.views,
+    };
+  }
 
   return (
     <script

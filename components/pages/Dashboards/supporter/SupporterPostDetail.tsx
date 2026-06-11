@@ -34,6 +34,7 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
+import { LinkifyText } from "@/components/ui/LinkifyText";
 import Navbar from "@/components/parts/Navigation";
 
 interface Comment {
@@ -253,7 +254,7 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
             <h1 className="text-2xl font-bold text-foreground mb-3">{post.title}</h1>
 
             <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed mb-4">
-              {post.description || post.content}
+              <LinkifyText text={post.description || post.content} />
             </div>
 
             {post.type === "image" && !Array.isArray(post.contentUrl) && post.contentUrl && (
@@ -318,7 +319,7 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
                         <span className="font-medium text-sm">{comment.userName}</span>
                         <span className="text-xs text-muted-foreground">{comment.createdAt?.toDate?.()?.toLocaleDateString()}</span>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-0.5">{comment.text}</p>
+                      <p className="text-sm text-muted-foreground mt-0.5 whitespace-pre-wrap"><LinkifyText text={comment.text} /></p>
                       <button onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)} className="text-xs text-blue-500 mt-1">
                         Reply
                       </button>
@@ -337,7 +338,7 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
                               </div>
                               <div>
                                 <span className="font-medium text-xs">{reply.userName}</span>
-                                <p className="text-xs text-muted-foreground">{reply.text}</p>
+                                <p className="text-xs text-muted-foreground whitespace-pre-wrap"><LinkifyText text={reply.text} /></p>
                               </div>
                             </div>
                           ))}

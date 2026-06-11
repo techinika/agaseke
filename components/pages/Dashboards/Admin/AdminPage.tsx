@@ -93,6 +93,18 @@ export default function AdminDashboard() {
   // Raw data for transaction chart
   const [rawIncome, setRawIncome] = useState<any[]>([]);
   const [rawPayouts, setRawPayouts] = useState<any[]>([]);
+  const [rawTransactions, setRawTransactions] = useState<any[]>([]);
+  const [txBreakdown, setTxBreakdown] = useState<{
+    support: { successful: number; failed: number; pending: number };
+    store: { successful: number; failed: number; pending: number };
+    booking: { successful: number; failed: number; pending: number };
+    gathering: { successful: number; failed: number; pending: number };
+  }>({
+    support: { successful: 0, failed: 0, pending: 0 },
+    store: { successful: 0, failed: 0, pending: 0 },
+    booking: { successful: 0, failed: 0, pending: 0 },
+    gathering: { successful: 0, failed: 0, pending: 0 },
+  });
 
   // Process transaction chart data based on filter
   useEffect(() => {
@@ -192,6 +204,54 @@ export default function AdminDashboard() {
 
     setMonthlyData(newData);
   }, [transactionFilter, rawIncome, rawPayouts]);
+
+  // Process transaction breakdown by type, status, and time period
+  useEffect(() => {
+    if (rawTransactions.length === 0) return;
+    const now = new Date();
+    const breakdown = {
+      support: { successful: 0, failed: 0, pending: 0 },
+      store: { successful: 0, failed: 0, pending: 0 },
+      booking: { successful: 0, failed: 0, pending: 0 },
+      gathering: { successful: 0, failed: 0, pending: 0 },
+    };
+
+    rawTransactions.forEach((tx: any) => {
+      const txType = tx.type || "support";
+      if (!["support", "store", "booking", "gathering"].includes(txType)) return;
+
+      let inRange = false;
+      if (tx.createdAt?.toDate) {
+        const d = tx.createdAt.toDate();
+        const diff = now.getTime() - d.getTime();
+
+        if (transactionFilter === "day") {
+          inRange = diff <= 7 * 24 * 60 * 60 * 1000; // last 7 days
+        } else if (transactionFilter === "week") {
+          inRange = diff <= 5 * 7 * 24 * 60 * 60 * 1000; // last 5 weeks
+        } else if (transactionFilter === "month") {
+          inRange = diff <= 6 * 30 * 24 * 60 * 60 * 1000; // last 6 months
+        } else if (transactionFilter === "annual") {
+          inRange = d.getFullYear() >= now.getFullYear() - 2; // last 3 years
+        }
+      } else {
+        inRange = true; // no date = include
+      }
+      if (!inRange) return;
+
+      const isSuccess = tx.status === "successful" || tx.status === "success";
+      const isFailed = tx.status === "failed";
+      const isPending = tx.status === "pending";
+      if (!isSuccess && !isFailed && !isPending) return;
+
+      const amt = Number(tx.amount) || 0;
+      if (isSuccess) breakdown[txType as keyof typeof breakdown].successful += amt;
+      else if (isFailed) breakdown[txType as keyof typeof breakdown].failed += amt;
+      else if (isPending) breakdown[txType as keyof typeof breakdown].pending += amt;
+    });
+
+    setTxBreakdown(breakdown);
+  }, [transactionFilter, rawTransactions]);
 
   const [modal, setModal] = useState<{
     show: boolean;
@@ -325,25 +385,17 @@ export default function AdminDashboard() {
 
       // Get transaction counts and aggregates by type from transactions collection
       const transactionsSnap = await getDocs(collection(db, "transactions"));
-      const allTransactions = transactionsSnap.docs.map((d) => d.data());
-      let txSupports = 0;
-      let txProducts = 0;
+      const allTransactions = transactionsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       let totalSuccessfulAmount = 0;
       let successfulCount = 0;
       let failedCount = 0;
       let failedAmount = 0;
       let pendingCount = 0;
       let pendingAmount = 0;
-      allTransactions.forEach((tx) => {
+      allTransactions.forEach((tx: any) => {
         if (tx.status === "successful" || tx.status === "success") {
-          const amt = Number(tx.amount) || 0;
-          totalSuccessfulAmount += amt;
+          totalSuccessfulAmount += Number(tx.amount) || 0;
           successfulCount += 1;
-          if (tx.type === "support") {
-            txSupports += 1;
-          } else if (tx.type === "product") {
-            txProducts += 1;
-          }
         } else if (tx.status === "failed") {
           failedCount += 1;
           failedAmount += Number(tx.amount) || 0;
@@ -353,6 +405,7 @@ export default function AdminDashboard() {
         }
       });
       const avgAmount = successfulCount > 0 ? Math.round(totalSuccessfulAmount / successfulCount) : 0;
+      setRawTransactions(allTransactions);
 
       // Top earners
       const earnersQuery = query(
@@ -754,6 +807,21 @@ export default function AdminDashboard() {
           verificationStatus: isApprove ? "approved" : "rejected",
         });
 
+        const pendingVerifications = query(
+          collection(db, "verificationRequests"),
+          where("uid", "==", target.uid),
+          where("status", "==", "pending"),
+          orderBy("createdAt", "desc"),
+          limit(1),
+        );
+        const pendingSnap = await getDocs(pendingVerifications);
+        if (!pendingSnap.empty) {
+          await updateDoc(doc(db, "verificationRequests", pendingSnap.docs[0].id), {
+            status: isApprove ? "approved" : "rejected",
+            updatedAt: serverTimestamp(),
+          });
+        }
+
         await fetch("/api/comms/email/feedback/verify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1115,6 +1183,86 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* TRANSACTION BREAKDOWN BY TYPE & STATUS */}
+        <div className="bg-card rounded-xl border border-border p-6 mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+              Transaction Breakdown
+            </h3>
+            <div className="flex gap-2">
+              {[
+                { key: "day", label: "Day" },
+                { key: "week", label: "Week" },
+                { key: "month", label: "Month" },
+                { key: "annual", label: "Annual" },
+              ].map((filter) => (
+                <button
+                  key={filter.key}
+                  onClick={() => setTransactionFilter(filter.key as any)}
+                  className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${
+                    transactionFilter === filter.key
+                      ? "bg-foreground text-background"
+                      : "bg-muted text-muted-foreground hover:bg-border-strong"
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-3 pr-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Type</th>
+                  <th className="text-right py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-emerald-600">Successful</th>
+                  <th className="text-right py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-red-500">Failed</th>
+                  <th className="text-right py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-amber-500">Pending</th>
+                  <th className="text-right py-3 pl-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {([
+                  { key: "support", label: "Support", icon: "💜" },
+                  { key: "store", label: "Store", icon: "🛍" },
+                  { key: "booking", label: "Booking", icon: "📅" },
+                  { key: "gathering", label: "Gathering", icon: "🎪" },
+                ] as const).map((type) => {
+                  const data = txBreakdown[type.key];
+                  const total = data.successful + data.failed + data.pending;
+                  return (
+                    <tr key={type.key} className="border-b border-border/50 last:border-0">
+                      <td className="py-3 pr-4 font-medium text-foreground">{type.label}</td>
+                      <td className="py-3 px-4 text-right font-bold text-emerald-600">{data.successful.toLocaleString()} RWF</td>
+                      <td className="py-3 px-4 text-right font-bold text-red-500">{data.failed.toLocaleString()} RWF</td>
+                      <td className="py-3 px-4 text-right font-bold text-amber-500">{data.pending.toLocaleString()} RWF</td>
+                      <td className="py-3 pl-4 text-right font-bold text-foreground">{total.toLocaleString()} RWF</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-border">
+                  <td className="py-3 pr-4 font-bold text-foreground">All Types</td>
+                  <td className="py-3 px-4 text-right font-black text-emerald-600">
+                    {Object.values(txBreakdown).reduce((s, t) => s + t.successful, 0).toLocaleString()} RWF
+                  </td>
+                  <td className="py-3 px-4 text-right font-black text-red-500">
+                    {Object.values(txBreakdown).reduce((s, t) => s + t.failed, 0).toLocaleString()} RWF
+                  </td>
+                  <td className="py-3 px-4 text-right font-black text-amber-500">
+                    {Object.values(txBreakdown).reduce((s, t) => s + t.pending, 0).toLocaleString()} RWF
+                  </td>
+                  <td className="py-3 pl-4 text-right font-black text-foreground">
+                    {Object.values(txBreakdown).reduce((s, t) => s + t.successful + t.failed + t.pending, 0).toLocaleString()} RWF
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </div>
 

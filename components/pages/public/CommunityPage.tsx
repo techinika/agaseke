@@ -19,8 +19,6 @@ import { Creator } from "@/types/creator";
 import { useAuth } from "@/auth/AuthContext";
 import { SupportModal } from "@/components/parts/public/SupportModal";
 import { CommunityTab } from "@/components/parts/public/CommunityTab";
-import Navbar from "@/components/parts/Navigation";
-import Footer from "@/components/parts/Footer";
 import Loading from "@/app/loading";
 
 interface CommunityPageProps {
@@ -157,7 +155,7 @@ export default function CommunityPage({ username }: CommunityPageProps) {
 
   if (!creatorData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <p className="text-muted-foreground">Creator not found</p>
           <Link
@@ -174,8 +172,7 @@ export default function CommunityPage({ username }: CommunityPageProps) {
   const creatorName = creatorData.name || profileData?.displayName || "Creator";
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+    <>
       <div className="max-w-4xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <Link
@@ -213,8 +210,6 @@ export default function CommunityPage({ username }: CommunityPageProps) {
         </main>
       </div>
 
-      <Footer />
-
       <SupportModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -225,6 +220,6 @@ export default function CommunityPage({ username }: CommunityPageProps) {
         referralUid={referralId}
         referralId={profileData?.referralCreator}
       />
-    </div>
+    </>
   );
 }

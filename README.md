@@ -681,10 +681,27 @@ For issues or feature requests, please open an issue on GitHub.
 - **User Pagination**: Replaced `onSnapshot` with `getDocs` + `startAfter` cursor-based pagination (25 per page)
 - **Phone Number Display**: Added `phoneNumber` field to `UserProfile` interface and displayed in side panel
 - **Log Detail Panel**: Added slide-in side panel to `AdminLogsPage` showing full log entry details on click
+- **Transaction Breakdown**: Added time-filtered (Day/Week/Month/Annual) transaction breakdown table by type (Support, Store, Booking, Gathering) and status (Successful/Failed/Pending) with totals row to admin dashboard
 
 ### Bug Fixes (May 2025)
 - **Store Checkout**: Fixed creator ID mismatch - now uses `creatorHandle` (username) for `creatorId` field and `creatorUid` for `creatorUid` field when processing store orders
 - **Payment Transaction**: Fixed transaction lookup by ensuring proper reference matching in IPN handler
+
+### Content Formatting, Gift Once & Media Enhancements (June 2026)
+- **Whitespace preservation**: Added `whitespace-pre-wrap` to comment text, reply text, and gathering description elements across supporter and public pages so newlines and spaces render correctly in non-HTML content
+- **Gift Once button**: Added "Gift Once" quick support button to gathering detail page and community post detail page, matching the pattern on other public subpages
+- **Post detail page alignment**: Public `PostDetailPage` now shows creator avatar, name, and handle at the top; image uses `object-contain`; video uses `aspect-video` with `controlsList="nodownload"`; document viewer added with page navigation — matching `/supporter` layout
+- **Media enhancements on community pages & post detail**: YouTube links in any post type now show embedded preview (not just video-type); images are click-to-zoom with full-screen lightbox; videos are playable inline with `controlsList="nodownload"`; documents open in Google Docs viewer via "Read Document" button with modal overlay and per-post page pagination
+- **Supporter View nav link**: Added explicit `/supporter` link to navbar dropdown; dropdown closes on outside click via mousedown listener
+- **Support Modal mobile optimization**: `SupportModal` redesigned with responsive spacing, font sizes, and padding; slides up as bottom sheet on mobile (`items-end`), scrolls when content overflows (`max-h-[90vh] overflow-y-auto`), with `rounded-t-2xl` corners; slide-up entrance (`slide-in-from-bottom-full`) and slide-down exit (`slide-out-to-bottom-full`) animations added, with `zoom-in/out-95` on desktop
+- Files updated: `SupporterSpace.tsx`, `SupporterPostDetail.tsx`, `PostDetailPage.tsx`, `ContentPage.tsx`, `CommunityTab.tsx`, `GatheringDetailPage.tsx`, `Navigation.tsx`, `SupportModal.tsx`
+
+### Verification & Payouts Fix (June 2026)
+- **Payouts Destination Display**: Changed from showing `payoutNumber` to showing the payout type (`Bank Account`, `Mobile Money`, `Airtel Money`) from the creator's `verificationRequests` submission, including account name and number. Shows "Not Verified" when not verified.
+- **Admin Verification Approval**: Admin approve/reject now updates the corresponding `verificationRequests` document's `status` to `"approved"` or `"rejected"` alongside the existing `creators` doc update.
+- **Supporter Following List Fixed**: The supporter sidebar "Following" list was empty because `supportedCreators` stores handles while content uses UIDs. Now properly maps handles → UIDs when building the following list and content filters.
+- **Gathering Email Routes**: All three gathering email routes (`checkin`, `declined`, `undo`) now use the shared `transporter` from `@/lib/emailTransporter` instead of defining their own local transporter.
+- **Gathering Attendance Lookup**: Changed attendance queries from `where("supporterId", ...)` to `where("gatheringId", ...)` with local filtering, fixing page refresh issues where paid tickets weren't detected after reload.
 
 ### Data Model Unification & Views Fix (May 2026)
 - **Views Not Incrementing Fix**: Supporter feed (`/supporter`) IntersectionObserver filtered posts by `f.type === "content"`, excluding types like "image", "video", "document". Changed to `f.type !== "gathering"` — all content types now count views.
@@ -711,3 +728,20 @@ For issues or feature requests, please open an issue on GitHub.
 - **In-App Notifications**: Creator receives `booking_request` notification; booker (if logged in) receives notification and confirmation email on booking request
 - **Payment Notifications**: Both IPN (card) and MoMo webhooks send `booking_paid` notification to buyer, confirmation email to booker, and `new_transaction` notification to all admin profiles
 - **Robust Creator Lookup**: Profiles collection fallback resolves handle → uid → creator document, fixing null document ID mismatches
+
+### Public Profile Architecture Refactor (June 2026)
+- **Shared Layout**: Created `app/(public_profile)/layout.tsx` providing Navbar, Footer, and wrapper for all 11 public profile routes — eliminated per-page duplication
+- **Subpage Refactor**: Removed individual Navbar/Footer/wrapper from `PublicProfile.tsx` and 10 subpage components (Community, Store, Messaging, Giveaways, Gatherings, Booking, PostDetail, ProductDetail, GiveawayDetail, GatheringDetail)
+- **SEO Consolidation**: Deleted `SeoUpdater.tsx` (client-side DOM mutations that competed with server metadata); consolidated all JSON-LD schema into `CreatorSchma.tsx` (merged interactionStatistic, image, sameAs from the removed inline script)
+- **Loading & Error Boundaries**: Added `loading.tsx` (Suspense fallback) and `error.tsx` (Error boundary) to the route group
+- **ISR Configuration**: Added `export const revalidate = 300` (5 min) to all 11 route pages; 3600 (1h) for messaging (`noindex`)
+- **View Count Dedup**: Session-storage + `useRef` guard prevents incrementing Firestore view counter on repeated navigations within the same session
+
+### Firestore Security Rules (June 2026)
+- **Comprehensive Rules**: Generated complete Firestore security rules covering all 25 collections with helper functions (`isAuth`, `isAdmin`, `isCreator`, `isOwner`, `isSupporterOf`), role-based access (admin/creator/user), and server-side-only collections
+- **Documentation**: Full rules with architecture notes, limitations (auto-generated doc IDs in `supportedCreators`), and migration guidance written to `rules.txt`
+- **Syntax Fixes**: Fixed `rules_version` quoting and path variable concatenation in rule functions
+
+### App Check Integration (June 2026)
+- **Client-Side App Check**: Added `initializeAppCheck` with `ReCaptchaV3Provider` to `db/firebase.ts`, gated behind `typeof window !== "undefined"` for Next.js SSR safety
+- **Configuration**: Added `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` to `.env.example`; requires registering a reCAPTCHA v3 site key in Firebase Console under App Check
