@@ -23,10 +23,7 @@ import { usePathname } from "next/navigation";
 import { db } from "@/db/firebase";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import NotificationDrawer from "@/components/ui/NotificationDrawer";
-import {
-  NavLink,
-  DropdownLink,
-} from "./navigation/index";
+import { NavLink, DropdownLink } from "./navigation/index";
 import ThemeToggle from "./ThemeToggle";
 
 const Navbar = () => {
@@ -40,7 +37,10 @@ const Navbar = () => {
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
         setIsDropdownOpen(false);
       }
     };
@@ -56,7 +56,7 @@ const Navbar = () => {
     const q = query(
       collection(db, "notifications"),
       where("userId", "==", auth.user.uid),
-      where("read", "==", false)
+      where("read", "==", false),
     );
 
     const unsub = onSnapshot(q, (snapshot) => {
@@ -73,88 +73,95 @@ const Navbar = () => {
 
   return (
     <>
-     <nav className="sticky top-0 z-50 w-full bg-card/80 dark:bg-background/80 backdrop-blur-md border-b border-border">
-      <div className="flex items-center justify-between px-6 py-3.5 mx-auto container">
-        {/* LEFT: Logo & Brand */}
-        <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="text-xl font-bold tracking-tighter text-foreground dark:text-white uppercase">
-              agaseke<span className="text-orange-600">.me</span>
+      <nav className="sticky top-0 z-50 w-full bg-card/80 dark:bg-background/80 backdrop-blur-md border-b border-border">
+        <div className="flex items-center justify-between px-6 py-3.5 mx-auto container">
+          {/* LEFT: Logo & Brand */}
+          <div className="flex items-center gap-8">
+            <Link href="/" className="flex items-center gap-2 group">
+              <div className="text-xl font-bold tracking-tighter text-foreground dark:text-white uppercase">
+                agaseke<span className="text-orange-600">.me</span>
+              </div>
+            </Link>
+
+            {/* MIDDLE: Primary Links (Hidden on small mobile) */}
+            <div className="hidden md:flex items-center gap-1">
+              <NavLink
+                href="/explore"
+                icon={<Search size={14} />}
+                label="Explore"
+                active={isActive("/explore")}
+              />
+              <NavLink
+                href="/help-center"
+                icon={<HelpCircle size={14} />}
+                label="Help"
+                active={isActive("/help-center")}
+              />
+              <NavLink
+                href="https://medium.com/@agasekeforcreators"
+                icon={<BookOpen size={14} />}
+                label="Blog"
+                isExternal
+              />
             </div>
-          </Link>
-
-          {/* MIDDLE: Primary Links (Hidden on small mobile) */}
-          <div className="hidden md:flex items-center gap-1">
-            <NavLink
-              href="/explore"
-              icon={<Search size={14} />}
-              label="Explore"
-              active={isActive("/explore")}
-            />
-            <NavLink
-              href="/help-center"
-              icon={<HelpCircle size={14} />}
-              label="Help"
-              active={isActive("/help-center")}
-            />
-            <NavLink
-              href="https://medium.com/@agasekeforcreators"
-              icon={<BookOpen size={14} />}
-              label="Blog"
-              isExternal
-            />
           </div>
-        </div>
 
-        {/* RIGHT: User Actions */}
-         <div className="flex items-center gap-3">
-           <ThemeToggle />
-          {auth?.user && auth?.isLoggedIn ? (
-             <div className="flex items-center gap-3">
+          {/* RIGHT: User Actions */}
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            {auth?.user && auth?.isLoggedIn ? (
+              <div className="flex items-center gap-3">
                 <button
                   onClick={() => setShowNotifications(true)}
                   className="relative p-2 hover:bg-muted rounded-lg transition-colors"
                 >
                   <Bell size={20} className="text-muted-foreground" />
-                 {unreadCount > 0 && (
-                   <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] bg-orange-500 text-white text-[10px] font-bold rounded-full px-1">
-                     {unreadCount > 99 ? "99+" : unreadCount}
-                   </span>
-                 )}
-               </button>
-
-               <div className="relative">
-                 <button
-                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className="flex items-center gap-2 p-1 pr-3 rounded-lg border border-border hover:border-orange-200 dark:hover:border-orange-800 hover:bg-card transition-all group relative z-50 shadow-sm"
-                 >
-                  <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground overflow-hidden font-bold text-xs ring-2 ring-transparent group-hover:ring-orange-100 dark:group-hover:ring-orange-900 transition-all">
-                    {auth?.profile?.photoURL || auth?.user?.photoURL ? (
-                      <img
-                        src={auth?.profile?.photoURL || auth?.user?.photoURL || undefined as (string | undefined)}
-                        alt="Avatar"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <User size={16} className="text-muted-foreground" />
-                    )}
-                  </div>
-                  <div className="hidden sm:flex flex-col items-start leading-tight">
-                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">
-                      {auth?.profile?.type || "User"}
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] bg-orange-500 text-white text-[10px] font-bold rounded-full px-1">
+                      {unreadCount > 99 ? "99+" : unreadCount}
                     </span>
-                    <span className="text-xs font-bold text-foreground">
-                      {auth?.profile?.displayName?.split(" ")[0] || "Account"}
-                    </span>
-                  </div>
-                  <ChevronDown
-                    size={14}
-                    className={`text-muted-foreground transition-transform duration-300 ${isDropdownOpen ? "rotate-180" : ""}`}
-                  />
+                  )}
                 </button>
 
-                {isDropdownOpen && (
-                  <div ref={dropdownRef} className="absolute right-0 mt-3 w-64 bg-card rounded-lg shadow-2xl border border-border p-2 animate-in fade-in slide-in-from-top-2 z-50">
+                <div className="relative">
+                  <button
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="flex items-center gap-2 p-1 pr-3 rounded-lg border border-border hover:border-orange-200 dark:hover:border-orange-800 hover:bg-card transition-all group relative z-50 shadow-sm"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground overflow-hidden font-bold text-xs ring-2 ring-transparent group-hover:ring-orange-100 dark:group-hover:ring-orange-900 transition-all">
+                      {auth?.profile?.photoURL || auth?.user?.photoURL ? (
+                        <img
+                          src={
+                            auth?.profile?.photoURL ||
+                            auth?.user?.photoURL ||
+                            (undefined as string | undefined)
+                          }
+                          alt="Avatar"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <User size={16} className="text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="hidden sm:flex flex-col items-start leading-tight">
+                      <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">
+                        {auth?.profile?.type || "User"}
+                      </span>
+                      <span className="text-xs font-bold text-foreground">
+                        {auth?.profile?.displayName?.split(" ")[0] || "Account"}
+                      </span>
+                    </div>
+                    <ChevronDown
+                      size={14}
+                      className={`text-muted-foreground transition-transform duration-300 ${isDropdownOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+
+                  {isDropdownOpen && (
+                    <div
+                      ref={dropdownRef}
+                      className="absolute right-0 mt-3 w-64 bg-card rounded-lg shadow-2xl border border-border p-2 animate-in fade-in slide-in-from-top-2 z-50"
+                    >
                       <div className="px-4 py-3 mb-2 bg-muted/50 rounded-lg">
                         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mb-1">
                           Personal Space
@@ -190,12 +197,12 @@ const Navbar = () => {
                           />
                         )}
 
-<DropdownLink
-                            href={auth?.isCreator ? "/creator" : "/supporter"}
-                            icon={<LayoutDashboard size={18} />}
-                            label="My Workspace"
-                            onClick={() => setIsDropdownOpen(false)}
-                          />
+                        <DropdownLink
+                          href={auth?.isCreator ? "/creator" : "/supporter"}
+                          icon={<LayoutDashboard size={18} />}
+                          label="My Workspace"
+                          onClick={() => setIsDropdownOpen(false)}
+                        />
                         <DropdownLink
                           href="/supporter"
                           icon={<LayoutDashboard size={18} />}
@@ -231,36 +238,39 @@ const Navbar = () => {
                         <LogOut size={18} /> Log out
                       </button>
                     </div>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              {/* Explore icon visible on mobile for guests */}
-              <Link href="/explore" className="md:hidden p-2 text-muted-foreground">
-                <Search size={20} />
-              </Link>
-              <Link
-                href="https://calendar.app.google/LFrSfHEno95F4xkD7"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group relative flex items-center gap-2 px-3 md:px-6 py-2.5 bg-orange-600 text-white rounded-lg text-sm font-bold hover:bg-orange-700 transition-all active:scale-95 shadow-lg shadow-orange-200"
-              >
-                <Calendar className="h-4 w-4" />
-                <span className="hidden md:inline">Book Demo</span>
-              </Link>
-              <Link
-                href={`/login?redirect=${encodeURIComponent(pathname)}`}
-                className="group relative flex items-center gap-2 px-3 md:px-6 py-2.5 bg-foreground text-background rounded-lg text-sm font-bold hover:bg-orange-600 transition-all active:scale-95 shadow-lg shadow-border-strong"
-              >
-                <LogIn className="h-4 w-4" />
-                <span className="hidden md:inline">Sign In</span>
-              </Link>
-            </div>
-          )}
-         </div>
-       </div>
-     </nav>
+            ) : (
+              <div className="flex items-center gap-2">
+                {/* Explore icon visible on mobile for guests */}
+                <Link
+                  href="/explore"
+                  className="md:hidden p-2 text-muted-foreground"
+                >
+                  <Search size={20} />
+                </Link>
+                <Link
+                  href="https://agaseke.me/agaseke/booking"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group relative flex items-center gap-2 px-3 md:px-6 py-2.5 bg-orange-600 text-white rounded-lg text-sm font-bold hover:bg-orange-700 transition-all active:scale-95 shadow-lg shadow-orange-200"
+                >
+                  <Calendar className="h-4 w-4" />
+                  <span className="hidden md:inline">Book Demo</span>
+                </Link>
+                <Link
+                  href={`/login?redirect=${encodeURIComponent(pathname)}`}
+                  className="group relative flex items-center gap-2 px-3 md:px-6 py-2.5 bg-foreground text-background rounded-lg text-sm font-bold hover:bg-orange-600 transition-all active:scale-95 shadow-lg shadow-border-strong"
+                >
+                  <LogIn className="h-4 w-4" />
+                  <span className="hidden md:inline">Sign In</span>
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      </nav>
 
       {auth?.user?.uid && (
         <NotificationDrawer
