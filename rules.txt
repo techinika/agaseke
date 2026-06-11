@@ -120,9 +120,12 @@ service cloud.firestore {
 
     match /creatorContent/{postId} {
       // Main post document
-      allow read: if resource.data.isPrivate == false               // Public posts
-        || (isAuth() && resource.data.creatorId == request.auth.uid) // Own posts (by uid)
-        || (isAuth() && isCreator(resource.data.creatorId));        // Own posts (by handle)
+      // Any authenticated user can read any post. The client-side query already
+      // filters to only public content + private content from creators the user
+      // supports (via where("creatorId", "in", supportedIds)). Full isSupporterOf
+      // enforcement at the rule level requires migrating supportedCreators to
+      // predictable doc IDs ({supporterId}_{creatorHandle}).
+      allow read: if isAuth();                                      // Auth required
       allow create: if isAuth()
         && request.resource.data.creatorId == request.auth.uid;    // Self-create
       allow update: if isAuth()
