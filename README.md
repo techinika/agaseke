@@ -792,3 +792,6 @@ For issues or feature requests, please open an issue on GitHub.
 - **Added `supporterUids` map to creator docs**: Each creator doc now has a `supporterUids` map (`{ uid: true }`) that tracks unique supporter UIDs. Set server-side in `handleSupportPayment.ts` during support transactions.
 - **Updated `isSupporterOf` rule**: The Firestore rule function now checks TWO sources — the new predictable doc ID pattern `{uid}_{handle}` in `supportedCreators` AND the `supporterUids` map on the creator doc. This ensures backward compatibility with old auto-generated support records after running the backfill migration.
 - **Added migration script**: `scripts/backfillSupporterUids.js` — run once to populate `supporterUids` on all existing creator docs from current `supportedCreators` records.
+
+### Split CreatorContent Read Rule (June 2026)
+- **Fixed permission error on public content queries**: The combined `creatorContent` read rule (`isCreator || !isPrivate || isSupporterOf`) caused Firestore to reject the public content query because `isCreator` and `isSupporterOf` use `get()` calls that Firestore can't statically verify against query filters. Split into two rules: `allow read: if isAuth() && !resource.data.isPrivate` (no `get()` calls, statically verifiable) and a separate rule for private content using `isCreator`/`isSupporterOf`.

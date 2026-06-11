@@ -125,21 +125,17 @@ service cloud.firestore {
     //          isPrivate, createdAt, views, commentCount
     //  Subcollections: comments, likes
     //
-    //  ⚠️  Private content (isPrivate == true):
-    //    - Only the creator can read directly via these rules.
-    //    - Supporter reads must be routed through the server (API endpoint)
-    //      until supportedCreators uses predictable doc IDs.
     // ──────────────────────────────────────────────────────────────────────────
 
     match /creatorContent/{postId} {
       // Main post document
       // creatorId stores the creator's handle (username), not Firebase UID.
-      // Authorization uses isCreator(handle) to look up the handle→uid mapping.
-      // Private content is restricted to the creator and their supporters.
-      // Public content is readable by any authenticated user.
-      allow read: if isAuth() && (
+      // Two separate read rules (Firestore OR's them together):
+      //   1) Public content — no get() calls, allows static query verification
+      //   2) Private content — uses isCreator/isSupporterOf with get() calls
+      allow read: if isAuth() && !resource.data.isPrivate;           // Public content
+      allow read: if isAuth() && resource.data.isPrivate && (        // Private content
         isCreator(resource.data.creatorId)                           // Creator reads own
-        || !resource.data.isPrivate                                  // Public content
         || isSupporterOf(resource.data.creatorId)                    // Supporter reads private
       );
       allow create: if isAuth()
