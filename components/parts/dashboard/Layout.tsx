@@ -3,32 +3,24 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import {
-   BarChart3,
-   Plus,
-   Calendar,
-   MessageSquare,
-   Wallet,
-   Copy,
-   Check,
-   Share2,
-   Settings,
-   LogOut,
-   User,
-   UserCircle,
-   ChevronDown,
-   CheckCircle,
-   Menu,
-   X,
-   Briefcase,
-   Store,
-   Gift,
-   Building2,
-   Users,
-   CalendarCheck,
-   Bell,
-   ShoppingBag,
-   Megaphone,
- } from "lucide-react";
+  BarChart3,
+  Plus,
+  Copy,
+  Check,
+  Share2,
+  Settings,
+  LogOut,
+  User,
+  UserCircle,
+  ChevronDown,
+  Menu,
+  X,
+  Briefcase,
+  Store,
+  Building2,
+  Users,
+  Bell,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/auth/AuthContext";
@@ -39,7 +31,7 @@ import { auth, db } from "@/db/firebase";
 import { doc, onSnapshot, collection, query, where } from "firebase/firestore";
 import { Creator } from "@/types/creator";
 import NotificationDrawer from "@/components/ui/NotificationDrawer";
-import { NavItem } from "./layout-parts/index";
+import { NavItem, ExpandableNavItem } from "./layout-parts/index";
 import ThemeToggle from "../ThemeToggle";
 
 export default function DashboardLayout({
@@ -161,89 +153,55 @@ export default function DashboardLayout({
               label="Overview"
               active={pathname === "/creator"}
             />
-            <NavItem
-              href="/creator/content"
+            <ExpandableNavItem
               icon={<Plus size={18} />}
               label="Content"
-              active={pathname === "/creator/content"}
+              activeSub={pathname}
+              subItems={[
+                { href: "/creator/content", label: "Posts" },
+                { href: "/creator/notices", label: "Notices" },
+              ]}
             />
-             {creatorSettings?.storeEnabled && (
-               <NavItem
-                 href="/creator/store"
-                 icon={<Store size={18} />}
-                 label="Store"
-                 active={pathname === "/creator/store"}
-               />
-             )}
-             {creatorSettings?.storeEnabled && (
-               <NavItem
-                 href="/creator/sales"
-                 icon={<ShoppingBag size={18} />}
-                 label="Sales"
-                 active={pathname === "/creator/sales"}
-               />
-             )}
-             {creatorSettings?.gatheringsEnabled && (
-              <NavItem
-                href="/creator/gatherings"
-                icon={<Calendar size={18} />}
-                label="Gatherings"
-                active={pathname === "/creator/gatherings"}
-              />
-            )}
-            {creatorSettings?.bookingEnabled && (
-              <NavItem
-                href="/creator/bookings"
-                icon={<Calendar size={18} />}
-                label="Bookings"
-                active={pathname === "/creator/bookings"}
-              />
-            )}
-            {creatorSettings?.giveawayEnabled && (
-              <NavItem
-                href="/creator/giveaways"
-                icon={<Gift size={18} />}
-                label="Giveaways"
-                active={pathname === "/creator/giveaways"}
-              />
-            )}
-            {creatorSettings?.messagingEnabled !== false && (
-              <NavItem
-                href="/creator/messages"
-                icon={<MessageSquare size={18} />}
-                label="Messages"
-                active={pathname === "/creator/messages"}
-              />
-            )}
-            <NavItem
-              href="/creator/payouts"
-              icon={<Wallet size={18} />}
-              label="Payouts"
-              active={pathname === "/creator/payouts"}
+            <ExpandableNavItem
+              icon={<Store size={18} />}
+              label="Commerce"
+              activeSub={pathname}
+              subItems={[
+                ...(creatorSettings?.storeEnabled
+                  ? [{ href: "/creator/store", label: "Store" }]
+                  : []),
+                ...(creatorSettings?.storeEnabled
+                  ? [{ href: "/creator/sales", label: "Sales" }]
+                  : []),
+                { href: "/creator/payouts", label: "Payouts" },
+                { href: "/creator/verify", label: "Verify" },
+              ]}
             />
-            <NavItem
-              href="/creator/verify"
-              icon={<CheckCircle size={18} />}
-              label="Verify"
-              active={pathname === "/creator/verify"}
+            <ExpandableNavItem
+              icon={<Users size={18} />}
+              label="Community"
+              activeSub={pathname}
+              subItems={[
+                ...(creatorSettings?.gatheringsEnabled
+                  ? [{ href: "/creator/gatherings", label: "Events" }]
+                  : []),
+                ...(creatorSettings?.bookingEnabled
+                  ? [{ href: "/creator/bookings", label: "Bookings" }]
+                  : []),
+                ...(creatorSettings?.giveawayEnabled
+                  ? [{ href: "/creator/giveaways", label: "Giveaways" }]
+                  : []),
+                ...(creatorSettings?.messagingEnabled !== false
+                  ? [{ href: "/creator/messages", label: "Messages" }]
+                  : []),
+                { href: "/creator/supporters", label: "Supporters" },
+              ]}
             />
             <NavItem
               href="/creator/partners"
               icon={<Building2 size={18} />}
               label="Partners"
               active={pathname === "/creator/partners"}
-            />
-            <NavItem
-              href="/creator/supporters"
-              icon={<Users size={18} />}
-              label="Supporters"
-              active={pathname === "/creator/supporters"}
-            />
-            <NavItem
-              href="/creator/notices"
-              icon={<Megaphone size={18} />}
-              label="Notices"
-              active={pathname === "/creator/notices"}
             />
             <NavItem
               href="/creator/settings"
