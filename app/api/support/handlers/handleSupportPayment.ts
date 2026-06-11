@@ -33,7 +33,11 @@ export async function handleSupportPayment(
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  batch.set(adminDb.collection("supportedCreators").doc(), {
+  const supportedCreatorRef =
+    txData.supporterId && txData.supporterId !== "anonymous"
+      ? adminDb.collection("supportedCreators").doc(`${txData.supporterId}_${txData.creatorId}`)
+      : adminDb.collection("supportedCreators").doc();
+  batch.set(supportedCreatorRef, {
     creatorId: txData.creatorId,
     amount: totalAmount,
     supporterId: txData.supporterId || null,

@@ -417,9 +417,9 @@ export default function SupporterSpace() {
         ),
       );
       fetchComments(postId);
-      updateDoc(doc(db, "creatorContent", postId), {
+      await updateDoc(doc(db, "creatorContent", postId), {
         commentCount: increment(1),
-      }).catch(() => {});
+      });
       toast.success("Comment added");
     } catch (e) {
       toast.error("Failed to add comment");
@@ -439,9 +439,9 @@ export default function SupporterSpace() {
         createdAt: serverTimestamp(),
       };
       await addDoc(collection(db, "creatorContent", postId, "comments"), newReply);
-      updateDoc(doc(db, "creatorContent", postId), {
+      await updateDoc(doc(db, "creatorContent", postId), {
         commentCount: increment(1),
-      }).catch(() => {});
+      });
       setReplyText((prev) => ({ ...prev, [parentId]: "" }));
       setReplyingTo((prev) => ({ ...prev, [parentId]: null }));
       setComments((prev) => {
@@ -500,9 +500,9 @@ export default function SupporterSpace() {
         createdAt: serverTimestamp(),
       });
       setLikedDocIds((prev) => ({ ...prev, [item.id]: docRef.id }));
-      updateDoc(doc(db, "creatorContent", item.id), {
+      await updateDoc(doc(db, "creatorContent", item.id), {
         "stats.likes": increment(1),
-      }).catch(() => {});
+      });
     } catch (e) {
       console.error("Like error", e);
     }

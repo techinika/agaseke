@@ -771,3 +771,9 @@ For issues or feature requests, please open an issue on GitHub.
 
 ### Condensed Creator Sidebar (June 2026)
 - **Grouped sidebar menu**: Condensed the creator dashboard sidebar from 14 flat items into 6 compact groups with expandable sub-menus. Groups: Overview (standalone), Content (Posts, Notices), Commerce (Store, Sales, Payouts), Community (Events, Bookings, Giveaways, Messages, Supporters), Partners (standalone), Account (Verify, Settings). Sub-items that are disabled in creator settings are conditionally hidden.
+
+### Predictable SupportedCreators Doc IDs (June 2026)
+- **Migrated to predictable doc IDs**: Changed `handleSupportPayment.ts` to use `{supporterId}_{creatorHandle}` as document IDs in `supportedCreators` instead of auto-generated IDs. Anonymous supporters still use auto-generated IDs (not applicable for `isSupporterOf` checks).
+- **Enforced supporter-only private content reads**: The `creatorContent` Firestore rule now restricts private content reads to the creator and their supporters via `isSupporterOf(creatorId)`. Public content remains readable by any authenticated user.
+- **Allowed non-creator counter updates**: Non-creator users can now increment `views`, `commentCount`, and `stats.likes` on `creatorContent` documents (via `affectedKeys().hasOnly()` rule). This ensures like/comment/view counts update correctly when supporters interact with content.
+- **Reinstated `await` on `updateDoc`**: Removed fire-and-forget `.catch(() => {})` patterns from `SupporterSpace.tsx` and `SupporterPostDetail.tsx` for comment and like counter updates. Now properly awaited with error propagation. View count tracking remains fire-and-forget (background noise in observer callbacks).

@@ -138,7 +138,7 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
     try {
       if (liked && likeDocId) {
         await deleteDoc(doc(db, "creatorContent", postId, "likes", likeDocId));
-        updateDoc(doc(db, "creatorContent", postId), { "stats.likes": increment(-1) }).catch(() => {});
+        await updateDoc(doc(db, "creatorContent", postId), { "stats.likes": increment(-1) });
         setLiked(false);
         setLikeCount((c) => Math.max(0, c - 1));
         setLikeDocId(null);
@@ -148,7 +148,7 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
           userId: currentUser.uid,
           createdAt: serverTimestamp(),
         });
-        updateDoc(doc(db, "creatorContent", postId), { "stats.likes": increment(1) }).catch(() => {});
+        await updateDoc(doc(db, "creatorContent", postId), { "stats.likes": increment(1) });
         setLiked(true);
         setLikeDocId(ref.id);
         setLikeCount((c) => c + 1);
@@ -167,9 +167,9 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
         userPhoto: authProfile?.photoURL || null,
         createdAt: serverTimestamp(),
       });
-      updateDoc(doc(db, "creatorContent", postId), {
+      await updateDoc(doc(db, "creatorContent", postId), {
         commentCount: increment(1),
-      }).catch(() => {});
+      });
       setCommentText("");
       toast.success("Comment added");
     } catch { toast.error("Failed to add comment"); }
@@ -187,9 +187,9 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
         userPhoto: authProfile?.photoURL || null,
         createdAt: serverTimestamp(),
       });
-      updateDoc(doc(db, "creatorContent", postId), {
+      await updateDoc(doc(db, "creatorContent", postId), {
         commentCount: increment(1),
-      }).catch(() => {});
+      });
       setReplyText((prev) => ({ ...prev, [parentId]: "" }));
       setReplyingTo(null);
       toast.success("Reply added");

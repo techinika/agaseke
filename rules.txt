@@ -23,12 +23,11 @@
 //    - Server-side (Admin SDK) bypasses all rules — used for payments & sensitive ops
 //    - Admin SDK uses service account credentials, NOT these client-facing rules
 //
-//  ⚠️  IMPORTANT: Supporter-gated content (isPrivate on creatorContent)
-//     uses a composite query on supportedCreators which cannot be
-//     validated via security rules alone (auto-generated doc IDs).
-//     For full protection of private content, consider migrating
-//     supportedCreators to use {supporterId}_{creatorHandle} as doc IDs
-//     OR route supporter reads through a Cloud Function.
+//  ✅  Supporter-gated content (isPrivate on creatorContent):
+//     supportedCreators now uses predictable {supporterId}_{creatorHandle}
+//     doc IDs, enabling isSupporterOf() rule enforcement for private
+//     content reads. Non-creator counter updates (views, commentCount,
+//     stats.likes) are also permitted for supporter interactions.
 //
 //  ═══════════════════════════════════════════════════════════════════════════════
 
@@ -56,8 +55,7 @@ service cloud.firestore {
     }
 
     // Checks if the authenticated user supports a given creator (by handle)
-    // NOTE: relies on predictable doc ID pattern {supporterId}_{creatorHandle}
-    // If using auto-generated IDs, this function won't work — see warning above.
+    // Uses predictable doc ID pattern: {uid}_{handle} (set server-side in handleSupportPayment)
     function isSupporterOf(handle) {
       return isAuth()
         && exists(/databases/$(database)/documents/supportedCreators/$(request.auth.uid + "_" + handle));
@@ -133,16 +131,22 @@ service cloud.firestore {
       // Main post document
       // creatorId stores the creator's handle (username), not Firebase UID.
       // Authorization uses isCreator(handle) to look up the handle→uid mapping.
-      // Any authenticated user can read any post. The client-side query already
-      // filters to only public content + private content from creators the user
-      // supports (via where("creatorId", "in", supportedIds)). Full isSupporterOf
-      // enforcement at the rule level requires migrating supportedCreators to
-      // predictable doc IDs ({supporterId}_{creatorHandle}).
-      allow read: if isAuth();                                      // Auth required
+      // Private content is restricted to the creator and their supporters.
+      // Public content is readable by any authenticated user.
+      allow read: if isAuth() && (
+        isCreator(resource.data.creatorId)                           // Creator reads own
+        || !resource.data.isPrivate                                  // Public content
+        || isSupporterOf(resource.data.creatorId)                    // Supporter reads private
+      );
       allow create: if isAuth()
         && isCreator(request.resource.data.creatorId);             // Self-create (handle)
-      allow update: if isAuth()
-        && isCreator(resource.data.creatorId);                     // Self-update (handle)
+      allow update: if isAuth() && (
+        isCreator(resource.data.creatorId)                          // Full update by creator
+        || (                                                        // Non-creator: counter fields
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(["views", "commentCount", "stats"])
+        )
+      );
       allow delete: if isAuth()
         && isCreator(resource.data.creatorId);                     // Self-delete (handle)
 
@@ -222,12 +226,13 @@ service cloud.firestore {
     // ──────────────────────────────────────────────────────────────────────────
     //  6. SUPPORTED CREATORS (Support relationships)
     //  ──────────────────────────────────────────────────────────────────────────
-    //  Doc ID: auto-generated (RECOMMENDED: {supporterId}_{creatorHandle})
+    //  Doc ID: {supporterId}_{creatorHandle} for non-anonymous supporters;
+    //          auto-generated for anonymous supporters.
     //  Fields: creatorId (handle), supporterId (uid), amount, txRef, createdAt
     //
-    //  ⚠️  CURRENT LIMITATION: With auto-generated doc IDs, we cannot
-    //     validate "is supporter of creator X" in rule functions.
-    //     Consider migrating to predictable doc IDs for full protection.
+    //  ✅ Predictable doc IDs enable isSupporterOf() rule enforcement.
+    //     Set server-side in app/api/support/handlers/handleSupportPayment.ts.
+    //     Anonymous supports use auto-generated IDs (isSupporterOf not applicable).
     // ──────────────────────────────────────────────────────────────────────────
 
     match /supportedCreators/{docId} {
