@@ -758,3 +758,9 @@ For issues or feature requests, please open an issue on GitHub.
 
 ### User Feedback Collection Rules (June 2026)
 - **Added `userFeedback` collection rule**: Admin-only read (`allow read: if isAdmin()`), any authenticated user can submit (`allow create: if isAuth()`) via the FeedbackFAB component. Fixes permission error on `/admin/feedback`.
+
+### Supporter Feed Gatherings Separation (June 2026)
+- **Separated gatherings from content feed**: Gatherings no longer mixed in with content posts on `/supporter`. Rendered in their own "Upcoming Events" section above the feed with distinct orange-accented cards showing date badge, time, location, attendee count, and ticket price. Clicking navigates to `/${creatorHandle}/gatherings/${gatheringId}`.
+
+### Mobile Bottom Tab Bar (June 2026)
+- **Sticky bottom tabs on mobile**: Public profile navigation tabs (`TabManager`) now stick to the bottom of the viewport on mobile (`fixed bottom-0`) with a top shadow and backdrop blur. Desktop behavior unchanged (sticky at top with bottom border). Active tab icon scales up on mobile for visual feedback.
