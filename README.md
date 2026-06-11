@@ -745,3 +745,10 @@ For issues or feature requests, please open an issue on GitHub.
 ### App Check Integration (June 2026)
 - **Client-Side App Check**: Added `initializeAppCheck` with `ReCaptchaV3Provider` to `db/firebase.ts`, gated behind `typeof window !== "undefined"` for Next.js SSR safety
 - **Configuration**: Added `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` to `.env.example`; requires registering a reCAPTCHA v3 site key in Firebase Console under App Check
+
+### Admin Dashboard Stats Fix (June 2026)
+- **Admin Read Overrides**: Fixed 4 collections in Firestore security rules (`rules.txt`) that blocked the admin dashboard (`/admin`) from reading stats, causing all values to show 0 with "Missing or insufficient permissions":
+  - `platformIncome`: Changed from `allow read, write: if false` to `allow read: if isAdmin(request.auth.uid)`
+  - `supportedCreators`: Added `isAdmin(request.auth.uid)` override so admin can read all support relationships
+  - `storeProducts`: Added `isAdmin(request.auth.uid)` override so admin sees both active and inactive products
+  - `giveaways`: Added `isAdmin(request.auth.uid)` override so admin sees draft giveaways too

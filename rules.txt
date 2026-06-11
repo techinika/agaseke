@@ -1,7 +1,16 @@
-// ═══════════════════════════════════════════════════════════════════════════════
+//  ═══════════════════════════════════════════════════════════════════════════════
 //  Agaseke Firestore Security Rules
 //  ═══════════════════════════════════════════════════════════════════════════════
 //  Last updated: June 2026
+//
+//  ADMIN ACCESS NOTE:
+//    The admin dashboard (/admin) queries every collection for statistics.
+//    The following collections require admin read overrides (isAdmin) and
+//    are NOT covered by public or owner-only rules:
+//      - platformIncome:   default deny       → admin-only read
+//      - supportedCreators: own-supporter only → added admin override
+//      - storeProducts:     active-only        → added admin override
+//      - giveaways:         non-draft only     → added admin override
 //
 //  Architecture:
 //    - Document IDs: profiles keyed by UID, creators keyed by handle (username)
@@ -218,8 +227,10 @@ service cloud.firestore {
     // ──────────────────────────────────────────────────────────────────────────
 
     match /supportedCreators/{docId} {
-      allow read: if isAuth()
-        && resource.data.supporterId == request.auth.uid;          // Only see own support
+      allow read: if isAuth() && (
+        resource.data.supporterId == request.auth.uid               // Own support
+        || isAdmin(request.auth.uid)                                // Admin reads all
+      );
       allow create: if false;                                       // Server-side only
       allow update: if false;                                       // Server-side only
       allow delete: if false;                                       // Server-side only
@@ -266,7 +277,8 @@ service cloud.firestore {
     // ──────────────────────────────────────────────────────────────────────────
 
     match /storeProducts/{productId} {
-      allow read: if resource.data.active == true;                  // Only active products
+      allow read: if resource.data.active == true                   // Public: active products
+        || (isAuth() && isAdmin(request.auth.uid));                 // Admin: all products
       allow create: if isAuth()
         && request.resource.data.creatorId == request.auth.uid;    // Creator creates
       allow update: if isAuth() && (
@@ -365,7 +377,8 @@ service cloud.firestore {
 
     match /giveaways/{giveawayId} {
       allow read: if resource.data.status != "draft"                // Public: non-draft
-        || (isAuth() && resource.data.creatorId == request.auth.uid); // Plus own drafts
+        || (isAuth() && resource.data.creatorId == request.auth.uid) // Plus own drafts
+        || (isAuth() && isAdmin(request.auth.uid));                 // Admin: all
       allow create: if isAuth()
         && request.resource.data.creatorId == request.auth.uid;    // Creator creates
       allow update: if isAuth()
@@ -591,7 +604,8 @@ service cloud.firestore {
     // ──────────────────────────────────────────────────────────────────────────
 
     match /platformIncome/{docId} {
-      allow read, write: if false;                                  // Server-side only
+      allow read: if isAuth() && isAdmin(request.auth.uid);         // Admin reads
+      allow write: if false;                                         // Server-side only
     }
 
     match /creatorIncome/{docId} {
