@@ -1,0 +1,622 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Agaseke Firestore Security Rules
+//  ═══════════════════════════════════════════════════════════════════════════════
+//  Last updated: June 2026
+//
+//  Architecture:
+//    - Document IDs: profiles keyed by UID, creators keyed by handle (username)
+//    - Roles determined by document fields (no custom auth claims):
+//        • Admin:   profiles/{uid}.isAdmin == true
+//        • Creator: profiles/{uid}.type == "creator" (also has a doc in creators/)
+//        • User:    any authenticated Firebase Auth user
+//    - Server-side (Admin SDK) bypasses all rules — used for payments & sensitive ops
+//    - Admin SDK uses service account credentials, NOT these client-facing rules
+//
+//  ⚠️  IMPORTANT: Supporter-gated content (isPrivate on creatorContent)
+//     uses a composite query on supportedCreators which cannot be
+//     validated via security rules alone (auto-generated doc IDs).
+//     For full protection of private content, consider migrating
+//     supportedCreators to use {supporterId}_{creatorHandle} as doc IDs
+//     OR route supporter reads through a Cloud Function.
+//
+//  ═══════════════════════════════════════════════════════════════════════════════
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  Helper functions
+    // ──────────────────────────────────────────────────────────────────────────
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function isAdmin(uid) {
+      return isAuth()
+        && get(/databases/$(database)/documents/profiles/$(uid)).data.isAdmin == true;
+    }
+
+    // Returns true if uid matches the creator's uid stored in the creators doc
+    function isCreator(handle) {
+      return isAuth()
+        && get(/databases/$(database)/documents/creators/$(handle)).data.uid == request.auth.uid;
+    }
+
+    // Checks if the authenticated user supports a given creator (by handle)
+    // NOTE: relies on predictable doc ID pattern {supporterId}_{creatorHandle}
+    // If using auto-generated IDs, this function won't work — see warning above.
+    function isSupporterOf(handle) {
+      return isAuth()
+        && exists(/databases/$(database)/documents/supportedCreators/$(request.auth.uid + "_" + handle));
+    }
+
+    // Returns true if the uid on a resource matches the authenticated user
+    function isOwner(uidField) {
+      return isAuth() && resource.data[uidField] == request.auth.uid;
+    }
+
+    // Returns true if the incoming data's uid field matches the authenticated user
+    function isOwnerOfNew(uidField) {
+      return isAuth() && request.resource.data[uidField] == request.auth.uid;
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  1. USER PROFILES
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: {uid}
+    //  Fields: uid, email, displayName, photoURL, type, isAdmin, phoneNumber, etc.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /profiles/{uid} {
+      allow read: if true;                                          // Public read
+      allow create: if isAuth() && uid == request.auth.uid;        // Self-create on signup
+      allow update: if isAuth() && (
+        uid == request.auth.uid                                    // Self-update
+        || isAdmin(uid)                                            // Admin override
+      );
+      allow delete: if isAuth() && uid == request.auth.uid;        // Self-delete
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  2. CREATOR PROFILES
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: {handle} (username)
+    //  Fields: uid, name, bio, verified, storeEnabled, storePublic,
+    //          messagingEnabled, messagingAllowAll, messagingMinAmount,
+    //          bookingEnabled, bookingAccess, bookingAvailability,
+    //          giveawayEnabled, gatheringsEnabled, socials, profilePicture, etc.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /creators/{handle} {
+      allow read: if true;                                          // Public read
+      allow create: if isAuth()
+        && request.resource.data.uid == request.auth.uid;          // Self-create
+      allow update: if isAuth() && (
+        resource.data.uid == request.auth.uid                       // Self-update
+        || isAdmin(resource.data.uid)                               // Admin: verify, payout
+      );
+      allow delete: if isAuth()
+        && resource.data.uid == request.auth.uid;                  // Self-delete
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  3. CREATOR CONTENT (Posts)
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated
+    //  Fields: creatorId (handle or uid), title, description, type, contentUrl,
+    //          isPrivate, createdAt, views, commentCount
+    //  Subcollections: comments, likes
+    //
+    //  ⚠️  Private content (isPrivate == true):
+    //    - Only the creator can read directly via these rules.
+    //    - Supporter reads must be routed through the server (API endpoint)
+    //      until supportedCreators uses predictable doc IDs.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /creatorContent/{postId} {
+      // Main post document
+      allow read: if resource.data.isPrivate == false               // Public posts
+        || (isAuth() && resource.data.creatorId == request.auth.uid) // Own posts (by uid)
+        || (isAuth() && isCreator(resource.data.creatorId));        // Own posts (by handle)
+      allow create: if isAuth()
+        && request.resource.data.creatorId == request.auth.uid;    // Self-create
+      allow update: if isAuth()
+        && resource.data.creatorId == request.auth.uid;            // Self-update
+      allow delete: if isAuth()
+        && resource.data.creatorId == request.auth.uid;            // Self-delete
+
+      // Comments subcollection
+      match /comments/{commentId} {
+        allow read: if true;                                        // Anyone who can see the post
+        allow create: if isAuth()
+          && request.resource.data.userId == request.auth.uid;     // Self-comment
+        allow update: if isAuth()
+          && resource.data.userId == request.auth.uid;             // Self-edit
+        allow delete: if isAuth()
+          && resource.data.userId == request.auth.uid;             // Self-delete
+      }
+
+      // Likes subcollection
+      match /likes/{likeId} {
+        allow read: if true;                                        // Anyone who can see the post
+        allow create: if isAuth()
+          && request.resource.data.userId == request.auth.uid;     // Self-like
+        allow delete: if isAuth()
+          && resource.data.userId == request.auth.uid;             // Unlike
+        // No update — likes are atomic create/delete
+        allow update: if false;
+      }
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  4. CREATOR GATHERINGS (Events)
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated
+    //  Fields: title, date, time, location, eventType, ticketPrice, capacity,
+    //          attendeesCount, creatorId (uid), status, minSupportTier, etc.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /creatorGatherings/{gatheringId} {
+      allow read: if true;                                          // Public read (access gated in app)
+      allow create: if isAuth()
+        && request.resource.data.creatorId == request.auth.uid;    // Creator creates
+      allow update: if isAuth() && (
+        resource.data.creatorId == request.auth.uid                // Creator updates
+        || isAdmin(resource.data.creatorId)                         // Admin override
+      );
+      allow delete: if isAuth()
+        && resource.data.creatorId == request.auth.uid;            // Creator deletes
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  5. GATHERINGS ATTENDANCE (RSVPs)
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated
+    //  Fields: gatheringId, supporterId, supporterName, checkedIn,
+    //          paid, amount, paymentRef, createdAt
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /gatheringsAttendance/{attendanceId} {
+      allow read: if isAuth() && (
+        resource.data.supporterId == request.auth.uid               // Own RSVP
+        || isCreatorOfGathering(resource.data.gatheringId)           // Creator of event
+      );
+      allow create: if isAuth()
+        && request.resource.data.supporterId == request.auth.uid   // Self-RSVP
+        && request.resource.data.paid == false;                    // Free RSVP only (paid via server)
+      allow update: if isAuth()
+        && isCreatorOfGathering(resource.data.gatheringId);         // Creator: check-in
+      allow delete: if false;                                       // No client deletion
+    }
+
+    // Helper: check if auth user is the creator of a gathering
+    function isCreatorOfGathering(gatheringId) {
+      return isAuth()
+        && get(/databases/$(database)/documents/creatorGatherings/$(gatheringId)).data.creatorId == request.auth.uid;
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  6. SUPPORTED CREATORS (Support relationships)
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated (RECOMMENDED: {supporterId}_{creatorHandle})
+    //  Fields: creatorId (handle), supporterId (uid), amount, txRef, createdAt
+    //
+    //  ⚠️  CURRENT LIMITATION: With auto-generated doc IDs, we cannot
+    //     validate "is supporter of creator X" in rule functions.
+    //     Consider migrating to predictable doc IDs for full protection.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /supportedCreators/{docId} {
+      allow read: if isAuth()
+        && resource.data.supporterId == request.auth.uid;          // Only see own support
+      allow create: if false;                                       // Server-side only
+      allow update: if false;                                       // Server-side only
+      allow delete: if false;                                       // Server-side only
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  7. TRANSACTIONS
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated or txRef
+    //  Fields: ref, amount, status (pending/successful/failed), type,
+    //          creatorId, creatorUid, supporterId/buyerId/bookerId, etc.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /transactions/{txId} {
+      allow read: if isAuth() && (
+        resource.data.supporterId == request.auth.uid
+        || resource.data.buyerId == request.auth.uid
+        || resource.data.bookerId == request.auth.uid
+        || resource.data.creatorUid == request.auth.uid
+        || isAdmin(request.auth.uid)
+      );
+      // Client creates pending transactions; server updates to successful/failed
+      allow create: if isAuth()
+        && request.resource.data.status == "pending"
+        && (
+          request.resource.data.supporterId == request.auth.uid
+          || request.resource.data.buyerId == request.auth.uid
+          || request.resource.data.bookerId == request.auth.uid
+        );
+      // Only allow status transition: pending → successful/failed
+      // Client should NOT modify transactions directly
+      allow update: if false;                                       // Server-side only
+      allow delete: if false;                                       // Never
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  8. STORE PRODUCTS
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated
+    //  Fields: creatorId, name, description, price, type (digital/physical),
+    //          stock, imageUrl, fileUrl, sizes, active, discount, etc.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /storeProducts/{productId} {
+      allow read: if resource.data.active == true;                  // Only active products
+      allow create: if isAuth()
+        && request.resource.data.creatorId == request.auth.uid;    // Creator creates
+      allow update: if isAuth() && (
+        resource.data.creatorId == request.auth.uid                // Creator updates
+        || isAdmin(resource.data.creatorId)
+      );
+      allow delete: if isAuth() && (
+        resource.data.creatorId == request.auth.uid                // Creator deletes
+        || isAdmin(resource.data.creatorId)
+      );
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  9. STORE ORDERS
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated
+    //  Fields: buyerId, creatorId, creatorUid, items, total, status,
+    //          shippingAddress, trackingNumber, paymentMethod, etc.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /storeOrders/{orderId} {
+      allow read: if isAuth() && (
+        resource.data.buyerId == request.auth.uid                   // Buyer reads own
+        || resource.data.creatorUid == request.auth.uid             // Creator reads
+        || isAdmin(request.auth.uid)
+      );
+      allow create: if false;                                       // Server-side only
+      allow update: if false;                                       // Server-side only
+      allow delete: if false;
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  10. SALES (creator earnings from store)
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated
+    //  Fields: productId, buyerId, creatorId, creatorUid, totalAmount,
+    //          platformFee, creatorEarnings, referralEarnings, status, etc.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /sales/{saleId} {
+      allow read: if isAuth() && (
+        resource.data.creatorUid == request.auth.uid                // Creator reads own
+        || isAdmin(request.auth.uid)
+      );
+      allow create: if false;                                       // Server-side only
+      allow update: if false;
+      allow delete: if false;
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  11. STORE COUPONS
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated
+    //  Fields: creatorId, code, discountType, discountValue, active, etc.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /storeCoupons/{couponId} {
+      allow read: if resource.data.active == true;                  // Public: validate coupon
+      allow create: if isAuth()
+        && request.resource.data.creatorId == request.auth.uid;    // Creator creates
+      allow update: if isAuth()
+        && resource.data.creatorId == request.auth.uid;            // Creator updates
+      allow delete: if isAuth()
+        && resource.data.creatorId == request.auth.uid;
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  12. STORE FOLDERS (product bundles)
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated
+    //  Fields: creatorId, name, description, productIds, active, etc.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /storeFolders/{folderId} {
+      allow read: if resource.data.active == true;                  // Public: active folders
+      allow create: if isAuth()
+        && request.resource.data.creatorId == request.auth.uid;    // Creator creates
+      allow update: if isAuth()
+        && resource.data.creatorId == request.auth.uid;            // Creator updates
+      allow delete: if isAuth()
+        && resource.data.creatorId == request.auth.uid;
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  13. GIVEAWAYS
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated
+    //  Fields: creatorId, title, description, type, access, status,
+    //          winners, rewards, partners, startDate, endDate, etc.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /giveaways/{giveawayId} {
+      allow read: if resource.data.status != "draft"                // Public: non-draft
+        || (isAuth() && resource.data.creatorId == request.auth.uid); // Plus own drafts
+      allow create: if isAuth()
+        && request.resource.data.creatorId == request.auth.uid;    // Creator creates
+      allow update: if isAuth()
+        && resource.data.creatorId == request.auth.uid;            // Creator updates
+      allow delete: if isAuth()
+        && resource.data.creatorId == request.auth.uid;
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  14. GIVEAWAY ENTRIES
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated
+    //  Fields: giveawayId, participantId, participantName, enteredAt, etc.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /giveawayEntries/{entryId} {
+      allow read: if true;                                          // Public read (winners are public)
+      allow create: if isAuth()
+        && request.resource.data.participantId == request.auth.uid; // Self-enter
+      allow update: if false;                                       // No updates
+      allow delete: if false;
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  15. BOOKING REQUESTS
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated
+    //  Fields: creatorHandle, bookerId, bookerName, bookerEmail, status,
+    //          preferredDate, preferredTime, reason (encrypted), etc.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /bookingRequests/{bookingId} {
+      allow read: if isAuth() && (
+        resource.data.bookerId == request.auth.uid                  // Booker reads own
+        || (isCreator(resource.data.creatorHandle))                  // Creator reads
+        || isAdmin(request.auth.uid)
+      );
+      allow create: if false;                                       // Server-side only (API validates + encrypts)
+      allow update: if isAuth() && (
+        isCreator(resource.data.creatorHandle)                       // Creator responds
+        || isAdmin(request.auth.uid)
+      );
+      allow delete: if false;
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  16. CHATROOMS & MESSAGES
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Chatroom doc ID: auto-generated
+    //  Fields: creatorId (uid), supporterId, supporterName, lastMessage,
+    //          unreadCount, enabled, createdAt
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /chatrooms/{chatroomId} {
+      // Only participants can read
+      allow read: if isAuth() && (
+        resource.data.creatorId == request.auth.uid
+        || resource.data.supporterId == request.auth.uid
+      );
+      // Any authenticated user can create a chatroom
+      allow create: if isAuth() && (
+        request.resource.data.creatorId == request.auth.uid
+        || request.resource.data.supporterId == request.auth.uid
+      );
+      // Only participants can update
+      allow update: if isAuth() && (
+        resource.data.creatorId == request.auth.uid
+        || resource.data.supporterId == request.auth.uid
+      );
+      allow delete: if false;
+
+      // Messages subcollection
+      match /messages/{messageId} {
+        // Only chatroom participants can read
+        allow read: if isAuth() && (
+          get(/databases/$(database)/documents/chatrooms/$(chatroomId)).data.creatorId == request.auth.uid
+          || get(/databases/$(database)/documents/chatrooms/$(chatroomId)).data.supporterId == request.auth.uid
+        );
+        // Sender must match
+        allow create: if isAuth()
+          && request.resource.data.senderId == request.auth.uid;
+        allow update: if isAuth()
+          && request.resource.data.senderId == request.auth.uid;    // Mark as read etc.
+        allow delete: if false;
+      }
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  17. NOTIFICATIONS
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated
+    //  Fields: userId, type, title, message, read, createdAt, link, etc.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /notifications/{notificationId} {
+      allow read: if isAuth()
+        && resource.data.userId == request.auth.uid;               // Own notifications
+      allow create: if isAuth()
+        && request.resource.data.userId == request.auth.uid;       // Create own (server also creates)
+      allow update: if isAuth()
+        && resource.data.userId == request.auth.uid                // Mark as read
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["read"]);                                      // Only toggle read field
+      allow delete: if isAuth()
+        && resource.data.userId == request.auth.uid;
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  18. ACTIVITY LOGS (platform audit trail)
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated
+    //  Fields: level, category, message, userId, metadata, createdAt
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /activityLogs/{logId} {
+      allow read: if isAuth() && isAdmin(request.auth.uid);         // Admin only
+      allow create: if isAuth();                                    // Any auth user can log
+      allow update: if false;
+      allow delete: if false;
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  19. PAYOUTS
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated
+    //  Fields: creatorId, creatorUid, amount, status, method, etc.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /payouts/{payoutId} {
+      allow read: if isAuth() && (
+        resource.data.creatorUid == request.auth.uid                // Creator reads own
+        || isAdmin(request.auth.uid)
+      );
+      allow create: if false;                                       // Server-side only
+      allow update: if false;
+      allow delete: if false;
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  20. WITHDRAW REQUESTS
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated
+    //  Fields: creatorId (uid), creatorName, handle, amount, status, method, etc.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /withdrawRequests/{requestId} {
+      allow read: if isAuth() && (
+        resource.data.creatorId == request.auth.uid                 // Creator reads own
+        || isAdmin(request.auth.uid)
+      );
+      allow create: if isAuth()
+        && request.resource.data.creatorId == request.auth.uid;    // Creator requests
+      allow update: if isAuth() && isAdmin(request.auth.uid);       // Admin: approve/reject
+      allow delete: if false;
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  21. VERIFICATION REQUESTS
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated
+    //  Fields: uid, country, bankName, accountName, accountNumber,
+    //          payoutPreference, status, idDocumentUrl, createdAt
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /verificationRequests/{requestId} {
+      allow read: if isAuth() && (
+        resource.data.uid == request.auth.uid                       // Creator reads own
+        || isAdmin(request.auth.uid)
+      );
+      allow create: if isAuth()
+        && request.resource.data.uid == request.auth.uid;          // Self-submit
+      allow update: if isAuth() && isAdmin(request.auth.uid);       // Admin: approve/reject
+      allow delete: if false;
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  22. CREATOR PARTNERS (brand collaborations)
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated
+    //  Fields: creatorId (uid), name, logo, website, description, featured
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /creatorPartners/{partnerId} {
+      allow read: if true;                                          // Public read
+      allow create: if isAuth()
+        && request.resource.data.creatorId == request.auth.uid;    // Creator creates
+      allow update: if isAuth()
+        && resource.data.creatorId == request.auth.uid;            // Creator updates
+      allow delete: if isAuth()
+        && resource.data.creatorId == request.auth.uid;            // Creator deletes
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  23. CATEGORIES (platform content categories)
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated
+    //  Fields: name, createdAt
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /categories/{categoryId} {
+      allow read: if true;                                          // Public read
+      allow create: if isAuth() && isAdmin(request.auth.uid);       // Admin only
+      allow update: if isAuth() && isAdmin(request.auth.uid);
+      allow delete: if isAuth() && isAdmin(request.auth.uid);
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  24. FINANCIAL COLLECTIONS (server-side only — no client access)
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  These collections are written exclusively by the Admin SDK / Cloud Functions
+    //  and should NEVER be accessible from client devices.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /platformIncome/{docId} {
+      allow read, write: if false;                                  // Server-side only
+    }
+
+    match /creatorIncome/{docId} {
+      allow read, write: if false;                                  // Server-side only
+    }
+
+    match /ticketSales/{docId} {
+      allow read, write: if false;                                  // Server-side only
+    }
+
+    match /adminBroadcasts/{docId} {
+      allow read, write: if false;                                  // Server-side only
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  25. LEGACY / POST-COMMENTS (top-level — being migrated to subcollections)
+    //  ──────────────────────────────────────────────────────────────────────────
+
+    match /postComments/{commentId} {
+      allow read: if true;                                          // Public read
+      allow create: if isAuth()
+        && request.resource.data.userId == request.auth.uid;       // Self-create
+      allow update: if isAuth()
+        && resource.data.userId == request.auth.uid;              // Self-edit
+      allow delete: if isAuth()
+        && resource.data.userId == request.auth.uid;              // Self-delete
+    }
+
+  }
+}

@@ -8,8 +8,6 @@ import { db } from "@/db/firebase";
 import { doc, getDoc, getDocs, collection, query, where } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
-import Navbar from "@/components/parts/Navigation";
-import Footer from "@/components/parts/Footer";
 import DetailSkeleton from "@/components/ui/DetailSkeleton";
 import type { Product } from "@/components/parts/public/store/types";
 
@@ -74,13 +72,11 @@ export default function ProductDetailPage({ username, productId }: { username: s
 
   if (!product || !creatorData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Navbar />
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <p className="text-muted-foreground">Product not found</p>
           <Link href={`/${username}`} className="text-orange-500 font-bold mt-4 inline-block">Go Back</Link>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -89,8 +85,7 @@ export default function ProductDetailPage({ username, productId }: { username: s
   const priceWithFee = product.price + ((product.platformFeePayer || "buyer") === "buyer" ? product.price * platformSharePercentage : 0);
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+    <>
       <div className="max-w-5xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <Link href={`/${username}/store`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition">
@@ -198,7 +193,6 @@ export default function ProductDetailPage({ username, productId }: { username: s
           </div>
         </div>
       </div>
-      <Footer />
-    </div>
+    </>
   );
 }

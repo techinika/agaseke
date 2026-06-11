@@ -728,3 +728,20 @@ For issues or feature requests, please open an issue on GitHub.
 - **In-App Notifications**: Creator receives `booking_request` notification; booker (if logged in) receives notification and confirmation email on booking request
 - **Payment Notifications**: Both IPN (card) and MoMo webhooks send `booking_paid` notification to buyer, confirmation email to booker, and `new_transaction` notification to all admin profiles
 - **Robust Creator Lookup**: Profiles collection fallback resolves handle → uid → creator document, fixing null document ID mismatches
+
+### Public Profile Architecture Refactor (June 2026)
+- **Shared Layout**: Created `app/(public_profile)/layout.tsx` providing Navbar, Footer, and wrapper for all 11 public profile routes — eliminated per-page duplication
+- **Subpage Refactor**: Removed individual Navbar/Footer/wrapper from `PublicProfile.tsx` and 10 subpage components (Community, Store, Messaging, Giveaways, Gatherings, Booking, PostDetail, ProductDetail, GiveawayDetail, GatheringDetail)
+- **SEO Consolidation**: Deleted `SeoUpdater.tsx` (client-side DOM mutations that competed with server metadata); consolidated all JSON-LD schema into `CreatorSchma.tsx` (merged interactionStatistic, image, sameAs from the removed inline script)
+- **Loading & Error Boundaries**: Added `loading.tsx` (Suspense fallback) and `error.tsx` (Error boundary) to the route group
+- **ISR Configuration**: Added `export const revalidate = 300` (5 min) to all 11 route pages; 3600 (1h) for messaging (`noindex`)
+- **View Count Dedup**: Session-storage + `useRef` guard prevents incrementing Firestore view counter on repeated navigations within the same session
+
+### Firestore Security Rules (June 2026)
+- **Comprehensive Rules**: Generated complete Firestore security rules covering all 25 collections with helper functions (`isAuth`, `isAdmin`, `isCreator`, `isOwner`, `isSupporterOf`), role-based access (admin/creator/user), and server-side-only collections
+- **Documentation**: Full rules with architecture notes, limitations (auto-generated doc IDs in `supportedCreators`), and migration guidance written to `rules.txt`
+- **Syntax Fixes**: Fixed `rules_version` quoting and path variable concatenation in rule functions
+
+### App Check Integration (June 2026)
+- **Client-Side App Check**: Added `initializeAppCheck` with `ReCaptchaV3Provider` to `db/firebase.ts`, gated behind `typeof window !== "undefined"` for Next.js SSR safety
+- **Configuration**: Added `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` to `.env.example`; requires registering a reCAPTCHA v3 site key in Firebase Console under App Check

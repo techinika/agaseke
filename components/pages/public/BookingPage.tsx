@@ -7,8 +7,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import Navbar from "@/components/parts/Navigation";
-import Footer from "@/components/parts/Footer";
 import { SupportModal } from "@/components/parts/public/SupportModal";
 import { BookingAvailability, BookingType, BookingTier } from "@/types/booking";
 import { logError } from "@/lib/logger";
@@ -132,8 +130,7 @@ export default function BookingPage({ username, creator }: { username: string; c
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+    <>
       <div className="max-w-2xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <Link href={`/${creator?.handle || username}`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition">
@@ -366,7 +363,6 @@ export default function BookingPage({ username, creator }: { username: string; c
           </div>
         )}
       </div>
-      <Footer />
 
       <SupportModal
         isOpen={isModalOpen}
@@ -376,6 +372,6 @@ export default function BookingPage({ username, creator }: { username: string; c
         uid={creator?.uid || ""}
         includeReferral={false}
       />
-    </div>
+    </>
   );
 }

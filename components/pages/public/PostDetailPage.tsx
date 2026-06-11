@@ -9,8 +9,6 @@ import { db } from "@/db/firebase";
 import { doc, getDoc, getDocs, collection, query, where, orderBy, addDoc, deleteDoc, updateDoc, onSnapshot, serverTimestamp, increment } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
-import Navbar from "@/components/parts/Navigation";
-import Footer from "@/components/parts/Footer";
 import DetailSkeleton from "@/components/ui/DetailSkeleton";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { LinkifyText } from "@/components/ui/LinkifyText";
@@ -209,20 +207,17 @@ export default function PostDetailPage({ username, postId }: { username: string;
   if (loading) return <DetailSkeleton />;
   if (!post || !creatorData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Navbar />
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <p className="text-muted-foreground">Post not found</p>
           <Link href={`/${username}`} className="text-orange-500 font-bold mt-4 inline-block">Go Back</Link>
         </div>
-        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+    <>
       <div className="max-w-3xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <Link href={`/${username}`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition inline-flex">
@@ -406,8 +401,6 @@ export default function PostDetailPage({ username, postId }: { username: string;
         includeReferral={false}
       />
 
-      <Footer />
-
       <ConfirmModal
         isOpen={deleteCommentId !== null}
         onClose={() => setDeleteCommentId(null)}
@@ -417,6 +410,6 @@ export default function PostDetailPage({ username, postId }: { username: string;
         confirmText="Delete"
         variant="danger"
       />
-    </div>
+    </>
   );
 }

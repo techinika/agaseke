@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   collection,
   doc,
@@ -15,7 +15,6 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "@/db/firebase";
-import Navbar from "../parts/Navigation";
 import Loading from "@/app/loading";
 import NotFound from "@/app/not-found";
 import { Creator } from "@/types/creator";
@@ -31,9 +30,7 @@ import { StoreTab } from "../parts/public/StoreTab";
 import { GiveawayTab } from "../parts/public/GiveawayTab";
 import { MessageTab } from "../parts/public/MessageTab";
 import { GatheringsTab } from "../parts/public/GatheringsTab";
-import Footer from "../parts/Footer";
 import { Building2, ExternalLink } from "lucide-react";
-import { SeoUpdater } from "../parts/public/SeoUpdater";
 import { normalizeSocialUrl } from "@/lib/urlUtils";
 
 export default function PublicProfile({ username }: { username: string }) {
@@ -76,7 +73,6 @@ export default function PublicProfile({ username }: { username: string }) {
                 setReferralId(referralSnap.data().uid);
               }
             }
-            await updateDoc(creatorRef, { views: increment(1) });
           }
         }
       } catch (error) {
@@ -205,48 +201,20 @@ export default function PublicProfile({ username }: { username: string }) {
     events: creatorData.events || [],
   };
 
-  const schemaData = {
-    "@context": "https://schema.org",
-    "@type": "Person",
-    name: creator.name,
-    alternateName: creator?.handle,
-    url: `https://agaseke.me/${creator?.handle}`,
-    image: creator.photoURL || "https://agaseke.me/agaseke.png",
-    description: creator.bio || `Content creator on Agaseke`,
-    jobTitle: "Creator",
-    mainEntityOfPage: {
-      "@type": "WebPage",
-      "@id": `https://agaseke.me/${creator?.handle}`,
-    },
-    sameAs: [
-      creator.socials?.twitter,
-      creator.socials?.instagram,
-      creator.socials?.linkedin,
-      creator.socials?.youtube,
-      creator.socials?.tiktok,
-    ].filter(Boolean),
-    interactionStatistic: creatorData.views
-      ? {
-          "@type": "InteractionCounter",
-          interactionType: "https://schema.org/WatchAction",
-          userInteractionCount: creatorData.views,
-        }
-      : undefined,
-  };
+  const viewCounted = useRef(false);
+
+  useEffect(() => {
+    if (!username || viewCounted.current) return;
+    const key = `viewed_${username}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+    viewCounted.current = true;
+    const creatorRef = doc(db, "creators", username);
+    updateDoc(creatorRef, { views: increment(1) }).catch(() => {});
+  }, [username]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-orange-100">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
-      />
-
-      <SeoUpdater
-        data={{ creator: creatorData, profile: profileData }}
-        username={username}
-      />
-
-      <Navbar />
+    <>
       <CreatorSchema creator={creatorData} handle={username} />
 
       <SendGiftSection
@@ -423,8 +391,6 @@ export default function PublicProfile({ username }: { username: string }) {
           username={username}
         />
       )}
-
-      <Footer />
-    </div>
+    </>
   );
 }

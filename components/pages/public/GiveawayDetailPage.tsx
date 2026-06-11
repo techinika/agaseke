@@ -9,8 +9,6 @@ import { db } from "@/db/firebase";
 import { doc, getDoc, getDocs, collection, query, where, addDoc, Timestamp } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
-import Navbar from "@/components/parts/Navigation";
-import Footer from "@/components/parts/Footer";
 import DetailSkeleton from "@/components/ui/DetailSkeleton";
 import { WinnersModal } from "@/components/parts/public/giveaway";
 import type { Giveaway } from "@/components/parts/public/giveaway";
@@ -102,13 +100,11 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
   if (loading) return <DetailSkeleton />;
   if (!giveaway || !creatorData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Navbar />
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <p className="text-muted-foreground">Giveaway not found</p>
           <Link href={`/${username}`} className="text-orange-500 font-bold mt-4 inline-block">Go Back</Link>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -119,8 +115,7 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
   const accessible = canAccess(giveaway);
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+    <>
       <div className="max-w-3xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <Link href={`/${username}/giveaways`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition">
@@ -222,8 +217,6 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
       {showWinners && giveaway && (
         <WinnersModal giveaway={giveaway} onClose={() => setShowWinners(false)} />
       )}
-
-      <Footer />
-    </div>
+    </>
   );
 }

@@ -9,8 +9,6 @@ import { db } from "@/db/firebase";
 import { doc, getDoc, getDocs, collection, query, where, addDoc, serverTimestamp, updateDoc, orderBy, limit as fsLimit, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
-import Navbar from "@/components/parts/Navigation";
-import Footer from "@/components/parts/Footer";
 import DetailSkeleton from "@/components/ui/DetailSkeleton";
 import type { Gathering } from "@/components/parts/public/gatherings";
 import { logError, logInfo } from "@/lib/logger";
@@ -249,13 +247,11 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
   if (loading) return <DetailSkeleton />;
   if (!gathering || !creatorData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Navbar />
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <p className="text-muted-foreground">Event not found</p>
           <Link href={`/${username}`} className="text-orange-500 font-bold mt-4 inline-block">Go Back</Link>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -269,8 +265,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
   });
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+    <>
       <div className="max-w-3xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <Link href={`/${username}/gatherings`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition">
@@ -484,8 +479,6 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
         uid={creatorData?.uid || ""}
         includeReferral={false}
       />
-
-      <Footer />
-    </div>
+    </>
   );
 }
