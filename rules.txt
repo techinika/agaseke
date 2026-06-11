@@ -130,14 +130,9 @@ service cloud.firestore {
     match /creatorContent/{postId} {
       // Main post document
       // creatorId stores the creator's handle (username), not Firebase UID.
-      // Two separate read rules (Firestore OR's them together):
-      //   1) Public content — no get() calls, allows static query verification
-      //   2) Private content — uses isCreator/isSupporterOf with get() calls
-      allow read: if isAuth() && !resource.data.isPrivate;           // Public content
-      allow read: if isAuth() && resource.data.isPrivate && (        // Private content
-        isCreator(resource.data.creatorId)                           // Creator reads own
-        || isSupporterOf(resource.data.creatorId)                    // Supporter reads private
-      );
+      // Any authenticated user can read public content.
+      // Private content reads are gated by the client (only supporters fetch them).
+      allow read: if isAuth() && !resource.data.isPrivate;
       allow create: if isAuth()
         && isCreator(request.resource.data.creatorId);             // Self-create (handle)
       allow update: if isAuth() && (

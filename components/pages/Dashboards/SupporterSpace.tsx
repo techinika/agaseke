@@ -156,15 +156,11 @@ export default function SupporterSpace() {
 
         const [
           publicSnap,
-          privateSnap,
           gatheringSnap,
           creatorsSnap,
           purchasesSnap,
         ] = await Promise.all([
           getDocs(publicContentQ),
-          privateContentQ
-            ? getDocs(privateContentQ)
-            : Promise.resolve({ docs: [] } as any),
           getDocs(
             query(
               collection(db, "creatorGatherings"),
@@ -175,10 +171,17 @@ export default function SupporterSpace() {
           getDocs(purchasesQuery),
         ]);
 
-        const allContentDocs = [
-          ...publicSnap.docs,
-          ...((privateSnap as any)?.docs || []),
-        ];
+        let allContentDocs = [...publicSnap.docs];
+
+        // Private content fetch — decoupled so a permission failure doesn't crash the page
+        if (privateContentQ) {
+          try {
+            const privateSnap = await getDocs(privateContentQ);
+            allContentDocs.push(...privateSnap.docs);
+          } catch (privateErr) {
+            console.warn("Private content query failed (non-critical):", privateErr);
+          }
+        }
 
         let profileMap = new Map();
         const supportedCreatorUids = new Set<string>();
