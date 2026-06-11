@@ -8,7 +8,7 @@ import {
   collection,
   query,
   orderBy,
-  onSnapshot,
+  getDocs,
   Timestamp,
 } from "firebase/firestore";
 import Loading from "@/app/loading";
@@ -43,16 +43,16 @@ export default function ChangelogPage() {
   useEffect(() => {
     const q = query(collection(db, "changelog"), orderBy("createdAt", "desc"));
 
-    const unsub = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as ChangelogEntry[];
-      setEntries(data);
-      setLoading(false);
-    });
-
-    return () => unsub();
+    getDocs(q)
+      .then((snapshot) => {
+        const data = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as ChangelogEntry[];
+        setEntries(data);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
   const currentEntries = entries.filter((e) => e.category === "current");

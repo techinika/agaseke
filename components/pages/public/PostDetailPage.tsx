@@ -80,9 +80,10 @@ export default function PostDetailPage({ username, postId }: { username: string;
     if (!postId) return;
     const commentsRef = collection(db, "creatorContent", postId, "comments");
     const q = query(commentsRef, orderBy("createdAt", "asc"));
-    const unsub = onSnapshot(q, (snap) => {
-      setComments(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
+    const unsub = onSnapshot(q,
+      (snap) => { setComments(snap.docs.map(d => ({ id: d.id, ...d.data() }))); },
+      () => {},
+    );
     return () => unsub();
   }, [postId]);
 
@@ -100,9 +101,10 @@ export default function PostDetailPage({ username, postId }: { username: string;
   useEffect(() => {
     if (!postId) return;
     const likesRef = collection(db, "creatorContent", postId, "likes");
-    const unsub = onSnapshot(likesRef, (snap) => {
-      setLikes(new Set(snap.docs.map(d => d.data().userId)));
-    });
+    const unsub = onSnapshot(likesRef,
+      (snap) => { setLikes(new Set(snap.docs.map(d => d.data().userId))); },
+      () => {},
+    );
     return () => unsub();
   }, [postId]);
 

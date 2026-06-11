@@ -176,6 +176,18 @@ export default function PublicProfile({ username }: { username: string }) {
     fetchPartners();
   }, [creatorData?.uid]);
 
+  const viewCounted = useRef(false);
+
+  useEffect(() => {
+    if (!username || viewCounted.current) return;
+    const key = `viewed_${username}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+    viewCounted.current = true;
+    const creatorRef = doc(db, "creators", username);
+    updateDoc(creatorRef, { views: increment(1) }).catch(() => {});
+  }, [username]);
+
   if (loading) return <Loading />;
   if (!creatorData) return <NotFound />;
 
@@ -200,18 +212,6 @@ export default function PublicProfile({ username }: { username: string }) {
     },
     events: creatorData.events || [],
   };
-
-  const viewCounted = useRef(false);
-
-  useEffect(() => {
-    if (!username || viewCounted.current) return;
-    const key = `viewed_${username}`;
-    if (sessionStorage.getItem(key)) return;
-    sessionStorage.setItem(key, "1");
-    viewCounted.current = true;
-    const creatorRef = doc(db, "creators", username);
-    updateDoc(creatorRef, { views: increment(1) }).catch(() => {});
-  }, [username]);
 
   return (
     <>
