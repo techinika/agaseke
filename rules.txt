@@ -11,6 +11,7 @@
 //      - supportedCreators: own-supporter only → added admin override
 //      - storeProducts:     active-only        → added admin override
 //      - giveaways:         non-draft only     → added admin override
+//      - changelog:        no rule existed     → added public read + admin write
 //
 //  Architecture:
 //    - Document IDs: profiles keyed by UID, creators keyed by handle (username)
@@ -622,7 +623,24 @@ service cloud.firestore {
 
 
     // ──────────────────────────────────────────────────────────────────────────
-    //  25. LEGACY / POST-COMMENTS (top-level — being migrated to subcollections)
+    //  25. CHANGELOG
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated
+    //  Fields: title, description, category (current/planned), tags,
+    //          releaseDate, priority (high/medium/low), createdAt
+    //  Public read-only; admin writes
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /changelog/{entryId} {
+      allow read: if true;                                          // Public read
+      allow create: if isAuth() && isAdmin(request.auth.uid);       // Admin only
+      allow update: if isAuth() && isAdmin(request.auth.uid);       // Admin only
+      allow delete: if isAuth() && isAdmin(request.auth.uid);       // Admin only
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  26. LEGACY / POST-COMMENTS (top-level — being migrated to subcollections)
     //  ──────────────────────────────────────────────────────────────────────────
 
     match /postComments/{commentId} {

@@ -752,3 +752,6 @@ For issues or feature requests, please open an issue on GitHub.
   - `supportedCreators`: Added `isAdmin(request.auth.uid)` override so admin can read all support relationships
   - `storeProducts`: Added `isAdmin(request.auth.uid)` override so admin sees both active and inactive products
   - `giveaways`: Added `isAdmin(request.auth.uid)` override so admin sees draft giveaways too
+
+### Changelog Page Permission Fix (June 2026)
+- **Added `changelog` collection rule**: The `changelog` collection had no matching security rule, so Firestore's default deny rejected all reads. Added public read (`allow read: if true`) and admin-only write rules.
