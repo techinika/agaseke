@@ -131,6 +131,8 @@ service cloud.firestore {
 
     match /creatorContent/{postId} {
       // Main post document
+      // creatorId stores the creator's handle (username), not Firebase UID.
+      // Authorization uses isCreator(handle) to look up the handle→uid mapping.
       // Any authenticated user can read any post. The client-side query already
       // filters to only public content + private content from creators the user
       // supports (via where("creatorId", "in", supportedIds)). Full isSupporterOf
@@ -138,11 +140,11 @@ service cloud.firestore {
       // predictable doc IDs ({supporterId}_{creatorHandle}).
       allow read: if isAuth();                                      // Auth required
       allow create: if isAuth()
-        && request.resource.data.creatorId == request.auth.uid;    // Self-create
+        && isCreator(request.resource.data.creatorId);             // Self-create (handle)
       allow update: if isAuth()
-        && resource.data.creatorId == request.auth.uid;            // Self-update
+        && isCreator(resource.data.creatorId);                     // Self-update (handle)
       allow delete: if isAuth()
-        && resource.data.creatorId == request.auth.uid;            // Self-delete
+        && isCreator(resource.data.creatorId);                     // Self-delete (handle)
 
       // Comments subcollection
       match /comments/{commentId} {
