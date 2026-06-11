@@ -55,10 +55,14 @@ service cloud.firestore {
     }
 
     // Checks if the authenticated user supports a given creator (by handle)
-    // Uses predictable doc ID pattern: {uid}_{handle} (set server-side in handleSupportPayment)
+    // Checks two sources:
+    //   1) Predictable doc ID pattern {uid}_{handle} (new format, server-side)
+    //   2) supporterUids map on the creator doc (backfilled for legacy records)
     function isSupporterOf(handle) {
-      return isAuth()
-        && exists(/databases/$(database)/documents/supportedCreators/$(request.auth.uid + "_" + handle));
+      return isAuth() && (
+        exists(/databases/$(database)/documents/supportedCreators/$(request.auth.uid + "_" + handle))
+        || get(/databases/$(database)/documents/creators/$(handle)).data.supporterUids[request.auth.uid] == true
+      );
     }
 
     // Returns true if the uid on a resource matches the authenticated user

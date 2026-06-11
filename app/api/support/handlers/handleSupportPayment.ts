@@ -50,6 +50,9 @@ export async function handleSupportPayment(
     totalEarnings: admin.firestore.FieldValue.increment(creatorShare),
     totalSupporters: admin.firestore.FieldValue.increment(1),
     pendingPayout: admin.firestore.FieldValue.increment(creatorShare),
+    ...(txData.supporterId && txData.supporterId !== "anonymous"
+      ? { [`supporterUids.${txData.supporterId}`]: true }
+      : {}),
   });
 
   if (txData.includeReferral && txData.referralUid) {

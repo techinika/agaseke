@@ -787,3 +787,8 @@ For issues or feature requests, please open an issue on GitHub.
 
 ### Admin Verification Requests Fix (June 2026)
 - **Fixed wrong collection query**: Admin page was querying `creators` collection (`verified == false && verificationStatus == "pending"`) but the verify page writes to `verificationRequests` collection. Changed to query `verificationRequests` where `status == "pending"` and enrich with creator profile data (name, handle, profilePicture) via a uid-based lookup. Also fixed approve/reject handler to reference the creator doc by `handle` instead of `target.id` (now the request doc ID).
+
+### Dual-ID Supporter Check (June 2026)
+- **Added `supporterUids` map to creator docs**: Each creator doc now has a `supporterUids` map (`{ uid: true }`) that tracks unique supporter UIDs. Set server-side in `handleSupportPayment.ts` during support transactions.
+- **Updated `isSupporterOf` rule**: The Firestore rule function now checks TWO sources — the new predictable doc ID pattern `{uid}_{handle}` in `supportedCreators` AND the `supporterUids` map on the creator doc. This ensures backward compatibility with old auto-generated support records after running the backfill migration.
+- **Added migration script**: `scripts/backfillSupporterUids.js` — run once to populate `supporterUids` on all existing creator docs from current `supportedCreators` records.
