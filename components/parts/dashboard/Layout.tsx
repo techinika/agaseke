@@ -174,7 +174,6 @@ export default function DashboardLayout({
                   ? [{ href: "/creator/sales", label: "Sales" }]
                   : []),
                 { href: "/creator/payouts", label: "Payouts" },
-                { href: "/creator/verify", label: "Verify" },
               ]}
             />
             <ExpandableNavItem
@@ -203,11 +202,14 @@ export default function DashboardLayout({
               label="Partners"
               active={pathname === "/creator/partners"}
             />
-            <NavItem
-              href="/creator/settings"
+            <ExpandableNavItem
               icon={<Settings size={18} />}
-              label="Settings"
-              active={pathname === "/creator/settings"}
+              label="Account"
+              activeSub={pathname}
+              subItems={[
+                { href: "/creator/verify", label: "Verify" },
+                { href: "/creator/settings", label: "Settings" },
+              ]}
             />
           </nav>
 
