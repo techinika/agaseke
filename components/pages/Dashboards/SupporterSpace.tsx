@@ -18,6 +18,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Paperclip,
+  Clock,
 } from "lucide-react";
 import Navbar from "@/components/parts/Navigation";
 import { useAuth } from "@/auth/AuthContext";
@@ -532,6 +533,8 @@ export default function SupporterSpace() {
     if (feedFilter === "public") return item.isPublic && !item.isFollowing;
     return true;
   });
+  const contentItems = filteredFeed.filter((item) => item.type !== "gathering");
+  const gatheringItems = filteredFeed.filter((item) => item.type === "gathering");
 
   const renderYouTubeEmbed = (text: string) => {
     const youtubeUrl = hasYouTubeLink(text);
@@ -831,7 +834,7 @@ export default function SupporterSpace() {
               {auth.profile?.displayName?.split(" ")[0] || "Supporter"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {feed.length} posts from your feed
+              {contentItems.length} posts in your feed
             </p>
           </div>
           <Link
@@ -863,11 +866,91 @@ export default function SupporterSpace() {
           ))}
         </div>
 
+        {gatheringItems.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                <MapPin size={16} className="text-orange-600" />
+              </div>
+              <h2 className="text-lg font-bold text-foreground">
+                Upcoming Events
+              </h2>
+              <span className="text-xs text-muted-foreground bg-card px-2 py-0.5 rounded-full border border-border">
+                {gatheringItems.length} event
+                {gatheringItems.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {gatheringItems.map((item) => {
+                const eventDate = item.date
+                  ? new Date(
+                      item.date.seconds
+                        ? item.date.seconds * 1000
+                        : item.date,
+                    )
+                  : null;
+                return (
+                  <Link
+                    key={item.id}
+                    href={`/${item.creatorHandle}/gatherings/${item.id}`}
+                    className="block bg-card rounded-xl border border-orange-200 overflow-hidden hover:shadow-md hover:border-orange-300 transition-all group"
+                  >
+                    <div className="flex">
+                      <div className="w-20 bg-orange-500 flex flex-col items-center justify-center text-white p-3 shrink-0">
+                        <span className="text-xs font-bold uppercase tracking-wider">
+                          {eventDate
+                            ? eventDate.toLocaleString("default", {
+                                month: "short",
+                              })
+                            : "N/A"}
+                        </span>
+                        <span className="text-2xl font-bold">
+                          {eventDate ? eventDate.getDate() : "?"}
+                        </span>
+                      </div>
+                      <div className="flex-1 p-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-orange-600 bg-orange-50 px-2 py-0.5 rounded">
+                            Event
+                          </span>
+                          {item.ticketPrice > 0 && (
+                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                              {Number(item.ticketPrice).toLocaleString()} RWF
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="font-bold text-foreground group-hover:text-orange-600 transition-colors line-clamp-1">
+                          {item.title}
+                        </h3>
+                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Clock size={12} />{" "}
+                            {item.time || "All day"}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <User size={12} />{" "}
+                            {item.attendeesCount || 0} attending
+                          </span>
+                        </div>
+                        {item.location && (
+                          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                            <MapPin size={10} /> {item.location}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-8">
             <div className="space-y-4">
-              {filteredFeed.length > 0 ? (
-                filteredFeed.map((item) => {
+              {contentItems.length > 0 ? (
+                contentItems.map((item) => {
                   return (
                     <div
                       key={item.id}
