@@ -618,5 +618,34 @@ service cloud.firestore {
         && resource.data.userId == request.auth.uid;              // Self-delete
     }
 
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  COLLECTION GROUP RULES
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  These rules apply to queries using collectionGroup(), across all
+    //  subcollections with the given name regardless of parent document path.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    // likes subcollection under any document
+    match /{path=**}/likes/{likeId} {
+      allow read: if true;                                          // Supports "my likes" queries
+      allow create: if isAuth()
+        && request.resource.data.userId == request.auth.uid;       // Self-like
+      allow delete: if isAuth()
+        && resource.data.userId == request.auth.uid;               // Unlike
+      allow update: if false;
+    }
+
+    // comments subcollection under any document
+    match /{path=**}/comments/{commentId} {
+      allow read: if true;                                          // Supports reading comments
+      allow create: if isAuth()
+        && request.resource.data.userId == request.auth.uid;       // Self-comment
+      allow update: if isAuth()
+        && resource.data.userId == request.auth.uid;               // Self-edit
+      allow delete: if isAuth()
+        && resource.data.userId == request.auth.uid;               // Self-delete
+    }
+
   }
 }

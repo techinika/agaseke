@@ -136,18 +136,31 @@ export default function SupporterSpace() {
           where("buyerId", "==", auth.user.uid),
         );
 
+        const publicContentQ = query(
+          collection(db, "creatorContent"),
+          where("isPrivate", "==", false),
+          orderBy("createdAt", "desc"),
+        );
+
+        const supportedIds = Array.from(supportedCreatorHandles).slice(0, 10);
+        const privateContentQ = supportedIds.length > 0
+          ? query(
+              collection(db, "creatorContent"),
+              where("isPrivate", "==", true),
+              where("creatorId", "in", supportedIds),
+              orderBy("createdAt", "desc"),
+            )
+          : null;
+
         const [
-          contentSnap,
+          publicSnap,
+          privateSnap,
           gatheringSnap,
           creatorsSnap,
           purchasesSnap,
         ] = await Promise.all([
-          getDocs(
-            query(
-              collection(db, "creatorContent"),
-              orderBy("createdAt", "desc"),
-            ),
-          ),
+          getDocs(publicContentQ),
+          privateContentQ ? getDocs(privateContentQ) : Promise.resolve({ docs: [] } as any),
           getDocs(
             query(
               collection(db, "creatorGatherings"),
@@ -157,6 +170,8 @@ export default function SupporterSpace() {
           getDocs(collection(db, "creators")),
           getDocs(purchasesQuery),
         ]);
+
+        const allContentDocs = [...publicSnap.docs, ...((privateSnap as any)?.docs || [])];
 
         let profileMap = new Map();
         const supportedCreatorUids = new Set<string>();
@@ -189,7 +204,7 @@ export default function SupporterSpace() {
           });
         }
 
-        const contents = contentSnap.docs
+        const contents = allContentDocs
           .map((d) => ({ id: d.id, ...d.data() }))
           .filter((item: any) => {
             const isSupportedByHandle = supportedHandles.has(item.creatorId);
