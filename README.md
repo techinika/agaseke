@@ -767,3 +767,4 @@ For issues or feature requests, please open an issue on GitHub.
 
 ### CreatorContent Security Rule Fix (June 2026)
 - **Fixed creatorId vs uid mismatch**: The `creatorContent` collection stores `creatorId` as the creator's handle (username), but the Firestore rules compared it against `request.auth.uid` (Firebase UID). Changed create/update/delete rules to use `isCreator(creatorId)` which looks up the handle in the `creators` collection and verifies the owning UID matches the requesting user. Fixes permission-denied errors when creating or managing content in the creator dashboard.
+- **Fixed isAdmin checks in 3 collections**: Changed `isAdmin(resource.data.uid/creatorId)` to `isAdmin(request.auth.uid)` in `creators`, `creatorGatherings`, and `storeProducts` rules. The old form checked if the *document owner* was an admin instead of checking if the *requesting user* was an admin.

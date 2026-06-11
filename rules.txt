@@ -108,7 +108,7 @@ service cloud.firestore {
         && request.resource.data.uid == request.auth.uid;          // Self-create
       allow update: if isAuth() && (
         resource.data.uid == request.auth.uid                       // Self-update
-        || isAdmin(resource.data.uid)                               // Admin: verify, payout
+        || isAdmin(request.auth.uid)                                // Admin: verify, payout
       );
       allow delete: if isAuth()
         && resource.data.uid == request.auth.uid;                  // Self-delete
@@ -184,7 +184,7 @@ service cloud.firestore {
         && request.resource.data.creatorId == request.auth.uid;    // Creator creates
       allow update: if isAuth() && (
         resource.data.creatorId == request.auth.uid                // Creator updates
-        || isAdmin(resource.data.creatorId)                         // Admin override
+        || isAdmin(request.auth.uid)                                // Admin override
       );
       allow delete: if isAuth()
         && resource.data.creatorId == request.auth.uid;            // Creator deletes
@@ -287,11 +287,11 @@ service cloud.firestore {
         && request.resource.data.creatorId == request.auth.uid;    // Creator creates
       allow update: if isAuth() && (
         resource.data.creatorId == request.auth.uid                // Creator updates
-        || isAdmin(resource.data.creatorId)
+        || isAdmin(request.auth.uid)
       );
       allow delete: if isAuth() && (
         resource.data.creatorId == request.auth.uid                // Creator deletes
-        || isAdmin(resource.data.creatorId)
+        || isAdmin(request.auth.uid)
       );
     }
 
