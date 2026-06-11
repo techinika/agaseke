@@ -770,7 +770,8 @@ For issues or feature requests, please open an issue on GitHub.
 - **Fixed isAdmin checks in 3 collections**: Changed `isAdmin(resource.data.uid/creatorId)` to `isAdmin(request.auth.uid)` in `creators`, `creatorGatherings`, and `storeProducts` rules. The old form checked if the *document owner* was an admin instead of checking if the *requesting user* was an admin.
 
 ### Condensed Creator Sidebar (June 2026)
-- **Grouped sidebar menu**: Condensed the creator dashboard sidebar from 14 flat items into 6 compact groups with expandable sub-menus. Groups: Overview (standalone), Content (Posts, Notices), Commerce (Store, Sales, Payouts), Community (Events, Bookings, Giveaways, Messages, Supporters), Partners (standalone), Account (Verify, Settings). Sub-items that are disabled in creator settings are conditionally hidden.
+- **Grouped sidebar menu**: Condensed the creator dashboard sidebar from 14 flat items into 6 compact groups with expandable sub-menus. Groups: Overview (standalone), Content (Posts, Notices), Commerce (Store, Sales), Community (Events, Bookings, Giveaways, Messages, Supporters), Partners (standalone), Account (Verify, Payouts, Settings). Sub-items that are disabled in creator settings are conditionally hidden.
+- **Payouts moved to Account**: Moved `/creator/payouts` from the Commerce group to the Account group (Verify, Payouts, Settings) for clearer logical grouping — payouts are account-level, not store-specific.
 
 ### Predictable SupportedCreators Doc IDs (June 2026)
 - **Migrated to predictable doc IDs**: Changed `handleSupportPayment.ts` to use `{supporterId}_{creatorHandle}` as document IDs in `supportedCreators` instead of auto-generated IDs. Anonymous supporters still use auto-generated IDs (not applicable for `isSupporterOf` checks).
