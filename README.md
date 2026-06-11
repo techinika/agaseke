@@ -755,3 +755,6 @@ For issues or feature requests, please open an issue on GitHub.
 
 ### Changelog Page Permission Fix (June 2026)
 - **Added `changelog` collection rule**: The `changelog` collection had no matching security rule, so Firestore's default deny rejected all reads. Added public read (`allow read: if true`) and admin-only write rules.
+
+### User Feedback Collection Rules (June 2026)
+- **Added `userFeedback` collection rule**: Admin-only read (`allow read: if isAdmin()`), any authenticated user can submit (`allow create: if isAuth()`) via the FeedbackFAB component. Fixes permission error on `/admin/feedback`.
