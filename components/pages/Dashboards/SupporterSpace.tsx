@@ -438,9 +438,9 @@ export default function SupporterSpace() {
         createdAt: serverTimestamp(),
       };
       await addDoc(collection(db, "creatorContent", postId, "comments"), newReply);
-      await updateDoc(doc(db, "creatorContent", postId), {
+      updateDoc(doc(db, "creatorContent", postId), {
         commentCount: increment(1),
-      });
+      }).catch(() => {});
       setReplyText((prev) => ({ ...prev, [parentId]: "" }));
       setReplyingTo((prev) => ({ ...prev, [parentId]: null }));
       setComments((prev) => {
