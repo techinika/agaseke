@@ -430,13 +430,37 @@ export default function AdminDashboard() {
       );
       const withdrawalSnap = await getDocs(withdrawalQuery);
 
-      // Pending verifications
+      // Pending verifications — query the verificationRequests collection (source of truth)
       const verificationQuery = query(
-        collection(db, "creators"),
-        where("verified", "==", false),
-        where("verificationStatus", "==", "pending"),
+        collection(db, "verificationRequests"),
+        where("status", "==", "pending"),
+        orderBy("createdAt", "desc"),
       );
       const verificationSnap = await getDocs(verificationQuery);
+      const enrichedVerifications = await Promise.all(
+        verificationSnap.docs.map(async (d) => {
+          const data = d.data();
+          let creatorData: any = {};
+          if (data.uid) {
+            const creatorQ = query(
+              collection(db, "creators"),
+              where("uid", "==", data.uid),
+              limit(1),
+            );
+            const creatorSnap = await getDocs(creatorQ);
+            if (!creatorSnap.empty) {
+              const c = creatorSnap.docs[0];
+              creatorData = {
+                id: c.id,
+                name: c.data().name || "",
+                handle: c.id,
+                profilePicture: c.data().profilePicture || "",
+              };
+            }
+          }
+          return { id: d.id, ...data, ...creatorData };
+        }),
+      );
 
       // Visitor stats (based on profile views in last 24h/week/month - simulated)
       const today = Math.floor(Math.random() * 500) + 100;
@@ -469,9 +493,7 @@ export default function AdminDashboard() {
       setWithdrawals(
         withdrawalSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
       );
-      setVerifications(
-        verificationSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
-      );
+      setVerifications(enrichedVerifications);
     } catch (error) {
       console.error("Error fetching admin stats:", error);
     } finally {
@@ -490,14 +512,37 @@ export default function AdminDashboard() {
       setWithdrawals(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
 
-    // Verification listener
+    // Verification listener — real-time on verificationRequests
     const verificationQuery = query(
-      collection(db, "creators"),
-      where("verified", "==", false),
-      where("verificationStatus", "==", "pending"),
+      collection(db, "verificationRequests"),
+      where("status", "==", "pending"),
+      orderBy("createdAt", "desc"),
     );
     const unsubVerifications = onSnapshot(verificationQuery, (snap) => {
-      setVerifications(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      Promise.all(
+        snap.docs.map(async (d) => {
+          const data = d.data();
+          let creatorData: any = {};
+          if (data.uid) {
+            const creatorQ = query(
+              collection(db, "creators"),
+              where("uid", "==", data.uid),
+              limit(1),
+            );
+            const creatorSnap = await getDocs(creatorQ);
+            if (!creatorSnap.empty) {
+              const c = creatorSnap.docs[0];
+              creatorData = {
+                id: c.id,
+                name: c.data().name || "",
+                handle: c.id,
+                profilePicture: c.data().profilePicture || "",
+              };
+            }
+          }
+          return { id: d.id, ...data, ...creatorData };
+        }),
+      ).then(setVerifications);
     });
 
     // Activity logs listener (recent 10)
@@ -802,8 +847,8 @@ export default function AdminDashboard() {
         );
       } else {
         const isApprove = type === "approve";
-        await updateDoc(doc(db, "creators", target.id), {
-          verified: type === "approve",
+        await updateDoc(doc(db, "creators", target.handle || target.id), {
+          verified: isApprove,
           verificationStatus: isApprove ? "approved" : "rejected",
         });
 
