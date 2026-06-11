@@ -144,14 +144,15 @@ export default function SupporterSpace() {
         );
 
         const supportedIds = Array.from(supportedCreatorHandles).slice(0, 10);
-        const privateContentQ = supportedIds.length > 0
-          ? query(
-              collection(db, "creatorContent"),
-              where("isPrivate", "==", true),
-              where("creatorId", "in", supportedIds),
-              orderBy("createdAt", "desc"),
-            )
-          : null;
+        const privateContentQ =
+          supportedIds.length > 0
+            ? query(
+                collection(db, "creatorContent"),
+                where("isPrivate", "==", true),
+                where("creatorId", "in", supportedIds),
+                orderBy("createdAt", "desc"),
+              )
+            : null;
 
         const [
           publicSnap,
@@ -161,7 +162,9 @@ export default function SupporterSpace() {
           purchasesSnap,
         ] = await Promise.all([
           getDocs(publicContentQ),
-          privateContentQ ? getDocs(privateContentQ) : Promise.resolve({ docs: [] } as any),
+          privateContentQ
+            ? getDocs(privateContentQ)
+            : Promise.resolve({ docs: [] } as any),
           getDocs(
             query(
               collection(db, "creatorGatherings"),
@@ -172,7 +175,10 @@ export default function SupporterSpace() {
           getDocs(purchasesQuery),
         ]);
 
-        const allContentDocs = [...publicSnap.docs, ...((privateSnap as any)?.docs || [])];
+        const allContentDocs = [
+          ...publicSnap.docs,
+          ...((privateSnap as any)?.docs || []),
+        ];
 
         let profileMap = new Map();
         const supportedCreatorUids = new Set<string>();
@@ -332,7 +338,11 @@ export default function SupporterSpace() {
       (entries) => {
         entries.forEach((entry) => {
           const postId = entry.target.getAttribute("data-post-id");
-          if (postId && entry.isIntersecting && !viewedPosts.current.has(postId)) {
+          if (
+            postId &&
+            entry.isIntersecting &&
+            !viewedPosts.current.has(postId)
+          ) {
             viewedPosts.current.add(postId);
 
             const item = feed.find(
@@ -413,7 +423,9 @@ export default function SupporterSpace() {
       setCommentText((prev) => ({ ...prev, [postId]: "" }));
       setFeed((prev) =>
         prev.map((f) =>
-          f.id === postId ? { ...f, commentCount: (f.commentCount || 0) + 1 } : f,
+          f.id === postId
+            ? { ...f, commentCount: (f.commentCount || 0) + 1 }
+            : f,
         ),
       );
       fetchComments(postId);
@@ -438,7 +450,10 @@ export default function SupporterSpace() {
         userPhoto: auth.profile?.photoURL || null,
         createdAt: serverTimestamp(),
       };
-      await addDoc(collection(db, "creatorContent", postId, "comments"), newReply);
+      await addDoc(
+        collection(db, "creatorContent", postId, "comments"),
+        newReply,
+      );
       await updateDoc(doc(db, "creatorContent", postId), {
         commentCount: increment(1),
       });
@@ -452,7 +467,9 @@ export default function SupporterSpace() {
       fetchComments(postId);
       setFeed((prev) =>
         prev.map((f) =>
-          f.id === postId ? { ...f, commentCount: (f.commentCount || 0) + 1 } : f,
+          f.id === postId
+            ? { ...f, commentCount: (f.commentCount || 0) + 1 }
+            : f,
         ),
       );
     } catch (e) {
@@ -468,7 +485,9 @@ export default function SupporterSpace() {
       const likeDocId = likedDocIds[postKey];
       if (likeDocId) {
         try {
-          await deleteDoc(doc(db, "creatorContent", item.id, "likes", likeDocId));
+          await deleteDoc(
+            doc(db, "creatorContent", item.id, "likes", likeDocId),
+          );
           await updateDoc(doc(db, "creatorContent", item.id), {
             "stats.likes": increment(-1),
           });
@@ -494,11 +513,14 @@ export default function SupporterSpace() {
     );
 
     try {
-      const docRef = await addDoc(collection(db, "creatorContent", item.id, "likes"), {
-        postId: item.id,
-        userId: auth.user.uid,
-        createdAt: serverTimestamp(),
-      });
+      const docRef = await addDoc(
+        collection(db, "creatorContent", item.id, "likes"),
+        {
+          postId: item.id,
+          userId: auth.user.uid,
+          createdAt: serverTimestamp(),
+        },
+      );
       setLikedDocIds((prev) => ({ ...prev, [item.id]: docRef.id }));
       await updateDoc(doc(db, "creatorContent", item.id), {
         "stats.likes": increment(1),
@@ -509,7 +531,12 @@ export default function SupporterSpace() {
   };
 
   const handleCardClick = (item: any, e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest("button, a, input, textarea, video, iframe")) return;
+    if (
+      (e.target as HTMLElement).closest(
+        "button, a, input, textarea, video, iframe",
+      )
+    )
+      return;
     const text = item.description || "";
     if (text.length > 200 && expandedPostId !== item.id) {
       setExpandedPostId(item.id);
@@ -534,7 +561,9 @@ export default function SupporterSpace() {
     return true;
   });
   const contentItems = filteredFeed.filter((item) => item.type !== "gathering");
-  const gatheringItems = filteredFeed.filter((item) => item.type === "gathering");
+  const gatheringItems = filteredFeed.filter(
+    (item) => item.type === "gathering",
+  );
 
   const renderYouTubeEmbed = (text: string) => {
     const youtubeUrl = hasYouTubeLink(text);
@@ -648,7 +677,11 @@ export default function SupporterSpace() {
     );
   };
 
-  const renderPostText = (text: string, itemId: string, isExpanded: boolean) => {
+  const renderPostText = (
+    text: string,
+    itemId: string,
+    isExpanded: boolean,
+  ) => {
     if (isExpanded || text.length <= 200) {
       return (
         <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
@@ -674,7 +707,10 @@ export default function SupporterSpace() {
   };
 
   const renderPostComments = (item: any) => (
-    <div onClick={(e) => e.stopPropagation()} className="px-4 pb-4 border-t border-border pt-3 bg-muted">
+    <div
+      onClick={(e) => e.stopPropagation()}
+      className="px-4 pb-4 border-t border-border pt-3 bg-muted"
+    >
       <h4 className="text-xs font-semibold text-muted-foreground mb-3">
         Comments ({comments[item.id]?.length || 0})
       </h4>
@@ -715,7 +751,9 @@ export default function SupporterSpace() {
                       {comment.createdAt?.toDate?.()?.toLocaleDateString()}
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap"><LinkifyText text={comment.text} /></p>
+                  <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap">
+                    <LinkifyText text={comment.text} />
+                  </p>
                   <button
                     onClick={() =>
                       setReplyingTo((prev) => ({
@@ -778,7 +816,9 @@ export default function SupporterSpace() {
                               Owner
                             </span>
                           )}
-                          <p className="text-xs text-muted-foreground whitespace-pre-wrap"><LinkifyText text={reply.text} /></p>
+                          <p className="text-xs text-muted-foreground whitespace-pre-wrap">
+                            <LinkifyText text={reply.text} />
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -884,9 +924,7 @@ export default function SupporterSpace() {
               {gatheringItems.map((item) => {
                 const eventDate = item.date
                   ? new Date(
-                      item.date.seconds
-                        ? item.date.seconds * 1000
-                        : item.date,
+                      item.date.seconds ? item.date.seconds * 1000 : item.date,
                     )
                   : null;
                 return (
@@ -924,12 +962,11 @@ export default function SupporterSpace() {
                         </h3>
                         <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1">
-                            <Clock size={12} />{" "}
-                            {item.time || "All day"}
+                            <Clock size={12} /> {item.time || "All day"}
                           </span>
                           <span className="flex items-center gap-1">
-                            <User size={12} />{" "}
-                            {item.attendeesCount || 0} attending
+                            <User size={12} /> {item.attendeesCount || 0}{" "}
+                            attending
                           </span>
                         </div>
                         {item.location && (
@@ -999,7 +1036,7 @@ export default function SupporterSpace() {
                                   {item.isFollowing ? "Following" : "Public"}
                                 </span>
                                 <span className="text-xs text-muted-foreground">
-                                  Â·{" "}
+                                  ·{" "}
                                   {item.createdAt
                                     ?.toDate?.()
                                     ?.toLocaleDateString()}
@@ -1024,7 +1061,10 @@ export default function SupporterSpace() {
                         </div>
 
                         {item.contentUrl && expandedPostId !== item.id && (
-                          <div onClick={(e) => e.stopPropagation()} className="mt-3 rounded-lg overflow-hidden bg-muted">
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="mt-3 rounded-lg overflow-hidden bg-muted"
+                          >
                             {item.type === "video" ? (
                               <video
                                 src={item.contentUrl}
@@ -1045,7 +1085,9 @@ export default function SupporterSpace() {
                                     <p className="text-sm font-medium text-foreground">
                                       Document
                                     </p>
-                                    <p className="text-xs text-muted-foreground">PDF</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      PDF
+                                    </p>
                                   </div>
                                 </div>
                                 <button
@@ -1079,7 +1121,10 @@ export default function SupporterSpace() {
                         )}
 
                         {expandedPostId === item.id && (
-                          <div onClick={(e) => e.stopPropagation()} className="mt-4">
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="mt-4"
+                          >
                             {renderContentMedia(item)}
 
                             {item.docUrl && !Array.isArray(item.docUrl) && (
@@ -1179,19 +1224,25 @@ export default function SupporterSpace() {
               </h3>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Total Supported</span>
+                  <span className="text-sm text-muted-foreground">
+                    Total Supported
+                  </span>
                   <span className="font-semibold text-orange-600">
                     {(auth?.profile?.totalSupport || 0).toLocaleString()} RWF
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Following</span>
+                  <span className="text-sm text-muted-foreground">
+                    Following
+                  </span>
                   <span className="font-semibold text-foreground">
                     {favorites.length} creators
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Purchases</span>
+                  <span className="text-sm text-muted-foreground">
+                    Purchases
+                  </span>
                   <span className="font-semibold text-foreground">
                     {purchases.length} items
                   </span>
@@ -1227,7 +1278,9 @@ export default function SupporterSpace() {
                       <p className="text-sm font-medium text-foreground truncate">
                         {c.name}
                       </p>
-                      <p className="text-xs text-muted-foreground">@{c.handle}</p>
+                      <p className="text-xs text-muted-foreground">
+                        @{c.handle}
+                      </p>
                     </div>
                   </Link>
                 ))}
@@ -1308,9 +1361,9 @@ export default function SupporterSpace() {
               </div>
               <button
                 onClick={() => router.push("/explore")}
-                className="w-full mt-4 text-sm text-muted-foreground hover:text-foreground text-center"
+                className="w-full bg-orange-600 text-white hover:bg-orange-700 py-2 rounded-lg mt-4 text-sm font-medium text-center"
               >
-                Explore more â†’
+                Explore more
               </button>
             </div>
 

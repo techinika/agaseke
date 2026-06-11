@@ -70,7 +70,10 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
       try {
         const postRef = doc(db, "creatorContent", postId);
         const postSnap = await getDoc(postRef);
-        if (!postSnap.exists()) { setLoading(false); return; }
+        if (!postSnap.exists()) {
+          setLoading(false);
+          return;
+        }
         const postData = { id: postSnap.id, ...postSnap.data() };
         setPost(postData);
 
@@ -90,8 +93,11 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
             setLikeDocId(userLikeSnap.docs[0].id);
           }
         }
-      } catch (e) { console.error(e); }
-      finally { setLoading(false); }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
     };
     fetch();
   }, [postId, currentUser?.uid]);
@@ -99,7 +105,9 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
   useEffect(() => {
     if (loading || !postId || viewCounted.current) return;
     viewCounted.current = true;
-    updateDoc(doc(db, "creatorContent", postId), { views: increment(1) }).catch(() => {});
+    updateDoc(doc(db, "creatorContent", postId), { views: increment(1) }).catch(
+      () => {},
+    );
   }, [loading, postId]);
 
   useEffect(() => {
@@ -107,7 +115,10 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
     const commentsRef = collection(db, "creatorContent", postId, "comments");
     const q = query(commentsRef, orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
-      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Comment[];
+      const list = snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      })) as Comment[];
       const organized: Comment[] = [];
       const replyMap: Record<string, Comment[]> = {};
       list.forEach((c) => {
@@ -118,7 +129,9 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
           organized.push(c);
         }
       });
-      organized.forEach((c) => { c.replies = replyMap[c.id] || []; });
+      organized.forEach((c) => {
+        c.replies = replyMap[c.id] || [];
+      });
       setComments(organized);
     });
     return () => unsub();
@@ -134,26 +147,38 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
   }, [postId]);
 
   const handleLike = async () => {
-    if (!currentUser?.uid) { toast.error("Please login"); return; }
+    if (!currentUser?.uid) {
+      toast.error("Please login");
+      return;
+    }
     try {
       if (liked && likeDocId) {
         await deleteDoc(doc(db, "creatorContent", postId, "likes", likeDocId));
-        await updateDoc(doc(db, "creatorContent", postId), { "stats.likes": increment(-1) });
+        await updateDoc(doc(db, "creatorContent", postId), {
+          "stats.likes": increment(-1),
+        });
         setLiked(false);
         setLikeCount((c) => Math.max(0, c - 1));
         setLikeDocId(null);
       } else {
-        const ref = await addDoc(collection(db, "creatorContent", postId, "likes"), {
-          postId,
-          userId: currentUser.uid,
-          createdAt: serverTimestamp(),
+        const ref = await addDoc(
+          collection(db, "creatorContent", postId, "likes"),
+          {
+            postId,
+            userId: currentUser.uid,
+            createdAt: serverTimestamp(),
+          },
+        );
+        await updateDoc(doc(db, "creatorContent", postId), {
+          "stats.likes": increment(1),
         });
-        await updateDoc(doc(db, "creatorContent", postId), { "stats.likes": increment(1) });
         setLiked(true);
         setLikeDocId(ref.id);
         setLikeCount((c) => c + 1);
       }
-    } catch { toast.error("Failed to update like"); }
+    } catch {
+      toast.error("Failed to update like");
+    }
   };
 
   const handleComment = async () => {
@@ -172,7 +197,9 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
       });
       setCommentText("");
       toast.success("Comment added");
-    } catch { toast.error("Failed to add comment"); }
+    } catch {
+      toast.error("Failed to add comment");
+    }
   };
 
   const handleReply = async (parentId: string) => {
@@ -193,7 +220,9 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
       setReplyText((prev) => ({ ...prev, [parentId]: "" }));
       setReplyingTo(null);
       toast.success("Reply added");
-    } catch { toast.error("Failed to add reply"); }
+    } catch {
+      toast.error("Failed to add reply");
+    }
   };
 
   if (loading) {
@@ -213,13 +242,23 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
         <Navbar />
         <div className="max-w-2xl mx-auto px-4 pt-24 text-center">
           <p className="text-muted-foreground">Post not found</p>
-          <button onClick={() => router.push("/supporter")} className="mt-4 text-orange-500 font-medium">Go Back</button>
+          <button
+            onClick={() => router.push("/supporter")}
+            className="mt-4 text-orange-500 font-medium"
+          >
+            Go Back
+          </button>
         </div>
       </div>
     );
   }
 
-  const pages = post.contentUrl && Array.isArray(post.contentUrl) ? post.contentUrl : post.contentUrl ? [post.contentUrl] : [];
+  const pages =
+    post.contentUrl && Array.isArray(post.contentUrl)
+      ? post.contentUrl
+      : post.contentUrl
+        ? [post.contentUrl]
+        : [];
 
   return (
     <div className="min-h-screen bg-muted">
@@ -242,30 +281,47 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
                 </div>
               </Link>
               <div>
-                <Link href={`/${post.creatorId}`} className="font-semibold text-foreground hover:text-blue-600">
+                <Link
+                  href={`/${post.creatorId}`}
+                  className="font-semibold text-foreground hover:text-blue-600"
+                >
                   {creator?.name || post.creatorId}
                 </Link>
                 <p className="text-xs text-muted-foreground">
-                  @{post.creatorId} Â· {post.createdAt?.toDate?.()?.toLocaleDateString()}
+                  @{post.creatorId} ·{" "}
+                  {post.createdAt?.toDate?.()?.toLocaleDateString()}
                 </p>
               </div>
             </div>
 
-            <h1 className="text-2xl font-bold text-foreground mb-3">{post.title}</h1>
+            <h1 className="text-2xl font-bold text-foreground mb-3">
+              {post.title}
+            </h1>
 
             <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed mb-4">
               <LinkifyText text={post.description || post.content} />
             </div>
 
-            {post.type === "image" && !Array.isArray(post.contentUrl) && post.contentUrl && (
-              <div className="rounded-lg overflow-hidden bg-muted mb-4">
-                <img src={post.contentUrl} alt={post.title} className="w-full max-h-[500px] object-contain" />
-              </div>
-            )}
+            {post.type === "image" &&
+              !Array.isArray(post.contentUrl) &&
+              post.contentUrl && (
+                <div className="rounded-lg overflow-hidden bg-muted mb-4">
+                  <img
+                    src={post.contentUrl}
+                    alt={post.title}
+                    className="w-full max-h-[500px] object-contain"
+                  />
+                </div>
+              )}
 
             {post.type === "video" && post.contentUrl && (
               <div className="rounded-lg overflow-hidden bg-black mb-4">
-                <video src={post.contentUrl} controls controlsList="nodownload" className="w-full aspect-video" />
+                <video
+                  src={post.contentUrl}
+                  controls
+                  controlsList="nodownload"
+                  className="w-full aspect-video"
+                />
               </div>
             )}
 
@@ -276,28 +332,62 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
                     <FileText size={24} className="text-orange-600" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium text-sm text-foreground">Document</p>
-                    <p className="text-xs text-muted-foreground">{pages.length} page{pages.length > 1 ? "s" : ""}</p>
+                    <p className="font-medium text-sm text-foreground">
+                      Document
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {pages.length} page{pages.length > 1 ? "s" : ""}
+                    </p>
                   </div>
                 </div>
                 {pages.length > 1 && (
                   <div className="flex items-center justify-between mb-3">
-                    <button onClick={() => setDocumentIndex((i) => Math.max(0, i - 1))} disabled={documentIndex === 0} className="p-1.5 bg-card border rounded-lg disabled:opacity-50"><ChevronLeft size={16} /></button>
-                    <span className="text-sm text-muted-foreground">{documentIndex + 1} of {pages.length}</span>
-                    <button onClick={() => setDocumentIndex((i) => Math.min(pages.length - 1, i + 1))} disabled={documentIndex === pages.length - 1} className="p-1.5 bg-card border rounded-lg disabled:opacity-50"><ChevronRight size={16} /></button>
+                    <button
+                      onClick={() =>
+                        setDocumentIndex((i) => Math.max(0, i - 1))
+                      }
+                      disabled={documentIndex === 0}
+                      className="p-1.5 bg-card border rounded-lg disabled:opacity-50"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <span className="text-sm text-muted-foreground">
+                      {documentIndex + 1} of {pages.length}
+                    </span>
+                    <button
+                      onClick={() =>
+                        setDocumentIndex((i) =>
+                          Math.min(pages.length - 1, i + 1),
+                        )
+                      }
+                      disabled={documentIndex === pages.length - 1}
+                      className="p-1.5 bg-card border rounded-lg disabled:opacity-50"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
                   </div>
                 )}
-                <iframe src={`https://docs.google.com/viewer?url=${encodeURIComponent(pages[documentIndex])}&embedded=true`} className="w-full h-[500px] rounded-lg bg-card" title="Document" />
+                <iframe
+                  src={`https://docs.google.com/viewer?url=${encodeURIComponent(pages[documentIndex])}&embedded=true`}
+                  className="w-full h-[500px] rounded-lg bg-card"
+                  title="Document"
+                />
               </div>
             )}
 
             <div className="flex items-center gap-4 pt-4 border-t border-border text-sm text-muted-foreground">
-              <span className="flex items-center gap-1.5"><Eye size={16} /> {post.views || 0}</span>
+              <span className="flex items-center gap-1.5">
+                <Eye size={16} /> {post.views || 0}
+              </span>
             </div>
 
             <div className="flex items-center gap-4 mt-4">
-              <button onClick={handleLike} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition ${liked ? "bg-red-50 text-red-500" : "bg-muted text-muted-foreground hover:bg-gray-200"}`}>
-                <Heart size={18} className={liked ? "fill-current" : ""} /> {likeCount}
+              <button
+                onClick={handleLike}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition ${liked ? "bg-red-50 text-red-500" : "bg-muted text-muted-foreground hover:bg-gray-200"}`}
+              >
+                <Heart size={18} className={liked ? "fill-current" : ""} />{" "}
+                {likeCount}
               </button>
               <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-muted text-muted-foreground">
                 <MessageCircle size={18} /> {comments.length}
@@ -306,39 +396,92 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
           </div>
 
           <div className="border-t border-border p-6">
-            <h3 className="font-semibold text-foreground mb-4">Comments ({comments.length})</h3>
+            <h3 className="font-semibold text-foreground mb-4">
+              Comments ({comments.length})
+            </h3>
             <div className="space-y-4">
               {comments.map((comment) => (
                 <div key={comment.id} className="bg-muted rounded-lg p-3">
                   <div className="flex items-start gap-3">
                     <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-muted-foreground shrink-0 overflow-hidden">
-                      {comment.userPhoto ? <img src={comment.userPhoto} alt="" className="w-full h-full object-cover" /> : comment.userName?.[0] || "?"}
+                      {comment.userPhoto ? (
+                        <img
+                          src={comment.userPhoto}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        comment.userName?.[0] || "?"
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{comment.userName}</span>
-                        <span className="text-xs text-muted-foreground">{comment.createdAt?.toDate?.()?.toLocaleDateString()}</span>
+                        <span className="font-medium text-sm">
+                          {comment.userName}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {comment.createdAt?.toDate?.()?.toLocaleDateString()}
+                        </span>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-0.5 whitespace-pre-wrap"><LinkifyText text={comment.text} /></p>
-                      <button onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)} className="text-xs text-blue-500 mt-1">
+                      <p className="text-sm text-muted-foreground mt-0.5 whitespace-pre-wrap">
+                        <LinkifyText text={comment.text} />
+                      </p>
+                      <button
+                        onClick={() =>
+                          setReplyingTo(
+                            replyingTo === comment.id ? null : comment.id,
+                          )
+                        }
+                        className="text-xs text-blue-500 mt-1"
+                      >
                         Reply
                       </button>
                       {replyingTo === comment.id && (
                         <div className="mt-2 flex gap-2">
-                          <input value={replyText[comment.id] || ""} onChange={(e) => setReplyText((p) => ({ ...p, [comment.id]: e.target.value }))} placeholder="Write a reply..." className="flex-1 text-xs px-3 py-1.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                          <button onClick={() => handleReply(comment.id)} className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs">Send</button>
+                          <input
+                            value={replyText[comment.id] || ""}
+                            onChange={(e) =>
+                              setReplyText((p) => ({
+                                ...p,
+                                [comment.id]: e.target.value,
+                              }))
+                            }
+                            placeholder="Write a reply..."
+                            className="flex-1 text-xs px-3 py-1.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <button
+                            onClick={() => handleReply(comment.id)}
+                            className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs"
+                          >
+                            Send
+                          </button>
                         </div>
                       )}
                       {comment.replies && comment.replies.length > 0 && (
                         <div className="mt-2 ml-3 space-y-2">
                           {comment.replies.map((reply) => (
-                            <div key={reply.id} className="flex items-start gap-2 pl-2 border-l-2 border-border">
+                            <div
+                              key={reply.id}
+                              className="flex items-start gap-2 pl-2 border-l-2 border-border"
+                            >
                               <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-muted-foreground shrink-0 overflow-hidden">
-                                {reply.userPhoto ? <img src={reply.userPhoto} alt="" className="w-full h-full object-cover" /> : reply.userName?.[0] || "?"}
+                                {reply.userPhoto ? (
+                                  <img
+                                    src={reply.userPhoto}
+                                    alt=""
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  reply.userName?.[0] || "?"
+                                )}
                               </div>
                               <div>
-                                <span className="font-medium text-xs">{reply.userName}</span>
-                                <p className="text-xs text-muted-foreground whitespace-pre-wrap"><LinkifyText text={reply.text} /></p>
+                                <span className="font-medium text-xs">
+                                  {reply.userName}
+                                </span>
+                                <p className="text-xs text-muted-foreground whitespace-pre-wrap">
+                                  <LinkifyText text={reply.text} />
+                                </p>
                               </div>
                             </div>
                           ))}
@@ -349,13 +492,27 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
                 </div>
               ))}
               {comments.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">No comments yet</p>
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No comments yet
+                </p>
               )}
             </div>
 
             <div className="mt-4 flex gap-2">
-              <input value={commentText} onChange={(e) => setCommentText(e.target.value)} placeholder="Write a comment..." className="flex-1 text-sm px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" onKeyDown={(e) => e.key === "Enter" && handleComment()} />
-              <button onClick={handleComment} disabled={!commentText.trim()} className="px-4 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition disabled:opacity-50"><Send size={16} /></button>
+              <input
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="Write a comment..."
+                className="flex-1 text-sm px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onKeyDown={(e) => e.key === "Enter" && handleComment()}
+              />
+              <button
+                onClick={handleComment}
+                disabled={!commentText.trim()}
+                className="px-4 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition disabled:opacity-50"
+              >
+                <Send size={16} />
+              </button>
             </div>
           </div>
         </div>

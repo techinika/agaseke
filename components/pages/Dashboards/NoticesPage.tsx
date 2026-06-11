@@ -242,7 +242,7 @@ export default function NoticesPage() {
                 onClick={() => setSelectedNotice(null)}
                 className="w-10 h-10 flex items-center justify-center bg-muted rounded-full text-muted-foreground hover:text-foreground transition-all"
               >
-                âœ•
+                •
               </button>
             </div>
 

@@ -778,3 +778,9 @@ For issues or feature requests, please open an issue on GitHub.
 - **Enforced supporter-only private content reads**: The `creatorContent` Firestore rule now restricts private content reads to the creator and their supporters via `isSupporterOf(creatorId)`. Public content remains readable by any authenticated user.
 - **Allowed non-creator counter updates**: Non-creator users can now increment `views`, `commentCount`, and `stats.likes` on `creatorContent` documents (via `affectedKeys().hasOnly()` rule). This ensures like/comment/view counts update correctly when supporters interact with content.
 - **Reinstated `await` on `updateDoc`**: Removed fire-and-forget `.catch(() => {})` patterns from `SupporterSpace.tsx` and `SupporterPostDetail.tsx` for comment and like counter updates. Now properly awaited with error propagation. View count tracking remains fire-and-forget (background noise in observer callbacks).
+
+### Payouts Moved to Account Group (June 2026)
+- **Moved /creator/payouts**: Relocated the Payouts link from the Commerce sidebar group to the Account group (now: Verify, Payouts, Settings). Payouts are account-level, not store-specific.
+
+### NoticesPage Encoding Fix (June 2026)
+- **Fixed unicode character encoding**: Replaced garbled close button icon in `NoticesPage.tsx` with a standard bullet character.
