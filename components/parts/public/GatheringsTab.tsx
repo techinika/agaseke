@@ -193,13 +193,14 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
         creatorHandle,
         createdAt: serverTimestamp(),
         checkedIn: false,
+        paid: false,
       });
 
       setAttendanceDocIds((prev) => ({ ...prev, [gathering.id]: docRef.id }));
 
-      await updateDoc(doc(db, "creatorGatherings", gathering.id), {
+      updateDoc(doc(db, "creatorGatherings", gathering.id), {
         attendeesCount: (gathering.attendeesCount || 0) + 1,
-      });
+      }).catch(() => {});
 
       setRsvpedIds((prev) => new Set(prev).add(gathering.id));
 

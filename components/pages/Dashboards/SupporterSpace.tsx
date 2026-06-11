@@ -401,17 +401,13 @@ export default function SupporterSpace() {
   const handleAddComment = async (postId: string) => {
     if (!commentText[postId]?.trim() || !auth.user) return;
     try {
-      const newComment = {
+      await addDoc(collection(db, "creatorContent", postId, "comments"), {
         postId,
         text: commentText[postId],
         userId: auth.user.uid,
         userName: auth.profile?.displayName || "Anonymous",
         userPhoto: auth.profile?.photoURL || null,
         createdAt: serverTimestamp(),
-      };
-      await addDoc(collection(db, "creatorContent", postId, "comments"), newComment);
-      await updateDoc(doc(db, "creatorContent", postId), {
-        commentCount: increment(1),
       });
       setCommentText((prev) => ({ ...prev, [postId]: "" }));
       setFeed((prev) =>
@@ -420,6 +416,9 @@ export default function SupporterSpace() {
         ),
       );
       fetchComments(postId);
+      updateDoc(doc(db, "creatorContent", postId), {
+        commentCount: increment(1),
+      }).catch(() => {});
       toast.success("Comment added");
     } catch (e) {
       toast.error("Failed to add comment");
@@ -500,9 +499,9 @@ export default function SupporterSpace() {
         createdAt: serverTimestamp(),
       });
       setLikedDocIds((prev) => ({ ...prev, [item.id]: docRef.id }));
-      await updateDoc(doc(db, "creatorContent", item.id), {
+      updateDoc(doc(db, "creatorContent", item.id), {
         "stats.likes": increment(1),
-      });
+      }).catch(() => {});
     } catch (e) {
       console.error("Like error", e);
     }

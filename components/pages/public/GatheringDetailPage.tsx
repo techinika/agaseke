@@ -151,11 +151,12 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
         creatorHandle: username,
         createdAt: serverTimestamp(),
         checkedIn: false,
+        paid: false,
       });
       setAttendanceDocId(docRef.id);
-      await updateDoc(doc(db, "creatorGatherings", gathering.id), {
+      updateDoc(doc(db, "creatorGatherings", gathering.id), {
         attendeesCount: (gathering.attendeesCount || 0) + 1,
-      });
+      }).catch(() => {});
       setIsRsvped(true);
 
       logInfo("gathering", `RSVP confirmed for gathering: "${gathering.title}"`, {
