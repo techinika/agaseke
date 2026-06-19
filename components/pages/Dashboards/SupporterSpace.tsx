@@ -19,8 +19,11 @@ import {
   ChevronRight,
   Paperclip,
   Clock,
+  Home,
+  Compass,
 } from "lucide-react";
 import Navbar from "@/components/parts/Navigation";
+import MobileBottomBar from "@/components/parts/MobileBottomBar";
 import { useAuth } from "@/auth/AuthContext";
 import Loading from "@/app/loading";
 import {
@@ -869,7 +872,7 @@ export default function SupporterSpace() {
     <div className="min-h-screen bg-muted">
       <Navbar />
 
-      <div className="max-w-7xl mx-auto px-4 pt-20 pb-24">
+      <div className="max-w-7xl mx-auto px-4 pt-12 pb-24">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-foreground">
@@ -1220,7 +1223,8 @@ export default function SupporterSpace() {
             </div>
           </div>
 
-          <div className="hidden lg:block lg:col-span-4 space-y-6">
+          <div className="hidden lg:block lg:col-span-4">
+            <div className="sticky top-24 space-y-6">
             <div className="bg-card rounded-lg shadow-sm border border-border p-4">
               <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
                 Your Stats
@@ -1382,9 +1386,12 @@ export default function SupporterSpace() {
                 {auth?.isCreator ? "Go to Dashboard" : "Become Creator"}
               </Link>
             </div>
+            </div>
           </div>
         </div>
       </div>
+
+      <MobileBottomBar />
 
       {viewingDocument && (
         <div className="fixed inset-0 z-[100] bg-black/90 flex flex-col animate-in fade-in duration-200">
