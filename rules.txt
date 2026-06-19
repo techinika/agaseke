@@ -130,9 +130,12 @@ service cloud.firestore {
     match /creatorContent/{postId} {
       // Main post document
       // creatorId stores the creator's handle (username), not Firebase UID.
-      // Any authenticated user can read public content.
-      // Private content reads are gated by the client (only supporters fetch them).
-      allow read: if isAuth() && !resource.data.isPrivate;
+      // Uses get() for isCreator, so Firestore evaluates per-document (no query rejection).
+      // Public content is accessible to any authenticated user.
+      allow read: if isAuth() && (
+        isCreator(resource.data.creatorId)                           // Creator reads own
+        || !resource.data.isPrivate                                  // Public content
+      );
       allow create: if isAuth()
         && isCreator(request.resource.data.creatorId);             // Self-create (handle)
       allow update: if isAuth() && (
@@ -233,6 +236,7 @@ service cloud.firestore {
     match /supportedCreators/{docId} {
       allow read: if isAuth() && (
         resource.data.supporterId == request.auth.uid               // Own support
+        || isCreator(resource.data.creatorId)                        // Creator reads received support
         || isAdmin(request.auth.uid)                                // Admin reads all
       );
       allow create: if false;                                       // Server-side only
@@ -522,7 +526,7 @@ service cloud.firestore {
         resource.data.creatorUid == request.auth.uid                // Creator reads own
         || isAdmin(request.auth.uid)
       );
-      allow create: if false;                                       // Server-side only
+      allow create: if isAuth() && isAdmin(request.auth.uid);       // Admin creates on approval
       allow update: if false;
       allow delete: if false;
     }
@@ -617,11 +621,18 @@ service cloud.firestore {
     }
 
     match /ticketSales/{docId} {
-      allow read, write: if false;                                  // Server-side only
+      allow read: if isAuth() && (
+        isCreator(resource.data.creatorHandle)                       // Creator reads own sales
+        || isAdmin(request.auth.uid)                                // Admin reads all
+      );
+      allow create: if false;                                        // Server-side only
+      allow update: if false;                                        // Server-side only
+      allow delete: if false;                                        // Server-side only
     }
 
     match /adminBroadcasts/{docId} {
-      allow read, write: if false;                                  // Server-side only
+      allow read: if isAuth() && isAdmin(request.auth.uid);         // Admin only
+      allow write: if isAuth() && isAdmin(request.auth.uid);        // Admin only
     }
 
 
