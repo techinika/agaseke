@@ -188,15 +188,19 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
 - **Database**: Firebase Firestore
 - **Authentication**: Firebase Auth
 - **Storage**: Cloudinary (images, videos, files)
-- **Payments**: PesaPal (Mobile Money)
-- **Email**: API routes with email service integration
+- **Payments**: PesaPal (Mobile Money), Paypack
+- **Email**: API routes with email service integration (Nodemailer, Resend)
+- **Validation**: Zod
+- **Error Monitoring**: Sentry
+- **Animations**: Framer Motion
+- **Bundle Analysis**: @next/bundle-analyzer
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 18+
-- npm or yarn
+- Node.js 20+
+- npm
 - Firebase project (Firestore, Auth)
 - Cloudinary account
 - PesaPal merchant account
@@ -573,29 +577,57 @@ When `storePublic: false`:
 
 ## Development
 
-### Build
+### Available Scripts
+
+| Script | Command | Description |
+|--------|---------|-------------|
+| `dev` | `next dev` | Start development server (Turbopack) |
+| `build` | `next build` | Production build |
+| `start` | `next start` | Start production server |
+| `lint` | `eslint` | Run ESLint |
+| `typecheck` | `tsc --noEmit` | TypeScript type checking |
+| `analyze` | `ANALYZE=true next build` | Build with bundle analysis |
+
+Run individual commands:
 ```bash
-npm run build
+npm run dev       # Development
+npm run build     # Production build
+npm run lint      # Lint
+npm run typecheck # Type-check
+npm run analyze   # Bundle analysis
 ```
 
-### Lint
-```bash
-npm run lint
-```
+### Pre-commit Hooks
 
-### Type Check
+This project uses [husky](https://typicode.github.io/husky/) and [lint-staged](https://github.com/lint-staged/lint-staged) to run linting and type-checking on staged files before each commit. After installing dependencies, run:
+
 ```bash
-npm run typecheck
+npx husky
 ```
 
 ## Deployment
 
-The app is optimized for Vercel deployment:
+### Vercel (Recommended)
+
+```bash
+npm run build
+```
 
 1. Push to GitHub
 2. Import to Vercel
 3. Add environment variables
 4. Deploy
+
+### Docker
+
+A multi-stage Dockerfile is included for containerized deployment:
+
+```bash
+docker build -t agaseke .
+docker run -p 3000:3000 agaseke
+```
+
+The image uses `output: "standalone"` for an optimized production build.
 
 ## License
 
@@ -606,6 +638,20 @@ MIT License - see LICENSE file for details.
 For issues or feature requests, please open an issue on GitHub.
 
 ## Recent Updates
+
+### Code Quality & Infrastructure (June 2026)
+- **TypeScript check script**: Added `npm run typecheck` (`tsc --noEmit`) for standalone type checking
+- **Pre-commit hooks**: Configured husky + lint-staged to auto-lint and type-check staged files before each commit
+- **CI/CD pipeline**: Added GitHub Actions workflow (`lint → typecheck → build`) on push/PR to main
+- **Input validation**: Added Zod schemas (`lib/validation.ts`) for booking, support, store, gathering, and message payloads — applied to bookings API route
+- **Rate limiting**: In-memory rate limiter (`lib/rateLimit.ts`) applied to all payment, upload, and broadcast API routes to prevent abuse
+- **Error monitoring**: Integrated Sentry (`@sentry/nextjs`) with client, server, and edge configs + global-error boundary
+- **Bundle analysis**: Added `npm run analyze` (`@next/bundle-analyzer`) to detect large dependencies
+- **Dead code removal**: Removed duplicate `CreatorSchma.tsx` (typo variant of `CreatorSchema.tsx`)
+- **Server actions split**: Split monolithic `publicProfile.ts` into domain files (`creator.ts`, `store.ts`, `content.ts`)
+- **Docker support**: Multi-stage Dockerfile with `output: "standalone"` optimized production image
+- **Node version pinning**: Added `.nvmrc` (Node 20)
+- **Dependency updates**: Added `zod`, `@sentry/nextjs`, `@next/bundle-analyzer`, `husky`, `lint-staged`
 
 ### Sales Dashboard & Store Enhancements (May 2026)
 - **Sales Page** (`/creator/sales`): New dashboard page for tracking product sales and earnings

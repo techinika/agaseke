@@ -1,44 +1,41 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
-import { Home, AlertTriangle } from "lucide-react";
+import * as Sentry from "@sentry/nextjs";
+import { useEffect } from "react";
 
-interface GlobalErrorProps {
+export default function GlobalError({
+  error,
+  reset,
+}: {
   error: Error & { digest?: string };
   reset: () => void;
-}
+}) {
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
 
-export default function GlobalError({ error, reset }: GlobalErrorProps) {
   return (
     <html>
-      <body className="min-h-screen bg-card flex flex-col items-center justify-center px-6">
-        <div className="flex flex-col items-center text-center max-w-md">
-          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6">
-            <AlertTriangle size={40} className="text-red-500" />
-          </div>
-
-          <h2 className="text-2xl font-bold text-foreground mb-2">
-            Critical Error
-          </h2>
-          <p className="text-muted-foreground mb-6">
-            Something went wrong. Please try refreshing the page.
+      <body>
+        <div style={{ padding: "2rem", textAlign: "center", fontFamily: "sans-serif" }}>
+          <h1 style={{ fontSize: "2rem", marginBottom: "1rem" }}>Something went wrong</h1>
+          <p style={{ color: "#64748b", marginBottom: "2rem" }}>
+            An unexpected error occurred. Our team has been notified.
           </p>
-
-          <div className="flex flex-wrap gap-4">
-            <button
-              onClick={() => reset()}
-              className="bg-slate-900 text-white px-6 py-2 rounded-lg hover:bg-red-600 transition"
-            >
-              Try Again
-            </button>
-            <Link
-              href="/"
-              className="flex items-center gap-2 bg-card border border-border-strong text-muted-foreground px-6 py-2 rounded-lg hover:border-foreground transition"
-            >
-              <Home size={18} /> Home
-            </Link>
-          </div>
+          <button
+            onClick={() => reset()}
+            style={{
+              background: "#f97316",
+              color: "white",
+              border: "none",
+              padding: "0.75rem 1.5rem",
+              borderRadius: "0.5rem",
+              cursor: "pointer",
+              fontSize: "1rem",
+            }}
+          >
+            Try again
+          </button>
         </div>
       </body>
     </html>

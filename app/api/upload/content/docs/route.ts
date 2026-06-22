@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
+import { rateLimitByIp } from "@/lib/rateLimit";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 cloudinary.config({
@@ -9,6 +10,10 @@ cloudinary.config({
 });
 
 export async function POST(req: Request) {
+  const rl = rateLimitByIp(req, { max: 10, interval: 60_000 });
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Too many uploads" }, { status: 429 });
+  }
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File;

@@ -44,3 +44,7 @@ storybook-static
 
 opencode_next.log
 opencode_next_err.log
+
+# sentry
+.sentryclirc
+.sentryenv

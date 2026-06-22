@@ -1,9 +1,14 @@
 import {  updatesTransporter } from "@/lib/emailTransporter";
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb, admin } from "@/db/firebaseAdmin";
+import { rateLimitByIp } from "@/lib/rateLimit";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export async function POST(req: NextRequest) {
+  const rl = rateLimitByIp(req, { max: 5, interval: 60_000 });
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
   try {
     const { recipients, subject, message, targetLabel, recipientIds } = await req.json();
     let sentCount = 0;

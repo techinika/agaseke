@@ -5,6 +5,8 @@ import { BookingAvailability, BookingTier } from "@/types/booking";
 import { encrypt } from "@/lib/encryption";
 import { createNotification } from "@/lib/adminNotifications";
 import { transporter } from "@/lib/emailTransporter";
+import { rateLimitByIp } from "@/lib/rateLimit";
+import { bookingSchema } from "@/lib/validation";
 
 function parseTimeRange(preferredTime: string): { start: string; end: string } | null {
   const parts = preferredTime.split(" - ");
@@ -58,29 +60,19 @@ function getMeetingLocation(avail: BookingAvailability, preferredType: string): 
 
 export async function POST(request: NextRequest) {
   try {
-    const { creatorHandle, bookerId, bookerName, bookerEmail, bookerPhone, reason, preferredDate, preferredTime, preferredType, tierId, tierName, paymentAmount } = await request.json();
-
-    if (!creatorHandle || !bookerName || !bookerEmail) {
-      await adminDb.collection("activityLogs").add({
-        level: "warning",
-        category: "payment",
-        message: "Booking: Missing required fields",
-        metadata: { creatorHandle, bookerName, bookerEmail, bookerId: bookerId || null },
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    const rl = rateLimitByIp(request, { max: 20, interval: 60_000 });
+    if (!rl.allowed) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
     }
 
-    if (!preferredDate || !preferredTime) {
-      await adminDb.collection("activityLogs").add({
-        level: "warning",
-        category: "payment",
-        message: "Booking: Date and time are required",
-        metadata: { creatorHandle, bookerName, bookerEmail },
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-      return NextResponse.json({ error: "Date and time are required" }, { status: 400 });
+    const body = await request.json();
+    const parsed = bookingSchema.safeParse(body);
+    if (!parsed.success) {
+      const errors = parsed.error.flatten().fieldErrors;
+      return NextResponse.json({ error: "Validation failed", details: errors }, { status: 400 });
     }
+
+    const { creatorHandle, bookerId, bookerName, bookerEmail, bookerPhone, reason, preferredDate, preferredTime, preferredType, tierId, tierName, paymentAmount } = parsed.data;
 
     let creatorDoc = await adminDb.collection("creators").doc(creatorHandle).get();
     if (!creatorDoc.exists) {

@@ -1,5 +1,6 @@
 import { v2 as cloudinary } from "cloudinary";
 import { NextResponse } from "next/server";
+import { rateLimitByIp } from "@/lib/rateLimit";
 
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
@@ -8,6 +9,10 @@ cloudinary.config({
 });
 
 export async function POST(request: Request) {
+  const rl = rateLimitByIp(request, { max: 5, interval: 60_000 });
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Too many uploads" }, { status: 429 });
+  }
   const { image } = await request.json();
 
   try {

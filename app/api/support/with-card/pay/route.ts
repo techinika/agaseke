@@ -2,9 +2,14 @@ import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/db/firebaseAdmin";
 import { createNotification } from "@/lib/adminNotifications";
+import { rateLimitByIp } from "@/lib/rateLimit";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export async function POST(req: Request) {
+  const rl = rateLimitByIp(req, { max: 10, interval: 60_000 });
+  if (!rl.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
   const config = {
     url: process.env.PESAPAL_URL?.trim(),
     key: process.env.PESAPAL_CONSUMER_KEY?.trim(),

@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   experimental: {
     serverActions: {
       bodySizeLimit: "60mb",
@@ -34,4 +35,18 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+let config: NextConfig = nextConfig;
+
+if (process.env.ANALYZE === "true") {
+  const withBundleAnalyzer = require("@next/bundle-analyzer");
+  config = withBundleAnalyzer({ enabled: true })(config);
+}
+
+const { withSentryConfig } = require("@sentry/nextjs");
+config = withSentryConfig(config, {
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  telemetry: false,
+});
+
+export default config;
