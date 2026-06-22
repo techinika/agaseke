@@ -793,6 +793,14 @@ For issues or feature requests, please open an issue on GitHub.
 - **Updated `isSupporterOf` rule**: The Firestore rule function now checks TWO sources — the new predictable doc ID pattern `{uid}_{handle}` in `supportedCreators` AND the `supporterUids` map on the creator doc. This ensures backward compatibility with old auto-generated support records after running the backfill migration.
 - **Added migration script**: `scripts/backfillSupporterUids.js` — run once to populate `supporterUids` on all existing creator docs from current `supportedCreators` records.
 
+### MobileBottomBar Component (June 2026)
+- **Reusable sticky bottom bar**: Extracted the mobile bottom navigation into a reusable `MobileBottomBar` component (`components/parts/MobileBottomBar.tsx`). Appears on `/supporter`, `/explore`, and the homepage for all logged-in users on mobile screens. Hidden on `lg+` screens. Includes compact `size={14}` icons with `text-[8px]` labels.
+- **Admin button**: Shows a Shield icon linking to `/admin` when the user has `isAdmin: true`.
+- **Solid background**: Uses `bg-background` (opaque) instead of translucent backdrop blur to prevent overlap visibility issues.
+- **Feedback modal inline**: Feedback form integrated directly into the component with Firestore submission, replacing the standalone `FeedbackFAB` floating button that overlapped other fixed elements.
+- **Sticky right sidebar on /supporter**: Right sidebar made sticky on desktop (`sticky top-24`) so it stays in view while scrolling the feed.
+- **Navbar spacing**: Reduced `pt-20` → `pt-12` on the content container to tighten the gap between the sticky navbar and page content.
+
 ### Simplified CreatorContent Read Rule (June 2026)
 - **Removed `isCreator` and `isSupporterOf` from read rule**: After the initial split, even the `isCreator` check (which uses `get()`) caused Firestore query rejection. Simplified to a single conditional: `allow read: if isAuth() && !resource.data.isPrivate`. This rule has zero `get()` calls and is fully statically verifiable. Private content reads are now gated entirely by the client — only supporters fetch private posts; any permission failure is caught gracefully.
 - **Decoupled private content query in SupporterSpace**: Moved the private content query out of `Promise.all` into a separate try/catch block so a permission failure on the private query doesn't crash the entire supporter page load.

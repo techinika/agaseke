@@ -1,7 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
 import {
   Search,
   Users,
@@ -33,6 +39,7 @@ import {
 import { toast } from "sonner";
 import { logActivity } from "@/lib/logger";
 import Loading from "@/app/loading";
+import Link from "next/link";
 
 interface UserProfile {
   id: string;
@@ -76,7 +83,12 @@ export default function AdminUsersPage() {
     if (pageNum === 0) {
       q = query(profilesRef, orderBy("createdAt", "desc"), limit(PAGE_SIZE));
     } else {
-      q = query(profilesRef, orderBy("createdAt", "desc"), startAfter(lastDocsRef.current[pageNum]), limit(PAGE_SIZE));
+      q = query(
+        profilesRef,
+        orderBy("createdAt", "desc"),
+        startAfter(lastDocsRef.current[pageNum]),
+        limit(PAGE_SIZE),
+      );
     }
     const snapshot = await getDocs(q);
     const userData = snapshot.docs.map((doc) => ({
@@ -86,7 +98,8 @@ export default function AdminUsersPage() {
     setUsers(userData);
     setHasMore(snapshot.docs.length === PAGE_SIZE);
     if (snapshot.docs.length > 0) {
-      lastDocsRef.current[pageNum + 1] = snapshot.docs[snapshot.docs.length - 1];
+      lastDocsRef.current[pageNum + 1] =
+        snapshot.docs[snapshot.docs.length - 1];
     }
     setLoading(false);
   }, []);
@@ -175,10 +188,13 @@ export default function AdminUsersPage() {
     setVerifyLoading(true);
 
     try {
-      await updateDoc(doc(db, "creators", verifyingUser.username || verifyingUser.id), {
-        verified: true,
-        verificationStatus: "approved",
-      });
+      await updateDoc(
+        doc(db, "creators", verifyingUser.username || verifyingUser.id),
+        {
+          verified: true,
+          verificationStatus: "approved",
+        },
+      );
 
       await fetch("/api/comms/email/feedback/verify", {
         method: "POST",
@@ -320,7 +336,9 @@ export default function AdminUsersPage() {
           {filteredUsers.length === 0 ? (
             <div className="text-center py-20">
               <Users size={48} className="mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground font-medium">No users found</p>
+              <p className="text-muted-foreground font-medium">
+                No users found
+              </p>
               <p className="text-muted-foreground text-sm mt-1">
                 {searchTerm || typeFilter !== "all"
                   ? "Try adjusting your filters"
@@ -479,9 +497,7 @@ export default function AdminUsersPage() {
 
           {/* Pagination */}
           <div className="flex items-center justify-between px-6 py-4 border-t border-border">
-            <p className="text-sm text-muted-foreground">
-              Page {page + 1}
-            </p>
+            <p className="text-sm text-muted-foreground">Page {page + 1}</p>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
@@ -557,7 +573,9 @@ export default function AdminUsersPage() {
                   disabled={verifyLoading}
                   className="flex-1 py-3 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition flex items-center justify-center gap-2"
                 >
-                  {verifyLoading && <Loader size={16} className="animate-spin" />}
+                  {verifyLoading && (
+                    <Loader size={16} className="animate-spin" />
+                  )}
                   Confirm Verification
                 </button>
               </div>
@@ -575,7 +593,9 @@ export default function AdminUsersPage() {
           />
           <div className="fixed top-0 right-0 h-full w-full max-w-lg bg-background border-l border-border z-50 shadow-2xl overflow-y-auto">
             <div className="sticky top-0 bg-background border-b border-border px-6 py-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-foreground uppercase">User Details</h2>
+              <h2 className="text-lg font-bold text-foreground uppercase">
+                User Details
+              </h2>
               <button
                 onClick={() => setSelectedUser(null)}
                 className="p-2 hover:bg-muted rounded-lg transition"
@@ -603,7 +623,9 @@ export default function AdminUsersPage() {
                   <p className="font-bold text-lg truncate">
                     {selectedUser.displayName || "No name"}
                   </p>
-                  <p className="text-sm text-muted-foreground truncate">{selectedUser.email}</p>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {selectedUser.email}
+                  </p>
                   <div className="flex items-center gap-2 mt-1">
                     <span
                       className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
@@ -657,7 +679,9 @@ export default function AdminUsersPage() {
                   Phone Number
                 </p>
                 <p className="text-sm mt-1">
-                  {selectedUser.phoneNumber || "—"}
+                  {creatorProfile
+                    ? creatorProfile.payoutNumber
+                    : selectedUser.phoneNumber || "—"}
                 </p>
               </div>
 
@@ -669,52 +693,83 @@ export default function AdminUsersPage() {
                   </p>
                   {creatorLoading ? (
                     <div className="flex items-center justify-center py-8">
-                      <Loader size={20} className="animate-spin text-muted-foreground" />
+                      <Loader
+                        size={20}
+                        className="animate-spin text-muted-foreground"
+                      />
                     </div>
                   ) : creatorProfile ? (
                     <div className="bg-muted rounded-lg p-4 space-y-3">
                       <div className="flex items-center justify-between">
-                        <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Handle</p>
-                        <p className="text-sm font-medium">@{creatorProfile.id}</p>
+                        <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">
+                          Handle
+                        </p>
+                        <p className="text-sm font-medium">
+                          @{creatorProfile.id}
+                        </p>
                       </div>
                       {creatorProfile.displayName && (
                         <div className="flex items-center justify-between">
-                          <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Display Name</p>
-                          <p className="text-sm">{creatorProfile.displayName}</p>
+                          <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">
+                            Display Name
+                          </p>
+                          <p className="text-sm">
+                            {creatorProfile.displayName}
+                          </p>
                         </div>
                       )}
                       <div className="flex items-center justify-between">
-                        <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Verified</p>
-                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                          creatorProfile.verified
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-amber-100 text-amber-700"
-                        }`}>
+                        <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">
+                          Verified
+                        </p>
+                        <span
+                          className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                            creatorProfile.verified
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-amber-100 text-amber-700"
+                          }`}
+                        >
                           {creatorProfile.verified ? "Verified" : "Unverified"}
                         </span>
                       </div>
                       {creatorProfile.views !== undefined && (
                         <div className="flex items-center justify-between">
-                          <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Profile Views</p>
-                          <p className="text-sm font-bold">{creatorProfile.views.toLocaleString()}</p>
+                          <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">
+                            Profile Views
+                          </p>
+                          <p className="text-sm font-bold">
+                            {creatorProfile.views.toLocaleString()}
+                          </p>
                         </div>
                       )}
                       {creatorProfile.bio && (
                         <div>
-                          <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-1">Bio</p>
-                          <p className="text-sm text-muted-foreground">{creatorProfile.bio}</p>
+                          <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-1">
+                            Bio
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {creatorProfile.bio}
+                          </p>
                         </div>
                       )}
                       {creatorProfile.coverURL && (
                         <div>
-                          <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-1">Cover</p>
-                          <img src={creatorProfile.coverURL} alt="Cover" className="w-full h-24 object-cover rounded-lg" />
+                          <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-1">
+                            Cover
+                          </p>
+                          <img
+                            src={creatorProfile.coverURL}
+                            alt="Cover"
+                            className="w-full h-24 object-cover rounded-lg"
+                          />
                         </div>
                       )}
                     </div>
                   ) : (
                     <div className="bg-muted rounded-lg p-4 text-center">
-                      <p className="text-sm text-muted-foreground">No creator profile found</p>
+                      <p className="text-sm text-muted-foreground">
+                        No creator profile found
+                      </p>
                     </div>
                   )}
                 </div>
@@ -763,14 +818,14 @@ export default function AdminUsersPage() {
                   </button>
                 )}
                 {selectedUser.type === "creator" && (
-                  <a
+                  <Link
                     href={`/${selectedUser.username || selectedUser.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full py-3 bg-foreground text-background rounded-lg font-bold text-sm hover:bg-card transition text-center"
                   >
                     View Public Profile
-                  </a>
+                  </Link>
                 )}
               </div>
             </div>

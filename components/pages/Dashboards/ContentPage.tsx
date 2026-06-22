@@ -241,6 +241,7 @@ export default function ContentManager() {
     try {
       const contentData = {
         creatorId: creator.handle,
+        creatorUid: creator.uid,
         title: newPost.title,
         description: newPost.description,
         type: newPost.type,

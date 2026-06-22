@@ -23,6 +23,7 @@ import {
 import Link from "next/link";
 import { Creator } from "@/types/creator";
 import ExploreSchema from "../seo/ExploreSchema";
+import MobileBottomBar from "@/components/parts/MobileBottomBar";
 import { MdVerifiedUser } from "react-icons/md";
 
 export default function ExplorePage() {
@@ -248,6 +249,7 @@ export default function ExplorePage() {
           </>
         )}
       </main>
+      <MobileBottomBar />
     </div>
   );
 }

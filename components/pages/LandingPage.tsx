@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/db/firebase";
 import { useAuth } from "@/auth/AuthContext";
+import MobileBottomBar from "@/components/parts/MobileBottomBar";
 import { PaymentMethods } from "../parts/home/PaymentSection";
 import {
   FeatureCard,
@@ -182,7 +183,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-card text-foreground selection:bg-orange-100 font-sans">
+    <div className="min-h-screen bg-card text-foreground selection:bg-orange-100 font-sans pb-14">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -391,6 +392,7 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+      <MobileBottomBar />
     </div>
   );
 }
