@@ -2,18 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import {
-  Loader,
-  Check,
-  ArrowLeft,
-  CreditCard,
-  AlertCircle,
-} from "lucide-react";
+import { Loader, ArrowLeft, Check } from "lucide-react";
 import { db } from "@/db/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import Link from "next/link";
+import { CommercePaymentSection } from "@/components/parts/payment/CommercePaymentSection";
 
 const platformSharePercentage =
   Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
@@ -28,7 +23,6 @@ export default function PayClient() {
   const [products, setProducts] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
-  const [paid, setPaid] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"momo" | "card">("momo");
   const [phone, setPhone] = useState("");
   const [isPaid, setIsPaid] = useState(false);
@@ -160,11 +154,11 @@ export default function PayClient() {
 
       if (paymentMethod === "card" && data.redirect_url) {
         window.open(data.redirect_url, "_blank");
+        setIsPaid(true);
         return;
       }
 
       toast.success("Payment initiated! Check your phone to complete.");
-      setPaid(true);
       setIsPaid(true);
     } catch (error) {
       console.error("Payment error:", error);
@@ -281,122 +275,17 @@ export default function PayClient() {
             )}
           </div>
 
-          {/* Payment section - only if not already paid */}
-          {isPaid ? (
-            <div className="bg-green-50 rounded-xl p-4 flex items-start gap-3">
-              <Check size={20} className="text-green-600 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-sm font-bold text-green-800">
-                  Payment Completed
-                </p>
-                <p className="text-xs text-green-600 mt-1">
-                  This order has been paid successfully.
-                </p>
-              </div>
-            </div>
-          ) : paid ? (
-            <div className="bg-green-50 rounded-xl p-4 flex items-start gap-3">
-              <Check size={20} className="text-green-600 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-sm font-bold text-green-800">
-                  Payment Initiated
-                </p>
-                <p className="text-xs text-green-600 mt-1">
-                  {paymentMethod === "momo"
-                    ? "Check your phone to complete the payment."
-                    : "You will be redirected to complete your payment."}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <>
-              {/* Payment Method */}
-              <div className="space-y-3">
-                <p className="font-bold text-sm">Payment Method</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => setPaymentMethod("momo")}
-                    className={`py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${
-                      paymentMethod === "momo"
-                        ? "border-orange-600 bg-orange-50 text-orange-600"
-                        : "border-border text-muted-foreground"
-                    }`}
-                  >
-                    Mobile Money
-                  </button>
-                  <button
-                    onClick={() => setPaymentMethod("card")}
-                    className={`py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${
-                      paymentMethod === "card"
-                        ? "border-orange-600 bg-orange-50 text-orange-600"
-                        : "border-border text-muted-foreground"
-                    }`}
-                  >
-                    Card Payment
-                  </button>
-                </div>
-              </div>
-
-              {paymentMethod === "momo" && (
-                <div className="bg-amber-50 rounded-xl p-4 flex items-start gap-3">
-                  <AlertCircle
-                    size={20}
-                    className="text-amber-600 mt-0.5 shrink-0"
-                  />
-                  <p className="text-sm text-amber-800">
-                    Payment will be processed via Mobile Money. You will receive
-                    a prompt on your phone to complete the payment.
-                  </p>
-                </div>
-              )}
-
-              {paymentMethod === "momo" && (
-                <div className="space-y-2">
-                  <label className="text-sm font-bold">
-                    MTN Mobile Money Number
-                  </label>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="07X XXX XXXX"
-                    className="w-full bg-muted p-4 rounded-lg text-sm font-medium outline-none"
-                  />
-                </div>
-              )}
-
-              {paymentMethod === "card" && (
-                <div className="bg-blue-50 rounded-xl p-4 flex items-start gap-3">
-                  <CreditCard
-                    size={20}
-                    className="text-blue-600 mt-0.5 shrink-0"
-                  />
-                  <p className="text-sm text-blue-800">
-                    You will be redirected to a secure payment page to complete
-                    your card payment.
-                  </p>
-                </div>
-              )}
-
-              <button
-                onClick={handlePay}
-                disabled={paying || (paymentMethod === "momo" && !phone.trim())}
-                className="w-full bg-green-600 text-white py-4 rounded-lg font-bold hover:bg-green-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {paying ? (
-                  <>
-                    <Loader className="animate-spin" size={20} />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Check size={20} />
-                    Pay {amountToPay.toLocaleString()} RWF
-                  </>
-                )}
-              </button>
-            </>
-          )}
+          {/* Payment section */}
+          <CommercePaymentSection
+            amount={amountToPay}
+            paid={isPaid}
+            paying={paying}
+            paymentMethod={paymentMethod}
+            onPaymentMethodChange={setPaymentMethod}
+            phone={phone}
+            onPhoneChange={setPhone}
+            onPay={handlePay}
+          />
         </div>
       </div>
     </div>

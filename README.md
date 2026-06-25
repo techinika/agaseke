@@ -289,6 +289,8 @@ agaseke/
 │   ├── parts/
 │   │   ├── dashboard/           # Dashboard UI parts
 │   │   │   └── gatherings/      # Gathering sub-components (ListPanel, DetailPanel, CheckInModal)
+│   │   ├── payment/             # Shared payment components
+│   │   │   └── CommercePaymentSection.tsx  # Unified payment UI (MoMo/Card) for store & booking
 │   │   └── public/              # Public profile parts
 │   │       ├── CommunityTab.tsx  # Content display
 │   │       ├── MessageTab.tsx    # Messaging UI
@@ -526,7 +528,10 @@ interface GiveawayReward {
 - `POST /api/upload/picture` - Profile picture
 
 ### Payments
-- `POST /api/support/with-momo/pay` - Mobile money payment
+- `POST /api/support/with-momo/pay` - Mobile money payment (supports support, store, booking, gathering types)
+- `POST /api/support/with-card/pay` - Card payment via Pesapal (supports all transaction types)
+- `GET /store/pay/[orderId]` - Store order payment page (uses shared `CommercePaymentSection`)
+- `GET /booking/pay/[bookingId]` - Booking payment page (uses shared `CommercePaymentSection`)
 - Webhook handlers for payment confirmation
 
 ## Configuration
@@ -838,6 +843,12 @@ For issues or feature requests, please open an issue on GitHub.
 - **Added `supporterUids` map to creator docs**: Each creator doc now has a `supporterUids` map (`{ uid: true }`) that tracks unique supporter UIDs. Set server-side in `handleSupportPayment.ts` during support transactions.
 - **Updated `isSupporterOf` rule**: The Firestore rule function now checks TWO sources — the new predictable doc ID pattern `{uid}_{handle}` in `supportedCreators` AND the `supporterUids` map on the creator doc. This ensures backward compatibility with old auto-generated support records after running the backfill migration.
 - **Added migration script**: `scripts/backfillSupporterUids.js` — run once to populate `supporterUids` on all existing creator docs from current `supportedCreators` records.
+
+### Payment UI Consolidation (June 2026)
+- **Shared `CommercePaymentSection` component**: Extracted the duplicate payment UI (MoMo/Card toggle, phone input, pay button, info boxes, payment states) from Store and Booking PayClients into a single reusable `components/parts/payment/CommercePaymentSection.tsx`.
+- **Refactored 2 pages**: `app/store/pay/[orderId]/PayClient.tsx` (-112 lines) and `app/booking/pay/[bookingId]/PayClient.tsx` (-114 lines) now use the shared component, eliminating ~226 lines of identical payment UI code.
+- **Bug fix**: Store PayClient card redirect now correctly sets `isPaid` state (was returning before setting, leaving user on payment form after card redirect).
+- **SupportModal unchanged**: The gift/support payment modal remains separate since its flow (amount + message without order details) differs from commerce payments.
 
 ### MobileBottomBar Component (June 2026)
 - **Reusable sticky bottom bar**: Extracted the mobile bottom navigation into a reusable `MobileBottomBar` component (`components/parts/MobileBottomBar.tsx`). Appears on `/supporter`, `/explore`, and the homepage for all logged-in users on mobile screens. Hidden on `lg+` screens. Includes compact `size={14}` icons with `text-[8px]` labels.
