@@ -64,7 +64,7 @@ export default function FoldersList({
           <div className="p-6">
             <h3 className="font-bold text-lg">{folder.name}</h3>
             {folder.description && (
-              <p className="text-sm text-muted-foreground mt-1">{folder.description}</p>
+              <p className="text-sm text-muted-foreground mt-1" dangerouslySetInnerHTML={{ __html: folder.description }} />
             )}
             <div className="flex items-center gap-3 mt-3">
               <p className="text-lg font-bold text-foreground">

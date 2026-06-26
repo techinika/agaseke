@@ -858,6 +858,10 @@ For issues or feature requests, please open an issue on GitHub.
 - **Sticky right sidebar on /supporter**: Right sidebar made sticky on desktop (`sticky top-24`) so it stays in view while scrolling the feed.
 - **Navbar spacing**: Reduced `pt-20` → `pt-12` on the content container to tighten the gap between the sticky navbar and page content.
 
+### Description HTML Rendering & Login Redirect (June 2026)
+- **dangerouslySetInnerHTML across 23 files**: All description renderings (gatherings, products, giveaways, partners, changelogs, store folders, booking tiers, post content, community posts) switched from plain text/LinkifyText to `dangerouslySetInnerHTML`, enabling rich HTML descriptions.
+- **Login redirect for authenticated users**: `LoginPage.tsx` now checks auth state on mount — if user is already logged in, automatically redirects via `router.replace()` to the `?redirect=` param or `/`.
+
 ### Simplified CreatorContent Read Rule (June 2026)
 - **Removed `isCreator` and `isSupporterOf` from read rule**: After the initial split, even the `isCreator` check (which uses `get()`) caused Firestore query rejection. Simplified to a single conditional: `allow read: if isAuth() && !resource.data.isPrivate`. This rule has zero `get()` calls and is fully statically verifiable. Private content reads are now gated entirely by the client — only supporters fetch private posts; any permission failure is caught gracefully.
 - **Decoupled private content query in SupporterSpace**: Moved the private content query out of `Promise.all` into a separate try/catch block so a permission failure on the private query doesn't crash the entire supporter page load.

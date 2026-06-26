@@ -357,9 +357,7 @@ export default function GiveawaysPage() {
                         </span>
                       </div>
 
-                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                        {giveaway.description}
-                      </p>
+                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2" dangerouslySetInnerHTML={{ __html: giveaway.description }} />
 
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">

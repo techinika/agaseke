@@ -119,7 +119,7 @@ export default function ProductDetailPage({ username, productId }: { username: s
               </div>
 
               <h1 className="text-3xl font-bold">{product.name}</h1>
-              <p className="text-muted-foreground leading-relaxed">{product.description}</p>
+              <p className="text-muted-foreground leading-relaxed" dangerouslySetInnerHTML={{ __html: product.description }} />
 
               <div>
                 <div className="text-4xl font-bold">{product.price.toLocaleString()} RWF</div>

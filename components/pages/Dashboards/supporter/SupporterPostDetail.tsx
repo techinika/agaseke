@@ -298,9 +298,7 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
               {post.title}
             </h1>
 
-            <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed mb-4">
-              <LinkifyText text={post.description || post.content} />
-            </div>
+            <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed mb-4" dangerouslySetInnerHTML={{ __html: post.description || post.content }} />
 
             {post.type === "image" &&
               !Array.isArray(post.contentUrl) &&

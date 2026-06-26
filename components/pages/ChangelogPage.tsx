@@ -126,9 +126,7 @@ export default function ChangelogPage() {
                             )}
                           </div>
 
-                          <p className="text-sm text-muted-foreground mb-3">
-                            {entry.description}
-                          </p>
+                          <p className="text-sm text-muted-foreground mb-3" dangerouslySetInnerHTML={{ __html: entry.description }} />
 
                           {entry.tags && entry.tags.length > 0 && (
                             <div className="flex flex-wrap gap-2">

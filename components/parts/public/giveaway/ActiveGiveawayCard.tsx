@@ -53,7 +53,7 @@ export function ActiveGiveawayCard({
           </button>
         </div>
         <h3 className="text-xl font-bold mb-2">{giveaway.title}</h3>
-        <p className="text-white/80 text-sm">{giveaway.description}</p>
+        <p className="text-white/80 text-sm" dangerouslySetInnerHTML={{ __html: giveaway.description }} />
 
         {giveaway.partners.length > 0 && (
           <div className="flex items-center gap-2 mt-4 flex-wrap">

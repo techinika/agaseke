@@ -354,9 +354,7 @@ export default function PublicProfile({ username }: { username: string }) {
                       {partner.name}
                     </p>
                     {partner.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                        {partner.description}
-                      </p>
+                      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5" dangerouslySetInnerHTML={{ __html: partner.description }} />
                     )}
                     {partner.website && (
                       <p className="text-[10px] text-orange-500 mt-1 flex items-center gap-1">

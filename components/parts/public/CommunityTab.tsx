@@ -246,10 +246,10 @@ export const CommunityTab = ({
             </Link>
             {item.description || item.content ? (
               <div className="text-muted-foreground text-sm whitespace-pre-wrap leading-relaxed">
-                {(item.description || item.content).length > 200 &&
+                {(item.description || item.content)?.length > 200 &&
                 !expandedPosts.has(item.id) ? (
                   <>
-                    <LinkifyText text={(item.description || item.content).slice(0, 200)} />
+                    <div className="line-clamp-3" dangerouslySetInnerHTML={{ __html: (item.description || item.content).slice(0, 500) }} />
                     <span>...</span>
                     <button
                       onClick={() => toggleExpand(item.id)}
@@ -260,8 +260,8 @@ export const CommunityTab = ({
                   </>
                 ) : (
                   <>
-                    <LinkifyText text={item.description || item.content} />
-                    {(item.description || item.content).length > 200 && (
+                    <div dangerouslySetInnerHTML={{ __html: item.description || item.content }} />
+                    {(item.description || item.content)?.length > 200 && (
                       <button
                         onClick={() => toggleExpand(item.id)}
                         className="ml-1 text-orange-600 font-medium hover:underline"

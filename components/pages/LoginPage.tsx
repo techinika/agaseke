@@ -5,7 +5,8 @@ import Link from "next/link";
 import React from "react";
 import { PerkItem } from "./loginpage/index";
 import { handleGoogleLogin } from "../../db/functions/GoogleLogin";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useAuth } from "@/auth/AuthContext";
 
 function getFallbackRedirect(): string | null {
   if (typeof window === "undefined") return null;
@@ -18,10 +19,18 @@ function getFallbackRedirect(): string | null {
 
 export default function LoginPage() {
   const [loading, setLoading] = React.useState(false);
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const reservedUsername = searchParams.get("username") || null;
   const referralCreator = searchParams.get("referral") || null;
   const redirect = searchParams.get("redirect") || getFallbackRedirect();
+
+  React.useEffect(() => {
+    if (!authLoading && user) {
+      router.replace(redirect || "/");
+    }
+  }, [user, authLoading, redirect, router]);
 
   return (
     <div className="min-h-screen bg-card flex flex-wrap-reverse md:flex-row">

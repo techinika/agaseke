@@ -478,7 +478,7 @@ export default function ContentManager() {
               )}
 
               <div className="p-4 lg:p-6">
-                <div className="prose max-w-none text-foreground whitespace-pre-wrap text-sm lg:text-base"><LinkifyText text={selectedPost.description} /></div>
+                <div className="prose max-w-none text-foreground whitespace-pre-wrap text-sm lg:text-base" dangerouslySetInnerHTML={{ __html: selectedPost.description }} />
 
                 {selectedPost.type === "document" && selectedPost.contentUrl && (
                   <a href={selectedPost.contentUrl} target="_blank" rel="noopener noreferrer" className="mt-4 flex items-center gap-3 p-4 bg-muted rounded-lg border border-border hover:bg-muted transition">

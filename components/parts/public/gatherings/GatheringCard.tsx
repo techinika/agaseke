@@ -106,9 +106,7 @@ export function GatheringCard({
             )}
           </div>
           {gathering.description && (
-            <p className="text-muted-foreground text-sm mb-4 line-clamp-2">
-              {gathering.description}
-            </p>
+            <p className="text-muted-foreground text-sm mb-4 line-clamp-2" dangerouslySetInnerHTML={{ __html: gathering.description }} />
           )}
           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-1">

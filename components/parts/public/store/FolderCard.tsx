@@ -64,9 +64,7 @@ export function FolderCard({
       <div className="p-4">
         <h3 className="font-bold text-lg truncate">{folder.name}</h3>
         {folder.description && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-            {folder.description}
-          </p>
+          <p className="text-sm text-muted-foreground line-clamp-2 mt-1" dangerouslySetInnerHTML={{ __html: folder.description }} />
         )}
         <div className="mt-3 space-y-1">
           {folderProducts.slice(0, 3).map((p) => (

@@ -35,7 +35,7 @@ export function EndedGiveawayCard({
           </button>
         </div>
         <h3 className="text-xl font-bold mb-2">{giveaway.title}</h3>
-        <p className="text-white/80 text-sm">{giveaway.description}</p>
+        <p className="text-white/80 text-sm" dangerouslySetInnerHTML={{ __html: giveaway.description }} />
       </div>
 
       <div className="p-6">

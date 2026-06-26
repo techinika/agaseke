@@ -40,7 +40,7 @@ export function FolderExplorer({
         <div>
           <h2 className="text-xl font-bold">{folder.name}</h2>
           {folder.description && (
-            <p className="text-sm text-muted-foreground">{folder.description}</p>
+            <p className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: folder.description }} />
           )}
         </div>
       </div>

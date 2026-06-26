@@ -165,7 +165,7 @@ export default function BookingPage({ username, creator }: { username: string; c
                         <div className="flex justify-between items-start mb-3">
                           <div>
                             <h3 className="text-lg font-bold">{tier.name}</h3>
-                            <p className="text-sm text-muted-foreground mt-0.5">{tier.description}</p>
+                            <p className="text-sm text-muted-foreground mt-0.5" dangerouslySetInnerHTML={{ __html: tier.description }} />
                           </div>
                           <div className="text-right shrink-0 ml-4">
                             <p className="text-xl font-black text-orange-600">

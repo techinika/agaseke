@@ -471,9 +471,7 @@ export default function AdminChangelogPage() {
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          {entry.description}
-                        </p>
+                        <p className="text-sm text-muted-foreground mb-3" dangerouslySetInnerHTML={{ __html: entry.description }} />
                         <div className="flex flex-wrap items-center gap-3">
                           {entry.tags && entry.tags.length > 0 && (
                             <div className="flex flex-wrap gap-1.5">
@@ -561,9 +559,7 @@ export default function AdminChangelogPage() {
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          {entry.description}
-                        </p>
+                        <p className="text-sm text-muted-foreground mb-3" dangerouslySetInnerHTML={{ __html: entry.description }} />
                         {entry.tags && entry.tags.length > 0 && (
                           <div className="flex flex-wrap gap-1.5">
                             {entry.tags.map((tag) => (

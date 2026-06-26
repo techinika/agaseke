@@ -105,7 +105,7 @@ export function ProductDetailModal({
             </div>
 
             <h2 className="text-2xl font-bold">{product.name}</h2>
-            <p className="text-muted-foreground">{product.description}</p>
+            <p className="text-muted-foreground" dangerouslySetInnerHTML={{ __html: product.description }} />
 
             <div>
               <div className="text-3xl font-bold">

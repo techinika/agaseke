@@ -690,17 +690,13 @@ export default function SupporterSpace() {
   ) => {
     if (isExpanded || text.length <= 200) {
       return (
-        <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-          <LinkifyText text={text} />
-        </p>
+        <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed" dangerouslySetInnerHTML={{ __html: text }} />
       );
     }
 
-    const firstPart = text.substring(0, 200);
-
     return (
-      <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-        <LinkifyText text={firstPart} />
+      <>
+        <div className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed line-clamp-3" dangerouslySetInnerHTML={{ __html: text }} />
         <span>...</span>
         <button
           onClick={() => setExpandedPostId(itemId)}
@@ -708,7 +704,7 @@ export default function SupporterSpace() {
         >
           Read more
         </button>
-      </p>
+      </>
     );
   };
 

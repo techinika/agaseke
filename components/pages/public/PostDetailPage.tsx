@@ -266,9 +266,7 @@ export default function PostDetailPage({ username, postId }: { username: string;
 
             <h1 className="text-2xl font-bold text-foreground mb-3">{post.title}</h1>
 
-            <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed mb-4">
-              <LinkifyText text={post.description || post.content} />
-            </div>
+            <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed mb-4" dangerouslySetInnerHTML={{ __html: post.description || post.content }} />
 
             {(() => {
               const text = post.description || post.content || "";

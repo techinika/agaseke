@@ -59,9 +59,7 @@ export default function ProductsList({
           </div>
           <div className="p-4">
             <h4 className="font-bold text-lg truncate">{product.name}</h4>
-            <p className="text-sm text-muted-foreground truncate mt-1">
-              {product.description}
-            </p>
+            <p className="text-sm text-muted-foreground truncate mt-1" dangerouslySetInnerHTML={{ __html: product.description }} />
             <div className="flex items-center justify-between mt-4">
               <span className="font-bold text-lg">
                 {product.price.toLocaleString()} RWF

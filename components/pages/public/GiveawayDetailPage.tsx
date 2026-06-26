@@ -135,7 +135,7 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
               </button>
             </div>
             <h1 className="text-3xl font-bold mb-2">{giveaway.title}</h1>
-            <p className="text-white/80">{giveaway.description}</p>
+            <p className="text-white/80" dangerouslySetInnerHTML={{ __html: giveaway.description }} />
             {isActive && (
               <div className="flex items-center gap-2 mt-4 bg-card/15 px-4 py-2 rounded-lg inline-flex">
                 <Clock size={16} />

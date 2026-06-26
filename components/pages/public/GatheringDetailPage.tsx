@@ -289,7 +289,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
               {isUpcoming ? "Upcoming" : "Past Event"}
             </span>
             <h1 className="text-3xl font-bold mt-4 mb-2">{gathering.title}</h1>
-            {gathering.description && <p className="text-white/80 whitespace-pre-wrap"><LinkifyText text={gathering.description} /></p>}
+            {gathering.description && <p className="text-white/80 whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: gathering.description }} />}
           </div>
 
           <div className="p-6 space-y-5">

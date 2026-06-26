@@ -207,9 +207,7 @@ export default function PartnersPage() {
                   </div>
 
                   {partner.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
-                      {partner.description}
-                    </p>
+                    <p className="text-sm text-muted-foreground line-clamp-2 mb-4" dangerouslySetInnerHTML={{ __html: partner.description }} />
                   )}
 
                   <div className="flex gap-2">

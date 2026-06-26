@@ -119,9 +119,7 @@ export function ProductCard({
 
       <div className="p-4">
         <h3 className="font-bold text-lg truncate">{product.name}</h3>
-        <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-          {product.description}
-        </p>
+        <p className="text-sm text-muted-foreground line-clamp-2 mt-1" dangerouslySetInnerHTML={{ __html: product.description }} />
         <div className="flex items-center justify-between mt-4">
           <div>
             <span className="text-xl font-bold">
