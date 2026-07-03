@@ -1,45 +1,54 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
-  Store,
-  Plus,
-  Minus,
   ShoppingCart,
-  X,
   Loader,
-  Check,
   Truck,
   Package,
-  CreditCard,
-  Tag,
   Search,
-  Download,
-  Lock,
-  AlertCircle,
-  Folder,
-  FolderOpen,
-  ChevronRight,
+  ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/db/firebase";
 import {
   collection,
-  doc,
-  addDoc,
   getDocs,
   query,
   where,
   orderBy,
-  updateDoc,
-  serverTimestamp,
-  Timestamp,
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
-import { Product, CartItem, Order, ShippingAddress } from "@/types/store";
 import { ProtectedSection } from "./ProtectedSection";
+<<<<<<< HEAD
 import { formatCurrency, isMoMoSupported } from "@/lib/format";
 import { Creator } from "@/types/creator";
+=======
+import {
+  FolderCard,
+  FolderExplorer,
+  ProductCard,
+  ProductDetailModal,
+  CartModal,
+  CheckoutModal,
+  OrderTrackingModal,
+  MyPurchasesModal,
+} from "./store";
+import type { Product, FolderData, CartItem, Order } from "./store";
+
+function logErrorToServer(message: string, metadata?: Record<string, unknown>) {
+  fetch("/api/log-error", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      level: "error",
+      category: "store",
+      message,
+      metadata,
+    }),
+  }).catch(() => {});
+}
+>>>>>>> main
 
 interface StoreTabProps {
   creatorId: string;
@@ -49,6 +58,7 @@ interface StoreTabProps {
   isLoggedIn: boolean;
   isSupporter: boolean;
   setIsModalOpen: (open: boolean) => void;
+<<<<<<< HEAD
   creatorData?: Creator;
 }
 
@@ -62,6 +72,9 @@ interface FolderData {
   active: boolean;
   imageUrl?: string;
   creatorId: string;
+=======
+  compact?: boolean;
+>>>>>>> main
 }
 
 const platformSharePercentage =
@@ -75,7 +88,11 @@ export const StoreTab = ({
   isLoggedIn,
   isSupporter,
   setIsModalOpen,
+<<<<<<< HEAD
   creatorData,
+=======
+  compact = false,
+>>>>>>> main
 }: StoreTabProps) => {
   const { user: currentUser } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
@@ -88,7 +105,6 @@ export const StoreTab = ({
   const [userOrders, setUserOrders] = useState<Order[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [processing, setProcessing] = useState(false);
   const [activeFolder, setActiveFolder] = useState<FolderData | null>(null);
   const [purchasedProductIds, setPurchasedProductIds] = useState<Set<string>>(
     new Set(),
@@ -106,41 +122,51 @@ export const StoreTab = ({
     const fetchData = async () => {
       try {
         const productsRef = collection(db, "storeProducts");
-        const q = query(
-          productsRef,
+        const limitCount = compact ? 3 : 50;
+        const constraints: any[] = [
           where("creatorId", "==", creatorId),
           where("active", "==", true),
           orderBy("createdAt", "desc"),
-        );
+        ];
+        const q = query(productsRef, ...constraints);
         const snapshot = await getDocs(q);
-        const productData = snapshot.docs.map((doc) => ({
+        let productData = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         })) as Product[];
+        if (compact) {
+          productData = productData.slice(0, limitCount);
+        }
         setProducts(productData);
 
-        const foldersRef = collection(db, "storeFolders");
-        const fq = query(
-          foldersRef,
-          where("creatorId", "==", creatorId),
-          where("active", "==", true),
-          orderBy("createdAt", "desc"),
-        );
-        const folderSnap = await getDocs(fq);
-        const folderData = folderSnap.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as FolderData[];
-        setFolders(folderData);
+        if (!compact) {
+          const foldersRef = collection(db, "storeFolders");
+          const fq = query(
+            foldersRef,
+            where("creatorId", "==", creatorId),
+            where("active", "==", true),
+            orderBy("createdAt", "desc"),
+          );
+          const folderSnap = await getDocs(fq);
+          const folderData = folderSnap.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          })) as FolderData[];
+          setFolders(folderData);
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
+        logErrorToServer("Error fetching store data", {
+          creatorId,
+          error: String(error),
+        });
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [creatorId, canAccess]);
+  }, [creatorId, canAccess, compact]);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -176,6 +202,10 @@ export const StoreTab = ({
         setPurchasedProductIds(purchased);
       } catch (error) {
         console.error("Error fetching orders:", error);
+        logErrorToServer("Error fetching orders", {
+          userId: currentUser.uid,
+          error: String(error),
+        });
       }
     };
 
@@ -188,27 +218,30 @@ export const StoreTab = ({
       p.description.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const addToCart = (
-    product: Product,
-    quantity: number = 1,
-    selectedSize?: string,
-  ) => {
-    setCart((prev) => {
-      const existing = prev.find(
-        (item) =>
-          item.product.id === product.id && item.selectedSize === selectedSize,
-      );
-      if (existing) {
-        return prev.map((item) =>
-          item.product.id === product.id && item.selectedSize === selectedSize
-            ? { ...item, quantity: item.quantity + quantity }
-            : item,
+  const addToCart = useCallback(
+    (
+      product: Product,
+      quantity: number = 1,
+      selectedSize?: string,
+    ) => {
+      setCart((prev) => {
+        const existing = prev.find(
+          (item) =>
+            item.product.id === product.id && item.selectedSize === selectedSize,
         );
-      }
-      return [...prev, { product, quantity, selectedSize }];
-    });
-    toast.success("Added to cart!");
-  };
+        if (existing) {
+          return prev.map((item) =>
+            item.product.id === product.id && item.selectedSize === selectedSize
+              ? { ...item, quantity: item.quantity + quantity }
+              : item,
+          );
+        }
+        return [...prev, { product, quantity, selectedSize }];
+      });
+      toast.success("Added to cart!");
+    },
+    [],
+  );
 
   const addFolderToCart = (folder: FolderData) => {
     const folderProducts = products.filter((p) =>
@@ -226,29 +259,32 @@ export const StoreTab = ({
     setActiveFolder(null);
   };
 
-  const updateQuantity = (
-    productId: string,
-    selectedSize: string | undefined,
-    delta: number,
-  ) => {
-    setCart(
-      (prev) =>
-        prev
-          .map((item) => {
-            if (
-              item.product.id === productId &&
-              item.selectedSize === selectedSize
-            ) {
-              const newQty = item.quantity + delta;
-              return newQty > 0 ? { ...item, quantity: newQty } : null;
-            }
-            return item;
-          })
-          .filter(Boolean) as CartItem[],
-    );
-  };
+  const updateQuantity = useCallback(
+    (
+      productId: string,
+      selectedSize: string | undefined,
+      delta: number,
+    ) => {
+      setCart(
+        (prev) =>
+          prev
+            .map((item) => {
+              if (
+                item.product.id === productId &&
+                item.selectedSize === selectedSize
+              ) {
+                const newQty = item.quantity + delta;
+                return newQty > 0 ? { ...item, quantity: newQty } : null;
+              }
+              return item;
+            })
+            .filter(Boolean) as CartItem[],
+      );
+    },
+    [],
+  );
 
-  const removeFromCart = (productId: string, selectedSize?: string) => {
+  const removeFromCart = useCallback((productId: string, selectedSize?: string) => {
     setCart((prev) =>
       prev.filter(
         (item) =>
@@ -257,9 +293,9 @@ export const StoreTab = ({
           ),
       ),
     );
-  };
+  }, []);
 
-  const getCartTotal = () => {
+  const getCartTotal = useCallback(() => {
     let total = 0;
     cart.forEach((item) => {
       let itemPrice = item.product.price * item.quantity;
@@ -278,9 +314,9 @@ export const StoreTab = ({
       total += itemPrice;
     });
     return total;
-  };
+  }, [cart]);
 
-  const getItemPrice = (item: CartItem) => {
+  const getItemPrice = useCallback((item: CartItem) => {
     let price = item.product.price * item.quantity;
 
     if (item.product.bulkPricing && item.product.bulkPricing.length > 0) {
@@ -294,9 +330,9 @@ export const StoreTab = ({
     }
 
     return price;
-  };
+  }, []);
 
-  const getFolderTotal = (folder: FolderData) => {
+  const getFolderTotal = useCallback((folder: FolderData) => {
     const folderProducts = products.filter(
       (p) => folder.productIds.includes(p.id) && !purchasedProductIds.has(p.id),
     );
@@ -305,9 +341,9 @@ export const StoreTab = ({
       return total - (total * folder.discountPercentage) / 100;
     }
     return total;
-  };
+  }, [products, purchasedProductIds]);
 
-  const getFolderPlatformFee = (folder: FolderData) => {
+  const getFolderPlatformFee = useCallback((folder: FolderData) => {
     const folderProducts = products.filter(
       (p) => folder.productIds.includes(p.id) && !purchasedProductIds.has(p.id),
     );
@@ -321,7 +357,7 @@ export const StoreTab = ({
       fee = fee - (fee * folder.discountPercentage) / 100;
     }
     return fee;
-  };
+  }, [products, purchasedProductIds, platformSharePercentage]);
 
   if (!canAccess) {
     return (
@@ -419,9 +455,14 @@ export const StoreTab = ({
     return (
       <OrderTrackingModal
         orders={userOrders}
+        products={products}
+        uid={currentUser?.uid}
         onClose={() => setShowOrderTracking(false)}
+<<<<<<< HEAD
         currentUser={currentUser}
         creatorData={creatorData}
+=======
+>>>>>>> main
       />
     );
   }
@@ -432,6 +473,7 @@ export const StoreTab = ({
         orders={userOrders}
         products={products}
         creatorHandle={creatorHandle}
+        uid={currentUser?.uid}
         onClose={() => setShowMyPurchases(false)}
         creatorData={creatorData}
       />
@@ -439,9 +481,62 @@ export const StoreTab = ({
   }
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const hasMoreProducts = products.length > 2;
 
-  const activeFolders = folders.filter((f) => f.active);
-  const hasContent = filteredProducts.length > 0 || activeFolders.length > 0;
+  if (compact) {
+    return (
+      <div className="animate-in fade-in duration-500">
+        {products.length === 0 ? (
+          <div className="text-center py-20 bg-card border border-border rounded-3xl">
+            <Package size={48} className="mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground font-medium">No products available</p>
+            <p className="text-muted-foreground text-sm mt-2">
+              Check back later for new products
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {products.slice(0, 2).map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  onAddToCart={addToCart}
+                  onSelectProduct={setSelectedProduct}
+                  isLoggedIn={isLoggedIn}
+                  isPurchased={purchasedProductIds.has(product.id)}
+                  fileUrl={product.fileUrl}
+                  uid={currentUser?.uid}
+                />
+              ))}
+            </div>
+            {hasMoreProducts && (
+              <div className="mt-6 text-center">
+                <Link
+                  href={`/${creatorHandle}/store`}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-lg font-bold text-sm hover:bg-orange-700 transition shadow-lg"
+                >
+                  View All Products <ArrowRight size={16} />
+                </Link>
+              </div>
+            )}
+          </>
+        )}
+
+        {selectedProduct && (
+          <ProductDetailModal
+            product={selectedProduct}
+            onClose={() => setSelectedProduct(null)}
+            onAddToCart={addToCart}
+            isLoggedIn={isLoggedIn}
+            isPurchased={purchasedProductIds.has(selectedProduct.id)}
+            fileUrl={selectedProduct.fileUrl}
+            uid={currentUser?.uid}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="animate-in fade-in duration-500">
@@ -449,34 +544,34 @@ export const StoreTab = ({
         <div className="relative flex-1 max-w-md">
           <Search
             size={18}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
           />
           <input
             type="text"
             placeholder="Search products..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white border border-slate-100 rounded-lg py-3 pl-12 pr-4 text-sm outline-none focus:ring-2 focus:ring-orange-100"
+            className="w-full bg-card border border-border rounded-lg py-3 pl-12 pr-4 text-sm outline-none focus:ring-2 focus:ring-orange-100"
           />
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {purchasedProductIds.size > 0 && (
             <button
               onClick={() => setShowMyPurchases(true)}
-              className="flex items-center gap-2 px-4 py-3 bg-white border border-slate-100 rounded-lg text-sm font-bold hover:bg-slate-50 transition"
+              className="flex items-center gap-2 px-4 py-3 bg-card border border-border rounded-lg text-sm font-bold hover:bg-muted transition"
             >
               <Package size={16} />
-              My Purchases
+              <span className="hidden md:inline">My Purchases</span>
             </button>
           )}
           {userOrders.length > 0 && (
             <button
               onClick={() => setShowOrderTracking(true)}
-              className="flex items-center gap-2 px-4 py-3 bg-white border border-slate-100 rounded-lg text-sm font-bold hover:bg-slate-50 transition"
+              className="flex items-center gap-2 px-4 py-3 bg-card border border-border rounded-lg text-sm font-bold hover:bg-muted transition"
             >
               <Truck size={16} />
-              My Orders
+              <span className="hidden md:inline">My Orders</span>
             </button>
           )}
           <button
@@ -484,7 +579,7 @@ export const StoreTab = ({
             className="relative flex items-center gap-2 px-4 py-3 bg-orange-600 text-white rounded-lg font-bold text-sm hover:bg-orange-700 transition shadow-lg"
           >
             <ShoppingCart size={18} />
-            Cart
+            <span className="hidden md:inline">Cart</span>
             {cartCount > 0 && (
               <span className="absolute -top-2 -right-2 w-6 h-6 bg-white text-orange-600 rounded-full flex items-center justify-center text-xs font-bold">
                 {cartCount}
@@ -494,23 +589,23 @@ export const StoreTab = ({
         </div>
       </div>
 
-      {!hasContent ? (
-        <div className="text-center py-20 bg-white border border-slate-100 rounded-3xl">
-          <Package size={48} className="mx-auto text-slate-200 mb-4" />
-          <p className="text-slate-500 font-medium">No products available</p>
-          <p className="text-slate-400 text-sm mt-2">
+      {filteredProducts.length === 0 && activeFolders().length === 0 ? (
+        <div className="text-center py-20 bg-card border border-border rounded-3xl">
+          <Package size={48} className="mx-auto text-muted-foreground mb-4" />
+          <p className="text-muted-foreground font-medium">No products available</p>
+          <p className="text-muted-foreground text-sm mt-2">
             Check back later for new products
           </p>
         </div>
       ) : (
         <div className="space-y-8">
-          {activeFolders.length > 0 && (
+          {activeFolders().length > 0 && (
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">
+              <h3 className="text-sm font-bold uppercase tracking-widest                 text-muted-foreground mb-4">
                 Bundles
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-                {activeFolders.map((folder) => (
+                {activeFolders().map((folder) => (
                   <FolderCard
                     key={folder.id}
                     folder={folder}
@@ -526,8 +621,8 @@ export const StoreTab = ({
 
           {filteredProducts.length > 0 && (
             <div>
-              {activeFolders.length > 0 && (
-                <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">
+              {activeFolders().length > 0 && (
+                <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-4">
                   All Products
                 </h3>
               )}
@@ -538,10 +633,15 @@ export const StoreTab = ({
                     product={product}
                     onAddToCart={addToCart}
                     onSelectProduct={setSelectedProduct}
+                    creatorHandle={creatorHandle}
                     isLoggedIn={isLoggedIn}
                     isPurchased={purchasedProductIds.has(product.id)}
                     fileUrl={product.fileUrl}
+<<<<<<< HEAD
                     creatorData={creatorData}
+=======
+                    uid={currentUser?.uid}
+>>>>>>> main
                   />
                 ))}
               </div>
@@ -558,13 +658,17 @@ export const StoreTab = ({
           isLoggedIn={isLoggedIn}
           isPurchased={purchasedProductIds.has(selectedProduct.id)}
           fileUrl={selectedProduct.fileUrl}
+<<<<<<< HEAD
           creatorData={creatorData}
+=======
+          uid={currentUser?.uid}
+>>>>>>> main
         />
       )}
     </div>
   );
-};
 
+<<<<<<< HEAD
 function FolderCard({
   folder,
   products,
@@ -2139,3 +2243,9 @@ function MyPurchasesModal({
     </div>
   );
 }
+=======
+  function activeFolders() {
+    return folders.filter((f) => f.active);
+  }
+};
+>>>>>>> main

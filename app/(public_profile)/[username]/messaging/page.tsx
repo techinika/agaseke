@@ -1,3 +1,5 @@
+export const revalidate = 3600;
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import MessagingPage from "@/components/pages/public/MessagingPage";
 import { Metadata } from "next";

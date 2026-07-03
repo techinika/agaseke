@@ -3,32 +3,24 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import {
-   BarChart3,
-   Plus,
-   Calendar,
-   MessageSquare,
-   Wallet,
-   Copy,
-   Check,
-   Share2,
-   Settings,
-   LogOut,
-   User,
-   UserCircle,
-   ChevronDown,
-   CheckCircle,
-   Menu,
-   X,
-   Briefcase,
-   Store,
-   Gift,
-   Building2,
-   Users,
-   CalendarCheck,
-   Bell,
-   ShoppingBag,
-   Megaphone,
- } from "lucide-react";
+  BarChart3,
+  Plus,
+  Copy,
+  Check,
+  Share2,
+  Settings,
+  LogOut,
+  User,
+  UserCircle,
+  ChevronDown,
+  Menu,
+  X,
+  Briefcase,
+  Store,
+  Building2,
+  Users,
+  Bell,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/auth/AuthContext";
@@ -39,6 +31,8 @@ import { auth, db } from "@/db/firebase";
 import { doc, onSnapshot, collection, query, where } from "firebase/firestore";
 import { Creator } from "@/types/creator";
 import NotificationDrawer from "@/components/ui/NotificationDrawer";
+import { NavItem, ExpandableNavItem } from "./layout-parts/index";
+import ThemeToggle from "../ThemeToggle";
 
 export default function DashboardLayout({
   children,
@@ -114,11 +108,11 @@ export default function DashboardLayout({
 
   return (
     // Changed "flex" to "block md:flex" to prevent the sidebar from taking space on mobile
-    <div className="min-h-screen bg-[#F9FAFB] block md:flex text-slate-900 overflow-x-hidden">
+    <div className="min-h-screen bg-muted block md:flex text-foreground overflow-x-hidden">
       {/* 1. Mobile Overlay */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] md:hidden transition-opacity"
+          className="fixed inset-0 bg-foreground/40 backdrop-blur-sm z-[60] md:hidden transition-opacity"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
@@ -128,7 +122,7 @@ export default function DashboardLayout({
       {/* 2. Sidebar */}
       <aside
         className={`
-        fixed inset-y-0 left-0 z-[100] w-64 bg-white border-r border-slate-200 
+        fixed inset-y-0 left-0 z-[100] w-64 bg-card border-r border-border 
         transform transition-transform duration-300 ease-in-out
         ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
         md:translate-x-0 md:static md:flex md:flex-col h-screen absolute top-0
@@ -146,7 +140,7 @@ export default function DashboardLayout({
             </Link>
             <button
               onClick={() => setIsSidebarOpen(false)}
-              className="md:hidden text-slate-400 p-1"
+              className="md:hidden text-muted-foreground p-1"
             >
               <X size={20} />
             </button>
@@ -159,71 +153,47 @@ export default function DashboardLayout({
               label="Overview"
               active={pathname === "/creator"}
             />
-            <NavItem
-              href="/creator/content"
+            <ExpandableNavItem
               icon={<Plus size={18} />}
               label="Content"
-              active={pathname === "/creator/content"}
+              activeSub={pathname}
+              subItems={[
+                { href: "/creator/content", label: "Posts" },
+                { href: "/creator/notices", label: "Notices" },
+              ]}
             />
-             {creatorSettings?.storeEnabled && (
-               <NavItem
-                 href="/creator/store"
-                 icon={<Store size={18} />}
-                 label="Store"
-                 active={pathname === "/creator/store"}
-               />
-             )}
-             {creatorSettings?.storeEnabled && (
-               <NavItem
-                 href="/creator/sales"
-                 icon={<ShoppingBag size={18} />}
-                 label="Sales"
-                 active={pathname === "/creator/sales"}
-               />
-             )}
-             {creatorSettings?.gatheringsEnabled && (
-              <NavItem
-                href="/creator/gatherings"
-                icon={<Calendar size={18} />}
-                label="Gatherings"
-                active={pathname === "/creator/gatherings"}
-              />
-            )}
-            {creatorSettings?.bookingEnabled && (
-              <NavItem
-                href="/creator/bookings"
-                icon={<Calendar size={18} />}
-                label="Bookings"
-                active={pathname === "/creator/bookings"}
-              />
-            )}
-            {creatorSettings?.giveawayEnabled && (
-              <NavItem
-                href="/creator/giveaways"
-                icon={<Gift size={18} />}
-                label="Giveaways"
-                active={pathname === "/creator/giveaways"}
-              />
-            )}
-            {creatorSettings?.messagingEnabled !== false && (
-              <NavItem
-                href="/creator/messages"
-                icon={<MessageSquare size={18} />}
-                label="Messages"
-                active={pathname === "/creator/messages"}
-              />
-            )}
-            <NavItem
-              href="/creator/payouts"
-              icon={<Wallet size={18} />}
-              label="Payouts"
-              active={pathname === "/creator/payouts"}
+            <ExpandableNavItem
+              icon={<Store size={18} />}
+              label="Commerce"
+              activeSub={pathname}
+              subItems={[
+                ...(creatorSettings?.storeEnabled
+                  ? [{ href: "/creator/store", label: "Store" }]
+                  : []),
+                ...(creatorSettings?.storeEnabled
+                  ? [{ href: "/creator/sales", label: "Sales" }]
+                  : []),
+              ]}
             />
-            <NavItem
-              href="/creator/verify"
-              icon={<CheckCircle size={18} />}
-              label="Verify"
-              active={pathname === "/creator/verify"}
+            <ExpandableNavItem
+              icon={<Users size={18} />}
+              label="Community"
+              activeSub={pathname}
+              subItems={[
+                ...(creatorSettings?.gatheringsEnabled
+                  ? [{ href: "/creator/gatherings", label: "Events" }]
+                  : []),
+                ...(creatorSettings?.bookingEnabled
+                  ? [{ href: "/creator/bookings", label: "Bookings" }]
+                  : []),
+                ...(creatorSettings?.giveawayEnabled
+                  ? [{ href: "/creator/giveaways", label: "Giveaways" }]
+                  : []),
+                ...(creatorSettings?.messagingEnabled !== false
+                  ? [{ href: "/creator/messages", label: "Messages" }]
+                  : []),
+                { href: "/creator/supporters", label: "Supporters" },
+              ]}
             />
             <NavItem
               href="/creator/partners"
@@ -231,29 +201,21 @@ export default function DashboardLayout({
               label="Partners"
               active={pathname === "/creator/partners"}
             />
-            <NavItem
-              href="/creator/supporters"
-              icon={<Users size={18} />}
-              label="Supporters"
-              active={pathname === "/creator/supporters"}
-            />
-            <NavItem
-              href="/creator/notices"
-              icon={<Megaphone size={18} />}
-              label="Notices"
-              active={pathname === "/creator/notices"}
-            />
-            <NavItem
-              href="/creator/settings"
+            <ExpandableNavItem
               icon={<Settings size={18} />}
-              label="Settings"
-              active={pathname === "/creator/settings"}
+              label="Account"
+              activeSub={pathname}
+              subItems={[
+                { href: "/creator/verify", label: "Verify" },
+                { href: "/creator/payouts", label: "Payouts" },
+                { href: "/creator/settings", label: "Settings" },
+              ]}
             />
           </nav>
 
-          <div className="mt-auto p-4 bg-slate-50 border border-slate-200 rounded-lg">
+          <div className="mt-auto p-4 bg-muted border border-border rounded-lg">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                 Your Page
               </span>
               {copied ? (
@@ -262,17 +224,17 @@ export default function DashboardLayout({
                 <button onClick={copyLink}>
                   <Copy
                     size={12}
-                    className="text-slate-400 hover:text-orange-600"
+                    className="text-muted-foreground hover:text-orange-600"
                   />
                 </button>
               )}
             </div>
-            <p className="text-xs font-medium text-slate-600 truncate mb-3">
+            <p className="text-xs font-medium text-muted-foreground truncate mb-3">
               agaseke.me/{creator?.handle || "..."}
             </p>
             <button
               onClick={() => setShowShareModal(true)}
-              className="w-full py-2 bg-white border border-slate-200 rounded-lg text-[11px] font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition"
+              className="w-full py-2 bg-card border border-border rounded-lg text-[11px] font-bold flex items-center justify-center gap-2 hover:bg-muted transition"
             >
               Share Page <Share2 size={12} />
             </button>
@@ -282,17 +244,17 @@ export default function DashboardLayout({
 
       {/* 3. Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 w-full">
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-20 w-full">
+        <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 md:px-8 sticky top-0 z-20 w-full">
           <div className="flex items-center gap-4">
             {/* Mobile Toggle Button */}
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="md:hidden p-2 -ml-2 text-slate-600 hover:bg-slate-50 rounded-lg transition"
+              className="md:hidden p-2 -ml-2 text-muted-foreground hover:bg-muted rounded-lg transition"
             >
               <Menu size={20} />
             </button>
 
-            <h2 className="text-sm font-semibold text-slate-600 capitalize">
+            <h2 className="text-sm font-semibold text-muted-foreground capitalize">
               {pathname.split("/").pop() === "creator"
                 ? "Overview"
                 : pathname.split("/").pop()?.replace("-", " ")}
@@ -300,11 +262,12 @@ export default function DashboardLayout({
           </div>
 
           <div className="flex items-center gap-3 md:gap-6">
+            <ThemeToggle />
             <button
               onClick={() => setShowNotifications(true)}
-              className="relative p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              className="relative p-2 hover:bg-muted rounded-lg transition-colors"
             >
-              <Bell size={20} className="text-slate-600" />
+              <Bell size={20} className="text-muted-foreground" />
               {unreadCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] bg-orange-500 text-white text-[10px] font-bold rounded-full px-1">
                   {unreadCount > 99 ? "99+" : unreadCount}
@@ -315,18 +278,18 @@ export default function DashboardLayout({
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setShowDropdown(!showDropdown)}
-                className="flex items-center gap-2 md:gap-3 p-1 pr-2 hover:bg-slate-50 rounded-full transition-colors"
+                className="flex items-center gap-2 md:gap-3 p-1 pr-2 hover:bg-muted rounded-full transition-colors"
               >
                 <div className="text-right hidden sm:block">
-                  <p className="text-xs font-bold text-slate-900 leading-tight">
+                  <p className="text-xs font-bold text-foreground leading-tight">
                     {creator?.name}
                   </p>
-                  <p className="text-[10px] font-medium text-slate-400 leading-tight">
+                  <p className="text-[10px] font-medium text-muted-foreground leading-tight">
                     @{creator?.handle}
                   </p>
                 </div>
 
-                <div className="w-8 h-8 bg-slate-100 rounded-full border border-slate-200 flex items-center justify-center text-xs font-bold overflow-hidden">
+                <div className="w-8 h-8 bg-muted rounded-full border border-border flex items-center justify-center text-xs font-bold overflow-hidden">
                   {creator?.profilePicture ? (
                     <img
                       src={creator?.profilePicture}
@@ -334,48 +297,48 @@ export default function DashboardLayout({
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <User size={16} className="text-slate-400" />
+                    <User size={16} className="text-muted-foreground" />
                   )}
                 </div>
                 <ChevronDown
                   size={14}
-                  className={`text-slate-400 transition-transform ${showDropdown ? "rotate-180" : ""}`}
+                  className={`text-muted-foreground transition-transform ${showDropdown ? "rotate-180" : ""}`}
                 />
               </button>
 
               {showDropdown && (
-                <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-lg shadow-xl py-2 animate-in fade-in zoom-in-95 duration-100 z-50">
-                  <div className="px-4 py-2 border-b border-slate-50 mb-1 sm:hidden">
-                    <p className="text-xs font-bold text-slate-900">
+                <div className="absolute right-0 mt-2 w-56 bg-card border border-border rounded-lg shadow-xl py-2 animate-in fade-in zoom-in-95 duration-100 z-50">
+                  <div className="px-4 py-2 border-b border-border mb-1 sm:hidden">
+                    <p className="text-xs font-bold text-foreground">
                       {creator?.name}
                     </p>
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-[10px] text-muted-foreground">
                       @{creator?.handle}
                     </p>
                   </div>
                   {isAdmin && (
                     <Link
                       href="/admin"
-                      className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 rounded-lg hover:bg-orange-50 hover:text-orange-600 transition-colors"
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-muted-foreground rounded-lg hover:bg-orange-50 hover:text-orange-600 transition-colors"
                     >
                       <Briefcase size={18} /> Admin Space
                     </Link>
                   )}
                   <Link
                     href="/supporter"
-                    className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-orange-600 transition-colors"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-orange-600 transition-colors"
                     onClick={() => setShowDropdown(false)}
                   >
                     <UserCircle size={18} /> Supporter View
                   </Link>
                   <Link
                     href="/creator/settings"
-                    className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                    className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
                     onClick={() => setShowDropdown(false)}
                   >
                     <Settings size={18} /> Account Settings
                   </Link>
-                  <div className="h-px bg-slate-100 my-1 mx-2" />
+                  <div className="h-px bg-muted my-1 mx-2" />
                   <button
                     onClick={handleLogout}
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
@@ -405,17 +368,4 @@ export default function DashboardLayout({
   );
 }
 
-function NavItem({ icon, label, href, active }: any) {
-  return (
-    <Link
-      href={href}
-      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-        active
-          ? "bg-orange-50 text-orange-600"
-          : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-      }`}
-    >
-      {icon} {label}
-    </Link>
-  );
-}
+

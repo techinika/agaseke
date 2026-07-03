@@ -1,20 +1,16 @@
 import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/db/firebaseAdmin";
-import { createNotification } from "@/lib/adminNotifications";
+import { handleStorePayment } from "../../handlers/handleStorePayment";
+import { handleBookingPayment } from "../../handlers/handleBookingPayment";
+import { handleGatheringPayment } from "../../handlers/handleGatheringPayment";
+import { handleSupportPayment } from "../../handlers/handleSupportPayment";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export async function POST(req: Request) {
   try {
     const { OrderTrackingId, OrderMerchantReference, OrderNotificationType } =
       await req.json();
-
-    console.log(
-      "Request Details: ",
-      OrderNotificationType,
-      OrderMerchantReference,
-      OrderTrackingId,
-    );
 
     if (OrderNotificationType !== "IPNCHANGE") {
       return NextResponse.json({
@@ -56,6 +52,13 @@ export async function POST(req: Request) {
       .get();
 
     if (txQuery.empty) {
+      await adminDb.collection("activityLogs").add({
+        level: "error",
+        category: "payment",
+        message: "Card IPN: Transaction not found",
+        metadata: { ref: OrderMerchantReference },
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
       return NextResponse.json(
         { error: "Transaction not found" },
         { status: 404 },
@@ -64,8 +67,6 @@ export async function POST(req: Request) {
 
     const txDoc = txQuery.docs[0];
     const txData = txDoc.data();
-
-    console.log(txData);
 
     if (txData.status === "successful" || txData.status === "success") {
       return NextResponse.json({ status: 200, message: "Already processed" });
@@ -83,13 +84,22 @@ export async function POST(req: Request) {
         successfulAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      if (txType === "store") {
-        const platformFee = Number(txData.platformFee) || 0;
-        const creatorEarnings = Number(txData.creatorEarnings) || 0;
-        const referralEarnings = Number(txData.referralEarnings) || 0;
-        const productId = txData.productId;
-        const quantity = Number(txData.quantity) || 1;
+      switch (txType) {
+        case "store":
+          await handleStorePayment(txData, totalAmount, OrderMerchantReference, batch, "card");
+          break;
+        case "booking":
+          await handleBookingPayment(txData, totalAmount, OrderMerchantReference, batch, "card");
+          break;
+        case "gathering":
+          await handleGatheringPayment(txData, totalAmount, OrderMerchantReference, batch);
+          break;
+        default:
+          await handleSupportPayment(txData, totalAmount, OrderMerchantReference, batch, "card_payment_fee");
+          break;
+      }
 
+<<<<<<< HEAD
         let productData = null;
         if (productId) {
           const productSnap = await adminDb
@@ -292,6 +302,9 @@ export async function POST(req: Request) {
        }
 
        await batch.commit();
+=======
+      await batch.commit();
+>>>>>>> main
     } else {
       await txDoc.ref.update({
         status: "failed",
@@ -307,6 +320,13 @@ export async function POST(req: Request) {
     });
   } catch (error: any) {
     console.error("CRITICAL_IPN_ERROR:", error.message);
+    await adminDb.collection("activityLogs").add({
+      level: "error",
+      category: "payment",
+      message: "Card IPN: Critical processing error",
+      metadata: { errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     return NextResponse.json(
       { error: "Internal processing error" },
       { status: 500 },

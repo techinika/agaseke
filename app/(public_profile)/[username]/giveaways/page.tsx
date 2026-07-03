@@ -1,3 +1,5 @@
+export const revalidate = 300;
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import GiveawaysPage from "@/components/pages/public/GiveawaysPage";
 import { adminDb } from "@/db/firebaseAdmin";

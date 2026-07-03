@@ -1,0 +1,138 @@
+"use client";
+
+import React, { useEffect } from "react";
+import { motion } from "framer-motion";
+import Link from "next/link";
+import {
+  Home,
+  ArrowLeft,
+  AlertTriangle,
+  Loader,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+
+interface ErrorContentProps {
+  error: Error & { digest?: string };
+  reset: () => void;
+}
+
+const ErrorContent = ({ error, reset }: ErrorContentProps) => {
+  const router = useRouter();
+
+  useEffect(() => {
+    fetch("/api/log-error", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        level: "error",
+        category: "system",
+        message: error.message || "Unknown client error",
+        metadata: {
+          digest: error.digest,
+          stack: error.stack?.slice(0, 2000),
+          url: window.location.href,
+          userAgent: window.navigator.userAgent,
+        },
+      }),
+    }).catch(console.error);
+  }, [error]);
+
+  return (
+    <div className="min-h-screen bg-card flex flex-col items-center justify-center px-6 overflow-hidden relative">
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+        <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-red-50 rounded-full blur-[120px] opacity-60" />
+        <div className="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-muted rounded-full blur-[120px] opacity-60" />
+      </div>
+
+      <div className="relative z-10 flex flex-col items-center text-center">
+        <div className="relative mb-8">
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-[12rem] md:text-[16rem] font-bold leading-none tracking-tighter text-foreground/5 select-none"
+          >
+            500
+          </motion.h1>
+
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.5 }}
+            className="absolute inset-0 flex items-center justify-center"
+          >
+            <div className="bg-card p-8 rounded-lg shadow-2xl shadow-red-100 border border-red-50 relative">
+              <motion.div
+                animate={{
+                  rotate: [0, 5, -5, 0],
+                }}
+                transition={{
+                  repeat: Infinity,
+                  duration: 3,
+                  ease: "easeInOut",
+                }}
+                className="w-20 h-20 bg-red-500 rounded-lg flex items-center justify-center text-white"
+              >
+                <AlertTriangle size={40} strokeWidth={3} />
+              </motion.div>
+            </div>
+          </motion.div>
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="max-w-md"
+        >
+          <h2 className="text-3xl font-bold tracking-tighter text-foreground mb-4">
+            Something went wrong
+          </h2>
+          <p className="text-muted-foreground font-medium leading-relaxed mb-4">
+            We encountered an unexpected error. This might be a temporary issue
+            with our servers or your connection.
+          </p>
+          {error?.message && (
+            <p className="text-xs text-muted-foreground bg-muted p-3 rounded-lg mb-6 font-mono">
+              {error.message}
+            </p>
+          )}
+
+          <div className="flex flex-wrap gap-4 justify-center">
+            <button
+              onClick={() => reset()}
+              className="flex items-center justify-center gap-3 bg-foreground text-background px-8 py-4 rounded-lg font-bold transition-all hover:bg-red-600 active:scale-95 shadow-xl shadow-border-strong"
+            >
+              <Loader size={18} /> Try Again
+            </button>
+
+            <Link
+              href="/"
+className="flex items-center justify-center gap-3 bg-card border border-border text-muted-foreground px-8 py-4 rounded-lg font-bold transition-all hover:border-foreground hover:text-foreground active:scale-95"
+              >
+                <Home size={18} /> Go To Home
+            </Link>
+
+            <button
+              onClick={() => router.refresh()}
+className="flex items-center justify-center gap-3 bg-card border border-border text-muted-foreground px-8 py-4 rounded-lg font-bold transition-all hover:border-foreground hover:text-foreground active:scale-95"
+              >
+                <ArrowLeft size={18} /> Refresh Page
+            </button>
+          </div>
+        </motion.div>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.4 }}
+          transition={{ delay: 0.8 }}
+          className="mt-20 text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground"
+        >
+          Agaseke for Creators
+        </motion.p>
+      </div>
+    </div>
+  );
+};
+
+export default ErrorContent;

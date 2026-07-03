@@ -13,7 +13,7 @@ export function SocialPill({
       href={link}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-xs font-bold text-slate-500 hover:border-orange-500 hover:text-orange-600 hover:shadow-md transition-all capitalize"
+      className="flex items-center gap-2 px-4 py-2 bg-card border border-border-strong rounded-full text-xs font-bold text-muted-foreground hover:border-orange-500 hover:text-orange-600 hover:shadow-md transition-all capitalize"
     >
       {icon} <span>{label}</span>
     </a>

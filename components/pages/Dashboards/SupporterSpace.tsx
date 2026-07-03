@@ -8,7 +8,6 @@ import {
   User,
   MapPin,
   X,
-  CheckCircle2,
   Eye,
   FileText,
   ShoppingBag,
@@ -18,18 +17,18 @@ import {
   Send,
   ChevronLeft,
   ChevronRight,
-  Play,
   Paperclip,
-  Calendar,
-  TrendingUp,
-  Sparkles,
-  Download,
+  Clock,
+  Home,
+  Compass,
 } from "lucide-react";
 import Navbar from "@/components/parts/Navigation";
+import MobileBottomBar from "@/components/parts/MobileBottomBar";
 import { useAuth } from "@/auth/AuthContext";
 import Loading from "@/app/loading";
 import {
   collection,
+  collectionGroup,
   doc,
   getDocs,
   query,
@@ -46,7 +45,11 @@ import { db } from "@/db/firebase";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+<<<<<<< HEAD
 import { formatCurrency } from "@/lib/format";
+=======
+import { LinkifyText } from "@/components/ui/LinkifyText";
+>>>>>>> main
 
 interface Comment {
   id: string;
@@ -109,10 +112,7 @@ export default function SupporterSpace() {
   const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
   const [likedDocIds, setLikedDocIds] = useState<Record<string, string>>({});
   const [showCommentFor, setShowCommentFor] = useState<string | null>(null);
-  const [seenPosts, setSeenPosts] = useState<Set<string>>(new Set());
-  const [commentCounts, setCommentCounts] = useState<Record<string, number>>(
-    {},
-  );
+  const viewedPosts = useRef<Set<string>>(new Set());
   const [viewingDocument, setViewingDocument] = useState<{
     url: string;
     title: string;
@@ -121,8 +121,6 @@ export default function SupporterSpace() {
     null,
   );
   const postRefs = useRef<Record<string, HTMLDivElement>>({});
-
-  let supportedCreatorUids = new Set<string>();
 
   useEffect(() => {
     const fetchSupporterData = async () => {
@@ -137,7 +135,7 @@ export default function SupporterSpace() {
         );
         const supportSnap = await getDocs(qSupport);
 
-        supportedCreatorUids = new Set(
+        const supportedCreatorHandles = new Set(
           supportSnap.docs.map((d) => d.data().creatorId),
         );
 
@@ -146,19 +144,30 @@ export default function SupporterSpace() {
           where("buyerId", "==", auth.user.uid),
         );
 
+        const publicContentQ = query(
+          collection(db, "creatorContent"),
+          where("isPrivate", "==", false),
+          orderBy("createdAt", "desc"),
+        );
+
+        const supportedIds = Array.from(supportedCreatorHandles).slice(0, 10);
+        const privateContentQ =
+          supportedIds.length > 0
+            ? query(
+                collection(db, "creatorContent"),
+                where("isPrivate", "==", true),
+                where("creatorId", "in", supportedIds),
+                orderBy("createdAt", "desc"),
+              )
+            : null;
+
         const [
-          contentSnap,
+          publicSnap,
           gatheringSnap,
           creatorsSnap,
           purchasesSnap,
-          commentsSnap,
         ] = await Promise.all([
-          getDocs(
-            query(
-              collection(db, "creatorContent"),
-              orderBy("createdAt", "desc"),
-            ),
-          ),
+          getDocs(publicContentQ),
           getDocs(
             query(
               collection(db, "creatorGatherings"),
@@ -167,17 +176,38 @@ export default function SupporterSpace() {
           ),
           getDocs(collection(db, "creators")),
           getDocs(purchasesQuery),
-          getDocs(collection(db, "postComments")),
         ]);
 
-        const counts: Record<string, number> = {};
-        commentsSnap.docs.forEach((d) => {
-          const postId = d.data().postId;
-          counts[postId] = (counts[postId] || 0) + 1;
-        });
-        setCommentCounts(counts);
+        let allContentDocs = [...publicSnap.docs];
+
+        // Private content fetch — decoupled so a permission failure doesn't crash the page
+        if (privateContentQ) {
+          try {
+            const privateSnap = await getDocs(privateContentQ);
+            allContentDocs.push(...privateSnap.docs);
+          } catch (privateErr) {
+            console.warn("Private content query failed (non-critical):", privateErr);
+          }
+        }
 
         let profileMap = new Map();
+        const supportedCreatorUids = new Set<string>();
+        const supportedHandles = new Set<string>();
+        const creatorMap = new Map();
+        creatorsSnap.docs.forEach((d) => {
+          const data = d.data();
+          creatorMap.set(d.id, {
+            name: data.name,
+            handle: d.id,
+            uid: data.uid,
+            photoURL: data.profilePicture || null,
+          });
+          if (supportedCreatorHandles.has(d.id)) {
+            supportedHandles.add(d.id);
+            if (data.uid) supportedCreatorUids.add(data.uid);
+          }
+        });
+
         if (supportedCreatorUids.size > 0) {
           const profilesSnap = await getDocs(
             query(
@@ -191,22 +221,7 @@ export default function SupporterSpace() {
           });
         }
 
-        const creatorMap = new Map();
-        const supportedHandles = new Set<string>();
-        creatorsSnap.docs.forEach((d) => {
-          const data = d.data();
-          creatorMap.set(d.id, {
-            name: data.name,
-            handle: d.id,
-            uid: data.uid,
-            photoURL: data.profilePicture || profileMap.get(data.uid) || null,
-          });
-          if (supportedCreatorUids.has(data.uid)) {
-            supportedHandles.add(d.id);
-          }
-        });
-
-        const contents = contentSnap.docs
+        const contents = allContentDocs
           .map((d) => ({ id: d.id, ...d.data() }))
           .filter((item: any) => {
             const isSupportedByHandle = supportedHandles.has(item.creatorId);
@@ -246,12 +261,12 @@ export default function SupporterSpace() {
             isFollowing,
             isPublic: !item.isPrivate,
             likes: item.stats?.likes || 0,
-            commentCount: counts[item.id] || 0,
+            commentCount: item.commentCount || 0,
           };
         });
 
         const favoritesData = creatorsSnap.docs
-          .filter((d) => supportedCreatorUids.has(d.data().uid))
+          .filter((d) => supportedCreatorHandles.has(d.id))
           .map((d) => {
             const data = d.data();
             return {
@@ -293,7 +308,7 @@ export default function SupporterSpace() {
               photoURL: data.profilePicture || null,
             };
           })
-          .filter((c: any) => !supportedCreatorUids.has(c.uid));
+          .filter((c: any) => !supportedCreatorHandles.has(c.handle));
         setCreators(discoveryList);
       } catch (error) {
         console.error("Fetch Supporter Space Error:", error);
@@ -309,15 +324,17 @@ export default function SupporterSpace() {
   useEffect(() => {
     if (!auth.user?.uid) return;
 
-    const likedRef = collection(db, "postLikes");
+    const likedRef = collectionGroup(db, "likes");
     const likedQuery = query(likedRef, where("userId", "==", auth.user.uid));
     const unsubscribe = onSnapshot(likedQuery, (snap) => {
       const liked = new Set<string>();
       const docIds: Record<string, string> = {};
       snap.docs.forEach((d) => {
-        const postId = d.data().postId;
-        liked.add(postId);
-        docIds[postId] = d.id;
+        const postId = d.data().postId || d.ref.parent.parent?.id;
+        if (postId) {
+          liked.add(postId);
+          docIds[postId] = d.id;
+        }
       });
       setLikedPosts(liked);
       setLikedDocIds(docIds);
@@ -331,16 +348,25 @@ export default function SupporterSpace() {
       (entries) => {
         entries.forEach((entry) => {
           const postId = entry.target.getAttribute("data-post-id");
-          if (postId && entry.isIntersecting && !seenPosts.has(postId)) {
-            setSeenPosts((prev) => new Set(prev).add(postId));
+          if (
+            postId &&
+            entry.isIntersecting &&
+            !viewedPosts.current.has(postId)
+          ) {
+            viewedPosts.current.add(postId);
 
             const item = feed.find(
-              (f) => f.id === postId && f.type === "content",
+              (f) => f.id === postId && f.type !== "gathering",
             );
             if (item) {
               updateDoc(doc(db, "creatorContent", postId), {
                 views: increment(1),
               }).catch(() => {});
+              setFeed((prev) =>
+                prev.map((f) =>
+                  f.id === postId ? { ...f, views: (f.views || 0) + 1 } : f,
+                ),
+              );
             }
           }
         });
@@ -353,15 +379,14 @@ export default function SupporterSpace() {
     });
 
     return () => observer.disconnect();
-  }, [feed, seenPosts]);
+  }, [feed]);
 
   const fetchComments = async (postId: string) => {
     if (comments[postId] && comments[postId].length > 0) return;
     setLoadingComments((prev) => ({ ...prev, [postId]: true }));
     try {
       const q = query(
-        collection(db, "postComments"),
-        where("postId", "==", postId),
+        collection(db, "creatorContent", postId, "comments"),
         orderBy("createdAt", "desc"),
       );
       const snap = await getDocs(q);
@@ -397,17 +422,26 @@ export default function SupporterSpace() {
   const handleAddComment = async (postId: string) => {
     if (!commentText[postId]?.trim() || !auth.user) return;
     try {
-      const newComment = {
+      await addDoc(collection(db, "creatorContent", postId, "comments"), {
         postId,
         text: commentText[postId],
         userId: auth.user.uid,
         userName: auth.profile?.displayName || "Anonymous",
         userPhoto: auth.profile?.photoURL || null,
         createdAt: serverTimestamp(),
-      };
-      await addDoc(collection(db, "postComments"), newComment);
+      });
       setCommentText((prev) => ({ ...prev, [postId]: "" }));
+      setFeed((prev) =>
+        prev.map((f) =>
+          f.id === postId
+            ? { ...f, commentCount: (f.commentCount || 0) + 1 }
+            : f,
+        ),
+      );
       fetchComments(postId);
+      await updateDoc(doc(db, "creatorContent", postId), {
+        commentCount: increment(1),
+      });
       toast.success("Comment added");
     } catch (e) {
       toast.error("Failed to add comment");
@@ -426,7 +460,13 @@ export default function SupporterSpace() {
         userPhoto: auth.profile?.photoURL || null,
         createdAt: serverTimestamp(),
       };
-      await addDoc(collection(db, "postComments"), newReply);
+      await addDoc(
+        collection(db, "creatorContent", postId, "comments"),
+        newReply,
+      );
+      await updateDoc(doc(db, "creatorContent", postId), {
+        commentCount: increment(1),
+      });
       setReplyText((prev) => ({ ...prev, [parentId]: "" }));
       setReplyingTo((prev) => ({ ...prev, [parentId]: null }));
       setComments((prev) => {
@@ -435,10 +475,13 @@ export default function SupporterSpace() {
         return newComments;
       });
       fetchComments(postId);
-      setCommentCounts((prev) => ({
-        ...prev,
-        [postId]: (prev[postId] || 0) + 1,
-      }));
+      setFeed((prev) =>
+        prev.map((f) =>
+          f.id === postId
+            ? { ...f, commentCount: (f.commentCount || 0) + 1 }
+            : f,
+        ),
+      );
     } catch (e) {
       toast.error("Failed to add reply");
     }
@@ -452,7 +495,9 @@ export default function SupporterSpace() {
       const likeDocId = likedDocIds[postKey];
       if (likeDocId) {
         try {
-          await deleteDoc(doc(db, "postLikes", likeDocId));
+          await deleteDoc(
+            doc(db, "creatorContent", item.id, "likes", likeDocId),
+          );
           await updateDoc(doc(db, "creatorContent", item.id), {
             "stats.likes": increment(-1),
           });
@@ -478,11 +523,14 @@ export default function SupporterSpace() {
     );
 
     try {
-      const docRef = await addDoc(collection(db, "postLikes"), {
-        postId: item.id,
-        userId: auth.user.uid,
-        createdAt: serverTimestamp(),
-      });
+      const docRef = await addDoc(
+        collection(db, "creatorContent", item.id, "likes"),
+        {
+          postId: item.id,
+          userId: auth.user.uid,
+          createdAt: serverTimestamp(),
+        },
+      );
       setLikedDocIds((prev) => ({ ...prev, [item.id]: docRef.id }));
       await updateDoc(doc(db, "creatorContent", item.id), {
         "stats.likes": increment(1),
@@ -492,14 +540,20 @@ export default function SupporterSpace() {
     }
   };
 
-  const toggleExpand = async (item: any) => {
-    if (expandedPostId === item.id) {
-      setExpandedPostId(null);
-      setShowCommentFor(null);
+  const handleCardClick = (item: any, e: React.MouseEvent) => {
+    if (
+      (e.target as HTMLElement).closest(
+        "button, a, input, textarea, video, iframe",
+      )
+    )
       return;
+    const text = item.description || "";
+    if (text.length > 200 && expandedPostId !== item.id) {
+      setExpandedPostId(item.id);
+      setDocumentIndex((prev) => ({ ...prev, [item.id]: 0 }));
+    } else {
+      router.push(`/supporter/${item.id}`);
     }
-    setExpandedPostId(item.id);
-    setDocumentIndex((prev) => ({ ...prev, [item.id]: 0 }));
   };
 
   const toggleComments = (item: any) => {
@@ -516,6 +570,10 @@ export default function SupporterSpace() {
     if (feedFilter === "public") return item.isPublic && !item.isFollowing;
     return true;
   });
+  const contentItems = filteredFeed.filter((item) => item.type !== "gathering");
+  const gatheringItems = filteredFeed.filter(
+    (item) => item.type === "gathering",
+  );
 
   const renderYouTubeEmbed = (text: string) => {
     const youtubeUrl = hasYouTubeLink(text);
@@ -544,7 +602,7 @@ export default function SupporterSpace() {
 
     if (isVideo) {
       return (
-        <div className="relative aspect-video bg-gray-900 rounded-lg overflow-hidden mt-3">
+        <div className="relative aspect-video bg-foreground rounded-lg overflow-hidden mt-3">
           <video
             src={contentUrl}
             controls
@@ -561,14 +619,14 @@ export default function SupporterSpace() {
       const currentUrl = pages[currentIndex];
 
       return (
-        <div className="mt-3 bg-gray-50 rounded-lg p-4 border border-gray-200">
+        <div className="mt-3 bg-muted rounded-lg p-4 border border-border">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
               <FileText size={24} className="text-orange-600" />
             </div>
             <div className="flex-1">
-              <p className="font-medium text-sm text-gray-900">Document</p>
-              <p className="text-xs text-gray-500">
+              <p className="font-medium text-sm text-foreground">Document</p>
+              <p className="text-xs text-muted-foreground">
                 {pages.length} page{pages.length > 1 ? "s" : ""}
               </p>
             </div>
@@ -584,11 +642,11 @@ export default function SupporterSpace() {
                   }));
                 }}
                 disabled={currentIndex === 0}
-                className="p-1.5 bg-white border rounded-lg disabled:opacity-50"
+                className="p-1.5 bg-card border rounded-lg disabled:opacity-50"
               >
                 <ChevronLeft size={16} />
               </button>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-muted-foreground">
                 {currentIndex + 1} of {pages.length}
               </span>
               <button
@@ -600,7 +658,7 @@ export default function SupporterSpace() {
                   }));
                 }}
                 disabled={currentIndex === pages.length - 1}
-                className="p-1.5 bg-white border rounded-lg disabled:opacity-50"
+                className="p-1.5 bg-card border rounded-lg disabled:opacity-50"
               >
                 <ChevronRight size={16} />
               </button>
@@ -619,7 +677,7 @@ export default function SupporterSpace() {
     }
 
     return (
-      <div className="mt-3 rounded-lg overflow-hidden bg-gray-100">
+      <div className="mt-3 rounded-lg overflow-hidden bg-muted">
         <img
           src={contentUrl}
           alt={item.title}
@@ -629,11 +687,15 @@ export default function SupporterSpace() {
     );
   };
 
-  const renderPostText = (text: string, itemId: string, isExpanded: boolean) => {
+  const renderPostText = (
+    text: string,
+    itemId: string,
+    isExpanded: boolean,
+  ) => {
     if (isExpanded || text.length <= 200) {
       return (
-        <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">
-          {text}
+        <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+          <LinkifyText text={text} />
         </p>
       );
     }
@@ -641,8 +703,9 @@ export default function SupporterSpace() {
     const firstPart = text.substring(0, 200);
 
     return (
-      <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">
-        {firstPart}...
+      <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+        <LinkifyText text={firstPart} />
+        <span>...</span>
         <button
           onClick={() => setExpandedPostId(itemId)}
           className="text-orange-500 hover:underline font-medium"
@@ -654,29 +717,32 @@ export default function SupporterSpace() {
   };
 
   const renderPostComments = (item: any) => (
-    <div className="px-4 pb-4 border-t border-gray-100 pt-3 bg-gray-50">
-      <h4 className="text-xs font-semibold text-gray-500 mb-3">
+    <div
+      onClick={(e) => e.stopPropagation()}
+      className="px-4 pb-4 border-t border-border pt-3 bg-muted"
+    >
+      <h4 className="text-xs font-semibold text-muted-foreground mb-3">
         Comments ({comments[item.id]?.length || 0})
       </h4>
 
       {loadingComments[item.id] ? (
         <div className="flex items-center justify-center py-4">
-          <Loader className="animate-spin text-gray-400" size={20} />
+          <Loader className="animate-spin text-muted-foreground" size={20} />
         </div>
       ) : (
         <div className="space-y-3 max-h-[300px] overflow-y-auto">
           {comments[item.id]?.slice(0, 5).map((comment) => (
-            <div key={comment.id} className="bg-white rounded-lg p-2.5">
+            <div key={comment.id} className="bg-card rounded-lg p-2.5">
               <div className="flex items-start gap-2">
                 <div className="w-7 h-7 rounded-full bg-gray-200 overflow-hidden shrink-0">
                   {comment.userPhoto ? (
                     <img
                       src={comment.userPhoto}
-                      alt=""
+                      alt={comment.userName || "Commenter"}
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <span className="text-[10px] flex items-center justify-center h-full text-gray-500">
+                    <span className="text-[10px] flex items-center justify-center h-full text-muted-foreground">
                       {comment.userName?.[0]}
                     </span>
                   )}
@@ -691,11 +757,13 @@ export default function SupporterSpace() {
                         Owner
                       </span>
                     )}
-                    <span className="text-[10px] text-gray-400">
+                    <span className="text-[10px] text-muted-foreground">
                       {comment.createdAt?.toDate?.()?.toLocaleDateString()}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-600 mt-0.5">{comment.text}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap">
+                    <LinkifyText text={comment.text} />
+                  </p>
                   <button
                     onClick={() =>
                       setReplyingTo((prev) => ({
@@ -733,18 +801,18 @@ export default function SupporterSpace() {
                   {(comment.replies || []).slice(0, 2).map((reply) => (
                     <div
                       key={reply.id}
-                      className="mt-2 ml-3 pl-2 border-l-2 border-gray-200"
+                      className="mt-2 ml-3 pl-2 border-l-2 border-border"
                     >
                       <div className="flex items-start gap-1.5">
                         <div className="w-5 h-5 rounded-full bg-gray-200 overflow-hidden shrink-0">
                           {reply.userPhoto ? (
                             <img
                               src={reply.userPhoto}
-                              alt=""
+                              alt={reply.userName || "Commenter"}
                               className="w-full h-full object-cover"
                             />
                           ) : (
-                            <span className="text-[8px] flex items-center justify-center h-full text-gray-500">
+                            <span className="text-[8px] flex items-center justify-center h-full text-muted-foreground">
                               {reply.userName?.[0]}
                             </span>
                           )}
@@ -758,7 +826,9 @@ export default function SupporterSpace() {
                               Owner
                             </span>
                           )}
-                          <p className="text-xs text-gray-600">{reply.text}</p>
+                          <p className="text-xs text-muted-foreground whitespace-pre-wrap">
+                            <LinkifyText text={reply.text} />
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -773,21 +843,21 @@ export default function SupporterSpace() {
             </div>
           ))}
           {(!comments[item.id] || comments[item.id].length === 0) && (
-            <p className="text-xs text-gray-400 text-center py-2">
+            <p className="text-xs text-muted-foreground text-center py-2">
               No comments yet
             </p>
           )}
         </div>
       )}
 
-      <div className="mt-3 flex gap-2">
+      <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
         <input
           value={commentText[item.id] || ""}
           onChange={(e) =>
             setCommentText((prev) => ({ ...prev, [item.id]: e.target.value }))
           }
           placeholder="Write a comment..."
-          className="flex-1 text-xs px-3 py-2 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 text-xs px-3 py-2 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
           onKeyDown={(e) => e.key === "Enter" && handleAddComment(item.id)}
         />
         <button
@@ -803,23 +873,23 @@ export default function SupporterSpace() {
   if (auth.loading || loading) return <Loading />;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted">
       <Navbar />
 
-      <div className="max-w-7xl mx-auto px-4 pt-20 pb-24">
+      <div className="max-w-7xl mx-auto px-4 pt-12 pb-24">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-foreground">
               Welcome back,{" "}
               {auth.profile?.displayName?.split(" ")[0] || "Supporter"}
             </h1>
-            <p className="text-sm text-gray-500">
-              {feed.length} posts from your feed
+            <p className="text-sm text-muted-foreground">
+              {contentItems.length} posts in your feed
             </p>
           </div>
           <Link
             href={auth?.isCreator ? "/creator" : "/onboarding"}
-            className="bg-gray-900 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 transition flex items-center gap-2"
+            className="bg-foreground text-background px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-foreground/90 transition flex items-center gap-2"
           >
             <Zap size={16} />
             {auth?.isCreator ? "Go to Creator" : "Become Creator"}
@@ -837,8 +907,8 @@ export default function SupporterSpace() {
               onClick={() => setFeedFilter(filter.key as any)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                 feedFilter === filter.key
-                  ? "bg-gray-900 text-white"
-                  : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-100"
+                  ? "bg-foreground text-background"
+                  : "bg-card text-muted-foreground border border-border hover:bg-muted"
               }`}
             >
               {filter.label}
@@ -846,11 +916,88 @@ export default function SupporterSpace() {
           ))}
         </div>
 
+        {gatheringItems.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                <MapPin size={16} className="text-orange-600" />
+              </div>
+              <h2 className="text-lg font-bold text-foreground">
+                Upcoming Events
+              </h2>
+              <span className="text-xs text-muted-foreground bg-card px-2 py-0.5 rounded-full border border-border">
+                {gatheringItems.length} event
+                {gatheringItems.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {gatheringItems.map((item) => {
+                const eventDate = item.date
+                  ? new Date(
+                      item.date.seconds ? item.date.seconds * 1000 : item.date,
+                    )
+                  : null;
+                return (
+                  <Link
+                    key={item.id}
+                    href={`/${item.creatorHandle}/gatherings/${item.id}`}
+                    className="block bg-card rounded-xl border border-orange-200 overflow-hidden hover:shadow-md hover:border-orange-300 transition-all group"
+                  >
+                    <div className="flex">
+                      <div className="w-20 bg-orange-500 flex flex-col items-center justify-center text-white p-3 shrink-0">
+                        <span className="text-xs font-bold uppercase tracking-wider">
+                          {eventDate
+                            ? eventDate.toLocaleString("default", {
+                                month: "short",
+                              })
+                            : "N/A"}
+                        </span>
+                        <span className="text-2xl font-bold">
+                          {eventDate ? eventDate.getDate() : "?"}
+                        </span>
+                      </div>
+                      <div className="flex-1 p-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-orange-600 bg-orange-50 px-2 py-0.5 rounded">
+                            Event
+                          </span>
+                          {item.ticketPrice > 0 && (
+                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                              {Number(item.ticketPrice).toLocaleString()} RWF
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="font-bold text-foreground group-hover:text-orange-600 transition-colors line-clamp-1">
+                          {item.title}
+                        </h3>
+                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Clock size={12} /> {item.time || "All day"}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <User size={12} /> {item.attendeesCount || 0}{" "}
+                            attending
+                          </span>
+                        </div>
+                        {item.location && (
+                          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                            <MapPin size={10} /> {item.location}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-8">
             <div className="space-y-4">
-              {filteredFeed.length > 0 ? (
-                filteredFeed.map((item) => {
+              {contentItems.length > 0 ? (
+                contentItems.map((item) => {
                   return (
                     <div
                       key={item.id}
@@ -858,7 +1005,8 @@ export default function SupporterSpace() {
                         if (el) postRefs.current[item.id] = el;
                       }}
                       data-post-id={item.id}
-                      className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden"
+                      onClick={(e) => handleCardClick(item, e)}
+                      className="bg-card rounded-lg shadow-sm border border-border overflow-hidden cursor-pointer"
                     >
                       <div className="p-4">
                         <div className="flex items-center justify-between">
@@ -867,7 +1015,7 @@ export default function SupporterSpace() {
                               href={`/${item.creatorHandle}`}
                               className="shrink-0"
                             >
-                              <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden">
+                              <div className="w-12 h-12 rounded-full bg-muted overflow-hidden">
                                 {item.creatorPhoto ? (
                                   <img
                                     src={item.creatorPhoto}
@@ -875,7 +1023,7 @@ export default function SupporterSpace() {
                                     className="w-full h-full object-cover"
                                   />
                                 ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-gray-400 font-medium">
+                                  <div className="w-full h-full flex items-center justify-center text-muted-foreground font-medium">
                                     {item.creatorName?.[0] || "?"}
                                   </div>
                                 )}
@@ -884,12 +1032,12 @@ export default function SupporterSpace() {
                             <div>
                               <Link
                                 href={`/${item.creatorHandle}`}
-                                className="font-semibold text-gray-900 hover:text-blue-600"
+                                className="font-semibold text-foreground hover:text-blue-600"
                               >
                                 {item.creatorName}
                               </Link>
                               <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-muted-foreground">
                                   @{item.creatorHandle}
                                 </span>
                                 <span
@@ -897,7 +1045,7 @@ export default function SupporterSpace() {
                                 >
                                   {item.isFollowing ? "Following" : "Public"}
                                 </span>
-                                <span className="text-xs text-gray-400">
+                                <span className="text-xs text-muted-foreground">
                                   ·{" "}
                                   {item.createdAt
                                     ?.toDate?.()
@@ -909,7 +1057,7 @@ export default function SupporterSpace() {
                         </div>
 
                         <div className="mt-4">
-                          <h3 className="font-semibold text-lg text-gray-900 mb-2">
+                          <h3 className="font-semibold text-lg text-foreground mb-2">
                             {item.title}
                           </h3>
                           <div>
@@ -923,7 +1071,10 @@ export default function SupporterSpace() {
                         </div>
 
                         {item.contentUrl && expandedPostId !== item.id && (
-                          <div className="mt-3 rounded-lg overflow-hidden bg-gray-100">
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="mt-3 rounded-lg overflow-hidden bg-muted"
+                          >
                             {item.type === "video" ? (
                               <video
                                 src={item.contentUrl}
@@ -941,10 +1092,12 @@ export default function SupporterSpace() {
                                     />
                                   </div>
                                   <div>
-                                    <p className="text-sm font-medium text-gray-900">
+                                    <p className="text-sm font-medium text-foreground">
                                       Document
                                     </p>
-                                    <p className="text-xs text-gray-500">PDF</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      PDF
+                                    </p>
                                   </div>
                                 </div>
                                 <button
@@ -978,7 +1131,10 @@ export default function SupporterSpace() {
                         )}
 
                         {expandedPostId === item.id && (
-                          <div className="mt-4">
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="mt-4"
+                          >
                             {renderContentMedia(item)}
 
                             {item.docUrl && !Array.isArray(item.docUrl) && (
@@ -995,11 +1151,14 @@ export default function SupporterSpace() {
                         )}
                       </div>
 
-                      <div className="px-4 pb-3 pt-2 flex items-center justify-between border-t border-gray-100">
+                      <div className="px-4 pb-3 pt-2 flex items-center justify-between border-t border-border">
                         <div className="flex items-center gap-4">
                           <button
-                            onClick={() => handleLike(item)}
-                            className={`flex items-center gap-1.5 text-sm ${likedPosts.has(item.id) ? "text-red-500" : "text-gray-500 hover:text-red-500"}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleLike(item);
+                            }}
+                            className={`flex items-center gap-1.5 text-sm ${likedPosts.has(item.id) ? "text-red-500" : "text-muted-foreground hover:text-red-500"}`}
                           >
                             <Heart
                               size={18}
@@ -1010,13 +1169,16 @@ export default function SupporterSpace() {
                             {item.likes || 0}
                           </button>
                           <button
-                            onClick={() => toggleComments(item)}
-                            className={`flex items-center gap-1.5 text-sm ${showCommentFor === item.id ? "text-blue-500" : "text-gray-500 hover:text-blue-500"}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleComments(item);
+                            }}
+                            className={`flex items-center gap-1.5 text-sm ${showCommentFor === item.id ? "text-blue-500" : "text-muted-foreground hover:text-blue-500"}`}
                           >
                             <MessageCircle size={18} />
-                            {commentCounts[item.id] || 0}
+                            {item.commentCount || 0}
                           </button>
-                          <span className="flex items-center gap-1.5 text-sm text-gray-400">
+                          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
                             <Eye size={16} /> {item.views || 0}
                           </span>
                         </div>
@@ -1025,18 +1187,17 @@ export default function SupporterSpace() {
                             <MapPin size={14} /> {item.location}
                           </span>
                         )}
-                        {item.type === "content" &&
-                          item.description &&
-                          item.description.length > 200 && (
-                            <button
-                              onClick={() => setExpandedPostId(item.id)}
-                              className="text-xs text-orange-500 hover:underline"
-                            >
-                              {expandedPostId === item.id
-                                ? "Read less"
-                                : "Read more"}
-                            </button>
-                          )}
+                        {item.type === "content" && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/supporter/${item.id}`);
+                            }}
+                            className="text-xs text-orange-500 hover:underline font-medium"
+                          >
+                            View Post
+                          </button>
+                        )}
                       </div>
 
                       {showCommentFor === item.id && renderPostComments(item)}
@@ -1044,11 +1205,11 @@ export default function SupporterSpace() {
                   );
                 })
               ) : (
-                <div className="text-center py-16 bg-white rounded-lg border border-gray-100">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <User className="text-gray-400" size={24} />
+                <div className="text-center py-16 bg-card rounded-lg border border-border">
+                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                    <User className="text-muted-foreground" size={24} />
                   </div>
-                  <p className="text-gray-500 text-sm">
+                  <p className="text-muted-foreground text-sm">
                     {feedFilter === "following"
                       ? "No posts from creators you follow"
                       : feedFilter === "public"
@@ -1057,7 +1218,7 @@ export default function SupporterSpace() {
                   </p>
                   <button
                     onClick={() => router.push("/explore")}
-                    className="mt-4 text-sm text-white bg-gray-900 px-4 py-2 rounded-lg hover:bg-gray-800 transition"
+                    className="mt-4 text-sm text-background bg-foreground px-4 py-2 rounded-lg hover:bg-foreground/90 transition"
                   >
                     Explore Creators
                   </button>
@@ -1066,35 +1227,42 @@ export default function SupporterSpace() {
             </div>
           </div>
 
-          <div className="hidden lg:block lg:col-span-4 space-y-6">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
-              <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <div className="hidden lg:block lg:col-span-4">
+            <div className="sticky top-24 space-y-6">
+            <div className="bg-card rounded-lg shadow-sm border border-border p-4">
+              <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
                 Your Stats
               </h3>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">Total Supported</span>
+                  <span className="text-sm text-muted-foreground">
+                    Total Supported
+                  </span>
                   <span className="font-semibold text-orange-600">
                     {formatCurrency(auth?.profile?.totalSupport || 0, auth?.profile?.currency)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">Following</span>
-                  <span className="font-semibold text-gray-900">
+                  <span className="text-sm text-muted-foreground">
+                    Following
+                  </span>
+                  <span className="font-semibold text-foreground">
                     {favorites.length} creators
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">Purchases</span>
-                  <span className="font-semibold text-gray-900">
+                  <span className="text-sm text-muted-foreground">
+                    Purchases
+                  </span>
+                  <span className="font-semibold text-foreground">
                     {purchases.length} items
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
-              <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <div className="bg-card rounded-lg shadow-sm border border-border p-4">
+              <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
                 Following
               </h3>
               <div className="space-y-2">
@@ -1102,9 +1270,9 @@ export default function SupporterSpace() {
                   <Link
                     key={c.id}
                     href={`/${c.handle}`}
-                    className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-gray-50 transition"
+                    className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-muted transition"
                   >
-                    <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden">
+                    <div className="w-10 h-10 rounded-full bg-muted overflow-hidden">
                       {c.photoURL ? (
                         <img
                           src={c.photoURL}
@@ -1112,21 +1280,23 @@ export default function SupporterSpace() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <span className="text-sm flex items-center justify-center h-full text-gray-400">
+                        <span className="text-sm flex items-center justify-center h-full text-muted-foreground">
                           {c.name?.[0]}
                         </span>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
+                      <p className="text-sm font-medium text-foreground truncate">
                         {c.name}
                       </p>
-                      <p className="text-xs text-gray-500">@{c.handle}</p>
+                      <p className="text-xs text-muted-foreground">
+                        @{c.handle}
+                      </p>
                     </div>
                   </Link>
                 ))}
                 {favorites.length === 0 && (
-                  <p className="text-xs text-gray-400 text-center py-2">
+                  <p className="text-xs text-muted-foreground text-center py-2">
                     Not following anyone yet
                   </p>
                 )}
@@ -1134,8 +1304,8 @@ export default function SupporterSpace() {
             </div>
 
             {purchases.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
-                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <div className="bg-card rounded-lg shadow-sm border border-border p-4">
+                <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
                   <ShoppingBag size={18} className="text-emerald-500" />
                   Recent Purchases
                 </h3>
@@ -1143,16 +1313,16 @@ export default function SupporterSpace() {
                   {purchases.slice(0, 4).map((purchase) => (
                     <div
                       key={purchase.id}
-                      className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-gray-50"
+                      className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-muted"
                     >
-                      <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center shrink-0">
-                        <Package size={14} className="text-gray-400" />
+                      <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center shrink-0">
+                        <Package size={14} className="text-muted-foreground" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-gray-900 truncate">
+                        <p className="text-xs font-medium text-foreground truncate">
                           {purchase.productName || "Product"}
                         </p>
-                        <p className="text-[10px] text-gray-500">
+                        <p className="text-[10px] text-muted-foreground">
                           from @{purchase.creatorHandle}
                         </p>
                       </div>
@@ -1165,8 +1335,8 @@ export default function SupporterSpace() {
               </div>
             )}
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-4">
-              <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <div className="bg-card rounded-lg shadow-sm border border-border p-4">
+              <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
                 Discover Creators
               </h3>
               <div className="space-y-2">
@@ -1174,9 +1344,9 @@ export default function SupporterSpace() {
                   <Link
                     key={c.handle}
                     href={`/${c.handle}`}
-                    className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-gray-50 transition"
+                    className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-muted transition"
                   >
-                    <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden">
+                    <div className="w-10 h-10 rounded-full bg-muted overflow-hidden">
                       {c.photoURL ? (
                         <img
                           src={c.photoURL}
@@ -1184,16 +1354,16 @@ export default function SupporterSpace() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <span className="text-sm flex items-center justify-center h-full text-gray-400">
+                        <span className="text-sm flex items-center justify-center h-full text-muted-foreground">
                           {c.handle?.[0]}
                         </span>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-foreground">
                         @{c.handle}
                       </p>
-                      <p className="text-xs text-gray-500 truncate">
+                      <p className="text-xs text-muted-foreground truncate">
                         {c.bio || "New Creator"}
                       </p>
                     </div>
@@ -1202,9 +1372,9 @@ export default function SupporterSpace() {
               </div>
               <button
                 onClick={() => router.push("/explore")}
-                className="w-full mt-4 text-sm text-gray-600 hover:text-gray-900 text-center"
+                className="w-full bg-orange-600 text-white hover:bg-orange-700 py-2 rounded-lg mt-4 text-sm font-medium text-center"
               >
-                Explore more →
+                Explore more
               </button>
             </div>
 
@@ -1215,18 +1385,21 @@ export default function SupporterSpace() {
               </p>
               <Link
                 href={auth?.isCreator ? "/creator" : "/onboarding"}
-                className="block w-full bg-white text-orange-600 text-center py-2 rounded-lg font-medium hover:bg-white/90 transition"
+                className="block w-full bg-card text-orange-600 text-center py-2 rounded-lg font-medium hover:bg-card/90 transition"
               >
                 {auth?.isCreator ? "Go to Dashboard" : "Become Creator"}
               </Link>
+            </div>
             </div>
           </div>
         </div>
       </div>
 
+      <MobileBottomBar />
+
       {viewingDocument && (
         <div className="fixed inset-0 z-[100] bg-black/90 flex flex-col animate-in fade-in duration-200">
-          <div className="flex items-center justify-between p-4 bg-gray-900 text-white">
+          <div className="flex items-center justify-between p-4 bg-foreground text-background">
             <div className="flex items-center gap-3">
               <FileText size={24} />
               <span className="font-medium truncate max-w-md">
@@ -1254,7 +1427,7 @@ export default function SupporterSpace() {
           <div className="flex-1 flex items-center justify-center p-4 overflow-auto">
             <iframe
               src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocument.url)}&embedded=true`}
-              className="w-full max-w-4xl h-full bg-white"
+              className="w-full max-w-4xl h-full bg-card"
               title="PDF Viewer"
             />
           </div>

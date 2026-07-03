@@ -19,8 +19,6 @@ import { Creator } from "@/types/creator";
 import { useAuth } from "@/auth/AuthContext";
 import { SupportModal } from "@/components/parts/public/SupportModal";
 import { CommunityTab } from "@/components/parts/public/CommunityTab";
-import Navbar from "@/components/parts/Navigation";
-import Footer from "@/components/parts/Footer";
 import Loading from "@/app/loading";
 
 interface CommunityPageProps {
@@ -76,8 +74,38 @@ export default function CommunityPage({ username }: CommunityPageProps) {
   }, [username]);
 
   useEffect(() => {
-    const checkSupportStatus = async () => {
-      if (!currentUser?.uid || !username || !creatorData?.uid) {
+    const fetchPosts = async () => {
+      if (!creatorData?.uid || !username) return;
+
+      const contentRef = collection(db, "creatorContent");
+
+      // Always fetch public posts (regardless of login status)
+      try {
+        const publicQ = query(
+          contentRef,
+          where("creatorId", "in", [creatorData.handle, creatorData.uid]),
+          where("isPrivate", "==", false),
+          orderBy("createdAt", "desc"),
+          limit(20),
+        );
+        const publicSnap = await getDocs(publicQ);
+        setPublicPosts(publicSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      } catch (error) {
+        console.error("Error fetching public posts:", error);
+        fetch("/api/log-error", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            level: "error",
+            category: "general",
+            message: "Error fetching public posts",
+            metadata: { username, creatorUid: creatorData?.uid, error: String(error) },
+          }),
+        }).catch(() => {});
+      }
+
+      // Only check support status and fetch private posts if logged in
+      if (!currentUser?.uid) {
         setIsSupporter(false);
         return;
       }
@@ -90,46 +118,35 @@ export default function CommunityPage({ username }: CommunityPageProps) {
           where("creatorId", "==", username),
         );
         const querySnapshot = await getDocs(q);
-
         setIsSupporter(!querySnapshot.empty);
-
-        const contentRef = collection(db, "creatorContent");
-
-        const publicQ = query(
-          contentRef,
-          where("creatorId", "==", creatorData.uid),
-          where("isPrivate", "==", false),
-          orderBy("createdAt", "desc"),
-          limit(20),
-        );
-        const publicSnap = await getDocs(publicQ);
-        const publicData = publicSnap.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setPublicPosts(publicData);
 
         if (!querySnapshot.empty) {
           const privateQ = query(
             contentRef,
-            where("creatorId", "==", creatorData.uid),
+            where("creatorId", "in", [creatorData.handle, creatorData.uid]),
             where("isPrivate", "==", true),
             orderBy("createdAt", "desc"),
             limit(20),
           );
           const privateSnap = await getDocs(privateQ);
-          const privateData = privateSnap.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setPrivatePosts(privateData);
+          setPrivatePosts(privateSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
         }
       } catch (error) {
         console.error("Error checking support status:", error);
+        fetch("/api/log-error", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            level: "error",
+            category: "general",
+            message: "Error checking support status",
+            metadata: { username, creatorUid: creatorData?.uid, error: String(error) },
+          }),
+        }).catch(() => {});
       }
     };
 
-    checkSupportStatus();
+    fetchPosts();
   }, [currentUser, creatorData?.uid, username]);
 
   if (loading) {
@@ -138,9 +155,9 @@ export default function CommunityPage({ username }: CommunityPageProps) {
 
   if (!creatorData) {
     return (
-      <div className="min-h-screen bg-[#FBFBFC] flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <p className="text-slate-500">Creator not found</p>
+          <p className="text-muted-foreground">Creator not found</p>
           <Link
             href="/"
             className="text-orange-500 font-bold mt-4 inline-block"
@@ -155,13 +172,12 @@ export default function CommunityPage({ username }: CommunityPageProps) {
   const creatorName = creatorData.name || profileData?.displayName || "Creator";
 
   return (
-    <div className="min-h-screen bg-[#FBFBFC]">
-      <Navbar />
+    <>
       <div className="max-w-4xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <Link
             href={`/${username}`}
-            className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition"
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition"
           >
             <ArrowLeft size={20} />
             <span className="font-medium">Back to Profile</span>
@@ -177,8 +193,8 @@ export default function CommunityPage({ username }: CommunityPageProps) {
         </div>
 
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900">Community</h1>
-          <p className="text-slate-500 mt-1">
+          <h1 className="text-3xl font-bold text-foreground">Community</h1>
+          <p className="text-muted-foreground mt-1">
             Public posts and content from {creatorName}
           </p>
         </div>
@@ -189,11 +205,10 @@ export default function CommunityPage({ username }: CommunityPageProps) {
             privatePosts={privatePosts}
             isSupporter={isSupporter}
             name={creatorName}
+            username={username}
           />
         </main>
       </div>
-
-      <Footer />
 
       <SupportModal
         isOpen={isModalOpen}
@@ -205,6 +220,6 @@ export default function CommunityPage({ username }: CommunityPageProps) {
         referralUid={referralId}
         referralId={profileData?.referralCreator}
       />
-    </div>
+    </>
   );
 }

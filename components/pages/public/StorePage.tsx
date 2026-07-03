@@ -17,8 +17,6 @@ import { Creator } from "@/types/creator";
 import { useAuth } from "@/auth/AuthContext";
 import { SupportModal } from "@/components/parts/public/SupportModal";
 import { StoreTab } from "@/components/parts/public/StoreTab";
-import Navbar from "@/components/parts/Navigation";
-import Footer from "@/components/parts/Footer";
 import Loading from "@/app/loading";
 
 interface StorePageProps {
@@ -101,9 +99,9 @@ export default function StorePage({ username }: StorePageProps) {
 
   if (!creatorData) {
     return (
-      <div className="min-h-screen bg-[#FBFBFC] flex items-center justify-center">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <p className="text-slate-500">Creator not found</p>
+          <p className="text-muted-foreground">Creator not found</p>
           <Link
             href="/"
             className="text-orange-500 font-bold mt-4 inline-block"
@@ -118,13 +116,12 @@ export default function StorePage({ username }: StorePageProps) {
   const creatorName = creatorData.name || profileData?.displayName || "Creator";
 
   return (
-    <div className="min-h-screen bg-[#FBFBFC]">
-      <Navbar />
+    <>
       <div className="max-w-4xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <Link
             href={`/${username}`}
-            className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition"
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition"
           >
             <ArrowLeft size={20} />
             <span className="font-medium">Back to Profile</span>
@@ -140,8 +137,8 @@ export default function StorePage({ username }: StorePageProps) {
         </div>
 
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900">Store</h1>
-          <p className="text-slate-500 mt-1">
+          <h1 className="text-3xl font-bold text-foreground">Store</h1>
+          <p className="text-muted-foreground mt-1">
             Shop products from {creatorName} and track your orders
           </p>
         </div>
@@ -159,8 +156,6 @@ export default function StorePage({ username }: StorePageProps) {
         </main>
       </div>
 
-      <Footer />
-
       <SupportModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -171,6 +166,6 @@ export default function StorePage({ username }: StorePageProps) {
         referralUid={referralId}
         referralId={profileData?.referralCreator}
       />
-    </div>
+    </>
   );
 }

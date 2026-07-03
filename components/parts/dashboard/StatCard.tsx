@@ -1,16 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export function StatCard({ label, value, icon, color }: any) {
+export function StatCard({ label, value, icon, color, detail }: any) {
   return (
-    <div className="bg-white p-6 rounded-lg border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-card p-6 rounded-lg border border-border shadow-sm hover:shadow-md transition-shadow">
       <div
         className={`w-12 h-12 ${color} rounded-lg flex items-center justify-center mb-4`}
       >
         {icon}
       </div>
-      <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1">
+      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">
         {label}
       </p>
-      <h3 className="text-2xl font-bold text-slate-900">{value}</h3>
+      <h3 className="text-2xl font-bold text-foreground">{value}</h3>
+      {detail && (
+        <p className="text-xs text-muted-foreground mt-1">{detail}</p>
+      )}
     </div>
   );
 }

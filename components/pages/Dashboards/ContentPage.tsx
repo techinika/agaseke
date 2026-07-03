@@ -40,6 +40,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/auth/AuthContext";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { LinkifyText } from "@/components/ui/LinkifyText";
 
 interface Comment {
   id: string;
@@ -240,13 +241,14 @@ export default function ContentManager() {
     try {
       const contentData = {
         creatorId: creator.handle,
+        creatorUid: creator.uid,
         title: newPost.title,
         description: newPost.description,
         type: newPost.type,
         contentUrl: uploadedUrl,
         isPrivate: newPost.isPrivate,
         createdAt: serverTimestamp(),
-        stats: { views: 0, likes: 0 },
+        views: 0,
       };
 
       if (editingPost) {
@@ -337,29 +339,29 @@ export default function ContentManager() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col lg:flex-row">
-      <aside className={`${showSidebar ? 'flex' : 'hidden'} lg:flex w-full lg:w-72 bg-white border-r border-gray-200 p-4 flex-col fixed lg:relative inset-0 z-50 lg:z-auto`}>
+    <div className="min-h-screen bg-muted flex flex-col lg:flex-row">
+      <aside className={`${showSidebar ? 'flex' : 'hidden'} lg:flex w-full lg:w-72 bg-card border-r border-border p-4 flex-col fixed lg:relative inset-0 z-50 lg:z-auto`}>
         <div className="flex items-center justify-between lg:hidden mb-4">
-          <h2 className="text-lg font-bold text-gray-900">Your Content</h2>
+          <h2 className="text-lg font-bold text-foreground">Your Content</h2>
           <button onClick={() => setShowSidebar(false)} className="p-2">
             <X size={24} />
           </button>
         </div>
         
-        <button onClick={() => window.history.back()} className="hidden lg:flex items-center gap-2 text-gray-500 hover:text-gray-900 mb-4 text-sm">
+        <button onClick={() => window.history.back()} className="hidden lg:flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 text-sm">
           <ArrowLeft size={16} /> Back
         </button>
         
-        <h2 className="text-lg font-bold text-gray-900 mb-4 hidden lg:block">Your Content</h2>
+        <h2 className="text-lg font-bold text-foreground mb-4 hidden lg:block">Your Content</h2>
         
         <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search..."
-            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="w-full pl-9 pr-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
         </div>
 
@@ -368,7 +370,7 @@ export default function ContentManager() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap ${activeTab === tab ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg whitespace-nowrap ${activeTab === tab ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:bg-muted"}`}
             >
               {tab}
             </button>
@@ -378,7 +380,7 @@ export default function ContentManager() {
         <div className="flex-1 overflow-y-auto space-y-2">
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader className="animate-spin text-gray-400" size={24} />
+              <Loader className="animate-spin text-muted-foreground" size={24} />
             </div>
           ) : filteredPosts.length > 0 ? (
             filteredPosts.map((post) => (
@@ -388,18 +390,18 @@ export default function ContentManager() {
                 className={`p-3 rounded-lg cursor-pointer transition border ${
                   selectedPost?.id === post.id
                     ? "bg-orange-50 border-orange-300"
-                    : "bg-white border-gray-200 hover:border-gray-300"
+                    : "bg-card border-border hover:border-gray-300"
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center shrink-0">
-                    {post.type === "video" ? <Video size={16} className="text-gray-500" /> :
-                     post.type === "image" ? <ImageIcon size={16} className="text-gray-500" /> :
-                     <FileText size={16} className="text-gray-500" />}
+                  <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center shrink-0">
+                    {post.type === "video" ? <Video size={16} className="text-muted-foreground" /> :
+                     post.type === "image" ? <ImageIcon size={16} className="text-muted-foreground" /> :
+                     <FileText size={16} className="text-muted-foreground" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{post.title}</p>
-                    <p className="text-xs text-gray-500 flex items-center gap-2">
+                    <p className="text-sm font-medium text-foreground truncate">{post.title}</p>
+                    <p className="text-xs text-muted-foreground flex items-center gap-2">
                       {post.isPrivate ? <Lock size={10} /> : <Globe size={10} />}
                       {post.isPrivate ? "Supporters" : "Public"}
                     </p>
@@ -408,7 +410,7 @@ export default function ContentManager() {
               </div>
             ))
           ) : (
-            <p className="text-sm text-gray-400 text-center py-8">No content yet</p>
+            <p className="text-sm text-muted-foreground text-center py-8">No content yet</p>
           )}
         </div>
 
@@ -423,12 +425,12 @@ export default function ContentManager() {
       <main className="flex-1 p-4 lg:p-6 overflow-hidden">
         <div className="flex items-center justify-between mb-4 lg:mb-6">
           <div className="flex items-center gap-3">
-            <button onClick={() => setShowSidebar(true)} className="lg:hidden p-2 bg-gray-100 rounded-lg">
+            <button onClick={() => setShowSidebar(true)} className="lg:hidden p-2 bg-muted rounded-lg">
               <Menu size={20} />
             </button>
             <div>
-              <h1 className="text-lg lg:text-xl font-bold text-gray-900">Content Manager</h1>
-              <p className="text-xs lg:text-sm text-gray-500 mt-1 hidden lg:block">Manage your posts and see comments</p>
+              <h1 className="text-lg lg:text-xl font-bold text-foreground">Content Manager</h1>
+              <p className="text-xs lg:text-sm text-muted-foreground mt-1 hidden lg:block">Manage your posts and see comments</p>
             </div>
           </div>
           <button
@@ -443,29 +445,29 @@ export default function ContentManager() {
           <div className="h-full flex flex-col">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div className="flex-1 min-w-0">
-                <h1 className="text-lg lg:text-xl font-bold text-gray-900 truncate">{selectedPost.title}</h1>
-                <p className="text-xs lg:text-sm text-gray-500 flex flex-wrap items-center gap-1 lg:gap-2 mt-1">
+                <h1 className="text-lg lg:text-xl font-bold text-foreground truncate">{selectedPost.title}</h1>
+                <p className="text-xs lg:text-sm text-muted-foreground flex flex-wrap items-center gap-1 lg:gap-2 mt-1">
                   {selectedPost.isPrivate ? <Lock size={14} className="text-amber-500" /> : <Globe size={14} className="text-green-500" />}
                   <span className="hidden sm:inline">{selectedPost.isPrivate ? "Supporters Only" : "Public"}</span>
-                  <span className="text-gray-300">|</span>
-                  {selectedPost.stats?.views || 0} views
-                  <span className="text-gray-300">|</span>
-                  {selectedPost.stats?.likes || 0} likes
+                  <span className="text-muted-foreground">|</span>
+                  {selectedPost.views || 0} views
+                  <span className="text-muted-foreground">|</span>
+                  {selectedPost.likes || selectedPost.stats?.likes || 0} likes
                 </p>
               </div>
               <div className="flex gap-2 shrink-0">
-                <button onClick={() => startEdit(selectedPost)} className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
-                  <Edit3 size={18} className="text-gray-600" />
+                <button onClick={() => startEdit(selectedPost)} className="p-2 bg-muted rounded-lg hover:bg-muted transition">
+                  <Edit3 size={18} className="text-muted-foreground" />
                 </button>
-                <button onClick={() => setDeletePostId(selectedPost.id)} className="p-2 bg-gray-100 rounded-lg hover:bg-red-50 transition">
-                  <Trash2 size={18} className="text-gray-600 hover:text-red-500" />
+                <button onClick={() => setDeletePostId(selectedPost.id)} className="p-2 bg-muted rounded-lg hover:bg-red-50 transition">
+                  <Trash2 size={18} className="text-muted-foreground hover:text-red-500" />
                 </button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto bg-white rounded-lg border border-gray-200">
+            <div className="flex-1 overflow-y-auto bg-card rounded-lg border border-border">
               {selectedPost.type === "image" && selectedPost.contentUrl && (
-                <div className="aspect-video bg-gray-100">
+                <div className="aspect-video bg-muted">
                   <img src={selectedPost.contentUrl} alt={selectedPost.title} className="w-full h-full object-contain" />
                 </div>
               )}
@@ -476,27 +478,27 @@ export default function ContentManager() {
               )}
 
               <div className="p-4 lg:p-6">
-                <div className="prose max-w-none text-gray-700 whitespace-pre-wrap text-sm lg:text-base">{selectedPost.description}</div>
+                <div className="prose max-w-none text-foreground whitespace-pre-wrap text-sm lg:text-base"><LinkifyText text={selectedPost.description} /></div>
 
                 {selectedPost.type === "document" && selectedPost.contentUrl && (
-                  <a href={selectedPost.contentUrl} target="_blank" rel="noopener noreferrer" className="mt-4 flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition">
+                  <a href={selectedPost.contentUrl} target="_blank" rel="noopener noreferrer" className="mt-4 flex items-center gap-3 p-4 bg-muted rounded-lg border border-border hover:bg-muted transition">
                     <FileText size={24} className="text-orange-500" />
                     <span className="text-sm font-medium">View Document</span>
                   </a>
                 )}
               </div>
 
-              <div className="border-t border-gray-200 p-4">
-                <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-sm lg:text-base">
+              <div className="border-t border-border p-4">
+                <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm lg:text-base">
                   <MessageCircle size={18} /> Comments ({comments[selectedPost.id]?.length || 0})
                 </h3>
 
                 <div className="space-y-3 max-h-[250px] lg:max-h-[300px] overflow-y-auto mb-4">
                   {comments[selectedPost.id]?.map((comment) => (
-                    <div key={comment.id} className="bg-gray-50 rounded-lg p-3">
+                    <div key={comment.id} className="bg-muted rounded-lg p-3">
                       <div className="flex items-start gap-2">
                         <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden shrink-0">
-                          {comment.userPhoto ? <img src={comment.userPhoto} alt="" className="w-full h-full object-cover" /> : <span className="text-xs flex items-center justify-center h-full text-gray-500">{comment.userName?.[0]}</span>}
+                          {comment.userPhoto ? <img src={comment.userPhoto} alt={comment.userName || "Commenter"} className="w-full h-full object-cover" /> : <span className="text-xs flex items-center justify-center h-full text-muted-foreground">{comment.userName?.[0]}</span>}
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -504,9 +506,9 @@ export default function ContentManager() {
                             {comment.userId === creator?.uid && (
                               <span className="text-[10px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">Owner</span>
                             )}
-                            <span className="text-xs text-gray-400">{comment.createdAt?.toDate?.()?.toLocaleDateString()}</span>
+                            <span className="text-xs text-muted-foreground">{comment.createdAt?.toDate?.()?.toLocaleDateString()}</span>
                           </div>
-                          <p className="text-sm text-gray-600 mt-1">{comment.text}</p>
+                          <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap"><LinkifyText text={comment.text} /></p>
                           <button onClick={() => setReplyingTo((prev) => ({ ...prev, [comment.id]: comment.id }))} className="text-xs text-blue-500 mt-1">Reply</button>
                           
                           {replyingTo[comment.id] && (
@@ -517,17 +519,17 @@ export default function ContentManager() {
                           )}
                           
                           {(comment.replies || []).map((reply) => (
-                            <div key={reply.id} className="mt-2 ml-4 pl-3 border-l-2 border-gray-200">
+                            <div key={reply.id} className="mt-2 ml-4 pl-3 border-l-2 border-border">
                               <div className="flex items-start gap-2">
                                 <div className="w-6 h-6 rounded-full bg-gray-200 overflow-hidden shrink-0">
-                                  {reply.userPhoto ? <img src={reply.userPhoto} alt="" className="w-full h-full object-cover" /> : <span className="text-[10px] flex items-center justify-center h-full text-gray-500">{reply.userName?.[0]}</span>}
+                                  {reply.userPhoto ? <img src={reply.userPhoto} alt={reply.userName || "Commenter"} className="w-full h-full object-cover" /> : <span className="text-[10px] flex items-center justify-center h-full text-muted-foreground">{reply.userName?.[0]}</span>}
                                 </div>
                                 <div>
                                   <span className="font-medium text-xs">{reply.userName}</span>
                                   {reply.userId === creator?.uid && (
                                     <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full ml-1">Owner</span>
                                   )}
-                                  <p className="text-sm text-gray-600">{reply.text}</p>
+                                  <p className="text-sm text-muted-foreground whitespace-pre-wrap"><LinkifyText text={reply.text} /></p>
                                 </div>
                               </div>
                             </div>
@@ -537,7 +539,7 @@ export default function ContentManager() {
                     </div>
                   ))}
                   {(!comments[selectedPost.id] || comments[selectedPost.id].length === 0) && (
-                    <p className="text-sm text-gray-400 text-center py-4">No comments yet</p>
+                    <p className="text-sm text-muted-foreground text-center py-4">No comments yet</p>
                   )}
                 </div>
 
@@ -546,7 +548,7 @@ export default function ContentManager() {
                     value={commentText[selectedPost.id] || ""}
                     onChange={(e) => setCommentText((prev) => ({ ...prev, [selectedPost.id]: e.target.value }))}
                     placeholder="Write a comment..."
-                    className="flex-1 text-sm px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className="flex-1 text-sm px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                     onKeyDown={(e) => e.key === "Enter" && handleAddComment(selectedPost.id)}
                   />
                   <button onClick={() => handleAddComment(selectedPost.id)} className="p-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition">
@@ -559,10 +561,10 @@ export default function ContentManager() {
         ) : (
           <div className="h-full flex items-center justify-center">
             <div className="text-center">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Eye className="text-gray-400" size={24} />
+              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                <Eye className="text-muted-foreground" size={24} />
               </div>
-              <p className="text-gray-500 text-sm lg:text-base">Select content to preview</p>
+              <p className="text-muted-foreground text-sm lg:text-base">Select content to preview</p>
             </div>
           </div>
         )}
@@ -570,19 +572,19 @@ export default function ContentManager() {
 
       {isCreating && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white w-full max-w-lg rounded-lg p-4 lg:p-6 shadow-xl my-8">
+          <div className="bg-card w-full max-w-lg rounded-lg p-4 lg:p-6 shadow-xl my-8">
             <div className="flex justify-between items-center mb-4 lg:mb-6">
               <h2 className="text-lg lg:text-xl font-bold">{editingPost ? "Edit Post" : "New Post"}</h2>
-              <button onClick={() => { setIsCreating(false); setEditingPost(null); resetForm(); }} className="p-2 hover:bg-gray-100 rounded-full">
+              <button onClick={() => { setIsCreating(false); setEditingPost(null); resetForm(); }} className="p-2 hover:bg-muted rounded-full">
                 <X size={20} />
               </button>
             </div>
 
             <div className="space-y-4">
               {!editingPost && (
-                <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
+                <div className="flex gap-2 p-1 bg-muted rounded-lg">
                   {["text", "video", "image", "document"].map((t) => (
-                    <button key={t} onClick={() => { resetForm(); setNewPost({ ...newPost, type: t }); }} className={`flex-1 py-2 rounded-lg text-xs font-medium uppercase ${newPost.type === t ? "bg-white text-orange-600 shadow" : "text-gray-500"}`}>
+                    <button key={t} onClick={() => { resetForm(); setNewPost({ ...newPost, type: t }); }} className={`flex-1 py-2 rounded-lg text-xs font-medium uppercase ${newPost.type === t ? "bg-card text-orange-600 shadow" : "text-muted-foreground"}`}>
                       {t}
                     </button>
                   ))}
@@ -590,29 +592,29 @@ export default function ContentManager() {
               )}
 
               {newPost.type !== "text" && !editingPost && (
-                <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-gray-200 rounded-lg p-6 flex flex-col items-center cursor-pointer hover:border-orange-400 transition">
+                <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-border rounded-lg p-6 flex flex-col items-center cursor-pointer hover:border-orange-400 transition">
                   <input type="file" ref={fileInputRef} hidden onChange={handleFileChange} accept={newPost.type === "image" ? "image/*" : newPost.type === "video" ? "video/*" : ".pdf,.doc,.docx"} />
-                  {isUploading ? <Loader className="animate-spin text-orange-500" size={24} /> : uploadedUrl ? <div className="text-green-600 text-sm font-medium">File ready</div> : <><UploadCloud size={24} className="text-gray-400 mb-2" /><p className="text-sm text-gray-500">Click to upload {newPost.type}</p></>}
+                  {isUploading ? <Loader className="animate-spin text-orange-500" size={24} /> : uploadedUrl ? <div className="text-green-600 text-sm font-medium">File ready</div> : <><UploadCloud size={24} className="text-muted-foreground mb-2" /><p className="text-sm text-muted-foreground">Click to upload {newPost.type}</p></>}
                 </div>
               )}
 
-              <input type="text" placeholder="Post Title" value={newPost.title} onChange={(e) => setNewPost({ ...newPost, title: e.target.value })} className="w-full text-sm lg:text-lg font-medium px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" />
+              <input type="text" placeholder="Post Title" value={newPost.title} onChange={(e) => setNewPost({ ...newPost, title: e.target.value })} className="w-full text-sm lg:text-lg font-medium px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" />
               
-              <textarea placeholder="Write your content..." value={newPost.description} onChange={(e) => setNewPost({ ...newPost, description: e.target.value })} className="w-full h-32 px-4 py-3 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none" />
+              <textarea placeholder="Write your content..." value={newPost.description} onChange={(e) => setNewPost({ ...newPost, description: e.target.value })} className="w-full h-32 px-4 py-3 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none" />
 
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-lg ${newPost.isPrivate ? "bg-amber-100 text-amber-600" : "bg-green-100 text-green-600"}`}>
                     {newPost.isPrivate ? <Lock size={18} /> : <Globe size={18} />}
                   </div>
                   <span className="text-sm font-medium">{newPost.isPrivate ? "Supporters Only" : "Public"}</span>
                 </div>
-                <button onClick={() => setNewPost({ ...newPost, isPrivate: !newPost.isPrivate })} className="text-xs text-orange-600 font-medium px-3 py-1.5 bg-white border border-orange-200 rounded-lg hover:bg-orange-50">
+                <button onClick={() => setNewPost({ ...newPost, isPrivate: !newPost.isPrivate })} className="text-xs text-orange-600 font-medium px-3 py-1.5 bg-card border border-orange-200 rounded-lg hover:bg-orange-50">
                   Change
                 </button>
               </div>
 
-              <button onClick={handleAddContent} disabled={!newPost.title || isUploading} className="w-full bg-gray-900 text-white py-3 rounded-lg font-medium hover:bg-orange-500 transition disabled:opacity-50 flex items-center justify-center gap-2">
+              <button onClick={handleAddContent} disabled={!newPost.title || isUploading} className="w-full bg-foreground text-background py-3 rounded-lg font-medium hover:bg-orange-500 transition disabled:opacity-50 flex items-center justify-center gap-2">
                 {isUploading ? <Loader className="animate-spin" size={18} /> : editingPost ? "Save Changes" : "Publish"}
               </button>
             </div>

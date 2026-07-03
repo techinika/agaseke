@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import admin from "firebase-admin";
 import { adminDb } from "@/db/firebaseAdmin";
-import { createNotification } from "@/lib/adminNotifications";
+import { handleStorePayment } from "../../handlers/handleStorePayment";
+import { handleBookingPayment } from "../../handlers/handleBookingPayment";
+import { handleGatheringPayment } from "../../handlers/handleGatheringPayment";
+import { handleSupportPayment } from "../../handlers/handleSupportPayment";
 
 export async function HEAD() {
   return new Response(null, { status: 200 });
@@ -19,6 +22,13 @@ export async function POST(req: Request) {
     .digest("base64");
 
   if (hash !== signature) {
+    await adminDb.collection("activityLogs").add({
+      level: "error",
+      category: "payment",
+      message: "Momo webhook: Invalid signature",
+      metadata: { signature, expectedHash: hash },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
 
@@ -32,6 +42,13 @@ export async function POST(req: Request) {
     .get();
 
   if (txQuery.empty) {
+    await adminDb.collection("activityLogs").add({
+      level: "error",
+      category: "payment",
+      message: "Momo webhook: Transaction not found",
+      metadata: { ref },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     return NextResponse.json({ error: "Tx not found" }, { status: 404 });
   }
 
@@ -39,7 +56,6 @@ export async function POST(req: Request) {
   const txData = txDoc.data();
 
   if (txData.status === "successful") {
-    console.log(`Transaction ${ref} already processed.`);
     return NextResponse.json({ received: true, note: "Already processed" });
   }
 
@@ -53,13 +69,22 @@ export async function POST(req: Request) {
       successfulAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    if (txType === "store") {
-      const platformFee = Number(txData.platformFee) || 0;
-      const creatorEarnings = Number(txData.creatorEarnings) || 0;
-      const referralEarnings = Number(txData.referralEarnings) || 0;
-      const productId = txData.productId;
-      const quantity = Number(txData.quantity) || 1;
+    switch (txType) {
+      case "store":
+        await handleStorePayment(txData, totalAmount, ref, batch, "momo");
+        break;
+      case "booking":
+        await handleBookingPayment(txData, totalAmount, ref, batch, "momo");
+        break;
+      case "gathering":
+        await handleGatheringPayment(txData, totalAmount, ref, batch);
+        break;
+      default:
+        await handleSupportPayment(txData, totalAmount, ref, batch, "flat_fee", client);
+        break;
+    }
 
+<<<<<<< HEAD
       let productData = null;
       if (productId) {
         const productSnap = await adminDb
@@ -261,6 +286,9 @@ export async function POST(req: Request) {
      }
 
      await batch.commit();
+=======
+    await batch.commit();
+>>>>>>> main
   } else {
     await txDoc.ref.update({ status: "failed" });
   }

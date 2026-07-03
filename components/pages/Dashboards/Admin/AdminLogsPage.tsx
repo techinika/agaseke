@@ -15,6 +15,8 @@ import {
   Shield,
   Download,
   RefreshCw,
+  X,
+  ExternalLink,
 } from "lucide-react";
 import { db } from "@/db/firebase";
 import {
@@ -52,6 +54,7 @@ export default function AdminLogsPage() {
     "all",
   );
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<LogItem | null>(null);
 
   useEffect(() => {
     const logsRef = collection(db, "activityLogs");
@@ -145,21 +148,21 @@ export default function AdminLogsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FBFBFC] text-slate-900 pb-20">
+    <div className="min-h-screen bg-background text-foreground pb-20">
       <main className="max-w-7xl mx-auto px-6 mt-12">
         <header className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900 uppercase">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground uppercase">
               Activity Logs
             </h1>
-            <p className="text-slate-500 font-medium mt-1">
+            <p className="text-muted-foreground font-medium mt-1">
               Monitor all platform activities and events
             </p>
           </div>
           <div className="flex gap-3">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 transition"
+              className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-lg text-sm font-medium hover:bg-muted transition"
             >
               <Filter size={16} />
               Filters
@@ -171,7 +174,7 @@ export default function AdminLogsPage() {
             </button>
             <button
               onClick={exportLogs}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition"
+              className="flex items-center gap-2 px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:bg-card transition"
             >
               <Download size={16} />
               Export
@@ -181,11 +184,11 @@ export default function AdminLogsPage() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-xl border border-slate-100 p-4">
-            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+          <div className="bg-card rounded-xl border border-border p-4">
+            <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
               Total Logs
             </p>
-            <p className="text-2xl font-bold text-slate-900 mt-1">
+            <p className="text-2xl font-bold text-foreground mt-1">
               {stats.total.toLocaleString()}
             </p>
           </div>
@@ -226,28 +229,28 @@ export default function AdminLogsPage() {
 
         {/* Filters */}
         {showFilters && (
-          <div className="bg-white rounded-xl border border-slate-100 p-4 mb-6 animate-in slide-in-from-top-2">
+          <div className="bg-card rounded-xl border border-border p-4 mb-6 animate-in slide-in-from-top-2">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider block mb-2">
+                <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider block mb-2">
                   Search
                 </label>
                 <div className="relative">
                   <Search
                     size={16}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
                   />
                   <input
                     type="text"
                     placeholder="Search logs..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-100"
+                    className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-100"
                   />
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider block mb-2">
+                <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider block mb-2">
                   Level
                 </label>
                 <select
@@ -255,7 +258,7 @@ export default function AdminLogsPage() {
                   onChange={(e) =>
                     setLevelFilter(e.target.value as LogLevel | "all")
                   }
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-lg text-sm outline-none"
+                  className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-sm outline-none"
                 >
                   <option value="all">All Levels</option>
                   <option value="info">Info</option>
@@ -265,7 +268,7 @@ export default function AdminLogsPage() {
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-bold uppercase text-slate-400 tracking-wider block mb-2">
+                <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider block mb-2">
                   Category
                 </label>
                 <select
@@ -273,7 +276,7 @@ export default function AdminLogsPage() {
                   onChange={(e) =>
                     setCategoryFilter(e.target.value as LogCategory | "all")
                   }
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-lg text-sm outline-none"
+                  className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-sm outline-none"
                 >
                   <option value="all">All Categories</option>
                   <option value="auth">Auth</option>
@@ -293,21 +296,21 @@ export default function AdminLogsPage() {
         )}
 
         {/* Logs List */}
-        <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
           {filteredLogs.length === 0 ? (
             <div className="text-center py-20">
-              <Activity size={48} className="mx-auto text-slate-200 mb-4" />
-              <p className="text-slate-500 font-medium">No logs found</p>
-              <p className="text-slate-400 text-sm mt-1">
+              <Activity size={48} className="mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground font-medium">No logs found</p>
+              <p className="text-muted-foreground text-sm mt-1">
                 {searchTerm || levelFilter !== "all" || categoryFilter !== "all"
                   ? "Try adjusting your filters"
                   : "Activity will appear here as users interact with the platform"}
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-slate-50">
+            <div className="divide-y divide-border">
               {filteredLogs.map((log) => (
-                <div key={log.id} className="p-4 hover:bg-slate-50 transition">
+                <div key={log.id} className="p-4 hover:bg-muted transition cursor-pointer" onClick={() => setSelectedLog(log)}>
                   <div className="flex items-start gap-4">
                     <div
                       className={`p-2 rounded-lg ${getLogLevelColor(log.level)}`}
@@ -321,13 +324,13 @@ export default function AdminLogsPage() {
                         >
                           {log.category}
                         </span>
-                        <span className="text-xs text-slate-400">
+                        <span className="text-xs text-muted-foreground">
                           {log.createdAt?.toDate().toLocaleString() ||
                             "Unknown time"}
                         </span>
                       </div>
-                      <p className="text-sm text-slate-900">{log.message}</p>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-slate-400">
+                      <p className="text-sm text-foreground">{log.message}</p>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                         {log.userEmail && (
                           <span className="flex items-center gap-1">
                             <User size={12} />
@@ -347,6 +350,105 @@ export default function AdminLogsPage() {
             </div>
           )}
         </div>
+
+        {/* Side Panel */}
+        {selectedLog && (
+          <>
+            <div
+              className="fixed inset-0 bg-black/40 z-40"
+              onClick={() => setSelectedLog(null)}
+            />
+            <div className="fixed top-0 right-0 h-full w-full max-w-lg bg-background border-l border-border z-50 shadow-2xl overflow-y-auto">
+              <div className="sticky top-0 bg-background border-b border-border px-6 py-4 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-foreground uppercase">Log Details</h2>
+                <button
+                  onClick={() => setSelectedLog(null)}
+                  className="p-2 hover:bg-muted rounded-lg transition"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-6 space-y-6">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${getLogLevelColor(selectedLog.level)}`}>
+                    {getLevelIcon(selectedLog.level)}
+                  </div>
+                  <div>
+                    <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded ${getCategoryColor(selectedLog.category)}`}>
+                      {selectedLog.category}
+                    </span>
+                    <p className="text-sm text-muted-foreground mt-1 capitalize">{selectedLog.level}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-1">Message</p>
+                  <p className="text-sm text-foreground bg-muted p-3 rounded-lg">{selectedLog.message}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-1">Timestamp</p>
+                    <p className="text-sm text-foreground flex items-center gap-1">
+                      <Calendar size={14} className="text-muted-foreground" />
+                      {selectedLog.createdAt?.toDate().toLocaleString() || "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-1">Log ID</p>
+                    <p className="text-sm text-foreground font-mono">{selectedLog.id}</p>
+                  </div>
+                </div>
+
+                {(selectedLog.userEmail || selectedLog.userName || selectedLog.userId) && (
+                  <div>
+                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-2">User</p>
+                    <div className="bg-muted p-3 rounded-lg space-y-1">
+                      {selectedLog.userEmail && (
+                        <p className="text-sm text-foreground flex items-center gap-1">
+                          <User size={14} className="text-muted-foreground" />
+                          {selectedLog.userEmail}
+                        </p>
+                      )}
+                      {selectedLog.userName && (
+                        <p className="text-sm text-muted-foreground ml-5">{selectedLog.userName}</p>
+                      )}
+                      {selectedLog.userId && (
+                        <p className="text-sm text-muted-foreground ml-5 font-mono">ID: {selectedLog.userId}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {(selectedLog.creatorHandle || selectedLog.creatorId) && (
+                  <div>
+                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-2">Creator</p>
+                    <div className="bg-muted p-3 rounded-lg space-y-1">
+                      {selectedLog.creatorHandle && (
+                        <p className="text-sm text-foreground flex items-center gap-1">
+                          <Shield size={14} className="text-muted-foreground" />
+                          @{selectedLog.creatorHandle}
+                        </p>
+                      )}
+                      {selectedLog.creatorId && (
+                        <p className="text-sm text-muted-foreground ml-5 font-mono">ID: {selectedLog.creatorId}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {selectedLog.metadata && Object.keys(selectedLog.metadata).length > 0 && (
+                  <div>
+                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-2">Metadata</p>
+                    <pre className="bg-muted p-3 rounded-lg text-xs text-foreground overflow-x-auto whitespace-pre-wrap font-mono">
+                      {JSON.stringify(selectedLog.metadata, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </main>
     </div>
   );

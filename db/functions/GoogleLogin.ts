@@ -13,6 +13,7 @@ import {
 export const handleGoogleLogin = async (
   reservedUsername: string | null,
   referralCreator: string | null,
+  redirectUrl: string | null = null,
 ) => {
   toast.info("Connecting to Google...");
 
@@ -87,7 +88,9 @@ export const handleGoogleLogin = async (
         `Welcome back, ${user?.displayName ? user?.displayName.split(" ")[0] : "User"}!`,
       );
 
-      if (userData?.type === "creator") {
+      if (redirectUrl) {
+        window.location.href = redirectUrl;
+      } else if (userData?.type === "creator") {
         window.location.href = "/creator";
       } else {
         window.location.href = "/supporter";

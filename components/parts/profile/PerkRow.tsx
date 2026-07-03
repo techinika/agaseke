@@ -14,8 +14,8 @@ export function PerkRow({
         {icon}
       </div>
       <div>
-        <h4 className="font-bold text-slate-900">{title}</h4>
-        <p className="text-sm text-slate-500 leading-relaxed font-medium">
+        <h4 className="font-bold text-foreground">{title}</h4>
+        <p className="text-sm text-muted-foreground leading-relaxed font-medium">
           {desc}
         </p>
       </div>

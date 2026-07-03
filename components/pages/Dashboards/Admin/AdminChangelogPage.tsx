@@ -28,6 +28,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { toast } from "sonner";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import Loading from "@/app/loading";
 
 interface ChangelogEntry {
@@ -70,6 +71,7 @@ export default function AdminChangelogPage() {
   const [filter, setFilter] = useState<"all" | "current" | "planned">("all");
   const [tagFilter, setTagFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -169,11 +171,15 @@ export default function AdminChangelogPage() {
   };
 
   const handleDelete = async (entryId: string) => {
-    if (!confirm("Are you sure you want to delete this entry?")) return;
+    setDeleteConfirm(entryId);
+  };
 
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
     try {
-      await deleteDoc(doc(db, "changelog", entryId));
+      await deleteDoc(doc(db, "changelog", deleteConfirm));
       toast.success("Entry deleted successfully");
+      setDeleteConfirm(null);
     } catch (error) {
       console.error("Failed to delete entry:", error);
       toast.error("Failed to delete entry");
@@ -205,14 +211,14 @@ export default function AdminChangelogPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FBFBFC] text-slate-900 pb-20">
+    <div className="min-h-screen bg-background text-foreground pb-20">
       <main className="max-w-7xl mx-auto px-6 mt-12">
         <header className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900 uppercase">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground uppercase">
               Changelog
             </h1>
-            <p className="text-slate-500 font-medium mt-1">
+            <p className="text-muted-foreground font-medium mt-1">
               Manage current features and plan future features
             </p>
           </div>
@@ -225,7 +231,7 @@ export default function AdminChangelogPage() {
         </header>
 
         <div className="mb-6 flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2 bg-white rounded-xl border border-slate-200 p-1">
+          <div className="flex items-center gap-2 bg-card rounded-xl border border-border p-1">
             {(["all", "current", "planned"] as const).map((f) => (
               <button
                 key={f}
@@ -233,7 +239,7 @@ export default function AdminChangelogPage() {
                 className={`px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors ${
                   filter === f
                     ? "bg-orange-100 text-orange-700"
-                    : "text-slate-500 hover:text-slate-700"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {f === "all"
@@ -248,7 +254,7 @@ export default function AdminChangelogPage() {
           <select
             value={tagFilter}
             onChange={(e) => setTagFilter(e.target.value)}
-            className="px-4 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+            className="px-4 py-2 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20"
           >
             <option value="all">All Tags</option>
             {tagOptions.map((tag) => (
@@ -260,7 +266,7 @@ export default function AdminChangelogPage() {
 
           <div className="relative flex-1 max-w-sm">
             <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
               size={16}
             />
             <input
@@ -268,20 +274,20 @@ export default function AdminChangelogPage() {
               placeholder="Search entries..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+              className="w-full pl-10 pr-4 py-2 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20"
             />
           </div>
         </div>
 
         {showForm && (
-          <div className="mb-8 bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <div className="mb-8 bg-card rounded-2xl border border-border shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-slate-900">
+              <h2 className="text-lg font-bold text-foreground">
                 {editingEntry ? "Edit Entry" : "New Changelog Entry"}
               </h2>
               <button
                 onClick={resetForm}
-                className="text-slate-400 hover:text-slate-600 transition"
+                className="text-muted-foreground hover:text-muted-foreground transition"
               >
                 <X size={20} />
               </button>
@@ -290,7 +296,7 @@ export default function AdminChangelogPage() {
             <div className="space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
                     Title *
                   </label>
                   <input
@@ -300,13 +306,13 @@ export default function AdminChangelogPage() {
                       setFormData({ ...formData, title: e.target.value })
                     }
                     placeholder="e.g., New Notification System"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                    className="w-full px-4 py-3 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
                       Category
                     </label>
                     <select
@@ -317,7 +323,7 @@ export default function AdminChangelogPage() {
                           category: e.target.value as "current" | "planned",
                         })
                       }
-                      className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                      className="w-full px-4 py-3 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20"
                     >
                       <option value="current">Current Feature</option>
                       <option value="planned">Planned Feature</option>
@@ -325,7 +331,7 @@ export default function AdminChangelogPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
                       Priority
                     </label>
                     <select
@@ -336,7 +342,7 @@ export default function AdminChangelogPage() {
                           priority: e.target.value as "high" | "medium" | "low",
                         })
                       }
-                      className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                      className="w-full px-4 py-3 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20"
                     >
                       <option value="high">High</option>
                       <option value="medium">Medium</option>
@@ -348,7 +354,7 @@ export default function AdminChangelogPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
                     <Calendar size={12} /> Release Date (for current features)
                   </label>
                   <input
@@ -357,12 +363,12 @@ export default function AdminChangelogPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, releaseDate: e.target.value })
                     }
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                    className="w-full px-4 py-3 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                  <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
                     <Tag size={12} /> Tags
                   </label>
                   <div className="flex flex-wrap gap-2">
@@ -374,7 +380,7 @@ export default function AdminChangelogPage() {
                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
                           formData.tags.includes(tag)
                             ? "bg-orange-100 text-orange-700"
-                            : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                            : "bg-muted text-muted-foreground hover:bg-border-strong"
                         }`}
                       >
                         {tag}
@@ -385,7 +391,7 @@ export default function AdminChangelogPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
                   Description
                 </label>
                 <textarea
@@ -395,14 +401,14 @@ export default function AdminChangelogPage() {
                   }
                   placeholder="Describe the feature or change in detail..."
                   rows={4}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 resize-none"
+                  className="w-full px-4 py-3 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 resize-none"
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <div className="flex justify-end gap-3 pt-4 border-t border-border">
                 <button
                   onClick={resetForm}
-                  className="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-100 transition"
+                  className="px-5 py-2.5 rounded-xl text-sm font-bold text-muted-foreground hover:bg-muted transition"
                 >
                   Cancel
                 </button>
@@ -425,22 +431,22 @@ export default function AdminChangelogPage() {
                 <Package size={20} className="text-emerald-600" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-slate-900">
+                <h2 className="text-lg font-bold text-foreground">
                   Current Features{" "}
-                  <span className="text-sm font-normal text-slate-400">
+                  <span className="text-sm font-normal text-muted-foreground">
                     ({currentEntries.length})
                   </span>
                 </h2>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   Released and available to users
                 </p>
               </div>
             </div>
 
             {currentEntries.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-10 text-center">
-                <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <p className="text-slate-500 text-sm">
+              <div className="bg-card rounded-2xl border border-dashed border-border p-10 text-center">
+                <Package className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm">
                   No current features yet
                 </p>
               </div>
@@ -449,12 +455,12 @@ export default function AdminChangelogPage() {
                 {currentEntries.map((entry) => (
                   <div
                     key={entry.id}
-                    className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-shadow"
+                    className="bg-card rounded-xl border border-border p-5 hover:shadow-md transition-shadow"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-bold text-slate-900">
+                          <h3 className="font-bold text-foreground">
                             {entry.title}
                           </h3>
                           {entry.priority && (
@@ -465,7 +471,7 @@ export default function AdminChangelogPage() {
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-slate-600 mb-3">
+                        <p className="text-sm text-muted-foreground mb-3">
                           {entry.description}
                         </p>
                         <div className="flex flex-wrap items-center gap-3">
@@ -474,7 +480,7 @@ export default function AdminChangelogPage() {
                               {entry.tags.map((tag) => (
                                 <span
                                   key={tag}
-                                  className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-medium"
+                                  className="px-2 py-0.5 bg-muted text-muted-foreground rounded text-[10px] font-medium"
                                 >
                                   #{tag}
                                 </span>
@@ -482,7 +488,7 @@ export default function AdminChangelogPage() {
                             </div>
                           )}
                           {entry.releaseDate && (
-                            <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                               <Calendar size={10} /> {entry.releaseDate}
                             </span>
                           )}
@@ -491,13 +497,13 @@ export default function AdminChangelogPage() {
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => handleEdit(entry)}
-                          className="p-2 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition"
+                          className="p-2 text-muted-foreground hover:text-orange-600 hover:bg-orange-50 rounded-lg transition"
                         >
                           <Edit2 size={14} />
                         </button>
                         <button
                           onClick={() => handleDelete(entry.id)}
-                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                          className="p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg transition"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -515,22 +521,22 @@ export default function AdminChangelogPage() {
                 <Zap size={20} className="text-blue-600" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-slate-900">
+                <h2 className="text-lg font-bold text-foreground">
                   Planned Features{" "}
-                  <span className="text-sm font-normal text-slate-400">
+                  <span className="text-sm font-normal text-muted-foreground">
                     ({plannedEntries.length})
                   </span>
                 </h2>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   Coming soon or in development
                 </p>
               </div>
             </div>
 
             {plannedEntries.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-10 text-center">
-                <Zap className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <p className="text-slate-500 text-sm">
+              <div className="bg-card rounded-2xl border border-dashed border-border p-10 text-center">
+                <Zap className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm">
                   No planned features yet
                 </p>
               </div>
@@ -539,12 +545,12 @@ export default function AdminChangelogPage() {
                 {plannedEntries.map((entry) => (
                   <div
                     key={entry.id}
-                    className="bg-white rounded-xl border border-slate-200 p-5 hover:shadow-md transition-shadow"
+                    className="bg-card rounded-xl border border-border p-5 hover:shadow-md transition-shadow"
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-bold text-slate-900">
+                          <h3 className="font-bold text-foreground">
                             {entry.title}
                           </h3>
                           {entry.priority && (
@@ -555,7 +561,7 @@ export default function AdminChangelogPage() {
                             </span>
                           )}
                         </div>
-                        <p className="text-sm text-slate-600 mb-3">
+                        <p className="text-sm text-muted-foreground mb-3">
                           {entry.description}
                         </p>
                         {entry.tags && entry.tags.length > 0 && (
@@ -563,7 +569,7 @@ export default function AdminChangelogPage() {
                             {entry.tags.map((tag) => (
                               <span
                                 key={tag}
-                                className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-medium"
+                                className="px-2 py-0.5 bg-muted text-muted-foreground rounded text-[10px] font-medium"
                               >
                                 #{tag}
                               </span>
@@ -574,13 +580,13 @@ export default function AdminChangelogPage() {
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => handleEdit(entry)}
-                          className="p-2 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition"
+                          className="p-2 text-muted-foreground hover:text-orange-600 hover:bg-orange-50 rounded-lg transition"
                         >
                           <Edit2 size={14} />
                         </button>
                         <button
                           onClick={() => handleDelete(entry.id)}
-                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                          className="p-2 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg transition"
                         >
                           <Trash2 size={14} />
                         </button>
@@ -593,6 +599,15 @@ export default function AdminChangelogPage() {
           </div>
         </div>
       </main>
+      <ConfirmModal
+        isOpen={deleteConfirm !== null}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={confirmDelete}
+        title="Delete Entry?"
+        message="Are you sure you want to delete this entry? This action cannot be undone."
+        confirmText="Delete"
+        variant="danger"
+      />
     </div>
   );
 }

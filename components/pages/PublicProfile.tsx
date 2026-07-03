@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   collection,
   doc,
@@ -15,7 +15,6 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "@/db/firebase";
-import Navbar from "../parts/Navigation";
 import Loading from "@/app/loading";
 import NotFound from "@/app/not-found";
 import { Creator } from "@/types/creator";
@@ -30,27 +29,23 @@ import { CommunityTab } from "../parts/public/CommunityTab";
 import { StoreTab } from "../parts/public/StoreTab";
 import { GiveawayTab } from "../parts/public/GiveawayTab";
 import { MessageTab } from "../parts/public/MessageTab";
-import { BookingModal } from "../parts/public/BookingModal";
 import { GatheringsTab } from "../parts/public/GatheringsTab";
-import Footer from "../parts/Footer";
 import { Building2, ExternalLink } from "lucide-react";
-import { SeoUpdater } from "../parts/public/SeoUpdater";
 import { normalizeSocialUrl } from "@/lib/urlUtils";
 
 export default function PublicProfile({ username }: { username: string }) {
   const { user: currentUser, isLoggedIn, isCreator } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [creatorData, setCreatorData] = useState<Creator | null>(null);
+  const [creatorData, setCreatorData] = useState<any>(null);
   const [profileData, setProfileData] = useState<any>(null);
-  const [referralId, setReferralId] = useState("");
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("community");
+  const [loading, setLoading] = useState(true);
+  const [referralId, setReferralId] = useState<string | null>(null);
   const [isSupporter, setIsSupporter] = useState(false);
   const [publicPosts, setPublicPosts] = useState<any[]>([]);
   const [privatePosts, setPrivatePosts] = useState<any[]>([]);
   const [featuredPartners, setFeaturedPartners] = useState<any[]>([]);
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("community");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -78,11 +73,20 @@ export default function PublicProfile({ username }: { username: string }) {
                 setReferralId(referralSnap.data().uid);
               }
             }
-            await updateDoc(creatorRef, { views: increment(1) });
           }
         }
       } catch (error) {
         console.error("Error fetching creator:", error);
+        fetch("/api/log-error", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            level: "error",
+            category: "general",
+            message: "Error fetching creator in PublicProfile",
+            metadata: { username, error: String(error) },
+          }),
+        }).catch(() => {});
       } finally {
         setLoading(false);
       }
@@ -91,8 +95,28 @@ export default function PublicProfile({ username }: { username: string }) {
   }, [username]);
 
   useEffect(() => {
-    const checkSupportStatus = async () => {
-      if (!isLoggedIn || !currentUser?.uid || !username) {
+    const fetchPosts = async () => {
+      if (!creatorData?.uid || !username) return;
+
+      const contentRef = collection(db, "creatorContent");
+
+      // Always fetch public posts (regardless of login status)
+      try {
+        const publicQ = query(
+          contentRef,
+          where("creatorId", "in", [creatorData.handle, creatorData.uid]),
+          where("isPrivate", "==", false),
+          orderBy("createdAt", "desc"),
+          limit(3),
+        );
+        const publicSnap = await getDocs(publicQ);
+        setPublicPosts(publicSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      } catch (error) {
+        console.error("Error fetching public posts:", error);
+      }
+
+      // Only check support status and fetch private posts if logged in
+      if (!isLoggedIn || !currentUser?.uid) {
         setIsSupporter(false);
         return;
       }
@@ -105,50 +129,25 @@ export default function PublicProfile({ username }: { username: string }) {
           where("creatorId", "==", username),
         );
         const querySnapshot = await getDocs(q);
-
         setIsSupporter(!querySnapshot.empty);
 
-        if (!creatorData?.uid) return;
-
-        const contentRef = collection(db, "creatorContent");
-        
-        // Fetch public posts (for everyone)
-        const publicQ = query(
-          contentRef,
-          where("creatorId", "==", creatorData.uid),
-          where("isPrivate", "==", false),
-          orderBy("createdAt", "desc"),
-          limit(20),
-        );
-        const publicSnap = await getDocs(publicQ);
-        const publicData = publicSnap.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setPublicPosts(publicData);
-
-        // Fetch private posts (only for supporters)
         if (!querySnapshot.empty) {
           const privateQ = query(
             contentRef,
-            where("creatorId", "==", creatorData.uid),
+            where("creatorId", "in", [creatorData.handle, creatorData.uid]),
             where("isPrivate", "==", true),
             orderBy("createdAt", "desc"),
-            limit(20),
+            limit(3),
           );
           const privateSnap = await getDocs(privateQ);
-          const privateData = privateSnap.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          }));
-          setPrivatePosts(privateData);
+          setPrivatePosts(privateSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
         }
       } catch (error) {
         console.error("Error checking support status:", error);
       }
     };
 
-    checkSupportStatus();
+    fetchPosts();
   }, [isLoggedIn, currentUser, creatorData?.uid, username]);
 
   // Fetch featured partners when creatorData is available
@@ -161,7 +160,7 @@ export default function PublicProfile({ username }: { username: string }) {
         const partnersQ = query(
           partnersRef,
           where("creatorId", "==", creatorData.uid),
-          where("featured", "==", true)
+          where("featured", "==", true),
         );
         const partnersSnap = await getDocs(partnersQ);
         const partnersData = partnersSnap.docs.map((doc) => ({
@@ -177,6 +176,18 @@ export default function PublicProfile({ username }: { username: string }) {
     fetchPartners();
   }, [creatorData?.uid]);
 
+  const viewCounted = useRef(false);
+
+  useEffect(() => {
+    if (!username || viewCounted.current) return;
+    const key = `viewed_${username}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+    viewCounted.current = true;
+    const creatorRef = doc(db, "creators", username);
+    updateDoc(creatorRef, { views: increment(1) }).catch(() => {});
+  }, [username]);
+
   if (loading) return <Loading />;
   if (!creatorData) return <NotFound />;
 
@@ -190,7 +201,10 @@ export default function PublicProfile({ username }: { username: string }) {
       : profileData?.photoURL,
     socials: {
       twitter: normalizeSocialUrl(creatorData.socials?.twitter, "twitter"),
-      instagram: normalizeSocialUrl(creatorData.socials?.instagram, "instagram"),
+      instagram: normalizeSocialUrl(
+        creatorData.socials?.instagram,
+        "instagram",
+      ),
       linkedin: normalizeSocialUrl(creatorData.socials?.linkedin, "linkedin"),
       youtube: normalizeSocialUrl(creatorData.socials?.youtube, "youtube"),
       tiktok: normalizeSocialUrl(creatorData.socials?.tiktok, "tiktok"),
@@ -199,48 +213,8 @@ export default function PublicProfile({ username }: { username: string }) {
     events: creatorData.events || [],
   };
 
-  const schemaData = {
-    "@context": "https://schema.org",
-    "@type": "Person",
-    name: creator.name,
-    alternateName: creator?.handle,
-    url: `https://agaseke.me/${creator?.handle}`,
-    image: creator.photoURL || "https://agaseke.me/agaseke.png",
-    description: creator.bio || `Content creator on Agaseke`,
-    jobTitle: "Creator",
-    mainEntityOfPage: {
-      "@type": "WebPage",
-      "@id": `https://agaseke.me/${creator?.handle}`,
-    },
-    sameAs: [
-      creator.socials?.twitter,
-      creator.socials?.instagram,
-      creator.socials?.linkedin,
-      creator.socials?.youtube,
-      creator.socials?.tiktok,
-    ].filter(Boolean),
-    interactionStatistic: creatorData.views
-      ? {
-          "@type": "InteractionCounter",
-          interactionType: "https://schema.org/WatchAction",
-          userInteractionCount: creatorData.views,
-        }
-      : undefined,
-  };
-
   return (
-    <div className="min-h-screen bg-[#FBFBFC] text-slate-900 selection:bg-orange-100">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
-      />
-
-      <SeoUpdater 
-        data={{ creator: creatorData, profile: profileData }} 
-        username={username} 
-      />
-
-      <Navbar />
+    <>
       <CreatorSchema creator={creatorData} handle={username} />
 
       <SendGiftSection
@@ -250,13 +224,16 @@ export default function PublicProfile({ username }: { username: string }) {
         verified={creatorData?.verified}
         handle={username}
         bio={creator?.bio}
+<<<<<<< HEAD
         location={creatorData?.location}
         currency={creatorData?.currency}
+=======
+        bannerURL={creatorData?.bannerURL}
+>>>>>>> main
         setIsShareModalOpen={setIsShareModalOpen}
         setIsModalOpen={setIsModalOpen}
         currentUser={currentUser}
         bookingEnabled={creatorData?.bookingEnabled === true}
-        setIsBookingModalOpen={setIsBookingModalOpen}
       />
 
       <TabManager
@@ -273,11 +250,13 @@ export default function PublicProfile({ username }: { username: string }) {
 
       <main className="max-w-2xl mx-auto px-6 mt-8 min-h-[500px]">
         {activeTab === "community" && (
-          <CommunityTab 
-            publicPosts={publicPosts} 
+          <CommunityTab
+            publicPosts={publicPosts}
             privatePosts={privatePosts}
             isSupporter={isSupporter}
-            name={creator?.name} 
+            name={creator?.name}
+            compact={true}
+            username={username}
           />
         )}
 
@@ -308,6 +287,7 @@ export default function PublicProfile({ username }: { username: string }) {
             isLoggedIn={isLoggedIn}
             isSupporter={isSupporter}
             setIsModalOpen={setIsModalOpen}
+            compact={false}
           />
         )}
 
@@ -321,7 +301,12 @@ export default function PublicProfile({ username }: { username: string }) {
             userTotalSupport={profileData?.totalSupport || 0}
             setIsModalOpen={setIsModalOpen}
             currentUserId={currentUser?.uid}
+<<<<<<< HEAD
             creatorData={creatorData}
+=======
+            compact={true}
+            username={username}
+>>>>>>> main
           />
         )}
 
@@ -330,6 +315,8 @@ export default function PublicProfile({ username }: { username: string }) {
             creatorId={creator.uid}
             creatorHandle={username}
             isSupporter={isSupporter}
+            compact={true}
+            username={username}
           />
         )}
       </main>
@@ -338,19 +325,19 @@ export default function PublicProfile({ username }: { username: string }) {
         <section className="max-w-2xl mx-auto px-6 py-12">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200"></div>
+              <div className="w-full border-t border-border"></div>
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-[#FBFBFC] px-4 flex items-center gap-2">
+              <span className="bg-background px-4 flex items-center gap-2">
                 <Building2 size={16} className="text-orange-500" />
-                <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+                <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
                   Partners & Collaborations
                 </span>
               </span>
             </div>
           </div>
-          
-          <div className="mt-8 bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+
+          <div className="mt-8 bg-card rounded-2xl border border-border p-6 shadow-sm">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {featuredPartners.map((partner) => (
                 <a
@@ -358,21 +345,25 @@ export default function PublicProfile({ username }: { username: string }) {
                   href={partner.website || "#"}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex items-center gap-4 p-4 bg-slate-50 rounded-xl hover:bg-orange-50 hover:border-orange-200 border border-transparent transition-all"
+                  className="group flex items-center gap-4 p-4 bg-muted rounded-xl hover:bg-orange-50 hover:border-orange-200 border border-transparent transition-all"
                 >
-                  <div className="w-14 h-14 bg-white rounded-xl overflow-hidden flex items-center justify-center shadow-sm border border-slate-100">
+                  <div className="w-14 h-14 bg-card rounded-xl overflow-hidden flex items-center justify-center shadow-sm border border-border">
                     {partner.logo ? (
-                      <img src={partner.logo} alt={partner.name} className="w-full h-full object-cover" />
+                      <img
+                        src={partner.logo}
+                        alt={partner.name}
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
-                      <Building2 size={24} className="text-slate-300" />
+                      <Building2 size={24} className="text-muted-foreground" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-slate-900 group-hover:text-orange-700 transition-colors truncate">
+                    <p className="font-bold text-foreground group-hover:text-orange-700 transition-colors truncate">
                       {partner.name}
                     </p>
                     {partner.description && (
-                      <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">
+                      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
                         {partner.description}
                       </p>
                     )}
@@ -410,14 +401,6 @@ export default function PublicProfile({ username }: { username: string }) {
           username={username}
         />
       )}
-
-      <BookingModal
-        isOpen={isBookingModalOpen}
-        onClose={() => setIsBookingModalOpen(false)}
-        creator={creatorData}
-      />
-
-      <Footer />
-    </div>
+    </>
   );
 }

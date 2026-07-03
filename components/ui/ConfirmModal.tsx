@@ -40,8 +40,8 @@ export function ConfirmModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-      <div className="bg-white w-full max-w-md rounded-xl shadow-2xl animate-in zoom-in-95 duration-300">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-foreground/60 backdrop-blur-sm p-4">
+      <div className="bg-card w-full max-w-md rounded-xl shadow-2xl animate-in zoom-in-95 duration-300">
         <div className="p-6">
           <div className="flex justify-between items-start mb-4">
             <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${variantStyles[variant]}`}>
@@ -49,16 +49,16 @@ export function ConfirmModal({
             </div>
             <button
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-slate-600 transition-colors"
+              className="p-2 text-muted-foreground hover:text-foreground transition-colors"
             >
               <X size={20} />
             </button>
           </div>
 
-          <h3 className="text-xl font-bold text-slate-900 mb-2">
+          <h3 className="text-xl font-bold text-foreground mb-2">
             {title}
           </h3>
-          <p className="text-slate-500 text-sm mb-6">
+          <p className="text-muted-foreground text-sm mb-6">
             {message}
           </p>
 
@@ -66,7 +66,7 @@ export function ConfirmModal({
             <button
               onClick={onClose}
               disabled={loading}
-              className="flex-1 bg-slate-100 text-slate-700 py-3 rounded-lg font-bold text-sm hover:bg-slate-200 transition-colors disabled:opacity-50"
+              className="flex-1 bg-muted text-foreground py-3 rounded-lg font-bold text-sm hover:bg-muted transition-colors disabled:opacity-50"
             >
               {cancelText}
             </button>

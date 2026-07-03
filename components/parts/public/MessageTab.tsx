@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useRef } from "react";
-import { ArrowRight, Loader, X, Send, MessageSquare, Ban } from "lucide-react";
+import { ArrowRight, Loader, MessageSquare, Send } from "lucide-react";
 import { db } from "@/db/firebase";
 import {
   collection,
@@ -13,11 +13,25 @@ import {
   getDoc,
   updateDoc,
   serverTimestamp,
-  Timestamp,
+  getDocs,
+  writeBatch,
 } from "firebase/firestore";
 import { ProtectedSection } from "./ProtectedSection";
 import { toast } from "sonner";
+<<<<<<< HEAD
 import { formatCurrency } from "@/lib/format";
+=======
+import { ChatHeader, MessageBubble, MessageInput } from "./message";
+import type { Message } from "./message";
+
+function logErrorToServer(message: string, metadata?: Record<string, unknown>) {
+  fetch("/api/log-error", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ level: "error", category: "messaging", message, metadata }),
+  }).catch(() => {});
+}
+>>>>>>> main
 
 interface MessageTabProps {
   isLoggedIn: boolean;
@@ -33,15 +47,6 @@ interface MessageTabProps {
   messagingAllowAll?: boolean;
   messagingMinAmount?: number;
   userTotalSupport?: number;
-}
-
-interface Message {
-  id: string;
-  senderId: string;
-  senderName: string;
-  content: string;
-  createdAt: Timestamp | null;
-  read: boolean;
 }
 
 export const MessageTab = ({
@@ -66,6 +71,40 @@ export const MessageTab = ({
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const decryptedCache = useRef<Map<string, string>>(new Map());
+
+  const decryptMessage = async (id: string, encrypted: string): Promise<string> => {
+    const cached = decryptedCache.current.get(id);
+    if (cached) return cached;
+    if (!encrypted || !encrypted.includes(":")) return encrypted;
+    try {
+      const res = await fetch("/api/decrypt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ encrypted }),
+      });
+      const data = await res.json();
+      if (data.plaintext) {
+        decryptedCache.current.set(id, data.plaintext);
+        return data.plaintext;
+      }
+    } catch { /* ignore */ }
+    return encrypted;
+  };
+
+  const encryptMessage = async (text: string): Promise<string> => {
+    try {
+      const res = await fetch("/api/encrypt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      return data.encrypted || text;
+    } catch {
+      return text;
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -92,7 +131,6 @@ export const MessageTab = ({
           where("supporterId", "==", currentUserId)
         );
 
-        const { getDocs } = await import("firebase/firestore");
         const chatroomSnapshot = await getDocs(q);
 
         if (!isMounted) return;
@@ -129,6 +167,11 @@ export const MessageTab = ({
         }
       } catch (error) {
         console.error("Error finding/creating chatroom:", error);
+        logErrorToServer("Error finding/creating chatroom", {
+          creatorId,
+          currentUserId,
+          error: String(error),
+        });
         if (isMounted) toast.error("Failed to connect to chat");
       } finally {
         if (isMounted) setLoading(false);
@@ -149,11 +192,17 @@ export const MessageTab = ({
     const q = query(messagesRef, orderBy("createdAt", "asc"));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const msgs = snapshot.docs.map((doc) => ({
+      const rawMsgs = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       })) as Message[];
-      setMessages(msgs);
+
+      Promise.all(
+        rawMsgs.map(async (msg) => {
+          const decrypted = await decryptMessage(msg.id, msg.content);
+          return { ...msg, content: decrypted };
+        })
+      ).then(setMessages);
     });
 
     return () => unsubscribe();
@@ -162,20 +211,19 @@ export const MessageTab = ({
   useEffect(() => {
     if (!chatroomId || messages.length === 0) return;
 
-    const unreadUnread = messages.filter(
+    const unreadMessages = messages.filter(
       (m) => m.senderId !== currentUserId && !m.read
     );
 
-    if (unreadUnread.length > 0) {
-      const batch = async () => {
-        for (const msg of unreadUnread) {
-          await updateDoc(
-            doc(db, "chatrooms", chatroomId, "messages", msg.id),
-            { read: true }
-          );
-        }
-      };
-      batch();
+    if (unreadMessages.length > 0) {
+      const batch = writeBatch(db);
+      for (const msg of unreadMessages) {
+        batch.update(
+          doc(db, "chatrooms", chatroomId, "messages", msg.id),
+          { read: true }
+        );
+      }
+      batch.commit();
     }
   }, [messages, chatroomId, currentUserId]);
 
@@ -191,18 +239,21 @@ export const MessageTab = ({
 
     setSending(true);
     try {
+      const encryptedContent = await encryptMessage(newMessage.trim());
+      const encryptedLastMessage = await encryptMessage(newMessage.trim());
+
       const messagesRef = collection(db, "chatrooms", chatroomId, "messages");
       await addDoc(messagesRef, {
         senderId: currentUserId,
         senderName: currentUserName,
         senderType: "supporter",
-        content: newMessage.trim(),
+        content: encryptedContent,
         createdAt: serverTimestamp(),
         read: false,
       });
 
       await updateDoc(doc(db, "chatrooms", chatroomId), {
-        lastMessage: newMessage.trim(),
+        lastMessage: encryptedLastMessage,
         lastMessageAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         unreadCount: 0,
@@ -212,10 +263,11 @@ export const MessageTab = ({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          creatorEmail: creatorData?.email || "",
+          creatorId,
           creatorName: name,
           supporterName: currentUserName,
           message: newMessage.trim(),
+          chatroomId,
           chatroomUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/creator/messages?chat=${chatroomId}`,
         }),
       }).catch((e) => console.error("Failed to send email notification:", e));
@@ -223,6 +275,11 @@ export const MessageTab = ({
       setNewMessage("");
     } catch (error) {
       console.error("Error sending message:", error);
+      logErrorToServer("Error sending message", {
+        chatroomId,
+        userId: currentUserId,
+        error: String(error),
+      });
       toast.error("Failed to send message");
     } finally {
       setSending(false);
@@ -264,14 +321,14 @@ export const MessageTab = ({
   if (!canMessage) {
     return (
       <div className="animate-in fade-in duration-500">
-        <div className="bg-white border border-slate-100 rounded-3xl p-8 text-center shadow-xl">
-          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <MessageSquare size={32} className="text-slate-300" />
-          </div>
-          <h4 className="font-bold text-lg text-slate-900 mb-2">
-            Messaging Disabled
-          </h4>
-          <p className="text-sm text-slate-500 max-w-[250px] mx-auto">
+          <div className="bg-card border border-border rounded-3xl p-8 text-center shadow-xl">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <MessageSquare size={32} className="text-muted-foreground" />
+            </div>
+            <h4 className="font-bold text-lg text-foreground mb-2">
+              Messaging Disabled
+            </h4>
+            <p className="text-sm text-muted-foreground max-w-[250px] mx-auto">
             {messagingAllowAll
               ? "This creator has disabled direct messaging."
               : `You need to support with at least ${formatCurrency(messagingMinAmount, creatorData?.currency)} to send a message.`}
@@ -297,37 +354,17 @@ export const MessageTab = ({
 
   return (
     <div className="animate-in fade-in duration-500">
-      <div className="flex flex-col h-[550px] bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-xl">
-        <div className="p-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-orange-50">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center font-bold text-orange-600 text-lg overflow-hidden">
-              {creatorData?.profilePicture ? (
-                <img
-                  src={creatorData.profilePicture}
-                  alt={name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                name[0]
-              )}
-            </div>
-            <div>
-              <p className="text-sm font-bold">{name}</p>
-              <p className="text-[10px] text-orange-500 font-bold uppercase tracking-widest">
-                Message Creator
-              </p>
-            </div>
-          </div>
-        </div>
+      <div className="flex flex-col h-[550px] bg-card border border-border rounded-3xl overflow-hidden shadow-xl">
+        <ChatHeader name={name} profilePicture={creatorData?.profilePicture} />
 
-        <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-slate-50/30">
+        <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-muted/30">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm">
-                <Send size={24} className="text-slate-300" />
+              <div className="w-16 h-16 bg-card rounded-full flex items-center justify-center mb-4 shadow-sm">
+                <Send size={24} className="text-muted-foreground" />
               </div>
-              <h4 className="font-bold text-slate-900">Start the conversation</h4>
-              <p className="text-sm text-slate-500 max-w-[250px]">
+              <h4 className="font-bold text-foreground">Start the conversation</h4>
+              <p className="text-sm text-muted-foreground max-w-[250px]">
                 Send your first message to {name.split(" ")[0]}. They&apos;ll receive
                 it via email too!
               </p>
@@ -335,70 +372,25 @@ export const MessageTab = ({
           ) : (
             <>
               {messages.map((msg) => (
-                <div
+                <MessageBubble
                   key={msg.id}
-                  className={`flex ${msg.senderId === currentUserId ? "justify-end" : "justify-start"}`}
-                >
-                  <div
-                    className={`max-w-[80%] px-4 py-3 rounded-2xl ${
-                      msg.senderId === currentUserId
-                        ? "bg-orange-500 text-white rounded-br-md"
-                        : "bg-white border border-slate-100 text-slate-800 rounded-bl-md shadow-sm"
-                    }`}
-                  >
-                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                    <p
-                      className={`text-[10px] mt-1 ${
-                        msg.senderId === currentUserId
-                          ? "text-orange-100"
-                          : "text-slate-400"
-                      }`}
-                    >
-                      {msg.createdAt?.toDate?.().toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      }) || "Sending..."}
-                    </p>
-                  </div>
-                </div>
+                  message={msg}
+                  isOwn={msg.senderId === currentUserId}
+                />
               ))}
               <div ref={messagesEndRef} />
             </>
           )}
         </div>
 
-        <div className="p-4 bg-white border-t border-slate-100">
-          {!chatroomEnabled && (
-            <div className="mb-3 p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-600">
-              <Ban size={16} />
-              <p className="text-xs font-medium">
-                Messaging is disabled. You can view messages but cannot send new ones.
-              </p>
-            </div>
-          )}
-          <div className="flex gap-2 bg-slate-100 p-2 rounded-2xl">
-            <input
-              type="text"
-              placeholder="Write a message..."
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
-              className="flex-1 bg-transparent border-none px-4 py-3 text-sm focus:ring-0 outline-none text-slate-800 placeholder:text-slate-400"
-              disabled={sending || !chatroomEnabled}
-            />
-            <button
-              onClick={sendMessage}
-              disabled={!newMessage.trim() || sending || !chatroomEnabled}
-              className="bg-orange-500 text-white p-3 rounded-xl hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {sending ? (
-                <Loader size={18} className="animate-spin" />
-              ) : (
-                <Send size={18} />
-              )}
-            </button>
-          </div>
-        </div>
+        <MessageInput
+          value={newMessage}
+          onChange={setNewMessage}
+          onSend={sendMessage}
+          sending={sending}
+          disabled={!chatroomId}
+          chatroomEnabled={chatroomEnabled}
+        />
       </div>
     </div>
   );

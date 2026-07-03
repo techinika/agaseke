@@ -23,11 +23,14 @@ import {
   query,
   where,
   orderBy,
+  limit,
   onSnapshot,
   updateDoc,
   serverTimestamp,
-  getDoc,
+  getDocs,
   Timestamp,
+  writeBatch,
+  startAfter,
 } from "firebase/firestore";
 import { toast } from "sonner";
 
@@ -61,11 +64,51 @@ export default function MessagesPage() {
   const [chatrooms, setChatrooms] = useState<Chatroom[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(initialChatId);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [decryptedRooms, setDecryptedRooms] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesTopRef = useRef<HTMLDivElement>(null);
+  const decryptedCache = useRef<Map<string, string>>(new Map());
+  const oldestCursorRef = useRef<{ createdAt: Timestamp; id: string } | null>(null);
+
+  const decryptMessage = async (id: string, encrypted: string): Promise<string> => {
+    const cached = decryptedCache.current.get(id);
+    if (cached) return cached;
+    if (!encrypted || !encrypted.includes(":")) return encrypted;
+    try {
+      const res = await fetch("/api/decrypt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ encrypted }),
+      });
+      const data = await res.json();
+      if (data.plaintext) {
+        decryptedCache.current.set(id, data.plaintext);
+        return data.plaintext;
+      }
+    } catch { /* ignore */ }
+    return encrypted;
+  };
+
+  const encryptMessage = async (text: string): Promise<string> => {
+    try {
+      const res = await fetch("/api/encrypt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      return data.encrypted || text;
+    } catch {
+      return text;
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -97,60 +140,158 @@ export default function MessagesPage() {
     return () => unsubscribe();
   }, [creator?.uid]);
 
+  // Warm up decryption cache for chatroom sidebar and trigger re-render when done
   useEffect(() => {
-    if (!selectedChatId) return;
+    if (chatrooms.length === 0) return;
+    const todo = chatrooms.filter(
+      (c) => c.lastMessage && c.lastMessage.includes(":") && !decryptedCache.current.has(`room_${c.id}`)
+    );
+    if (todo.length === 0) return;
+    Promise.all(
+      todo.map(async (chat) => {
+        const key = `room_${chat.id}`;
+        try {
+          const res = await fetch("/api/decrypt", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ encrypted: chat.lastMessage }),
+          });
+          const data = await res.json();
+          if (data.plaintext) decryptedCache.current.set(key, data.plaintext);
+        } catch { /* ignore */ }
+      })
+    ).then(() => {
+      setDecryptedRooms(new Set(todo.map((c) => c.id)));
+    });
+  }, [chatrooms]);
+
+  useEffect(() => {
+    if (!selectedChatId) {
+      setMessages([]);
+      return;
+    }
+
+    setMessagesLoading(true);
+    setMessages([]);
+    setHasMoreMessages(false);
+    oldestCursorRef.current = null;
 
     const messagesRef = collection(db, "chatrooms", selectedChatId, "messages");
-    const q = query(messagesRef, orderBy("createdAt", "asc"));
+    const recentQuery = query(messagesRef, orderBy("createdAt", "desc"), orderBy("__name__", "desc"), limit(10));
 
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const msgs = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Message[];
-      setMessages(msgs);
-      scrollToBottom();
-
-      const unreadMsgs = msgs.filter(
-        (m) => m.senderType === "supporter" && !m.read
-      );
-      if (unreadMsgs.length > 0) {
-        const batch: Promise<void>[] = [];
-        unreadMsgs.forEach((msg) => {
-          batch.push(
-            updateDoc(
-              doc(db, "chatrooms", selectedChatId, "messages", msg.id),
-              { read: true }
-            )
-          );
+    const unsubscribe = onSnapshot(recentQuery, (snapshot) => {
+      Promise.all(
+        snapshot.docs.map(async (d) => {
+          const data = d.data();
+          const decrypted = await decryptMessage(d.id, data.content || "");
+          return { id: d.id, ...data, content: decrypted } as Message;
+        })
+      ).then((decryptedMsgs) => {
+        setMessages((prev) => {
+          const map = new Map<string, Message>();
+          for (const m of prev) map.set(m.id, m);
+          for (const m of decryptedMsgs) map.set(m.id, m);
+          const all = Array.from(map.values());
+          all.sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
+          if (all.length > 0) {
+            const oldest = all[0];
+            oldestCursorRef.current = { createdAt: oldest.createdAt as Timestamp, id: oldest.id };
+            setHasMoreMessages(true);
+          }
+          return all;
         });
-        await Promise.all(batch);
-        await updateDoc(doc(db, "chatrooms", selectedChatId), {
-          unreadCount: 0,
-        });
-      }
+        setMessagesLoading(false);
+        scrollToBottom();
+      });
     });
 
     return () => unsubscribe();
   }, [selectedChatId]);
+
+  // Mark unread supporter messages as read (separate from snapshot to avoid re-trigger loop)
+  useEffect(() => {
+    if (!selectedChatId || messages.length === 0) return;
+
+    const unreadMsgs = messages.filter(
+      (m) => m.senderType === "supporter" && !m.read
+    );
+    if (unreadMsgs.length === 0) return;
+
+    const batch = writeBatch(db);
+    for (const msg of unreadMsgs) {
+      batch.update(
+        doc(db, "chatrooms", selectedChatId, "messages", msg.id),
+        { read: true }
+      );
+    }
+    batch.update(doc(db, "chatrooms", selectedChatId), { unreadCount: 0 });
+    batch.commit();
+  }, [messages, selectedChatId]);
+
+  const loadMoreMessages = async () => {
+    if (!selectedChatId || loadingMore || !oldestCursorRef.current) return;
+    setLoadingMore(true);
+    try {
+      const messagesRef = collection(db, "chatrooms", selectedChatId, "messages");
+      const q = query(
+        messagesRef,
+        orderBy("createdAt", "desc"),
+        orderBy("__name__", "desc"),
+        limit(10),
+        startAfter(oldestCursorRef.current.createdAt, oldestCursorRef.current.id)
+      );
+      const snapshot = await getDocs(q);
+      const older = await Promise.all(
+        snapshot.docs.map(async (d) => {
+          const data = d.data();
+          const decrypted = await decryptMessage(d.id, data.content || "");
+          return { id: d.id, ...data, content: decrypted } as Message;
+        })
+      );
+      if (older.length === 0) {
+        setHasMoreMessages(false);
+      } else {
+        setMessages((prev) => {
+          const map = new Map<string, Message>();
+          for (const m of prev) map.set(m.id, m);
+          for (const m of older) map.set(m.id, m);
+          const all = Array.from(map.values());
+          all.sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
+          if (all.length > 0) {
+            const oldest = all[0];
+            oldestCursorRef.current = { createdAt: oldest.createdAt as Timestamp, id: oldest.id };
+          }
+          setHasMoreMessages(older.length === 10);
+          return all;
+        });
+      }
+    } catch (e) {
+      console.error("Failed to load older messages:", e);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedChatId || !creator?.name) return;
 
     setSending(true);
     try {
+      const encryptedContent = await encryptMessage(newMessage.trim());
+      const encryptedLastMessage = await encryptMessage(newMessage.trim());
+
       const messagesRef = collection(db, "chatrooms", selectedChatId, "messages");
       await addDoc(messagesRef, {
         senderId: creator.uid,
         senderName: creator.name,
         senderType: "creator",
-        content: newMessage.trim(),
+        content: encryptedContent,
         createdAt: serverTimestamp(),
         read: false,
       });
 
       await updateDoc(doc(db, "chatrooms", selectedChatId), {
-        lastMessage: newMessage.trim(),
+        lastMessage: encryptedLastMessage,
         lastMessageAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -205,13 +346,13 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-70px)] bg-white flex overflow-hidden">
-      <aside className="w-full md:w-80 lg:w-96 border-r border-slate-100 flex flex-col bg-slate-50/50">
+    <div className="min-h-[calc(100vh-70px)] bg-card flex overflow-hidden">
+      <aside className="w-full md:w-80 lg:w-96 border-r border-border flex flex-col bg-muted/50">
         <div className="p-6">
           <h1 className="text-2xl font-bold uppercase mb-6">Messages</h1>
           <div className="relative">
             <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
               size={18}
             />
             <input
@@ -219,7 +360,7 @@ export default function MessagesPage() {
               placeholder="Search supporters..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-lg py-3 pl-12 pr-4 text-sm outline-none focus:ring-2 focus:ring-orange-100 transition"
+              className="w-full bg-card border border-border rounded-lg py-3 pl-12 pr-4 text-sm outline-none focus:ring-2 focus:ring-orange-100 transition"
             />
           </div>
         </div>
@@ -227,11 +368,11 @@ export default function MessagesPage() {
         <div className="flex-1 overflow-y-auto px-3 space-y-1">
           {filteredChatrooms.length === 0 ? (
             <div className="text-center py-12 px-4">
-              <MessageSquare size={40} className="mx-auto text-slate-200 mb-4" />
-              <p className="text-slate-500 font-medium">
+              <MessageSquare size={40} className="mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground font-medium">
                 {searchQuery ? "No conversations found" : "No messages yet"}
               </p>
-              <p className="text-slate-400 text-sm mt-2">
+              <p className="text-muted-foreground text-sm mt-2">
                 {searchQuery
                   ? "Try a different search term"
                   : "Supporters will appear here once they message you"}
@@ -244,8 +385,8 @@ export default function MessagesPage() {
                 onClick={() => setSelectedChatId(chat.id)}
                 className={`w-full flex items-center gap-4 p-4 rounded-lg transition-all ${
                   selectedChatId === chat.id
-                    ? "bg-white shadow-sm border border-slate-100"
-                    : "hover:bg-slate-100"
+                    ? "bg-card shadow-sm border border-border"
+                    : "hover:bg-muted"
                 }`}
               >
                 <div className="relative">
@@ -261,7 +402,7 @@ export default function MessagesPage() {
                     )}
                   </div>
                   {chat.unreadCount > 0 && (
-                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-orange-600 border-2 border-white rounded-full flex items-center justify-center">
+                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-orange-600 border-2 border-white dark:border-foreground rounded-full flex items-center justify-center">
                       <span className="text-[10px] font-bold text-white">
                         {chat.unreadCount > 9 ? "9+" : chat.unreadCount}
                       </span>
@@ -273,18 +414,18 @@ export default function MessagesPage() {
                     <span className="font-bold text-sm truncate">
                       {chat.supporterName}
                     </span>
-                    <span className="text-[10px] font-bold text-slate-400">
+                    <span className="text-[10px] font-bold text-muted-foreground">
                       {formatTime(chat.lastMessageAt)}
                     </span>
                   </div>
                   <p
                     className={`text-xs truncate ${
                       chat.unreadCount > 0
-                        ? "text-slate-700 font-medium"
-                        : "text-slate-400"
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground"
                     }`}
                   >
-                    {chat.lastMessage || "No messages yet"}
+                    {decryptedCache.current.get(`room_${chat.id}`) || chat.lastMessage || "No messages yet"}
                   </p>
                 </div>
               </button>
@@ -293,14 +434,14 @@ export default function MessagesPage() {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col bg-white">
+      <main className="flex-1 flex flex-col bg-card">
         {selectedChatroom ? (
           <>
-            <header className="p-4 md:p-6 border-b border-slate-50 flex justify-between items-center bg-gradient-to-r from-slate-50 to-orange-50">
+            <header className="p-4 md:p-6 border-b border-border flex justify-between items-center bg-gradient-to-r from-muted to-orange-50">
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => setSelectedChatId(null)}
-                  className="md:hidden p-2 text-slate-400 hover:text-slate-900"
+                  className="md:hidden p-2 text-muted-foreground hover:text-foreground"
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -337,7 +478,7 @@ export default function MessagesPage() {
                   onClick={() => toggleChatroomEnabled(selectedChatroom.id, selectedChatroom.enabled !== false)}
                   className={`p-2 transition ${
                     selectedChatroom.enabled !== false
-                      ? "text-slate-300 hover:text-red-500"
+                      ? "text-muted-foreground hover:text-red-500"
                       : "text-red-500 hover:text-green-500"
                   }`}
                   title={selectedChatroom.enabled !== false ? "Disable messages from this supporter" : "Enable messages from this supporter"}
@@ -348,28 +489,57 @@ export default function MessagesPage() {
                     <CheckCircle size={20} />
                   )}
                 </button>
-                <button className="p-2 text-slate-300 hover:text-slate-900 transition">
+                <button className="p-2 text-muted-foreground hover:text-foreground transition">
                   <MoreVertical size={20} />
                 </button>
               </div>
             </header>
 
-            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-slate-50/30">
-              {messages.length === 0 ? (
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-muted/30">
+              {messagesLoading ? (
+                <div className="flex flex-col items-center justify-center h-full gap-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex w-full max-w-[80%] gap-3 animate-pulse">
+                      <div className={`flex-1 ${i % 2 === 0 ? "ml-auto" : ""}`}>
+                        <div className="h-12 bg-muted rounded-2xl" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center">
-                  <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm">
-                    <MessageSquare size={24} className="text-slate-300" />
+                  <div className="w-16 h-16 bg-card rounded-full flex items-center justify-center mb-4 shadow-sm">
+                    <MessageSquare size={24} className="text-muted-foreground" />
                   </div>
-                  <h4 className="font-bold text-slate-900">
+                  <h4 className="font-bold text-foreground">
                     Start the conversation
                   </h4>
-                  <p className="text-sm text-slate-500 max-w-[250px]">
+                  <p className="text-sm text-muted-foreground max-w-[250px]">
                     Send your first message to{" "}
                     {selectedChatroom.supporterName.split(" ")[0]}!
                   </p>
                 </div>
               ) : (
                 <>
+                  {hasMoreMessages && (
+                    <div className="text-center">
+                      <button
+                        onClick={loadMoreMessages}
+                        disabled={loadingMore}
+                        className="text-xs font-medium text-muted-foreground hover:text-foreground px-4 py-2 rounded-lg hover:bg-muted transition disabled:opacity-50"
+                      >
+                        {loadingMore ? (
+                          <span className="flex items-center gap-2">
+                            <Loader size={12} className="animate-spin" />
+                            Loading...
+                          </span>
+                        ) : (
+                          "Load older messages"
+                        )}
+                      </button>
+                    </div>
+                  )}
+                  <div ref={messagesTopRef} />
                   {messages.map((msg) => (
                     <div
                       key={msg.id}
@@ -379,7 +549,7 @@ export default function MessagesPage() {
                         className={`max-w-[80%] px-4 py-3 rounded-2xl ${
                           msg.senderType === "creator"
                             ? "bg-orange-500 text-white rounded-br-md"
-                            : "bg-white border border-slate-100 text-slate-800 rounded-bl-md shadow-sm"
+                            : "bg-card border border-border text-foreground rounded-bl-md shadow-sm"
                         }`}
                       >
                         <p className="text-sm whitespace-pre-wrap">
@@ -389,7 +559,7 @@ export default function MessagesPage() {
                           className={`text-[10px] mt-1 ${
                             msg.senderType === "creator"
                               ? "text-orange-100"
-                              : "text-slate-400"
+                              : "text-muted-foreground"
                           }`}
                         >
                           {msg.createdAt?.toDate?.().toLocaleTimeString([], {
@@ -405,8 +575,8 @@ export default function MessagesPage() {
               )}
             </div>
 
-            <footer className="p-4 md:p-6 bg-white border-t border-slate-50">
-              <div className="flex items-center gap-3 bg-slate-100 p-2 pl-4 rounded-2xl">
+            <footer className="p-4 md:p-6 bg-card border-t border-border">
+              <div className="flex items-center gap-3 bg-muted p-2 pl-4 rounded-2xl">
                 <input
                   type="text"
                   placeholder="Type your reply..."
@@ -431,12 +601,12 @@ export default function MessagesPage() {
             </footer>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-300 p-12 text-center">
-            <div className="w-20 h-20 bg-slate-50 rounded-lg flex items-center justify-center mb-6">
+          <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-12 text-center">
+            <div className="w-20 h-20 bg-muted rounded-lg flex items-center justify-center mb-6">
               <MessageSquare size={40} className="opacity-20" />
             </div>
             <h3 className="text-xl font-bold uppercase mb-2">Your Messages</h3>
-            <p className="text-sm font-medium max-w-xs text-slate-400">
+            <p className="text-sm font-medium max-w-xs text-muted-foreground">
               Select a supporter from the left to view your conversation.
             </p>
           </div>

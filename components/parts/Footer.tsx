@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { FaInstagram, FaTwitter, FaLinkedin, FaYoutube } from "react-icons/fa";
-import { RiMediumFill } from "react-icons/ri";
+import {
+  SocialIcon,
+  FooterGroup,
+} from "./footer/index";
 
 export default function Footer() {
   return (
-    <footer className="bg-slate-950 pt-20 pb-10 px-6 text-slate-400 border-t border-slate-900 mt-3">
+    <footer className="bg-slate-900 pt-20 pb-10 px-6 text-slate-400 border-t border-slate-800 mt-3">
       <div className="max-w-7xl mx-auto">
         <div className="w-full flex flex-wrap gap-12 mb-20 justify-between">
           <div className="max-w-xs">
@@ -63,7 +66,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="pt-8 border-t border-slate-900 flex flex-col md:flex-row justify-between items-center gap-6">
+        <div className="pt-8 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center gap-6">
           <p className="text-xs">© 2026 Agaseke. Made with ❤️ in Kigali.</p>
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-green-500">
@@ -79,57 +82,4 @@ export default function Footer() {
   );
 }
 
-/* Helper Components */
 
-function SocialIcon({ href, icon }: { href: string; icon: React.ReactNode }) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-slate-500 hover:text-orange-500 transition-all transform hover:-translate-y-1"
-    >
-      {icon}
-    </a>
-  );
-}
-
-function FooterGroup({
-  title,
-  links,
-}: {
-  title: string;
-  links: { label: string; href: string; isExternal?: boolean }[];
-}) {
-  return (
-    <div>
-      <h4 className="font-bold text-white text-sm mb-6 uppercase tracking-widest">
-        {title}
-      </h4>
-      <ul className="space-y-4 text-sm">
-        {links.map((link) => (
-          <li key={link.label}>
-            {link.isExternal ? (
-              <a
-                href={link.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-orange-500 transition-colors flex items-center gap-2"
-              >
-                {link.label}
-                <RiMediumFill className="text-orange-600/50" />
-              </a>
-            ) : (
-              <Link
-                href={link.href}
-                className="hover:text-orange-500 transition-colors"
-              >
-                {link.label}
-              </Link>
-            )}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}

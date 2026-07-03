@@ -1,20 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
-import {
-  Gift,
-  Loader,
-  Clock,
-  Users,
-  Trophy,
-  Check,
-  DollarSign,
-  Package,
-  Percent,
-  Share2,
-  Lock,
-  Star,
-  Sparkles,
-} from "lucide-react";
+import { Gift, Loader, Star, ArrowRight } from "lucide-react";
+import Link from "next/link";
 import { db } from "@/db/firebase";
 import {
   collection,
@@ -27,9 +14,25 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
-import { Giveaway, GiveawayEntry } from "@/types/giveaway";
 import { ProtectedSection } from "./ProtectedSection";
+<<<<<<< HEAD
 import { formatCurrency } from "@/lib/format";
+=======
+import {
+  WinnersModal,
+  ActiveGiveawayCard,
+  EndedGiveawayCard,
+} from "./giveaway";
+import type { Giveaway } from "./giveaway";
+
+function logErrorToServer(message: string, metadata?: Record<string, unknown>) {
+  fetch("/api/log-error", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ level: "error", category: "giveaway", message, metadata }),
+  }).catch(() => {});
+}
+>>>>>>> main
 
 interface GiveawayTabProps {
   creatorId: string;
@@ -40,7 +43,12 @@ interface GiveawayTabProps {
   userTotalSupport: number;
   setIsModalOpen: (open: boolean) => void;
   currentUserId?: string;
+<<<<<<< HEAD
   creatorData?: any;
+=======
+  compact?: boolean;
+  username?: string;
+>>>>>>> main
 }
 
 export const GiveawayTab = ({
@@ -52,7 +60,12 @@ export const GiveawayTab = ({
   userTotalSupport,
   setIsModalOpen,
   currentUserId,
+<<<<<<< HEAD
   creatorData,
+=======
+  compact = false,
+  username = "",
+>>>>>>> main
 }: GiveawayTabProps) => {
   const { user: currentUser } = useAuth();
   const [activeGiveaways, setActiveGiveaways] = useState<Giveaway[]>([]);
@@ -65,8 +78,6 @@ export const GiveawayTab = ({
     const fetchGiveaways = async () => {
       try {
         const giveawaysRef = collection(db, "giveaways");
-
-        // Fetch all giveaways for this creator
         const q = query(
           giveawaysRef,
           where("creatorId", "==", creatorId),
@@ -78,7 +89,6 @@ export const GiveawayTab = ({
           ...doc.data(),
         })) as Giveaway[];
 
-        // Separate active and ended (with winners) giveaways
         const active: Giveaway[] = [];
         const ended: Giveaway[] = [];
 
@@ -88,17 +98,14 @@ export const GiveawayTab = ({
               ? g.endDate.toDate()
               : new Date(g.endDate as any);
 
-          // Active = not ended OR ended but no winners yet
           if (endDate > new Date() && g.winners.length === 0) {
             active.push(g);
           }
-          // Show ended giveaways only if they have winners
           if (g.winners.length > 0) {
             ended.push(g);
           }
         });
 
-        // Sort active giveaways by end date (earliest first)
         active.sort((a, b) => {
           const aDate =
             a.endDate instanceof Timestamp
@@ -128,6 +135,7 @@ export const GiveawayTab = ({
         }
       } catch (error) {
         console.error("Error fetching giveaways:", error);
+        logErrorToServer("Error fetching giveaways", { creatorId, error: String(error) });
       } finally {
         setLoading(false);
       }
@@ -135,21 +143,6 @@ export const GiveawayTab = ({
 
     fetchGiveaways();
   }, [creatorId, currentUser?.uid]);
-
-  const getUserWonGiveaway = (giveaway: Giveaway): boolean => {
-    const userId = currentUserId || currentUser?.uid;
-    if (!userId) return false;
-    return giveaway.winners.some((w) => w.winnerId === userId);
-  };
-
-  const isUserWinner = (
-    giveaway: Giveaway,
-  ): { won: boolean; reward?: string } => {
-    const userId = currentUserId || currentUser?.uid;
-    if (!userId) return { won: false };
-    const winner = giveaway.winners.find((w) => w.winnerId === userId);
-    return { won: !!winner, reward: winner?.rewardTitle };
-  };
 
   const canAccess = (giveaway: Giveaway) => {
     if (giveaway.access === "public") return true;
@@ -186,6 +179,12 @@ export const GiveawayTab = ({
       setParticipating((prev) => new Set([...prev, giveaway.id]));
       toast.success("You're in! Good luck!");
     } catch (error) {
+      console.error("Error participating:", error);
+      logErrorToServer("Error participating in giveaway", {
+        giveawayId: giveaway.id,
+        userId: currentUser.uid,
+        error: String(error),
+      });
       toast.error("Failed to participate");
     }
   };
@@ -199,6 +198,15 @@ export const GiveawayTab = ({
       navigator.clipboard.writeText(`${text} ${url}`);
       toast.success("Link copied to clipboard!");
     }
+  };
+
+  const isUserWinner = (
+    giveaway: Giveaway,
+  ): { won: boolean; reward?: string } => {
+    const userId = currentUserId || currentUser?.uid;
+    if (!userId) return { won: false };
+    const winner = giveaway.winners.find((w) => w.winnerId === userId);
+    return { won: !!winner, reward: winner?.rewardTitle };
   };
 
   if (loading) {
@@ -226,8 +234,13 @@ export const GiveawayTab = ({
   const hasAnyGiveaways =
     activeGiveaways.length > 0 || endedGiveaways.length > 0;
 
-  if (hasAnyGiveaways) {
+  const displayActiveGiveaways = compact ? activeGiveaways.slice(0, 2) : activeGiveaways;
+  const displayEndedGiveaways = compact ? endedGiveaways.slice(0, 2) : endedGiveaways;
+  const hasMoreGiveaways = compact && (activeGiveaways.length > 2 || endedGiveaways.length > 2);
+
+  if (!hasAnyGiveaways) {
     return (
+<<<<<<< HEAD
       <div className="animate-in fade-in duration-500 space-y-8">
         {/* Active Giveaways */}
         {activeGiveaways.length > 0 && (
@@ -562,122 +575,92 @@ export const GiveawayTab = ({
             isWinner={isUserWinner(showWinners).won}
           />
         )}
+=======
+      <div className="animate-in fade-in duration-500">
+        <div className="text-center py-20 bg-card border border-border rounded-3xl">
+          <Gift size={48} className="mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-2xl font-bold">No Giveaways Yet</h3>
+          <p className="text-muted-foreground mt-2">
+            Check back later for exciting prizes!
+          </p>
+        </div>
+>>>>>>> main
       </div>
     );
   }
 
   return (
-    <div className="animate-in fade-in duration-500">
-      <div className="text-center py-20 bg-white border border-slate-100 rounded-3xl">
-        <Gift size={48} className="mx-auto text-slate-200 mb-4" />
-        <h3 className="text-2xl font-bold">No Giveaways Yet</h3>
-        <p className="text-slate-500 mt-2">
-          Check back later for exciting prizes!
-        </p>
-      </div>
+    <div className="animate-in fade-in duration-500 space-y-8">
+      {displayActiveGiveaways.length > 0 && (
+        <div className="space-y-4">
+          {displayActiveGiveaways.map((giveaway) => {
+            const accessible = canAccess(giveaway);
+            const hasParticipated = participating.has(giveaway.id);
+            const endDate =
+              giveaway.endDate instanceof Timestamp
+                ? giveaway.endDate.toDate()
+                : new Date(giveaway.endDate as any);
+            const daysLeft = Math.ceil(
+              (endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+            );
+
+            return (
+              <ActiveGiveawayCard
+                key={giveaway.id}
+                giveaway={giveaway}
+                accessible={accessible}
+                hasParticipated={hasParticipated}
+                daysLeft={daysLeft}
+                onParticipate={() => participate(giveaway)}
+                onShare={() => shareGiveaway(giveaway)}
+                creatorHandle={creatorHandle}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      {displayEndedGiveaways.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Star size={16} className="text-orange-500" />
+            <h3 className="text-lg font-bold">Past Giveaways</h3>
+          </div>
+
+          {displayEndedGiveaways.map((giveaway) => {
+            const { won, reward } = isUserWinner(giveaway);
+
+            return (
+              <EndedGiveawayCard
+                key={giveaway.id}
+                giveaway={giveaway}
+                won={won}
+                reward={reward}
+                onViewWinners={() => setShowWinners(giveaway)}
+                creatorHandle={creatorHandle}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      {hasMoreGiveaways && (
+        <div className="text-center">
+          <Link
+            href={`/${username}/giveaways`}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-lg font-bold text-sm hover:bg-orange-700 transition shadow-lg"
+          >
+            See All Giveaways <ArrowRight size={16} />
+          </Link>
+        </div>
+      )}
+
+      {showWinners && (
+        <WinnersModal
+          giveaway={showWinners}
+          onClose={() => setShowWinners(null)}
+        />
+      )}
     </div>
   );
 };
-
-function WinnersModal({
-  giveaway,
-  onClose,
-  isWinner,
-}: {
-  giveaway: Giveaway;
-  onClose: () => void;
-  isWinner?: boolean;
-}) {
-  return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-      <div className="bg-white w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl">
-        <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-orange-600 to-amber-600">
-          <h2 className="text-xl font-bold text-white">{giveaway.title}</h2>
-          <p className="text-white/80 text-sm mt-1">Winners Announced!</p>
-          {giveaway.partners.length > 0 && (
-            <div className="flex items-center gap-2 mt-3 flex-wrap">
-              <span className="text-xs text-white/60">Sponsored by:</span>
-              {giveaway.partners.map((partner) => (
-                <div
-                  key={partner.id}
-                  className="flex items-center gap-1.5 bg-white/20 px-2 py-1 rounded-full"
-                >
-                  {partner.logo && (
-                    <img
-                      src={partner.logo}
-                      alt={partner.name}
-                      className="w-4 h-4 rounded-full object-cover"
-                    />
-                  )}
-                  <span className="text-xs font-medium text-white">
-                    {partner.name}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="p-6 max-h-[60vh] overflow-y-auto">
-          {giveaway.winners.length === 0 ? (
-            <div className="text-center py-12">
-              <Trophy size={40} className="mx-auto text-slate-200 mb-4" />
-              <p className="text-slate-500">No winners yet</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {giveaway.winners.map((winner, idx) => (
-                <div
-                  key={idx}
-                  className={`flex items-center gap-4 p-4 rounded-xl ${
-                    idx === 0
-                      ? "bg-gradient-to-r from-orange-100 to-amber-100 border-2 border-orange-300"
-                      : "bg-slate-50"
-                  }`}
-                >
-                  <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center font-bold ${
-                      idx === 0
-                        ? "bg-orange-500 text-white"
-                        : "bg-slate-200 text-slate-600"
-                    }`}
-                  >
-                    {winner.winnerPhoto ? (
-                      <img
-                        src={winner.winnerPhoto}
-                        alt={winner.winnerName}
-                        className="w-full h-full rounded-full object-cover"
-                      />
-                    ) : (
-                      winner.winnerName?.[0] || "?"
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-bold">{winner.winnerName}</p>
-                    <p className="text-xs text-slate-500">
-                      Won: {winner.rewardTitle}
-                    </p>
-                  </div>
-                  {idx === 0 && (
-                    <span className="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                      1st
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="p-4 border-t border-slate-100">
-          <button
-            onClick={onClose}
-            className="w-full py-3 bg-slate-100 rounded-xl font-bold hover:bg-slate-200 transition"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}

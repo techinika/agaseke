@@ -57,7 +57,13 @@ export default function AdminDashboard() {
     totalGiveaways: 0,
     totalOrders: 0,
     recentGrowth: 0,
-    totalTransactionAmount: 0, // New state for total transaction amount
+    totalTransactionAmount: 0,
+    successfulTransactionCount: 0,
+    averageTransactionAmount: 0,
+    failedTransactionCount: 0,
+    failedTransactionAmount: 0,
+    pendingTransactionCount: 0,
+    pendingTransactionAmount: 0,
   });
   const [rejectionReason, setRejectionReason] = useState("");
   const [timeFilter, setTimeFilter] = useState<"all" | "7d" | "30d">("all");
@@ -87,6 +93,18 @@ export default function AdminDashboard() {
   // Raw data for transaction chart
   const [rawIncome, setRawIncome] = useState<any[]>([]);
   const [rawPayouts, setRawPayouts] = useState<any[]>([]);
+  const [rawTransactions, setRawTransactions] = useState<any[]>([]);
+  const [txBreakdown, setTxBreakdown] = useState<{
+    support: { successful: number; failed: number; pending: number };
+    store: { successful: number; failed: number; pending: number };
+    booking: { successful: number; failed: number; pending: number };
+    gathering: { successful: number; failed: number; pending: number };
+  }>({
+    support: { successful: 0, failed: 0, pending: 0 },
+    store: { successful: 0, failed: 0, pending: 0 },
+    booking: { successful: 0, failed: 0, pending: 0 },
+    gathering: { successful: 0, failed: 0, pending: 0 },
+  });
 
   // Process transaction chart data based on filter
   useEffect(() => {
@@ -186,6 +204,54 @@ export default function AdminDashboard() {
 
     setMonthlyData(newData);
   }, [transactionFilter, rawIncome, rawPayouts]);
+
+  // Process transaction breakdown by type, status, and time period
+  useEffect(() => {
+    if (rawTransactions.length === 0) return;
+    const now = new Date();
+    const breakdown = {
+      support: { successful: 0, failed: 0, pending: 0 },
+      store: { successful: 0, failed: 0, pending: 0 },
+      booking: { successful: 0, failed: 0, pending: 0 },
+      gathering: { successful: 0, failed: 0, pending: 0 },
+    };
+
+    rawTransactions.forEach((tx: any) => {
+      const txType = tx.type || "support";
+      if (!["support", "store", "booking", "gathering"].includes(txType)) return;
+
+      let inRange = false;
+      if (tx.createdAt?.toDate) {
+        const d = tx.createdAt.toDate();
+        const diff = now.getTime() - d.getTime();
+
+        if (transactionFilter === "day") {
+          inRange = diff <= 7 * 24 * 60 * 60 * 1000; // last 7 days
+        } else if (transactionFilter === "week") {
+          inRange = diff <= 5 * 7 * 24 * 60 * 60 * 1000; // last 5 weeks
+        } else if (transactionFilter === "month") {
+          inRange = diff <= 6 * 30 * 24 * 60 * 60 * 1000; // last 6 months
+        } else if (transactionFilter === "annual") {
+          inRange = d.getFullYear() >= now.getFullYear() - 2; // last 3 years
+        }
+      } else {
+        inRange = true; // no date = include
+      }
+      if (!inRange) return;
+
+      const isSuccess = tx.status === "successful" || tx.status === "success";
+      const isFailed = tx.status === "failed";
+      const isPending = tx.status === "pending";
+      if (!isSuccess && !isFailed && !isPending) return;
+
+      const amt = Number(tx.amount) || 0;
+      if (isSuccess) breakdown[txType as keyof typeof breakdown].successful += amt;
+      else if (isFailed) breakdown[txType as keyof typeof breakdown].failed += amt;
+      else if (isPending) breakdown[txType as keyof typeof breakdown].pending += amt;
+    });
+
+    setTxBreakdown(breakdown);
+  }, [transactionFilter, rawTransactions]);
 
   const [modal, setModal] = useState<{
     show: boolean;
@@ -317,20 +383,29 @@ export default function AdminDashboard() {
       setRawIncome(allPlatformIncome);
       setRawPayouts(allPayouts);
 
-      // Get transaction counts by type from transactions collection
+      // Get transaction counts and aggregates by type from transactions collection
       const transactionsSnap = await getDocs(collection(db, "transactions"));
-      const allTransactions = transactionsSnap.docs.map((d) => d.data());
-      let txSupports = 0;
-      let txProducts = 0;
-      allTransactions.forEach((tx) => {
+      const allTransactions = transactionsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      let totalSuccessfulAmount = 0;
+      let successfulCount = 0;
+      let failedCount = 0;
+      let failedAmount = 0;
+      let pendingCount = 0;
+      let pendingAmount = 0;
+      allTransactions.forEach((tx: any) => {
         if (tx.status === "successful" || tx.status === "success") {
-          if (tx.type === "support") {
-            txSupports += 1;
-          } else if (tx.type === "product") {
-            txProducts += 1;
-          }
+          totalSuccessfulAmount += Number(tx.amount) || 0;
+          successfulCount += 1;
+        } else if (tx.status === "failed") {
+          failedCount += 1;
+          failedAmount += Number(tx.amount) || 0;
+        } else if (tx.status === "pending") {
+          pendingCount += 1;
+          pendingAmount += Number(tx.amount) || 0;
         }
       });
+      const avgAmount = successfulCount > 0 ? Math.round(totalSuccessfulAmount / successfulCount) : 0;
+      setRawTransactions(allTransactions);
 
       // Top earners
       const earnersQuery = query(
@@ -355,13 +430,37 @@ export default function AdminDashboard() {
       );
       const withdrawalSnap = await getDocs(withdrawalQuery);
 
-      // Pending verifications
+      // Pending verifications — query the verificationRequests collection (source of truth)
       const verificationQuery = query(
-        collection(db, "creators"),
-        where("verified", "==", false),
-        where("verificationStatus", "==", "pending"),
+        collection(db, "verificationRequests"),
+        where("status", "==", "pending"),
+        orderBy("createdAt", "desc"),
       );
       const verificationSnap = await getDocs(verificationQuery);
+      const enrichedVerifications = await Promise.all(
+        verificationSnap.docs.map(async (d) => {
+          const data = d.data();
+          let creatorData: any = {};
+          if (data.uid) {
+            const creatorQ = query(
+              collection(db, "creators"),
+              where("uid", "==", data.uid),
+              limit(1),
+            );
+            const creatorSnap = await getDocs(creatorQ);
+            if (!creatorSnap.empty) {
+              const c = creatorSnap.docs[0];
+              creatorData = {
+                id: c.id,
+                name: c.data().name || "",
+                handle: c.id,
+                profilePicture: c.data().profilePicture || "",
+              };
+            }
+          }
+          return { id: d.id, ...data, ...creatorData };
+        }),
+      );
 
       // Visitor stats (based on profile views in last 24h/week/month - simulated)
       const today = Math.floor(Math.random() * 500) + 100;
@@ -381,16 +480,20 @@ export default function AdminDashboard() {
         totalGiveaways,
         totalOrders,
         recentGrowth: Math.floor(Math.random() * 20) + 5,
-        totalTransactionAmount: totalIncome + totalPayoutsProcessed,
+        totalTransactionAmount: totalSuccessfulAmount,
+        successfulTransactionCount: successfulCount,
+        averageTransactionAmount: avgAmount,
+        failedTransactionCount: failedCount,
+        failedTransactionAmount: failedAmount,
+        pendingTransactionCount: pendingCount,
+        pendingTransactionAmount: pendingAmount,
       });
       setTopEarners(earnersSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
       setTopViewed(viewsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
       setWithdrawals(
         withdrawalSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
       );
-      setVerifications(
-        verificationSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
-      );
+      setVerifications(enrichedVerifications);
     } catch (error) {
       console.error("Error fetching admin stats:", error);
     } finally {
@@ -409,14 +512,37 @@ export default function AdminDashboard() {
       setWithdrawals(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
 
-    // Verification listener
+    // Verification listener — real-time on verificationRequests
     const verificationQuery = query(
-      collection(db, "creators"),
-      where("verified", "==", false),
-      where("verificationStatus", "==", "pending"),
+      collection(db, "verificationRequests"),
+      where("status", "==", "pending"),
+      orderBy("createdAt", "desc"),
     );
     const unsubVerifications = onSnapshot(verificationQuery, (snap) => {
-      setVerifications(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      Promise.all(
+        snap.docs.map(async (d) => {
+          const data = d.data();
+          let creatorData: any = {};
+          if (data.uid) {
+            const creatorQ = query(
+              collection(db, "creators"),
+              where("uid", "==", data.uid),
+              limit(1),
+            );
+            const creatorSnap = await getDocs(creatorQ);
+            if (!creatorSnap.empty) {
+              const c = creatorSnap.docs[0];
+              creatorData = {
+                id: c.id,
+                name: c.data().name || "",
+                handle: c.id,
+                profilePicture: c.data().profilePicture || "",
+              };
+            }
+          }
+          return { id: d.id, ...data, ...creatorData };
+        }),
+      ).then(setVerifications);
     });
 
     // Activity logs listener (recent 10)
@@ -721,10 +847,25 @@ export default function AdminDashboard() {
         );
       } else {
         const isApprove = type === "approve";
-        await updateDoc(doc(db, "creators", target.id), {
-          verified: type === "approve",
+        await updateDoc(doc(db, "creators", target.handle || target.id), {
+          verified: isApprove,
           verificationStatus: isApprove ? "approved" : "rejected",
         });
+
+        const pendingVerifications = query(
+          collection(db, "verificationRequests"),
+          where("uid", "==", target.uid),
+          where("status", "==", "pending"),
+          orderBy("createdAt", "desc"),
+          limit(1),
+        );
+        const pendingSnap = await getDocs(pendingVerifications);
+        if (!pendingSnap.empty) {
+          await updateDoc(doc(db, "verificationRequests", pendingSnap.docs[0].id), {
+            status: isApprove ? "approved" : "rejected",
+            updatedAt: serverTimestamp(),
+          });
+        }
 
         await fetch("/api/comms/email/feedback/verify", {
           method: "POST",
@@ -765,20 +906,20 @@ export default function AdminDashboard() {
   if (loading) return <Loading />;
 
   return (
-    <div className="min-h-screen bg-[#FBFBFC] text-slate-900 pb-20 relative">
+    <div className="min-h-screen bg-background text-foreground pb-20 relative">
       <main className="max-w-7xl mx-auto px-6 mt-12">
         <header className="mb-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight text-slate-900 uppercase">
+            <h1 className="text-4xl font-bold tracking-tight text-foreground uppercase">
               Platform Control
             </h1>
-            <p className="text-slate-500 font-medium">
+            <p className="text-muted-foreground font-medium">
               Manage growth, verify creators, and process payouts.
             </p>
           </div>
           <button
             onClick={fetchData}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition"
+            className="flex items-center gap-2 px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:bg-card transition"
           >
             <Loader size={16} />
             Refresh
@@ -790,14 +931,18 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-3 mb-2 opacity-90">
             <Activity size={20} />
             <p className="text-xs font-bold uppercase tracking-widest">
-              Total Transaction Value (Since Inception)
+              Total Successful Transactions (All Time)
             </p>
           </div>
           <p className="text-5xl font-black tracking-tight">
             {stats.totalTransactionAmount.toLocaleString()}
           </p>
           <p className="text-xs font-medium opacity-75 mt-2">
+<<<<<<< HEAD
             Income + Payouts (values in their respective currencies)
+=======
+            {stats.successfulTransactionCount} successful transactions
+>>>>>>> main
           </p>
         </div>
 
@@ -832,59 +977,72 @@ export default function AdminDashboard() {
             icon={<Eye className="text-purple-600" />}
             color="bg-purple-50"
           />
+          <StatCard
+            label="Avg Transaction"
+            value={`${stats.averageTransactionAmount.toLocaleString()} RWF`}
+            icon={<BarChart3 className="text-sky-600" />}
+            color="bg-sky-50"
+          />
+          <StatCard
+            label="Failed Transactions"
+            value={`${(stats.failedTransactionCount + stats.pendingTransactionCount).toLocaleString()} txs`}
+            icon={<XCircle className="text-red-600" />}
+            color="bg-red-50"
+            detail={`${(stats.failedTransactionAmount + stats.pendingTransactionAmount).toLocaleString()} RWF`}
+          />
         </div>
 
         {/* Secondary Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
-          <div className="bg-white rounded-xl border border-slate-100 p-4">
+          <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-2 mb-2">
               <Users size={14} className="text-blue-600" />
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
                 Profiles
               </p>
             </div>
             <p className="text-xl font-bold">{stats.profileCount}</p>
           </div>
-          <div className="bg-white rounded-xl border border-slate-100 p-4">
+          <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-2 mb-2">
               <UserCheck size={14} className="text-orange-600" />
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
                 Creators
               </p>
             </div>
             <p className="text-xl font-bold">{stats.creatorCount}</p>
           </div>
-          <div className="bg-white rounded-xl border border-slate-100 p-4">
+          <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-2 mb-2">
               <ShoppingBag size={14} className="text-cyan-600" />
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
                 Store Orders
               </p>
             </div>
             <p className="text-xl font-bold">{stats.totalOrders}</p>
           </div>
-          <div className="bg-white rounded-xl border border-slate-100 p-4">
+          <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-2 mb-2">
               <Gift size={14} className="text-pink-600" />
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
                 Supports
               </p>
             </div>
             <p className="text-xl font-bold">{stats.totalSupports}</p>
           </div>
-          <div className="bg-white rounded-xl border border-slate-100 p-4">
+          <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-2 mb-2">
               <ShoppingBag size={14} className="text-amber-600" />
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
                 Products
               </p>
             </div>
             <p className="text-xl font-bold">{stats.totalProducts}</p>
           </div>
-          <div className="bg-white rounded-xl border border-slate-100 p-4">
+          <div className="bg-card rounded-xl border border-border p-4">
             <div className="flex items-center gap-2 mb-2">
               <Gift size={14} className="text-purple-600" />
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
                 Giveaways
               </p>
             </div>
@@ -894,8 +1052,8 @@ export default function AdminDashboard() {
 
         {/* CHARTS SECTION - One per row, horizontally scrollable */}
         <div className="space-y-8 mb-8">
-          <div className="bg-white rounded-xl border border-slate-100 p-6">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-6">
+          <div className="bg-card rounded-xl border border-border p-6">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-6">
               User Growth
             </h3>
             <div className="flex flex-wrap gap-2 mb-6">
@@ -911,8 +1069,8 @@ export default function AdminDashboard() {
                   onClick={() => setGrowthFilter(filter.key as any)}
                   className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${
                     growthFilter === filter.key
-                      ? "bg-slate-900 text-white"
-                      : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                      ? "bg-foreground text-background"
+                      : "bg-muted text-muted-foreground hover:bg-border-strong"
                   }`}
                 >
                   {filter.label}
@@ -941,12 +1099,12 @@ export default function AdminDashboard() {
                           title={`Current: ${userGrowthData.current[index]}`}
                         />
                         <div
-                          className="w-3 sm:w-4 md:w-5 lg:w-6 bg-slate-300 rounded-t"
+                          className="w-3 sm:w-4 md:w-5 lg:w-6 bg-muted-foreground rounded-t"
                           style={{ height: `${Math.max(prevHeight, 2)}%` }}
                           title={`Previous: ${userGrowthData.previous[index]}`}
                         />
                       </div>
-                      <span className="text-[10px] font-bold text-slate-400 truncate max-w-[40px]">
+                      <span className="text-[10px] font-bold text-muted-foreground truncate max-w-[40px]">
                         {label}
                       </span>
                     </div>
@@ -957,21 +1115,21 @@ export default function AdminDashboard() {
             <div className="flex items-center gap-4 mt-4 justify-center text-xs">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-blue-500 rounded" />
-                <span className="text-slate-500">
+                <span className="text-muted-foreground">
                   {growthFilter === "7d" ? "This Week" : growthFilter === "weekly" ? "This Week" : growthFilter === "monthly" ? "This Year" : growthFilter === "annual" ? "Year" : "Year"}
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-slate-300 rounded" />
-                <span className="text-slate-500">
+                <div className="w-3 h-3 bg-muted-foreground rounded" />
+                <span className="text-muted-foreground">
                   {growthFilter === "7d" ? "Last Week" : growthFilter === "weekly" ? "Last Week" : growthFilter === "monthly" ? "Last Year" : growthFilter === "annual" ? "Last Year" : "-"}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-100 p-6">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">
+          <div className="bg-card rounded-xl border border-border p-6">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-4">
               Platform Income vs Payouts
             </h3>
             <div className="flex flex-wrap gap-2 mb-6">
@@ -986,8 +1144,8 @@ export default function AdminDashboard() {
                   onClick={() => setTransactionFilter(filter.key as any)}
                   className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${
                     transactionFilter === filter.key
-                      ? "bg-slate-900 text-white"
-                      : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                      ? "bg-foreground text-background"
+                      : "bg-muted text-muted-foreground hover:bg-border-strong"
                   }`}
                 >
                   {filter.label}
@@ -1020,7 +1178,7 @@ export default function AdminDashboard() {
                            title={`Payouts: ${data.payouts.toLocaleString()}`}
                         />
                       </div>
-                      <span className="text-[10px] sm:text-xs font-bold text-slate-400">
+                      <span className="text-[10px] sm:text-xs font-bold text-muted-foreground">
                         {data.month}
                       </span>
                     </div>
@@ -1031,17 +1189,17 @@ export default function AdminDashboard() {
             <div className="flex items-center gap-4 sm:gap-6 mt-4 justify-center flex-wrap">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-emerald-500 rounded" />
-                <span className="text-xs text-slate-500">Income</span>
+                <span className="text-xs text-muted-foreground">Income</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 bg-orange-500 rounded" />
-                <span className="text-xs text-slate-500">Payouts</span>
+                <span className="text-xs text-muted-foreground">Payouts</span>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-100 p-6">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-6">
+          <div className="bg-card rounded-xl border border-border p-6">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-6">
               Transaction Overview
             </h3>
             <div className="space-y-6">
@@ -1050,7 +1208,7 @@ export default function AdminDashboard() {
                   <span className="font-medium">Supports</span>
                   <span className="font-bold">{stats.totalSupports}</span>
                 </div>
-                <div className="w-full bg-slate-100 rounded-full h-3">
+                <div className="w-full bg-muted rounded-full h-3">
                   <div
                     className="bg-pink-500 h-3 rounded-full"
                     style={{
@@ -1064,7 +1222,7 @@ export default function AdminDashboard() {
                   <span className="font-medium">Products</span>
                   <span className="font-bold">{stats.totalOrders}</span>
                 </div>
-                <div className="w-full bg-slate-100 rounded-full h-3">
+                <div className="w-full bg-muted rounded-full h-3">
                   <div
                     className="bg-cyan-500 h-3 rounded-full"
                     style={{
@@ -1077,10 +1235,90 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* TRANSACTION BREAKDOWN BY TYPE & STATUS */}
+        <div className="bg-card rounded-xl border border-border p-6 mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+              Transaction Breakdown
+            </h3>
+            <div className="flex gap-2">
+              {[
+                { key: "day", label: "Day" },
+                { key: "week", label: "Week" },
+                { key: "month", label: "Month" },
+                { key: "annual", label: "Annual" },
+              ].map((filter) => (
+                <button
+                  key={filter.key}
+                  onClick={() => setTransactionFilter(filter.key as any)}
+                  className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${
+                    transactionFilter === filter.key
+                      ? "bg-foreground text-background"
+                      : "bg-muted text-muted-foreground hover:bg-border-strong"
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left py-3 pr-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Type</th>
+                  <th className="text-right py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-emerald-600">Successful</th>
+                  <th className="text-right py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-red-500">Failed</th>
+                  <th className="text-right py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-amber-500">Pending</th>
+                  <th className="text-right py-3 pl-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {([
+                  { key: "support", label: "Support", icon: "💜" },
+                  { key: "store", label: "Store", icon: "🛍" },
+                  { key: "booking", label: "Booking", icon: "📅" },
+                  { key: "gathering", label: "Gathering", icon: "🎪" },
+                ] as const).map((type) => {
+                  const data = txBreakdown[type.key];
+                  const total = data.successful + data.failed + data.pending;
+                  return (
+                    <tr key={type.key} className="border-b border-border/50 last:border-0">
+                      <td className="py-3 pr-4 font-medium text-foreground">{type.label}</td>
+                      <td className="py-3 px-4 text-right font-bold text-emerald-600">{data.successful.toLocaleString()} RWF</td>
+                      <td className="py-3 px-4 text-right font-bold text-red-500">{data.failed.toLocaleString()} RWF</td>
+                      <td className="py-3 px-4 text-right font-bold text-amber-500">{data.pending.toLocaleString()} RWF</td>
+                      <td className="py-3 pl-4 text-right font-bold text-foreground">{total.toLocaleString()} RWF</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-border">
+                  <td className="py-3 pr-4 font-bold text-foreground">All Types</td>
+                  <td className="py-3 px-4 text-right font-black text-emerald-600">
+                    {Object.values(txBreakdown).reduce((s, t) => s + t.successful, 0).toLocaleString()} RWF
+                  </td>
+                  <td className="py-3 px-4 text-right font-black text-red-500">
+                    {Object.values(txBreakdown).reduce((s, t) => s + t.failed, 0).toLocaleString()} RWF
+                  </td>
+                  <td className="py-3 px-4 text-right font-black text-amber-500">
+                    {Object.values(txBreakdown).reduce((s, t) => s + t.pending, 0).toLocaleString()} RWF
+                  </td>
+                  <td className="py-3 pl-4 text-right font-black text-foreground">
+                    {Object.values(txBreakdown).reduce((s, t) => s + t.successful + t.failed + t.pending, 0).toLocaleString()} RWF
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
         {/* PENDING REQUESTS SECTION */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <section className="bg-white rounded-lg border border-slate-100 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
+          <section className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-border bg-muted/50 flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <Wallet className="text-orange-600" size={20} />
                 <h2 className="font-bold uppercase tracking-tight">
@@ -1093,23 +1331,28 @@ export default function AdminDashboard() {
             </div>
             <div className="p-2 max-h-[400px] overflow-y-auto">
               {withdrawals.length === 0 ? (
-                <div className="p-10 text-center text-slate-400 text-sm">
+                <div className="p-10 text-center text-muted-foreground text-sm">
                   No pending withdrawals.
                 </div>
               ) : (
                 withdrawals.map((req) => (
                   <div
                     key={req.id}
-                    className="flex items-center justify-between p-4 hover:bg-slate-50 rounded-2xl transition-all"
+                    className="flex items-center justify-between p-4 hover:bg-muted rounded-2xl transition-all"
                   >
                     <div>
                       <p className="font-bold text-sm">
                         {req.creatorName || "Creator"}
                       </p>
+<<<<<<< HEAD
                       <p className="text-lg font-black text-slate-900">
                         {req.amount?.toLocaleString()} {req.currency || "RWF"}
+=======
+                      <p className="text-lg font-black text-foreground">
+                        {req.amount?.toLocaleString()} RWF
+>>>>>>> main
                       </p>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                      <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
                         {req.method} • {req.accountNumber}
                       </p>
                     </div>
@@ -1149,8 +1392,8 @@ export default function AdminDashboard() {
             </div>
           </section>
 
-          <section className="bg-white rounded-lg border border-slate-100 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-slate-50 bg-slate-50/50 flex justify-between items-center">
+          <section className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-border bg-muted/50 flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <ShieldAlert className="text-blue-600" size={20} />
                 <h2 className="font-bold uppercase tracking-tight">
@@ -1163,26 +1406,26 @@ export default function AdminDashboard() {
             </div>
             <div className="p-2 max-h-[400px] overflow-y-auto">
               {verifications.length === 0 ? (
-                <div className="p-10 text-center text-slate-400 text-sm">
+                <div className="p-10 text-center text-muted-foreground text-sm">
                   No pending verifications.
                 </div>
               ) : (
                 verifications.map((creator) => (
                   <div
                     key={creator.id}
-                    className="flex items-center justify-between p-4 hover:bg-slate-50 rounded-2xl transition-all"
+                    className="flex items-center justify-between p-4 hover:bg-muted rounded-2xl transition-all"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden">
+                      <div className="w-10 h-10 rounded-full bg-muted overflow-hidden">
                         <img
                           src={creator.profilePicture || ""}
-                          alt=""
+                          alt={creator.name || "Creator"}
                           className="w-full h-full object-cover"
                         />
                       </div>
                       <div>
                         <p className="font-bold text-sm">{creator.name}</p>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-muted-foreground">
                           @{creator.handle}
                         </p>
                       </div>
@@ -1197,7 +1440,7 @@ export default function AdminDashboard() {
                             category: "verification",
                           })
                         }
-                        className="bg-slate-900 text-white text-[10px] font-black uppercase px-4 py-2 rounded-lg hover:bg-emerald-600 transition-all"
+                        className="bg-foreground text-background text-[10px] font-black uppercase px-4 py-2 rounded-lg hover:bg-emerald-600 transition-all"
                       >
                         Approve
                       </button>
@@ -1224,9 +1467,9 @@ export default function AdminDashboard() {
 
         {/* Stats & Activity Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <section className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+          <section className="bg-card p-8 rounded-3xl border border-border shadow-sm">
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-slate-900 rounded-lg text-white">
+              <div className="p-2 bg-foreground rounded-lg text-background">
                 <BarChart3 size={20} />
               </div>
               <h2 className="text-xl font-bold uppercase">Top Earners</h2>
@@ -1241,14 +1484,14 @@ export default function AdminDashboard() {
                 />
               ))}
               {topEarners.length === 0 && (
-                <p className="text-slate-400 text-sm text-center py-4">
+                <p className="text-muted-foreground text-sm text-center py-4">
                   No data yet
                 </p>
               )}
             </div>
           </section>
 
-          <section className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+          <section className="bg-card p-8 rounded-3xl border border-border shadow-sm">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-orange-600 rounded-lg text-white">
                 <Eye size={20} />
@@ -1267,14 +1510,14 @@ export default function AdminDashboard() {
                 />
               ))}
               {topViewed.length === 0 && (
-                <p className="text-slate-400 text-sm text-center py-4">
+                <p className="text-muted-foreground text-sm text-center py-4">
                   No data yet
                 </p>
               )}
             </div>
           </section>
 
-          <section className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
+          <section className="bg-card p-8 rounded-3xl border border-border shadow-sm">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-green-600 rounded-lg text-white">
                 <Activity size={20} />
@@ -1297,7 +1540,7 @@ export default function AdminDashboard() {
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm truncate">{activity.message}</p>
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-[10px] text-muted-foreground">
                       {activity.createdAt?.toDate?.()?.toLocaleTimeString() ||
                         "Now"}
                     </p>
@@ -1305,7 +1548,7 @@ export default function AdminDashboard() {
                 </div>
               ))}
               {recentActivities.length === 0 && (
-                <p className="text-slate-400 text-sm text-center py-4">
+                <p className="text-muted-foreground text-sm text-center py-4">
                   No recent activity
                 </p>
               )}
@@ -1315,8 +1558,8 @@ export default function AdminDashboard() {
       </main>
 
       {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl scale-in-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-foreground/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-card w-full max-w-md rounded-3xl p-8 shadow-2xl scale-in-center">
             <div
               className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 ${modal.type === "approve" ? "bg-emerald-100 text-emerald-600" : "bg-red-100 text-red-600"}`}
             >
@@ -1329,25 +1572,25 @@ export default function AdminDashboard() {
             <h3 className="text-2xl font-black uppercase tracking-tight mb-2">
               Confirm Action?
             </h3>
-            <p className="text-slate-500 mb-8 font-medium">
+            <p className="text-muted-foreground mb-8 font-medium">
               Are you sure you want to{" "}
-              <span className="font-bold text-slate-900">{modal.type}</span>{" "}
+              <span className="font-bold text-foreground">{modal.type}</span>{" "}
               this {modal.category} request for{" "}
-              <span className="font-bold text-slate-900">
+              <span className="font-bold text-foreground">
                 {modal.target.name || modal.target.creatorName || "this user"}
               </span>
               ? This action cannot be undone.
             </p>
             {modal.type === "reject" && (
               <div className="mb-6 animate-in slide-in-from-top-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 block">
                   Rejection Reason (Sent to Creator)
                 </label>
                 <textarea
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}
                   placeholder="e.g. ID document is too blurry to read."
-                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-red-500 outline-none transition-all h-28 resize-none"
+                  className="w-full bg-muted border-2 border-border rounded-2xl p-4 text-sm focus:border-red-500 outline-none transition-all h-28 resize-none"
                 />
               </div>
             )}
@@ -1355,7 +1598,7 @@ export default function AdminDashboard() {
               <button
                 onClick={() => setModal(null)}
                 disabled={processing}
-                className="flex-1 px-6 py-4 rounded-xl font-bold text-slate-400 hover:bg-slate-50 transition-all uppercase text-xs tracking-widest"
+                className="flex-1 px-6 py-4 rounded-xl font-bold text-muted-foreground hover:bg-muted transition-all uppercase text-xs tracking-widest"
               >
                 Cancel
               </button>

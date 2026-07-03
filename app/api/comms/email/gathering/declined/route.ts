@@ -1,14 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
-import nodemailer from "nodemailer";
-
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+import { transporter } from "@/lib/emailTransporter";
+import { adminDb, admin } from "@/db/firebaseAdmin";
 
 export async function POST(request: NextRequest) {
   try {
@@ -67,9 +60,25 @@ export async function POST(request: NextRequest) {
       html: emailHtml,
     });
 
+    console.log(`[GATHERING_EMAIL_DECLINED] Declined email sent to ${supporterEmail} for "${eventTitle}"`);
+    await adminDb.collection("activityLogs").add({
+      level: "info",
+      category: "gathering",
+      message: `Declined email sent to ${supporterEmail} for "${eventTitle}"`,
+      metadata: { supporterEmail, supporterName, eventTitle },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Declined email error:", error);
+    console.error(`[GATHERING_EMAIL_DECLINED] Failed to send declined email:`, error);
+    await adminDb.collection("activityLogs").add({
+      level: "error",
+      category: "gathering",
+      message: `Failed to send declined email`,
+      metadata: { error: String(error) },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     return NextResponse.json({ error: "Failed to send email" }, { status: 500 });
   }
 }

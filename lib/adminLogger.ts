@@ -8,6 +8,7 @@ export type LogCategory =
   | "support"
   | "store"
   | "giveaway"
+  | "gathering"
   | "messaging"
   | "verification"
   | "admin"

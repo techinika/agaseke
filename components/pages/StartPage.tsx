@@ -111,6 +111,12 @@ export default function CreatorOnboarding() {
             formData.username === "help-center" ||
             formData.username === "api" ||
             formData.username === "test" ||
+            formData.username === "offline" ||
+            formData.username === "sitemap" ||
+            formData.username === "sitemap.xml" ||
+            formData.username === "robots" ||
+            formData.username === "robots.txt" ||
+            formData.username === "robot" ||
             formData.username === "profile" ||
             formData.username === "payout" ||
             formData.username === "payout-policy" ||
@@ -276,38 +282,38 @@ export default function CreatorOnboarding() {
   const prevStep = () => setStep(step - 1);
 
   return (
-    <div className="min-h-screen bg-[#FDFDFF] flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-sm mb-12 flex justify-between relative">
-        <div className="absolute top-1/2 left-0 w-full h-0.5 bg-slate-100 -translate-y-1/2 -z-10" />
+        <div className="absolute top-1/2 left-0 w-full h-0.5 bg-muted -translate-y-1/2 -z-10" />
         {[1, 2, 3, 4, 5].map((i) => (
           <div
             key={i}
-            className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all duration-500 ${step >= i ? "bg-orange-600 text-white shadow-lg shadow-orange-100" : "bg-white border-2 border-slate-100 text-slate-300"}`}
+            className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all duration-500 ${step >= i ? "bg-orange-600 text-white shadow-lg shadow-orange-100" : "bg-card border-2 border-border text-muted-foreground"}`}
           >
             {step > i ? <Check size={14} strokeWidth={3} /> : i}
           </div>
         ))}
       </div>
 
-      <div className="w-full max-w-md bg-white p-8 md:p-10 rounded-lg shadow-sm border border-slate-100">
+      <div className="w-full max-w-md bg-card p-8 md:p-10 rounded-lg shadow-sm border border-border">
         {step === 1 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
             <div className="text-center space-y-2">
               <h1 className="text-3xl font-bold tracking-tighter">
                 Claim your link
               </h1>
-              <p className="text-slate-500 text-sm">
+              <p className="text-muted-foreground text-sm">
                 This is your permanent address on Agaseke.
               </p>
             </div>
             <div className="relative group">
-              <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-bold tracking-tighter">
+              <div className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground font-bold tracking-tighter">
                 agaseke.me/
               </div>
               <input
                 autoFocus
                 type="text"
-                className={`w-full p-5 pl-28 bg-slate-50 border-2 rounded-lg text-xl font-bold outline-none transition-all ${
+                className={`w-full p-5 pl-28 bg-muted border-2 rounded-lg text-xl font-bold outline-none transition-all ${
                   usernameStatus === "taken"
                     ? "border-red-400"
                     : usernameStatus === "available"
@@ -326,7 +332,10 @@ export default function CreatorOnboarding() {
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2">
                 {usernameStatus === "checking" && (
-                  <Loader className="animate-spin text-slate-300" size={20} />
+                  <Loader
+                    className="animate-spin text-muted-foreground"
+                    size={20}
+                  />
                 )}
                 {usernameStatus === "available" && (
                   <Check className="text-green-500" size={20} />
@@ -353,7 +362,7 @@ export default function CreatorOnboarding() {
             <button
               onClick={nextStep}
               disabled={!formData.username || usernameStatus !== "available"}
-              className="w-full bg-slate-900 text-white py-5 rounded-lg font-bold text-lg flex items-center justify-center gap-2 hover:bg-orange-600 transition-all active:scale-95 disabled:opacity-50 disabled:hover:bg-slate-900"
+              className="w-full bg-foreground text-background py-5 rounded-lg font-bold text-lg flex items-center justify-center gap-2 hover:bg-orange-600 transition-all active:scale-95 disabled:opacity-50 disabled:hover:bg-foreground"
             >
               Continue <ArrowRight size={20} />
             </button>
@@ -367,7 +376,7 @@ export default function CreatorOnboarding() {
               <h1 className="text-3xl font-bold tracking-tighter">
                 The Creator
               </h1>
-              <p className="text-slate-500 text-sm">
+              <p className="text-muted-foreground text-sm">
                 How should we introduce you?
               </p>
             </div>
@@ -375,7 +384,7 @@ export default function CreatorOnboarding() {
               <input
                 type="text"
                 placeholder="Display Name (e.g. Gisa Patrick)"
-                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-lg font-bold outline-none focus:border-orange-500"
+                className="w-full p-4 bg-muted border border-border rounded-lg font-bold outline-none focus:border-orange-500"
                 value={formData.fullName}
                 onChange={(e) =>
                   setFormData({ ...formData, fullName: e.target.value })
@@ -383,7 +392,7 @@ export default function CreatorOnboarding() {
               />
               <textarea
                 placeholder="Tell your fans what you're creating..."
-                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-lg h-32 resize-none font-medium outline-none focus:border-orange-500"
+                className="w-full p-4 bg-muted border border-border rounded-lg h-32 resize-none font-medium outline-none focus:border-orange-500"
                 value={formData.bio}
                 onChange={(e) =>
                   setFormData({ ...formData, bio: e.target.value })
@@ -435,14 +444,14 @@ export default function CreatorOnboarding() {
             <div className="flex gap-3">
               <button
                 onClick={prevStep}
-                className="p-5 bg-slate-50 rounded-lg text-slate-400 hover:text-slate-900 transition-colors"
+                className="p-5 bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors"
               >
                 <ChevronLeft size={24} />
               </button>
               <button
                 onClick={nextStep}
                 disabled={!formData.fullName}
-                className="flex-1 bg-slate-900 text-white py-5 rounded-lg font-bold text-lg hover:bg-orange-600 transition-all"
+                className="flex-1 bg-foreground text-background py-5 rounded-lg font-bold text-lg hover:bg-orange-600 transition-all"
               >
                 Continue
               </button>
@@ -457,7 +466,7 @@ export default function CreatorOnboarding() {
               <h1 className="text-3xl font-bold tracking-tighter">
                 Social Media
               </h1>
-              <p className="text-slate-500 text-sm">
+              <p className="text-muted-foreground text-sm">
                 Where else can fans find you?
               </p>
             </div>
@@ -465,11 +474,11 @@ export default function CreatorOnboarding() {
               <div className="relative">
                 <Instagram
                   size={18}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
                 />
                 <input
                   placeholder="Instagram Username"
-                  className="w-full p-4 pl-12 bg-slate-50 border border-slate-100 rounded-lg text-sm outline-none focus:border-orange-500"
+                  className="w-full p-4 pl-12 bg-muted border border-border rounded-lg text-sm outline-none focus:border-orange-500"
                   value={formData.socials.instagram}
                   onChange={(e) =>
                     setFormData({
@@ -485,11 +494,11 @@ export default function CreatorOnboarding() {
               <div className="relative">
                 <Linkedin
                   size={18}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
                 />
                 <input
                   placeholder="LinkedIn Profile Link"
-                  className="w-full p-4 pl-12 bg-slate-50 border border-slate-100 rounded-lg text-sm outline-none focus:border-blue-500"
+                  className="w-full p-4 pl-12 bg-muted border border-border rounded-lg text-sm outline-none focus:border-blue-500"
                   value={formData.socials.linkedin}
                   onChange={(e) =>
                     setFormData({
@@ -505,11 +514,11 @@ export default function CreatorOnboarding() {
               <div className="relative">
                 <Twitter
                   size={18}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
                 />
                 <input
                   placeholder="Twitter Username"
-                  className="w-full p-4 pl-12 bg-slate-50 border border-slate-100 rounded-lg text-sm outline-none focus:border-orange-500"
+                  className="w-full p-4 pl-12 bg-muted border border-border rounded-lg text-sm outline-none focus:border-orange-500"
                   value={formData.socials.twitter}
                   onChange={(e) =>
                     setFormData({
@@ -522,11 +531,11 @@ export default function CreatorOnboarding() {
               <div className="relative">
                 <Youtube
                   size={18}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
                 />
                 <input
                   placeholder="YouTube Channel Link"
-                  className="w-full p-4 pl-12 bg-slate-50 border border-slate-100 rounded-lg text-sm outline-none focus:border-orange-500"
+                  className="w-full p-4 pl-12 bg-muted border border-border rounded-lg text-sm outline-none focus:border-orange-500"
                   value={formData.socials.youtube}
                   onChange={(e) =>
                     setFormData({
@@ -539,11 +548,11 @@ export default function CreatorOnboarding() {
               <div className="relative">
                 <Video
                   size={18}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
                 />
                 <input
                   placeholder="TikTok Profile Link"
-                  className="w-full p-4 pl-12 bg-slate-50 border border-slate-100 rounded-lg text-sm outline-none focus:border-orange-500"
+                  className="w-full p-4 pl-12 bg-muted border border-border rounded-lg text-sm outline-none focus:border-orange-500"
                   value={formData.socials.tiktok}
                   onChange={(e) =>
                     setFormData({
@@ -556,11 +565,11 @@ export default function CreatorOnboarding() {
               <div className="relative">
                 <Globe
                   size={18}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
                 />
                 <input
                   placeholder="External Website / Link"
-                  className="w-full p-4 pl-12 bg-slate-50 border border-slate-100 rounded-lg text-sm outline-none focus:border-orange-500"
+                  className="w-full p-4 pl-12 bg-muted border border-border rounded-lg text-sm outline-none focus:border-orange-500"
                   value={formData.socials.web}
                   onChange={(e) =>
                     setFormData({
@@ -574,13 +583,13 @@ export default function CreatorOnboarding() {
             <div className="flex gap-3">
               <button
                 onClick={prevStep}
-                className="p-5 bg-slate-50 rounded-lg text-slate-400 hover:text-slate-900 transition-colors"
+                className="p-5 bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors"
               >
                 <ChevronLeft size={24} />
               </button>
               <button
                 onClick={nextStep}
-                className="flex-1 bg-slate-900 text-white py-5 rounded-lg font-bold text-lg hover:bg-orange-600 transition-all"
+                className="flex-1 bg-foreground text-background py-5 rounded-lg font-bold text-lg hover:bg-orange-600 transition-all"
               >
                 Continue
               </button>
@@ -595,7 +604,7 @@ export default function CreatorOnboarding() {
               <h1 className="text-3xl font-bold tracking-tighter">
                 Payout Method
               </h1>
-              <p className="text-slate-500 text-sm">
+              <p className="text-muted-foreground text-sm">
                 Include your country code (e.g. +250...)
               </p>
             </div>
@@ -607,7 +616,7 @@ export default function CreatorOnboarding() {
                     onClick={() =>
                       setFormData({ ...formData, momoNetwork: net })
                     }
-                    className={`flex-1 py-4 rounded-lg border-2 font-bold text-sm transition-all ${formData.momoNetwork === net ? "border-orange-600 bg-orange-50 text-orange-600" : "border-slate-50 text-slate-300"}`}
+                    className={`flex-1 py-4 rounded-lg border-2 font-bold text-sm transition-all ${formData.momoNetwork === net ? "border-orange-600 bg-orange-50 text-orange-600" : "border-border text-muted-foreground"}`}
                   >
                     {net} Money
                   </button>
@@ -615,13 +624,13 @@ export default function CreatorOnboarding() {
               </div>
               <div className="relative">
                 <Smartphone
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
                   size={20}
                 />
                 <input
                   type="tel"
                   placeholder="+250 78..."
-                  className="w-full p-5 pl-12 bg-slate-50 border border-slate-100 rounded-lg text-center text-xl font-bold tracking-tight focus:border-orange-500 outline-none"
+                  className="w-full p-5 pl-12 bg-muted border border-border rounded-lg text-center text-xl font-bold tracking-tight focus:border-orange-500 outline-none"
                   value={formData.momoNumber}
                   onChange={(e) =>
                     setFormData({ ...formData, momoNumber: e.target.value })
@@ -632,14 +641,14 @@ export default function CreatorOnboarding() {
             <div className="flex gap-3">
               <button
                 onClick={prevStep}
-                className="p-5 bg-slate-50 rounded-lg text-slate-400 transition-colors"
+                className="p-5 bg-muted rounded-lg text-muted-foreground transition-colors"
               >
                 <ChevronLeft size={24} />
               </button>
               <button
                 onClick={nextStep}
                 disabled={!formData.momoNumber}
-                className="flex-1 bg-slate-900 text-white py-5 rounded-lg font-bold text-lg hover:bg-orange-600 transition-all"
+                className="flex-1 bg-foreground text-background py-5 rounded-lg font-bold text-lg hover:bg-orange-600 transition-all"
               >
                 Save Number
               </button>
@@ -657,13 +666,13 @@ export default function CreatorOnboarding() {
               <h1 className="text-3xl font-bold tracking-tighter">
                 You are Ready!
               </h1>
-              <p className="text-slate-500 text-sm">
+              <p className="text-muted-foreground text-sm">
                 Confirm your details to launch.
               </p>
             </div>
-            <div className="bg-slate-50 p-6 rounded-lg space-y-3 border border-slate-100">
+            <div className="bg-muted p-6 rounded-lg space-y-3 border border-border">
               <div className="flex justify-between items-center">
-                <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+                <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
                   Public Link
                 </span>
                 <span className="font-bold text-orange-600 tracking-tighter">
@@ -681,10 +690,10 @@ export default function CreatorOnboarding() {
                 </div>
               )}
               <div className="flex justify-between items-center">
-                <span className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">
+                <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
                   Payout
                 </span>
-                <span className="font-bold text-slate-700">
+                <span className="font-bold text-foreground">
                   {formData.momoNumber}
                 </span>
               </div>
@@ -702,7 +711,7 @@ export default function CreatorOnboarding() {
         <div className="mt-8 text-center">
           <button
             onClick={skipOnboarding}
-            className="text-xs font-bold uppercase tracking-widest text-slate-300 hover:text-orange-600 transition-colors"
+            className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-orange-600 transition-colors"
           >
             I&apos;ll set this up later — Skip
           </button>

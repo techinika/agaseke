@@ -12,12 +12,15 @@ export type NotificationType =
   | "booking_request"
   | "booking_accepted"
   | "booking_declined"
+  | "booking_paid"
   | "payout_processed"
   | "broadcast_received"
   | "new_user"
   | "new_creator"
   | "new_transaction"
-  | "withdrawal";
+  | "withdrawal"
+  | "new_like"
+  | "new_comment";
 
 export interface Notification {
   id: string;
@@ -61,12 +64,15 @@ export function getNotificationIconKey(type: NotificationType): string {
     booking_request: "calendarClock",
     booking_accepted: "checkCircle",
     booking_declined: "xCircle",
+    booking_paid: "creditCard",
     payout_processed: "wallet",
     broadcast_received: "megaphone",
     new_user: "userPlus",
     new_creator: "userCheck",
     new_transaction: "creditCard",
     withdrawal: "wallet",
+    new_like: "heart",
+    new_comment: "messageSquare",
   };
   return iconMap[type] || "bell";
 }
