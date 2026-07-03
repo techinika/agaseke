@@ -224,7 +224,12 @@ export default function PublicProfile({ username }: { username: string }) {
         verified={creatorData?.verified}
         handle={username}
         bio={creator?.bio}
+<<<<<<< HEAD
+        location={creatorData?.location}
+        currency={creatorData?.currency}
+=======
         bannerURL={creatorData?.bannerURL}
+>>>>>>> main
         setIsShareModalOpen={setIsShareModalOpen}
         setIsModalOpen={setIsModalOpen}
         currentUser={currentUser}
@@ -296,8 +301,12 @@ export default function PublicProfile({ username }: { username: string }) {
             userTotalSupport={profileData?.totalSupport || 0}
             setIsModalOpen={setIsModalOpen}
             currentUserId={currentUser?.uid}
+<<<<<<< HEAD
+            creatorData={creatorData}
+=======
             compact={true}
             username={username}
+>>>>>>> main
           />
         )}
 
@@ -377,6 +386,7 @@ export default function PublicProfile({ username }: { username: string }) {
         creatorName={creator.name}
         creatorId={creator.handle}
         uid={creator.uid}
+        currency={creatorData?.currency}
         includeReferral={profileData?.referralCreator != null}
         referralUid={referralId}
         referralId={profileData?.referralCreator}

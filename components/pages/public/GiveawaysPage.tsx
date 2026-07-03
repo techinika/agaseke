@@ -153,6 +153,7 @@ export default function GiveawaysPage({ username }: GiveawaysPageProps) {
             userTotalSupport={profileData?.totalSupport || 0}
             setIsModalOpen={setIsModalOpen}
             currentUserId={currentUser?.uid}
+            creatorData={creatorData}
           />
         </main>
       </div>

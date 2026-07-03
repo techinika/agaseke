@@ -827,7 +827,7 @@ export default function AdminDashboard() {
               userId: adminDoc.id,
               type: category,
               title: "Withdrawal Rejected",
-              message: `Withdrawal of ${target.amount?.toLocaleString()} RWF for ${target.creatorName} was rejected`,
+              message: `Withdrawal of ${target.amount?.toLocaleString()} ${target.currency || "RWF"} for ${target.creatorName} was rejected`,
               read: false,
             };
             await addDoc(collection(db, "notifications"), notificationData);
@@ -837,7 +837,7 @@ export default function AdminDashboard() {
         await logActivity({
           level: type === "approve" ? "success" : "warning",
           category: "payout",
-          message: `Withdrawal ${type === "approve" ? "approved" : "rejected"}: ${target.amount?.toLocaleString()} RWF for ${target.creatorName}`,
+          message: `Withdrawal ${type === "approve" ? "approved" : "rejected"}: ${target.amount?.toLocaleString()} ${target.currency || "RWF"} for ${target.creatorName}`,
           creatorId: target.creatorId,
           creatorHandle: target.creatorHandle,
         });
@@ -935,10 +935,14 @@ export default function AdminDashboard() {
             </p>
           </div>
           <p className="text-5xl font-black tracking-tight">
-            {stats.totalTransactionAmount.toLocaleString()} RWF
+            {stats.totalTransactionAmount.toLocaleString()}
           </p>
           <p className="text-xs font-medium opacity-75 mt-2">
+<<<<<<< HEAD
+            Income + Payouts (values in their respective currencies)
+=======
             {stats.successfulTransactionCount} successful transactions
+>>>>>>> main
           </p>
         </div>
 
@@ -946,7 +950,7 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard
             label="Platform Income"
-            value={`${stats.totalPlatformIncome.toLocaleString()} RWF`}
+            value={`${stats.totalPlatformIncome.toLocaleString()}`}
             icon={<DollarSign className="text-emerald-600" />}
             color="bg-emerald-50"
             trend={
@@ -957,13 +961,13 @@ export default function AdminDashboard() {
           />
           <StatCard
             label="Payouts Processed"
-            value={`${stats.totalPayoutsProcessed.toLocaleString()} RWF`}
+            value={`${stats.totalPayoutsProcessed.toLocaleString()}`}
             icon={<CheckCircle2 className="text-green-600" />}
             color="bg-green-50"
           />
           <StatCard
             label="Pending Payouts"
-            value={`${stats.totalPendingPayouts.toLocaleString()} RWF`}
+            value={`${stats.totalPendingPayouts.toLocaleString()}`}
             icon={<Clock className="text-amber-600" />}
             color="bg-amber-50"
           />
@@ -1166,12 +1170,12 @@ export default function AdminDashboard() {
                         <div
                           className="w-4 sm:w-5 md:w-6 lg:w-8 bg-emerald-500 rounded-t"
                           style={{ height: `${Math.max(incomeHeight, 2)}%` }}
-                          title={`Income: ${data.income.toLocaleString()} RWF`}
+                           title={`Income: ${data.income.toLocaleString()}`}
                         />
                         <div
                           className="w-4 sm:w-5 md:w-6 lg:w-8 bg-orange-500 rounded-t"
                           style={{ height: `${Math.max(payoutHeight, 2)}%` }}
-                          title={`Payouts: ${data.payouts.toLocaleString()} RWF`}
+                           title={`Payouts: ${data.payouts.toLocaleString()}`}
                         />
                       </div>
                       <span className="text-[10px] sm:text-xs font-bold text-muted-foreground">
@@ -1340,8 +1344,13 @@ export default function AdminDashboard() {
                       <p className="font-bold text-sm">
                         {req.creatorName || "Creator"}
                       </p>
+<<<<<<< HEAD
+                      <p className="text-lg font-black text-slate-900">
+                        {req.amount?.toLocaleString()} {req.currency || "RWF"}
+=======
                       <p className="text-lg font-black text-foreground">
                         {req.amount?.toLocaleString()} RWF
+>>>>>>> main
                       </p>
                       <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
                         {req.method} • {req.accountNumber}
@@ -1471,7 +1480,7 @@ export default function AdminDashboard() {
                   key={creator.id}
                   rank={i + 1}
                   name={creator.name || creator.id}
-                  subText={`${(creator.totalEarnings || 0).toLocaleString()} RWF`}
+                  subText={`${(creator.totalEarnings || 0).toLocaleString()} ${creator.currency || "RWF"}`}
                 />
               ))}
               {topEarners.length === 0 && (

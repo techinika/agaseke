@@ -18,6 +18,9 @@ import {
 } from "firebase/firestore";
 import { ProtectedSection } from "./ProtectedSection";
 import { toast } from "sonner";
+<<<<<<< HEAD
+import { formatCurrency } from "@/lib/format";
+=======
 import { ChatHeader, MessageBubble, MessageInput } from "./message";
 import type { Message } from "./message";
 
@@ -28,6 +31,7 @@ function logErrorToServer(message: string, metadata?: Record<string, unknown>) {
     body: JSON.stringify({ level: "error", category: "messaging", message, metadata }),
   }).catch(() => {});
 }
+>>>>>>> main
 
 interface MessageTabProps {
   isLoggedIn: boolean;
@@ -327,7 +331,7 @@ export const MessageTab = ({
             <p className="text-sm text-muted-foreground max-w-[250px] mx-auto">
             {messagingAllowAll
               ? "This creator has disabled direct messaging."
-              : `You need to support with at least ${messagingMinAmount.toLocaleString()} RWF to send a message.`}
+              : `You need to support with at least ${formatCurrency(messagingMinAmount, creatorData?.currency)} to send a message.`}
           </p>
           <button
             onClick={() => setIsModalOpen(true)}

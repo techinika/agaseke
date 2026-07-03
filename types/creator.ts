@@ -11,6 +11,7 @@ export interface Creator {
   payoutNumber: string;
   name: string;
   location?: string;
+  currency?: string;
   handle: string;
   bannerURL?: string;
   photoURL?: string;

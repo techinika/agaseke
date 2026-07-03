@@ -16,6 +16,7 @@ import {
   Loader,
 } from "lucide-react";
 import Link from "next/link";
+import confetti from "canvas-confetti";
 
 export default function PaymentCallback() {
   const searchParams = useSearchParams();
@@ -121,139 +122,57 @@ export default function PaymentCallback() {
 
           {status === "success" && (
             <div className="space-y-6 animate-in zoom-in-95 duration-500">
-              {isGathering ? (
-                <>
-                  <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto ring-8 ring-emerald-50/50">
-                    <Ticket size={40} />
-                  </div>
-                  <div className="space-y-2">
-                    <h1 className="text-3xl font-black text-foreground">
-                      Ticket Purchased!
-                    </h1>
-                    <p className="text-muted-foreground font-medium">
-                      Your ticket for{" "}
-                      <span className="text-orange-600 font-bold">
-                        {txData?.amount} RWF
-                      </span>{" "}
-                      has been confirmed.
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Your ticket details will be sent to your email.
-                    </p>
-                  </div>
-                  {gatheringData && (
-                    <div className="bg-muted rounded-xl p-4 space-y-2 text-left">
-                      <p className="font-bold text-sm">{gatheringData.title}</p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Calendar size={12} />
-                        <span>{gatheringData.date}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Clock size={12} />
-                        <span>{gatheringData.time}</span>
-                      </div>
-                      {gatheringData.location && (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <MapPin size={12} />
-                          <span>{gatheringData.location}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  <div className="pt-2">
-                    <Link
-                      href={`/${txData?.creatorId || ""}/gatherings/${txData?.gatheringId || ""}`}
-                      className="w-full bg-foreground text-background py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all group"
-                    >
-                      View Your Ticket{" "}
-                      <ArrowRight
-                        size={18}
-                        className="group-hover:translate-x-1 transition-transform"
-                      />
-                    </Link>
-                  </div>
-                </>
-              ) : isStore ? (
-                <>
-                  <div className="w-20 h-20 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mx-auto ring-8 ring-orange-50/50">
-                    <Heart size={40} fill="currentColor" />
-                  </div>
-                  <div className="space-y-2">
-                    <h1 className="text-3xl font-black text-foreground">
-                      Thank You!
-                    </h1>
-                    <p className="text-muted-foreground font-medium">
-                      Your payment of{" "}
-                      <span className="text-orange-600 font-bold">
-                        {txData?.amount} RWF
-                      </span>{" "}
-                      has been processed successfully.
-                    </p>
-                  </div>
-                  <div className="pt-4">
-                    <Link
-                      href={`/${txData?.creatorId || ""}`}
-                      className="w-full bg-foreground text-background py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all group"
-                    >
-                      Back to Store{" "}
-                      <ArrowRight
-                        size={18}
-                        className="group-hover:translate-x-1 transition-transform"
-                      />
-                    </Link>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="w-20 h-20 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mx-auto ring-8 ring-orange-50/50">
-                    <Heart size={40} fill="currentColor" />
-                  </div>
-                  <div className="space-y-2">
-                    <h1 className="text-3xl font-black text-foreground">
-                      Thank You!
-                    </h1>
-                    <p className="text-muted-foreground font-medium">
-                      Your gift of{" "}
-                      <span className="text-orange-600 font-bold">
-                        {txData?.amount} RWF
-                      </span>{" "}
-                      has been sent successfully.
-                    </p>
-                  </div>
-                  <div className="pt-4">
-                    <Link
-                      href={`/${txData?.creatorId || ""}`}
-                      className="w-full bg-foreground text-background py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all group"
-                    >
-                      Back to Creator{" "}
-                      <ArrowRight
-                        size={18}
-                        className="group-hover:translate-x-1 transition-transform"
-                      />
-                    </Link>
-                  </div>
-                </>
-              )}
+              <div className="w-20 h-20 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mx-auto ring-8 ring-orange-50/50">
+                <Heart size={40} fill="currentColor" />
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-3xl font-black text-slate-900">
+                  Thank You!
+                </h1>
+                <p className="text-slate-600 font-medium">
+                  {txData?.type === "store"
+                    ? `Your payment of `
+                    : `Your gift of `}
+                  <span className="text-orange-600 font-bold">
+                    {txData?.amount} RWF
+                  </span>{" "}
+                  {txData?.type === "store"
+                    ? "has been processed successfully."
+                    : "has been sent successfully."}
+                </p>
+              </div>
+              <div className="pt-4">
+                <Link
+                  href={`/${txData?.creatorId || ""}`}
+                  className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all group"
+                >
+                  Back to Creator{" "}
+                  <ArrowRight
+                    size={18}
+                    className="group-hover:translate-x-1 transition-transform"
+                  />
+                </Link>
+              </div>
             </div>
           )}
 
           {status === "error" && (
-            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+            <div className="space-y-6 animate-in zoom-in-95 duration-500">
               <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
                 <XCircle size={40} />
               </div>
               <div className="space-y-2">
-                <h1 className="text-2xl font-bold text-foreground">
+                <h1 className="text-2xl font-bold text-slate-900">
                   Payment Failed
                 </h1>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-slate-500 text-sm">
                   We couldn&apos;t verify this transaction. It might have been
                   cancelled or declined.
                 </p>
               </div>
               <button
                 onClick={() => router.back()}
-                className="w-full bg-border text-foreground py-4 rounded-2xl font-bold hover:bg-border-strong transition-all"
+                className="w-full bg-slate-100 text-slate-900 py-4 rounded-2xl font-bold hover:bg-slate-200 transition-all"
               >
                 Go Back & Try Again
               </button>
@@ -261,11 +180,11 @@ export default function PaymentCallback() {
           )}
         </div>
 
-        <div className="bg-muted p-4 border-t border-border flex items-center justify-center gap-2">
-          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">
+        <div className="bg-slate-50 p-4 border-t border-slate-100 flex items-center justify-center gap-2">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
             Powered by
           </span>
-          <span className="text-xs font-bold text-foreground tracking-tighter">
+          <span className="text-xs font-bold text-slate-800 tracking-tighter">
             agaseke.me
           </span>
         </div>

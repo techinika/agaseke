@@ -11,6 +11,7 @@ export interface Profile {
   bio?: string;
   website?: string;
   location?: string;
+  currency?: string;
   onboarded: boolean;
   lastLogin: any;
   totalSupport: number;

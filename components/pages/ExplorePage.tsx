@@ -19,9 +19,11 @@ import {
   CheckCircle2,
   ChevronDown,
   Loader,
+  MapPin,
 } from "lucide-react";
 import Link from "next/link";
 import { Creator } from "@/types/creator";
+import { PlatformLocation } from "@/types/platform";
 import ExploreSchema from "../seo/ExploreSchema";
 import MobileBottomBar from "@/components/parts/MobileBottomBar";
 import { MdVerifiedUser } from "react-icons/md";
@@ -29,6 +31,9 @@ import { MdVerifiedUser } from "react-icons/md";
 export default function ExplorePage() {
   const [creators, setCreators] = useState<Creator[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [verifiedFilter, setVerifiedFilter] = useState("");
+  const [locations, setLocations] = useState<PlatformLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [lastVisible, setLastVisible] =
@@ -39,6 +44,11 @@ export default function ExplorePage() {
 
   useEffect(() => {
     fetchCreators(true);
+    getDocs(collection(db, "locations")).then((snap) => {
+      setLocations(
+        snap.docs.map((d) => ({ id: d.id, ...d.data() } as PlatformLocation)),
+      );
+    });
   }, []);
 
   const fetchCreators = async (isInitial = false) => {
@@ -86,16 +96,19 @@ export default function ExplorePage() {
   };
 
   const filteredCreators = useMemo(() => {
-    if (!searchTerm) return creators;
-
-    const term = searchTerm.toLowerCase();
-    return creators.filter(
-      (c) =>
+    return creators.filter((c) => {
+      if (locationFilter && c.location !== locationFilter) return false;
+      if (verifiedFilter === "verified" && !c.verified) return false;
+      if (verifiedFilter === "unverified" && c.verified) return false;
+      if (!searchTerm) return true;
+      const term = searchTerm.toLowerCase();
+      return (
         c.handle.toLowerCase().includes(term) ||
         (c.name && c.name.toLowerCase().includes(term)) ||
-        (c.bio && c.bio.toLowerCase().includes(term)),
-    );
-  }, [searchTerm, creators]);
+        (c.bio && c.bio.toLowerCase().includes(term))
+      );
+    });
+  }, [searchTerm, locationFilter, verifiedFilter, creators]);
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
@@ -108,6 +121,63 @@ export default function ExplorePage() {
               Creators
             </span>
           </h1>
+<<<<<<< HEAD
+          <p className="text-slate-500 font-medium text-lg max-w-xl mx-auto mb-10">
+            Connect with the artists, storytellers, and innovators shaping
+            the creative landscape.
+          </p>
+
+          <div className="max-w-2xl mx-auto space-y-3">
+            <div className="relative group">
+              <Search
+                className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-orange-600 transition-colors"
+                size={20}
+              />
+              <input
+                type="text"
+                placeholder="Search by name, handle, or bio keywords..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-white border border-slate-100 shadow-xl shadow-slate-200/50 rounded-lg py-6 pl-14 pr-6 text-lg outline-none focus:ring-4 focus:ring-orange-50 transition-all font-medium"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <div className="flex items-center gap-2">
+                <MapPin size={14} className="text-slate-400" />
+                <select
+                  value={locationFilter}
+                  onChange={(e) => setLocationFilter(e.target.value)}
+                  className="bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-sm font-bold outline-none focus:border-orange-500 transition-all cursor-pointer"
+                >
+                  <option value="">All locations</option>
+                  {locations.map((loc) => (
+                    <option key={loc.id} value={loc.name}>
+                      {loc.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5">
+                {["", "verified", "unverified"].map((val) => {
+                  const label =
+                    val === "" ? "All" : val === "verified" ? "Verified" : "Unverified";
+                  return (
+                    <button
+                      key={val}
+                      onClick={() => setVerifiedFilter(val)}
+                      className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                        verifiedFilter === val
+                          ? "bg-white text-slate-900 shadow-sm"
+                          : "text-slate-400 hover:text-slate-600"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+=======
           <p className="text-muted-foreground font-medium text-lg max-w-xl mx-auto mb-10">
             Connect with the artists, storytellers, and innovators shaping the
             creative landscape in Kigali.
@@ -125,6 +195,7 @@ export default function ExplorePage() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-card border border-border shadow-xl shadow-border rounded-lg py-6 pl-14 pr-6 text-lg outline-none focus:ring-4 focus:ring-orange-50 transition-all font-medium"
             />
+>>>>>>> main
           </div>
         </div>
       </header>
@@ -191,7 +262,17 @@ export default function ExplorePage() {
                     <p className="text-orange-600 font-bold text-xs uppercase tracking-widest">
                       @{creator.handle}
                     </p>
+<<<<<<< HEAD
+                    {creator.location && (
+                      <p className="flex items-center gap-1 text-xs font-bold text-slate-400">
+                        <MapPin size={11} />
+                        {creator.location}
+                      </p>
+                    )}
+                    <p className="text-slate-500 text-sm leading-relaxed line-clamp-2 pt-2">
+=======
                     <p className="text-muted-foreground text-sm leading-relaxed line-clamp-2 pt-2">
+>>>>>>> main
                       {creator.bio || "No bio available."}
                     </p>
                   </div>

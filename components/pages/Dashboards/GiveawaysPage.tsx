@@ -27,6 +27,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
+import { formatCurrency } from "@/lib/format";
 import { toast } from "sonner";
 import {
   Giveaway,
@@ -460,5 +461,4 @@ export default function GiveawaysPage() {
     </div>
   );
 }
-
 

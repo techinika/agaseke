@@ -93,6 +93,7 @@ export default function AdminPayouts() {
             creatorEmail,
             creatorName: confirmPayout.name,
             amount,
+            currency: confirmPayout.currency || "RWF",
             method: "MoMo",
             accountNumber: confirmPayout.payoutNumber,
           }),
@@ -100,7 +101,7 @@ export default function AdminPayouts() {
       }
 
       toast.success(
-        `Payout of ${amount} RWF for ${confirmPayout.name} recorded!`,
+        `Payout of ${amount} ${confirmPayout.currency || "RWF"} for ${confirmPayout.name} recorded!`,
       );
       setConfirmPayout(null);
     } catch (error) {
@@ -139,9 +140,14 @@ export default function AdminPayouts() {
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                 Total Liability
               </p>
+<<<<<<< HEAD
+              <p className="text-2xl font-black text-slate-900">
+                {totalPending.toLocaleString()}
+=======
               <p className="text-2xl font-black text-foreground">
                 {totalPending.toLocaleString()}{" "}
                 <span className="text-sm font-normal text-muted-foreground">RWF</span>
+>>>>>>> main
               </p>
             </div>
           </div>
@@ -236,8 +242,13 @@ export default function AdminPayouts() {
                     </td>
                     <td className="px-6 py-5 text-right font-black text-foreground">
                       {creator.pendingPayout.toLocaleString()}{" "}
+<<<<<<< HEAD
+                      <span className="text-[10px] font-medium text-slate-400">
+                        {creator.currency || "RWF"}
+=======
                       <span className="text-[10px] font-medium text-muted-foreground">
                         RWF
+>>>>>>> main
                       </span>
                     </td>
                     <td className="px-6 py-5 text-right">
@@ -280,7 +291,7 @@ export default function AdminPayouts() {
         title="Approve Payout?"
         message={
           confirmPayout
-            ? `Are you sure you want to approve a payout of ${confirmPayout.pendingPayout?.toLocaleString()} RWF for ${confirmPayout.name}? Make sure you have sent the payment via MoMo before confirming.`
+            ? `Are you sure you want to approve a payout of ${confirmPayout.pendingPayout?.toLocaleString()} ${confirmPayout.currency || "RWF"} for ${confirmPayout.name}? Make sure you have sent the payment via MoMo before confirming.`
             : ""
         }
         confirmText="Approve"

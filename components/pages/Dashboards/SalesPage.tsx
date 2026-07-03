@@ -3,7 +3,6 @@
 
 import React, { useState, useEffect } from "react";
 import {
-  TrendingUp,
   DollarSign,
   Package,
   Users,
@@ -21,6 +20,7 @@ import {
   documentId,
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
+import { formatCurrency } from "@/lib/format";
 
 interface SaleRecord {
   id: string;
@@ -41,6 +41,7 @@ interface SaleRecord {
   referralUid: string;
   status: string;
   paymentMethod: string;
+  currency: string;
   createdAt: any;
 }
 
@@ -196,14 +197,16 @@ export default function SalesPage() {
     return matchesSearch && matchesTime;
   });
 
-  const totalSales = filteredSales.reduce(
-    (sum, sale) => sum + sale.totalAmount,
-    0,
-  );
-  const totalEarnings = filteredSales.reduce(
-    (sum, sale) => sum + (sale.creatorEarnings || 0),
-    0,
-  );
+  const currencyTotals: Record<string, { sales: number; earnings: number }> = {};
+  filteredSales.forEach((sale) => {
+    const cur = sale.currency || creator?.currency || "RWF";
+    if (!currencyTotals[cur]) {
+      currencyTotals[cur] = { sales: 0, earnings: 0 };
+    }
+    currencyTotals[cur].sales += sale.totalAmount;
+    currencyTotals[cur].earnings += sale.creatorEarnings || 0;
+  });
+
   const totalOrders = filteredSales.length;
   const uniqueBuyers = new Set(
     filteredSales
@@ -215,33 +218,40 @@ export default function SalesPage() {
     string,
     {
       name: string;
-      total: number;
+      perCurrency: Record<string, { total: number; earnings: number }>;
       quantity: number;
-      earnings: number;
       type?: string;
       imageUrl?: string;
     }
   > = {};
   filteredSales.forEach((sale) => {
+    const cur = sale.currency || creator?.currency || "RWF";
     if (!productSales[sale.productId]) {
       const product = products[sale.productId];
       productSales[sale.productId] = {
         name: product?.name || sale.productName,
-        total: 0,
+        perCurrency: {},
         quantity: 0,
-        earnings: 0,
         type: product?.type,
         imageUrl: product?.imageUrl,
       };
     }
-    productSales[sale.productId].total += sale.totalAmount;
-    productSales[sale.productId].quantity += sale.quantity || 1;
-    productSales[sale.productId].earnings += sale.creatorEarnings || 0;
+    const info = productSales[sale.productId];
+    if (!info.perCurrency[cur]) {
+      info.perCurrency[cur] = { total: 0, earnings: 0 };
+    }
+    info.perCurrency[cur].total += sale.totalAmount;
+    info.perCurrency[cur].earnings += sale.creatorEarnings || 0;
+    info.quantity += sale.quantity || 1;
   });
 
   const topProducts = Object.entries(productSales)
     .map(([id, data]) => ({ id, ...data }))
-    .sort((a, b) => b.total - a.total)
+    .sort((a, b) => {
+      const aTotal = Object.values(a.perCurrency).reduce((s, c) => s + c.total, 0);
+      const bTotal = Object.values(b.perCurrency).reduce((s, c) => s + c.total, 0);
+      return bTotal - aTotal;
+    })
     .slice(0, 5);
 
   const paymentMethods: Record<string, string> = {
@@ -475,7 +485,7 @@ export default function SalesPage() {
                         </td>
                         <td className="px-5 py-4">
                           <span className="font-bold text-green-600">
-                            {sale.creatorEarnings?.toLocaleString() || 0} RWF
+                            {formatCurrency(sale.creatorEarnings || 0, sale.currency || creator?.currency)}
                           </span>
                         </td>
                         <td className="px-5 py-4">

@@ -60,11 +60,11 @@ export async function generateMetadata({
   return {
     title,
     description: bio,
-    keywords: [displayName, username, "Rwandan creator", "Rwanda", "content creator", "support creator", "Agaseke"],
+    keywords: [displayName, username, "content creator", "support creator", "Agaseke"],
     authors: [{ name: displayName }],
     alternates: {
       canonical: `/${username}`,
-      languages: { "en-RW": `/${username}` },
+      languages: { "en": `/${username}` },
     },
     openGraph: {
       title,
@@ -72,7 +72,7 @@ export async function generateMetadata({
       url: `${baseUrl}/${username}`,
       siteName: "Agaseke",
       images: [{ url: image, width: 400, height: 400, alt: `${displayName} on Agaseke` }],
-      locale: "en_RW",
+      locale: "en_US",
       type: "profile",
     },
     twitter: {

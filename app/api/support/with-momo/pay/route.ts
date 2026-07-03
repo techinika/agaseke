@@ -25,12 +25,19 @@ export async function POST(req: Request) {
        buyerName,
        email,
        buyerEmail,
+<<<<<<< HEAD
+       currency: txCurrency,
+      } = await req.json();
+
+    const currency = txCurrency || "RWF";
+=======
         bookingId,
         gatheringId,
         attendeeName,
         attendeeEmail,
         attendeePhoto,
        } = await req.json();
+>>>>>>> main
 
     const isStoreTransaction = !!productId;
     const isBookingTransaction = !!bookingId;
@@ -99,6 +106,7 @@ export async function POST(req: Request) {
       const txData: Record<string, any> = {
         ref: payData.ref,
         amount: totalAmount,
+        currency,
         phone,
         creatorId,
         creatorUid,

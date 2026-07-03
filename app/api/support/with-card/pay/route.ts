@@ -34,12 +34,18 @@ export async function POST(req: Request) {
       platformFeePayer,
       buyerName,
       buyerId,
+<<<<<<< HEAD
+      currency: txCurrency,
+=======
       bookingId,
       gatheringId,
       attendeeName,
       attendeeEmail,
       attendeePhoto,
+>>>>>>> main
     } = body;
+
+    const currency = txCurrency || "RWF";
 
     const isStoreTransaction = !!productId;
     const isBookingTransaction = !!bookingId;
@@ -117,7 +123,7 @@ export async function POST(req: Request) {
         },
         body: JSON.stringify({
           id: merchantRef,
-          currency: "RWF",
+          currency,
           amount: totalAmount,
           description: isStoreTransaction
             ? `Purchase: ${productName}`
@@ -141,6 +147,7 @@ export async function POST(req: Request) {
         ref: merchantRef,
         orderTrackingId: payData.order_tracking_id,
         amount: totalAmount,
+        currency,
         creatorUid,
         creatorId,
         buyerId: buyerId || "anonymous",
@@ -192,7 +199,11 @@ export async function POST(req: Request) {
           userId: adminDoc.id,
           type: "new_transaction",
           title: "New Transaction",
+<<<<<<< HEAD
+          message: `${isStoreTransaction ? "Store purchase" : "Support"} of ${totalAmount.toLocaleString()} ${currency} initiated`,
+=======
           message: `${isGatheringTransaction ? "Gathering ticket" : isBookingTransaction ? "Booking payment" : isStoreTransaction ? "Store purchase" : "Support"} of ${totalAmount.toLocaleString()} RWF initiated`,
+>>>>>>> main
           link: "/admin/payouts",
         });
       }

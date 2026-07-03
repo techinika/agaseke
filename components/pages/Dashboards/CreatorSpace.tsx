@@ -199,7 +199,8 @@ export default function CreatorDashboard() {
                       ? "Someone"
                       : sup.supporterName || "A Supporter"
                   }
-                  amount={sup.amount?.toLocaleString()}
+                  amount={sup.amount}
+                  currency={sup.currency || creator?.currency}
                   time={
                     sup.createdAt
                       ? formatDistanceToNow(sup.createdAt.toDate(), {

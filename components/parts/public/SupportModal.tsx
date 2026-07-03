@@ -10,8 +10,11 @@ import {
   where,
   doc,
   getDoc,
+  getDocs,
 } from "firebase/firestore";
-import { Heart, Loader, ShieldCheck, Smartphone, X } from "lucide-react";
+import { Heart, Loader, ShieldCheck, Smartphone, X, DollarSign } from "lucide-react";
+import { isMoMoSupported } from "@/lib/format";
+import { Currency } from "@/types/platform";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
@@ -25,6 +28,7 @@ export function SupportModal({
   includeReferral,
   referralUid = "",
   referralId = "",
+  currency: creatorCurrency = "RWF",
 }: any) {
   const { user: currentUser } = useAuth();
   const [amount, setAmount] = useState("");
@@ -36,7 +40,21 @@ export function SupportModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [popupBlocked, setPopupBlocked] = useState(false);
   const [redirectUrl, setRedirectUrl] = useState("");
+<<<<<<< HEAD
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const [selectedCurrency, setSelectedCurrency] = useState(creatorCurrency);
+
+  useEffect(() => {
+    const fetchCurrencies = async () => {
+      const snap = await getDocs(collection(db, "currencies"));
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Currency));
+      setCurrencies(list);
+    };
+    if (isOpen) fetchCurrencies();
+  }, [isOpen]);
+=======
   const [isClosing, setIsClosing] = useState(false);
+>>>>>>> main
 
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
@@ -79,6 +97,7 @@ export function SupportModal({
             supporterName: currentUser?.displayName || "A generous supporter",
             amount: txAmount,
             message: message.trim() || null,
+            currency: selectedCurrency,
           }),
         });
       }
@@ -105,6 +124,7 @@ export function SupportModal({
           referralId: referralId,
           supporterId: currentUser?.uid || "anonymous",
           includeReferral: includeReferral,
+          currency: selectedCurrency,
         }),
       });
 
@@ -188,7 +208,7 @@ export function SupportModal({
 
   const handlePesapalSupport = async () => {
     if (!amount || parseInt(amount) < 100) {
-      return toast.error("Minimum gift amount is 100 RWF");
+      return toast.error(`Minimum gift amount is 100 ${selectedCurrency}`);
     }
 
     setIsSubmitting(true);
@@ -210,6 +230,7 @@ export function SupportModal({
           includeReferral,
           referralUid,
           referralId,
+          currency: selectedCurrency,
           callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment`,
         }),
       });
@@ -275,12 +296,70 @@ export function SupportModal({
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                   />
+<<<<<<< HEAD
+                  <span className="block text-[10px] font-bold text-slate-300 mt-2 uppercase tracking-[0.3em]">
+                    {selectedCurrency}
+=======
                   <span className="block text-[10px] font-bold text-muted-foreground mt-2 uppercase tracking-[0.3em]">
                     Rwandan Francs (RWF)
+>>>>>>> main
                   </span>
                 </div>
               </div>
 
+<<<<<<< HEAD
+              {/* Currency Selector */}
+              <div className="mb-4">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2 flex items-center gap-1.5">
+                  <DollarSign size={12} /> Pay in
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedCurrency}
+                    onChange={(e) => {
+                      setSelectedCurrency(e.target.value);
+                      if (!isMoMoSupported(e.target.value)) {
+                        setPaymentMethod("card");
+                      }
+                    }}
+                    className="w-full bg-slate-50 border-2 border-slate-50 p-4 rounded-lg font-bold text-sm focus:border-orange-500 outline-none transition-all appearance-none cursor-pointer"
+                  >
+                    {currencies.map((cur) => (
+                      <option key={cur.id} value={cur.code}>
+                        {cur.code} — {cur.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Payment Method Selector */}
+              <div className={`grid ${isMoMoSupported(selectedCurrency) ? "grid-cols-2" : "grid-cols-1"} gap-4 mb-6`}>
+                {isMoMoSupported(selectedCurrency) && (
+                  <button
+                    onClick={() => setPaymentMethod("momo")}
+                    className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                      paymentMethod === "momo"
+                        ? "border-orange-500 bg-orange-50"
+                        : "border-slate-100 hover:border-slate-200"
+                    }`}
+                  >
+                    <Smartphone
+                      size={24}
+                      className={
+                        paymentMethod === "momo"
+                          ? "text-orange-600"
+                          : "text-slate-400"
+                      }
+                    />
+                    <span
+                      className={`text-[10px] font-bold uppercase tracking-widest ${paymentMethod === "momo" ? "text-orange-900" : "text-slate-500"}`}
+                    >
+                      MoMo
+                    </span>
+                  </button>
+                )}
+=======
               {/* Payment Method Selector */}
               <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
             <button
@@ -305,6 +384,7 @@ export function SupportModal({
                 MoMo
               </span>
             </button>
+>>>>>>> main
 
             <button
               onClick={() => setPaymentMethod("card")}
@@ -324,6 +404,13 @@ export function SupportModal({
                   }
                 />
               </div>
+<<<<<<< HEAD
+              {!isMoMoSupported(selectedCurrency) && (
+                <p className="text-xs text-slate-400 text-center -mt-2 mb-4">
+                  Card payments only for {selectedCurrency} transactions
+                </p>
+              )}
+=======
               <span
                 className={`text-[10px] font-bold uppercase tracking-widest ${paymentMethod === "card" ? "text-orange-900" : "text-muted-foreground"}`}
               >
@@ -331,6 +418,7 @@ export function SupportModal({
               </span>
             </button>
           </div>
+>>>>>>> main
 
           <div className="space-y-3 sm:space-y-4">
             {paymentMethod === "momo" && (
@@ -425,8 +513,13 @@ export function SupportModal({
               <h4 className="text-2xl sm:text-3xl font-bold text-foreground">
                 Payment Verified!
               </h4>
+<<<<<<< HEAD
+              <p className="text-slate-500 font-medium leading-relaxed">
+                Your gift of <b>{amount} {selectedCurrency}</b> was delivered.
+=======
               <p className="text-muted-foreground font-medium leading-relaxed text-sm sm:text-base">
                 Your gift of <b>{amount} RWF</b> was delivered.
+>>>>>>> main
               </p>
               <button
                 onClick={handleClose}

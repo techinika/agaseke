@@ -16,6 +16,7 @@ import {
   Loader,
   Phone,
   AlertCircle,
+  AlertTriangle,
   Camera,
   Linkedin,
   Store,
@@ -27,6 +28,7 @@ import {
 import { db, auth } from "@/db/firebase";
 import { doc, onSnapshot, updateDoc, collection, getDocs, query, orderBy } from "firebase/firestore";
 import { Creator } from "@/types/creator";
+import { PlatformLocation, Currency } from "@/types/platform";
 import { useAuth } from "@/auth/AuthContext";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -45,13 +47,36 @@ export default function CreatorSettings() {
   const [activeTab, setActiveTab] = useState("profile");
   const [categories, setCategories] = useState<string[]>([]);
 
+  const [locations, setLocations] = useState<PlatformLocation[]>([]);
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
+
+  const [originalCurrency, setOriginalCurrency] = useState("");
+  const [showCurrencyWarning, setShowCurrencyWarning] = useState(false);
+  const [checkingTransactions, setCheckingTransactions] = useState(false);
+
+  useEffect(() => {
+    const fetchPlatformData = async () => {
+      const locSnap = await getDocs(collection(db, "locations"));
+      setLocations(
+        locSnap.docs.map((d) => ({ id: d.id, ...d.data() } as PlatformLocation)),
+      );
+      const curSnap = await getDocs(collection(db, "currencies"));
+      setCurrencies(
+        curSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Currency)),
+      );
+    };
+    fetchPlatformData();
+  }, []);
+
   useEffect(() => {
     if (!creator) return;
     const unsubscribe = onSnapshot(
       doc(db, "creators", creator.handle),
       (doc) => {
         if (doc.exists()) {
-          setCreatorData(doc.data() as Creator);
+          const data = doc.data() as Creator;
+          setCreatorData(data);
+          if (!originalCurrency) setOriginalCurrency(data.currency || "");
         }
         setLoading(false);
       },
@@ -141,6 +166,39 @@ export default function CreatorSettings() {
     };
   };
 
+  const buildUpdateData = (): Record<string, any> => ({
+    name: creatorData?.name || "",
+    bio: creatorData?.bio || "",
+    location: creatorData?.location || "",
+    currency: creatorData?.currency || "",
+    profilePicture: creatorData?.profilePicture || "",
+    socials: creatorData?.socials || {},
+    messagingEnabled: creatorData?.messagingEnabled ?? false,
+    messagingAllowAll: creatorData?.messagingAllowAll ?? true,
+    messagingMinAmount: creatorData?.messagingMinAmount ?? 0,
+    storeEnabled: creatorData?.storeEnabled ?? false,
+    storePublic: creatorData?.storePublic ?? true,
+    giveawayEnabled: creatorData?.giveawayEnabled ?? false,
+    bookingEnabled: creatorData?.bookingEnabled ?? false,
+    bookingAccess: creatorData?.bookingAccess ?? "public",
+    gatheringsEnabled: creatorData?.gatheringsEnabled ?? false,
+  });
+
+  const performSave = async (updateData: Record<string, any>) => {
+    if (!creator?.handle) return;
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, "creators", creator.handle), updateData);
+      setOriginalCurrency(creatorData?.currency || "");
+      toast.success("Settings updated successfully!");
+    } catch (error) {
+      console.error("Save error:", error);
+      toast.error("Failed to save changes. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const saveSettings = async () => {
     if (!creatorData) {
       toast.error("Please wait for settings to load");
@@ -179,6 +237,20 @@ export default function CreatorSettings() {
     } finally {
       setSaving(false);
     }
+
+    const updateData = buildUpdateData();
+    await performSave(updateData);
+  };
+
+  const confirmCurrencyChange = async () => {
+    setShowCurrencyWarning(false);
+    const updateData = buildUpdateData();
+    await performSave(updateData);
+  };
+
+  const cancelCurrencyChange = () => {
+    setShowCurrencyWarning(false);
+    handleUpdate("currency", originalCurrency);
   };
 
   if (loading)
@@ -935,6 +1007,51 @@ export default function CreatorSettings() {
           </main>
         </div>
       </div>
+
+      {/* Currency Change Warning Modal */}
+      {showCurrencyWarning && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-amber-100 rounded-xl">
+                <AlertTriangle size={20} className="text-amber-600" />
+              </div>
+              <h3 className="font-black text-lg">Currency Change Warning</h3>
+            </div>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              You already have transactions in <strong>{originalCurrency}</strong>.
+              Changing your currency to{" "}
+              <strong>{creatorData?.currency}</strong> will:
+            </p>
+            <ul className="text-sm text-slate-600 space-y-2 list-disc list-inside">
+              <li>Keep your existing transactions counted in {originalCurrency}</li>
+              <li>Apply the {creatorData?.currency} payout threshold for new earnings</li>
+              <li>Display all future amounts in {creatorData?.currency}</li>
+            </ul>
+            <p className="text-sm text-slate-500 bg-amber-50 p-3 rounded-lg leading-relaxed">
+              Your pending balance and earnings in {originalCurrency} will remain visible,
+              and new earnings in {creatorData?.currency} will be tracked separately.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={cancelCurrencyChange}
+                disabled={saving}
+                className="flex-1 border border-slate-200 text-slate-700 py-3.5 rounded-lg font-bold text-sm hover:bg-slate-50 transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmCurrencyChange}
+                disabled={saving}
+                className="flex-1 bg-amber-600 text-white py-3.5 rounded-lg font-bold text-sm hover:bg-amber-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {saving ? <Loader className="animate-spin" size={16} /> : null}
+                Continue with {creatorData?.currency}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

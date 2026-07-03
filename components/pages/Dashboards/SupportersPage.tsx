@@ -28,7 +28,11 @@ import {
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { Profile } from "@/types/profile";
+<<<<<<< HEAD
+import { formatCurrency } from "@/lib/format";
+=======
 import { BroadcastEmailModal } from "./supporterspage/index";
+>>>>>>> main
 
 interface SupporterSupport {
   id: string;
@@ -254,8 +258,13 @@ export default function SupportersPage() {
           <p className="text-[10px] font-bold uppercase text-orange-600 tracking-widest mb-1">
             Total Support
           </p>
+<<<<<<< HEAD
+          <p className="text-2xl font-bold text-slate-900">
+            {formatCurrency(totalSupportValue, creator?.currency)}
+=======
           <p className="text-2xl font-bold text-foreground">
             {totalSupportValue.toLocaleString()} RWF
+>>>>>>> main
           </p>
         </div>
 
@@ -375,8 +384,13 @@ export default function SupportersPage() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <DollarSign size={14} className="text-orange-500" />
+<<<<<<< HEAD
+                          <span className="font-bold text-slate-900">
+                            {formatCurrency(supporter.totalAmount, creator?.currency)}
+=======
                           <span className="font-bold text-foreground">
                             {supporter.totalAmount.toLocaleString()} RWF
+>>>>>>> main
                           </span>
                         </div>
                       </td>
