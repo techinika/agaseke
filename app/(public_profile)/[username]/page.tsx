@@ -58,6 +58,8 @@ export async function generateMetadata({
   const keywords = [displayName, username, "content creator", "support creator", "Agaseke"];
   if (countryName) keywords.push(countryName, `${countryName} creator`);
 
+  const title = `${displayName} | Agaseke`;
+
   return {
     title,
     description: bio,
@@ -74,15 +76,6 @@ export async function generateMetadata({
       siteName: "Agaseke",
       images: [{ url: image, width: 400, height: 400, alt: `${displayName} on Agaseke` }],
       locale: `en_${country}`,
-      type: "profile",
-    },
-    openGraph: {
-      title,
-      description: bio,
-      url: `${baseUrl}/${username}`,
-      siteName: "Agaseke",
-      images: [{ url: image, width: 400, height: 400, alt: `${displayName} on Agaseke` }],
-      locale: "en_RW",
       type: "profile",
     },
     twitter: {
