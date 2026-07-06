@@ -608,7 +608,7 @@ For issues or feature requests, please open an issue on GitHub.
 ## Recent Updates
 
 ### Homepage Renovation & Currency Fixes (July 2026)
-- **Hero redesigned**: Two-column layout with H1 "Build Your Private Community as a Content Creator", direct description, CTA + payment methods on the left (3/5), fanned creator cards on the right (2/5). Cards fan out like a hand (rotate -7/0/7 deg, bottom center transform-origin, -130px overlap). Click to straighten + lift, click again to return. Hidden on mobile.
+- **Hero redesigned**: Problem-first narrative — "You're Working Hard. But the Money Isn't Coming." banner, followed by pain points (no Mobile Money support on global platforms, scattered tools, brands ignore small creators) and a "That changes now" pivot. Left column (3/5) has the copy + claim handle CTA + payment methods, right column (2/5) has fanned creator cards.
 - **Pan-African positioning**: Removed all Rwanda-only references from homepage, layout metadata, footer, and FAQ structured data. Open to everyone, especially African creators.
 - **Currency-configurable payout threshold**: `AdminCurrenciesPage.tsx` now stores a `payoutThreshold` per currency. `PayoutPolicyPage.tsx` and `PayoutsPage.tsx` read dynamically from Firestore.
 - **Featured creator cards**: Fetch real data from Firestore (`creators` collection, order by name, limit 3). Cards match `PublicProfile` SendGiftSection style: 64px avatar, green verified badge, handle, bio (line-clamp-2), focus tags, social dot-badges (IG/𝕏/YT/TK). No earnings or fan counts shown.

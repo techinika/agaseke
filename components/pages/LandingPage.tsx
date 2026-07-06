@@ -297,23 +297,26 @@ export default function LandingPage() {
           {/* Left Column - Main Content */}
           <div className="md:col-span-3 text-center md:text-left">
             <div className="mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <div className="bg-orange-50 text-orange-700 px-4 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest inline-block mb-4">
-                Audience Monetization Platform
+              <div className="bg-red-50 text-red-700 px-4 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest inline-block mb-4">
+                The Problem
               </div>
               <p className="text-sm font-medium text-muted-foreground">
-                For <strong>Influencers, Podcasters, Artists, </strong>
-                and <strong>Content Creators</strong> across Africa.
+                African creators earn{" "}
+                <strong>less than 1% of what global platforms pay</strong>.
+                Your audience loves you — but there's no way for them to pay
+                you.
               </p>
             </div>
 
-            <h1 className="text-4xl md:text-6xl font-black tracking-tighter mb-6 leading-[1.05] uppercase">
-              Build Your <br />
-              <span className="text-orange-600">Private Community</span>
+            <h1 className="text-3xl md:text-5xl font-black tracking-tighter mb-4 leading-[1.1]">
+              You're Working Hard.{" "}
+              <span className="text-orange-600">But the Money Isn't Coming.</span>
             </h1>
 
-            <p className="text-base md:text-lg text-muted-foreground mb-8 max-w-lg leading-relaxed">
-              Get paid directly by your biggest fans through tips,
-              subscriptions, and exclusive content.
+            <p className="text-sm md:text-base text-muted-foreground mb-6 leading-relaxed space-y-2">
+              <span className="block">You post every week. Your audience can't pay you. Global platforms like Patreon and Ko-fi don't accept Mobile Money — so getting paid is nearly impossible.</span>
+              <span className="block">You're scattered across WhatsApp, Google Forms, and separate sites — nothing works together. Brands ignore small creators. You've thought about quitting.</span>
+              <span className="block font-semibold text-foreground">That changes now.</span>
             </p>
 
             <div className="flex flex-col items-center md:items-start gap-4 mb-10">
