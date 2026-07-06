@@ -190,7 +190,8 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
 - **Storage**: Cloudinary (images, videos, files), Cloudflare R2 (asset uploads)
 - **File Uploads**: Cloudflare Worker (`workers/upload/`) — Firebase JWT auth, R2 storage, Firestore metadata
 - **Payments**: PesaPal (Mobile Money)
-- **Email**: API routes with email service integration
+- **Email**: Cloudflare Worker (`workers/comms/`) — native Email binding, 18 email purposes, unified template
+- **Email (legacy)**: API routes with Nodemailer/SMTP (being migrated to comms Worker)
 
 ## Getting Started
 
@@ -300,7 +301,8 @@ agaseke/
 │   ├── giveaway.ts               # Giveaway types
 │   └── booking.ts                # Booking types
 ├── workers/                       # Cloudflare Workers
-│   └── upload/                   # File upload Worker (R2 + Firestore)
+│   ├── upload/                   # File upload Worker (R2 + Firestore)
+│   └── comms/                    # Email comms Worker (18 purposes, unified template)
 └── public/                      # Static assets
 ```
 
@@ -813,6 +815,13 @@ For issues or feature requests, please open an issue on GitHub.
 
 ### Dual-ID Supporter Check (June 2026)
 - **Added `supporterUids` map to creator docs**: Each creator doc now has a `supporterUids` map (`{ uid: true }`) that tracks unique supporter UIDs. Set server-side in `handleSupportPayment.ts` during support transactions.
+
+### Comms Worker — Cloudflare Native Email (July 2026)
+- **New Cloudflare Worker** (`workers/comms/`): Replaces all Nodemailer/SMTP-based email routes with Cloudflare's native `env.EMAIL.send()` binding. Zero SMTP config, zero API keys, automatic SPF/DKIM/DMARC via Cloudflare DNS.
+- **Single unified template**: `renderEmailHtml()` builds a responsive HTML email from per-service template data (header color, title, body, CTA, footer). Each service only provides data, not markup.
+- **18 email services** covering all transactional email purposes: welcome, profile live, booking request/response, gathering created/RSVP/checkin/declined/undo, message new/digest, store order/status, support received, payout processed, content new, verification request/feedback, broadcast.
+- **Firebase JWT auth**: Reuses the same `jose` + JWKS pattern as the upload Worker.
+- **Firestore helpers**: `fetchSupporters()` and `fetchCreatorEmail()` fetch recipient emails from Firestore using the service account OAuth flow (cached 1-hour tokens).
 
 ### Upload Worker & Asset Type Migration (July 2026)
 - **New Cloudflare Worker** (`workers/upload/`): Handles all file uploads — Firebase JWT auth via `jose` + Google JWKS, stores in R2 bucket (`agaseke-assets`), records metadata in Firestore `assets` collection. No GET handler; files served directly from R2 via custom domain `assets.agaseke.me`.
