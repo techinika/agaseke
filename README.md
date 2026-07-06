@@ -619,8 +619,10 @@ For issues or feature requests, please open an issue on GitHub.
 - **SupporterSpace purchase currency**: Purchase items now show `{purchase.currency || "RWF"}` instead of hardcoded RWF.
 - **AdminPage withdrawal currency**: Added `currency` field to `withdrawRequests` on creation. Admin withdrawal displays (approval/rejection messages, withdrawal list) use `{req.currency || "RWF"}` instead of hardcoded RWF.
 - **Supporter page content creation form**: Inline social-media-style composer with textarea, always-visible Image/Video/Document attachment buttons, public/supporters-only toggle, and Post button. Posts to `creatorContent` collection with email notification to supporters.
-- **Upload progress & preview**: Uploading files now shows a spinner with "Uploading..." status. Images show a preview thumbnail; videos show an inline player with controls; documents show a "File attached" badge. A Trash2 button lets users remove the uploaded file.
-- **Past events filtering**: Events on `/supporter` with dates before end of today are hidden — only upcoming events appear in the "Upcoming Events" section.
+- **Upload progress & preview**: Uploading files now shows a spinner with "Uploading..." status. Images show a preview thumbnail; videos show an inline player with controls; documents show a "File attached" badge. A Trash2 button lets users remove the uploaded file. Accept filter set imperatively per button (image/video/document) so the correct file types are shown in the OS picker.
+- **Posts appear in feed immediately**: After posting from `/supporter`, the new post is prepended to the local feed state — no page refresh needed.
+- **No title on /supporter posts**: Posts created from the inline composer don't save a `title` field. Titles are hidden in the feed when absent.
+- **Past events filtering**: Events on `/supporter` with dates before end of today (`eventDate >= endOfToday`) are hidden — only upcoming events appear in the "Upcoming Events" section.
 - **MobileBottomBar enlarged**: Icons 14→18px, labels text-[8px]→text-[10px] font-medium, padding py-1.5→py-2.
 - **Desktop creator button prominent**: Orange background, shadow-lg shadow-orange-200, label "Creator Dashboard" or "Become Creator".
 

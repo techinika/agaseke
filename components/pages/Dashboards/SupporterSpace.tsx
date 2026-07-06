@@ -129,7 +129,6 @@ export default function SupporterSpace() {
   const postRefs = useRef<Record<string, HTMLDivElement>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [newPost, setNewPost] = useState({
-    title: "",
     description: "",
     type: "text" as "text" | "image" | "video" | "document",
     isPrivate: false,
@@ -193,7 +192,6 @@ export default function SupporterSpace() {
       const contentData = {
         creatorId: auth.creator.handle,
         creatorUid: auth.creator.uid,
-        title: newPost.title || newPost.description.slice(0, 80),
         description: newPost.description,
         type: newPost.type,
         contentUrl: uploadedUrl || null,
@@ -206,8 +204,21 @@ export default function SupporterSpace() {
         contentData,
       );
       toast.success("Content published!");
+      const newFeedItem = {
+        id: docRef.id,
+        ...contentData,
+        createdAt: new Date(),
+        creatorName: auth.creator?.name || "Creator",
+        creatorHandle: auth.creator?.handle,
+        creatorPhoto: auth.profile?.photoURL || null,
+        creatorUid: auth.creator?.uid,
+        isFollowing: true,
+        isPublic: !newPost.isPrivate,
+        likes: 0,
+        commentCount: 0,
+      };
+      setFeed((prev) => [newFeedItem as any, ...prev]);
       setNewPost({
-        title: "",
         description: "",
         type: "text",
         isPrivate: false,
@@ -223,7 +234,7 @@ export default function SupporterSpace() {
             creatorId: auth.creator.handle,
             creatorName: auth.creator?.name || "Creator",
             creatorHandle: auth.creator?.handle,
-            contentTitle: newPost.title || newPost.description.slice(0, 80),
+            contentTitle: newPost.description.slice(0, 80),
             contentDescription: newPost.description,
             contentType: newPost.isPrivate ? "private" : "public",
             contentId: docRef.id,
@@ -1108,13 +1119,6 @@ export default function SupporterSpace() {
                   ref={fileInputRef}
                   type="file"
                   hidden
-                  accept={
-                    mediaType === "image"
-                      ? "image/*"
-                      : mediaType === "video"
-                        ? "video/*"
-                        : ".pdf,.doc,.docx"
-                  }
                   onChange={handleFileUpload}
                 />
               </div>
@@ -1124,6 +1128,7 @@ export default function SupporterSpace() {
                 <button
                   onClick={() => {
                     setMediaType("image");
+                    if (fileInputRef.current) fileInputRef.current.accept = "image/*";
                     fileInputRef.current?.click();
                   }}
                   className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-green-600 transition"
@@ -1134,6 +1139,7 @@ export default function SupporterSpace() {
                 <button
                   onClick={() => {
                     setMediaType("video");
+                    if (fileInputRef.current) fileInputRef.current.accept = "video/*";
                     fileInputRef.current?.click();
                   }}
                   className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-blue-600 transition"
@@ -1144,6 +1150,7 @@ export default function SupporterSpace() {
                 <button
                   onClick={() => {
                     setMediaType("document");
+                    if (fileInputRef.current) fileInputRef.current.accept = ".pdf,.doc,.docx";
                     fileInputRef.current?.click();
                   }}
                   className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-orange-600 transition"
@@ -1322,9 +1329,11 @@ export default function SupporterSpace() {
                         </div>
 
                         <div className="mt-4">
+                          {item.title && (
                           <h3 className="font-semibold text-lg text-foreground mb-2">
                             {item.title}
                           </h3>
+                        )}
                           <div>
                             {renderPostText(
                               item.description || "",
@@ -1387,7 +1396,7 @@ export default function SupporterSpace() {
                               >
                                 <img
                                   src={item.contentUrl}
-                                  alt={item?.title}
+                                  alt={item?.title || "Post image"}
                                   className="w-full h-48 object-cover hover:opacity-90 transition-opacity"
                                 />
                               </div>
