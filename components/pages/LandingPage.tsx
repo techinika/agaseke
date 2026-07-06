@@ -297,26 +297,23 @@ export default function LandingPage() {
           {/* Left Column - Main Content */}
           <div className="md:col-span-3 text-center md:text-left">
             <div className="mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <div className="bg-red-50 text-red-700 px-4 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest inline-block mb-4">
-                The Problem
+              <div className="bg-orange-50 text-orange-700 px-4 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest inline-block mb-4">
+                Audience Monetization Platform
               </div>
               <p className="text-sm font-medium text-muted-foreground">
-                African creators earn{" "}
-                <strong>less than 1% of what global platforms pay</strong>.
-                Your audience loves you — but there's no way for them to pay
-                you.
+                For <strong>Influencers, Podcasters, Artists, </strong>
+                and <strong>Content Creators</strong> across Africa.
               </p>
             </div>
 
-            <h1 className="text-3xl md:text-5xl font-black tracking-tighter mb-4 leading-[1.1]">
-              You're Working Hard.{" "}
-              <span className="text-orange-600">But the Money Isn't Coming.</span>
+            <h1 className="text-4xl md:text-6xl font-black tracking-tighter mb-6 leading-[1.05] uppercase">
+              Build Your <br />
+              <span className="text-orange-600">Private Community</span>
             </h1>
 
-            <p className="text-sm md:text-base text-muted-foreground mb-6 leading-relaxed space-y-2">
-              <span className="block">You post every week. Your audience can't pay you. Global platforms like Patreon and Ko-fi don't accept Mobile Money — so getting paid is nearly impossible.</span>
-              <span className="block">You're scattered across WhatsApp, Google Forms, and separate sites — nothing works together. Brands ignore small creators. You've thought about quitting.</span>
-              <span className="block font-semibold text-foreground">That changes now.</span>
+            <p className="text-base md:text-lg text-muted-foreground mb-8 max-w-lg leading-relaxed">
+              Get paid directly by your biggest fans through tips,
+              subscriptions, and exclusive content.
             </p>
 
             <div className="flex flex-col items-center md:items-start gap-4 mb-10">
@@ -627,50 +624,60 @@ export default function LandingPage() {
       </section>
 
       <section className="bg-muted py-24 px-6">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16">
+            <div className="bg-red-50 text-red-700 px-4 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest inline-block mb-4">
+              The Problem
+            </div>
             <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter mb-4">
-              Everything You Need to <br />
-              <span className="text-orange-600">Monetize Your Audience</span>
+              You're Working Hard.{" "}
+              <span className="text-orange-600">But the Money Isn't Coming.</span>
             </h2>
-            <p className="text-muted-foreground">
-              A private space for your biggest fans. Set your own pricing, share
-              exclusive content, and get paid directly — no algorithm, no ads,
-              no middleman.
-            </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <FeatureCard
-              icon={<Heart />}
-              title="Private Community"
-              desc="A space only your supporters can access. No algorithm, no ads — just you and the people who actually value your work."
-            />
-            <FeatureCard
-              icon={<HandCoins />}
-              title="Tips & Monthly Support"
-              desc="Fans send you support directly to your wallet. Set up recurring subscriptions or one-time tips — whatever works for your community."
-            />
-            <FeatureCard
-              icon={<ShoppingBag />}
-              title="Digital Storefront"
-              desc="Sell beats, photos, PDFs, or merch. Your community pays and gets instant access. No middleman taking half."
-            />
-            <FeatureCard
-              icon={<MessageSquare />}
-              title="Direct Fan Messaging"
-              desc="Open a private line to your biggest supporters. Answer questions, share exclusives, and build relationships that actually last."
-            />
-            <FeatureCard
-              icon={<Lock />}
-              title="Members-Only Content"
-              desc="Post exclusive photos, videos, or written content that only your paying supporters can see. Reward loyalty with access."
-            />
-            <FeatureCard
-              icon={<TrendingUp />}
-              title="Earn on Your Terms"
-              desc="Stop depending on ad revenue and brand deals. Your fans pay you directly — via Mobile Money or Card. Simple payouts to your MoMo or bank."
-            />
+          <div className="space-y-4">
+            {[
+              {
+                problem: "Patreon & Ko-fi don't accept Mobile Money.",
+                solution: "Agaseke does — tips and subscriptions via MoMo or Card.",
+              },
+              {
+                problem: "Your tools are scattered — WhatsApp, Forms, separate sites.",
+                solution: "One link for your community, store, events, and content.",
+              },
+              {
+                problem: "Brands ignore you until you're huge.",
+                solution: "Your fans pay you directly — starting from day one.",
+              },
+              {
+                problem: "Global platforms take 30% of your earnings.",
+                solution: "You set the price. You keep it. No middleman.",
+              },
+              {
+                problem: "Payouts to Africa are slow and expensive.",
+                solution: "Withdraw to your MoMo or bank. Fast. Affordable.",
+              },
+            ].map((item, i) => (
+              <div
+                key={i}
+                className="flex items-start gap-4 md:gap-6 p-5 md:p-6 bg-card rounded-xl border border-border/50 hover:shadow-lg transition-all"
+              >
+                <div className="shrink-0 w-8 h-8 rounded-full bg-red-100 flex items-center justify-center mt-0.5">
+                  <span className="text-red-600 font-black text-sm">✕</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-foreground text-base md:text-lg">
+                    {item.problem}
+                  </p>
+                  <p className="text-green-600 font-medium text-sm mt-1 flex items-center gap-2">
+                    <span className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                      <span className="text-green-600 font-black text-[10px]">✓</span>
+                    </span>
+                    {item.solution}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
