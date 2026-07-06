@@ -623,61 +623,78 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="bg-muted py-24 px-6">
-        <div className="max-w-4xl mx-auto">
+      <section className="bg-card py-24 px-6 overflow-hidden">
+        <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
-            <div className="bg-red-50 text-red-700 px-4 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest inline-block mb-4">
-              The Problem
-            </div>
-            <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter mb-4">
-              You're Working Hard.{" "}
-              <span className="text-orange-600">But the Money Isn't Coming.</span>
+              <h2 className="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-[1.05]">
+              Why Creators{" "}
+              <span className="text-orange-600">Choose Agaseke</span>
             </h2>
           </div>
 
-          <div className="space-y-4">
-            {[
-              {
-                problem: "Patreon & Ko-fi don't accept Mobile Money.",
-                solution: "Agaseke does — tips and subscriptions via MoMo or Card.",
-              },
-              {
-                problem: "Your tools are scattered — WhatsApp, Forms, separate sites.",
-                solution: "One link for your community, store, events, and content.",
-              },
-              {
-                problem: "Brands ignore you until you're huge.",
-                solution: "Your fans pay you directly — starting from day one.",
-              },
-              {
-                problem: "Global platforms take 30% of your earnings.",
-                solution: "You set the price. You keep it. No middleman.",
-              },
-              {
-                problem: "Payouts to Africa are slow and expensive.",
-                solution: "Withdraw to your MoMo or bank. Fast. Affordable.",
-              },
-            ].map((item, i) => (
-              <div
-                key={i}
-                className="flex items-start gap-4 md:gap-6 p-5 md:p-6 bg-card rounded-xl border border-border/50 hover:shadow-lg transition-all"
-              >
-                <div className="shrink-0 w-8 h-8 rounded-full bg-red-100 flex items-center justify-center mt-0.5">
-                  <span className="text-red-600 font-black text-sm">✕</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-foreground text-base md:text-lg">
-                    {item.problem}
-                  </p>
-                  <p className="text-green-600 font-medium text-sm mt-1 flex items-center gap-2">
-                    <span className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                      <span className="text-green-600 font-black text-[10px]">✓</span>
-                    </span>
-                    {item.solution}
-                  </p>
-                </div>
+          <div className="relative grid md:grid-cols-2 gap-0 md:gap-0">
+            {/* Left side — The broken system */}
+            <div className="relative bg-red-50/80 p-8 md:p-10 rounded-2xl md:rounded-r-none border border-red-100/50 md:border-r-0 z-10">
+              <div className="text-[10px] font-black uppercase tracking-[0.3em] text-red-600 mb-6">
+                What Platforms Built
               </div>
-            ))}
+              <div className="space-y-6">
+                {[
+                  ["30% Fees", "They take nearly a third of what you earn."],
+                  ["No Mobile Money", "Built for card users. Africa uses MoMo."],
+                  ["You Don't Own Your Audience", "Followers are rented, not yours."],
+                  ["Scattered Tools", "WhatsApp + Forms + Store = chaos."],
+                ].map(([title, desc], i) => (
+                  <div key={i}>
+                    <p className="font-black text-foreground text-lg">{title}</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">{desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Center divider — visible on md+ */}
+            <div className="hidden md:flex absolute left-1/2 top-0 bottom-0 -translate-x-1/2 items-center justify-center z-20">
+              <div className="w-10 h-10 rounded-full bg-orange-600 text-white flex items-center justify-center font-black text-lg shadow-lg shadow-orange-200">
+                →
+              </div>
+            </div>
+
+            {/* Right side — Agaseke solution */}
+            <div className="relative bg-orange-50/80 p-8 md:p-10 rounded-2xl md:rounded-l-none border border-orange-100/50 md:border-l-0 mt-4 md:mt-0">
+              <div className="text-[10px] font-black uppercase tracking-[0.3em] text-orange-600 mb-6">
+                What Agaseke Built
+              </div>
+              <div className="space-y-6">
+                {[
+                  ["10% Flat Fee", "You keep 90%. No hidden cuts."],
+                  ["MoMo & Card Payments", "Tips, subscriptions, sales — all supported."],
+                  ["You Own Your Community", "Private space for your biggest fans."],
+                  ["One Link Does It All", "Content, store, events, messaging — together."],
+                ].map(([title, desc], i) => (
+                  <div key={i}>
+                    <p className="font-black text-foreground text-lg">{title}</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">{desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile arrow */}
+          <div className="flex md:hidden justify-center my-4">
+            <div className="w-10 h-10 rounded-full bg-orange-600 text-white flex items-center justify-center font-black text-lg shadow-lg shadow-orange-200">
+              ↓
+            </div>
+          </div>
+
+          <div className="text-center mt-12">
+            <p className="text-xl md:text-2xl font-bold text-foreground">
+              Global platforms weren't built for African creators.
+            </p>
+            <p className="text-orange-600 font-black text-lg mt-1">
+              Agaseke was.
+            </p>
           </div>
         </div>
       </section>

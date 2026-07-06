@@ -38,7 +38,7 @@ export async function POST(req: Request) {
         </div>
         
         <div style="text-align: center; padding: 20px; font-size: 12px; color: #94a3b8;">
-          &copy; 2026 Agaseke. Supporting the Creator Economy in Rwanda.
+          &copy; 2026 Agaseke. Supporting the Creator Economy Across Africa.
         </div>
       </div>
     `;

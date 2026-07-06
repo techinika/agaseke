@@ -52,19 +52,29 @@ export async function generateMetadata({
   const verified = creator.verified || false;
   const bio = creator.bio || `Support ${displayName} on Agaseke.`;
   const image = profile?.photoURL || creator.profilePicture || `${baseUrl}/agaseke.png`;
-  
-  const title = verified 
-    ? `✓ ${displayName} (@${username}) | Agaseke` 
-    : `${displayName} (@${username}) | Agaseke`;
-  
+  const country = creator.country || "RW";
+  const countryName = creator.countryName || (country === "RW" ? "Rwanda" : "");
+
+  const keywords = [displayName, username, "content creator", "support creator", "Agaseke"];
+  if (countryName) keywords.push(countryName, `${countryName} creator`);
+
   return {
     title,
     description: bio,
-    keywords: [displayName, username, "Rwandan creator", "Rwanda", "content creator", "support creator", "Agaseke"],
+    keywords,
     authors: [{ name: displayName }],
     alternates: {
       canonical: `/${username}`,
-      languages: { "en-RW": `/${username}` },
+      languages: { [`en-${country}`]: `/${username}` },
+    },
+    openGraph: {
+      title,
+      description: bio,
+      url: `${baseUrl}/${username}`,
+      siteName: "Agaseke",
+      images: [{ url: image, width: 400, height: 400, alt: `${displayName} on Agaseke` }],
+      locale: `en_${country}`,
+      type: "profile",
     },
     openGraph: {
       title,

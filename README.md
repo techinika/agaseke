@@ -187,7 +187,8 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
 - **Styling**: Tailwind CSS
 - **Database**: Firebase Firestore
 - **Authentication**: Firebase Auth
-- **Storage**: Cloudinary (images, videos, files)
+- **Storage**: Cloudinary (images, videos, files), Cloudflare R2 (asset uploads)
+- **File Uploads**: Cloudflare Worker (`workers/upload/`) — Firebase JWT auth, R2 storage, Firestore metadata
 - **Payments**: PesaPal (Mobile Money)
 - **Email**: API routes with email service integration
 
@@ -298,6 +299,8 @@ agaseke/
 │   ├── store.ts                 # Store types
 │   ├── giveaway.ts               # Giveaway types
 │   └── booking.ts                # Booking types
+├── workers/                       # Cloudflare Workers
+│   └── upload/                   # File upload Worker (R2 + Firestore)
 └── public/                      # Static assets
 ```
 
@@ -516,10 +519,11 @@ interface GiveawayReward {
 - `POST /api/support/with-momo/webhook` - Webhook for MoMo booking payments (notifies buyer + admin)
 
 ### File Uploads
-- `POST /api/upload/content/image` - Image upload
-- `POST /api/upload/content/video` - Video upload
-- `POST /api/upload/content/docs` - Document upload
-- `POST /api/upload/picture` - Profile picture
+- `POST <NEXT_PUBLIC_UPLOAD_WORKER_URL>` - Upload Worker (Firebase JWT auth → R2 → Firestore)
+- `POST /api/upload/content/image` - Image upload (legacy)
+- `POST /api/upload/content/video` - Video upload (legacy)
+- `POST /api/upload/content/docs` - Document upload (legacy)
+- `POST /api/upload/picture` - Profile picture (legacy)
 
 ### Payments
 - `POST /api/support/with-momo/pay` - Mobile money payment
@@ -809,6 +813,14 @@ For issues or feature requests, please open an issue on GitHub.
 
 ### Dual-ID Supporter Check (June 2026)
 - **Added `supporterUids` map to creator docs**: Each creator doc now has a `supporterUids` map (`{ uid: true }`) that tracks unique supporter UIDs. Set server-side in `handleSupportPayment.ts` during support transactions.
+
+### Upload Worker & Asset Type Migration (July 2026)
+- **New Cloudflare Worker** (`workers/upload/`): Handles all file uploads — Firebase JWT auth via `jose` + Google JWKS, stores in R2 bucket (`agaseke-assets`), records metadata in Firestore `assets` collection. No GET handler; files served directly from R2 via custom domain `assets.agaseke.me`.
+- **9 asset types**: `creator_profile`, `creator_cover`, `post_image`, `post_video`, `post_document`, `product_thumbnail`, `product_content`, `partner_logo`, `verification_document` — each with its own R2 path prefix and Firestore usage description.
+- **Frontend upload service** (`lib/uploadService.ts`): `uploadFile()` (FormData) and `uploadBase64Image()` (JSON/base64) with typed `AssetType`, auto-attaches Firebase ID token as `Authorization: Bearer`.
+- **ProductModal/FolderModal/PartnerModal updated**: All use the correct typed asset constants (`product_thumbnail`, `product_content`, `partner_logo`) instead of generic `post_image`.
+- **SupporterSpace upload retry**: On upload failure, the file preview stays visible with a Retry button and a Trash button to discard. The failed file is retained in state so re-clicking Retry re-uploads without re-selecting.
+- **Error logging**: All Worker catch blocks log errors with `console.error`, including JWT verification failures and request context (method + URL). Observability enabled in wrangler config.
 - **Updated `isSupporterOf` rule**: The Firestore rule function now checks TWO sources — the new predictable doc ID pattern `{uid}_{handle}` in `supportedCreators` AND the `supporterUids` map on the creator doc. This ensures backward compatibility with old auto-generated support records after running the backfill migration.
 - **Added migration script**: `scripts/backfillSupporterUids.js` — run once to populate `supporterUids` on all existing creator docs from current `supportedCreators` records.
 

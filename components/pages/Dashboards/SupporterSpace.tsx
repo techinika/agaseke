@@ -56,6 +56,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { LinkifyText } from "@/components/ui/LinkifyText";
+import { uploadFile } from "@/lib/uploadService";
 
 interface Comment {
   id: string;
@@ -140,6 +141,7 @@ export default function SupporterSpace() {
   const [uploadedUrl, setUploadedUrl] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [failedFile, setFailedFile] = useState<File | null>(null);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -150,20 +152,10 @@ export default function SupporterSpace() {
     }
     setIsUploading(true);
     setUploadedUrl("");
+    setFailedFile(null);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("creatorHandle", auth.creator.handle);
-      formData.append("type", type === "document" ? "perk_file" : type);
-      const endpoint =
-        type === "video"
-          ? "/api/upload/content/video"
-          : type === "document"
-            ? "/api/upload/content/docs"
-            : "/api/upload/content/image";
-      const res = await fetch(endpoint, { method: "POST", body: formData });
-      if (!res.ok) throw new Error("Upload failed");
-      const data = await res.json();
+      const assetType = type === "video" ? "post_video" : type === "document" ? "post_document" : "post_image";
+      const data = await uploadFile(file, assetType, auth.creator.handle);
       if (data.url) {
         setUploadedUrl(data.url);
         setNewPost((prev) => ({ ...prev, type }));
@@ -173,8 +165,32 @@ export default function SupporterSpace() {
       }
     } catch {
       toast.error("Upload failed");
-      setFilePreview(null);
+      setFailedFile(file);
       setUploadedUrl("");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRetryUpload = async () => {
+    if (!failedFile || !auth.creator?.handle) return;
+    const type = mediaType || "image";
+    setIsUploading(true);
+    setUploadedUrl("");
+    setFailedFile(null);
+    try {
+      const assetType = type === "video" ? "post_video" : type === "document" ? "post_document" : "post_image";
+      const data = await uploadFile(failedFile, assetType, auth.creator.handle);
+      if (data.url) {
+        setUploadedUrl(data.url);
+        setNewPost((prev) => ({ ...prev, type }));
+        toast.success("File uploaded!");
+      } else {
+        throw new Error("Upload failed");
+      }
+    } catch {
+      toast.error("Upload failed");
+      setFailedFile(failedFile);
     } finally {
       setIsUploading(false);
     }
@@ -1076,12 +1092,33 @@ export default function SupporterSpace() {
                   rows={newPost.description ? 3 : 1}
                   className="w-full text-sm bg-transparent outline-none resize-none placeholder:text-muted-foreground/50"
                 />
-                {(isUploading || filePreview || uploadedUrl) && (
+                {(isUploading || filePreview || uploadedUrl || failedFile) && (
                   <div className="mb-2">
                     {isUploading ? (
                       <div className="flex items-center gap-2 text-xs text-orange-600 bg-orange-50 px-3 py-2 rounded-lg">
                         <Loader size={14} className="animate-spin" />
                         <span>Uploading...</span>
+                      </div>
+                    ) : failedFile ? (
+                      <div className="relative">
+                        {newPost.type === "image" ? (
+                          <img src={filePreview!} alt="Preview" className="w-full max-h-48 object-cover rounded-lg border border-red-300" />
+                        ) : newPost.type === "video" ? (
+                          <video src={filePreview!} controls className="w-full max-h-48 rounded-lg border border-red-300" />
+                        ) : (
+                          <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg border border-red-200">
+                            <File size={14} />
+                            <span>Upload failed</span>
+                          </div>
+                        )}
+                        <div className="absolute bottom-2 right-2 flex gap-2">
+                          <button onClick={handleRetryUpload} className="px-3 py-1.5 bg-orange-500 text-white text-xs font-medium rounded-lg hover:bg-orange-600 transition">
+                            Retry
+                          </button>
+                          <button onClick={() => { setFailedFile(null); setFilePreview(null); setUploadedUrl(""); setNewPost((prev) => ({ ...prev, type: "text" })); }} className="p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
                     ) : filePreview && !uploadedUrl ? (
                       <div className="relative">
@@ -1108,7 +1145,7 @@ export default function SupporterSpace() {
                             <span className="font-medium">File attached</span>
                           </div>
                         )}
-                        <button onClick={() => { setUploadedUrl(""); setFilePreview(null); setNewPost((prev) => ({ ...prev, type: "text" })); }} className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition">
+                        <button onClick={() => { setUploadedUrl(""); setFilePreview(null); setFailedFile(null); setNewPost((prev) => ({ ...prev, type: "text" })); }} className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition">
                           <Trash2 size={14} />
                         </button>
                       </div>

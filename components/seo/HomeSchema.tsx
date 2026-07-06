@@ -20,7 +20,7 @@ export default function HomeSchema() {
         "Creators can withdraw their earnings directly to their Mobile Money account or Bank account. Withdrawals are processed within 1-2 business days after approval.",
     },
     {
-      question: "Is Agaseke available outside Rwanda?",
+      question: "Is Agaseke available in my country?",
       answer:
         "Yes! Agaseke is built for creators across Africa and beyond. We support multiple currencies and payment methods so creators from different countries can join, connect with their fans, and earn on their own terms.",
     },

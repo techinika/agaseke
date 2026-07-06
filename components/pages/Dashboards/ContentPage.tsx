@@ -41,6 +41,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/auth/AuthContext";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { LinkifyText } from "@/components/ui/LinkifyText";
+import { uploadFile } from "@/lib/uploadService";
 
 interface Comment {
   id: string;
@@ -193,35 +194,13 @@ export default function ContentManager() {
     setUploadedUrl("");
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("creatorHandle", creator?.handle || "");
-      formData.append("type", newPost.type === "document" ? "perk_file" : newPost.type);
-
-      let endpoint = "/api/upload/content/image";
-      if (newPost.type === "video") endpoint = "/api/upload/content/video";
-      if (newPost.type === "document") endpoint = "/api/upload/content/docs";
-
-      const res = await fetch(endpoint, { method: "POST", body: formData });
-      
-      if (!res.ok) {
-        let errorMessage = "Upload failed";
-        try {
-          const data = await res.json();
-          errorMessage = data.error || `Upload failed (${res.status})`;
-        } catch {
-          errorMessage = `Upload failed: Request entity too large. Maximum file size is 50MB.`;
-        }
-        throw new Error(errorMessage);
-      }
-
-      const data = await res.json();
-
+      const assetType = newPost.type === "video" ? "post_video" : newPost.type === "document" ? "post_document" : "post_image";
+      const data = await uploadFile(file, assetType, creator?.handle || "");
       if (data.url) {
         setUploadedUrl(data.url);
         toast.success("File uploaded successfully!");
       } else {
-        throw new Error(data.error || "Upload failed");
+        throw new Error("Upload failed");
       }
     } catch (err: any) {
       console.error("Upload error:", err);

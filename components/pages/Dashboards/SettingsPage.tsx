@@ -31,7 +31,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AiFillTikTok } from "react-icons/ai";
-import { apiPost } from "@/lib/apiClient";
+import { uploadBase64Image } from "@/lib/uploadService";
 
 export default function CreatorSettings() {
   const { creator } = useAuth();
@@ -127,8 +127,7 @@ export default function CreatorSettings() {
 
     reader.onloadend = async () => {
       try {
-        const res = await apiPost("/api/upload/picture", { image: reader.result });
-        const data = await res.json();
+        const data = await uploadBase64Image(reader.result as string, "creator_profile");
         if (data.url) {
           handleUpdate("profilePicture", data.url);
           toast.success("Photo uploaded! Remember to save changes.");
@@ -151,8 +150,7 @@ export default function CreatorSettings() {
 
     reader.onloadend = async () => {
       try {
-        const res = await apiPost("/api/upload/banner", { image: reader.result });
-        const data = await res.json();
+        const data = await uploadBase64Image(reader.result as string, "creator_cover");
         if (data.url) {
           handleUpdate("bannerURL", data.url);
           toast.success("Cover image uploaded! Remember to save changes.");

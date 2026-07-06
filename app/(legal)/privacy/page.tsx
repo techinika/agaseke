@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     "personal information",
     "data security",
     "GDPR compliance",
-    "Rwanda data protection",
+    "African data protection",
   ],
   alternates: {
     canonical: "/privacy",
