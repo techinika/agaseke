@@ -2,9 +2,13 @@ import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/db/firebaseAdmin";
 import { createNotification } from "@/lib/adminNotifications";
+import { optionalAuth } from "@/lib/authMiddleware";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export async function POST(req: Request) {
+  const authUser = await optionalAuth(req);
+  if (authUser instanceof NextResponse) return authUser;
+
   try {
     const {
        amount,
@@ -30,6 +34,7 @@ export async function POST(req: Request) {
         attendeeName,
         attendeeEmail,
         attendeePhoto,
+       currency,
        } = await req.json();
 
     const isStoreTransaction = !!productId;
@@ -109,6 +114,7 @@ export async function POST(req: Request) {
         referralUid: referralUid ?? "",
         referralId: referralId ?? "",
         type: isGatheringTransaction ? "gathering" : isBookingTransaction ? "booking" : isStoreTransaction ? "store" : "support",
+        currency: currency || "RWF",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       };
 

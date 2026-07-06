@@ -7,22 +7,22 @@ export default function HomeSchema() {
     {
       question: "What is Agaseke?",
       answer:
-        "Agaseke is a platform that allows fans to support their favorite Rwandan creators through donations, purchases, and exclusive content. It helps creators monetize their work and build a sustainable community.",
+        "Agaseke is a private community platform for content creators and influencers across Africa. Your biggest fans can support you directly through one-time tips, monthly subscriptions, and purchases of your exclusive content — all paid out to your Mobile Money or Bank account.",
     },
     {
-      question: "How can I support a creator?",
+      question: "How is this different from social media?",
       answer:
-        "You can support creators by making one-time payments via Mobile Money (MTN or Airtel Money), purchasing their digital or physical products, or tipping them directly through the platform.",
+        "On social media platforms, your content competes with an algorithm for visibility. Agaseke gives you a private community space where only your paying supporters have access — no ads, no algorithm, just a direct connection with the people who value your work.",
     },
     {
       question: "How do creators receive their earnings?",
       answer:
-        "Creators can withdraw their earnings directly to their Mobile Money account (MTN or Airtel Money). Withdrawals are processed within 1-2 business days after approval.",
+        "Creators can withdraw their earnings directly to their Mobile Money account or Bank account. Withdrawals are processed within 1-2 business days after approval.",
     },
     {
-      question: "Is Agaseke only for Rwandan creators?",
+      question: "Is Agaseke available outside Rwanda?",
       answer:
-        "While Agaseke was built specifically to support Rwandan creators, it's open to creators from anywhere. The platform supports Mobile Money payments which are popular in Rwanda.",
+        "Yes! Agaseke is built for creators across Africa and beyond. We support multiple currencies and payment methods so creators from different countries can join, connect with their fans, and earn on their own terms.",
     },
   ]);
 

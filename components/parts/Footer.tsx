@@ -15,8 +15,8 @@ export default function Footer() {
               agaseke<span className="text-orange-600">.me</span>
             </div>
             <p className="text-sm leading-relaxed mb-8">
-              Supporting the next generation of Rwandan creators, artists, and
-              educators.
+              The private community platform for content creators, artists, and
+              influencers across Africa.
             </p>
 
             {/* Social Media Icons */}

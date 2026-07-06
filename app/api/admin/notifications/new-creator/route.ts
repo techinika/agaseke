@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createNotification } from "@/lib/adminNotifications";
 import { adminDb } from "@/db/firebaseAdmin";
+import { requireAuth } from "@/lib/authMiddleware";
 
 export async function POST(req: NextRequest) {
+  const authUser = await requireAuth(req);
+  if (authUser instanceof NextResponse) return authUser;
   try {
     const { creatorUid, creatorName, handle } = await req.json();
 

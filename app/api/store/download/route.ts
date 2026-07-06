@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/db/firebaseAdmin";
+import { requireAuth } from "@/lib/authMiddleware";
 
 export async function GET(req: NextRequest) {
+  const authUser = await requireAuth(req);
+  if (authUser instanceof NextResponse) return authUser;
   try {
     const { searchParams } = new URL(req.url);
     const productId = searchParams.get("productId");

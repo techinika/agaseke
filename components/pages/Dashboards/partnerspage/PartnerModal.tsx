@@ -7,6 +7,7 @@ import {
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
+import { apiPostFormData } from "@/lib/apiClient";
 import { db } from "@/db/firebase";
 import {
   collection,
@@ -56,10 +57,7 @@ export default function PartnerModal({
     uploadFormData.append("creatorHandle", "partner");
 
     try {
-      const res = await fetch("/api/upload/content/image", {
-        method: "POST",
-        body: uploadFormData,
-      });
+      const res = await apiPostFormData("/api/upload/content/image", uploadFormData);
       const data = await res.json();
       if (data.url) {
         setFormData((prev) => ({ ...prev, logo: data.url }));

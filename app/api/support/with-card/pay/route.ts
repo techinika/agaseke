@@ -2,9 +2,12 @@ import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { adminDb } from "@/db/firebaseAdmin";
 import { createNotification } from "@/lib/adminNotifications";
+import { optionalAuth } from "@/lib/authMiddleware";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export async function POST(req: Request) {
+  const authUser = await optionalAuth(req);
+  if (authUser instanceof NextResponse) return authUser;
   const config = {
     url: process.env.PESAPAL_URL?.trim(),
     key: process.env.PESAPAL_CONSUMER_KEY?.trim(),
@@ -39,6 +42,7 @@ export async function POST(req: Request) {
       attendeeName,
       attendeeEmail,
       attendeePhoto,
+      currency,
     } = body;
 
     const isStoreTransaction = !!productId;
@@ -152,6 +156,7 @@ export async function POST(req: Request) {
         referralId: referralId || "",
         type: isGatheringTransaction ? "gathering" : isBookingTransaction ? "booking" : isStoreTransaction ? "store" : "support",
         paymentMethod: "card",
+        currency: currency || "RWF",
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       };
 

@@ -8,6 +8,7 @@ import {
   Loader,
 } from "lucide-react";
 import { toast } from "sonner";
+import { apiPostFormData } from "@/lib/apiClient";
 import { serverTimestamp } from "firebase/firestore";
 import {
   addDoc,
@@ -64,10 +65,7 @@ export default function ProductModal({
     formData.append("creatorHandle", "product");
 
     try {
-      const res = await fetch("/api/upload/content/image", {
-        method: "POST",
-        body: formData,
-      });
+      const res = await apiPostFormData("/api/upload/content/image", formData);
       const data = await res.json();
       if (data.url) {
         setFormData((prev) => ({ ...prev, imageUrl: data.url }));

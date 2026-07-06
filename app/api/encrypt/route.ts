@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { encrypt } from "@/lib/encryption";
+import { requireAuth } from "@/lib/authMiddleware";
 
 export async function POST(request: NextRequest) {
+  const authUser = await requireAuth(request);
+  if (authUser instanceof NextResponse) return authUser;
   try {
     const { text } = await request.json();
     if (!text || typeof text !== "string") {

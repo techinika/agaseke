@@ -21,6 +21,7 @@ import {
   documentId,
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
+import { getCurrencySymbol } from "@/types/currency";
 
 interface SaleRecord {
   id: string;
@@ -41,6 +42,7 @@ interface SaleRecord {
   referralUid: string;
   status: string;
   paymentMethod: string;
+  currency?: string;
   createdAt: any;
 }
 
@@ -196,6 +198,14 @@ export default function SalesPage() {
     return matchesSearch && matchesTime;
   });
 
+  const salesByCurrency = filteredSales.reduce((groups: Record<string, { total: number; earnings: number }>, sale) => {
+    const cur = sale.currency || "RWF";
+    if (!groups[cur]) groups[cur] = { total: 0, earnings: 0 };
+    groups[cur].total += sale.totalAmount;
+    groups[cur].earnings += sale.creatorEarnings || 0;
+    return groups;
+  }, {});
+
   const totalSales = filteredSales.reduce(
     (sum, sale) => sum + sale.totalAmount,
     0,
@@ -220,6 +230,7 @@ export default function SalesPage() {
       earnings: number;
       type?: string;
       imageUrl?: string;
+      currencies: Record<string, number>;
     }
   > = {};
   filteredSales.forEach((sale) => {
@@ -232,15 +243,18 @@ export default function SalesPage() {
         earnings: 0,
         type: product?.type,
         imageUrl: product?.imageUrl,
+        currencies: {},
       };
     }
+    const cur = sale.currency || "RWF";
     productSales[sale.productId].total += sale.totalAmount;
     productSales[sale.productId].quantity += sale.quantity || 1;
     productSales[sale.productId].earnings += sale.creatorEarnings || 0;
+    productSales[sale.productId].currencies[cur] = (productSales[sale.productId].currencies[cur] || 0) + 1;
   });
 
   const topProducts = Object.entries(productSales)
-    .map(([id, data]) => ({ id, ...data }))
+    .map(([id, data]) => ({ id, ...data, primaryCurrency: Object.entries(data.currencies).sort((a, b) => b[1] - a[1])[0]?.[0] || "RWF" }))
     .sort((a, b) => b.total - a.total)
     .slice(0, 5);
 
@@ -276,7 +290,10 @@ export default function SalesPage() {
             <div>
               <p className="text-sm font-medium text-muted-foreground">Total Sales</p>
               <p className="text-2xl md:text-3xl font-black text-foreground mt-1">
-                {totalSales.toLocaleString()} RWF
+                {Object.entries(salesByCurrency).map(([cur, data]) => (
+                  <span key={cur} className="mr-2">{data.total.toLocaleString()} {getCurrencySymbol(cur)}</span>
+                ))}
+                {Object.keys(salesByCurrency).length === 0 && "0"}
               </p>
             </div>
             <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center">
@@ -292,7 +309,10 @@ export default function SalesPage() {
                 Your Earnings
               </p>
               <p className="text-2xl md:text-3xl font-black text-foreground mt-1">
-                {totalEarnings.toLocaleString()} RWF
+                {Object.entries(salesByCurrency).map(([cur, data]) => (
+                  <span key={cur} className="mr-2">{data.earnings.toLocaleString()} {getCurrencySymbol(cur)}</span>
+                ))}
+                {Object.keys(salesByCurrency).length === 0 && "0"}
               </p>
             </div>
             <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
@@ -470,12 +490,12 @@ export default function SalesPage() {
                         </td>
                         <td className="px-5 py-4">
                           <span className="font-bold text-foreground">
-                            {sale.totalAmount?.toLocaleString() || 0} RWF
+                            {sale.totalAmount?.toLocaleString() || 0} {getCurrencySymbol(sale.currency || "RWF")}
                           </span>
                         </td>
                         <td className="px-5 py-4">
                           <span className="font-bold text-green-600">
-                            {sale.creatorEarnings?.toLocaleString() || 0} RWF
+                            {sale.creatorEarnings?.toLocaleString() || 0} {getCurrencySymbol(sale.currency || "RWF")}
                           </span>
                         </td>
                         <td className="px-5 py-4">
@@ -565,10 +585,10 @@ export default function SalesPage() {
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-foreground">
-                      {product.total.toLocaleString()} RWF
+                      {product.total.toLocaleString()} {getCurrencySymbol(product.primaryCurrency)}
                     </p>
                     <p className="text-xs text-green-600">
-                      Earned: {product.earnings.toLocaleString()} RWF
+                      Earned: {product.earnings.toLocaleString()} {getCurrencySymbol(product.primaryCurrency)}
                     </p>
                   </div>
                 </div>

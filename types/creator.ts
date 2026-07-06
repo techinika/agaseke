@@ -46,4 +46,6 @@ export interface Creator {
   bookingTiers?: import("./booking").BookingTier[];
   gatheringsEnabled?: boolean;
   focus?: string[];
+  country?: string;
+  currency?: string;
 }

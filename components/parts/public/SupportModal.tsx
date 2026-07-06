@@ -15,6 +15,8 @@ import { Heart, Loader, ShieldCheck, Smartphone, X } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
+import { getCurrencySymbol } from "@/types/currency";
+import { apiPost } from "@/lib/apiClient";
 
 export function SupportModal({
   isOpen,
@@ -37,6 +39,22 @@ export function SupportModal({
   const [popupBlocked, setPopupBlocked] = useState(false);
   const [redirectUrl, setRedirectUrl] = useState("");
   const [isClosing, setIsClosing] = useState(false);
+  const [creatorCurrency, setCreatorCurrency] = useState("RWF");
+
+  useEffect(() => {
+    if (!creatorId) return;
+    const fetchCreatorCurrency = async () => {
+      try {
+        const creatorRef = doc(db, "creators", creatorId);
+        const creatorSnap = await getDoc(creatorRef);
+        if (creatorSnap.exists()) {
+          const data = creatorSnap.data();
+          setCreatorCurrency(data.currency || "RWF");
+        }
+      } catch { /* silently fail */ }
+    };
+    fetchCreatorCurrency();
+  }, [creatorId]);
 
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
@@ -92,20 +110,17 @@ export function SupportModal({
     setErrorMessage("");
 
     try {
-      const response = await fetch("/api/support/with-momo/pay", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: Number(amount),
-          phone: phone,
-          creatorId: creatorId,
-          creatorUid: uid,
-          message: message ?? "",
-          referralUid: referralUid,
-          referralId: referralId,
-          supporterId: currentUser?.uid || "anonymous",
-          includeReferral: includeReferral,
-        }),
+      const response = await apiPost("/api/support/with-momo/pay", {
+        amount: Number(amount),
+        phone: phone,
+        creatorId: creatorId,
+        creatorUid: uid,
+        message: message ?? "",
+        referralUid: referralUid,
+        referralId: referralId,
+        supporterId: currentUser?.uid || "anonymous",
+        includeReferral: includeReferral,
+        currency: creatorCurrency,
       });
 
       const data = await response.json();
@@ -195,23 +210,20 @@ export function SupportModal({
     setStep("processing");
 
     try {
-      const res = await fetch("/api/support/with-card/pay", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: Number(amount),
-          email: currentUser?.email || "supporter@agaseke.me",
-          firstName: currentUser?.displayName?.split(" ")[0] || "Supporter",
-          lastName: currentUser?.displayName?.split(" ")[1] || "Agaseke",
-          creatorId,
-          creatorUid: uid,
-          supporterId: currentUser?.uid || "anonymous",
-          message: message.trim() || "",
-          includeReferral,
-          referralUid,
-          referralId,
-          callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment`,
-        }),
+      const res = await apiPost("/api/support/with-card/pay", {
+        amount: Number(amount),
+        email: currentUser?.email || "supporter@agaseke.me",
+        firstName: currentUser?.displayName?.split(" ")[0] || "Supporter",
+        lastName: currentUser?.displayName?.split(" ")[1] || "Agaseke",
+        creatorId,
+        creatorUid: uid,
+        supporterId: currentUser?.uid || "anonymous",
+        message: message.trim() || "",
+        includeReferral,
+        referralUid,
+        referralId,
+        callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment`,
+        currency: creatorCurrency,
       });
 
       const data = await res.json();
@@ -276,7 +288,7 @@ export function SupportModal({
                     onChange={(e) => setAmount(e.target.value)}
                   />
                   <span className="block text-[10px] font-bold text-muted-foreground mt-2 uppercase tracking-[0.3em]">
-                    Rwandan Francs (RWF)
+                    {creatorCurrency} ({getCurrencySymbol(creatorCurrency)})
                   </span>
                 </div>
               </div>
@@ -426,7 +438,7 @@ export function SupportModal({
                 Payment Verified!
               </h4>
               <p className="text-muted-foreground font-medium leading-relaxed text-sm sm:text-base">
-                Your gift of <b>{amount} RWF</b> was delivered.
+                  Your gift of <b>{amount} {creatorCurrency}</b> was delivered.
               </p>
               <button
                 onClick={handleClose}

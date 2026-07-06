@@ -827,7 +827,7 @@ export default function AdminDashboard() {
               userId: adminDoc.id,
               type: category,
               title: "Withdrawal Rejected",
-              message: `Withdrawal of ${target.amount?.toLocaleString()} RWF for ${target.creatorName} was rejected`,
+              message: `Withdrawal of ${target.amount?.toLocaleString()} ${target.currency || "RWF"} for ${target.creatorName} was rejected`,
               read: false,
             };
             await addDoc(collection(db, "notifications"), notificationData);
@@ -837,7 +837,7 @@ export default function AdminDashboard() {
         await logActivity({
           level: type === "approve" ? "success" : "warning",
           category: "payout",
-          message: `Withdrawal ${type === "approve" ? "approved" : "rejected"}: ${target.amount?.toLocaleString()} RWF for ${target.creatorName}`,
+          message: `Withdrawal ${type === "approve" ? "approved" : "rejected"}: ${target.amount?.toLocaleString()} ${target.currency || "RWF"} for ${target.creatorName}`,
           creatorId: target.creatorId,
           creatorHandle: target.creatorHandle,
         });
@@ -1341,7 +1341,7 @@ export default function AdminDashboard() {
                         {req.creatorName || "Creator"}
                       </p>
                       <p className="text-lg font-black text-foreground">
-                        {req.amount?.toLocaleString()} RWF
+                        {req.amount?.toLocaleString()} {req.currency || "RWF"}
                       </p>
                       <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
                         {req.method} • {req.accountNumber}

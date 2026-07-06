@@ -75,6 +75,7 @@ export async function handleStorePayment(
     platformFeePayer: txData.platformFeePayer || "buyer",
     status: "paid",
     paymentMethod,
+    currency: txData.currency || "RWF",
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
@@ -96,6 +97,7 @@ export async function handleStorePayment(
     referralUid: txData.referralUid || null,
     status: "completed",
     paymentMethod,
+    currency: txData.currency || "RWF",
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 

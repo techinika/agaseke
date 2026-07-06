@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { X, Upload, Image as ImageIcon, Loader } from "lucide-react";
 import { toast } from "sonner";
+import { apiPostFormData } from "@/lib/apiClient";
 import { Product } from "@/types/store";
 
 export default function FolderModal({
@@ -31,10 +32,7 @@ export default function FolderModal({
     uploadFormData.append("creatorHandle", "folder");
 
     try {
-      const res = await fetch("/api/upload/content/image", {
-        method: "POST",
-        body: uploadFormData,
-      });
+      const res = await apiPostFormData("/api/upload/content/image", uploadFormData);
       const data = await res.json();
       if (data.url) {
         setFormData((prev: any) => ({ ...prev, imageUrl: data.url }));

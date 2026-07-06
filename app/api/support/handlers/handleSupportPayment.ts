@@ -43,6 +43,7 @@ export async function handleSupportPayment(
     supporterId: txData.supporterId || null,
     supporterPhoneNumber: supporterPhoneNumber || null,
     txRef,
+    currency: txData.currency || "RWF",
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 

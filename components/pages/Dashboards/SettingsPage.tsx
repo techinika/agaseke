@@ -31,6 +31,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AiFillTikTok } from "react-icons/ai";
+import { apiPost } from "@/lib/apiClient";
 
 export default function CreatorSettings() {
   const { creator } = useAuth();
@@ -44,6 +45,11 @@ export default function CreatorSettings() {
   const [uploading, setUploading] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
   const [categories, setCategories] = useState<string[]>([]);
+
+  const [countries, setCountries] = useState<any[]>([]);
+  const [currencies, setCurrencies] = useState<any[]>([]);
+  const [countryCurrencies, setCountryCurrencies] = useState<any[]>([]);
+  const [availableCurrencies, setAvailableCurrencies] = useState<any[]>([]);
 
   useEffect(() => {
     if (!creator) return;
@@ -70,6 +76,32 @@ export default function CreatorSettings() {
     fetchCategories();
   }, []);
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [countriesSnap, currenciesSnap, mappingsSnap] = await Promise.all([
+          getDocs(query(collection(db, "countries"), orderBy("name", "asc"))),
+          getDocs(query(collection(db, "currencies"), orderBy("code", "asc"))),
+          getDocs(query(collection(db, "countryCurrencies"))),
+        ]);
+        setCountries(countriesSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setCurrencies(currenciesSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setCountryCurrencies(mappingsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      } catch { /* silently fail */ }
+    };
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    if (!creatorData?.country) {
+      setAvailableCurrencies([]);
+      return;
+    }
+    const mappings = countryCurrencies.filter((m: any) => m.countryCode === creatorData.country);
+    const available = currencies.filter((c: any) => mappings.some((m: any) => m.currencyCode === c.code));
+    setAvailableCurrencies(available);
+  }, [creatorData?.country, countryCurrencies, currencies]);
+
   const handleUpdate = (field: string, value: any) => {
     setCreatorData((prev) => {
       if (!prev) return prev;
@@ -95,11 +127,7 @@ export default function CreatorSettings() {
 
     reader.onloadend = async () => {
       try {
-        const res = await fetch("/api/upload/picture", {
-          method: "POST",
-          body: JSON.stringify({ image: reader.result }),
-          headers: { "Content-Type": "application/json" },
-        });
+        const res = await apiPost("/api/upload/picture", { image: reader.result });
         const data = await res.json();
         if (data.url) {
           handleUpdate("profilePicture", data.url);
@@ -123,11 +151,7 @@ export default function CreatorSettings() {
 
     reader.onloadend = async () => {
       try {
-        const res = await fetch("/api/upload/banner", {
-          method: "POST",
-          body: JSON.stringify({ image: reader.result }),
-          headers: { "Content-Type": "application/json" },
-        });
+        const res = await apiPost("/api/upload/banner", { image: reader.result });
         const data = await res.json();
         if (data.url) {
           handleUpdate("bannerURL", data.url);
@@ -159,6 +183,8 @@ export default function CreatorSettings() {
         bannerURL: creatorData.bannerURL || "",
         profilePicture: creatorData.profilePicture || "",
         socials: creatorData.socials || {},
+        country: creatorData.country || null,
+        currency: creatorData.currency || null,
         messagingEnabled: creatorData.messagingEnabled ?? false,
         messagingAllowAll: creatorData.messagingAllowAll ?? true,
         messagingMinAmount: creatorData.messagingMinAmount ?? 0,
@@ -219,6 +245,7 @@ export default function CreatorSettings() {
             {[
               { id: "profile", label: "Profile Info", icon: User },
               { id: "socials", label: "Social Links", icon: Share2 },
+              { id: "location", label: "Location & Currency", icon: Globe },
               { id: "perks", label: "Supporter Perks", icon: ShieldCheck },
               { id: "messaging", label: "Messaging", icon: MessageSquare },
             ].map((item) => (
@@ -503,6 +530,67 @@ export default function CreatorSettings() {
                       />
                     </div>
                   ))}
+                </div>
+              </section>
+            )}
+
+            {activeTab === "location" && (
+              <section className="bg-card border border-border rounded-lg p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                <h3 className="text-lg font-black uppercase">Location & Currency</h3>
+                <p className="text-sm text-muted-foreground">
+                  Set your country and preferred currency. You can only use currencies available in your country.
+                </p>
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
+                      Your Country
+                    </label>
+                    <select
+                      value={creatorData?.country || ""}
+                      onChange={(e) => handleUpdate("country", e.target.value)}
+                      className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
+                    >
+                      <option value="">Select country...</option>
+                      {countries.map((c: any) => (
+                        <option key={c.id} value={c.code}>
+                          {c.flag || ""} {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
+                      Preferred Currency
+                    </label>
+                    <select
+                      value={creatorData?.currency || ""}
+                      onChange={(e) => handleUpdate("currency", e.target.value)}
+                      className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
+                      disabled={!creatorData?.country}
+                    >
+                      <option value="">Select currency...</option>
+                      {availableCurrencies.map((c: any) => (
+                        <option key={c.code} value={c.code}>
+                          {c.code} - {c.name} ({c.symbol})
+                        </option>
+                      ))}
+                    </select>
+                    {creatorData?.country && availableCurrencies.length === 0 && (
+                      <p className="text-xs text-amber-600 bg-amber-50 p-3 rounded-lg mt-2">
+                        No currencies configured for this country yet. Contact an admin to add currencies.
+                      </p>
+                    )}
+                  </div>
+                  {creatorData?.currency && (
+                    <div className="p-4 bg-orange-50 rounded-lg border border-orange-100">
+                      <p className="text-sm font-bold text-orange-800">
+                        All transactions will be processed in {creatorData.currency}
+                      </p>
+                      <p className="text-xs text-orange-600 mt-1">
+                        Prices shown on your profile will use this currency. Existing transactions keep their original currency.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </section>
             )}

@@ -1,8 +1,10 @@
+import { apiGet } from "./apiClient";
+
 export async function downloadProduct(productId: string, uid?: string) {
   const params = new URLSearchParams({ productId });
   if (uid) params.set("uid", uid);
 
-  const res = await fetch(`/api/store/download?${params}`);
+  const res = await apiGet(`/api/store/download?${params}`);
   const data = await res.json();
 
   if (!res.ok) {

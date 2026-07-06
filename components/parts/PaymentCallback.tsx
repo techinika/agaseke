@@ -16,6 +16,7 @@ import {
   Loader,
 } from "lucide-react";
 import Link from "next/link";
+import { formatCurrency } from "@/types/currency";
 
 export default function PaymentCallback() {
   const searchParams = useSearchParams();
@@ -133,7 +134,7 @@ export default function PaymentCallback() {
                     <p className="text-muted-foreground font-medium">
                       Your ticket for{" "}
                       <span className="text-orange-600 font-bold">
-                        {txData?.amount} RWF
+                        {txData?.amount} {txData?.currency || "RWF"}
                       </span>{" "}
                       has been confirmed.
                     </p>
@@ -185,7 +186,7 @@ export default function PaymentCallback() {
                     <p className="text-muted-foreground font-medium">
                       Your payment of{" "}
                       <span className="text-orange-600 font-bold">
-                        {txData?.amount} RWF
+                        {txData?.amount} {txData?.currency || "RWF"}
                       </span>{" "}
                       has been processed successfully.
                     </p>
@@ -215,7 +216,7 @@ export default function PaymentCallback() {
                     <p className="text-muted-foreground font-medium">
                       Your gift of{" "}
                       <span className="text-orange-600 font-bold">
-                        {txData?.amount} RWF
+                        {txData?.amount} {txData?.currency || "RWF"}
                       </span>{" "}
                       has been sent successfully.
                     </p>

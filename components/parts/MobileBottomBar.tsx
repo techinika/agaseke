@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import {
   Home,
-  Zap,
   Compass,
   MessageSquare,
   Shield,
@@ -18,6 +17,7 @@ import { db } from "@/db/firebase";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import Link from "next/link";
+import { GrDashboard } from "react-icons/gr";
 
 export default function MobileBottomBar() {
   const auth = useAuth();
@@ -57,44 +57,44 @@ export default function MobileBottomBar() {
 
   return (
     <>
-      <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-background border-t border-border pb-1">
+      <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-background border-t border-border pb-2 pt-1">
         <div className="flex items-center justify-around">
           <Link
             href="/supporter"
-            className="flex flex-col items-center py-1.5 w-full text-muted-foreground"
+            className="flex flex-col items-center py-2 w-full text-muted-foreground"
           >
-            <Home size={14} />
-            <span className="text-[8px] mt-0.5">Feed</span>
+            <Home size={18} />
+            <span className="text-[10px] mt-1 font-medium">Feed</span>
           </Link>
           <Link
             href={auth?.isCreator ? "/creator" : "/onboarding"}
-            className="flex flex-col items-center py-1.5 w-full text-muted-foreground"
+            className="flex flex-col items-center py-2 w-full text-muted-foreground"
           >
-            <Zap size={14} />
-            <span className="text-[8px] mt-0.5">Creator</span>
+            <GrDashboard size={18} />
+            <span className="text-[10px] mt-1 font-medium">Creator</span>
           </Link>
           <Link
             href="/explore"
-            className="flex flex-col items-center py-1.5 w-full text-muted-foreground"
+            className="flex flex-col items-center py-2 w-full text-muted-foreground"
           >
-            <Compass size={14} />
-            <span className="text-[8px] mt-0.5">Discover</span>
+            <Compass size={18} />
+            <span className="text-[10px] mt-1 font-medium">Discover</span>
           </Link>
           {auth.isAdmin && (
             <Link
               href="/admin"
-              className="flex flex-col items-center py-1.5 w-full text-muted-foreground"
+              className="flex flex-col items-center py-2 w-full text-muted-foreground"
             >
-              <Shield size={14} />
-              <span className="text-[8px] mt-0.5">Admin</span>
+              <Shield size={18} />
+              <span className="text-[10px] mt-1 font-medium">Admin</span>
             </Link>
           )}
           <button
             onClick={() => setShowFeedback(true)}
-            className="flex flex-col items-center py-1.5 w-full text-muted-foreground"
+            className="flex flex-col items-center py-2 w-full text-muted-foreground"
           >
-            <MessageSquare size={14} />
-            <span className="text-[8px] mt-0.5">Feedback</span>
+            <MessageSquare size={18} />
+            <span className="text-[10px] mt-1 font-medium">Feedback</span>
           </button>
         </div>
       </div>

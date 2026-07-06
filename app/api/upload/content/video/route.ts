@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { v2 as cloudinary } from "cloudinary";
+import { requireAuth } from "@/lib/authMiddleware";
 
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
@@ -9,6 +10,8 @@ cloudinary.config({
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export async function POST(req: Request) {
+  const authUser = await requireAuth(req);
+  if (authUser instanceof NextResponse) return authUser;
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File;

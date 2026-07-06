@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb, admin } from "@/db/firebaseAdmin";
+import { optionalAuth } from "@/lib/authMiddleware";
 import { BookingAvailability, BookingTier } from "@/types/booking";
 import { encrypt } from "@/lib/encryption";
 import { createNotification } from "@/lib/adminNotifications";
@@ -57,8 +58,12 @@ function getMeetingLocation(avail: BookingAvailability, preferredType: string): 
 }
 
 export async function POST(request: NextRequest) {
+  const authUser = await optionalAuth(request);
+  if (authUser instanceof NextResponse) return authUser;
+
   try {
-    const { creatorHandle, bookerId, bookerName, bookerEmail, bookerPhone, reason, preferredDate, preferredTime, preferredType, tierId, tierName, paymentAmount } = await request.json();
+    let { creatorHandle, bookerId, bookerName, bookerEmail, bookerPhone, reason, preferredDate, preferredTime, preferredType, tierId, tierName, paymentAmount } = await request.json();
+    if (authUser) bookerId = authUser.uid;
 
     if (!creatorHandle || !bookerName || !bookerEmail) {
       await adminDb.collection("activityLogs").add({

@@ -21,6 +21,8 @@ import {
   getDocs,
   limit,
   orderBy,
+  doc,
+  getDoc,
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
@@ -31,10 +33,12 @@ import {
   ActivityRow,
   HistoryItem,
 } from "./creatorspace/index";
+import { getCurrencySymbol } from "@/types/currency";
 
 export default function CreatorDashboard() {
   const { creator } = useAuth();
   const router = useRouter();
+  const [creatorCurrency, setCreatorCurrency] = useState("RWF");
   const [data, setData] = useState<any>({
     recentSupport: [],
     history: [],
@@ -51,6 +55,9 @@ export default function CreatorDashboard() {
         );
         const creatorDoc = creatorSnap.docs[0];
         const cid = creatorDoc?.id;
+        if (creatorDoc) {
+          setCreatorCurrency(creatorDoc.data().currency || "RWF");
+        }
 
         const supportQ = query(
           collection(db, "supportedCreators"),
@@ -160,7 +167,7 @@ export default function CreatorDashboard() {
           </div>
           <h3 className="text-4xl font-bold">
             {creator?.pendingPayout?.toLocaleString() || 0}
-            <span className="text-sm font-medium text-muted-foreground ml-2">RWF</span>
+            <span className="text-sm font-medium text-muted-foreground ml-2">{getCurrencySymbol(creatorCurrency)}</span>
           </h3>
           <button
             onClick={() => router.push("/creator/payouts")}
@@ -200,6 +207,7 @@ export default function CreatorDashboard() {
                       : sup.supporterName || "A Supporter"
                   }
                   amount={sup.amount?.toLocaleString()}
+                  currency={sup.currency || creatorCurrency}
                   time={
                     sup.createdAt
                       ? formatDistanceToNow(sup.createdAt.toDate(), {

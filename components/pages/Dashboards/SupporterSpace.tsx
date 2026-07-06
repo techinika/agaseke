@@ -21,6 +21,16 @@ import {
   Clock,
   Home,
   Compass,
+  Image,
+  Video,
+  File,
+  Lock,
+  Globe,
+  ImageUp,
+  Camera,
+  Save,
+  UploadCloud,
+  Trash2,
 } from "lucide-react";
 import Navbar from "@/components/parts/Navigation";
 import MobileBottomBar from "@/components/parts/MobileBottomBar";
@@ -117,6 +127,117 @@ export default function SupporterSpace() {
     null,
   );
   const postRefs = useRef<Record<string, HTMLDivElement>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [newPost, setNewPost] = useState({
+    title: "",
+    description: "",
+    type: "text" as "text" | "image" | "video" | "document",
+    isPrivate: false,
+  });
+  const [posting, setPosting] = useState(false);
+  const [mediaType, setMediaType] = useState<
+    "image" | "video" | "document" | null
+  >(null);
+  const [uploadedUrl, setUploadedUrl] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !auth.creator?.handle) return;
+    const type = mediaType || "image";
+    if (type === "image") {
+      setFilePreview(URL.createObjectURL(file));
+    }
+    setIsUploading(true);
+    setUploadedUrl("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("creatorHandle", auth.creator.handle);
+      formData.append("type", type === "document" ? "perk_file" : type);
+      const endpoint =
+        type === "video"
+          ? "/api/upload/content/video"
+          : type === "document"
+            ? "/api/upload/content/docs"
+            : "/api/upload/content/image";
+      const res = await fetch(endpoint, { method: "POST", body: formData });
+      if (!res.ok) throw new Error("Upload failed");
+      const data = await res.json();
+      if (data.url) {
+        setUploadedUrl(data.url);
+        setNewPost((prev) => ({ ...prev, type }));
+        toast.success("File uploaded!");
+      } else {
+        throw new Error("Upload failed");
+      }
+    } catch {
+      toast.error("Upload failed");
+      setFilePreview(null);
+      setUploadedUrl("");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleCreatePost = async () => {
+    if (
+      !auth.creator?.handle ||
+      !auth.creator?.uid ||
+      !newPost.description.trim()
+    )
+      return;
+    setPosting(true);
+    try {
+      const contentData = {
+        creatorId: auth.creator.handle,
+        creatorUid: auth.creator.uid,
+        title: newPost.title || newPost.description.slice(0, 80),
+        description: newPost.description,
+        type: newPost.type,
+        contentUrl: uploadedUrl || null,
+        isPrivate: newPost.isPrivate,
+        createdAt: serverTimestamp(),
+        views: 0,
+      };
+      const docRef = await addDoc(
+        collection(db, "creatorContent"),
+        contentData,
+      );
+      toast.success("Content published!");
+      setNewPost({
+        title: "",
+        description: "",
+        type: "text",
+        isPrivate: false,
+      });
+      setUploadedUrl("");
+      setFilePreview(null);
+      setMediaType(null);
+      try {
+        await fetch("/api/comms/email/content/new", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            creatorId: auth.creator.handle,
+            creatorName: auth.creator?.name || "Creator",
+            creatorHandle: auth.creator?.handle,
+            contentTitle: newPost.title || newPost.description.slice(0, 80),
+            contentDescription: newPost.description,
+            contentType: newPost.isPrivate ? "private" : "public",
+            contentId: docRef.id,
+          }),
+        });
+      } catch {
+        /* notify silently */
+      }
+    } catch {
+      toast.error("Failed to publish");
+    } finally {
+      setPosting(false);
+    }
+  };
 
   useEffect(() => {
     const fetchSupporterData = async () => {
@@ -157,22 +278,18 @@ export default function SupporterSpace() {
               )
             : null;
 
-        const [
-          publicSnap,
-          gatheringSnap,
-          creatorsSnap,
-          purchasesSnap,
-        ] = await Promise.all([
-          getDocs(publicContentQ),
-          getDocs(
-            query(
-              collection(db, "creatorGatherings"),
-              orderBy("createdAt", "desc"),
+        const [publicSnap, gatheringSnap, creatorsSnap, purchasesSnap] =
+          await Promise.all([
+            getDocs(publicContentQ),
+            getDocs(
+              query(
+                collection(db, "creatorGatherings"),
+                orderBy("createdAt", "desc"),
+              ),
             ),
-          ),
-          getDocs(collection(db, "creators")),
-          getDocs(purchasesQuery),
-        ]);
+            getDocs(collection(db, "creators")),
+            getDocs(purchasesQuery),
+          ]);
 
         let allContentDocs = [...publicSnap.docs];
 
@@ -182,7 +299,10 @@ export default function SupporterSpace() {
             const privateSnap = await getDocs(privateContentQ);
             allContentDocs.push(...privateSnap.docs);
           } catch (privateErr) {
-            console.warn("Private content query failed (non-critical):", privateErr);
+            console.warn(
+              "Private content query failed (non-critical):",
+              privateErr,
+            );
           }
         }
 
@@ -567,9 +687,24 @@ export default function SupporterSpace() {
     return true;
   });
   const contentItems = filteredFeed.filter((item) => item.type !== "gathering");
-  const gatheringItems = filteredFeed.filter(
-    (item) => item.type === "gathering",
-  );
+  const gatheringItems = filteredFeed
+    .filter((item) => item.type === "gathering")
+    .filter((item) => {
+      if (!item.date) return true;
+      const eventDate = new Date(
+        item.date.seconds ? item.date.seconds * 1000 : item.date,
+      );
+      const now = new Date();
+      const endOfToday = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        23,
+        59,
+        59,
+      );
+      return eventDate.getTime() >= endOfToday.getTime();
+    });
 
   const renderYouTubeEmbed = (text: string) => {
     const youtubeUrl = hasYouTubeLink(text);
@@ -885,10 +1020,9 @@ export default function SupporterSpace() {
           </div>
           <Link
             href={auth?.isCreator ? "/creator" : "/onboarding"}
-            className="bg-foreground text-background px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-foreground/90 transition flex items-center gap-2"
+            className="hidden lg:flex bg-orange-600 text-white px-5 py-3 rounded-lg text-sm font-bold hover:bg-orange-700 transition items-center gap-2 shadow-lg shadow-orange-200"
           >
-            <Zap size={16} />
-            {auth?.isCreator ? "Go to Creator" : "Become Creator"}
+            {auth?.isCreator ? "Creator Dashboard" : "Become Creator"}
           </Link>
         </div>
 
@@ -911,6 +1045,141 @@ export default function SupporterSpace() {
             </button>
           ))}
         </div>
+
+        {auth.isCreator && (
+          <div className="bg-card rounded-xl border border-border p-4 mb-6 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-sm shrink-0">
+                {auth.profile?.displayName?.[0] || auth.user?.email?.[0] || "C"}
+              </div>
+              <div className="flex-1 min-w-0">
+                <textarea
+                  value={newPost.description}
+                  onChange={(e) =>
+                    setNewPost((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
+                  placeholder="What's on your mind?"
+                  rows={newPost.description ? 3 : 1}
+                  className="w-full text-sm bg-transparent outline-none resize-none placeholder:text-muted-foreground/50"
+                />
+                {(isUploading || filePreview || uploadedUrl) && (
+                  <div className="mb-2">
+                    {isUploading ? (
+                      <div className="flex items-center gap-2 text-xs text-orange-600 bg-orange-50 px-3 py-2 rounded-lg">
+                        <Loader size={14} className="animate-spin" />
+                        <span>Uploading...</span>
+                      </div>
+                    ) : filePreview && !uploadedUrl ? (
+                      <div className="relative">
+                        {newPost.type === "image" ? (
+                          <img src={filePreview} alt="Preview" className="w-full max-h-48 object-cover rounded-lg border border-border" />
+                        ) : newPost.type === "video" ? (
+                          <video src={filePreview} controls className="w-full max-h-48 rounded-lg border border-border" />
+                        ) : (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted px-3 py-2 rounded-lg">
+                            <File size={14} />
+                            <span>Preparing file...</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : uploadedUrl && (
+                      <div className="relative">
+                        {newPost.type === "image" ? (
+                          <img src={uploadedUrl} alt="Uploaded" className="w-full max-h-48 object-cover rounded-lg border border-border" />
+                        ) : newPost.type === "video" ? (
+                          <video src={uploadedUrl} controls className="w-full max-h-48 rounded-lg border border-border" />
+                        ) : (
+                          <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 px-3 py-2 rounded-lg">
+                            <FileText size={14} />
+                            <span className="font-medium">File attached</span>
+                          </div>
+                        )}
+                        <button onClick={() => { setUploadedUrl(""); setFilePreview(null); setNewPost((prev) => ({ ...prev, type: "text" })); }} className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  hidden
+                  accept={
+                    mediaType === "image"
+                      ? "image/*"
+                      : mediaType === "video"
+                        ? "video/*"
+                        : ".pdf,.doc,.docx"
+                  }
+                  onChange={handleFileUpload}
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => {
+                    setMediaType("image");
+                    fileInputRef.current?.click();
+                  }}
+                  className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-green-600 transition"
+                  title="Add Image"
+                >
+                  <Image size={16} />
+                </button>
+                <button
+                  onClick={() => {
+                    setMediaType("video");
+                    fileInputRef.current?.click();
+                  }}
+                  className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-blue-600 transition"
+                  title="Add Video"
+                >
+                  <Video size={16} />
+                </button>
+                <button
+                  onClick={() => {
+                    setMediaType("document");
+                    fileInputRef.current?.click();
+                  }}
+                  className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-orange-600 transition"
+                  title="Add Document"
+                >
+                  <File size={16} />
+                </button>
+                <div className="w-px h-5 bg-border mx-1" />
+                <button
+                  onClick={() =>
+                    setNewPost((prev) => ({
+                      ...prev,
+                      isPrivate: !prev.isPrivate,
+                    }))
+                  }
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition ${newPost.isPrivate ? "bg-amber-50 text-amber-700" : "bg-green-50 text-green-700"}`}
+                >
+                  {newPost.isPrivate ? <Lock size={12} /> : <Globe size={12} />}
+                  {newPost.isPrivate ? "Supporters" : "Public"}
+                </button>
+              </div>
+              <button
+                onClick={handleCreatePost}
+                disabled={!newPost.description.trim() || posting}
+                className="bg-foreground text-background px-5 py-2 rounded-lg text-xs font-bold hover:bg-orange-600 transition disabled:opacity-40 flex items-center gap-2"
+              >
+                {posting ? (
+                  <Loader size={14} className="animate-spin" />
+                ) : (
+                  <Save size={14} />
+                )}
+                {posting ? "Posting..." : "Post"}
+              </button>
+            </div>
+          </div>
+        )}
 
         {gatheringItems.length > 0 && (
           <div className="mb-8">
@@ -1225,167 +1494,184 @@ export default function SupporterSpace() {
 
           <div className="hidden lg:block lg:col-span-4">
             <div className="sticky top-24 space-y-6">
-            <div className="bg-card rounded-lg shadow-sm border border-border p-4">
-              <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                Your Stats
-              </h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    Total Supported
-                  </span>
-                  <span className="font-semibold text-orange-600">
-                    {(auth?.profile?.totalSupport || 0).toLocaleString()} RWF
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    Following
-                  </span>
-                  <span className="font-semibold text-foreground">
-                    {favorites.length} creators
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    Purchases
-                  </span>
-                  <span className="font-semibold text-foreground">
-                    {purchases.length} items
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-card rounded-lg shadow-sm border border-border p-4">
-              <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                Following
-              </h3>
-              <div className="space-y-2">
-                {favorites.slice(0, 6).map((c) => (
-                  <Link
-                    key={c.id}
-                    href={`/${c.handle}`}
-                    className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-muted transition"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-muted overflow-hidden">
-                      {c.photoURL ? (
-                        <img
-                          src={c.photoURL}
-                          alt={c.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-sm flex items-center justify-center h-full text-muted-foreground">
-                          {c.name?.[0]}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">
-                        {c.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        @{c.handle}
-                      </p>
-                    </div>
-                  </Link>
-                ))}
-                {favorites.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-2">
-                    Not following anyone yet
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {purchases.length > 0 && (
+              {auth.isCreator && (
+                <Link
+                  href="/creator"
+                  className="hidden lg:flex bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg p-4 text-white items-center gap-3 hover:from-orange-600 hover:to-orange-700 transition shadow-lg"
+                >
+                  <div className="flex-1">
+                    <p className="font-bold text-sm">Creator Dashboard</p>
+                    <p className="text-xs text-white/80">
+                      Manage your community
+                    </p>
+                  </div>
+                </Link>
+              )}
               <div className="bg-card rounded-lg shadow-sm border border-border p-4">
                 <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                  <ShoppingBag size={18} className="text-emerald-500" />
-                  Recent Purchases
+                  Your Stats
                 </h3>
-                <div className="space-y-2">
-                  {purchases.slice(0, 4).map((purchase) => (
-                    <div
-                      key={purchase.id}
-                      className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-muted"
-                    >
-                      <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center shrink-0">
-                        <Package size={14} className="text-muted-foreground" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-foreground truncate">
-                          {purchase.productName || "Product"}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground">
-                          from @{purchase.creatorHandle}
-                        </p>
-                      </div>
-                      <span className="text-xs font-medium text-emerald-600">
-                        {Number(purchase.totalAmount || 0).toLocaleString()} RWF
-                      </span>
-                    </div>
-                  ))}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Total Supported
+                    </span>
+                    <span className="font-semibold text-orange-600">
+                      {(auth?.profile?.totalSupport || 0).toLocaleString()} RWF
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Following
+                    </span>
+                    <span className="font-semibold text-foreground">
+                      {favorites.length} creators
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      Purchases
+                    </span>
+                    <span className="font-semibold text-foreground">
+                      {purchases.length} items
+                    </span>
+                  </div>
                 </div>
               </div>
-            )}
 
-            <div className="bg-card rounded-lg shadow-sm border border-border p-4">
-              <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                Discover Creators
-              </h3>
-              <div className="space-y-2">
-                {creators.slice(0, 5).map((c) => (
-                  <Link
-                    key={c.handle}
-                    href={`/${c.handle}`}
-                    className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-muted transition"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-muted overflow-hidden">
-                      {c.photoURL ? (
-                        <img
-                          src={c.photoURL}
-                          alt={c.handle}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-sm flex items-center justify-center h-full text-muted-foreground">
-                          {c.handle?.[0]}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground">
-                        @{c.handle}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {c.bio || "New Creator"}
-                      </p>
-                    </div>
-                  </Link>
-                ))}
+              <div className="bg-card rounded-lg shadow-sm border border-border p-4">
+                <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                  Following
+                </h3>
+                <div className="space-y-2">
+                  {favorites.slice(0, 6).map((c) => (
+                    <Link
+                      key={c.id}
+                      href={`/${c.handle}`}
+                      className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-muted transition"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-muted overflow-hidden">
+                        {c.photoURL ? (
+                          <img
+                            src={c.photoURL}
+                            alt={c.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-sm flex items-center justify-center h-full text-muted-foreground">
+                            {c.name?.[0]}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {c.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          @{c.handle}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                  {favorites.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-2">
+                      Not following anyone yet
+                    </p>
+                  )}
+                </div>
               </div>
-              <button
-                onClick={() => router.push("/explore")}
-                className="w-full bg-orange-600 text-white hover:bg-orange-700 py-2 rounded-lg mt-4 text-sm font-medium text-center"
-              >
-                Explore more
-              </button>
-            </div>
 
-            <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg p-4 text-white">
-              <h3 className="font-semibold mb-2">Start Creating</h3>
-              <p className="text-sm text-white/80 mb-4">
-                Share your content and grow your audience
-              </p>
-              <Link
-                href={auth?.isCreator ? "/creator" : "/onboarding"}
-                className="block w-full bg-card text-orange-600 text-center py-2 rounded-lg font-medium hover:bg-card/90 transition"
-              >
-                {auth?.isCreator ? "Go to Dashboard" : "Become Creator"}
-              </Link>
-            </div>
+              {purchases.length > 0 && (
+                <div className="bg-card rounded-lg shadow-sm border border-border p-4">
+                  <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <ShoppingBag size={18} className="text-emerald-500" />
+                    Recent Purchases
+                  </h3>
+                  <div className="space-y-2">
+                    {purchases.slice(0, 4).map((purchase) => (
+                      <div
+                        key={purchase.id}
+                        className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-muted"
+                      >
+                        <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center shrink-0">
+                          <Package
+                            size={14}
+                            className="text-muted-foreground"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-foreground truncate">
+                            {purchase.productName || "Product"}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            from @{purchase.creatorHandle}
+                          </p>
+                        </div>
+                        <span className="text-xs font-medium text-emerald-600">
+                          {Number(purchase.totalAmount || 0).toLocaleString()}{" "}
+                          {purchase.currency || "RWF"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="bg-card rounded-lg shadow-sm border border-border p-4">
+                <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                  Discover Creators
+                </h3>
+                <div className="space-y-2">
+                  {creators.slice(0, 5).map((c) => (
+                    <Link
+                      key={c.handle}
+                      href={`/${c.handle}`}
+                      className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-muted transition"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-muted overflow-hidden">
+                        {c.photoURL ? (
+                          <img
+                            src={c.photoURL}
+                            alt={c.handle}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-sm flex items-center justify-center h-full text-muted-foreground">
+                            {c.handle?.[0]}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground">
+                          @{c.handle}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {c.bio || "New Creator"}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+                <button
+                  onClick={() => router.push("/explore")}
+                  className="w-full bg-orange-600 text-white hover:bg-orange-700 py-2 rounded-lg mt-4 text-sm font-medium text-center"
+                >
+                  Explore more
+                </button>
+              </div>
+
+              <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg p-4 text-white">
+                <h3 className="font-semibold mb-2">Start Creating</h3>
+                <p className="text-sm text-white/80 mb-4">
+                  Share your content and grow your audience
+                </p>
+                <Link
+                  href={auth?.isCreator ? "/creator" : "/onboarding"}
+                  className="block w-full bg-card text-orange-600 text-center py-2 rounded-lg font-medium hover:bg-card/90 transition"
+                >
+                  {auth?.isCreator ? "Go to Dashboard" : "Become Creator"}
+                </Link>
+              </div>
             </div>
           </div>
         </div>

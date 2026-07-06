@@ -607,6 +607,23 @@ For issues or feature requests, please open an issue on GitHub.
 
 ## Recent Updates
 
+### Homepage Renovation & Currency Fixes (July 2026)
+- **Hero redesigned**: Two-column layout with H1 "Build Your Private Community as a Content Creator", direct description, CTA + payment methods on the left (3/5), fanned creator cards on the right (2/5). Cards fan out like a hand (rotate -7/0/7 deg, bottom center transform-origin, -130px overlap). Click to straighten + lift, click again to return. Hidden on mobile.
+- **Pan-African positioning**: Removed all Rwanda-only references from homepage, layout metadata, footer, and FAQ structured data. Open to everyone, especially African creators.
+- **Currency-configurable payout threshold**: `AdminCurrenciesPage.tsx` now stores a `payoutThreshold` per currency. `PayoutPolicyPage.tsx` and `PayoutsPage.tsx` read dynamically from Firestore.
+- **Featured creator cards**: Fetch real data from Firestore (`creators` collection, order by name, limit 3). Cards match `PublicProfile` SendGiftSection style: 64px avatar, green verified badge, handle, bio (line-clamp-2), focus tags, social dot-badges (IG/𝕏/YT/TK). No earnings or fan counts shown.
+- **Rotated diamond background**: Orange-tinted square behind the card stack (`w-[500px] h-[500px] bg-orange-500/[0.07] rotate-45`).
+- **PaymentCallback fix**: 3 hardcoded "RWF" → `{txData?.amount} {txData?.currency || "RWF"}`, imported `formatCurrency`.
+- **SupportersPage currency tracking**: Added `currency` to `SupporterSupport` & `AggregatedSupporter` interfaces; totals show `creatorCurrency`, per-supporter amounts show `supporter.currency`, filter labels use `creatorCurrency`.
+- **SalesPage product totals fix**: Product aggregation now tracks per-sale currencies (`currencies` map) and displays the predominant one via `product.primaryCurrency` instead of hardcoded `getCurrencySymbol("RWF")`.
+- **SupporterSpace purchase currency**: Purchase items now show `{purchase.currency || "RWF"}` instead of hardcoded RWF.
+- **AdminPage withdrawal currency**: Added `currency` field to `withdrawRequests` on creation. Admin withdrawal displays (approval/rejection messages, withdrawal list) use `{req.currency || "RWF"}` instead of hardcoded RWF.
+- **Supporter page content creation form**: Inline social-media-style composer with textarea, always-visible Image/Video/Document attachment buttons, public/supporters-only toggle, and Post button. Posts to `creatorContent` collection with email notification to supporters.
+- **Upload progress & preview**: Uploading files now shows a spinner with "Uploading..." status. Images show a preview thumbnail; videos show an inline player with controls; documents show a "File attached" badge. A Trash2 button lets users remove the uploaded file.
+- **Past events filtering**: Events on `/supporter` with dates before end of today are hidden — only upcoming events appear in the "Upcoming Events" section.
+- **MobileBottomBar enlarged**: Icons 14→18px, labels text-[8px]→text-[10px] font-medium, padding py-1.5→py-2.
+- **Desktop creator button prominent**: Orange background, shadow-lg shadow-orange-200, label "Creator Dashboard" or "Become Creator".
+
 ### Sales Dashboard & Store Enhancements (May 2026)
 - **Sales Page** (`/creator/sales`): New dashboard page for tracking product sales and earnings
   - Real-time sales statistics: Total Sales, Your Earnings, Total Orders, Unique Buyers
