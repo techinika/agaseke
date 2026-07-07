@@ -2,6 +2,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { sendCommsEmail } from "@/lib/commsService";
+import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService";
 import { Calendar, Loader, ArrowRight, Lock, X, Smartphone, CreditCard } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/db/firebase";
@@ -211,19 +213,15 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
         metadata: { gatheringId: gathering.id },
       });
 
-      fetch("/api/comms/email/gathering/rsvp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          supporterName: profile.displayName || user.email,
-          supporterEmail: user.email,
-          creatorHandle,
-          creatorId,
-          gatheringId: gathering.id,
-          gatheringTitle: gathering.title,
-          gatheringDate: gathering.date,
-          gatheringTime: gathering.time,
-        }),
+      sendCommsEmail("gathering_rsvp", {
+        supporterName: profile.displayName || user.email,
+        supporterEmail: user.email,
+        creatorHandle,
+        creatorId,
+        gatheringId: gathering.id,
+        gatheringTitle: gathering.title,
+        gatheringDate: gathering.date,
+        gatheringTime: gathering.time,
       }).catch(() => {});
 
       toast.success("RSVP confirmed!");
@@ -303,38 +301,38 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
     setPaying(true);
     try {
       const amount = gathering.ticketPrice || 0;
-      const endpoint = payMethod === "momo" ? "/api/support/with-momo/pay" : "/api/support/with-card/pay";
-      const body: any = {
-        amount,
-        creatorId: creatorHandle,
-        creatorUid: creatorId,
-        supporterId: user.uid,
-        gatheringId: gathering.id,
-        attendeeName: profile.displayName || user.email,
-        attendeeEmail: user.email,
-        includeReferral: false,
-      };
+      let ref: string;
       if (payMethod === "momo") {
-        body.phone = payPhone;
+        const data = await initiateMomoPayment({
+          amount,
+          phone: payPhone,
+          creatorId: creatorHandle,
+          creatorUid: creatorId,
+          supporterId: user.uid,
+          gatheringId: gathering.id,
+          attendeeName: profile.displayName || user.email || undefined,
+          attendeeEmail: user.email || undefined,
+          includeReferral: false,
+        });
+        ref = data.ref;
       } else {
-        body.email = user.email;
-        body.firstName = profile.displayName || user.email || "User";
-        body.lastName = "";
-      }
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast.error(data.error || "Payment failed to initiate");
-        setPaying(false);
-        return;
-      }
-      const ref = data.ref || data.merchant_reference;
-      if (payMethod === "card" && data.redirect_url) {
-        window.open(data.redirect_url, "_blank");
+        const data = await initiateCardPayment({
+          amount,
+          email: user.email || undefined,
+          firstName: profile.displayName || user.email || "User",
+          lastName: "",
+          creatorId: creatorHandle,
+          creatorUid: creatorId,
+          supporterId: user.uid,
+          gatheringId: gathering.id,
+          attendeeName: profile.displayName || user.email || undefined,
+          attendeeEmail: user.email || undefined,
+          includeReferral: false,
+        });
+        ref = data.merchant_reference || data.ref;
+        if (data.redirect_url) {
+          window.open(data.redirect_url, "_blank");
+        }
       }
       listenForTransaction(ref, gathering);
       toast.success("Payment initiated. Waiting for confirmation...");

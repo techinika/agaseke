@@ -1,10 +1,3 @@
-import * as jose from "jose";
-
-const JWKS_URL =
-  "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com";
-
-const jwks = jose.createRemoteJWKSet(new URL(JWKS_URL));
-
 export function unauthorized(): Response {
   return new Response(JSON.stringify({ error: "Authentication required" }), {
     status: 401,
@@ -21,28 +14,37 @@ export function forbidden(): Response {
 
 export async function requireAuth(
   request: Request,
-  projectId: string
+  apiKey: string
 ): Promise<{ uid: string; email: string | null } | Response> {
   const authHeader = request.headers.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    return unauthorized();
-  }
+  if (!authHeader?.startsWith("Bearer ")) return unauthorized();
 
-  const token = authHeader.split("Bearer ")[1];
-  if (!token) return unauthorized();
+  const idToken = authHeader.split("Bearer ")[1];
+  if (!idToken) return unauthorized();
 
   try {
-    const { payload } = await jose.jwtVerify(token, jwks, {
-      issuer: `https://securetoken.google.com/${projectId}`,
-      audience: projectId,
-    });
+    const res = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      }
+    );
 
-    return {
-      uid: payload.sub as string,
-      email: (payload.email as string) || null,
-    };
+    if (!res.ok) {
+      const err = await res.text();
+      console.error("Firebase auth error:", res.status, err);
+      return unauthorized();
+    }
+
+    const data = (await res.json()) as { users?: Array<{ localId: string; email?: string }> };
+    if (!data.users?.[0]) return unauthorized();
+
+    const user = data.users[0];
+    return { uid: user.localId, email: user.email || null };
   } catch (err) {
-    console.error("JWT verification error:", err);
+    console.error("Firebase REST auth error:", err);
     return unauthorized();
   }
 }

@@ -80,7 +80,7 @@ async function handleUpload(
 ): Promise<Response> {
   const origin = request.headers.get("origin");
 
-  const auth = await requireAuth(request, env.FIREBASE_PROJECT_ID);
+  const auth = await requireAuth(request, env.FIREBASE_API_KEY);
   if (auth instanceof Response) return auth;
 
   const contentType = request.headers.get("content-type") || "";

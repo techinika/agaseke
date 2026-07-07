@@ -2,6 +2,7 @@
 import { signInWithPopup } from "firebase/auth";
 import { auth, db, googleProvider } from "../firebase";
 import { toast } from "sonner";
+import { sendCommsEmail } from "@/lib/commsService";
 import {
   doc,
   getDoc,
@@ -46,13 +47,9 @@ export const handleGoogleLogin = async (
       await setDoc(userRef, initialProfile);
 
       try {
-        await fetch("/api/comms/email/welcome/profile", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: user.email,
-            name: user.displayName || "Supporter",
-          }),
+        await sendCommsEmail("profile_live", {
+          email: user.email,
+          name: user.displayName || "Supporter",
         });
       } catch (emailError) {
         console.error("Welcome email failed to send:", emailError);

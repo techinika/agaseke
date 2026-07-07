@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Creator } from "@/types/creator";
 import { BookingAvailability, BookingType } from "@/types/booking";
 import { logError } from "@/lib/logger";
+import { createBooking } from "@/lib/bookingsService";
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -100,29 +101,19 @@ export function BookingModal({
 
     setSubmitting(true);
     try {
-      const response = await fetch("/api/bookings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          creatorHandle: creator.handle,
-          bookerId: user?.uid || null,
-          bookerName: name,
-          bookerEmail: email,
-          bookerPhone: phone,
-          reason,
-          preferredDate: selectedDate,
-          preferredTime: selectedTime,
-          preferredType: selectedType,
-        }),
+      await createBooking({
+        creatorHandle: creator.handle,
+        bookerId: user?.uid || null,
+        bookerName: name,
+        bookerEmail: email,
+        bookerPhone: phone,
+        reason,
+        preferredDate: selectedDate,
+        preferredTime: selectedTime,
+        preferredType: selectedType,
       });
 
-      const data = await response.json();
-      if (response.ok) {
-        setStep("success");
-      } else {
-        toast.error(data.error || "Failed to submit booking");
-        setStep("error");
-      }
+      setStep("success");
     } catch (error) {
       console.error("Booking error:", error);
       toast.error("Something went wrong. Please try again.");

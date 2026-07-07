@@ -5,8 +5,7 @@
   "compatibility_date": "2026-07-06",
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
-    "enabled": true,
-    "head_sampling_rate": 0.1
+    "enabled": true
   },
   "r2_buckets": [
     {

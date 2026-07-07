@@ -100,7 +100,7 @@ export default {
     }
 
     try {
-      const auth = await requireAuth(request, env.FIREBASE_PROJECT_ID);
+      const auth = await requireAuth(request, env.FIREBASE_API_KEY);
       if (auth instanceof Response) return auth;
 
       const body = (await request.json()) as Partial<CommsRequest>;

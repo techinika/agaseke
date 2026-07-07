@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
+import { sendCommsEmail } from "@/lib/commsService";
 import {
   Zap,
   Loader,
@@ -243,18 +244,14 @@ export default function SupporterSpace() {
       setFilePreview(null);
       setMediaType(null);
       try {
-        await fetch("/api/comms/email/content/new", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            creatorId: auth.creator.handle,
-            creatorName: auth.creator?.name || "Creator",
-            creatorHandle: auth.creator?.handle,
-            contentTitle: newPost.description.slice(0, 80),
-            contentDescription: newPost.description,
-            contentType: newPost.isPrivate ? "private" : "public",
-            contentId: docRef.id,
-          }),
+        await sendCommsEmail("content_new", {
+          creatorId: auth.creator.handle,
+          creatorName: auth.creator?.name || "Creator",
+          creatorHandle: auth.creator?.handle,
+          contentTitle: newPost.description.slice(0, 80),
+          contentDescription: newPost.description,
+          contentType: newPost.isPrivate ? "private" : "public",
+          contentId: docRef.id,
         });
       } catch {
         /* notify silently */

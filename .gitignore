@@ -49,3 +49,5 @@ opencode_next_err.log
 workers/*/node_modules/
 workers/*/.wrangler/
 workers/*/dist/
+
+internal_auth_secret.txt

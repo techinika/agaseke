@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { sendCommsEmail } from "@/lib/commsService";
 import {
   Plus,
   Video,
@@ -238,24 +239,17 @@ export default function ContentManager() {
         toast.success("Content published!");
 
         try {
-          const response = await fetch("/api/comms/email/content/new", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              creatorId: creator.handle,
-              creatorName: creator?.name || "Creator",
-              creatorHandle: creator?.handle,
-              contentTitle: newPost.title,
-              contentDescription: newPost.description,
-              contentType: newPost.isPrivate ? "private" : "public",
-              contentId: docRef.id,
-            }),
+          const response = await sendCommsEmail("content_new", {
+            creatorId: creator.handle,
+            creatorName: creator?.name || "Creator",
+            creatorHandle: creator?.handle,
+            contentTitle: newPost.title,
+            contentDescription: newPost.description,
+            contentType: newPost.isPrivate ? "private" : "public",
+            contentId: docRef.id,
           });
-          if (response.ok) {
-            const data = await response.json();
-            if (data.sentCount > 0) {
-              toast.success(`Notified ${data.sentCount} supporter(s) about your new content!`);
-            }
+          if (response.success && response.recipientCount > 0) {
+            toast.success(`Notified ${response.recipientCount} supporter(s) about your new content!`);
           }
         } catch (notifyError) {
           console.error("Failed to notify supporters:", notifyError);

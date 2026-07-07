@@ -9,7 +9,7 @@ Client (browser + Firebase token)
   │  POST file + assetType + Authorization header
   ▼
 Cloudflare Worker (agaseke-upload)
-  │  1. Verify Firebase JWT (jose + Google JWKS)
+  │  1. Verify Firebase token (Firebase REST API + API key)
   │  2. Validate assetType & size limits
   │  3. Store file in R2 bucket (agaseke-assets)
   │  4. Write asset document to Firestore (assets collection)
@@ -88,50 +88,31 @@ npx wrangler r2 bucket domain add agaseke-assets --domain=assets.agaseke.me
 
 ### Step 4: Set Worker Environment Variables
 
-These are secrets — never commit them to git.
+All vars are managed in the **Cloudflare Dashboard** → Workers & Pages → `agaseke-upload` → Settings → Variables.
 
-```bash
-cd workers/upload
-
-# Firebase project (needed for JWT verification + Firestore writes)
-npx wrangler secret put FIREBASE_PROJECT_ID
-# → ndafana-one
-
-npx wrangler secret put FIREBASE_CLIENT_EMAIL
-# → firebase-adminsdk-...@ndafana-one.iam.gserviceaccount.com
-
-npx wrangler secret put FIREBASE_PRIVATE_KEY
-# → entire private key (-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----)
-#   paste the value exactly as it appears in your .env file
-
-# Assets base URL (your R2 custom domain)
-npx wrangler secret put ASSETS_BASE_URL
-# → https://assets.agaseke.me
-
-# Optional size limits
-npx wrangler secret put MAX_IMAGE_SIZE_MB
-# → 20
-
-npx wrangler secret put MAX_VIDEO_SIZE_MB
-# → 50
-
-npx wrangler secret put WEBP_QUALITY
-# → 88
-```
+| Variable | Type | Secret | Description |
+|---|---|---|---|
+| `FIREBASE_API_KEY` | string | yes | Firebase Web API key |
+| `FIREBASE_PROJECT_ID` | string | no | Firebase project ID |
+| `FIREBASE_CLIENT_EMAIL` | string | no | Firebase service account email |
+| `FIREBASE_PRIVATE_KEY` | string | yes | Firebase service account private key |
+| `ASSETS_BASE_URL` | string | no | Public URL prefix (e.g. `https://assets.agaseke.me`) |
+| `MAX_IMAGE_SIZE_MB` | number | no | Max image upload size in MB |
+| `MAX_VIDEO_SIZE_MB` | number | no | Max video upload size in MB |
 
 ### Step 5: Deploy
 
 ```bash
-npx wrangler deploy -c wrangler.jsonc
+npx wrangler deploy
 ```
 
 The Worker is now live. The frontend's `NEXT_PUBLIC_UPLOAD_WORKER_URL` should point to:
-`https://agaseke-upload.<your-account-id>.workers.dev`
+`https://upload.api.agaseke.me`
 
 ### Step 6: Frontend Env
 
 ```
-NEXT_PUBLIC_UPLOAD_WORKER_URL=https://agaseke-upload.<your-account-id>.workers.dev
+NEXT_PUBLIC_UPLOAD_WORKER_URL=https://upload.api.agaseke.me
 ```
 
 ## API

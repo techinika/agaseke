@@ -11,6 +11,7 @@ export type AssetType =
 
 export interface Env {
   UPLOADS_BUCKET: R2Bucket;
+  FIREBASE_API_KEY: string;
   FIREBASE_PROJECT_ID: string;
   FIREBASE_CLIENT_EMAIL: string;
   FIREBASE_PRIVATE_KEY: string;

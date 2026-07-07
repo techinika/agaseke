@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { sendCommsEmail } from "@/lib/commsService";
 import { db } from "@/db/firebase";
 import {
   collection,
@@ -114,19 +115,15 @@ export default function AdminComms() {
         return toast.error("No recipients found in this category.");
       }
 
-      const res = await fetch("/api/comms/email/broadcast", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          recipients,
-          recipientIds,
-          subject,
-          message,
-          targetLabel: target.toUpperCase(),
-        }),
+      const res = await sendCommsEmail("broadcast", {
+        recipients,
+        recipientIds,
+        subject,
+        message,
+        targetLabel: target.toUpperCase(),
       });
 
-      if (res.ok) {
+      if (res.success) {
         toast.success(`Success! Broadcast sent to ${recipients.length} users.`);
         setSubject("");
         setMessage("");

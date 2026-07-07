@@ -15,6 +15,8 @@ import {
 import { useAuth } from "@/auth/AuthContext";
 import { auth, db } from "@/db/firebase";
 import { toast } from "sonner";
+import { uploadFile } from "@/lib/uploadService";
+import { sendCommsEmail } from "@/lib/commsService";
 
 export const VerificationPage = () => {
   const { creator, profile } = useAuth();
@@ -87,19 +89,32 @@ export const VerificationPage = () => {
     e.preventDefault();
     setLoading(true);
     const formData = new FormData(e.currentTarget);
-    formData.append("uid", String(creator?.uid));
 
     try {
-      const emailRes = await fetch("/api/comms/email/verify", {
-        method: "POST",
-        body: formData,
+      const idFile = formData.get("idFile") as File;
+      if (!idFile) {
+        toast.error("Please upload an identity document");
+        setLoading(false);
+        return;
+      }
+
+      const uploadResult = await uploadFile(
+        idFile,
+        "verification_document",
+        creator?.handle || "",
+      );
+      const idDocumentUrl = uploadResult.url;
+
+      await sendCommsEmail("verification_request", {
+        adminEmail: process.env.NEXT_PUBLIC_ADMIN_EMAIL || "songa@agaseke.me",
+        uid: creator?.uid,
+        accountName: formData.get("accountName"),
+        bankName: formData.get("bankName"),
+        accountNumber: formData.get("accountNumber"),
+        country: formData.get("country"),
+        payoutPreference: formData.get("payoutPreference"),
+        swiftCode: formData.get("swiftCode") || "N/A",
       });
-
-      const emailData = await emailRes.json();
-
-      if (!emailRes.ok) console.error(emailData.error || "Email failed");
-
-      const idDocumentUrl = emailData.documentUrl ?? "";
 
       const payload = {
         uid: creator?.uid,
@@ -109,7 +124,7 @@ export const VerificationPage = () => {
         accountNumber: formData.get("accountNumber"),
         payoutPreference: formData.get("payoutPreference"),
         status: "pending",
-        idDocumentUrl: idDocumentUrl,
+        idDocumentUrl,
         createdAt: serverTimestamp(),
       };
 

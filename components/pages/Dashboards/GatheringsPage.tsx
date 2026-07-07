@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { sendCommsEmail } from "@/lib/commsService";
 import {
   ArrowLeft,
   Plus,
@@ -176,18 +177,14 @@ export default function GatheringsPage() {
         checkedInAt: serverTimestamp(),
       });
 
-      fetch("/api/comms/email/gathering/checkin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          supporterEmail: attendee.supporterEmail,
-          supporterName: attendee.supporterName,
-          creatorName: creator?.name,
-          eventTitle: activeEvent.title,
-          eventDate: activeEvent.date,
-          eventTime: activeEvent.time,
-          eventLocation: activeEvent.location,
-        }),
+      sendCommsEmail("gathering_checkin", {
+        supporterEmail: attendee.supporterEmail,
+        supporterName: attendee.supporterName,
+        creatorName: creator?.name,
+        eventTitle: activeEvent.title,
+        eventDate: activeEvent.date,
+        eventTime: activeEvent.time,
+        eventLocation: activeEvent.location,
       }).catch(() => {});
 
       logActivity({
@@ -226,16 +223,12 @@ export default function GatheringsPage() {
         checkInNote: "",
       });
 
-      fetch("/api/comms/email/gathering/declined", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          supporterEmail: attendee.supporterEmail,
-          supporterName: attendee.supporterName,
-          creatorName: creator?.name,
-          eventTitle: activeEvent.title,
-          eventDate: activeEvent.date,
-        }),
+      sendCommsEmail("gathering_declined", {
+        supporterEmail: attendee.supporterEmail,
+        supporterName: attendee.supporterName,
+        creatorName: creator?.name,
+        eventTitle: activeEvent.title,
+        eventDate: activeEvent.date,
       }).catch(() => {});
 
       logActivity({
@@ -275,17 +268,13 @@ export default function GatheringsPage() {
       });
 
       const previousStatus = attendee.checkedIn ? "check-in" : "decline";
-      fetch("/api/comms/email/gathering/undo", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          supporterEmail: attendee.supporterEmail,
-          supporterName: attendee.supporterName,
-          creatorName: creator?.name,
-          eventTitle: activeEvent?.title,
-          eventDate: activeEvent?.date,
-          action: `undo_${previousStatus}`,
-        }),
+      sendCommsEmail("gathering_undo", {
+        supporterEmail: attendee.supporterEmail,
+        supporterName: attendee.supporterName,
+        creatorName: creator?.name,
+        eventTitle: activeEvent?.title,
+        eventDate: activeEvent?.date,
+        action: `undo_${previousStatus}`,
       }).catch(() => {});
 
       logActivity({

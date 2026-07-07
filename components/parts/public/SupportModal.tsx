@@ -2,6 +2,7 @@
 "use client";
 
 import { useAuth } from "@/auth/AuthContext";
+import { sendCommsEmail } from "@/lib/commsService";
 import { db } from "@/db/firebase";
 import {
   onSnapshot,
@@ -16,7 +17,7 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { getCurrencySymbol } from "@/types/currency";
-import { apiPost } from "@/lib/apiClient";
+import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService";
 
 export function SupportModal({
   isOpen,
@@ -88,16 +89,12 @@ export function SupportModal({
       if (creatorSnap.exists()) {
         const profileData = creatorSnap.data();
 
-        await fetch("/api/comms/email/support/received", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            creatorEmail: profileData.email || "",
-            creatorName: creatorName,
-            supporterName: currentUser?.displayName || "A generous supporter",
-            amount: txAmount,
-            message: message.trim() || null,
-          }),
+        await sendCommsEmail("support_received", {
+          creatorEmail: profileData.email || "",
+          creatorName: creatorName,
+          supporterName: currentUser?.displayName || "A generous supporter",
+          amount: txAmount,
+          message: message.trim() || null,
         });
       }
     } catch (error) {
@@ -110,24 +107,18 @@ export function SupportModal({
     setErrorMessage("");
 
     try {
-      const response = await apiPost("/api/support/with-momo/pay", {
+      const data = await initiateMomoPayment({
         amount: Number(amount),
-        phone: phone,
-        creatorId: creatorId,
+        phone,
+        creatorId,
         creatorUid: uid,
         message: message ?? "",
-        referralUid: referralUid,
-        referralId: referralId,
+        referralUid,
+        referralId,
         supporterId: currentUser?.uid || "anonymous",
-        includeReferral: includeReferral,
+        includeReferral,
         currency: creatorCurrency,
       });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.ref) {
-        throw new Error(data.error || "Failed to initiate payment");
-      }
 
       const q = query(
         collection(db, "transactions"),
@@ -210,7 +201,7 @@ export function SupportModal({
     setStep("processing");
 
     try {
-      const res = await apiPost("/api/support/with-card/pay", {
+      const data = await initiateCardPayment({
         amount: Number(amount),
         email: currentUser?.email || "supporter@agaseke.me",
         firstName: currentUser?.displayName?.split(" ")[0] || "Supporter",
@@ -222,31 +213,24 @@ export function SupportModal({
         includeReferral,
         referralUid,
         referralId,
-        callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment`,
         currency: creatorCurrency,
       });
 
-      const data = await res.json();
+      setRedirectUrl(data.redirect_url);
+      const newWindow = window.open(data.redirect_url, "_blank");
 
-      if (data.redirect_url) {
-        setRedirectUrl(data.redirect_url);
-        const newWindow = window.open(data.redirect_url, "_blank");
-
-        if (
-          !newWindow ||
-          newWindow.closed ||
-          typeof newWindow.closed === "undefined"
-        ) {
-          setPopupBlocked(true);
-          setStep("error");
-          setErrorMessage(
-            "Your browser blocked the payment window. Please click the button below to continue.",
-          );
-        } else {
-          listenToTransaction(data.merchant_reference);
-        }
+      if (
+        !newWindow ||
+        newWindow.closed ||
+        typeof newWindow.closed === "undefined"
+      ) {
+        setPopupBlocked(true);
+        setStep("error");
+        setErrorMessage(
+          "Your browser blocked the payment window. Please click the button below to continue.",
+        );
       } else {
-        throw new Error(data.error || "Could not generate payment link.");
+        listenToTransaction(data.merchant_reference);
       }
     } catch (error: any) {
       setStep("error");

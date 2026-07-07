@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
+import { sendCommsEmail } from "@/lib/commsService";
 import { db } from "@/db/firebase";
 import {
   collection,
@@ -802,16 +803,12 @@ export default function AdminDashboard() {
             });
           });
 
-          await fetch("/api/comms/email/payout/processed", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              creatorEmail: userEmail,
-              creatorName: target.creatorName,
-              amount: target.amount,
-              method: target.method,
-              accountNumber: target.accountNumber,
-            }),
+          await sendCommsEmail("payout_processed", {
+            creatorEmail: userEmail,
+            creatorName: target.creatorName,
+            amount: target.amount,
+            method: target.method,
+            accountNumber: target.accountNumber,
           });
         } else {
           await updateDoc(doc(db, "withdrawRequests", target.id), {
@@ -867,17 +864,13 @@ export default function AdminDashboard() {
           });
         }
 
-        await fetch("/api/comms/email/feedback/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: userEmail,
-            name: target.name,
-            approved: isApprove,
-            reason: isApprove ? "" : rejectionReason,
-            creatorUid: target.uid,
-            handle: target.handle,
-          }),
+        await sendCommsEmail("verification_feedback", {
+          email: userEmail,
+          name: target.name,
+          approved: isApprove,
+          reason: isApprove ? "" : rejectionReason,
+          creatorUid: target.uid,
+          handle: target.handle,
         });
 
         await logActivity({

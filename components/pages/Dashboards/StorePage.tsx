@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { sendCommsEmail } from "@/lib/commsService";
 import {
   Plus,
   ArrowLeft,
@@ -324,20 +325,16 @@ export default function StorePage() {
       toast.success("Order updated");
 
       if (order?.buyerEmail) {
-        fetch("/api/comms/email/store/status", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            buyerEmail: order.buyerEmail,
-            buyerName: order.buyerName,
-            creatorName: creator?.name || "Creator",
-            orderId,
-            newStatus: status,
-            previousStatus: order.status,
-            items: order.items,
-            total: order.total,
-            trackingNumber: order.trackingNumber,
-          }),
+        sendCommsEmail("store_status", {
+          buyerEmail: order.buyerEmail,
+          buyerName: order.buyerName,
+          creatorName: creator?.name || "Creator",
+          orderId,
+          newStatus: status,
+          previousStatus: order.status,
+          items: order.items,
+          total: order.total,
+          trackingNumber: order.trackingNumber,
         }).catch(() => {});
       }
     } catch (error) {

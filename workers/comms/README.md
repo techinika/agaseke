@@ -9,7 +9,7 @@ Client (browser + Firebase token)
   │  POST { purpose, to, data }
   ▼
 Cloudflare Worker (agaseke-comms)
-  │  1. Verify Firebase JWT (jose + Google JWKS)
+  │  1. Verify Firebase token (Firebase REST API + API key)
   │  2. Lookup service by purpose (service registry)
   │  3. Resolve recipients (fetch from Firestore if needed)
   │  4. Build template data (service-specific)
@@ -53,37 +53,25 @@ Response: { success, messageId, purpose, recipientCount }
   npx wrangler email sending enable agaseke.me
   ```
 
-### Secrets
+### Environment Variables
 
-```bash
-cd workers/comms
+All vars are managed in the **Cloudflare Dashboard** → Workers & Pages → `agaseke-comms` → Settings → Variables.
 
-npx wrangler secret put FIREBASE_PROJECT_ID
-# → your-firebase-project-id
-
-npx wrangler secret put FIREBASE_CLIENT_EMAIL
-# → firebase-adminsdk-...@project.iam.gserviceaccount.com
-
-npx wrangler secret put FIREBASE_PRIVATE_KEY
-# → entire private key with newlines
-
-npx wrangler secret put FROM_EMAIL
-# → Agaseke <noreply@agaseke.me>
-
-npx wrangler secret put FROM_NAME
-# → Agaseke
-
-npx wrangler secret put APP_URL
-# → https://agaseke.me
-
-npx wrangler secret put ASSETS_URL
-# → https://assets.agaseke.me
-```
+| Variable | Secret | Description |
+|---|---|---|
+| `FIREBASE_API_KEY` | yes | Firebase Web API key |
+| `FIREBASE_PROJECT_ID` | no | Firebase project ID |
+| `FIREBASE_CLIENT_EMAIL` | no | Firebase service account email |
+| `FIREBASE_PRIVATE_KEY` | yes | Firebase service account private key |
+| `FROM_EMAIL` | no | Sender address (e.g. `no-reply@agaseke.me`) |
+| `FROM_NAME` | no | Sender name (e.g. `Agaseke`) |
+| `APP_URL` | no | Base app URL (e.g. `https://agaseke.me`) |
+| `ASSETS_URL` | no | Base URL for email assets |
 
 ### Deploy
 
 ```bash
-npx wrangler deploy -c wrangler.jsonc
+npx wrangler deploy
 ```
 
 ### Frontend
@@ -91,7 +79,7 @@ npx wrangler deploy -c wrangler.jsonc
 Update `.env.local`:
 
 ```
-NEXT_PUBLIC_COMMS_WORKER_URL=https://agaseke-comms.<your-account-id>.workers.dev
+NEXT_PUBLIC_COMMS_WORKER_URL=https://comms.api.agaseke.me
 ```
 
 ## API

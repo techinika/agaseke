@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { ArrowRight, Loader, MessageSquare, Send } from "lucide-react";
 import { db } from "@/db/firebase";
+import { sendCommsEmail } from "@/lib/commsService";
 import {
   collection,
   doc,
@@ -255,17 +256,13 @@ export const MessageTab = ({
         unreadCount: 0,
       });
 
-      fetch("/api/comms/email/message", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          creatorId,
-          creatorName: name,
-          supporterName: currentUserName,
-          message: newMessage.trim(),
-          chatroomId,
-          chatroomUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/creator/messages?chat=${chatroomId}`,
-        }),
+      sendCommsEmail("message_new", {
+        creatorId,
+        creatorName: name,
+        supporterName: currentUserName,
+        message: newMessage.trim(),
+        chatroomId,
+        chatroomUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/creator/messages?chat=${chatroomId}`,
       }).catch((e) => console.error("Failed to send email notification:", e));
 
       setNewMessage("");

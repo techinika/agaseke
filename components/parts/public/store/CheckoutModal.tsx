@@ -15,6 +15,8 @@ import {
   query,
   where,
 } from "firebase/firestore";
+import { useAuth } from "@/auth/AuthContext";
+import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService";
 import { CartItem, ShippingAddress } from "./types";
 
 const platformSharePercentage =
@@ -174,28 +176,14 @@ export function CheckoutModal({
         lastName: currentUser.displayName?.split(" ")[1] || "",
       };
 
-      const endpoint =
-        paymentMethod === "momo"
-          ? "/api/support/with-momo/pay"
-          : "/api/support/with-card/pay";
-
-      const paymentResponse = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(productData),
-      });
-
-      const paymentData = await paymentResponse.json();
-
-      if (!paymentResponse.ok) {
-        toast.error(paymentData.error || "Payment failed to initiate");
-        setProcessing(false);
-        return;
-      }
-
-      if (paymentMethod === "card" && paymentData.redirect_url) {
-        window.open(paymentData.redirect_url, "_blank");
-        return;
+      if (paymentMethod === "momo") {
+        await initiateMomoPayment(productData as any);
+      } else {
+        const paymentData = await initiateCardPayment(productData as any);
+        if (paymentData.redirect_url) {
+          window.open(paymentData.redirect_url, "_blank");
+          return;
+        }
       }
 
       toast.success(

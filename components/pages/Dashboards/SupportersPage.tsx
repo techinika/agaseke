@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { sendCommsEmail } from "@/lib/commsService";
 import {
   Users,
   ArrowLeft,
@@ -200,27 +201,19 @@ export default function SupportersPage() {
 
     setSendingEmail(true);
     try {
-      const res = await fetch("/api/comms/email/broadcast", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          recipients,
-          subject: emailForm.subject,
-          message: emailForm.message,
-          targetLabel: "supporters",
-        }),
+      const data = await sendCommsEmail("broadcast", {
+        recipients,
+        subject: emailForm.subject,
+        message: emailForm.message,
+        targetLabel: "supporters",
       });
 
-      const data = await res.json();
       if (data.success) {
-        toast.success(`Email sent to ${data.sentCount} supporter(s)`);
-        if (data.failedCount > 0) {
-          toast.warning(`${data.failedCount} emails failed to send`);
-        }
+        toast.success(`Email sent to ${data.recipientCount} supporter(s)`);
         setShowEmailModal(false);
         setEmailForm({ subject: "", message: "" });
       } else {
-        toast.error(data.error || "Failed to send emails");
+        toast.error("Failed to send emails");
       }
     } catch (error) {
       toast.error("Failed to send emails");

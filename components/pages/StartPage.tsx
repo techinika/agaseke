@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { sendCommsEmail } from "@/lib/commsService";
 import {
   doc,
   getDoc,
@@ -261,14 +262,10 @@ export default function CreatorOnboarding() {
       });
 
       try {
-        await fetch("/api/comms/email/welcome/creator", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: user.email,
-            name: formData.fullName,
-            handle: formData.username,
-          }),
+        await sendCommsEmail("welcome_creator", {
+          email: user.email,
+          name: formData.fullName,
+          handle: formData.username,
         });
       } catch (emailError) {
         console.error("Creator launch email failed:", emailError);
