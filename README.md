@@ -126,7 +126,7 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
 - **Community Interaction**: Like posts and leave comments on creator content
 - **Support**: One-time payments via mobile money (MomoPay) or card (credit/debit)
 - **Community Membership**: Subscribe to creator membership tiers with recurring payments (monthly/yearly) via Momo or card
-- **Gift Once**: Quick support button available on all subpages
+- **Support**: Quick one-time support button available on all profile subpages
 - **Winner Notification**: Congratulatory message when winning a giveaway
 - **Progressive Web App**: Install Agaseke as a standalone app on your device
 
@@ -362,8 +362,6 @@ agaseke/
 | Collection | Description |
 |------------|-------------|
 | `bookingRequests` | Meeting booking requests |
-
-## Key Interfaces
 
 ## Key Interfaces
 
@@ -720,9 +718,9 @@ For issues or feature requests, please open an issue on GitHub.
 - **Store Checkout**: Fixed creator ID mismatch - now uses `creatorHandle` (username) for `creatorId` field and `creatorUid` for `creatorUid` field when processing store orders
 - **Payment Transaction**: Fixed transaction lookup by ensuring proper reference matching in IPN handler
 
-### Content Formatting, Gift Once & Media Enhancements (June 2026)
+### Content Formatting, Support Button & Media Enhancements (June 2026)
 - **Whitespace preservation**: Added `whitespace-pre-wrap` to comment text, reply text, and gathering description elements across supporter and public pages so newlines and spaces render correctly in non-HTML content
-- **Gift Once button**: Added "Gift Once" quick support button to gathering detail page and community post detail page, matching the pattern on other public subpages
+- **Support button**: Added quick support button to gathering detail page and community post detail page, matching the pattern on other public subpages
 - **Post detail page alignment**: Public `PostDetailPage` now shows creator avatar, name, and handle at the top; image uses `object-contain`; video uses `aspect-video` with `controlsList="nodownload"`; document viewer added with page navigation ΓÇö matching `/supporter` layout
 - **Media enhancements on community pages & post detail**: YouTube links in any post type now show embedded preview (not just video-type); images are click-to-zoom with full-screen lightbox; videos are playable inline with `controlsList="nodownload"`; documents open in Google Docs viewer via "Read Document" button with modal overlay and per-post page pagination
 - **Supporter View nav link**: Added explicit `/supporter` link to navbar dropdown; dropdown closes on outside click via mousedown listener
@@ -743,7 +741,7 @@ For issues or feature requests, please open an issue on GitHub.
 - **Removed Inefficient Global Comment Query**: `getDocs(collection(db, "postComments"))` previously fetched every comment in the app to tally per-post counts. Replaced with a denormalized `commentCount` field on each `creatorContent` doc, updated atomically via Firestore `increment()`.
 - **Real-Time Comments & Likes**: Supporter post detail page (`/supporter/[postId]`) now uses `onSnapshot` for both comments and likes (was one-time `getDocs`), matching the public `PostDetailPage` pattern. Like counts update in real-time when others interact.
 - **Tailwind CSS v4 Theme Variables**: Added `card`, `card-hover`, `border`, `border-strong`, `muted`, `muted-foreground` CSS variables to `globals.css` for consistent component theming.
-- **Gift Once Button on Booking Page**: Added "Gift Once" quick support button and `SupportModal` to the booking page (`/[username]/booking`), matching the pattern on other public subpages.
+- **Support Button on Booking Page**: Added quick support button and `SupportModal` to the booking page (`/[username]/booking`), matching the pattern on other public subpages.
 
 ### Dark Mode Theme-ification (May 2026)
 - **Replaced hardcoded colors with CSS variable theme classes across 40+ files**: All page backgrounds (`bg-[#FBFBFC]`/`bg-[#F9FAFB]`/`bg-white`), text colors (`text-gray-*`/`text-slate-*`), borders (`border-gray-*`/`border-slate-*`), and surface backgrounds (`bg-gray-*`/`bg-slate-*`) replaced with theme-aware classes (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-card`, `bg-muted`, `bg-foreground`).
@@ -852,3 +850,11 @@ For issues or feature requests, please open an issue on GitHub.
 ### Simplified CreatorContent Read Rule (June 2026)
 - **Removed `isCreator` and `isSupporterOf` from read rule**: After the initial split, even the `isCreator` check (which uses `get()`) caused Firestore query rejection. Simplified to a single conditional: `allow read: if isAuth() && !resource.data.isPrivate`. This rule has zero `get()` calls and is fully statically verifiable. Private content reads are now gated entirely by the client ΓÇö only supporters fetch private posts; any permission failure is caught gracefully.
 - **Decoupled private content query in SupporterSpace**: Moved the private content query out of `Promise.all` into a separate try/catch block so a permission failure on the private query doesn't crash the entire supporter page load.
+
+### Public Page Fixes & Button Rename (July 2026)
+- **Support button rename**: Changed "Gift Once" button text to "Support {creatorFirstName}" across all public profile subpages.
+- **Firestore composite index fix**: Removed `orderBy("createdAt")` from `creatorContent` queries in CommunityPage.tsx — now uses client-side sorting, eliminating the need for a composite index.
+- **SupportModal NaN fix**: `NEXT_PUBLIC_CREATOR_SHARE` now falls back to `0.9` if unset, preventing `NaN` from being sent to `sendSupportEmail`. Replaced hardcoded `0.9` with the env var.
+- **Optional chaining guards**: Added `?.` guards on `BookingPage.tsx` (`createBooking` response), `GiveawayDetailPage.tsx` (`giveaway.winners`), and `CommunityPage.tsx` (`creatorData.uid`) to prevent undefined crashes.
+- **GatheringsTab stale closure fix**: Replaced closure-captured `paying`/`user` with refs in `listenForTransaction`, preventing payment timeout logic from using stale state.
+- **Community Worker deps**: Added missing `jose` and `@cloudflare/workers-types` to `workers/community/package.json`.
