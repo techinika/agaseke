@@ -172,6 +172,7 @@ export default function CommunityPage({ username }: CommunityPageProps) {
   }
 
   const creatorName = creatorData.name || profileData?.displayName || "Creator";
+  const creatorFirstName = creatorName.split(" ")[0];
 
   return (
     <>
@@ -190,7 +191,7 @@ export default function CommunityPage({ username }: CommunityPageProps) {
             className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-orange-700 transition"
           >
             <Heart size={18} className="fill-current" />
-            Gift Once
+            Support {creatorFirstName}
           </button>
         </div>
 
