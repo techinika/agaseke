@@ -3,7 +3,7 @@ import { Metadata } from "next";
 const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://agaseke.me";
 const SITE_NAME = "Agaseke";
 const SITE_DESCRIPTION =
-  "The premier platform for Rwandan creators to monetize their content and grow their community through support from fans.";
+  "The premier platform for African creators to monetize their content and grow their community through support from fans.";
 const DEFAULT_IMAGE = "/agaseke.png";
 
 export interface SEOMetadataOptions {
@@ -97,7 +97,7 @@ export function generateCreatorMetadata(
     : `${creatorName} (@${handle}) | Agaseke`;
   const description =
     bio ||
-    `Support ${creatorName} on Agaseke. Fueling Rwandan creativity one contribution at a time.`;
+    `Support ${creatorName} on Agaseke. Fueling African creativity one contribution at a time.`;
 
   return generateMetadata({
     title,
@@ -134,6 +134,6 @@ export function generateGiveawayMetadata(
     description,
     type: "article",
     ...(endDate && { modifiedTime: endDate.toISOString() }),
-    tags: ["giveaway", "contest", "Rwanda"],
+    tags: ["giveaway", "contest"],
   });
 }

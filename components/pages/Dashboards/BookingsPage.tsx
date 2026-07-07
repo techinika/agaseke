@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { sendCommsEmail } from "@/lib/commsService";
 import {
   Calendar,
   Clock,
@@ -22,9 +23,8 @@ import {
 import { db } from "@/db/firebase";
 import {
   collection,
-  addDoc,
-  updateDoc,
   doc,
+  updateDoc,
   query,
   where,
   orderBy,
@@ -141,10 +141,7 @@ export default function BookingsPage() {
       await updateDoc(doc(db, "bookingRequests", bookingId), { status, respondedAt: serverTimestamp(), responseNote: note || "" });
       const booking = bookings.find((b) => b.id === bookingId);
       if (booking) {
-        await fetch("/api/comms/email/booking/response", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        await sendCommsEmail("booking_response", {
             bookerEmail: booking.bookerEmail,
             bookerName: booking.bookerName,
             creatorName: creator?.name,
@@ -156,8 +153,7 @@ export default function BookingsPage() {
             preferredType: booking.preferredType,
             tierName: booking.tierName || "",
             creatorHandle: creator?.handle || "",
-          }),
-        });
+          });
       }
       toast.success(`Booking ${status}`);
     } catch {

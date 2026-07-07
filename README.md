@@ -1,4 +1,4 @@
-# Agaseke
+﻿# Agaseke
 
 Agaseke is a comprehensive content monetization platform built with Next.js 16, Firebase, and TypeScript. It empowers creators to build communities, share exclusive content, sell merchandise and digital products, and earn revenue through subscriptions, tips, and direct sales.
 
@@ -21,7 +21,7 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - Product-specific coupons
   - Folders (product bundles) with bundle discounts
   - Order management and tracking
-  - **Order progress tracking**: Start Processing → Mark as Shipped → Mark as Delivered
+  - **Order progress tracking**: Start Processing ΓåÆ Mark as Shipped ΓåÆ Mark as Delivered
   - **Go back** to previous status if mistakes or delays
   - **Email notifications** sent to customers when order status changes
   - Platform fee payer option (buyer pays 10% extra or creator absorbs 10%)
@@ -90,6 +90,10 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - In-app notifications for new gatherings and RSVPs
   - Public profile shows Events tab when gatherings are enabled
   - Location visible after RSVP (not after check-in)
+- **Community Subscriptions** (/creator/community):
+  - Up to 2 membership tiers (monthly/yearly)
+  - Custom benefits per tier
+  - Public membership display on community page
 - **Supporters Perks**:
   - Configurable minimum support tiers
   - Store access control (public or supporters-only)
@@ -121,7 +125,8 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - `/[username]/messaging` - Direct message the creator
 - **Community Interaction**: Like posts and leave comments on creator content
 - **Support**: One-time payments via mobile money (MomoPay) or card (credit/debit)
-- **Gift Once**: Quick support button available on all subpages
+- **Community Membership**: Subscribe to creator membership tiers with recurring payments (monthly/yearly) via Momo or card
+- **Support**: Quick one-time support button available on all profile subpages
 - **Winner Notification**: Congratulatory message when winning a giveaway
 - **Progressive Web App**: Install Agaseke as a standalone app on your device
 
@@ -187,9 +192,12 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
 - **Styling**: Tailwind CSS
 - **Database**: Firebase Firestore
 - **Authentication**: Firebase Auth
-- **Storage**: Cloudinary (images, videos, files)
-- **Payments**: PesaPal (Mobile Money)
-- **Email**: API routes with email service integration
+- **Storage**: Cloudinary (images, videos, files), Cloudflare R2 (asset uploads)
+- **File Uploads**: Cloudflare Worker (`workers/upload/`) ΓÇö Firebase JWT auth, R2 storage, Firestore metadata
+- **Payments**: PesaPal (Mobile Money), Paypack (Mobile Money)
+- **Email**: Cloudflare Worker (workers/comms/) ΓÇö native Email binding, 18 email purposes, unified template
+- **Community Subscriptions**: Cloudflare Worker (workers/community/) ΓÇö Firebase REST auth, tier management, subscription lifecycle, auto-renewals
+- **Email (legacy)**: API routes with Nodemailer/SMTP (being migrated to comms Worker)
 
 ## Getting Started
 
@@ -248,57 +256,62 @@ npm run dev
 
 ```
 agaseke/
-├── app/
-│   ├── (auth)/                  # Login, signup pages
-│   ├── (dashboards)/            # Creator dashboard routes
-│   │   └── creator/
-│   │       ├── content/         # Content management
-│   │       ├── gatherings/       # Events management
-│   │       ├── messages/        # Messaging inbox
-│   │       ├── payouts/          # Earnings & payouts
-│   │       ├── settings/         # Creator settings
-│   │       ├── store/            # Store management
-│   │       ├── sales/            # Sales tracking & analytics
-│   │       ├── supporters/       # Supporters & broadcast email
-│   │       ├── partners/         # Partner management
-│   │       ├── giveaways/        # Giveaway management
-│   │       └── verify/           # Identity verification
-│   ├── [username]/               # Public creator profiles
-│   │   ├── community/             # Full community page
-│   │   │   └── [postId]/          # Individual post detail with comments/likes
-│   │   ├── gatherings/            # Full gatherings page
-│   │   │   └── [gatheringId]/     # Individual event detail
-│   │   ├── store/                 # Full store page
-│   │   │   └── [productId]/       # Individual product detail
-│   │   ├── giveaways/             # Full giveaways page
-│   │   │   └── [giveawayId]/      # Individual giveaway detail
-│   │   ├── booking/               # Book a meeting page
-│   │   └── messaging/             # Full messaging page
-│   └── api/
-│       ├── comms/email/          # Email notification APIs
-│       ├── support/              # Payment APIs
-│       └── upload/               # File upload APIs
-├── components/
-│   ├── pages/
-│   │   ├── Dashboards/          # Dashboard components
-│   │   └── PublicProfile.tsx     # Public profile page
-│   ├── parts/
-│   │   ├── dashboard/           # Dashboard UI parts
-│   │   │   └── gatherings/      # Gathering sub-components (ListPanel, DetailPanel, CheckInModal)
-│   │   └── public/              # Public profile parts
-│   │       ├── CommunityTab.tsx  # Content display
-│   │       ├── MessageTab.tsx    # Messaging UI
-│   │       └── StoreTab.tsx      # Store UI
-│   └── ui/                      # Shared UI components
-├── auth/                         # Authentication context
-├── db/                           # Firebase config
-├── types/                        # TypeScript types
-│   ├── creator.ts               # Creator interface
-│   ├── messaging.ts              # Messaging types
-│   ├── store.ts                 # Store types
-│   ├── giveaway.ts               # Giveaway types
-│   └── booking.ts                # Booking types
-└── public/                      # Static assets
+Γö£ΓöÇΓöÇ app/
+Γöé   Γö£ΓöÇΓöÇ (auth)/                  # Login, signup pages
+Γöé   Γö£ΓöÇΓöÇ (dashboards)/            # Creator dashboard routes
+Γöé   Γöé   ΓööΓöÇΓöÇ creator/
+Γöé   Γöé       Γö£ΓöÇΓöÇ content/         # Content management
+Γöé   Γöé       Γö£ΓöÇΓöÇ gatherings/       # Events management
+Γöé   Γöé       Γö£ΓöÇΓöÇ messages/        # Messaging inbox
+Γöé   Γöé       Γö£ΓöÇΓöÇ payouts/          # Earnings & payouts
+Γöé   Γöé       Γö£ΓöÇΓöÇ settings/         # Creator settings
+Γöé   Γöé       Γö£ΓöÇΓöÇ store/            # Store management
+Γöé   Γöé       Γö£ΓöÇΓöÇ sales/            # Sales tracking & analytics
+Γöé   Γöé       Γö£ΓöÇΓöÇ supporters/       # Supporters & broadcast email
+Γöé   Γöé       Γö£ΓöÇΓöÇ partners/         # Partner management
+Γöé   Γöé       Γö£ΓöÇΓöÇ giveaways/        # Giveaway management
+Γöé   Γöé       ΓööΓöÇΓöÇ verify/           # Identity verification
+Γöé   Γö£ΓöÇΓöÇ [username]/               # Public creator profiles
+Γöé   Γöé   Γö£ΓöÇΓöÇ community/             # Full community page
+Γöé   Γöé   Γöé   ΓööΓöÇΓöÇ [postId]/          # Individual post detail with comments/likes
+Γöé   Γöé   Γö£ΓöÇΓöÇ gatherings/            # Full gatherings page
+Γöé   Γöé   Γöé   ΓööΓöÇΓöÇ [gatheringId]/     # Individual event detail
+Γöé   Γöé   Γö£ΓöÇΓöÇ store/                 # Full store page
+Γöé   Γöé   Γöé   ΓööΓöÇΓöÇ [productId]/       # Individual product detail
+Γöé   Γöé   Γö£ΓöÇΓöÇ giveaways/             # Full giveaways page
+Γöé   Γöé   Γöé   ΓööΓöÇΓöÇ [giveawayId]/      # Individual giveaway detail
+Γöé   Γöé   Γö£ΓöÇΓöÇ booking/               # Book a meeting page
+Γöé   Γöé   ΓööΓöÇΓöÇ messaging/             # Full messaging page
+Γöé   ΓööΓöÇΓöÇ api/
+Γöé       Γö£ΓöÇΓöÇ comms/email/          # Email notification APIs
+Γöé       Γö£ΓöÇΓöÇ support/              # Payment APIs
+Γöé       ΓööΓöÇΓöÇ upload/               # File upload APIs
+Γö£ΓöÇΓöÇ components/
+Γöé   Γö£ΓöÇΓöÇ pages/
+Γöé   Γöé   Γö£ΓöÇΓöÇ Dashboards/          # Dashboard components
+Γöé   Γöé   ΓööΓöÇΓöÇ PublicProfile.tsx     # Public profile page
+Γöé   Γö£ΓöÇΓöÇ parts/
+Γöé   Γöé   Γö£ΓöÇΓöÇ dashboard/           # Dashboard UI parts
+Γöé   Γöé   Γöé   ΓööΓöÇΓöÇ gatherings/      # Gathering sub-components (ListPanel, DetailPanel, CheckInModal)
+Γöé   Γöé   ΓööΓöÇΓöÇ public/              # Public profile parts
+Γöé   Γöé       Γö£ΓöÇΓöÇ CommunityTab.tsx  # Content display
+Γöé   Γöé       Γö£ΓöÇΓöÇ MessageTab.tsx    # Messaging UI
+Γöé   Γöé       ΓööΓöÇΓöÇ StoreTab.tsx      # Store UI
+Γöé   ΓööΓöÇΓöÇ ui/                      # Shared UI components
+Γö£ΓöÇΓöÇ auth/                         # Authentication context
+Γö£ΓöÇΓöÇ db/                           # Firebase config
+Γö£ΓöÇΓöÇ types/                        # TypeScript types
+Γöé   Γö£ΓöÇΓöÇ creator.ts               # Creator interface
+Γöé   Γö£ΓöÇΓöÇ messaging.ts              # Messaging types
+Γöé   Γö£ΓöÇΓöÇ store.ts                 # Store types
+Γöé   Γö£ΓöÇΓöÇ giveaway.ts               # Giveaway types
+Γöé   ΓööΓöÇΓöÇ booking.ts                # Booking types
+Γö£ΓöÇΓöÇ workers/                       # Cloudflare Workers
+Γöé   Γö£ΓöÇΓöÇ upload/                   # File upload Worker (R2 + Firestore)
+Γöé   Γö£ΓöÇΓöÇ comms/                    # Email comms Worker (18 purposes, unified template)
+Γöé   Γö£ΓöÇΓöÇ payments/                 # Payments Worker (Momo + Card with Paypack/PesaPal)
+Γöé   ΓööΓöÇΓöÇ community/                # Community subscriptions Worker (tiers, subscriptions, renewals)
+ΓööΓöÇΓöÇ public/                      # Static assets
 ```
 
 ## Firestore Collections
@@ -349,8 +362,6 @@ agaseke/
 | Collection | Description |
 |------------|-------------|
 | `bookingRequests` | Meeting booking requests |
-
-## Key Interfaces
 
 ## Key Interfaces
 
@@ -516,10 +527,11 @@ interface GiveawayReward {
 - `POST /api/support/with-momo/webhook` - Webhook for MoMo booking payments (notifies buyer + admin)
 
 ### File Uploads
-- `POST /api/upload/content/image` - Image upload
-- `POST /api/upload/content/video` - Video upload
-- `POST /api/upload/content/docs` - Document upload
-- `POST /api/upload/picture` - Profile picture
+- `POST <NEXT_PUBLIC_UPLOAD_WORKER_URL>` - Upload Worker (Firebase JWT auth ΓåÆ R2 ΓåÆ Firestore)
+- `POST /api/upload/content/image` - Image upload (legacy)
+- `POST /api/upload/content/video` - Video upload (legacy)
+- `POST /api/upload/content/docs` - Document upload (legacy)
+- `POST /api/upload/picture` - Profile picture (legacy)
 
 ### Payments
 - `POST /api/support/with-momo/pay` - Mobile money payment
@@ -607,6 +619,25 @@ For issues or feature requests, please open an issue on GitHub.
 
 ## Recent Updates
 
+### Homepage Renovation & Currency Fixes (July 2026)
+- **Hero redesigned**: Problem-first narrative ΓÇö "You're Working Hard. But the Money Isn't Coming." banner, followed by pain points (no Mobile Money support on global platforms, scattered tools, brands ignore small creators) and a "That changes now" pivot. Left column (3/5) has the copy + claim handle CTA + payment methods, right column (2/5) has fanned creator cards.
+- **Pan-African positioning**: Removed all Rwanda-only references from homepage, layout metadata, footer, and FAQ structured data. Open to everyone, especially African creators.
+- **Currency-configurable payout threshold**: `AdminCurrenciesPage.tsx` now stores a `payoutThreshold` per currency. `PayoutPolicyPage.tsx` and `PayoutsPage.tsx` read dynamically from Firestore.
+- **Featured creator cards**: Fetch real data from Firestore (`creators` collection, order by name, limit 3). Cards match `PublicProfile` SendGiftSection style: 64px avatar, green verified badge, handle, bio (line-clamp-2), focus tags, social dot-badges (IG/≡¥òÅ/YT/TK). No earnings or fan counts shown.
+- **Rotated diamond background**: Orange-tinted square behind the card stack (`w-[500px] h-[500px] bg-orange-500/[0.07] rotate-45`).
+- **PaymentCallback fix**: 3 hardcoded "RWF" ΓåÆ `{txData?.amount} {txData?.currency || "RWF"}`, imported `formatCurrency`.
+- **SupportersPage currency tracking**: Added `currency` to `SupporterSupport` & `AggregatedSupporter` interfaces; totals show `creatorCurrency`, per-supporter amounts show `supporter.currency`, filter labels use `creatorCurrency`.
+- **SalesPage product totals fix**: Product aggregation now tracks per-sale currencies (`currencies` map) and displays the predominant one via `product.primaryCurrency` instead of hardcoded `getCurrencySymbol("RWF")`.
+- **SupporterSpace purchase currency**: Purchase items now show `{purchase.currency || "RWF"}` instead of hardcoded RWF.
+- **AdminPage withdrawal currency**: Added `currency` field to `withdrawRequests` on creation. Admin withdrawal displays (approval/rejection messages, withdrawal list) use `{req.currency || "RWF"}` instead of hardcoded RWF.
+- **Supporter page content creation form**: Inline social-media-style composer with textarea, always-visible Image/Video/Document attachment buttons, public/supporters-only toggle, and Post button. Posts to `creatorContent` collection with email notification to supporters.
+- **Upload progress & preview**: Uploading files now shows a spinner with "Uploading..." status. Images show a preview thumbnail; videos show an inline player with controls; documents show a "File attached" badge. A Trash2 button lets users remove the uploaded file. Accept filter set imperatively per button (image/video/document) so the correct file types are shown in the OS picker.
+- **Posts appear in feed immediately**: After posting from `/supporter`, the new post is prepended to the local feed state ΓÇö no page refresh needed.
+- **No title on /supporter posts**: Posts created from the inline composer don't save a `title` field. Titles are hidden in the feed when absent.
+- **Past events filtering**: Events on `/supporter` with dates before end of today (`eventDate >= endOfToday`) are hidden ΓÇö only upcoming events appear in the "Upcoming Events" section.
+- **MobileBottomBar enlarged**: Icons 14ΓåÆ18px, labels text-[8px]ΓåÆtext-[10px] font-medium, padding py-1.5ΓåÆpy-2.
+- **Desktop creator button prominent**: Orange background, shadow-lg shadow-orange-200, label "Creator Dashboard" or "Become Creator".
+
 ### Sales Dashboard & Store Enhancements (May 2026)
 - **Sales Page** (`/creator/sales`): New dashboard page for tracking product sales and earnings
   - Real-time sales statistics: Total Sales, Your Earnings, Total Orders, Unique Buyers
@@ -627,26 +658,26 @@ For issues or feature requests, please open an issue on GitHub.
 - **Payment Confirmation**: Different confirmation messages for store payments ("Confirming your order payment..." / "Your payment of X RWF has been processed successfully.") vs support gifts ("Confirming your gift..." / "Your gift of X RWF has been sent successfully.")
 
 ### Detail Pages & PWA (May 2026)
-- **Product Detail Pages**: `/[username]/store/[productId]` — Full product view instead of modal, with add-to-cart, size selection, bulk pricing
-- **Post Detail Pages**: `/[username]/community/[postId]` — Full post view with comments and likes system
-- **Giveaway Detail Pages**: `/[username]/giveaways/[giveawayId]` — Full giveaway view with enter, share, and winner viewing
-- **Event Detail Pages**: `/[username]/gatherings/[gatheringId]` — Full event view with RSVP, capacity, and location info
-- **Booking Page**: `/[username]/booking` — Standalone booking page instead of modal, with calendar picker, time slots, and meeting type selection
+- **Product Detail Pages**: `/[username]/store/[productId]` ΓÇö Full product view instead of modal, with add-to-cart, size selection, bulk pricing
+- **Post Detail Pages**: `/[username]/community/[postId]` ΓÇö Full post view with comments and likes system
+- **Giveaway Detail Pages**: `/[username]/giveaways/[giveawayId]` ΓÇö Full giveaway view with enter, share, and winner viewing
+- **Event Detail Pages**: `/[username]/gatherings/[gatheringId]` ΓÇö Full event view with RSVP, capacity, and location info
+- **Booking Page**: `/[username]/booking` ΓÇö Standalone booking page instead of modal, with calendar picker, time slots, and meeting type selection
 - **Comments & Likes**: Added real-time comments and likes to community posts (Firestore subcollections)
 - **Progressive Web App**: Added manifest.json, service worker with cache-first strategy for static assets, and install prompts
 
 ### Performance & SEO Improvements (May 2026)
-- **Server-Side JSON-LD**: Schema components (`HomeSchema`, `ExploreSchema`, `CreatorSchema`) migrated from client-side `document.createElement` to server-rendered `<script>` tags — structured data now visible to all crawlers
+- **Server-Side JSON-LD**: Schema components (`HomeSchema`, `ExploreSchema`, `CreatorSchema`) migrated from client-side `document.createElement` to server-rendered `<script>` tags ΓÇö structured data now visible to all crawlers
 - **Full SEO Metadata Coverage**: Added `openGraph` + `twitter:card` metadata to 13 previously-missing pages (changelog, help-center, payout-policy, profile, login, onboarding, dashboard index pages)
 - **Twitter Cards on Detail Pages**: Added twitter metadata to all 5 detail page types (`[postId]`, `[productId]`, `[giveawayId]`, `[gatheringId]`, `booking`)
 - **Home Page Metadata**: Added explicit `export const metadata` to root landing page with OG/Twitter tags
-- **Server Components**: Converted legal pages (`TermsPage`), `loading.tsx`, and all SEO schema components from client to server components — reducing JS bundle
-- **Dynamic Imports**: Code-split heavy libraries — `framer-motion` on error/404 pages, `qrcode.react` on share page, `canvas-confetti` loaded lazily
+- **Server Components**: Converted legal pages (`TermsPage`), `loading.tsx`, and all SEO schema components from client to server components ΓÇö reducing JS bundle
+- **Dynamic Imports**: Code-split heavy libraries ΓÇö `framer-motion` on error/404 pages, `qrcode.react` on share page, `canvas-confetti` loaded lazily
 - **Memoized Handlers**: Added `useCallback` to 11 event handlers in `PostDetailPage` and `StoreTab` to prevent unnecessary re-renders
 - **Async Memo Fix**: Replaced async `useMemo` anti-pattern (returning Promises) with proper `useEffect` + `Promise.all` in `SupportersPage`
-- **Heading Hierarchy**: Added missing `<h1>` to 4 dashboard pages; fixed `<h1>`→`<h3>` jump in `NoticesPage`
+- **Heading Hierarchy**: Added missing `<h1>` to 4 dashboard pages; fixed `<h1>`ΓåÆ`<h3>` jump in `NoticesPage`
 - **Alt Text**: Fixed 9 empty `alt=""` attributes on profile/content images across the platform
-- **Sitemap Partitioning**: Split sitemap into 6 category files via `generateSitemaps` (static, creators, products, posts, giveaways, gatherings) — all links preserved, under 50K per file
+- **Sitemap Partitioning**: Split sitemap into 6 category files via `generateSitemaps` (static, creators, products, posts, giveaways, gatherings) ΓÇö all links preserved, under 50K per file
 - **Noindex on Dashboards**: Added `robots: noindex` to 21 dashboard/admin sub-pages to prevent private routes from appearing in search results
 - **Sitemap Coverage**: Added `/changelog` to sitemap static pages
 - **Admin Description Fix**: Corrected copy-paste error on admin dashboard metadata
@@ -654,7 +685,7 @@ For issues or feature requests, please open an issue on GitHub.
 
 ### Gatherings & Event Perfection (May 2026)
 - **Description Field**: Added `description` textarea to gathering create/edit form on creator dashboard; displayed on gathering cards
-- **Paid Gatherings**: `ticketPrice` field in create/edit form — paid gatherings visible to everyone, payment flows through existing Momo/Card pay routes with `type: "gathering"`; webhooks/IPNs create `gatheringsAttendance` with `paid: true` on confirmation
+- **Paid Gatherings**: `ticketPrice` field in create/edit form ΓÇö paid gatherings visible to everyone, payment flows through existing Momo/Card pay routes with `type: "gathering"`; webhooks/IPNs create `gatheringsAttendance` with `paid: true` on confirmation
 - **Payment Modal in GatheringsTab**: Paid gatherings trigger a payment modal (Momo/Card toggle, phone input, pay button) before creating attendance record; listens to `transactions` collection via `onSnapshot` for confirmation with 2-minute timeout
 - **Min Support Tier Access Control**: Events gated by `minSupportTier` hidden from non-qualifying users; shown as locked with minimum amount message
 - **Location Visibility**: Changed from "after check-in" to "after RSVP"
@@ -687,10 +718,10 @@ For issues or feature requests, please open an issue on GitHub.
 - **Store Checkout**: Fixed creator ID mismatch - now uses `creatorHandle` (username) for `creatorId` field and `creatorUid` for `creatorUid` field when processing store orders
 - **Payment Transaction**: Fixed transaction lookup by ensuring proper reference matching in IPN handler
 
-### Content Formatting, Gift Once & Media Enhancements (June 2026)
+### Content Formatting, Support Button & Media Enhancements (June 2026)
 - **Whitespace preservation**: Added `whitespace-pre-wrap` to comment text, reply text, and gathering description elements across supporter and public pages so newlines and spaces render correctly in non-HTML content
-- **Gift Once button**: Added "Gift Once" quick support button to gathering detail page and community post detail page, matching the pattern on other public subpages
-- **Post detail page alignment**: Public `PostDetailPage` now shows creator avatar, name, and handle at the top; image uses `object-contain`; video uses `aspect-video` with `controlsList="nodownload"`; document viewer added with page navigation — matching `/supporter` layout
+- **Support button**: Added quick support button to gathering detail page and community post detail page, matching the pattern on other public subpages
+- **Post detail page alignment**: Public `PostDetailPage` now shows creator avatar, name, and handle at the top; image uses `object-contain`; video uses `aspect-video` with `controlsList="nodownload"`; document viewer added with page navigation ΓÇö matching `/supporter` layout
 - **Media enhancements on community pages & post detail**: YouTube links in any post type now show embedded preview (not just video-type); images are click-to-zoom with full-screen lightbox; videos are playable inline with `controlsList="nodownload"`; documents open in Google Docs viewer via "Read Document" button with modal overlay and per-post page pagination
 - **Supporter View nav link**: Added explicit `/supporter` link to navbar dropdown; dropdown closes on outside click via mousedown listener
 - **Support Modal mobile optimization**: `SupportModal` redesigned with responsive spacing, font sizes, and padding; slides up as bottom sheet on mobile (`items-end`), scrolls when content overflows (`max-h-[90vh] overflow-y-auto`), with `rounded-t-2xl` corners; slide-up entrance (`slide-in-from-bottom-full`) and slide-down exit (`slide-out-to-bottom-full`) animations added, with `zoom-in/out-95` on desktop
@@ -699,23 +730,23 @@ For issues or feature requests, please open an issue on GitHub.
 ### Verification & Payouts Fix (June 2026)
 - **Payouts Destination Display**: Changed from showing `payoutNumber` to showing the payout type (`Bank Account`, `Mobile Money`, `Airtel Money`) from the creator's `verificationRequests` submission, including account name and number. Shows "Not Verified" when not verified.
 - **Admin Verification Approval**: Admin approve/reject now updates the corresponding `verificationRequests` document's `status` to `"approved"` or `"rejected"` alongside the existing `creators` doc update.
-- **Supporter Following List Fixed**: The supporter sidebar "Following" list was empty because `supportedCreators` stores handles while content uses UIDs. Now properly maps handles → UIDs when building the following list and content filters.
+- **Supporter Following List Fixed**: The supporter sidebar "Following" list was empty because `supportedCreators` stores handles while content uses UIDs. Now properly maps handles ΓåÆ UIDs when building the following list and content filters.
 - **Gathering Email Routes**: All three gathering email routes (`checkin`, `declined`, `undo`) now use the shared `transporter` from `@/lib/emailTransporter` instead of defining their own local transporter.
 - **Gathering Attendance Lookup**: Changed attendance queries from `where("supporterId", ...)` to `where("gatheringId", ...)` with local filtering, fixing page refresh issues where paid tickets weren't detected after reload.
 
 ### Data Model Unification & Views Fix (May 2026)
-- **Views Not Incrementing Fix**: Supporter feed (`/supporter`) IntersectionObserver filtered posts by `f.type === "content"`, excluding types like "image", "video", "document". Changed to `f.type !== "gathering"` — all content types now count views.
+- **Views Not Incrementing Fix**: Supporter feed (`/supporter`) IntersectionObserver filtered posts by `f.type === "content"`, excluding types like "image", "video", "document". Changed to `f.type !== "gathering"` ΓÇö all content types now count views.
 - **Observer Optimization**: Replaced `seenPosts` state with `useRef` to prevent re-render loops where every view disconnected/reconnected the observer. Local feed state now updates immediately when a view is counted.
 - **Comment/Like Data Model Unification**: Supporter pages now use subcollections (`creatorContent/{postId}/comments`, `creatorContent/{postId}/likes`) matching public/community pages, instead of separate top-level collections (`postComments`, `postLikes`). Comments and likes are now visible across all pages (supporter feed, supporter post detail, public profile, community page).
 - **Removed Inefficient Global Comment Query**: `getDocs(collection(db, "postComments"))` previously fetched every comment in the app to tally per-post counts. Replaced with a denormalized `commentCount` field on each `creatorContent` doc, updated atomically via Firestore `increment()`.
 - **Real-Time Comments & Likes**: Supporter post detail page (`/supporter/[postId]`) now uses `onSnapshot` for both comments and likes (was one-time `getDocs`), matching the public `PostDetailPage` pattern. Like counts update in real-time when others interact.
 - **Tailwind CSS v4 Theme Variables**: Added `card`, `card-hover`, `border`, `border-strong`, `muted`, `muted-foreground` CSS variables to `globals.css` for consistent component theming.
-- **Gift Once Button on Booking Page**: Added "Gift Once" quick support button and `SupportModal` to the booking page (`/[username]/booking`), matching the pattern on other public subpages.
+- **Support Button on Booking Page**: Added quick support button and `SupportModal` to the booking page (`/[username]/booking`), matching the pattern on other public subpages.
 
 ### Dark Mode Theme-ification (May 2026)
 - **Replaced hardcoded colors with CSS variable theme classes across 40+ files**: All page backgrounds (`bg-[#FBFBFC]`/`bg-[#F9FAFB]`/`bg-white`), text colors (`text-gray-*`/`text-slate-*`), borders (`border-gray-*`/`border-slate-*`), and surface backgrounds (`bg-gray-*`/`bg-slate-*`) replaced with theme-aware classes (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-card`, `bg-muted`, `bg-foreground`).
 - Dark mode now works across all pages: supporter dashboard, creator dashboard, admin dashboard, public profile pages, navigation, footer, modals, and UI components.
-- Uses Tailwind v4's `@custom-variant dark` with class-based toggling via `next-themes` — `.dark` class on `<html>` switches all CSS variables to the dark palette.
+- Uses Tailwind v4's `@custom-variant dark` with class-based toggling via `next-themes` ΓÇö `.dark` class on `<html>` switches all CSS variables to the dark palette.
 
 ### Booking System Enhancements (May 2026)
 - **Paid Tiered Booking**: Creators can set paid tiers with prices and durations; bookers select a tier during booking and pay before the request is submitted
@@ -727,10 +758,10 @@ For issues or feature requests, please open an issue on GitHub.
 - **Meeting Location**: Location/link displayed in booking summary, confirmation email, and response email with type label
 - **In-App Notifications**: Creator receives `booking_request` notification; booker (if logged in) receives notification and confirmation email on booking request
 - **Payment Notifications**: Both IPN (card) and MoMo webhooks send `booking_paid` notification to buyer, confirmation email to booker, and `new_transaction` notification to all admin profiles
-- **Robust Creator Lookup**: Profiles collection fallback resolves handle → uid → creator document, fixing null document ID mismatches
+- **Robust Creator Lookup**: Profiles collection fallback resolves handle ΓåÆ uid ΓåÆ creator document, fixing null document ID mismatches
 
 ### Public Profile Architecture Refactor (June 2026)
-- **Shared Layout**: Created `app/(public_profile)/layout.tsx` providing Navbar, Footer, and wrapper for all 11 public profile routes — eliminated per-page duplication
+- **Shared Layout**: Created `app/(public_profile)/layout.tsx` providing Navbar, Footer, and wrapper for all 11 public profile routes ΓÇö eliminated per-page duplication
 - **Subpage Refactor**: Removed individual Navbar/Footer/wrapper from `PublicProfile.tsx` and 10 subpage components (Community, Store, Messaging, Giveaways, Gatherings, Booking, PostDetail, ProductDetail, GiveawayDetail, GatheringDetail)
 - **SEO Consolidation**: Deleted `SeoUpdater.tsx` (client-side DOM mutations that competed with server metadata); consolidated all JSON-LD schema into `CreatorSchma.tsx` (merged interactionStatistic, image, sameAs from the removed inline script)
 - **Loading & Error Boundaries**: Added `loading.tsx` (Suspense fallback) and `error.tsx` (Error boundary) to the route group
@@ -771,7 +802,7 @@ For issues or feature requests, please open an issue on GitHub.
 
 ### Condensed Creator Sidebar (June 2026)
 - **Grouped sidebar menu**: Condensed the creator dashboard sidebar from 14 flat items into 6 compact groups with expandable sub-menus. Groups: Overview (standalone), Content (Posts, Notices), Commerce (Store, Sales), Community (Events, Bookings, Giveaways, Messages, Supporters), Partners (standalone), Account (Verify, Payouts, Settings). Sub-items that are disabled in creator settings are conditionally hidden.
-- **Payouts moved to Account**: Moved `/creator/payouts` from the Commerce group to the Account group (Verify, Payouts, Settings) for clearer logical grouping — payouts are account-level, not store-specific.
+- **Payouts moved to Account**: Moved `/creator/payouts` from the Commerce group to the Account group (Verify, Payouts, Settings) for clearer logical grouping ΓÇö payouts are account-level, not store-specific.
 
 ### Predictable SupportedCreators Doc IDs (June 2026)
 - **Migrated to predictable doc IDs**: Changed `handleSupportPayment.ts` to use `{supporterId}_{creatorHandle}` as document IDs in `supportedCreators` instead of auto-generated IDs. Anonymous supporters still use auto-generated IDs (not applicable for `isSupporterOf` checks).
@@ -790,8 +821,23 @@ For issues or feature requests, please open an issue on GitHub.
 
 ### Dual-ID Supporter Check (June 2026)
 - **Added `supporterUids` map to creator docs**: Each creator doc now has a `supporterUids` map (`{ uid: true }`) that tracks unique supporter UIDs. Set server-side in `handleSupportPayment.ts` during support transactions.
-- **Updated `isSupporterOf` rule**: The Firestore rule function now checks TWO sources — the new predictable doc ID pattern `{uid}_{handle}` in `supportedCreators` AND the `supporterUids` map on the creator doc. This ensures backward compatibility with old auto-generated support records after running the backfill migration.
-- **Added migration script**: `scripts/backfillSupporterUids.js` — run once to populate `supporterUids` on all existing creator docs from current `supportedCreators` records.
+
+### Comms Worker ΓÇö Cloudflare Native Email (July 2026)
+- **New Cloudflare Worker** (`workers/comms/`): Replaces all Nodemailer/SMTP-based email routes with Cloudflare's native `env.EMAIL.send()` binding. Zero SMTP config, zero API keys, automatic SPF/DKIM/DMARC via Cloudflare DNS.
+- **Single unified template**: `renderEmailHtml()` builds a responsive HTML email from per-service template data (header color, title, body, CTA, footer). Each service only provides data, not markup.
+- **18 email services** covering all transactional email purposes: welcome, profile live, booking request/response, gathering created/RSVP/checkin/declined/undo, message new/digest, store order/status, support received, payout processed, content new, verification request/feedback, broadcast.
+- **Firebase JWT auth**: Reuses the same `jose` + JWKS pattern as the upload Worker.
+- **Firestore helpers**: `fetchSupporters()` and `fetchCreatorEmail()` fetch recipient emails from Firestore using the service account OAuth flow (cached 1-hour tokens).
+
+### Upload Worker & Asset Type Migration (July 2026)
+- **New Cloudflare Worker** (`workers/upload/`): Handles all file uploads ΓÇö Firebase JWT auth via `jose` + Google JWKS, stores in R2 bucket (`agaseke-assets`), records metadata in Firestore `assets` collection. No GET handler; files served directly from R2 via custom domain `assets.agaseke.me`.
+- **9 asset types**: `creator_profile`, `creator_cover`, `post_image`, `post_video`, `post_document`, `product_thumbnail`, `product_content`, `partner_logo`, `verification_document` ΓÇö each with its own R2 path prefix and Firestore usage description.
+- **Frontend upload service** (`lib/uploadService.ts`): `uploadFile()` (FormData) and `uploadBase64Image()` (JSON/base64) with typed `AssetType`, auto-attaches Firebase ID token as `Authorization: Bearer`.
+- **ProductModal/FolderModal/PartnerModal updated**: All use the correct typed asset constants (`product_thumbnail`, `product_content`, `partner_logo`) instead of generic `post_image`.
+- **SupporterSpace upload retry**: On upload failure, the file preview stays visible with a Retry button and a Trash button to discard. The failed file is retained in state so re-clicking Retry re-uploads without re-selecting.
+- **Error logging**: All Worker catch blocks log errors with `console.error`, including JWT verification failures and request context (method + URL). Observability enabled in wrangler config.
+- **Updated `isSupporterOf` rule**: The Firestore rule function now checks TWO sources ΓÇö the new predictable doc ID pattern `{uid}_{handle}` in `supportedCreators` AND the `supporterUids` map on the creator doc. This ensures backward compatibility with old auto-generated support records after running the backfill migration.
+- **Added migration script**: `scripts/backfillSupporterUids.js` ΓÇö run once to populate `supporterUids` on all existing creator docs from current `supportedCreators` records.
 
 ### MobileBottomBar Component (June 2026)
 - **Reusable sticky bottom bar**: Extracted the mobile bottom navigation into a reusable `MobileBottomBar` component (`components/parts/MobileBottomBar.tsx`). Appears on `/supporter`, `/explore`, and the homepage for all logged-in users on mobile screens. Hidden on `lg+` screens. Includes compact `size={14}` icons with `text-[8px]` labels.
@@ -799,8 +845,16 @@ For issues or feature requests, please open an issue on GitHub.
 - **Solid background**: Uses `bg-background` (opaque) instead of translucent backdrop blur to prevent overlap visibility issues.
 - **Feedback modal inline**: Feedback form integrated directly into the component with Firestore submission, replacing the standalone `FeedbackFAB` floating button that overlapped other fixed elements.
 - **Sticky right sidebar on /supporter**: Right sidebar made sticky on desktop (`sticky top-24`) so it stays in view while scrolling the feed.
-- **Navbar spacing**: Reduced `pt-20` → `pt-12` on the content container to tighten the gap between the sticky navbar and page content.
+- **Navbar spacing**: Reduced `pt-20` ΓåÆ `pt-12` on the content container to tighten the gap between the sticky navbar and page content.
 
 ### Simplified CreatorContent Read Rule (June 2026)
-- **Removed `isCreator` and `isSupporterOf` from read rule**: After the initial split, even the `isCreator` check (which uses `get()`) caused Firestore query rejection. Simplified to a single conditional: `allow read: if isAuth() && !resource.data.isPrivate`. This rule has zero `get()` calls and is fully statically verifiable. Private content reads are now gated entirely by the client — only supporters fetch private posts; any permission failure is caught gracefully.
+- **Removed `isCreator` and `isSupporterOf` from read rule**: After the initial split, even the `isCreator` check (which uses `get()`) caused Firestore query rejection. Simplified to a single conditional: `allow read: if isAuth() && !resource.data.isPrivate`. This rule has zero `get()` calls and is fully statically verifiable. Private content reads are now gated entirely by the client ΓÇö only supporters fetch private posts; any permission failure is caught gracefully.
 - **Decoupled private content query in SupporterSpace**: Moved the private content query out of `Promise.all` into a separate try/catch block so a permission failure on the private query doesn't crash the entire supporter page load.
+
+### Public Page Fixes & Button Rename (July 2026)
+- **Support button rename**: Changed "Gift Once" button text to "Support {creatorFirstName}" across all public profile subpages.
+- **Firestore composite index fix**: Removed `orderBy("createdAt")` from `creatorContent` queries in CommunityPage.tsx — now uses client-side sorting, eliminating the need for a composite index.
+- **SupportModal NaN fix**: `NEXT_PUBLIC_CREATOR_SHARE` now falls back to `0.9` if unset, preventing `NaN` from being sent to `sendSupportEmail`. Replaced hardcoded `0.9` with the env var.
+- **Optional chaining guards**: Added `?.` guards on `BookingPage.tsx` (`createBooking` response), `GiveawayDetailPage.tsx` (`giveaway.winners`), and `CommunityPage.tsx` (`creatorData.uid`) to prevent undefined crashes.
+- **GatheringsTab stale closure fix**: Replaced closure-captured `paying`/`user` with refs in `listenForTransaction`, preventing payment timeout logic from using stale state.
+- **Community Worker deps**: Added missing `jose` and `@cloudflare/workers-types` to `workers/community/package.json`.

@@ -1,4 +1,6 @@
-import React from "react";
+"use client";
+
+import React, { useState, useEffect } from "react";
 import Navbar from "@/components/parts/Navigation";
 import {
   Wallet,
@@ -6,10 +8,41 @@ import {
   ShieldCheck,
   Banknote,
   ArrowRight,
+  Loader2,
 } from "lucide-react";
 import Footer from "@/components/parts/Footer";
+import { db } from "@/db/firebase";
+import { collection, getDocs } from "firebase/firestore";
+import { getCurrencySymbol } from "@/types/currency";
+
+interface CurrencyData {
+  code: string;
+  name: string;
+  payoutThreshold: number;
+}
 
 export default function PayoutPolicy() {
+  const [currencies, setCurrencies] = useState<CurrencyData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        const snap = await getDocs(collection(db, "currencies"));
+        const list = snap.docs.map((d) => ({
+          code: d.data().code,
+          name: d.data().name,
+          payoutThreshold: d.data().payoutThreshold || 0,
+        }));
+        setCurrencies(list);
+      } catch { /* silently fail */ }
+      finally { setLoading(false); }
+    };
+    fetch();
+  }, []);
+
+  const defaultThreshold = currencies.find((c) => c.code === "RWF")?.payoutThreshold || 10000;
+
   return (
     <div className="min-h-screen bg-card text-foreground pb-20">
       <Navbar />
@@ -39,10 +72,31 @@ export default function PayoutPolicy() {
               transfers occur
               <strong> between the 25th and 30th of each month</strong>.
             </p>
-            <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground">
-              <div className="w-2 h-2 bg-green-500 rounded-full" />
-              Minimum Payout Threshold: 10,000 RWF
-            </div>
+            {loading ? (
+              <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground">
+                <Loader2 size={14} className="animate-spin" />
+                Loading thresholds...
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground">
+                  <div className="w-2 h-2 bg-green-500 rounded-full" />
+                  Minimum Payout Threshold: {defaultThreshold.toLocaleString()} {getCurrencySymbol("RWF")}
+                </div>
+                {currencies.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {currencies.filter((c) => c.code !== "RWF").map((c) => (
+                      <span
+                        key={c.code}
+                        className="text-[11px] bg-muted px-2.5 py-1 rounded-full font-bold text-muted-foreground"
+                      >
+                        {c.code}: {c.payoutThreshold.toLocaleString()} {getCurrencySymbol(c.code)}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </section>
 
           {/* Early Request */}
@@ -52,7 +106,7 @@ export default function PayoutPolicy() {
               <h2 className="text-2xl font-bold m-0">Early Payout Requests</h2>
             </div>
             <p className="text-muted-foreground leading-relaxed">
-              If your balance exceeds <strong>10,000 RWF</strong> and you
+              If your balance exceeds the minimum threshold for your currency and you
               require funds before the end-of-month cycle, you may submit a
               Payout Request through your dashboard.
             </p>
@@ -80,7 +134,7 @@ export default function PayoutPolicy() {
               </h2>
             </div>
             <p className="text-red-800/80 leading-relaxed">
-              To comply with Rwandan financial regulations and prevent fraud,
+              To comply with financial regulations and prevent fraud,
               <strong> unverified creators cannot receive payouts.</strong>
             </p>
             <p className="mt-4 text-sm text-red-900 font-medium">
@@ -88,7 +142,7 @@ export default function PayoutPolicy() {
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2 text-sm text-red-800">
               <div className="flex items-center gap-2">
-                <ArrowRight size={14} /> Valid National ID (Indangamuntu)
+                <ArrowRight size={14} /> Valid Government-Issued ID
               </div>
               <div className="flex items-center gap-2">
                 <ArrowRight size={14} /> Verified MoMo/Bank Account Name

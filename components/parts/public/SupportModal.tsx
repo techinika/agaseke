@@ -2,6 +2,7 @@
 "use client";
 
 import { useAuth } from "@/auth/AuthContext";
+import { sendCommsEmail } from "@/lib/commsService";
 import { db } from "@/db/firebase";
 import {
   onSnapshot,
@@ -15,6 +16,8 @@ import { Heart, Loader, ShieldCheck, Smartphone, X } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
+import { getCurrencySymbol } from "@/types/currency";
+import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService";
 
 export function SupportModal({
   isOpen,
@@ -37,6 +40,22 @@ export function SupportModal({
   const [popupBlocked, setPopupBlocked] = useState(false);
   const [redirectUrl, setRedirectUrl] = useState("");
   const [isClosing, setIsClosing] = useState(false);
+  const [creatorCurrency, setCreatorCurrency] = useState("RWF");
+
+  useEffect(() => {
+    if (!creatorId) return;
+    const fetchCreatorCurrency = async () => {
+      try {
+        const creatorRef = doc(db, "creators", creatorId);
+        const creatorSnap = await getDoc(creatorRef);
+        if (creatorSnap.exists()) {
+          const data = creatorSnap.data();
+          setCreatorCurrency(data.currency || "RWF");
+        }
+      } catch { /* silently fail */ }
+    };
+    fetchCreatorCurrency();
+  }, [creatorId]);
 
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
@@ -62,6 +81,8 @@ export function SupportModal({
 
   if (!isOpen) return null;
 
+  const CREATOR_SHARE = Number(process.env.NEXT_PUBLIC_CREATOR_SHARE) || 0.9;
+
   const sendSupportEmail = async (txAmount: number) => {
     try {
       const creatorRef = doc(db, "profiles", uid);
@@ -70,16 +91,12 @@ export function SupportModal({
       if (creatorSnap.exists()) {
         const profileData = creatorSnap.data();
 
-        await fetch("/api/comms/email/support/received", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            creatorEmail: profileData.email || "",
-            creatorName: creatorName,
-            supporterName: currentUser?.displayName || "A generous supporter",
-            amount: txAmount,
-            message: message.trim() || null,
-          }),
+        await sendCommsEmail("support_received", {
+          creatorEmail: profileData.email || "",
+          creatorName: creatorName,
+          supporterName: currentUser?.displayName || "A generous supporter",
+          amount: txAmount,
+          message: message.trim() || null,
         });
       }
     } catch (error) {
@@ -92,27 +109,18 @@ export function SupportModal({
     setErrorMessage("");
 
     try {
-      const response = await fetch("/api/support/with-momo/pay", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: Number(amount),
-          phone: phone,
-          creatorId: creatorId,
-          creatorUid: uid,
-          message: message ?? "",
-          referralUid: referralUid,
-          referralId: referralId,
-          supporterId: currentUser?.uid || "anonymous",
-          includeReferral: includeReferral,
-        }),
+      const data = await initiateMomoPayment({
+        amount: Number(amount),
+        phone,
+        creatorId,
+        creatorUid: uid,
+        message: message ?? "",
+        referralUid,
+        referralId,
+        supporterId: currentUser?.uid || "anonymous",
+        includeReferral,
+        currency: creatorCurrency,
       });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.ref) {
-        throw new Error(data.error || "Failed to initiate payment");
-      }
 
       const q = query(
         collection(db, "transactions"),
@@ -127,9 +135,7 @@ export function SupportModal({
             if (unsubscribeRef.current) unsubscribeRef.current();
             setStep("success");
             sendSupportEmail(
-              Number(
-                txData?.amount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE),
-              ),
+              Number(txData?.amount) * CREATOR_SHARE,
             );
             toast.success("Payment received!");
           } else if (txData.status === "failed") {
@@ -175,7 +181,7 @@ export function SupportModal({
         if (txData.status === "success" || txData.status === "successful") {
           if (unsubscribeRef.current) unsubscribeRef.current();
           setStep("success");
-          sendSupportEmail(Number(txData.amount * 0.9));
+          sendSupportEmail(Number(txData.amount) * CREATOR_SHARE);
           toast.success("Card payment verified!");
         } else if (txData.status === "failed") {
           if (unsubscribeRef.current) unsubscribeRef.current();
@@ -195,46 +201,36 @@ export function SupportModal({
     setStep("processing");
 
     try {
-      const res = await fetch("/api/support/with-card/pay", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: Number(amount),
-          email: currentUser?.email || "supporter@agaseke.me",
-          firstName: currentUser?.displayName?.split(" ")[0] || "Supporter",
-          lastName: currentUser?.displayName?.split(" ")[1] || "Agaseke",
-          creatorId,
-          creatorUid: uid,
-          supporterId: currentUser?.uid || "anonymous",
-          message: message.trim() || "",
-          includeReferral,
-          referralUid,
-          referralId,
-          callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/payment`,
-        }),
+      const data = await initiateCardPayment({
+        amount: Number(amount),
+        email: currentUser?.email || "supporter@agaseke.me",
+        firstName: currentUser?.displayName?.split(" ")[0] || "Supporter",
+        lastName: currentUser?.displayName?.split(" ")[1] || "Agaseke",
+        creatorId,
+        creatorUid: uid,
+        supporterId: currentUser?.uid || "anonymous",
+        message: message.trim() || "",
+        includeReferral,
+        referralUid,
+        referralId,
+        currency: creatorCurrency,
       });
 
-      const data = await res.json();
+      setRedirectUrl(data.redirect_url);
+      const newWindow = window.open(data.redirect_url, "_blank");
 
-      if (data.redirect_url) {
-        setRedirectUrl(data.redirect_url);
-        const newWindow = window.open(data.redirect_url, "_blank");
-
-        if (
-          !newWindow ||
-          newWindow.closed ||
-          typeof newWindow.closed === "undefined"
-        ) {
-          setPopupBlocked(true);
-          setStep("error");
-          setErrorMessage(
-            "Your browser blocked the payment window. Please click the button below to continue.",
-          );
-        } else {
-          listenToTransaction(data.merchant_reference);
-        }
+      if (
+        !newWindow ||
+        newWindow.closed ||
+        typeof newWindow.closed === "undefined"
+      ) {
+        setPopupBlocked(true);
+        setStep("error");
+        setErrorMessage(
+          "Your browser blocked the payment window. Please click the button below to continue.",
+        );
       } else {
-        throw new Error(data.error || "Could not generate payment link.");
+        listenToTransaction(data.merchant_reference);
       }
     } catch (error: any) {
       setStep("error");
@@ -276,7 +272,7 @@ export function SupportModal({
                     onChange={(e) => setAmount(e.target.value)}
                   />
                   <span className="block text-[10px] font-bold text-muted-foreground mt-2 uppercase tracking-[0.3em]">
-                    Rwandan Francs (RWF)
+                    {creatorCurrency} ({getCurrencySymbol(creatorCurrency)})
                   </span>
                 </div>
               </div>
@@ -426,7 +422,7 @@ export function SupportModal({
                 Payment Verified!
               </h4>
               <p className="text-muted-foreground font-medium leading-relaxed text-sm sm:text-base">
-                Your gift of <b>{amount} RWF</b> was delivered.
+                  Your gift of <b>{amount} {creatorCurrency}</b> was delivered.
               </p>
               <button
                 onClick={handleClose}

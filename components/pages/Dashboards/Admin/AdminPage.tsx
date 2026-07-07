@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
+import { sendCommsEmail } from "@/lib/commsService";
 import { db } from "@/db/firebase";
 import {
   collection,
@@ -802,16 +803,12 @@ export default function AdminDashboard() {
             });
           });
 
-          await fetch("/api/comms/email/payout/processed", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              creatorEmail: userEmail,
-              creatorName: target.creatorName,
-              amount: target.amount,
-              method: target.method,
-              accountNumber: target.accountNumber,
-            }),
+          await sendCommsEmail("payout_processed", {
+            creatorEmail: userEmail,
+            creatorName: target.creatorName,
+            amount: target.amount,
+            method: target.method,
+            accountNumber: target.accountNumber,
           });
         } else {
           await updateDoc(doc(db, "withdrawRequests", target.id), {
@@ -827,7 +824,7 @@ export default function AdminDashboard() {
               userId: adminDoc.id,
               type: category,
               title: "Withdrawal Rejected",
-              message: `Withdrawal of ${target.amount?.toLocaleString()} RWF for ${target.creatorName} was rejected`,
+              message: `Withdrawal of ${target.amount?.toLocaleString()} ${target.currency || "RWF"} for ${target.creatorName} was rejected`,
               read: false,
             };
             await addDoc(collection(db, "notifications"), notificationData);
@@ -837,7 +834,7 @@ export default function AdminDashboard() {
         await logActivity({
           level: type === "approve" ? "success" : "warning",
           category: "payout",
-          message: `Withdrawal ${type === "approve" ? "approved" : "rejected"}: ${target.amount?.toLocaleString()} RWF for ${target.creatorName}`,
+          message: `Withdrawal ${type === "approve" ? "approved" : "rejected"}: ${target.amount?.toLocaleString()} ${target.currency || "RWF"} for ${target.creatorName}`,
           creatorId: target.creatorId,
           creatorHandle: target.creatorHandle,
         });
@@ -867,17 +864,13 @@ export default function AdminDashboard() {
           });
         }
 
-        await fetch("/api/comms/email/feedback/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: userEmail,
-            name: target.name,
-            approved: isApprove,
-            reason: isApprove ? "" : rejectionReason,
-            creatorUid: target.uid,
-            handle: target.handle,
-          }),
+        await sendCommsEmail("verification_feedback", {
+          email: userEmail,
+          name: target.name,
+          approved: isApprove,
+          reason: isApprove ? "" : rejectionReason,
+          creatorUid: target.uid,
+          handle: target.handle,
         });
 
         await logActivity({
@@ -1341,7 +1334,7 @@ export default function AdminDashboard() {
                         {req.creatorName || "Creator"}
                       </p>
                       <p className="text-lg font-black text-foreground">
-                        {req.amount?.toLocaleString()} RWF
+                        {req.amount?.toLocaleString()} {req.currency || "RWF"}
                       </p>
                       <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
                         {req.method} • {req.accountNumber}

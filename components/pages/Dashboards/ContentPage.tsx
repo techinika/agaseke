@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { sendCommsEmail } from "@/lib/commsService";
 import {
   Plus,
   Video,
@@ -41,6 +42,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/auth/AuthContext";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { LinkifyText } from "@/components/ui/LinkifyText";
+import { uploadFile } from "@/lib/uploadService";
 
 interface Comment {
   id: string;
@@ -193,35 +195,13 @@ export default function ContentManager() {
     setUploadedUrl("");
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("creatorHandle", creator?.handle || "");
-      formData.append("type", newPost.type === "document" ? "perk_file" : newPost.type);
-
-      let endpoint = "/api/upload/content/image";
-      if (newPost.type === "video") endpoint = "/api/upload/content/video";
-      if (newPost.type === "document") endpoint = "/api/upload/content/docs";
-
-      const res = await fetch(endpoint, { method: "POST", body: formData });
-      
-      if (!res.ok) {
-        let errorMessage = "Upload failed";
-        try {
-          const data = await res.json();
-          errorMessage = data.error || `Upload failed (${res.status})`;
-        } catch {
-          errorMessage = `Upload failed: Request entity too large. Maximum file size is 50MB.`;
-        }
-        throw new Error(errorMessage);
-      }
-
-      const data = await res.json();
-
+      const assetType = newPost.type === "video" ? "post_video" : newPost.type === "document" ? "post_document" : "post_image";
+      const data = await uploadFile(file, assetType, creator?.handle || "");
       if (data.url) {
         setUploadedUrl(data.url);
         toast.success("File uploaded successfully!");
       } else {
-        throw new Error(data.error || "Upload failed");
+        throw new Error("Upload failed");
       }
     } catch (err: any) {
       console.error("Upload error:", err);
@@ -259,24 +239,17 @@ export default function ContentManager() {
         toast.success("Content published!");
 
         try {
-          const response = await fetch("/api/comms/email/content/new", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              creatorId: creator.handle,
-              creatorName: creator?.name || "Creator",
-              creatorHandle: creator?.handle,
-              contentTitle: newPost.title,
-              contentDescription: newPost.description,
-              contentType: newPost.isPrivate ? "private" : "public",
-              contentId: docRef.id,
-            }),
+          const response = await sendCommsEmail("content_new", {
+            creatorId: creator.handle,
+            creatorName: creator?.name || "Creator",
+            creatorHandle: creator?.handle,
+            contentTitle: newPost.title,
+            contentDescription: newPost.description,
+            contentType: newPost.isPrivate ? "private" : "public",
+            contentId: docRef.id,
           });
-          if (response.ok) {
-            const data = await response.json();
-            if (data.sentCount > 0) {
-              toast.success(`Notified ${data.sentCount} supporter(s) about your new content!`);
-            }
+          if (response.success && response.recipientCount > 0) {
+            toast.success(`Notified ${response.recipientCount} supporter(s) about your new content!`);
           }
         } catch (notifyError) {
           console.error("Failed to notify supporters:", notifyError);

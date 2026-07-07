@@ -13,6 +13,7 @@ import { db } from "@/db/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
+import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService";
 import Link from "next/link";
 
 const platformSharePercentage =
@@ -140,30 +141,17 @@ export default function PayClient() {
         lastName: currentUser.displayName?.split(" ")[1] || "",
       };
 
-      const endpoint =
-        paymentMethod === "momo"
-          ? "/api/support/with-momo/pay"
-          : "/api/support/with-card/pay";
-
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        toast.error(data.error || "Payment failed to initiate");
-        return;
+      if (paymentMethod === "momo") {
+        await initiateMomoPayment(payload as any);
+        toast.success("Payment initiated! Check your phone to complete.");
+      } else {
+        const data = await initiateCardPayment(payload as any);
+        if (data.redirect_url) {
+          window.open(data.redirect_url, "_blank");
+          return;
+        }
       }
 
-      if (paymentMethod === "card" && data.redirect_url) {
-        window.open(data.redirect_url, "_blank");
-        return;
-      }
-
-      toast.success("Payment initiated! Check your phone to complete.");
       setPaid(true);
       setIsPaid(true);
     } catch (error) {

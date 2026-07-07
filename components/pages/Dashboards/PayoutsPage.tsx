@@ -22,10 +22,14 @@ import {
   limit,
   addDoc,
   serverTimestamp,
+  doc,
+  getDoc,
+  getDocs,
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { EmptyState } from "./payoutspage/index";
+import { getCurrencySymbol } from "@/types/currency";
 
 export default function PayoutsPage() {
   const router = useRouter();
@@ -37,6 +41,8 @@ export default function PayoutsPage() {
   const [payouts, setPayouts] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [creatorCurrency, setCreatorCurrency] = useState("RWF");
+  const [withdrawThreshold, setWithdrawThreshold] = useState(10000);
 
   const [withdrawType, setWithdrawType] = useState<"all" | "custom">("all");
   const [customAmount, setCustomAmount] = useState<string>("");
@@ -44,7 +50,6 @@ export default function PayoutsPage() {
 
   const pendingAmount = creator?.pendingPayout || 0;
   const isVerified = creator?.verified || false;
-  const WITHDRAW_THRESHOLD = 10000;
   const payoutPref = String(
     verificationRequest?.payoutPreference ?? "",
   ).toLowerCase();
@@ -54,6 +59,26 @@ export default function PayoutsPage() {
 
   useEffect(() => {
     if (!creator) return;
+
+    const fetchCreatorCurrency = async () => {
+      try {
+        const creatorRef = doc(db, "creators", creator.handle);
+        const snap = await getDoc(creatorRef);
+        if (snap.exists()) {
+          const currency = snap.data().currency || "RWF";
+          setCreatorCurrency(currency);
+
+          const currenciesSnap = await getDocs(collection(db, "currencies"));
+          const matched = currenciesSnap.docs.find(
+            (d) => d.data().code === currency,
+          );
+          if (matched) {
+            setWithdrawThreshold(matched.data().payoutThreshold || 10000);
+          }
+        }
+      } catch { /* silently fail */ }
+    };
+    fetchCreatorCurrency();
 
     const qPayouts = query(
       collection(db, "payouts"),
@@ -102,9 +127,9 @@ export default function PayoutsPage() {
       router.push("/creator/verify");
       return;
     }
-    if (pendingAmount < WITHDRAW_THRESHOLD) {
+    if (pendingAmount < withdrawThreshold) {
       toast.error(
-        `Minimum withdraw is ${WITHDRAW_THRESHOLD.toLocaleString()} RWF`,
+         `Minimum withdraw is ${withdrawThreshold.toLocaleString()} ${getCurrencySymbol(creatorCurrency)}`,
       );
       return;
     }
@@ -116,9 +141,9 @@ export default function PayoutsPage() {
     const finalAmount =
       withdrawType === "all" ? pendingAmount : parseInt(customAmount);
 
-    if (isNaN(finalAmount) || finalAmount < WITHDRAW_THRESHOLD) {
+    if (isNaN(finalAmount) || finalAmount < withdrawThreshold) {
       toast.error(
-        `Amount must be at least ${WITHDRAW_THRESHOLD.toLocaleString()} RWF`,
+         `Amount must be at least ${withdrawThreshold.toLocaleString()} ${getCurrencySymbol(creatorCurrency)}`,
       );
       return;
     }
@@ -135,6 +160,7 @@ export default function PayoutsPage() {
         creatorName: creator.name,
         handle: creator.handle,
         amount: finalAmount,
+        currency: creatorCurrency,
         status: "pending",
         method: creator.network || "MTN",
         accountNumber: creator.payoutNumber || "",
@@ -171,10 +197,10 @@ export default function PayoutsPage() {
                 </p>
               </div>
               <button
-                disabled={pendingAmount < WITHDRAW_THRESHOLD}
+                disabled={pendingAmount < withdrawThreshold}
                 onClick={handleWithdrawInit}
                 className={`px-8 py-4 rounded-lg font-black text-sm transition shadow-xl flex items-center gap-2 ${
-                  pendingAmount >= WITHDRAW_THRESHOLD
+                  pendingAmount >= withdrawThreshold
                     ? "bg-foreground text-background hover:bg-orange-600"
                     : "bg-border-strong text-muted-foreground cursor-not-allowed"
                 }`}
@@ -215,7 +241,7 @@ export default function PayoutsPage() {
                 <h2 className="text-4xl font-black">
                   {pendingAmount.toLocaleString()}{" "}
                   <span className="text-sm font-bold text-muted-foreground">
-                    RWF
+                    {getCurrencySymbol(creatorCurrency)}
                   </span>
                 </h2>
               </div>
@@ -226,7 +252,7 @@ export default function PayoutsPage() {
                 <h2 className="text-4xl font-black">
                   {(creator?.totalEarnings || 0).toLocaleString()}{" "}
                   <span className="text-sm font-bold text-muted-foreground">
-                    RWF
+                    {getCurrencySymbol(creatorCurrency)}
                   </span>
                 </h2>
               </div>
@@ -274,21 +300,21 @@ export default function PayoutsPage() {
                 </p>
                 <p className="text-sm font-bold text-foreground">
                   {pendingAmount.toLocaleString()} /{" "}
-                  {WITHDRAW_THRESHOLD.toLocaleString()} RWF
+                  {withdrawThreshold.toLocaleString()} {getCurrencySymbol(creatorCurrency)}
                 </p>
               </div>
               <div className="w-full bg-muted rounded-full h-3 mb-3">
                 <div
                   className="bg-orange-600 h-3 rounded-full transition-all duration-500"
                   style={{
-                    width: `${Math.min((pendingAmount / WITHDRAW_THRESHOLD) * 100, 100)}%`,
+                    width: `${Math.min((pendingAmount / withdrawThreshold) * 100, 100)}%`,
                   }}
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                {pendingAmount >= WITHDRAW_THRESHOLD
+                {pendingAmount >= withdrawThreshold
                   ? "You've reached the payout threshold! You can now request a withdrawal."
-                  : `You need ${(WITHDRAW_THRESHOLD - pendingAmount).toLocaleString()} RWF more to reach the payout threshold.`}
+                  : `You need ${(withdrawThreshold - pendingAmount).toLocaleString()}                    {getCurrencySymbol(creatorCurrency)} more to reach the payout threshold.`}
               </p>
             </div>
 
@@ -336,7 +362,7 @@ export default function PayoutsPage() {
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-black">
-                            -{tx.amount.toLocaleString()} RWF
+                            -{tx.amount.toLocaleString()} {getCurrencySymbol(creatorCurrency)}
                           </p>
                           <p className="text-[10px] text-green-500 font-bold uppercase tracking-widest">
                             Completed
@@ -370,7 +396,7 @@ export default function PayoutsPage() {
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-black">
-                          {req.amount.toLocaleString()} RWF
+                          {req.amount.toLocaleString()} {getCurrencySymbol(creatorCurrency)}
                         </p>
                         <p
                           className={`text-[10px] font-bold uppercase tracking-widest ${req.status === "pending" ? "text-orange-600" : req.status === "approved" ? "text-green-500" : "text-red-500"}`}
@@ -430,7 +456,7 @@ export default function PayoutsPage() {
                         type="number"
                         value={customAmount}
                         onChange={(e) => setCustomAmount(e.target.value)}
-                        placeholder="Enter amount (RWF)"
+                        placeholder={`Enter amount (${creatorCurrency})`}
                         className="w-full bg-muted p-4 rounded-lg font-black text-lg outline-none border-2 border-transparent focus:border-orange-600 transition"
                       />
                     </div>

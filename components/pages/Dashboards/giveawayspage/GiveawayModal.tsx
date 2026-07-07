@@ -547,7 +547,7 @@ export default function GiveawayModal({
                     setNewPartner((prev) => ({ ...prev, name: e.target.value }))
                   }
                   className="w-full bg-card p-3 rounded-lg text-sm outline-none"
-                  placeholder="Partner name (e.g., Gym Master Rwanda)"
+                  placeholder="Partner name (e.g., Gym Master)"
                   required
                 />
                 <input

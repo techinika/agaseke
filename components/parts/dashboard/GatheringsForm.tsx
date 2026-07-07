@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { sendCommsEmail } from "@/lib/commsService";
 import { useRouter } from "next/navigation";
 import { Loader, ArrowLeft, Globe, Users, ShieldCheck, Ticket, X } from "lucide-react";
 import { db } from "@/db/firebase";
@@ -134,20 +135,16 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
           creatorId: creator.uid,
           metadata: { gatheringId: docRef.id },
         });
-        fetch("/api/comms/email/gathering/created", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            creatorId: creator.uid,
-            creatorName: creator.name,
-            creatorHandle: creator.handle,
-            gatheringId: docRef.id,
-            gatheringTitle: formData.title,
-            gatheringDate: formData.date,
-            gatheringTime: formData.time,
-            gatheringLocation: formData.location,
-            gatheringDescription: formData.description,
-          }),
+        sendCommsEmail("gathering_created", {
+          creatorId: creator.uid,
+          creatorName: creator.name,
+          creatorHandle: creator.handle,
+          gatheringId: docRef.id,
+          gatheringTitle: formData.title,
+          gatheringDate: formData.date,
+          gatheringTime: formData.time,
+          gatheringLocation: formData.location,
+          gatheringDescription: formData.description,
         }).catch(() => {});
       }
 

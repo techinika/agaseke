@@ -2,12 +2,17 @@
 
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { sendCommsEmail } from "@/lib/commsService";
 import {
   doc,
   getDoc,
   setDoc,
   updateDoc,
   serverTimestamp,
+  collection,
+  query,
+  orderBy,
+  getDocs,
 } from "firebase/firestore";
 import {
   Check,
@@ -44,6 +49,8 @@ export default function CreatorOnboarding() {
     bio: "",
     momoNumber: "",
     momoNetwork: "MTN",
+    country: "",
+    currency: "",
     socials: {
       instagram: "",
       linkedin: "",
@@ -53,6 +60,11 @@ export default function CreatorOnboarding() {
       web: "",
     },
   });
+
+  const [countries, setCountries] = useState<any[]>([]);
+  const [currencies, setCurrencies] = useState<any[]>([]);
+  const [countryCurrencies, setCountryCurrencies] = useState<any[]>([]);
+  const [availableCurrencies, setAvailableCurrencies] = useState<any[]>([]);
 
   useEffect(() => {
     if (formData.username.length < 3) {
@@ -166,6 +178,40 @@ export default function CreatorOnboarding() {
     checkUserStatus();
   }, [router]);
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [countriesSnap, currenciesSnap, mappingsSnap] = await Promise.all([
+          getDocs(query(collection(db, "countries"), orderBy("name", "asc"))),
+          getDocs(query(collection(db, "currencies"), orderBy("code", "asc"))),
+          getDocs(query(collection(db, "countryCurrencies"))),
+        ]);
+        setCountries(countriesSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setCurrencies(currenciesSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setCountryCurrencies(mappingsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      } catch (e) {
+        console.error("Failed to load countries/currencies:", e);
+      }
+    };
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    if (!formData.country) {
+      setAvailableCurrencies([]);
+      return;
+    }
+    const mappings = countryCurrencies.filter((m: any) => m.countryCode === formData.country);
+    const available = currencies.filter((c: any) => mappings.some((m: any) => m.currencyCode === c.code));
+    setAvailableCurrencies(available);
+    const defaultMapping = mappings.find((m: any) => m.isDefault);
+    if (defaultMapping && !formData.currency) {
+      setFormData((prev) => ({ ...prev, currency: defaultMapping.currencyCode }));
+    } else if (!mappings.some((m: any) => m.currencyCode === formData.currency)) {
+      setFormData((prev) => ({ ...prev, currency: "" }));
+    }
+  }, [formData.country, countryCurrencies, currencies]);
+
   const handleFinish = async () => {
     setLoading(true);
     const user = auth.currentUser;
@@ -183,6 +229,8 @@ export default function CreatorOnboarding() {
         handle: formData.username,
         payoutNumber: formData.momoNumber,
         network: formData.momoNetwork,
+        country: formData.country || null,
+        currency: formData.currency || null,
         verified: false,
         totalEarnings: 0,
         totalSupporters: 0,
@@ -209,17 +257,15 @@ export default function CreatorOnboarding() {
         username: formData.username,
         referralCreator: referralCreator ?? null,
         onboarded: true,
+        country: formData.country || null,
+        currency: formData.currency || null,
       });
 
       try {
-        await fetch("/api/comms/email/welcome/creator", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: user.email,
-            name: formData.fullName,
-            handle: formData.username,
-          }),
+        await sendCommsEmail("welcome_creator", {
+          email: user.email,
+          name: formData.fullName,
+          handle: formData.username,
         });
       } catch (emailError) {
         console.error("Creator launch email failed:", emailError);
@@ -257,7 +303,7 @@ export default function CreatorOnboarding() {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-sm mb-12 flex justify-between relative">
         <div className="absolute top-1/2 left-0 w-full h-0.5 bg-muted -translate-y-1/2 -z-10" />
-        {[1, 2, 3, 4, 5].map((i) => (
+        {[1, 2, 3, 4, 5, 6].map((i) => (
           <div
             key={i}
             className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all duration-500 ${step >= i ? "bg-orange-600 text-white shadow-lg shadow-orange-100" : "bg-card border-2 border-border text-muted-foreground"}`}
@@ -341,8 +387,78 @@ export default function CreatorOnboarding() {
           </div>
         )}
 
-        {/* Step 2: Bio */}
+        {/* Step 2: Country & Currency */}
         {step === 2 && (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+            <div className="text-center space-y-2">
+              <h1 className="text-3xl font-bold tracking-tighter">
+                Location & Currency
+              </h1>
+              <p className="text-muted-foreground text-sm">
+                Where are you based and how should we show prices?
+              </p>
+            </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
+                  Your Country
+                </label>
+                <select
+                  value={formData.country}
+                  onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                  className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
+                >
+                  <option value="">Select your country...</option>
+                  {countries.map((c: any) => (
+                    <option key={c.id} value={c.code}>
+                      {c.flag || ""} {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {formData.country && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
+                    Preferred Currency
+                  </label>
+                  <select
+                    value={formData.currency}
+                    onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                    className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
+                  >
+                    <option value="">Select currency...</option>
+                    {availableCurrencies.map((c: any) => (
+                      <option key={c.code} value={c.code}>
+                        {c.code} - {c.name} ({c.symbol})
+                      </option>
+                    ))}
+                  </select>
+                  {availableCurrencies.length === 0 && (
+                    <p className="text-xs text-muted-foreground">No currencies configured for this country yet.</p>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={prevStep}
+                className="p-5 bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronLeft size={24} />
+              </button>
+              <button
+                onClick={nextStep}
+                disabled={!formData.country || !formData.currency}
+                className="flex-1 bg-foreground text-background py-5 rounded-lg font-bold text-lg hover:bg-orange-600 transition-all disabled:opacity-50"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Bio */}
+        {step === 3 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
             <div className="text-center space-y-2">
               <h1 className="text-3xl font-bold tracking-tighter">
@@ -389,8 +505,8 @@ export default function CreatorOnboarding() {
           </div>
         )}
 
-        {/* Step 3: Social Media (New) */}
-        {step === 3 && (
+        {/* Step 4: Social Media */}
+        {step === 4 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
             <div className="text-center space-y-2">
               <h1 className="text-3xl font-bold tracking-tighter">
@@ -527,8 +643,8 @@ export default function CreatorOnboarding() {
           </div>
         )}
 
-        {/* Step 4: Payout (Moved to 4) */}
-        {step === 4 && (
+        {/* Step 5: Payout */}
+        {step === 5 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
             <div className="text-center space-y-2">
               <h1 className="text-3xl font-bold tracking-tighter">
@@ -586,8 +702,8 @@ export default function CreatorOnboarding() {
           </div>
         )}
 
-        {/* Step 5: Final Confirmation (Moved to 5) */}
-        {step === 5 && (
+        {/* Step 6: Final Confirmation */}
+        {step === 6 && (
           <div className="space-y-6 animate-in zoom-in-95">
             <div className="text-center space-y-2">
               <div className="w-16 h-16 bg-green-50 text-green-600 rounded-lg flex items-center justify-center mx-auto mb-2">
@@ -609,6 +725,26 @@ export default function CreatorOnboarding() {
                   agaseke.me/{formData.username}
                 </span>
               </div>
+              {formData.country && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
+                    Location
+                  </span>
+                  <span className="font-bold text-foreground">
+                    {countries.find((c: any) => c.code === formData.country)?.flag || ""} {countries.find((c: any) => c.code === formData.country)?.name || formData.country}
+                  </span>
+                </div>
+              )}
+              {formData.currency && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
+                    Currency
+                  </span>
+                  <span className="font-bold text-orange-600">
+                    {formData.currency} ({currencies.find((c: any) => c.code === formData.currency)?.symbol || ""})
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
                   Payout

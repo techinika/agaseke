@@ -44,3 +44,10 @@ storybook-static
 
 opencode_next.log
 opencode_next_err.log
+
+# Cloudflare Workers
+workers/*/node_modules/
+workers/*/.wrangler/
+workers/*/dist/
+
+internal_auth_secret.txt

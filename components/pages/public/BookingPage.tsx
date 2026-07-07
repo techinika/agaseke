@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { SupportModal } from "@/components/parts/public/SupportModal";
 import { BookingAvailability, BookingType, BookingTier } from "@/types/booking";
 import { logError } from "@/lib/logger";
+import { createBooking } from "@/lib/bookingsService";
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -87,34 +88,25 @@ export default function BookingPage({ username, creator }: { username: string; c
     if (!name.trim() || !email.trim()) { toast.error("Please fill in your name and email"); return; }
     setSubmitting(true);
     try {
-      const res = await fetch("/api/bookings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          creatorHandle: creator?.handle || username,
-          bookerId: user?.uid || null,
-          bookerName: name,
-          bookerEmail: email,
-          bookerPhone: phone,
-          reason,
-          preferredDate: selectedDate,
-          preferredTime: selectedTime,
-          preferredType: selectedType,
-          tierId: selectedTier?.id || null,
-          tierName: selectedTier?.name || null,
-          paymentAmount: selectedTier?.price || 0,
-        }),
+      const data = await createBooking({
+        creatorHandle: creator?.handle || username,
+        bookerId: user?.uid || null,
+        bookerName: name,
+        bookerEmail: email,
+        bookerPhone: phone,
+        reason,
+        preferredDate: selectedDate,
+        preferredTime: selectedTime,
+        preferredType: selectedType,
+        tierId: selectedTier?.id || null,
+        tierName: selectedTier?.name || null,
+        paymentAmount: selectedTier?.price || 0,
       });
-      const data = await res.json();
-      if (res.ok) {
-        if (data.paymentRequired && data.bookingId) {
-          router.push(`/booking/pay/${data.bookingId}`);
-        } else {
-          setStep("success");
-        }
+
+      if (data?.paymentRequired && data?.bookingId) {
+        router.push(`/booking/pay/${data.bookingId}`);
       } else {
-        toast.error(data.error || "Failed to submit booking");
-        setStep("error");
+        setStep("success");
       }
     } catch (err) {
       toast.error("Something went wrong"); setStep("error");

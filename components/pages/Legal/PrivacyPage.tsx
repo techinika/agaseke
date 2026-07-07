@@ -30,7 +30,7 @@ export default function PrivacyPage() {
             </div>
             <p className="text-muted-foreground leading-relaxed">
               To provide a seamless experience for creators and supporters in
-              Rwanda, we collect:
+              Africa, we collect:
             </p>
             <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
               <li>

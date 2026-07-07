@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { sendCommsEmail } from "@/lib/commsService";
 import {
   Users,
   ArrowLeft,
@@ -34,6 +35,7 @@ interface SupporterSupport {
   id: string;
   supporterId: string | null;
   amount: number;
+  currency: string;
   createdAt: any;
   txRef: string;
   supporterPhoneNumber?: string;
@@ -45,6 +47,7 @@ interface AggregatedSupporter {
   displayName: string | null;
   photoURL: string | null;
   totalAmount: number;
+  currency: string;
   supportCount: number;
   lastSupported: any;
 }
@@ -104,6 +107,7 @@ export default function SupportersPage() {
           displayName: null,
           photoURL: null,
           totalAmount: support.amount,
+          currency: support.currency || "RWF",
           supportCount: 1,
           lastSupported: support.createdAt,
         });
@@ -112,6 +116,12 @@ export default function SupportersPage() {
 
     return Array.from(grouped.values());
   }, [supports]);
+
+  const creatorCurrency = (() => {
+    const currencies = supports.map((s) => s.currency || "RWF");
+    const unique = [...new Set(currencies)];
+    return unique.length === 1 ? unique[0] : "RWF";
+  })();
 
   const [resolvedSupporters, setResolvedSupporters] = useState<AggregatedSupporter[]>([]);
 
@@ -191,27 +201,19 @@ export default function SupportersPage() {
 
     setSendingEmail(true);
     try {
-      const res = await fetch("/api/comms/email/broadcast", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          recipients,
-          subject: emailForm.subject,
-          message: emailForm.message,
-          targetLabel: "supporters",
-        }),
+      const data = await sendCommsEmail("broadcast", {
+        recipients,
+        subject: emailForm.subject,
+        message: emailForm.message,
+        targetLabel: "supporters",
       });
 
-      const data = await res.json();
       if (data.success) {
-        toast.success(`Email sent to ${data.sentCount} supporter(s)`);
-        if (data.failedCount > 0) {
-          toast.warning(`${data.failedCount} emails failed to send`);
-        }
+        toast.success(`Email sent to ${data.recipientCount} supporter(s)`);
         setShowEmailModal(false);
         setEmailForm({ subject: "", message: "" });
       } else {
-        toast.error(data.error || "Failed to send emails");
+        toast.error("Failed to send emails");
       }
     } catch (error) {
       toast.error("Failed to send emails");
@@ -255,7 +257,7 @@ export default function SupportersPage() {
             Total Support
           </p>
           <p className="text-2xl font-bold text-foreground">
-            {totalSupportValue.toLocaleString()} RWF
+            {totalSupportValue.toLocaleString()} {creatorCurrency}
           </p>
         </div>
 
@@ -298,8 +300,8 @@ export default function SupportersPage() {
               className="bg-card border border-border rounded-lg py-3 px-4 text-sm outline-none"
             >
               <option value="all">All Amounts</option>
-              <option value="high">5,000+ RWF</option>
-              <option value="low">Below 5,000 RWF</option>
+              <option value="high">5,000+ {creatorCurrency}</option>
+              <option value="low">Below 5,000 {creatorCurrency}</option>
             </select>
           </div>
         </div>
@@ -376,7 +378,7 @@ export default function SupportersPage() {
                         <div className="flex items-center gap-2">
                           <DollarSign size={14} className="text-orange-500" />
                           <span className="font-bold text-foreground">
-                            {supporter.totalAmount.toLocaleString()} RWF
+                            {supporter.totalAmount.toLocaleString()} {supporter.currency || creatorCurrency}
                           </span>
                         </div>
                       </td>

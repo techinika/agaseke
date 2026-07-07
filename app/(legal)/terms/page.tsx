@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     "Agaseke terms",
     "user agreement",
     "creator agreement",
-    "Rwanda platform terms",
+    "African platform terms",
   ],
   alternates: {
     canonical: "/terms",

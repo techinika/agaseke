@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { sendCommsEmail } from "@/lib/commsService";
 import {
   collection,
   query,
@@ -86,16 +87,12 @@ export default function AdminPayouts() {
       const profileSnap = await getDoc(doc(db, "profiles", confirmPayout.uid));
       const creatorEmail = profileSnap.data()?.email;
       if (creatorEmail) {
-        await fetch("/api/comms/email/payout/processed", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            creatorEmail,
-            creatorName: confirmPayout.name,
-            amount,
-            method: "MoMo",
-            accountNumber: confirmPayout.payoutNumber,
-          }),
+        await sendCommsEmail("payout_processed", {
+          creatorEmail,
+          creatorName: confirmPayout.name,
+          amount,
+          method: "MoMo",
+          accountNumber: confirmPayout.payoutNumber,
         });
       }
 

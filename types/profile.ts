@@ -18,4 +18,6 @@ export interface Profile {
   isAdmin: boolean;
   phoneNumber: string;
   referralCreator: string | null;
+  country?: string;
+  currency?: string;
 }

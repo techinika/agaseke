@@ -110,7 +110,7 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
   }
 
   const endDate = giveaway.endDate instanceof Timestamp ? giveaway.endDate.toDate() : new Date(giveaway.endDate as any);
-  const isActive = endDate > new Date() && giveaway.winners.length === 0;
+  const isActive = endDate > new Date() && (giveaway.winners?.length || 0) === 0;
   const daysLeft = Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
   const accessible = canAccess(giveaway);
 

@@ -12,13 +12,13 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
   limit,
 } from "firebase/firestore";
 import { Creator } from "@/types/creator";
 import { useAuth } from "@/auth/AuthContext";
 import { SupportModal } from "@/components/parts/public/SupportModal";
 import { CommunityTab } from "@/components/parts/public/CommunityTab";
+import { SubscribeModal } from "@/components/parts/public/SubscribeModal";
 import Loading from "@/app/loading";
 
 interface CommunityPageProps {
@@ -31,6 +31,7 @@ export default function CommunityPage({ username }: CommunityPageProps) {
   const [creatorData, setCreatorData] = useState<Creator | null>(null);
   const [profileData, setProfileData] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubscribeModalOpen, setIsSubscribeModalOpen] = useState(false);
   const [isSupporter, setIsSupporter] = useState(false);
   const [publicPosts, setPublicPosts] = useState<any[]>([]);
   const [privatePosts, setPrivatePosts] = useState<any[]>([]);
@@ -85,11 +86,12 @@ export default function CommunityPage({ username }: CommunityPageProps) {
           contentRef,
           where("creatorId", "in", [creatorData.handle, creatorData.uid]),
           where("isPrivate", "==", false),
-          orderBy("createdAt", "desc"),
           limit(20),
         );
         const publicSnap = await getDocs(publicQ);
-        setPublicPosts(publicSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+        const publicList = publicSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        publicList.sort((a: any, b: any) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+        setPublicPosts(publicList);
       } catch (error) {
         console.error("Error fetching public posts:", error);
         fetch("/api/log-error", {
@@ -120,16 +122,17 @@ export default function CommunityPage({ username }: CommunityPageProps) {
         const querySnapshot = await getDocs(q);
         setIsSupporter(!querySnapshot.empty);
 
-        if (!querySnapshot.empty) {
+          if (!querySnapshot.empty) {
           const privateQ = query(
             contentRef,
             where("creatorId", "in", [creatorData.handle, creatorData.uid]),
             where("isPrivate", "==", true),
-            orderBy("createdAt", "desc"),
             limit(20),
           );
           const privateSnap = await getDocs(privateQ);
-          setPrivatePosts(privateSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+          const privateList = privateSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+          privateList.sort((a: any, b: any) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+          setPrivatePosts(privateList);
         }
       } catch (error) {
         console.error("Error checking support status:", error);
@@ -170,6 +173,7 @@ export default function CommunityPage({ username }: CommunityPageProps) {
   }
 
   const creatorName = creatorData.name || profileData?.displayName || "Creator";
+  const creatorFirstName = creatorName.split(" ")[0];
 
   return (
     <>
@@ -188,7 +192,7 @@ export default function CommunityPage({ username }: CommunityPageProps) {
             className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-orange-700 transition"
           >
             <Heart size={18} className="fill-current" />
-            Gift Once
+            Support {creatorFirstName}
           </button>
         </div>
 
@@ -206,6 +210,9 @@ export default function CommunityPage({ username }: CommunityPageProps) {
             isSupporter={isSupporter}
             name={creatorName}
             username={username}
+            communityEnabled={creatorData?.communityEnabled as boolean}
+            communityTiers={creatorData?.communityTiers || []}
+            onSubscribe={() => setIsSubscribeModalOpen(true)}
           />
         </main>
       </div>
@@ -215,10 +222,18 @@ export default function CommunityPage({ username }: CommunityPageProps) {
         onClose={() => setIsModalOpen(false)}
         creatorName={creatorName}
         creatorId={username}
-        uid={creatorData.uid}
+        uid={creatorData?.uid || ""}
         includeReferral={profileData?.referralCreator != null}
         referralUid={referralId}
         referralId={profileData?.referralCreator}
+      />
+
+      <SubscribeModal
+        isOpen={isSubscribeModalOpen}
+        onClose={() => setIsSubscribeModalOpen(false)}
+        creatorName={creatorName}
+        creatorHandle={username}
+        creatorUid={creatorData?.uid || ""}
       />
     </>
   );

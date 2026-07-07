@@ -4,25 +4,25 @@ import { Metadata } from "next";
 import { baseUrl } from "@/lib/baseUrl";
 
 export const metadata: Metadata = {
-  title: "Explore Rwandan Creators | Agaseke",
+  title: "Explore African Creators | Agaseke",
   description:
-    "Discover and support talented creators in Rwanda. Browse artists, musicians, content creators, and more. Your support helps fuel their creative journey.",
+    "Discover and support talented creators in Africa. Browse artists, musicians, content creators, and more. Your support helps fuel their creative journey.",
   keywords: [
-    "Rwandan creators",
-    "support creators Rwanda",
-    "discover artists Rwanda",
+    "African creators",
+    "support creators Africa",
+    "discover artists Africa",
     "Kigali influencers",
     "African content creators",
-    "Rwandan musicians",
-    "creator platform Rwanda",
+    "African musicians",
+    "creator platform Africa",
   ],
   alternates: {
     canonical: "/explore",
   },
   openGraph: {
-    title: "Explore Rwandan Creators | Agaseke",
+    title: "Explore African Creators | Agaseke",
     description:
-      "Discover and support talented creators in Rwanda. Browse artists, musicians, content creators, and more.",
+      "Discover and support talented creators in Africa. Browse artists, musicians, content creators, and more.",
     url: `${baseUrl}/explore`,
     siteName: "Agaseke",
     images: [
@@ -38,9 +38,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Explore Rwandan Creators | Agaseke",
+    title: "Explore African Creators | Agaseke",
     description:
-      "Discover and support talented creators in Rwanda.",
+      "Discover and support talented creators in Africa.",
     images: ["/agaseke.png"],
     site: "@Agaseke_support",
   },

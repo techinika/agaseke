@@ -8,6 +8,8 @@ import {
   Loader,
 } from "lucide-react";
 import { toast } from "sonner";
+import { apiPostFormData } from "@/lib/apiClient";
+import { uploadFile } from "@/lib/uploadService";
 import { serverTimestamp } from "firebase/firestore";
 import {
   addDoc,
@@ -59,16 +61,8 @@ export default function ProductModal({
     if (!file) return;
 
     setIsUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("creatorHandle", "product");
-
     try {
-      const res = await fetch("/api/upload/content/image", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
+      const data = await uploadFile(file, "product_thumbnail", "product");
       if (data.url) {
         setFormData((prev) => ({ ...prev, imageUrl: data.url }));
         toast.success("Image uploaded!");
@@ -85,30 +79,20 @@ export default function ProductModal({
     if (!file) return;
 
     setIsUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("creatorHandle", "product");
-
     try {
-      const endpoint = file.type.includes("video")
-        ? "/api/upload/content/video"
-        : "/api/upload/content/docs";
-      const res = await fetch(endpoint, {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
+      const data = await uploadFile(file, "product_content", "product");
       if (data.url) {
+        const detectedType = file.type.includes("video")
+          ? "video"
+          : file.type.includes("audio")
+            ? "audio"
+            : file.type.includes("image")
+              ? "image"
+              : "pdf";
         setFormData((prev) => ({
           ...prev,
           fileUrl: data.url,
-          fileType: file.type.includes("video")
-            ? "video"
-            : file.type.includes("audio")
-              ? "audio"
-              : file.type.includes("image")
-                ? "image"
-                : "pdf",
+          fileType: detectedType,
         }));
         toast.success("File uploaded!");
       }

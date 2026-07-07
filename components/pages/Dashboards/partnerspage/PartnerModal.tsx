@@ -7,6 +7,7 @@ import {
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
+import { uploadFile } from "@/lib/uploadService";
 import { db } from "@/db/firebase";
 import {
   collection,
@@ -51,16 +52,8 @@ export default function PartnerModal({
     if (!file) return;
 
     setUploading(true);
-    const uploadFormData = new FormData();
-    uploadFormData.append("file", file);
-    uploadFormData.append("creatorHandle", "partner");
-
     try {
-      const res = await fetch("/api/upload/content/image", {
-        method: "POST",
-        body: uploadFormData,
-      });
-      const data = await res.json();
+      const data = await uploadFile(file, "partner_logo", "partner");
       if (data.url) {
         setFormData((prev) => ({ ...prev, logo: data.url }));
         toast.success("Logo uploaded!");
@@ -173,7 +166,7 @@ export default function PartnerModal({
                 setFormData((prev) => ({ ...prev, name: e.target.value }))
               }
               className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
-              placeholder="e.g., Gym Master Rwanda"
+              placeholder="e.g., Gym Master"
             />
           </div>
 

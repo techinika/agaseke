@@ -12,7 +12,7 @@ export function getOrganizationSchema(): OrganizationSchema {
   return {
     name: "Agaseke",
     description:
-      "The premier platform for Rwandan creators to monetize their content and grow their community through support from fans.",
+      "The premier platform for African creators to monetize their content and grow their community through support from fans.",
     url: baseUrl,
     logo: `${baseUrl}/agaseke.png`,
     sameAs: [
@@ -29,7 +29,7 @@ export function getWebsiteSchema() {
     "@type": "WebSite",
     name: "Agaseke",
     url: baseUrl,
-    description: "Support Rwandan creators through donations and subscriptions.",
+    description: "Support African creators through donations and subscriptions.",
     publisher: getOrganizationSchema(),
     potentialAction: {
       "@type": "SearchAction",

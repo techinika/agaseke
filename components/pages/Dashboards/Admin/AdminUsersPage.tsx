@@ -8,6 +8,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
+import { sendCommsEmail } from "@/lib/commsService";
 import {
   Search,
   Users,
@@ -24,16 +25,17 @@ import {
 } from "lucide-react";
 import { db } from "@/db/firebase";
 import {
+  doc,
+  updateDoc,
+  arrayUnion,
   collection,
+  getDocs,
   query,
+  where,
+  getDoc,
   orderBy,
   limit,
   startAfter,
-  where,
-  doc,
-  updateDoc,
-  getDocs,
-  getDoc,
   Timestamp,
 } from "firebase/firestore";
 import { toast } from "sonner";
@@ -196,17 +198,13 @@ export default function AdminUsersPage() {
         },
       );
 
-      await fetch("/api/comms/email/feedback/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: verifyingUser.email,
-          name: verifyingUser.displayName,
-          approved: true,
-          reason: "",
-          creatorUid: verifyingUser.uid || verifyingUser.id,
-          handle: verifyingUser.username || verifyingUser.id,
-        }),
+      await sendCommsEmail("verification_feedback", {
+        email: verifyingUser.email,
+        name: verifyingUser.displayName,
+        approved: true,
+        reason: "",
+        creatorUid: verifyingUser.uid || verifyingUser.id,
+        handle: verifyingUser.username || verifyingUser.id,
       });
 
       await logActivity({

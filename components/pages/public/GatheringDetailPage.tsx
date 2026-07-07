@@ -2,6 +2,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { sendCommsEmail } from "@/lib/commsService";
+import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService";
 import Link from "next/link";
 import { ArrowLeft, Heart, Loader, Calendar, MapPin, Users, CheckCircle, XCircle, Clock, Lock, Smartphone, CreditCard, X, QrCode } from "lucide-react";
 import { SupportModal } from "@/components/parts/public/SupportModal";
@@ -166,19 +168,15 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
         metadata: { gatheringId: gathering.id },
       });
 
-      fetch("/api/comms/email/gathering/rsvp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          supporterName: profile.displayName || user.email,
-          supporterEmail: user.email,
-          creatorHandle: username,
-          creatorId: gathering.creatorId,
-          gatheringId: gathering.id,
-          gatheringTitle: gathering.title,
-          gatheringDate: gathering.date,
-          gatheringTime: gathering.time,
-        }),
+      sendCommsEmail("gathering_rsvp", {
+        supporterName: profile.displayName || user.email,
+        supporterEmail: user.email,
+        creatorHandle: username,
+        creatorId: gathering.creatorId,
+        gatheringId: gathering.id,
+        gatheringTitle: gathering.title,
+        gatheringDate: gathering.date,
+        gatheringTime: gathering.time,
       }).catch(() => {});
 
       toast.success("RSVP confirmed!");
@@ -198,28 +196,37 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
     setPaying(true);
     try {
       const amount = g.ticketPrice || 0;
-      const endpoint = payMethod === "momo" ? "/api/support/with-momo/pay" : "/api/support/with-card/pay";
-      const body: any = {
-        amount,
-        creatorId: username,
-        creatorUid: g.creatorId,
-        supporterId: user.uid,
-        gatheringId: g.id,
-        attendeeName: profile.displayName || user.email,
-        attendeeEmail: user.email,
-        includeReferral: false,
-      };
-      if (payMethod === "momo") { body.phone = payPhone; }
-      else { body.email = user.email; body.firstName = profile.displayName || user.email || "User"; body.lastName = ""; }
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) { toast.error(data.error || "Payment failed"); setPaying(false); return; }
-      const ref = data.ref || data.merchant_reference;
-      if (payMethod === "card" && data.redirect_url) { window.open(data.redirect_url, "_blank"); }
+      let ref: string;
+      if (payMethod === "momo") {
+        const data = await initiateMomoPayment({
+          amount,
+          phone: payPhone,
+          creatorId: username,
+          creatorUid: g.creatorId,
+          supporterId: user.uid,
+          gatheringId: g.id,
+          attendeeName: profile.displayName || user.email || undefined,
+          attendeeEmail: user.email || undefined,
+          includeReferral: false,
+        });
+        ref = data.ref;
+      } else {
+        const data = await initiateCardPayment({
+          amount,
+          email: user.email || undefined,
+          firstName: profile.displayName || user.email || "User",
+          lastName: "",
+          creatorId: username,
+          creatorUid: g.creatorId,
+          supporterId: user.uid,
+          gatheringId: g.id,
+          attendeeName: profile.displayName || user.email || undefined,
+          attendeeEmail: user.email || undefined,
+          includeReferral: false,
+        });
+        ref = data.merchant_reference || data.ref;
+        if (data.redirect_url) { window.open(data.redirect_url, "_blank"); }
+      }
       listenForTransaction(ref, g);
       toast.success("Payment initiated. Waiting for confirmation...");
     } catch (e) {

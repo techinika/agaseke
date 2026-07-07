@@ -45,5 +45,9 @@ export interface Creator {
   bookingMode?: "simple" | "tiered";
   bookingTiers?: import("./booking").BookingTier[];
   gatheringsEnabled?: boolean;
+  communityEnabled?: boolean;
+  communityTiers?: import("./community").CommunityTier[];
   focus?: string[];
+  country?: string;
+  currency?: string;
 }

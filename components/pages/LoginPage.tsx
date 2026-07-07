@@ -64,7 +64,7 @@ export default function LoginPage() {
         </div>
 
         <div className="mt-12 pt-8 border-t border-border text-muted-foreground text-sm">
-          © 2026 Agaseke. Supporting Rwandan Creativity.
+          © 2026 Agaseke. Supporting African Creativity.
         </div>
       </div>
 
