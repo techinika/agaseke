@@ -1,5 +1,5 @@
 export type PaymentMethod = "momo" | "card";
-export type TransactionType = "support" | "booking" | "gathering" | "store";
+export type TransactionType = "support" | "booking" | "gathering" | "store" | "community";
 
 export interface Env {
   FIREBASE_API_KEY: string;
@@ -23,6 +23,7 @@ export interface Env {
   SUPPORT_WORKER_URL: string;
   STORE_WORKER_URL: string;
   BOOKINGS_WORKER_URL: string;
+  COMMUNITY_WORKER_URL: string;
   INTERNAL_AUTH_SECRET: string;
 }
 
@@ -50,6 +51,9 @@ export interface MomoInitRequest {
   attendeeName?: string;
   attendeeEmail?: string;
   attendeePhoto?: string;
+  communityTierId?: string;
+  communityInterval?: string;
+  communitySubscriptionId?: string;
   currency?: string;
 }
 

@@ -40,6 +40,8 @@ function getCallbackUrl(txType: string, env: Env): string {
       return `${env.STORE_WORKER_URL}/api/store/callback`;
     case "booking":
       return `${env.BOOKINGS_WORKER_URL}/api/bookings/callback`;
+    case "community":
+      return `${env.COMMUNITY_WORKER_URL}/api/community/callback`;
     case "gathering":
       return "";
     default:

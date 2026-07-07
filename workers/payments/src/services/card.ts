@@ -34,12 +34,16 @@ export async function initiateCardPayment(
     attendeeName,
     attendeeEmail,
     attendeePhoto,
+    communityTierId,
+    communityInterval,
+    communitySubscriptionId,
     currency,
   } = body;
 
   const isStoreTransaction = !!productId;
   const isBookingTransaction = !!bookingId;
   const isGatheringTransaction = !!gatheringId;
+  const isCommunityTransaction = !!communityTierId;
   const price = Number(productPrice) || 0;
   const qty = Number(quantity) || 1;
   const feePayer = platformFeePayer || "buyer";
@@ -161,13 +165,15 @@ export async function initiateCardPayment(
   }
 
   const now = new Date().toISOString();
-  const txType = isGatheringTransaction
-    ? "gathering"
-    : isBookingTransaction
-      ? "booking"
-      : isStoreTransaction
-        ? "store"
-        : "support";
+  const txType = isCommunityTransaction
+    ? "community"
+    : isGatheringTransaction
+      ? "gathering"
+      : isBookingTransaction
+        ? "booking"
+        : isStoreTransaction
+          ? "store"
+          : "support";
 
   const txFields: Record<string, unknown> = {
     ref: merchantRef,
@@ -218,16 +224,24 @@ export async function initiateCardPayment(
     txFields.attendeePhoto = attendeePhoto || "";
   }
 
+  if (isCommunityTransaction) {
+    txFields.communityTierId = communityTierId;
+    txFields.communityInterval = communityInterval || "";
+    txFields.communitySubscriptionId = communitySubscriptionId || "";
+  }
+
   const { firestoreSet } = await import("../firestore");
   await firestoreSet(env, `transactions/${merchantRef}`, convertToFields(txFields));
 
-  const txTypeLabel = isGatheringTransaction
-    ? "Gathering ticket"
-    : isBookingTransaction
-      ? "Booking payment"
-      : isStoreTransaction
-        ? "Store purchase"
-        : "Support";
+  const txTypeLabel = isCommunityTransaction
+    ? "Community subscription"
+    : isGatheringTransaction
+      ? "Gathering ticket"
+      : isBookingTransaction
+        ? "Booking payment"
+        : isStoreTransaction
+          ? "Store purchase"
+          : "Support";
 
   await notifyAdmins(
     env,

@@ -19,6 +19,7 @@ import { Creator } from "@/types/creator";
 import { useAuth } from "@/auth/AuthContext";
 import { SupportModal } from "@/components/parts/public/SupportModal";
 import { CommunityTab } from "@/components/parts/public/CommunityTab";
+import { SubscribeModal } from "@/components/parts/public/SubscribeModal";
 import Loading from "@/app/loading";
 
 interface CommunityPageProps {
@@ -31,6 +32,7 @@ export default function CommunityPage({ username }: CommunityPageProps) {
   const [creatorData, setCreatorData] = useState<Creator | null>(null);
   const [profileData, setProfileData] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubscribeModalOpen, setIsSubscribeModalOpen] = useState(false);
   const [isSupporter, setIsSupporter] = useState(false);
   const [publicPosts, setPublicPosts] = useState<any[]>([]);
   const [privatePosts, setPrivatePosts] = useState<any[]>([]);
@@ -206,6 +208,9 @@ export default function CommunityPage({ username }: CommunityPageProps) {
             isSupporter={isSupporter}
             name={creatorName}
             username={username}
+            communityEnabled={creatorData?.communityEnabled as boolean}
+            communityTiers={(creatorData?.communityTiers || []) as any[]}
+            onSubscribe={() => setIsSubscribeModalOpen(true)}
           />
         </main>
       </div>
@@ -219,6 +224,14 @@ export default function CommunityPage({ username }: CommunityPageProps) {
         includeReferral={profileData?.referralCreator != null}
         referralUid={referralId}
         referralId={profileData?.referralCreator}
+      />
+
+      <SubscribeModal
+        isOpen={isSubscribeModalOpen}
+        onClose={() => setIsSubscribeModalOpen(false)}
+        creatorName={creatorName}
+        creatorHandle={username}
+        creatorUid={creatorData.uid}
       />
     </>
   );

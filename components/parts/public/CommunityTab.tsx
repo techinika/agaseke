@@ -12,11 +12,23 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  Crown,
+  Check,
 } from "lucide-react";
 import Link from "next/link";
 import { LinkifyText } from "@/components/ui/LinkifyText";
 import { db } from "@/db/firebase";
 import { collection, getCountFromServer, doc, updateDoc, increment } from "firebase/firestore";
+
+interface CommunityTier {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  interval: "monthly" | "yearly";
+  benefits: string[];
+  memberCount?: number;
+}
 
 interface CommunityTabProps {
   publicPosts: any[];
@@ -25,6 +37,9 @@ interface CommunityTabProps {
   name: string;
   compact?: boolean;
   username?: string;
+  communityEnabled?: boolean;
+  communityTiers?: CommunityTier[];
+  onSubscribe?: () => void;
 }
 
 export const CommunityTab = ({
@@ -34,6 +49,9 @@ export const CommunityTab = ({
   name,
   compact = false,
   username = "",
+  communityEnabled = false,
+  communityTiers = [],
+  onSubscribe,
 }: CommunityTabProps) => {
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
   const [viewingImage, setViewingImage] = useState<{ url: string } | null>(null);
@@ -129,7 +147,7 @@ export const CommunityTab = ({
     return () => observer.disconnect();
   }, [displayPosts.map((p) => p.id).join(",")]);
 
-  if (allPosts.length === 0) {
+  if (allPosts.length === 0 && !communityEnabled) {
     return (
       <div className="animate-in fade-in duration-500">
         <div className="text-center py-20 bg-muted rounded-3xl border-2 border-dashed border-border-strong">
@@ -147,6 +165,50 @@ export const CommunityTab = ({
 
   return (
     <div className="animate-in fade-in duration-500 space-y-8">
+      {communityEnabled && communityTiers.length > 0 && (
+        <div className="bg-card border border-border p-6">
+          <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+            <Crown size={20} className="text-orange-500" />
+            Membership
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {communityTiers.map((tier) => (
+              <div
+                key={tier.id}
+                className="bg-muted border border-border p-5 hover:border-orange-300 transition"
+              >
+                <h4 className="font-bold text-sm mb-1">{tier.name}</h4>
+                <p className="text-2xl font-bold text-orange-600 mb-2">
+                  {tier.price.toLocaleString()} RWF
+                  <span className="text-xs font-normal text-muted-foreground ml-1">
+                    /{tier.interval === "yearly" ? "year" : "month"}
+                  </span>
+                </p>
+                {tier.description && (
+                  <p className="text-xs text-muted-foreground mb-3">{tier.description}</p>
+                )}
+                {tier.benefits?.length > 0 && (
+                  <ul className="space-y-1 mb-4">
+                    {tier.benefits.map((b, i) => (
+                      <li key={i} className="text-xs text-muted-foreground flex items-center gap-2">
+                        <Check size={12} className="text-green-500 shrink-0" />
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <button
+                  onClick={onSubscribe}
+                  className="w-full py-2 bg-orange-600 text-white text-xs font-bold hover:bg-orange-700 transition"
+                >
+                  Join
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {isSupporter && visiblePrivatePosts > 0 && (
         <div className="bg-gradient-to-r from-orange-50 dark:from-orange-950/50 to-amber-50 dark:to-amber-950/50 p-4 rounded-xl border border-orange-100 dark:border-orange-900/50 flex items-center gap-3">
           <Heart size={20} className="text-orange-500 fill-orange-500" />

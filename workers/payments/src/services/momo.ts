@@ -37,12 +37,16 @@ export async function initiateMomoPayment(
     attendeeName,
     attendeeEmail,
     attendeePhoto,
+    communityTierId,
+    communityInterval,
+    communitySubscriptionId,
     currency,
   } = body;
 
   const isStoreTransaction = !!productId;
   const isBookingTransaction = !!bookingId;
   const isGatheringTransaction = !!gatheringId;
+  const isCommunityTransaction = !!communityTierId;
   const price = Number(productPrice) || 0;
   const qty = Number(quantity) || 1;
   const feePayer = platformFeePayer || "buyer";
@@ -112,13 +116,15 @@ export async function initiateMomoPayment(
   }
 
   const now = new Date().toISOString();
-  const txType = isGatheringTransaction
-    ? "gathering"
-    : isBookingTransaction
-      ? "booking"
-      : isStoreTransaction
-        ? "store"
-        : "support";
+  const txType = isCommunityTransaction
+    ? "community"
+    : isGatheringTransaction
+      ? "gathering"
+      : isBookingTransaction
+        ? "booking"
+        : isStoreTransaction
+          ? "store"
+          : "support";
 
   const txFields: Record<string, unknown> = {
     ref: payData.ref,
@@ -168,6 +174,12 @@ export async function initiateMomoPayment(
     txFields.attendeePhoto = attendeePhoto || "";
   }
 
+  if (isCommunityTransaction) {
+    txFields.communityTierId = communityTierId;
+    txFields.communityInterval = communityInterval || "";
+    txFields.communitySubscriptionId = communitySubscriptionId || "";
+  }
+
   const { firestorePost } = await import("../firestore");
   const doc = await firestorePost(env, "transactions", {
     fields: convertToFields(txFields),
@@ -177,13 +189,15 @@ export async function initiateMomoPayment(
     console.error("Failed to store transaction in Firestore");
   }
 
-  const txTypeLabel = isGatheringTransaction
-    ? "Gathering ticket"
-    : isBookingTransaction
-      ? "Booking payment"
-      : isStoreTransaction
-        ? "Store purchase"
-        : "Support";
+  const txTypeLabel = isCommunityTransaction
+    ? "Community subscription"
+    : isGatheringTransaction
+      ? "Gathering ticket"
+      : isBookingTransaction
+        ? "Booking payment"
+        : isStoreTransaction
+          ? "Store purchase"
+          : "Support";
 
   await notifyAdmins(
     env,
