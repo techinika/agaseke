@@ -1,6 +1,13 @@
 "use client";
 
-import { Calendar, CheckCircle2, Heart, LogIn, Share2, User } from "lucide-react";
+import {
+  Calendar,
+  CheckCircle2,
+  Heart,
+  LogIn,
+  Share2,
+  User,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SocialPill } from "../profile/SocialPill";
@@ -42,10 +49,16 @@ export const SendGiftSection = ({
   const pathname = usePathname();
   return (
     <div className="relative">
-      <div className={`h-48 w-full relative overflow-hidden ${bannerURL ? "" : "bg-linear-to-r from-orange-100 via-orange-50 to-orange-100 dark:from-orange-950 dark:via-orange-900/50 dark:to-orange-950"}`}>
+      <div
+        className={`h-48 w-full relative overflow-hidden ${bannerURL ? "" : "bg-linear-to-r from-orange-100 via-orange-50 to-orange-100 dark:from-orange-950 dark:via-orange-900/50 dark:to-orange-950"}`}
+      >
         {bannerURL ? (
           <>
-            <img src={bannerURL} className="w-full h-full object-cover" alt="" />
+            <img
+              src={bannerURL}
+              className="w-full h-full object-cover"
+              alt=""
+            />
             <div className="absolute inset-0 bg-black/30" />
             <p className="absolute bottom-3 right-4 text-white/15 text-4xl font-black tracking-tighter truncate max-w-[80%] select-none pointer-events-none">
               {name}
@@ -121,11 +134,8 @@ export const SendGiftSection = ({
               />
             </div>
             <span className="text-xl font-bold tracking-tight">
-              Gift {name.split(" ")[0]}
+              Support {name.split(" ")[0]}
             </span>
-          </div>
-          <div className="bg-background/10 group-hover:bg-background text-background group-hover:text-orange-600 px-6 py-4 rounded-lg font-bold text-sm transition-all uppercase tracking-widest">
-            Send a Gift
           </div>
         </button>
 
