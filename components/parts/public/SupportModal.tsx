@@ -81,6 +81,8 @@ export function SupportModal({
 
   if (!isOpen) return null;
 
+  const CREATOR_SHARE = Number(process.env.NEXT_PUBLIC_CREATOR_SHARE) || 0.9;
+
   const sendSupportEmail = async (txAmount: number) => {
     try {
       const creatorRef = doc(db, "profiles", uid);
@@ -133,9 +135,7 @@ export function SupportModal({
             if (unsubscribeRef.current) unsubscribeRef.current();
             setStep("success");
             sendSupportEmail(
-              Number(
-                txData?.amount * Number(process.env.NEXT_PUBLIC_CREATOR_SHARE),
-              ),
+              Number(txData?.amount) * CREATOR_SHARE,
             );
             toast.success("Payment received!");
           } else if (txData.status === "failed") {
@@ -181,7 +181,7 @@ export function SupportModal({
         if (txData.status === "success" || txData.status === "successful") {
           if (unsubscribeRef.current) unsubscribeRef.current();
           setStep("success");
-          sendSupportEmail(Number(txData.amount * 0.9));
+          sendSupportEmail(Number(txData.amount) * CREATOR_SHARE);
           toast.success("Card payment verified!");
         } else if (txData.status === "failed") {
           if (unsubscribeRef.current) unsubscribeRef.current();

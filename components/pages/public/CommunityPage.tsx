@@ -12,7 +12,6 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
   limit,
 } from "firebase/firestore";
 import { Creator } from "@/types/creator";
@@ -87,11 +86,12 @@ export default function CommunityPage({ username }: CommunityPageProps) {
           contentRef,
           where("creatorId", "in", [creatorData.handle, creatorData.uid]),
           where("isPrivate", "==", false),
-          orderBy("createdAt", "desc"),
           limit(20),
         );
         const publicSnap = await getDocs(publicQ);
-        setPublicPosts(publicSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+        const publicList = publicSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        publicList.sort((a: any, b: any) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+        setPublicPosts(publicList);
       } catch (error) {
         console.error("Error fetching public posts:", error);
         fetch("/api/log-error", {
@@ -122,16 +122,17 @@ export default function CommunityPage({ username }: CommunityPageProps) {
         const querySnapshot = await getDocs(q);
         setIsSupporter(!querySnapshot.empty);
 
-        if (!querySnapshot.empty) {
+          if (!querySnapshot.empty) {
           const privateQ = query(
             contentRef,
             where("creatorId", "in", [creatorData.handle, creatorData.uid]),
             where("isPrivate", "==", true),
-            orderBy("createdAt", "desc"),
             limit(20),
           );
           const privateSnap = await getDocs(privateQ);
-          setPrivatePosts(privateSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+          const privateList = privateSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+          privateList.sort((a: any, b: any) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+          setPrivatePosts(privateList);
         }
       } catch (error) {
         console.error("Error checking support status:", error);
@@ -210,7 +211,7 @@ export default function CommunityPage({ username }: CommunityPageProps) {
             name={creatorName}
             username={username}
             communityEnabled={creatorData?.communityEnabled as boolean}
-            communityTiers={(creatorData?.communityTiers || []) as any[]}
+            communityTiers={creatorData?.communityTiers || []}
             onSubscribe={() => setIsSubscribeModalOpen(true)}
           />
         </main>
@@ -221,7 +222,7 @@ export default function CommunityPage({ username }: CommunityPageProps) {
         onClose={() => setIsModalOpen(false)}
         creatorName={creatorName}
         creatorId={username}
-        uid={creatorData.uid}
+        uid={creatorData?.uid || ""}
         includeReferral={profileData?.referralCreator != null}
         referralUid={referralId}
         referralId={profileData?.referralCreator}
@@ -232,7 +233,7 @@ export default function CommunityPage({ username }: CommunityPageProps) {
         onClose={() => setIsSubscribeModalOpen(false)}
         creatorName={creatorName}
         creatorHandle={username}
-        creatorUid={creatorData.uid}
+        creatorUid={creatorData?.uid || ""}
       />
     </>
   );

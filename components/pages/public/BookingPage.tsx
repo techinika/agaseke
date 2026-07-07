@@ -103,7 +103,7 @@ export default function BookingPage({ username, creator }: { username: string; c
         paymentAmount: selectedTier?.price || 0,
       });
 
-      if (data.paymentRequired && data.bookingId) {
+      if (data?.paymentRequired && data?.bookingId) {
         router.push(`/booking/pay/${data.bookingId}`);
       } else {
         setStep("success");

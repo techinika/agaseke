@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { sendCommsEmail } from "@/lib/commsService";
 import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService";
 import { Calendar, Loader, ArrowRight, Lock, X, Smartphone, CreditCard } from "lucide-react";
@@ -243,6 +243,17 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
   const [payPhone, setPayPhone] = useState("");
   const [paying, setPaying] = useState(false);
 
+  const payingRef = useRef(false);
+  const userRef = useRef(user);
+
+  useEffect(() => {
+    payingRef.current = paying;
+  }, [paying]);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
   const listenForTransaction = useCallback((ref: string, gathering: Gathering) => {
     const txRef = collection(db, "transactions");
     const q = query(txRef, where("ref", "==", ref), orderBy("createdAt", "desc"), fsLimit(1));
@@ -255,11 +266,12 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
         setRsvpedIds((prev) => new Set(prev).add(gathering.id));
         setMyRsvpStatus((prev) => ({ ...prev, [gathering.id]: { checkedIn: false, checkInDeclined: false } }));
 
-        if (user?.uid) {
+        const currentUser = userRef.current;
+        if (currentUser?.uid) {
           try {
             const attendanceQuery = query(
               collection(db, "gatheringsAttendance"),
-              where("supporterId", "==", user.uid),
+              where("supporterId", "==", currentUser.uid),
             );
             const attendanceSnap = await getDocs(attendanceQuery);
             const match = attendanceSnap.docs.find(d => d.data().gatheringId === gathering.id);
@@ -281,13 +293,13 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
     });
     setTimeout(() => {
       unsub();
-      if (paying) {
+      if (payingRef.current) {
         setPaying(false);
         setPayingGathering(null);
         toast.error("Payment timed out. Please try again.");
       }
     }, 120000);
-  }, [paying, user]);
+  }, []);
 
   const handlePaidRSVP = async (gathering: Gathering) => {
     if (!user || !profile) {
