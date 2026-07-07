@@ -1,7 +1,7 @@
 //  ═══════════════════════════════════════════════════════════════════════════════
 //  Agaseke Firestore Security Rules
 //  ═══════════════════════════════════════════════════════════════════════════════
-//  Last updated: June 2026
+//  Last updated: July 2026
 //
 //  ADMIN ACCESS NOTE:
 //    The admin dashboard (/admin) queries every collection for statistics.
@@ -13,6 +13,9 @@
 //      - giveaways:         non-draft only     → added admin override
 //      - changelog:        no rule existed     → added public read + admin write
 //      - userFeedback:     no rule existed     → added admin-only read + any-auth create
+//      - countries:        no rule existed     → added public read + admin write
+//      - currencies:       no rule existed     → added public read + admin write
+//      - countryCurrencies:no rule existed     → added public read + admin write
 //
 //  Architecture:
 //    - Document IDs: profiles keyed by UID, creators keyed by handle (username)
@@ -681,6 +684,54 @@ service cloud.firestore {
         && resource.data.userId == request.auth.uid;              // Self-edit
       allow delete: if isAuth()
         && resource.data.userId == request.auth.uid;              // Self-delete
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  28. COUNTRIES
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated
+    //  Fields: code, name, flag, phoneCode, createdAt
+    //  Public read (used in onboarding selectors); admin write
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /countries/{countryId} {
+      allow read: if true;                                           // Public read (onboarding)
+      allow create: if isAuth() && isAdmin(request.auth.uid);        // Admin only
+      allow update: if isAuth() && isAdmin(request.auth.uid);        // Admin only
+      allow delete: if isAuth() && isAdmin(request.auth.uid);        // Admin only
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  29. CURRENCIES
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated
+    //  Fields: code, name, symbol, payoutThreshold, createdAt
+    //  Public read (used in payment/onboarding selectors); admin write
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /currencies/{currencyId} {
+      allow read: if true;                                           // Public read
+      allow create: if isAuth() && isAdmin(request.auth.uid);        // Admin only
+      allow update: if isAuth() && isAdmin(request.auth.uid);        // Admin only
+      allow delete: if isAuth() && isAdmin(request.auth.uid);        // Admin only
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
+    //  30. COUNTRY CURRENCIES (mappings)
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: auto-generated
+    //  Fields: countryCode, currencyCode, isDefault, createdAt
+    //  Public read; admin write
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /countryCurrencies/{mappingId} {
+      allow read: if true;                                           // Public read
+      allow create: if isAuth() && isAdmin(request.auth.uid);        // Admin only
+      allow update: if isAuth() && isAdmin(request.auth.uid);        // Admin only
+      allow delete: if isAuth() && isAdmin(request.auth.uid);        // Admin only
     }
 
 

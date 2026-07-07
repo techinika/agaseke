@@ -192,6 +192,9 @@ export default function DashboardLayout({
                 ...(creatorSettings?.messagingEnabled !== false
                   ? [{ href: "/creator/messages", label: "Messages" }]
                   : []),
+                ...(creatorSettings?.communityEnabled
+                  ? [{ href: "/creator/community", label: "Tiers" }]
+                  : []),
                 { href: "/creator/supporters", label: "Supporters" },
               ]}
             />
