@@ -1,5 +1,5 @@
 import type { Env } from "../types";
-import { firestoreQuery, firestoreQueryAll, firestoreGet, convertFromFields, convertToFields, firestorePost, firestoreSet } from "../firestore";
+import { firestoreQueryAll, firestoreGet, convertFromFields, convertToFields, firestoreSet } from "../firestore";
 
 export interface MemberInfo {
   subscriptionId: string;
@@ -54,4 +54,75 @@ export async function getMemberSubscriptions(
       expiresAt: (data.expiresAt as string) || "",
     };
   });
+}
+
+async function ensureChatDocExists(
+  env: Env,
+  creatorHandle: string,
+  tierId: string,
+  tierName?: string,
+): Promise<void> {
+  const chatId = `${creatorHandle}_${tierId}`;
+  const chatPath = `communityChats/${chatId}`;
+  const existing = await firestoreGet(env, chatPath);
+  if (existing) return;
+
+  const tierDoc = await firestoreGet(env, `creators/${creatorHandle}`);
+  const creatorId = tierDoc
+    ? (convertFromFields(tierDoc.fields as Record<string, unknown>).uid as string) || ""
+    : "";
+
+  await firestoreSet(env, chatPath, convertToFields({
+    tierId,
+    tierName: tierName || "",
+    creatorHandle,
+    creatorId,
+    createdAt: new Date().toISOString(),
+    lastMessage: "",
+    lastMessageAt: null,
+    lastSenderName: "",
+    memberCount: 1,
+  }));
+}
+
+export async function addChatMember(
+  env: Env,
+  creatorHandle: string,
+  tierId: string,
+  userId: string,
+  userName: string,
+  status: "active" | "expired" | "cancelled",
+  tierName?: string,
+): Promise<void> {
+  await ensureChatDocExists(env, creatorHandle, tierId, tierName);
+  const chatId = `${creatorHandle}_${tierId}`;
+  const memberPath = `communityChats/${chatId}/members/${userId}`;
+  await firestoreSet(env, memberPath, convertToFields({
+    userId,
+    userName,
+    status,
+    addedAt: new Date().toISOString(),
+  }));
+}
+
+export async function updateChatMemberStatus(
+  env: Env,
+  creatorHandle: string,
+  tierId: string,
+  userId: string,
+  status: "active" | "expired" | "cancelled",
+): Promise<void> {
+  const chatId = `${creatorHandle}_${tierId}`;
+  const memberPath = `communityChats/${chatId}/members/${userId}`;
+  const existing = await firestoreGet(env, memberPath);
+  if (!existing) {
+    await addChatMember(env, creatorHandle, tierId, userId, "", status);
+    return;
+  }
+  const data = convertFromFields(existing.fields as Record<string, unknown>);
+  await firestoreSet(env, memberPath, convertToFields({
+    ...data,
+    status,
+    updatedAt: new Date().toISOString(),
+  }));
 }

@@ -8,6 +8,9 @@
   "observability": {
     "enabled": true
   },
+  "triggers": {
+    "crons": ["0 8 * * *"]
+  },
   "vars": {
     "FIREBASE_PROJECT_ID": "agaseke4creators"
   }
