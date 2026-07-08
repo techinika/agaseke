@@ -54,39 +54,66 @@ export async function generateMetadata({
   const image = profile?.photoURL || creator.profilePicture || `${baseUrl}/agaseke.png`;
   const country = creator.country || "RW";
   const countryName = creator.countryName || (country === "RW" ? "Rwanda" : "");
+  const creatorTwitter = creator.socials?.twitter || null;
 
-  const keywords = [displayName, username, "content creator", "support creator", "Agaseke"];
-  if (countryName) keywords.push(countryName, `${countryName} creator`);
+  const keywords = [
+    displayName, username, "content creator",
+    "support creator", "Agaseke", "African content creator",
+    ...(countryName ? [countryName, `${countryName} creator`, `${countryName} influencer`] : []),
+  ];
+  if (verified) keywords.push("verified creator");
 
-  const title = `${displayName} | Agaseke`;
+  const title = verified
+    ? `${displayName} (@${username}) | Agaseke`
+    : `${displayName} (@${username}) | Agaseke`;
 
   return {
     title,
     description: bio,
     keywords,
-    authors: [{ name: displayName }],
+    authors: [{ name: displayName, url: `${baseUrl}/${username}` }],
     alternates: {
-      canonical: `/${username}`,
-      languages: { [`en-${country}`]: `/${username}` },
+      canonical: `${baseUrl}/${username}`,
     },
     openGraph: {
-      title,
+      title: `${displayName} (@${username})`,
       description: bio,
       url: `${baseUrl}/${username}`,
       siteName: "Agaseke",
-      images: [{ url: image, width: 400, height: 400, alt: `${displayName} on Agaseke` }],
+      images: [
+        {
+          url: image,
+          width: 1200,
+          height: 630,
+          alt: `${displayName} on Agaseke`,
+        },
+      ],
       locale: `en_${country}`,
+      countryName: countryName || undefined,
       type: "profile",
+      username: username,
     },
     twitter: {
-      card: "summary",
-      title,
+      card: "summary_large_image",
+      title: `${displayName} (@${username})`,
       description: bio,
       images: [image],
       site: "@Agaseke_support",
+      ...(creatorTwitter && { creator: `@${creatorTwitter.replace(/^@/, "")}` }),
     },
-    robots: { index: true, follow: true },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-video-preview": -1,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+      },
+    },
     other: { "theme-color": "#ea580c" },
+    category: "Creator Profile",
   };
 }
 
