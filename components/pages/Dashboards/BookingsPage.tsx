@@ -44,10 +44,9 @@ import {
 } from "@/types/booking";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { logError } from "@/lib/logger";
+import { decrypt, isEncrypted } from "@/lib/generalWorkerService";
 
 const DAYS_OF_WEEK = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-
-const isEncrypted = (text: string) => /^[0-9a-f]{32}:[0-9a-f]{32}:/i.test(text);
 
 function SlotAdder({ onAdd }: { onAdd: (slot: { startTime: string; endTime: string }) => void }) {
   const [open, setOpen] = useState(false);
@@ -114,12 +113,8 @@ export default function BookingsPage() {
         await Promise.all(raw.map(async (b) => {
           if (!b.reason) return;
           try {
-            const res = await fetch("/api/decrypt", {
-              method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ encrypted: b.reason }),
-            });
-            const d = await res.json();
-            if (d.plaintext) map[b.id] = d.plaintext;
+            const plaintext = await decrypt(b.reason);
+            if (plaintext && plaintext !== b.reason) map[b.id] = plaintext;
           } catch {
             logError("payment", "BookingsPage: Failed to decrypt booking reason", {
               creatorHandle: creator?.handle,

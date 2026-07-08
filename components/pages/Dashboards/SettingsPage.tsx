@@ -23,6 +23,7 @@ import {
   Gift,
   Calendar,
   ImageIcon,
+  Users,
 } from "lucide-react";
 import { db, auth } from "@/db/firebase";
 import { doc, onSnapshot, updateDoc, collection, getDocs, query, orderBy } from "firebase/firestore";
@@ -192,6 +193,7 @@ export default function CreatorSettings() {
         bookingEnabled: creatorData.bookingEnabled ?? false,
         bookingAccess: creatorData.bookingAccess ?? "public",
         gatheringsEnabled: creatorData.gatheringsEnabled ?? false,
+        communityEnabled: creatorData.communityEnabled ?? false,
         focus: creatorData.focus || [],
       };
 
@@ -246,6 +248,7 @@ export default function CreatorSettings() {
               { id: "location", label: "Location & Currency", icon: Globe },
               { id: "perks", label: "Supporter Perks", icon: ShieldCheck },
               { id: "messaging", label: "Messaging", icon: MessageSquare },
+              { id: "community", label: "Community", icon: Users },
             ].map((item) => (
               <button
                 key={item.id}
@@ -1012,6 +1015,73 @@ export default function CreatorSettings() {
                       <p className="text-sm">
                         Messaging is disabled. Your supporters won&apos;t be
                         able to send you direct messages.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {activeTab === "community" && (
+              <section className="bg-card border border-border rounded-lg p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4">
+                <div className="flex flex-wrap justify-between items-start gap-4">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-purple-100 rounded-lg">
+                      <Users size={24} className="text-purple-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black uppercase">Community Tiers</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Create subscription tiers so supporters can support you monthly or yearly.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() =>
+                      handleUpdate(
+                        "communityEnabled",
+                        !creatorData?.communityEnabled,
+                      )
+                    }
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
+                      creatorData?.communityEnabled
+                        ? "bg-orange-500"
+                        : "bg-border-strong"
+                    }`}
+                    role="switch"
+                    aria-checked={creatorData?.communityEnabled}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-card shadow-sm ring-0 transition-transform ${
+                        creatorData?.communityEnabled
+                          ? "translate-x-6"
+                          : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {creatorData?.communityEnabled && (
+                  <div className="mt-2 pt-6 border-t border-border">
+                    <a
+                      href="/creator/community"
+                      className="inline-flex items-center gap-2 text-sm font-bold text-orange-600 hover:text-orange-700"
+                    >
+                      <Users size={16} />
+                      Manage community tiers
+                    </a>
+                    <p className="text-xs text-muted-foreground mt-3">
+                      When enabled, a &ldquo;Tiers&rdquo; link appears in your sidebar so you can manage subscription plans.
+                    </p>
+                  </div>
+                )}
+
+                {!creatorData?.communityEnabled && (
+                  <div className="p-6 bg-muted rounded-lg border border-border">
+                    <div className="flex items-center gap-3 text-muted-foreground">
+                      <AlertCircle size={20} />
+                      <p className="text-sm">
+                        Community tiers are disabled. Your supporters won&apos;t be able to subscribe to recurring support.
                       </p>
                     </div>
                   </div>

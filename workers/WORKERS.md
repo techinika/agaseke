@@ -109,6 +109,25 @@ All workers use dual-path authentication: **jose JWKS first** (correct `service_
 | `SUPPORT_WORKER_URL`                       | string | no     | Support worker URL (e.g.`https://support.api.agaseke.me`)      |
 | `COMMUNITY_WORKER_URL`                     | string | no     | Community worker URL (e.g.`https://community.api.agaseke.me`)  |
 
+## agaseke-general
+
+General-purpose utility worker handling encryption, decryption, and other basic server-side operations. Serves at `api.agaseke.me`.
+
+| Variable | Type | Secret | Description |
+|---|---|---|---|
+| `FIREBASE_API_KEY` | string | yes | Firebase Web API key |
+| `FIREBASE_PROJECT_ID` | string | no | Firebase project ID (`agaseke4creators`) |
+| `ENCRYPTION_KEY` | string | yes | AES-256-GCM encryption key (SHA-256 derived) |
+| `INTERNAL_AUTH_SECRET` | string | yes | Shared secret for internal proxied requests |
+
+**Endpoints:**
+- `POST /api/general/encrypt` — Encrypt text with AES-256-GCM
+- `POST /api/general/decrypt` — Decrypt text with AES-256-GCM
+- `POST /api/general/is-encrypted` — Check if string is encrypted
+- `GET /health` — Health check
+
+**Auth:** Firebase Bearer token (jose JWKS first, Firebase REST fallback), or `X-Internal-Auth` header for legacy Next.js proxy routes.
+
 ## Shared vars (across all workers)
 
 | Variable                  | Secret | Notes                                     |

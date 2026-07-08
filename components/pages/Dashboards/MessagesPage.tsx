@@ -33,6 +33,7 @@ import {
   startAfter,
 } from "firebase/firestore";
 import { toast } from "sonner";
+import { encrypt, decrypt } from "@/lib/generalWorkerService";
 
 interface Chatroom {
   id: string;
@@ -72,6 +73,7 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [decryptedRooms, setDecryptedRooms] = useState<Set<string>>(new Set());
+  const [decryptingIds, setDecryptingIds] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesTopRef = useRef<HTMLDivElement>(null);
   const decryptedCache = useRef<Map<string, string>>(new Map());
@@ -82,33 +84,16 @@ export default function MessagesPage() {
     if (cached) return cached;
     if (!encrypted || !encrypted.includes(":")) return encrypted;
     try {
-      const res = await fetch("/api/decrypt", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ encrypted }),
-      });
-      const data = await res.json();
-      if (data.plaintext) {
-        decryptedCache.current.set(id, data.plaintext);
-        return data.plaintext;
+      const plaintext = await decrypt(encrypted);
+      if (plaintext) {
+        decryptedCache.current.set(id, plaintext);
+        return plaintext;
       }
     } catch { /* ignore */ }
     return encrypted;
   };
 
-  const encryptMessage = async (text: string): Promise<string> => {
-    try {
-      const res = await fetch("/api/encrypt", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      const data = await res.json();
-      return data.encrypted || text;
-    } catch {
-      return text;
-    }
-  };
+  const encryptMessage = encrypt;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -151,13 +136,8 @@ export default function MessagesPage() {
       todo.map(async (chat) => {
         const key = `room_${chat.id}`;
         try {
-          const res = await fetch("/api/decrypt", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ encrypted: chat.lastMessage }),
-          });
-          const data = await res.json();
-          if (data.plaintext) decryptedCache.current.set(key, data.plaintext);
+          const plaintext = await decrypt(chat.lastMessage!);
+          if (plaintext) decryptedCache.current.set(key, plaintext);
         } catch { /* ignore */ }
       })
     ).then(() => {
@@ -180,29 +160,59 @@ export default function MessagesPage() {
     const recentQuery = query(messagesRef, orderBy("createdAt", "desc"), orderBy("__name__", "desc"), limit(10));
 
     const unsubscribe = onSnapshot(recentQuery, (snapshot) => {
-      Promise.all(
-        snapshot.docs.map(async (d) => {
-          const data = d.data();
-          const decrypted = await decryptMessage(d.id, data.content || "");
-          return { id: d.id, ...data, content: decrypted } as Message;
-        })
-      ).then((decryptedMsgs) => {
-        setMessages((prev) => {
-          const map = new Map<string, Message>();
-          for (const m of prev) map.set(m.id, m);
-          for (const m of decryptedMsgs) map.set(m.id, m);
-          const all = Array.from(map.values());
-          all.sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
-          if (all.length > 0) {
-            const oldest = all[0];
-            oldestCursorRef.current = { createdAt: oldest.createdAt as Timestamp, id: oldest.id };
-            setHasMoreMessages(true);
-          }
-          return all;
-        });
-        setMessagesLoading(false);
-        scrollToBottom();
+      const raw = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Message));
+
+      const displayMsgs = raw.map((m) => {
+        const cached = decryptedCache.current.get(m.id);
+        if (cached) return { ...m, content: cached };
+        if (m.content?.includes(":")) return { ...m, content: "" };
+        return m;
       });
+      setMessages(displayMsgs);
+
+      const uncached = raw.filter(
+        (m) => m.content?.includes(":") && !decryptedCache.current.has(m.id)
+      );
+
+      if (uncached.length > 0) {
+        setDecryptingIds(new Set(uncached.map((m) => m.id)));
+
+        Promise.all(
+          uncached.map(async (msg) => {
+            const plaintext = await decryptMessage(msg.id, msg.content);
+            return { id: msg.id, content: plaintext };
+          })
+        ).then((results) => {
+          setDecryptingIds(new Set());
+          setMessages((prev) => {
+            const map = new Map(prev.map((m) => [m.id, m]));
+            for (const r of results) {
+              if (map.has(r.id)) {
+                map.set(r.id, { ...map.get(r.id)!, content: r.content });
+              }
+            }
+            const all = Array.from(map.values());
+            all.sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
+            if (all.length > 0) {
+              oldestCursorRef.current = { createdAt: all[0].createdAt as Timestamp, id: all[0].id };
+              setHasMoreMessages(true);
+            }
+            return all;
+          });
+          setMessagesLoading(false);
+          scrollToBottom();
+        });
+      } else {
+        setMessagesLoading(false);
+        if (raw.length > 0) {
+          const sorted = [...raw].sort((a, b) =>
+            (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0)
+          );
+          oldestCursorRef.current = { createdAt: sorted[0].createdAt as Timestamp, id: sorted[0].id };
+          setHasMoreMessages(true);
+        }
+        scrollToBottom();
+      }
     });
 
     return () => unsubscribe();
@@ -241,28 +251,57 @@ export default function MessagesPage() {
         startAfter(oldestCursorRef.current.createdAt, oldestCursorRef.current.id)
       );
       const snapshot = await getDocs(q);
-      const older = await Promise.all(
-        snapshot.docs.map(async (d) => {
-          const data = d.data();
-          const decrypted = await decryptMessage(d.id, data.content || "");
-          return { id: d.id, ...data, content: decrypted } as Message;
-        })
+      const rawOlder = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Message));
+
+      const displayOlder = rawOlder.map((m) => {
+        const cached = decryptedCache.current.get(m.id);
+        if (cached) return { ...m, content: cached };
+        if (m.content?.includes(":")) return { ...m, content: "" };
+        return m;
+      });
+      setMessages((prev) => {
+        const map = new Map(prev.map((m) => [m.id, m]));
+        for (const m of displayOlder) map.set(m.id, m);
+        const all = Array.from(map.values());
+        all.sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
+        if (all.length > 0) {
+          oldestCursorRef.current = { createdAt: all[0].createdAt as Timestamp, id: all[0].id };
+        }
+        setHasMoreMessages(rawOlder.length === 10);
+        return all;
+      });
+
+      const uncached = rawOlder.filter(
+        (m) => m.content?.includes(":") && !decryptedCache.current.has(m.id)
       );
-      if (older.length === 0) {
-        setHasMoreMessages(false);
-      } else {
-        setMessages((prev) => {
-          const map = new Map<string, Message>();
-          for (const m of prev) map.set(m.id, m);
-          for (const m of older) map.set(m.id, m);
-          const all = Array.from(map.values());
-          all.sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
-          if (all.length > 0) {
-            const oldest = all[0];
-            oldestCursorRef.current = { createdAt: oldest.createdAt as Timestamp, id: oldest.id };
-          }
-          setHasMoreMessages(older.length === 10);
-          return all;
+      if (uncached.length > 0) {
+        setDecryptingIds((prev) => {
+          const next = new Set(prev);
+          for (const m of uncached) next.add(m.id);
+          return next;
+        });
+        Promise.all(
+          uncached.map(async (msg) => {
+            const plaintext = await decryptMessage(msg.id, msg.content);
+            return { id: msg.id, content: plaintext };
+          })
+        ).then((results) => {
+          setDecryptingIds((prev) => {
+            const next = new Set(prev);
+            for (const r of results) next.delete(r.id);
+            return next;
+          });
+          setMessages((prev) => {
+            const map = new Map(prev.map((m) => [m.id, m]));
+            for (const r of results) {
+              if (map.has(r.id)) {
+                map.set(r.id, { ...map.get(r.id)!, content: r.content });
+              }
+            }
+            return Array.from(map.values()).sort((a, b) =>
+              (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0)
+            );
+          });
         });
       }
     } catch (e) {
@@ -545,29 +584,41 @@ export default function MessagesPage() {
                       key={msg.id}
                       className={`flex ${msg.senderType === "creator" ? "justify-end" : "justify-start"}`}
                     >
-                      <div
-                        className={`max-w-[80%] px-4 py-3 rounded-2xl ${
+                      {decryptingIds.has(msg.id) ? (
+                        <div className={`max-w-[80%] w-48 px-4 py-3 rounded-2xl animate-pulse ${
                           msg.senderType === "creator"
-                            ? "bg-orange-500 text-white rounded-br-md"
-                            : "bg-card border border-border text-foreground rounded-bl-md shadow-sm"
-                        }`}
-                      >
-                        <p className="text-sm whitespace-pre-wrap">
-                          {msg.content}
-                        </p>
-                        <p
-                          className={`text-[10px] mt-1 ${
+                            ? "bg-orange-300 rounded-br-md"
+                            : "bg-muted border border-border rounded-bl-md"
+                        }`}>
+                          <div className="h-3 bg-white/40 rounded w-full mb-2" />
+                          <div className="h-3 bg-white/40 rounded w-3/4 mb-2" />
+                          <div className="h-2 bg-white/30 rounded w-1/4" />
+                        </div>
+                      ) : (
+                        <div
+                          className={`max-w-[80%] px-4 py-3 rounded-2xl ${
                             msg.senderType === "creator"
-                              ? "text-orange-100"
-                              : "text-muted-foreground"
+                              ? "bg-orange-500 text-white rounded-br-md"
+                              : "bg-card border border-border text-foreground rounded-bl-md shadow-sm"
                           }`}
                         >
-                          {msg.createdAt?.toDate?.().toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          }) || "Sending..."}
-                        </p>
-                      </div>
+                          <p className="text-sm whitespace-pre-wrap">
+                            {msg.content}
+                          </p>
+                          <p
+                            className={`text-[10px] mt-1 ${
+                              msg.senderType === "creator"
+                                ? "text-orange-100"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            {msg.createdAt?.toDate?.().toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }) || "Sending..."}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   ))}
                   <div ref={messagesEndRef} />

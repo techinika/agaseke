@@ -1,19 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { decrypt } from "@/lib/encryption";
 import { requireAuth } from "@/lib/authMiddleware";
+
+const GENERAL_WORKER_URL =
+  process.env.NEXT_PUBLIC_GENERAL_WORKER_URL || "http://localhost:8787";
+const INTERNAL_AUTH_SECRET = process.env.INTERNAL_AUTH_SECRET || "dev-secret";
 
 export async function POST(request: NextRequest) {
   const authUser = await requireAuth(request);
   if (authUser instanceof NextResponse) return authUser;
+
   try {
-    const { encrypted } = await request.json();
-    if (!encrypted || typeof encrypted !== "string") {
-      return NextResponse.json({ error: "Encrypted text is required" }, { status: 400 });
-    }
-    const plaintext = decrypt(encrypted);
-    return NextResponse.json({ plaintext });
+    const body = await request.json();
+    const res = await fetch(`${GENERAL_WORKER_URL}/api/general/decrypt`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Internal-Auth": INTERNAL_AUTH_SECRET,
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
   } catch (error) {
-    console.error("Decryption error:", error);
+    console.error("Decryption proxy error:", error);
     return NextResponse.json({ error: "Decryption failed" }, { status: 500 });
   }
 }

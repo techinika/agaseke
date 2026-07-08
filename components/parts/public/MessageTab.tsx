@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { ArrowRight, Loader, MessageSquare, Send } from "lucide-react";
 import { db } from "@/db/firebase";
 import { sendCommsEmail } from "@/lib/commsService";
+import { encrypt, decrypt } from "@/lib/generalWorkerService";
 import {
   collection,
   doc,
@@ -75,33 +76,16 @@ export const MessageTab = ({
     if (cached) return cached;
     if (!encrypted || !encrypted.includes(":")) return encrypted;
     try {
-      const res = await fetch("/api/decrypt", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ encrypted }),
-      });
-      const data = await res.json();
-      if (data.plaintext) {
-        decryptedCache.current.set(id, data.plaintext);
-        return data.plaintext;
+      const plaintext = await decrypt(encrypted);
+      if (plaintext) {
+        decryptedCache.current.set(id, plaintext);
+        return plaintext;
       }
     } catch { /* ignore */ }
     return encrypted;
   };
 
-  const encryptMessage = async (text: string): Promise<string> => {
-    try {
-      const res = await fetch("/api/encrypt", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      const data = await res.json();
-      return data.encrypted || text;
-    } catch {
-      return text;
-    }
-  };
+  const encryptMessage = encrypt;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
