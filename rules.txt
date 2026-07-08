@@ -736,10 +736,73 @@ service cloud.firestore {
 
 
     // ──────────────────────────────────────────────────────────────────────────
+    //  31. COMMUNITY CHATS (Group chat per subscription tier)
+    //  ──────────────────────────────────────────────────────────────────────────
+    //  Doc ID: {creatorHandle}_{tierId}
+    //  Fields: tierId, tierName, creatorHandle, creatorId, createdAt,
+    //          lastMessage, lastMessageAt, lastSenderName, memberCount
+    //  Subcollections: messages/{msgId}, members/{userId}
+    //
+    //  Access: creator full access, active subscribers read/write messages
+    // ──────────────────────────────────────────────────────────────────────────
+
+    match /communityChats/{chatId} {
+      // Chat doc: creator + active subscribers can read
+      allow read: if isAuth() && (
+        resource.data.creatorId == request.auth.uid
+        || isActiveMember(chatId)
+      );
+      // Chat doc: only creator can write
+      allow create: if isAuth()
+        && request.resource.data.creatorId == request.auth.uid;
+      allow update: if isAuth()
+        && resource.data.creatorId == request.auth.uid;
+      allow delete: if false;
+
+      // Messages subcollection: creator + active subscribers
+      match /messages/{messageId} {
+        allow read: if isAuth() && (
+          get(/databases/$(database)/documents/communityChats/$(chatId)).data.creatorId == request.auth.uid
+          || isActiveMember(chatId)
+        );
+        allow create: if isAuth()
+          && request.resource.data.senderId == request.auth.uid
+          && (
+            get(/databases/$(database)/documents/communityChats/$(chatId)).data.creatorId == request.auth.uid
+            || isActiveMember(chatId)
+          );
+        allow update: if false;
+        allow delete: if false;
+      }
+
+      // Members subcollection: creator full access, self-read/self-update
+      match /members/{userId} {
+        allow read: if isAuth() && (
+          get(/databases/$(database)/documents/communityChats/$(chatId)).data.creatorId == request.auth.uid
+          || userId == request.auth.uid
+        );
+        allow create: if false;                                   // Server-side only
+        allow update: if isAuth() && (
+          get(/databases/$(database)/documents/communityChats/$(chatId)).data.creatorId == request.auth.uid
+          || (userId == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status"]))
+        );
+        allow delete: if false;
+      }
+    }
+
+    // Helper for communityChats rules
+    function isActiveMember(chatId) {
+      return isAuth()
+        && get(/databases/$(database)/documents/communityChats/$(chatId)/members/$(request.auth.uid)).data.status == "active";
+    }
+
+
+    // ──────────────────────────────────────────────────────────────────────────
     //  COLLECTION GROUP RULES
     //  ──────────────────────────────────────────────────────────────────────────
     //  These rules apply to queries using collectionGroup(), across all
-    //  subcollections with the given name regardless of parent document path.
+    //  subcollections with the same name regardless of parent document path.
     // ──────────────────────────────────────────────────────────────────────────
 
     // likes subcollection under any document

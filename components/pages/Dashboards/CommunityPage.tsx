@@ -5,6 +5,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/auth/AuthContext";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/db/firebase";
+import Link from "next/link";
 import {
   Users,
   DollarSign,
@@ -16,6 +17,7 @@ import {
   Crown,
   Calendar,
   Clock,
+  MessageCircle,
   ToggleLeft,
   ToggleRight,
 } from "lucide-react";
@@ -238,14 +240,25 @@ export default function CommunityPage() {
                     <span className="text-xs font-bold text-muted-foreground uppercase">
                       Tier {idx + 1}
                     </span>
-                    {settings.tiers.length > 1 && (
-                      <button
-                        onClick={() => removeTier(idx)}
-                        className="p-1 hover:bg-red-50 rounded text-red-400 hover:text-red-600 transition"
-                      >
-                        <X size={16} />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {tier.name.trim() && (
+                        <Link
+                          href={`/creator/community/chat/${tier.id}`}
+                          className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 transition"
+                        >
+                          <MessageCircle size={14} />
+                          Chat
+                        </Link>
+                      )}
+                      {settings.tiers.length > 1 && (
+                        <button
+                          onClick={() => removeTier(idx)}
+                          className="p-1 hover:bg-red-50 rounded text-red-400 hover:text-red-600 transition"
+                        >
+                          <X size={16} />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">

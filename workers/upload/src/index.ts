@@ -30,6 +30,7 @@ const VALID_ASSET_TYPES: AssetType[] = [
   "product_content",
   "partner_logo",
   "verification_document",
+  "message_attachment",
 ];
 
 const ASSET_USAGE: Record<AssetType, string> = {
@@ -42,6 +43,7 @@ const ASSET_USAGE: Record<AssetType, string> = {
   product_content: "Product downloadable file",
   partner_logo: "Partner logo image",
   verification_document: "KYC verification document",
+  message_attachment: "Chat message attachment",
 };
 
 const IMAGE_MIMES = new Set([
@@ -148,14 +150,18 @@ async function handleFormDataUpload(
     // Size limits
     const isImage = IMAGE_MIMES.has(file.type);
     const isVideo = file.type.startsWith("video/");
+    const isDocument = assetType === "message_attachment" && !isImage && !isVideo;
     const maxImageMB = parseInt(env.MAX_IMAGE_SIZE_MB || "20");
     const maxVideoMB = parseInt(env.MAX_VIDEO_SIZE_MB || "50");
+    const maxDocMB = 25;
     const maxSize = isVideo
       ? maxVideoMB * 1024 * 1024
-      : maxImageMB * 1024 * 1024;
+      : isDocument
+        ? maxDocMB * 1024 * 1024
+        : maxImageMB * 1024 * 1024;
 
     if (file.size > maxSize) {
-      const limit = isVideo ? maxVideoMB : maxImageMB;
+      const limit = isVideo ? maxVideoMB : isDocument ? maxDocMB : maxImageMB;
       return json(
         {
           error: `File too large. Maximum size is ${limit}MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB`,

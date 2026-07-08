@@ -7,7 +7,8 @@ export type AssetType =
   | "product_thumbnail"
   | "product_content"
   | "partner_logo"
-  | "verification_document";
+  | "verification_document"
+  | "message_attachment";
 
 export interface Env {
   UPLOADS_BUCKET: R2Bucket;
@@ -52,6 +53,7 @@ const ASSET_FOLDER_MAP: Record<AssetType, string> = {
   product_content: "store/content",
   partner_logo: "partners",
   verification_document: "agaseke/verifications",
+  message_attachment: "agaseke/messages",
 };
 
 export function getStoragePath(
@@ -84,6 +86,8 @@ export function getStoragePath(
       return `${folder}/${uuid}.${ext}`;
     case "verification_document":
       return `${folder}/${country || "ANY"}/${uuid}.${ext}`;
+    case "message_attachment":
+      return `${folder}/${creatorHandle}/${uuid}.${ext}`;
   }
 }
 

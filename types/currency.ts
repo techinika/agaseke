@@ -60,3 +60,11 @@ export function formatCurrency(amount: number, currencyCode: string = DEFAULT_CU
   const symbol = getCurrencySymbol(currencyCode);
   return `${amount.toLocaleString()} ${symbol}`;
 }
+
+export function displayAmount(amount: number | undefined | null, currency?: string | null): string {
+  if (amount == null) return "-";
+  if (currency) {
+    return `${amount.toLocaleString()} ${getCurrencySymbol(currency)}`;
+  }
+  return `${amount.toLocaleString()} (currency not recorded)`;
+}

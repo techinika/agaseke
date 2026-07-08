@@ -156,7 +156,7 @@ export default function BookingsPage() {
       logError("payment", "BookingsPage: Failed to respond to booking", {
         creatorHandle: creator?.handle,
         creatorId: creator?.uid,
-        metadata: { bookingId, status, note, creatorName: creator?.name },
+        metadata: { bookingId, status, ...(note !== undefined && { note }), creatorName: creator?.name },
       });
     }
   };

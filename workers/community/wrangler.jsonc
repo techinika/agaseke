@@ -4,14 +4,25 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-07-06",
   "keep_vars": true,
+  "workers_dev": true,
+  "preview_urls": true,
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
-    "enabled": true
+    "enabled": true,
   },
   "triggers": {
-    "crons": ["0 8 * * *"]
+    "crons": ["0 8 * * *"],
   },
   "vars": {
-    "FIREBASE_PROJECT_ID": "agaseke4creators"
-  }
+    "FIREBASE_PROJECT_ID": "agaseke4creators",
+  },
+  "routes": [
+    {
+      "pattern": "community.api.agaseke.me",
+      "zone_name": "agaseke.me",
+      "custom_domain": true,
+      "enabled": true,
+      "previews_enabled": false,
+    },
+  ],
 }

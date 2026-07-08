@@ -136,9 +136,9 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
-      <div className="bg-card rounded-lg w-full max-w-5xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-300">
-        <div className="p-4 border-b border-border border-shadow flex justify-between items-center bg-muted/50">
+    <div className="fixed inset-0 z-100 flex items-start sm:items-center justify-center bg-black/70 backdrop-blur-md p-0 sm:p-4 overflow-y-auto" onClick={onClose}>
+      <div className="bg-card rounded-none sm:rounded-lg w-full max-w-5xl shadow-2xl animate-in fade-in zoom-in-95 duration-300 my-0 sm:my-4" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 z-10 p-4 border-b border-border flex justify-between items-center bg-muted/50">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-orange-100 rounded-lg">
               <Share2 size={20} className="text-orange-600" />
@@ -150,6 +150,7 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
           <button
             onClick={onClose}
             className="p-2 hover:bg-border-strong rounded-lg transition-colors"
+            aria-label="Close"
           >
             <X size={20} />
           </button>
@@ -159,7 +160,7 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
           <div className="lg:w-1/2 p-6 flex items-center justify-center bg-gradient-to-br from-muted to-border">
             <div
               ref={cardRef}
-              className="w-[320px] h-[420px] bg-card relative overflow-hidden border border-border shadow-2xl flex flex-col"
+              className="w-[320px] h-[420px] bg-card relative overflow-hidden border border-border shadow-2xl flex flex-col shrink-0"
             >
               <div
                 className="p-4 text-center relative"
@@ -252,7 +253,7 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
             </div>
           </div>
 
-          <div className="lg:w-1/2 p-6 border-t lg:border-t-0 lg:border-l border-border space-y-6 max-h-[600px] lg:overflow-y-auto">
+          <div className="lg:w-1/2 p-6 border-t lg:border-t-0 lg:border-l border-border space-y-6">
             <div className="bg-muted rounded-lg p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Type size={16} className="text-muted-foreground" />

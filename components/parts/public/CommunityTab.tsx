@@ -19,6 +19,8 @@ import Link from "next/link";
 import { LinkifyText } from "@/components/ui/LinkifyText";
 import { db } from "@/db/firebase";
 import { collection, getCountFromServer, doc, updateDoc, increment } from "firebase/firestore";
+import { useAuth } from "@/auth/AuthContext";
+import { getMySubscriptions } from "@/lib/communityService";
 
 interface CommunityTier {
   id: string;
@@ -57,6 +59,8 @@ export const CommunityTab = ({
   const [viewingImage, setViewingImage] = useState<{ url: string } | null>(null);
   const [viewingDocument, setViewingDocument] = useState<{ url: string; title: string } | null>(null);
   const [documentIndex, setDocumentIndex] = useState<Record<string, number>>({});
+  const { user } = useAuth();
+  const [subscribedTierIds, setSubscribedTierIds] = useState<Set<string>>(new Set());
 
   const extractYouTubeId = (url: string): string | null => {
     const patterns = [
@@ -88,6 +92,13 @@ export const CommunityTab = ({
       return next;
     });
   };
+
+  useEffect(() => {
+    if (!user) return;
+    getMySubscriptions().then((subs) => {
+      setSubscribedTierIds(new Set(subs.filter((s) => s.status === "active").map((s) => s.tierId)));
+    }).catch(() => {});
+  }, [user]);
 
   const allPosts = isSupporter
     ? [...privatePosts, ...publicPosts].sort(
@@ -197,12 +208,22 @@ export const CommunityTab = ({
                     ))}
                   </ul>
                 )}
-                <button
-                  onClick={onSubscribe}
-                  className="w-full py-2 bg-orange-600 text-white text-xs font-bold hover:bg-orange-700 transition"
-                >
-                  Join
-                </button>
+                {subscribedTierIds.has(tier.id) ? (
+                  <Link
+                    href={`/${username}/community/chat/${tier.id}`}
+                    className="flex items-center justify-center gap-2 w-full py-2 bg-green-600 text-white text-xs font-bold hover:bg-green-700 transition rounded-lg"
+                  >
+                    <MessageCircle size={14} />
+                    Open Chat
+                  </Link>
+                ) : (
+                  <button
+                    onClick={onSubscribe}
+                    className="w-full py-2 bg-orange-600 text-white text-xs font-bold hover:bg-orange-700 transition"
+                  >
+                    Join
+                  </button>
+                )}
               </div>
             ))}
           </div>
