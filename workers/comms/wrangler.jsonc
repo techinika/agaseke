@@ -3,9 +3,13 @@
   "name": "agaseke-comms",
   "main": "src/index.ts",
   "compatibility_date": "2026-07-06",
+  "keep_vars": true,
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
     "enabled": true
+  },
+  "vars": {
+    "FIREBASE_PROJECT_ID": "agaseke4creators"
   },
   "send_email": [
     {

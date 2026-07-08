@@ -1,34 +1,24 @@
 import { requireAuth } from "./auth";
-import type { Env, CreateBookingRequest, RespondBookingRequest, AvailabilityRequest } from "./types";
+import { corsHeaders } from "./cors";
+import type {
+  Env,
+  CreateBookingRequest,
+  RespondBookingRequest,
+  AvailabilityRequest,
+} from "./types";
 import { createBooking } from "./services/create";
 import { respondToBooking } from "./services/respond";
 import { checkDateAvailability } from "./services/availability";
 import { handleBookingCallback } from "./services/callback";
 import { logActivity } from "./logger";
 
-const ALLOWED_ORIGINS = [
-  "http://localhost:3000",
-  "http://localhost:3001",
-  "https://agaseke.me",
-  "https://www.agaseke.me",
-  "https://ndafana.netlify.app",
-];
-
-function corsHeaders(origin: string | null): Record<string, string> {
-  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    "access-control-allow-origin": allowed,
-    "access-control-allow-methods": "GET, POST, OPTIONS",
-    "access-control-allow-headers": "Content-Type, Authorization",
-    "access-control-max-age": "86400",
-    vary: "Origin",
-  };
-}
-
 function json(data: unknown, status = 200, origin?: string | null): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "content-type": "application/json", ...corsHeaders(origin || null) },
+    headers: {
+      "content-type": "application/json",
+      ...corsHeaders(origin || null),
+    },
   });
 }
 
@@ -60,7 +50,7 @@ export default {
         return json({ error: "Unauthorized" }, 401, origin);
       }
       try {
-        const body = await request.json() as Record<string, unknown>;
+        const body = (await request.json()) as Record<string, unknown>;
         const result = await handleBookingCallback(env, body);
         return json(result, 200, origin);
       } catch (err: unknown) {
@@ -71,7 +61,7 @@ export default {
     }
 
     try {
-      const auth = await requireAuth(request, env.FIREBASE_API_KEY);
+      const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
       if (auth instanceof Response) return auth;
 
       if (url.pathname === "/api/bookings/create") {
@@ -101,7 +91,11 @@ export default {
         }
 
         if (body.date) {
-          const result = await checkDateAvailability(env, body.creatorHandle, body.date);
+          const result = await checkDateAvailability(
+            env,
+            body.creatorHandle,
+            body.date,
+          );
           return json(result, 200, origin);
         }
 
@@ -113,12 +107,17 @@ export default {
       const message = err instanceof Error ? err.message : "Internal error";
       console.error("Bookings error:", request.method, request.url, err);
       try {
-        await logActivity(env, "error", "booking", `Unhandled error: ${message}`, {
-          url: request.url,
-          method: request.method,
-        });
-      } catch {
-      }
+        await logActivity(
+          env,
+          "error",
+          "booking",
+          `Unhandled error: ${message}`,
+          {
+            url: request.url,
+            method: request.method,
+          },
+        );
+      } catch {}
       return json({ error: message }, 500, origin);
     }
   },

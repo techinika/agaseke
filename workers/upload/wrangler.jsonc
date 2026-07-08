@@ -1,16 +1,42 @@
 {
-  "$schema": "../../node_modules/wrangler/config-schema.json",
-  "name": "agaseke-upload",
-  "main": "src/index.ts",
-  "compatibility_date": "2026-07-06",
-  "compatibility_flags": ["nodejs_compat"],
-  "observability": {
-    "enabled": true
-  },
-  "r2_buckets": [
-    {
-      "binding": "UPLOADS_BUCKET",
-      "bucket_name": "agaseke-assets"
-    }
-  ]
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"name": "agaseke-upload",
+	"main": "src/index.ts",
+	"keep_vars": true,
+	"compatibility_date": "2026-07-06",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 0.1,
+		"logs": {
+			"head_sampling_rate": 0.1
+		},
+		"traces": {
+			"head_sampling_rate": 0.1,
+			"enabled": true
+		},
+	},
+	"r2_buckets": [
+		{
+			"binding": "UPLOADS_BUCKET",
+			"bucket_name": "agaseke-assets",
+		},
+	],
+	"routes": [
+		{
+			"pattern": "upload.api.agaseke.me",
+			"zone_name": "agaseke.me",
+			"custom_domain": true,
+			"enabled": true,
+			"previews_enabled": false
+		}
+	],
+	"vars": {
+		"MAX_IMAGE_SIZE_MB": "10",
+		"MAX_VIDEO_SIZE_MB": "100",
+		"ASSETS_BASE_URL": "https://assets.agaseke.me",
+		"FIREBASE_PROJECT_ID": "agaseke4creators"
+	},
 }

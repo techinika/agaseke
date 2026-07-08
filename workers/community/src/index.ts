@@ -1,33 +1,23 @@
 import { requireAuth } from "./auth";
+import { corsHeaders } from "./cors";
 import type { Env, TierData, SubscribeRequest, CallbackPayload } from "./types";
 import { getTiers, saveTiers } from "./services/tiers";
 import { getMembers, getMemberSubscriptions } from "./services/members";
-import { initiateSubscription, handlePaymentCallback, cancelSubscription, processRenewals } from "./services/subscriptions";
+import {
+  initiateSubscription,
+  handlePaymentCallback,
+  cancelSubscription,
+  processRenewals,
+} from "./services/subscriptions";
 import { logActivity } from "./logger";
-
-const ALLOWED_ORIGINS = [
-  "http://localhost:3000",
-  "http://localhost:3001",
-  "https://agaseke.me",
-  "https://www.agaseke.me",
-  "https://ndafana.netlify.app",
-];
-
-function corsHeaders(origin: string | null): Record<string, string> {
-  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    "access-control-allow-origin": allowed,
-    "access-control-allow-methods": "GET, POST, OPTIONS",
-    "access-control-allow-headers": "Content-Type, Authorization",
-    "access-control-max-age": "86400",
-    vary: "Origin",
-  };
-}
 
 function json(data: unknown, status = 200, origin?: string | null): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "content-type": "application/json", ...corsHeaders(origin || null) },
+    headers: {
+      "content-type": "application/json",
+      ...corsHeaders(origin || null),
+    },
   });
 }
 
@@ -48,28 +38,39 @@ export default {
 
       if (path === "/api/community/tiers" && request.method === "GET") {
         const creatorHandle = url.searchParams.get("creatorHandle");
-        if (!creatorHandle) return json({ error: "creatorHandle required" }, 400, origin);
+        if (!creatorHandle)
+          return json({ error: "creatorHandle required" }, 400, origin);
         const result = await getTiers(env, creatorHandle);
         return json(result, 200, origin);
       }
 
       if (path === "/api/community/tiers/save" && request.method === "POST") {
-        const auth = await requireAuth(request, env.FIREBASE_API_KEY);
+        const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
         if (auth instanceof Response) return auth;
 
-        const body = (await request.json()) as { creatorHandle: string; tiers: TierData[]; enabled: boolean };
+        const body = (await request.json()) as {
+          creatorHandle: string;
+          tiers: TierData[];
+          enabled: boolean;
+        };
         const creatorDoc = await fetchCreatorUid(env, body.creatorHandle);
-        if (creatorDoc !== auth.uid) return json({ error: "Forbidden" }, 403, origin);
+        if (creatorDoc !== auth.uid)
+          return json({ error: "Forbidden" }, 403, origin);
 
         await saveTiers(env, body.creatorHandle, body.tiers, body.enabled);
         return json({ success: true }, 200, origin);
       }
 
-      if (path === "/api/community/subscribe/initiate" && request.method === "POST") {
-        const auth = await requireAuth(request, env.FIREBASE_API_KEY);
+      if (
+        path === "/api/community/subscribe/initiate" &&
+        request.method === "POST"
+      ) {
+        const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
         if (auth instanceof Response) return auth;
 
-        const body = (await request.json()) as SubscribeRequest & { request: Request };
+        const body = (await request.json()) as SubscribeRequest & {
+          request: Request;
+        };
         body.request = request;
         const result = await initiateSubscription(env, body, auth.uid);
         return json(result, 200, origin);
@@ -82,26 +83,37 @@ export default {
         }
 
         const body = (await request.json()) as CallbackPayload;
-        await handlePaymentCallback(env, body.txData, body.totalAmount, body.paymentRef, body.paymentMethod);
+        await handlePaymentCallback(
+          env,
+          body.txData,
+          body.totalAmount,
+          body.paymentRef,
+          body.paymentMethod,
+        );
         return json({ received: true }, 200, origin);
       }
 
       if (path === "/api/community/members" && request.method === "GET") {
-        const auth = await requireAuth(request, env.FIREBASE_API_KEY);
+        const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
         if (auth instanceof Response) return auth;
 
         const creatorHandle = url.searchParams.get("creatorHandle");
-        if (!creatorHandle) return json({ error: "creatorHandle required" }, 400, origin);
+        if (!creatorHandle)
+          return json({ error: "creatorHandle required" }, 400, origin);
 
         const creatorDoc = await fetchCreatorUid(env, creatorHandle);
-        if (creatorDoc !== auth.uid) return json({ error: "Forbidden" }, 403, origin);
+        if (creatorDoc !== auth.uid)
+          return json({ error: "Forbidden" }, 403, origin);
 
         const members = await getMembers(env, creatorHandle);
         return json({ members }, 200, origin);
       }
 
-      if (path === "/api/community/my-subscriptions" && request.method === "GET") {
-        const auth = await requireAuth(request, env.FIREBASE_API_KEY);
+      if (
+        path === "/api/community/my-subscriptions" &&
+        request.method === "GET"
+      ) {
+        const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
         if (auth instanceof Response) return auth;
 
         const subs = await getMemberSubscriptions(env, auth.uid);
@@ -109,10 +121,12 @@ export default {
       }
 
       if (path === "/api/community/cancel" && request.method === "POST") {
-        const auth = await requireAuth(request, env.FIREBASE_API_KEY);
+        const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
         if (auth instanceof Response) return auth;
 
-        const { subscriptionId } = (await request.json()) as { subscriptionId: string };
+        const { subscriptionId } = (await request.json()) as {
+          subscriptionId: string;
+        };
         await cancelSubscription(env, subscriptionId, auth.uid);
         return json({ success: true }, 200, origin);
       }
@@ -121,10 +135,16 @@ export default {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Internal error";
       console.error("Community error:", request.method, url.pathname, err);
-      await logActivity(env, "error", "community", `Community error: ${message}`, {
-        path: url.pathname,
-        method: request.method,
-      }).catch(() => {});
+      await logActivity(
+        env,
+        "error",
+        "community",
+        `Community error: ${message}`,
+        {
+          path: url.pathname,
+          method: request.method,
+        },
+      ).catch(() => {});
       return json({ error: message }, 500, origin);
     }
   },
@@ -134,7 +154,10 @@ export default {
   },
 };
 
-async function fetchCreatorUid(env: Env, handle: string): Promise<string | null> {
+async function fetchCreatorUid(
+  env: Env,
+  handle: string,
+): Promise<string | null> {
   const { firestoreGet, convertFromFields } = await import("./firestore");
   const doc = await firestoreGet(env, `creators/${handle}`);
   if (!doc) return null;

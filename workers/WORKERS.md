@@ -3,6 +3,10 @@
 All env vars are managed in the Cloudflare Dashboard per-worker (not in `wrangler.jsonc`).
 Set them at: **Cloudflare Dashboard → Workers & Pages → [worker] → Settings → Variables**.
 
+## Auth Pattern (all workers)
+
+All workers use dual-path authentication: **jose JWKS first** (correct `service_accounts/v1/jwk/` endpoint), **Firebase REST API fallback**. Token headers (`kid`, `alg`) are logged for debugging. CORS is handled via a shared `cors.ts` with `X-Firebase-AppCheck` header support.
+
 ## agaseke-bookings
 
 | Variable                  | Type   | Secret | Description                                |

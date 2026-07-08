@@ -1,28 +1,10 @@
 import { requireAuth } from "./auth";
+import { corsHeaders } from "./cors";
 import type { Env, MomoInitRequest, CardInitRequest, PesapalIPNPayload } from "./types";
 import { initiateMomoPayment } from "./services/momo";
 import { initiateCardPayment } from "./services/card";
 import { handlePaypackWebhook, handlePesapalIPN } from "./services/webhooks";
 import { logActivity } from "./logger";
-
-const ALLOWED_ORIGINS = [
-  "http://localhost:3000",
-  "http://localhost:3001",
-  "https://agaseke.me",
-  "https://www.agaseke.me",
-  "https://ndafana.netlify.app",
-];
-
-function corsHeaders(origin: string | null): Record<string, string> {
-  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    "access-control-allow-origin": allowed,
-    "access-control-allow-methods": "GET, POST, OPTIONS",
-    "access-control-allow-headers": "Content-Type, Authorization",
-    "access-control-max-age": "86400",
-    vary: "Origin",
-  };
-}
 
 function json(data: unknown, status = 200, origin?: string | null): Response {
   return new Response(JSON.stringify(data), {
@@ -67,7 +49,7 @@ export default {
         return json({ error: "Method not allowed" }, 405, origin);
       }
 
-      const auth = await requireAuth(request, env.FIREBASE_API_KEY);
+      const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
       if (auth instanceof Response) return auth;
 
       if (path === "/api/payments/momo/initiate") {

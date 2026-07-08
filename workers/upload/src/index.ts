@@ -1,34 +1,14 @@
+/* eslint-disable import/no-anonymous-default-export */
 import { requireAuth } from "./auth";
+import { corsHeaders } from "./cors";
 import {
   Env,
   UploadResult,
   AssetType,
-  AssetDocument,
   getStoragePath,
   extFromMime,
 } from "./types";
 import { createAssetDocument } from "./firestore";
-
-const ALLOWED_ORIGINS = [
-  "http://localhost:3000",
-  "http://localhost:3001",
-  "https://agaseke.me",
-  "https://www.agaseke.me",
-  "https://ndafana.netlify.app",
-  "https://assets.agaseke.me",
-];
-
-function corsHeaders(origin: string | null): Record<string, string> {
-  const allowed =
-    origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    "access-control-allow-origin": allowed,
-    "access-control-allow-methods": "GET, POST, OPTIONS",
-    "access-control-allow-headers": "Content-Type, Authorization",
-    "access-control-max-age": "86400",
-    vary: "Origin",
-  };
-}
 
 function json(data: unknown, status = 200, origin?: string | null): Response {
   return new Response(JSON.stringify(data), {
@@ -74,14 +54,20 @@ const IMAGE_MIMES = new Set([
 
 // ── Upload handler ──────────────────────────────────────────
 
-async function handleUpload(
-  request: Request,
-  env: Env
-): Promise<Response> {
+async function handleUpload(request: Request, env: Env): Promise<Response> {
   const origin = request.headers.get("origin");
 
-  const auth = await requireAuth(request, env.FIREBASE_API_KEY);
-  if (auth instanceof Response) return auth;
+  const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
+  if (auth instanceof Response) {
+    return new Response(auth.body, {
+      status: auth.status,
+      statusText: auth.statusText,
+      headers: {
+        ...Object.fromEntries(auth.headers.entries()),
+        ...corsHeaders(origin), // This ensures your allowed origin goes back to the client!
+      },
+    });
+  }
 
   const contentType = request.headers.get("content-type") || "";
 
@@ -94,9 +80,12 @@ async function handleUpload(
   }
 
   return json(
-    { error: "Unsupported content type. Use multipart/form-data or application/json." },
+    {
+      error:
+        "Unsupported content type. Use multipart/form-data or application/json.",
+    },
     400,
-    origin
+    origin,
   );
 }
 
@@ -112,7 +101,7 @@ async function writeAssetDoc(
     creatorHandle: string;
     originalName: string;
     metadata?: Record<string, string>;
-  }
+  },
 ): Promise<string | null> {
   return createAssetDocument(env, {
     url: params.url,
@@ -132,7 +121,7 @@ async function handleFormDataUpload(
   request: Request,
   env: Env,
   uid: string,
-  origin: string | null
+  origin: string | null,
 ): Promise<Response> {
   try {
     const formData = await request.formData();
@@ -152,7 +141,7 @@ async function handleFormDataUpload(
           error: `Invalid assetType. Must be one of: ${VALID_ASSET_TYPES.join(", ")}`,
         },
         400,
-        origin
+        origin,
       );
     }
 
@@ -161,7 +150,9 @@ async function handleFormDataUpload(
     const isVideo = file.type.startsWith("video/");
     const maxImageMB = parseInt(env.MAX_IMAGE_SIZE_MB || "20");
     const maxVideoMB = parseInt(env.MAX_VIDEO_SIZE_MB || "50");
-    const maxSize = isVideo ? maxVideoMB * 1024 * 1024 : maxImageMB * 1024 * 1024;
+    const maxSize = isVideo
+      ? maxVideoMB * 1024 * 1024
+      : maxImageMB * 1024 * 1024;
 
     if (file.size > maxSize) {
       const limit = isVideo ? maxVideoMB : maxImageMB;
@@ -170,13 +161,19 @@ async function handleFormDataUpload(
           error: `File too large. Maximum size is ${limit}MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB`,
         },
         400,
-        origin
+        origin,
       );
     }
 
     const ext = extFromMime(file.type);
     const fileName = `upload.${ext}`;
-    const storagePath = getStoragePath(assetType, creatorHandle, subType, country, fileName);
+    const storagePath = getStoragePath(
+      assetType,
+      creatorHandle,
+      subType,
+      country,
+      fileName,
+    );
     const bytes = await file.arrayBuffer();
     const mimeType = file.type;
     const fileSize = bytes.byteLength;
@@ -224,7 +221,7 @@ async function handleBase64Upload(
   request: Request,
   env: Env,
   uid: string,
-  origin: string | null
+  origin: string | null,
 ): Promise<Response> {
   try {
     const body = (await request.json()) as {
@@ -239,11 +236,7 @@ async function handleBase64Upload(
     }
 
     if (!VALID_ASSET_TYPES.includes(assetType)) {
-      return json(
-        { error: `Invalid assetType: ${assetType}` },
-        400,
-        origin
-      );
+      return json({ error: `Invalid assetType: ${assetType}` }, 400, origin);
     }
 
     const matches = dataUri.match(/^data:([^;]+);base64,(.+)$/);
@@ -261,7 +254,13 @@ async function handleBase64Upload(
 
     const ext = extFromMime(detectedType);
     const fileName = `upload.${ext}`;
-    const storagePath = getStoragePath(assetType, uid, "general", "ANY", fileName);
+    const storagePath = getStoragePath(
+      assetType,
+      uid,
+      "general",
+      "ANY",
+      fileName,
+    );
 
     await env.UPLOADS_BUCKET.put(storagePath, bytes, {
       httpMetadata: {
@@ -304,7 +303,7 @@ async function handleBase64Upload(
 async function optimizeWithCfImage(
   buffer: ArrayBuffer,
   contentType: string,
-  env: Env
+  env: Env,
 ): Promise<{ buffer: ArrayBuffer; contentType: string } | null> {
   return null;
 }
@@ -323,7 +322,7 @@ export default {
     if (request.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
-        headers: corsHeaders(origin),
+        headers: { ...corsHeaders(origin) },
       });
     }
 
@@ -338,7 +337,7 @@ export default {
             "Not found. POST / to upload (assetType required). Assets are served via https://assets.agaseke.me/{publicId}",
         },
         404,
-        origin
+        origin,
       );
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Internal error";

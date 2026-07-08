@@ -829,6 +829,14 @@ For issues or feature requests, please open an issue on GitHub.
 - **Firebase JWT auth**: Reuses the same `jose` + JWKS pattern as the upload Worker.
 - **Firestore helpers**: `fetchSupporters()` and `fetchCreatorEmail()` fetch recipient emails from Firestore using the service account OAuth flow (cached 1-hour tokens).
 
+### Workers Auth & CORS Standardization (July 2026)
+- **All 7 workers now use dual-path auth**: Jose JWKS verification first (correct `service_accounts/v1/jwk/` endpoint), Firebase REST API as fallback. Previously all workers used Firebase REST only, and the upload worker had a broken X.509 certificate URL instead of the correct JWKS endpoint.
+- **CORS extracted to shared `cors.ts`**: Removed duplicate inline CORS functions from all 6 workers. Single `cors.ts` per worker with `X-Firebase-AppCheck` header support.
+- **Auth order swapped**: Jose first (fast, local, no network), Firebase REST fallback — avoids unnecessary failing network call on every request.
+- **Missing deps fixed**: `workers/comms/package.json` was missing `jose` and `@cloudflare/workers-types` dependencies (relied on hoisting).
+- **`FIREBASE_PROJECT_ID` added**: Added to all `wrangler.jsonc` vars and `keep_vars: true` flag to preserve dashboard-configured variables across deployments.
+- **Enhanced logging**: Token header (`kid`, `alg`) logged on every auth attempt; API key masked in logs.
+
 ### Upload Worker & Asset Type Migration (July 2026)
 - **New Cloudflare Worker** (`workers/upload/`): Handles all file uploads ΓÇö Firebase JWT auth via `jose` + Google JWKS, stores in R2 bucket (`agaseke-assets`), records metadata in Firestore `assets` collection. No GET handler; files served directly from R2 via custom domain `assets.agaseke.me`.
 - **9 asset types**: `creator_profile`, `creator_cover`, `post_image`, `post_video`, `post_document`, `product_thumbnail`, `product_content`, `partner_logo`, `verification_document` ΓÇö each with its own R2 path prefix and Firestore usage description.
@@ -858,3 +866,4 @@ For issues or feature requests, please open an issue on GitHub.
 - **Optional chaining guards**: Added `?.` guards on `BookingPage.tsx` (`createBooking` response), `GiveawayDetailPage.tsx` (`giveaway.winners`), and `CommunityPage.tsx` (`creatorData.uid`) to prevent undefined crashes.
 - **GatheringsTab stale closure fix**: Replaced closure-captured `paying`/`user` with refs in `listenForTransaction`, preventing payment timeout logic from using stale state.
 - **Community Worker deps**: Added missing `jose` and `@cloudflare/workers-types` to `workers/community/package.json`.
+- **ContentPage title crash fix**: `post.title.toLowerCase()` threw when posts had no title. Added optional fallback `(post.title || '')` before calling `.toLowerCase()`.

@@ -9,7 +9,7 @@ Client (browser + Firebase token)
   │  POST /api/community/subscribe/initiate
   ▼
 Cloudflare Worker (agaseke-community)
-  │  1. Verify Firebase token (Firebase REST API + API key)
+  │  1. Verify Firebase token (jose JWKS → Firebase REST fallback)
   │  2. Create subscription document in Firestore
   │  3. Forward payment request to Payments Worker
   ▼

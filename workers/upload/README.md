@@ -1,6 +1,6 @@
 # Agaseke Upload Worker
 
-Cloudflare Worker that handles all file uploads. Authenticates via Firebase, stores files in R2, records every upload in Firestore's `assets` collection. Files are served through the custom domain `https://assets.agaseke.me`.
+Cloudflare Worker that handles all file uploads. Authenticates via Firebase (jose JWKS first, Firebase REST fallback), stores files in R2, records every upload in Firestore's `assets` collection. Files are served through the custom domain `https://assets.agaseke.me`.
 
 ## Architecture
 
@@ -9,7 +9,7 @@ Client (browser + Firebase token)
   │  POST file + assetType + Authorization header
   ▼
 Cloudflare Worker (agaseke-upload)
-  │  1. Verify Firebase token (Firebase REST API + API key)
+  │  1. Verify Firebase token (jose JWKS → Firebase REST fallback)
   │  2. Validate assetType & size limits
   │  3. Store file in R2 bucket (agaseke-assets)
   │  4. Write asset document to Firestore (assets collection)

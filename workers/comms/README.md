@@ -1,6 +1,6 @@
 # Agaseke Comms Worker
 
-Cloudflare Worker that handles all transactional email sending. Uses Cloudflare's native Email binding (`env.EMAIL`) — zero SMTP config, no API keys, automatic SPF/DKIM/DMARC management via Cloudflare DNS.
+Cloudflare Worker that handles all transactional email sending. Authenticates via Firebase (jose JWKS first, Firebase REST fallback). Uses Cloudflare's native Email binding (`env.EMAIL`) — zero SMTP config, no API keys, automatic SPF/DKIM/DMARC management via Cloudflare DNS.
 
 ## Architecture
 
@@ -9,7 +9,7 @@ Client (browser + Firebase token)
   │  POST { purpose, to, data }
   ▼
 Cloudflare Worker (agaseke-comms)
-  │  1. Verify Firebase token (Firebase REST API + API key)
+  │  1. Verify Firebase token (jose JWKS → Firebase REST fallback)
   │  2. Lookup service by purpose (service registry)
   │  3. Resolve recipients (fetch from Firestore if needed)
   │  4. Build template data (service-specific)

@@ -1,12 +1,32 @@
 {
-	"$schema": "../../node_modules/wrangler/config-schema.json",
-	"name": "agaseke-payments",
-	"main": "src/index.ts",
-	"compatibility_date": "2026-07-06",
-	"compatibility_flags": [
-		"nodejs_compat"
-	],
-	"observability": {
-		"enabled": true
-	}
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "agaseke-payments",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-06",
+  "keep_vars": true,
+  "compatibility_flags": ["nodejs_compat"],
+  "routes": [
+    {
+      "pattern": "payments.api.agaseke.me",
+      "custom_domain": true,
+      "zone_name": "agaseke.me",
+      "enabled": true,
+      "previews_enabled": false
+    },
+  ],
+  "vars": {
+    "FIREBASE_PROJECT_ID": "agaseke4creators"
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1,
+    "logs": {
+      "head_sampling_rate": 0.1
+    },
+    "traces": {
+      "head_sampling_rate": 0.1,
+    },
+  },
+  "workers_dev": true,
+  "preview_urls": true,
 }

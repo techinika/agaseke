@@ -306,8 +306,8 @@ export default function ContentManager() {
       (activeTab === "Videos" && post.type === "video") ||
       (activeTab === "Images" && post.type === "image") ||
       (activeTab === "Documents" && post.type === "document");
-    const matchesSearch = post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      post.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (post.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (post.description || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesTab && matchesSearch;
   });
 
