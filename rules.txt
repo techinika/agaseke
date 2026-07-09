@@ -1,7 +1,7 @@
 //  ═══════════════════════════════════════════════════════════════════════════════
 //  Agaseke Firestore Security Rules
 //  ═══════════════════════════════════════════════════════════════════════════════
-//  Last updated: July 2026
+//  Last updated: 09 July 2026
 //
 //  ADMIN ACCESS NOTE:
 //    The admin dashboard (/admin) queries every collection for statistics.
