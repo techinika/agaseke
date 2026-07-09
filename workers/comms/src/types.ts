@@ -19,12 +19,7 @@ export type EmailPurpose =
   | "verification_feedback"
   | "broadcast";
 
-export interface EmailSendResponse {
-  messageId: string;
-}
-
 export interface Env {
-  EMAIL: { send(msg: EmailSendMessage): Promise<EmailSendResponse> };
   FIREBASE_API_KEY: string;
   FIREBASE_PROJECT_ID: string;
   FIREBASE_CLIENT_EMAIL: string;
@@ -33,25 +28,7 @@ export interface Env {
   FROM_NAME: string;
   APP_URL: string;
   ASSETS_URL: string;
-}
-
-export interface EmailSendMessage {
-  to: string | string[];
-  cc?: string | string[];
-  bcc?: string | string[];
-  from: { email: string; name?: string };
-  replyTo?: string;
-  subject: string;
-  html: string;
-  text: string;
-  headers?: Record<string, string>;
-  attachments?: Array<{
-    content: string | ArrayBuffer | ArrayBufferView;
-    filename: string;
-    type: string;
-    disposition?: "inline" | "attachment";
-    contentId?: string;
-  }>;
+  RESEND_API_KEY: string;
 }
 
 export interface CommsRequest {
@@ -92,5 +69,4 @@ export interface EmailAddresses {
   to: string | string[];
   cc?: string | string[];
   bcc?: string | string[];
-  from?: { email: string; name: string };
 }

@@ -1,3 +1,4 @@
+import { Resend } from "resend";
 import { requireAuth } from "./auth";
 import { corsHeaders } from "./cors";
 import type { Env, CommsRequest, CommsResponse } from "./types";
@@ -23,6 +24,8 @@ async function sendEmail(
   env: Env,
   auth: { uid: string; email: string | null },
 ): Promise<CommsResponse> {
+  const resend = new Resend(env.RESEND_API_KEY);
+
   const service = getService(req.purpose);
   if (!service) throw new Error(`Unknown purpose: ${req.purpose}`);
 
@@ -37,32 +40,35 @@ async function sendEmail(
   ]);
 
   const to = addresses.to;
-  const toArr = Array.isArray(to) ? to : [to];
+  const toArr = (Array.isArray(to) ? to : [to]).filter(Boolean);
   if (toArr.length === 0) throw new Error("No recipients resolved");
 
   const subject = service.buildSubject(enrichedData);
-  const from = addresses.from || { email: env.FROM_EMAIL, name: env.FROM_NAME };
+  const from = `${env.FROM_NAME} <${env.FROM_EMAIL}>`;
 
   const html = renderEmailHtml(templateData, appUrl, assetsUrl);
   const text = renderEmailText(templateData.body, appUrl);
 
-  const response = await env.EMAIL.send({
-    to: addresses.to,
-    cc: addresses.cc,
-    bcc: addresses.bcc,
+  const { data, error } = await resend.emails.send({
     from,
+    to: toArr,
     subject,
     html,
     text,
   });
 
+  if (error) {
+    console.error(`Resend error: purpose=${req.purpose}`, error);
+    throw new Error(error.message);
+  }
+
   console.info(
-    `Email sent: purpose=${req.purpose}, recipients=${toArr.length}, messageId=${response.messageId}`,
+    `Email sent: purpose=${req.purpose}, recipients=${toArr.length}, emailId=${data?.id}`,
   );
 
   return {
     success: true,
-    messageId: response.messageId,
+    messageId: data?.id,
     purpose: req.purpose,
     recipientCount: toArr.length,
   };

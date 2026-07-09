@@ -9,11 +9,9 @@
     "enabled": true
   },
   "vars": {
-    "FIREBASE_PROJECT_ID": "agaseke4creators"
-  },
-  "send_email": [
-    {
-      "name": "EMAIL"
-    }
-  ]
+    "FIREBASE_PROJECT_ID": "agaseke4creators",
+    "FROM_EMAIL": "no-reply@agaseke.me",
+    "FROM_NAME": "Agaseke",
+    "RESEND_API_KEY": ""
+  }
 }
