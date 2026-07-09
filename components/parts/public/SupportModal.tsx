@@ -316,7 +316,7 @@ export function SupportModal({
               </div>
 
               {/* Payment Method Selector */}
-              {(selectedCurrency === "RWF" ? (
+              {selectedCurrency === "RWF" ? (
                 <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
                   <button
                     onClick={() => setPaymentMethod("momo")}
