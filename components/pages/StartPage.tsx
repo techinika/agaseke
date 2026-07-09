@@ -65,6 +65,7 @@ export default function CreatorOnboarding() {
   const [currencies, setCurrencies] = useState<any[]>([]);
   const [countryCurrencies, setCountryCurrencies] = useState<any[]>([]);
   const [availableCurrencies, setAvailableCurrencies] = useState<any[]>([]);
+  const [platformDefaultCurrency, setPlatformDefaultCurrency] = useState("RWF");
 
   useEffect(() => {
     if (formData.username.length < 3) {
@@ -181,14 +182,18 @@ export default function CreatorOnboarding() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [countriesSnap, currenciesSnap, mappingsSnap] = await Promise.all([
+        const [countriesSnap, currenciesSnap, mappingsSnap, configSnap] = await Promise.all([
           getDocs(query(collection(db, "countries"), orderBy("name", "asc"))),
           getDocs(query(collection(db, "currencies"), orderBy("code", "asc"))),
           getDocs(query(collection(db, "countryCurrencies"))),
+          getDoc(doc(db, "config", "currencies")),
         ]);
         setCountries(countriesSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
         setCurrencies(currenciesSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
         setCountryCurrencies(mappingsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        if (configSnap.exists()) {
+          setPlatformDefaultCurrency(configSnap.data().defaultCurrency || "RWF");
+        }
       } catch (e) {
         console.error("Failed to load countries/currencies:", e);
       }
@@ -222,6 +227,7 @@ export default function CreatorOnboarding() {
     }
 
     try {
+      const effectiveCurrency = formData.currency || platformDefaultCurrency;
       await setDoc(doc(db, "creators", formData.username), {
         uid: user.uid,
         name: formData.fullName,
@@ -230,7 +236,7 @@ export default function CreatorOnboarding() {
         payoutNumber: formData.momoNumber,
         network: formData.momoNetwork,
         country: formData.country || null,
-        currency: formData.currency || null,
+        currency: effectiveCurrency,
         verified: false,
         totalEarnings: 0,
         totalSupporters: 0,
@@ -258,7 +264,7 @@ export default function CreatorOnboarding() {
         referralCreator: referralCreator ?? null,
         onboarded: true,
         country: formData.country || null,
-        currency: formData.currency || null,
+        currency: effectiveCurrency,
       });
 
       try {
@@ -433,6 +439,11 @@ export default function CreatorOnboarding() {
                       </option>
                     ))}
                   </select>
+                  {formData.currency && (
+                    <p className="text-xs text-amber-600 font-semibold flex items-center gap-1">
+                      ⚠ Once set, your currency cannot be changed. Choose carefully.
+                    </p>
+                  )}
                   {availableCurrencies.length === 0 && (
                     <p className="text-xs text-muted-foreground">No currencies configured for this country yet.</p>
                   )}

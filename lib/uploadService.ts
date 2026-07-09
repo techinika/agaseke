@@ -9,7 +9,8 @@ export type AssetType =
   | "product_thumbnail"
   | "product_content"
   | "partner_logo"
-  | "verification_document";
+  | "verification_document"
+  | "message_attachment";
 
 export const UPLOAD_WORKER_URL =
   process.env.NEXT_PUBLIC_UPLOAD_WORKER_URL || "http://localhost:8787";

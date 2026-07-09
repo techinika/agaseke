@@ -39,6 +39,7 @@ export default function CreatorDashboard() {
   const { creator } = useAuth();
   const router = useRouter();
   const [creatorCurrency, setCreatorCurrency] = useState("RWF");
+  const [perCurrencyPayouts, setPerCurrencyPayouts] = useState<Array<{ currency: string; pending: number }>>([]);
   const [data, setData] = useState<any>({
     recentSupport: [],
     history: [],
@@ -55,21 +56,47 @@ export default function CreatorDashboard() {
         );
         const creatorDoc = creatorSnap.docs[0];
         const cid = creatorDoc?.id;
+        const creatorData = creatorDoc?.data();
+        const mainCurrency = creatorData?.currency || "RWF";
         if (creatorDoc) {
-          setCreatorCurrency(creatorDoc.data().currency || "RWF");
+          setCreatorCurrency(mainCurrency);
         }
 
-        const supportQ = query(
-          collection(db, "supportedCreators"),
-          where("creatorId", "==", cid),
-          orderBy("createdAt", "desc"),
-          limit(10),
-        );
-        const supportSnap = await getDocs(supportQ);
+        const [supportSnap, allSupportsSnap] = await Promise.all([
+          getDocs(query(
+            collection(db, "supportedCreators"),
+            where("creatorId", "==", cid),
+            orderBy("createdAt", "desc"),
+            limit(10),
+          )),
+          getDocs(query(
+            collection(db, "supportedCreators"),
+            where("creatorId", "==", cid),
+          )),
+        ]);
         const supports = supportSnap.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
+
+        const currencyTotals = new Map<string, number>();
+        allSupportsSnap.forEach((d) => {
+          const data = d.data();
+          const cur = data.currency || "RWF";
+          currencyTotals.set(cur, (currencyTotals.get(cur) || 0) + (data.amount || 0));
+        });
+        const totalPending = creator?.pendingPayout || 0;
+        const totalFromSupports = Array.from(currencyTotals.values()).reduce((a, b) => a + b, 0);
+        const perCurrencies = Array.from(currencyTotals.entries())
+          .filter(([, amt]) => amt > 0)
+          .map(([cur, amt]) => ({
+            currency: cur,
+            pending: totalFromSupports > 0 ? Math.round((totalPending * amt) / totalFromSupports) : cur === mainCurrency ? totalPending : 0,
+          }));
+        if (perCurrencies.length === 0) {
+          perCurrencies.push({ currency: mainCurrency, pending: totalPending });
+        }
+        setPerCurrencyPayouts(perCurrencies);
 
         const contentQ = query(
           collection(db, "creatorContent"),
@@ -165,10 +192,14 @@ export default function CreatorDashboard() {
             </p>
             <Wallet size={18} className="text-orange-500" />
           </div>
-          <h3 className="text-4xl font-bold">
-            {creator?.pendingPayout?.toLocaleString() || 0}
-            <span className="text-sm font-medium text-muted-foreground ml-2">{getCurrencySymbol(creatorCurrency)}</span>
-          </h3>
+          <div className="space-y-1">
+            {perCurrencyPayouts.map((b) => (
+              <h3 key={b.currency} className="text-2xl font-bold">
+                {b.pending.toLocaleString()}
+                <span className="text-sm font-medium text-muted-foreground ml-2">{getCurrencySymbol(b.currency)}</span>
+              </h3>
+            ))}
+          </div>
           <button
             onClick={() => router.push("/creator/payouts")}
             className="mt-6 w-full py-3 bg-card/10 hover:bg-card/20 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2"

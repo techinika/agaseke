@@ -47,6 +47,7 @@ export default function PayoutsPage() {
   const [withdrawType, setWithdrawType] = useState<"all" | "custom">("all");
   const [customAmount, setCustomAmount] = useState<string>("");
   const [verificationRequest, setVerificationRequest] = useState<any>(null);
+  const [perCurrencyBalances, setPerCurrencyBalances] = useState<Array<{ currency: string; pending: number; threshold: number }>>([]);
 
   const pendingAmount = creator?.pendingPayout || 0;
   const isVerified = creator?.verified || false;
@@ -60,25 +61,53 @@ export default function PayoutsPage() {
   useEffect(() => {
     if (!creator) return;
 
-    const fetchCreatorCurrency = async () => {
+    const fetchCreatorData = async () => {
       try {
         const creatorRef = doc(db, "creators", creator.handle);
         const snap = await getDoc(creatorRef);
         if (snap.exists()) {
           const currency = snap.data().currency || "RWF";
           setCreatorCurrency(currency);
-
-          const currenciesSnap = await getDocs(collection(db, "currencies"));
-          const matched = currenciesSnap.docs.find(
-            (d) => d.data().code === currency,
-          );
-          if (matched) {
-            setWithdrawThreshold(matched.data().payoutThreshold || 10000);
-          }
         }
+
+        const [currenciesSnap, supportsSnap] = await Promise.all([
+          getDocs(collection(db, "currencies")),
+          getDocs(query(collection(db, "supportedCreators"), where("creatorId", "==", creator.handle))),
+        ]);
+
+        const currencies: any[] = currenciesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+        const currencyMap = new Map<string, number>();
+        supportsSnap.forEach((d) => {
+          const data = d.data();
+          const cur = data.currency || "RWF";
+          currencyMap.set(cur, (currencyMap.get(cur) || 0) + (data.amount || 0));
+        });
+
+        const mainCurrency = snap.data()?.currency || "RWF";
+        const totalPending = creator?.pendingPayout || 0;
+        const totalFromSupports = Array.from(currencyMap.values()).reduce((a, b) => a + b, 0);
+
+        const balances = currencies.map((cur: any) => {
+          const code = cur.code;
+          const pending = totalFromSupports > 0
+            ? Math.round((totalPending * (currencyMap.get(code) || 0)) / totalFromSupports)
+            : code === mainCurrency ? totalPending : 0;
+          return {
+            currency: code,
+            pending: code === mainCurrency ? totalPending : pending,
+            threshold: cur.payoutThreshold || 10000,
+          };
+        }).filter((b) => b.pending > 0);
+
+        const matched = currencies.find((c: any) => c.code === mainCurrency);
+        if (matched) {
+          setWithdrawThreshold(matched.payoutThreshold || 10000);
+        }
+        setPerCurrencyBalances(balances.length > 0 ? balances : [{ currency: mainCurrency, pending: totalPending, threshold: matched?.payoutThreshold || 10000 }]);
       } catch { /* silently fail */ }
     };
-    fetchCreatorCurrency();
+    fetchCreatorData();
 
     const qPayouts = query(
       collection(db, "payouts"),
@@ -238,12 +267,14 @@ export default function PayoutsPage() {
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">
                   Pending Balance
                 </p>
-                <h2 className="text-4xl font-black">
-                  {pendingAmount.toLocaleString()}{" "}
-                  <span className="text-sm font-bold text-muted-foreground">
-                    {getCurrencySymbol(creatorCurrency)}
-                  </span>
-                </h2>
+                {perCurrencyBalances.map((b) => (
+                  <h2 key={b.currency} className="text-2xl font-black">
+                    {b.pending.toLocaleString()}{" "}
+                    <span className="text-sm font-bold text-muted-foreground">
+                      {getCurrencySymbol(b.currency)}
+                    </span>
+                  </h2>
+                ))}
               </div>
               <div className="bg-card p-8 rounded-lg border border-border shadow-sm">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">
@@ -292,30 +323,37 @@ export default function PayoutsPage() {
               </div>
             </div>
 
-            {/* Progress to Threshold */}
-            <div className="bg-card p-8 rounded-lg border border-border shadow-sm mb-10">
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                  Progress to Payout Threshold
-                </p>
-                <p className="text-sm font-bold text-foreground">
-                  {pendingAmount.toLocaleString()} /{" "}
-                  {withdrawThreshold.toLocaleString()} {getCurrencySymbol(creatorCurrency)}
-                </p>
-              </div>
-              <div className="w-full bg-muted rounded-full h-3 mb-3">
-                <div
-                  className="bg-orange-600 h-3 rounded-full transition-all duration-500"
-                  style={{
-                    width: `${Math.min((pendingAmount / withdrawThreshold) * 100, 100)}%`,
-                  }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {pendingAmount >= withdrawThreshold
-                  ? "You've reached the payout threshold! You can now request a withdrawal."
-                  : `You need ${(withdrawThreshold - pendingAmount).toLocaleString()}                    {getCurrencySymbol(creatorCurrency)} more to reach the payout threshold.`}
+            {/* Progress to Threshold - Per Currency */}
+            <div className="bg-card p-8 rounded-lg border border-border shadow-sm mb-10 space-y-6">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                Progress to Payout Threshold
               </p>
+              {perCurrencyBalances.map((b) => {
+                const progress = Math.min((b.pending / b.threshold) * 100, 100);
+                return (
+                  <div key={b.currency}>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-bold text-foreground">
+                        {b.currency} ({getCurrencySymbol(b.currency)})
+                      </p>
+                      <p className="text-sm font-bold text-foreground">
+                        {b.pending.toLocaleString()} / {b.threshold.toLocaleString()} {getCurrencySymbol(b.currency)}
+                      </p>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-3 mb-1">
+                      <div
+                        className="bg-orange-600 h-3 rounded-full transition-all duration-500"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {b.pending >= b.threshold
+                        ? "You've reached the payout threshold! You can now request a withdrawal."
+                        : `You need ${(b.threshold - b.pending).toLocaleString()} ${getCurrencySymbol(b.currency)} more to reach the payout threshold.`}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
 
             {/* History Section */}

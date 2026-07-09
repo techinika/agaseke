@@ -30,6 +30,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { Profile } from "@/types/profile";
 import { BroadcastEmailModal } from "./supporterspage/index";
+import { getCurrencySymbol } from "@/types/currency";
 
 interface SupporterSupport {
   id: string;
@@ -43,6 +44,7 @@ interface SupporterSupport {
 
 interface AggregatedSupporter {
   supporterId: string;
+  originalSupporterId: string;
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
@@ -91,7 +93,9 @@ export default function SupportersPage() {
     const grouped = new Map<string, AggregatedSupporter>();
 
     supports.forEach((support) => {
-      const id = support.supporterId || "anonymous";
+      const cur = support.currency || "RWF";
+      const origId = support.supporterId || "anonymous";
+      const id = `${origId}_${cur}`;
       const existing = grouped.get(id);
 
       if (existing) {
@@ -103,11 +107,12 @@ export default function SupportersPage() {
       } else {
         grouped.set(id, {
           supporterId: id,
+          originalSupporterId: origId,
           email: null,
           displayName: null,
           photoURL: null,
           totalAmount: support.amount,
-          currency: support.currency || "RWF",
+          currency: cur,
           supportCount: 1,
           lastSupported: support.createdAt,
         });
@@ -117,11 +122,9 @@ export default function SupportersPage() {
     return Array.from(grouped.values());
   }, [supports]);
 
-  const creatorCurrency = (() => {
-    const currencies = supports.map((s) => s.currency || "RWF");
-    const unique = [...new Set(currencies)];
-    return unique.length === 1 ? unique[0] : "RWF";
-  })();
+  const uniqueCurrencies = useMemo(() => {
+    return [...new Set(supports.map((s) => s.currency || "RWF"))];
+  }, [supports]);
 
   const [resolvedSupporters, setResolvedSupporters] = useState<AggregatedSupporter[]>([]);
 
@@ -131,12 +134,12 @@ export default function SupportersPage() {
     const enrich = async () => {
       const enriched = await Promise.all(
         aggregatedSupporters.map(async (supporter) => {
-          if (supporter.supporterId === "anonymous") {
+          if (supporter.originalSupporterId === "anonymous") {
             return supporter;
           }
 
           try {
-            const profileDoc = await getDoc(doc(db, "profiles", supporter.supporterId));
+            const profileDoc = await getDoc(doc(db, "profiles", supporter.originalSupporterId));
             if (profileDoc.exists()) {
               const profile = profileDoc.data() as Profile;
               return {
@@ -187,7 +190,7 @@ export default function SupportersPage() {
     }
 
     const recipients = filteredSupporters
-      .filter((s) => s.email && s.supporterId !== "anonymous")
+      .filter((s) => s.email && s.originalSupporterId !== "anonymous")
       .map((s) => ({
         email: s.email,
         name: s.displayName || s.email,
@@ -256,9 +259,16 @@ export default function SupportersPage() {
           <p className="text-[10px] font-bold uppercase text-orange-600 tracking-widest mb-1">
             Total Support
           </p>
-          <p className="text-2xl font-bold text-foreground">
-            {totalSupportValue.toLocaleString()} {creatorCurrency}
-          </p>
+          {uniqueCurrencies.map((cur) => {
+            const curTotal = filteredSupporters
+              .filter((s) => s.currency === cur)
+              .reduce((sum, s) => sum + s.totalAmount, 0);
+            return (
+              <p key={cur} className="text-xl font-bold text-foreground">
+                {curTotal.toLocaleString()} {getCurrencySymbol(cur)}
+              </p>
+            );
+          })}
         </div>
 
         <div className="bg-muted rounded-lg p-4">
@@ -300,8 +310,8 @@ export default function SupportersPage() {
               className="bg-card border border-border rounded-lg py-3 px-4 text-sm outline-none"
             >
               <option value="all">All Amounts</option>
-              <option value="high">5,000+ {creatorCurrency}</option>
-              <option value="low">Below 5,000 {creatorCurrency}</option>
+              <option value="high">High value</option>
+              <option value="low">Low value</option>
             </select>
           </div>
         </div>
@@ -378,7 +388,10 @@ export default function SupportersPage() {
                         <div className="flex items-center gap-2">
                           <DollarSign size={14} className="text-orange-500" />
                           <span className="font-bold text-foreground">
-                            {supporter.totalAmount.toLocaleString()} {supporter.currency || creatorCurrency}
+                            {supporter.totalAmount.toLocaleString()}
+                          </span>
+                          <span className="text-[10px] font-bold bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded">
+                            {supporter.currency}
                           </span>
                         </div>
                       </td>
@@ -432,7 +445,7 @@ export default function SupportersPage() {
           onSend={handleBroadcastEmail}
           sending={sendingEmail}
           recipientCount={filteredSupporters.filter(
-            (s) => s.email && s.supporterId !== "anonymous"
+            (s) => s.email && s.originalSupporterId !== "anonymous"
           ).length}
         />
       )}

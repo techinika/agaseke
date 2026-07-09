@@ -23,15 +23,18 @@ interface CurrencyItem {
   name: string;
   symbol: string;
   payoutThreshold: number;
+  minSupportAmount: number;
 }
 
 export default function AdminCurrenciesPage() {
   const [currencies, setCurrencies] = useState<CurrencyItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [defaultCurrency, setDefaultCurrency] = useState("");
   const [newCode, setNewCode] = useState("");
   const [newName, setNewName] = useState("");
   const [newSymbol, setNewSymbol] = useState("");
   const [newThreshold, setNewThreshold] = useState("10000");
+  const [newMinSupport, setNewMinSupport] = useState("100");
   const [adding, setAdding] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -39,29 +42,46 @@ export default function AdminCurrenciesPage() {
   const [editName, setEditName] = useState("");
   const [editSymbol, setEditSymbol] = useState("");
   const [editThreshold, setEditThreshold] = useState("10000");
+  const [editMinSupport, setEditMinSupport] = useState("100");
 
   useEffect(() => {
+    const setupRef = doc(db, "config", "currencies");
+    const unsubSetup = onSnapshot(setupRef, (snap) => {
+      if (snap.exists()) {
+        setDefaultCurrency(snap.data().defaultCurrency || "");
+      }
+    });
+
     const q = query(collection(db, "currencies"), orderBy("code", "asc"));
     const unsub = onSnapshot(q, (snap) => {
       setCurrencies(snap.docs.map((d) => ({ id: d.id, ...d.data() } as CurrencyItem)));
       setLoading(false);
     });
-    return () => unsub();
+    return () => { unsub(); unsubSetup(); };
   }, []);
+
+  const handleSetDefault = async (code: string) => {
+    try {
+      await updateDoc(doc(db, "config", "currencies"), { defaultCurrency: code });
+      setDefaultCurrency(code);
+      toast.success(`Default currency set to ${code}`);
+    } catch { toast.error("Failed to set default currency"); }
+  };
 
   const handleAdd = async () => {
     const code = newCode.trim().toUpperCase();
     const name = newName.trim();
     const symbol = newSymbol.trim();
     const threshold = parseInt(newThreshold) || 10000;
+    const minSupport = parseInt(newMinSupport) || 100;
     if (!code || !name) { toast.error("Currency code and name are required"); return; }
     if (currencies.some((c) => c.code === code)) {
       toast.error("Currency code already exists"); return;
     }
     setAdding(true);
     try {
-      await addDoc(collection(db, "currencies"), { code, name, symbol, payoutThreshold: threshold, createdAt: serverTimestamp() });
-      setNewCode(""); setNewName(""); setNewSymbol(""); setNewThreshold("10000");
+      await addDoc(collection(db, "currencies"), { code, name, symbol, payoutThreshold: threshold, minSupportAmount: minSupport, createdAt: serverTimestamp() });
+      setNewCode(""); setNewName(""); setNewSymbol(""); setNewThreshold("10000"); setNewMinSupport("100");
       toast.success("Currency added");
     } catch { toast.error("Failed to add currency"); }
     finally { setAdding(false); }
@@ -81,6 +101,7 @@ export default function AdminCurrenciesPage() {
     setEditName(cur.name);
     setEditSymbol(cur.symbol);
     setEditThreshold(String(cur.payoutThreshold || 10000));
+    setEditMinSupport(String(cur.minSupportAmount || 100));
   };
 
   const handleEdit = async () => {
@@ -88,12 +109,13 @@ export default function AdminCurrenciesPage() {
     const name = editName.trim();
     const symbol = editSymbol.trim();
     const threshold = parseInt(editThreshold) || 10000;
+    const minSupport = parseInt(editMinSupport) || 100;
     if (!code || !name) { toast.error("Currency code and name are required"); return; }
     if (currencies.some((c) => c.code === code && c.id !== editingId)) {
       toast.error("Currency code already exists"); return;
     }
     try {
-      await updateDoc(doc(db, "currencies", editingId!), { code, name, symbol, payoutThreshold: threshold });
+      await updateDoc(doc(db, "currencies", editingId!), { code, name, symbol, payoutThreshold: threshold, minSupportAmount: minSupport });
       toast.success("Currency updated");
       setEditingId(null);
     } catch { toast.error("Failed to update"); }
@@ -141,6 +163,13 @@ export default function AdminCurrenciesPage() {
               placeholder="Threshold"
               className="w-32 bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
             />
+            <input
+              type="number"
+              value={newMinSupport}
+              onChange={(e) => setNewMinSupport(e.target.value)}
+              placeholder="Min Support"
+              className="w-28 bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
+            />
             <button
               onClick={handleAdd}
               disabled={adding || !newCode.trim() || !newName.trim()}
@@ -171,7 +200,8 @@ export default function AdminCurrenciesPage() {
                     <input type="text" value={editCode} onChange={(e) => setEditCode(e.target.value.toUpperCase())} className="w-24 bg-muted p-2 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100 uppercase" autoFocus />
                     <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="flex-1 min-w-[120px] bg-muted p-2 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100" />
                     <input type="text" value={editSymbol} onChange={(e) => setEditSymbol(e.target.value)} className="w-16 bg-muted p-2 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100" />
-                    <input type="number" value={editThreshold} onChange={(e) => setEditThreshold(e.target.value)} className="w-28 bg-muted p-2 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100" />
+                    <input type="number" value={editThreshold} onChange={(e) => setEditThreshold(e.target.value)} className="w-24 bg-muted p-2 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100" />
+                    <input type="number" value={editMinSupport} onChange={(e) => setEditMinSupport(e.target.value)} className="w-20 bg-muted p-2 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100" />
                     <button onClick={handleEdit} className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition"><Check size={16} /></button>
                     <button onClick={() => setEditingId(null)} className="p-2 text-muted-foreground hover:bg-muted rounded-lg transition"><X size={16} /></button>
                   </div>
@@ -184,6 +214,22 @@ export default function AdminCurrenciesPage() {
                     <span className="text-xs bg-muted px-2 py-0.5 rounded-full font-bold text-muted-foreground">
                       Threshold: {(cur.payoutThreshold || 10000).toLocaleString()}
                     </span>
+                    <span className="text-xs bg-muted px-2 py-0.5 rounded-full font-bold text-muted-foreground">
+                      Min: {(cur.minSupportAmount || 100).toLocaleString()}
+                    </span>
+                    {defaultCurrency === cur.code && (
+                      <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-bold">
+                        Default
+                      </span>
+                    )}
+                    {defaultCurrency !== cur.code && (
+                      <button
+                        onClick={() => handleSetDefault(cur.code)}
+                        className="text-[10px] text-muted-foreground hover:text-orange-600 font-bold underline"
+                      >
+                        Set as Default
+                      </button>
+                    )}
                   </div>
                 )}
                 {editingId !== cur.id && (confirmDelete === cur.id ? (

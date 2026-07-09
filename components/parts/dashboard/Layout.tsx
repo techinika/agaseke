@@ -20,15 +20,19 @@ import {
   Building2,
   Users,
   Bell,
+  MessageSquare,
+  Send,
+  Heart,
+  Loader,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/auth/AuthContext";
 import { handleLogout } from "@/db/functions/LogOut";
+import { toast } from "sonner";
 import SharePageModal from "../SharePage";
-import FeedbackFAB from "../FeedbackFAB";
 import { auth, db } from "@/db/firebase";
-import { doc, onSnapshot, collection, query, where } from "firebase/firestore";
+import { doc, onSnapshot, collection, query, where, addDoc, serverTimestamp } from "firebase/firestore";
 import { Creator } from "@/types/creator";
 import NotificationDrawer from "@/components/ui/NotificationDrawer";
 import { NavItem, ExpandableNavItem } from "./layout-parts/index";
@@ -49,6 +53,9 @@ export default function DashboardLayout({
   const [creatorSettings, setCreatorSettings] = useState<Creator | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedback, setFeedback] = useState({ referralLikelihood: 0, loveScale: 0, message: "" });
 
   useEffect(() => {
     if (!creator?.handle) return;
@@ -106,9 +113,29 @@ export default function DashboardLayout({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleFeedbackSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (feedback.referralLikelihood === 0 || feedback.loveScale === 0) {
+      toast.error("Please provide a rating for both scales!");
+      return;
+    }
+    setFeedbackLoading(true);
+    try {
+      await addDoc(collection(db, "userFeedback"), {
+        creatorId: creator?.uid || "unknown",
+        handle: creator?.handle || "unknown",
+        ...feedback,
+        createdAt: serverTimestamp(),
+      });
+      toast.success("Feedback received! Thank you for helping Agaseke grow.");
+      setShowFeedback(false);
+      setFeedback({ referralLikelihood: 0, loveScale: 0, message: "" });
+    } catch { toast.error("Could not send feedback. Try again later."); }
+    finally { setFeedbackLoading(false); }
+  };
+
   return (
-    // Changed "flex" to "block md:flex" to prevent the sidebar from taking space on mobile
-    <div className="min-h-screen bg-muted block md:flex text-foreground overflow-x-hidden">
+    <div className="min-h-screen bg-muted block md:flex text-foreground overflow-x-hidden md:overflow-hidden">
       {/* 1. Mobile Overlay */}
       {isSidebarOpen && (
         <div
@@ -117,15 +144,13 @@ export default function DashboardLayout({
         />
       )}
 
-      <FeedbackFAB />
-
       {/* 2. Sidebar */}
       <aside
         className={`
         fixed inset-y-0 left-0 z-[100] w-64 bg-card border-r border-border 
         transform transition-transform duration-300 ease-in-out
         ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
-        md:translate-x-0 md:static md:flex md:flex-col h-screen absolute top-0
+        md:translate-x-0 md:sticky md:top-0 md:flex md:flex-col md:h-screen
       `}
       >
         <div className="p-6 h-full flex flex-col">
@@ -246,7 +271,7 @@ export default function DashboardLayout({
       </aside>
 
       {/* 3. Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 w-full">
+      <div className="flex-1 flex flex-col min-w-0 w-full md:h-screen md:overflow-y-auto">
         <header className="h-16 bg-card border-b border-border flex items-center justify-between px-4 md:px-8 sticky top-0 z-20 w-full">
           <div className="flex items-center gap-4">
             {/* Mobile Toggle Button */}
@@ -266,6 +291,13 @@ export default function DashboardLayout({
 
           <div className="flex items-center gap-3 md:gap-6">
             <ThemeToggle />
+            <button
+              onClick={() => setShowFeedback(true)}
+              className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-orange-600 hidden md:block"
+              title="Feedback"
+            >
+              <MessageSquare size={20} />
+            </button>
             <button
               onClick={() => setShowNotifications(true)}
               className="relative p-2 hover:bg-muted rounded-lg transition-colors"
@@ -367,6 +399,49 @@ export default function DashboardLayout({
         onClose={() => setShowNotifications(false)}
         userId={user?.uid || ""}
       />
+
+      {showFeedback && (
+        <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-4 md:p-0 bg-foreground/20 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="fixed inset-0" onClick={() => !feedbackLoading && setShowFeedback(false)} />
+          <div className="bg-card w-full max-w-md rounded-2xl shadow-2xl relative z-10 overflow-hidden animate-in slide-in-from-bottom-8 duration-300">
+            <header className="p-6 border-b border-border flex items-center justify-between bg-muted/50">
+              <div>
+                <h3 className="font-bold text-foreground">Help us improve</h3>
+                <p className="text-xs text-muted-foreground">Your ideas shape the future of Agaseke.</p>
+              </div>
+              <button onClick={() => setShowFeedback(false)} className="text-muted-foreground hover:text-foreground p-1"><X size={20} /></button>
+            </header>
+            <form onSubmit={handleFeedbackSubmit} className="p-6 space-y-6">
+              <div className="space-y-3">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2"><Share2 size={14} /> Would you recommend Agaseke?</label>
+                <div className="flex justify-between gap-2">
+                  {[1,2,3,4,5].map((num) => (
+                    <button key={num} type="button" onClick={() => setFeedback({...feedback, referralLikelihood: num})}
+                      className={`flex-1 py-3 rounded-xl font-bold transition-all ${feedback.referralLikelihood === num ? "bg-orange-600 text-white shadow-md shadow-orange-100 scale-105" : "bg-muted text-muted-foreground hover:bg-muted"}`}>{num}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-3">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2"><Heart size={14} /> How much do you love Agaseke?</label>
+                <div className="flex justify-between gap-2">
+                  {[1,2,3,4,5].map((num) => (
+                    <button key={num} type="button" onClick={() => setFeedback({...feedback, loveScale: num})}
+                      className={`flex-1 py-3 rounded-xl font-bold transition-all ${feedback.loveScale === num ? "bg-orange-600 text-white shadow-md shadow-orange-100 scale-105" : "bg-muted text-muted-foreground hover:bg-muted"}`}>{num}</button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-3">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Suggestions & Appreciations</label>
+                <textarea required placeholder="Tell us what's on your mind..." className="w-full h-32 p-4 bg-muted border border-border rounded-xl text-sm resize-none focus:outline-none focus:border-orange-500 transition-colors"
+                  value={feedback.message} onChange={(e) => setFeedback({...feedback, message: e.target.value})} />
+              </div>
+              <button type="submit" disabled={feedbackLoading} className="w-full py-4 bg-foreground text-background rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all disabled:opacity-50">
+                {feedbackLoading ? <Loader className="animate-spin" size={20} /> : <><Send size={18} /> Send Feedback</>}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

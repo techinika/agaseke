@@ -12,9 +12,9 @@ import {
   getDoc,
   limit,
 } from "firebase/firestore";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { db, storage } from "@/db/firebase";
+import { db } from "@/db/firebase";
 import { useAuth } from "@/auth/AuthContext";
+import { uploadFile as uploadFileToWorker } from "@/lib/uploadService";
 import {
   Loader,
   Send,
@@ -165,22 +165,12 @@ export function CommunityChatView({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const uploadFile = useCallback(async (file: File): Promise<ChatAttachment | null> => {
+  const handleFileUpload = useCallback(async (file: File): Promise<ChatAttachment | null> => {
     setUploading(true);
     try {
-      const storageRef = ref(storage, `chats/${chatId}/${Date.now()}_${file.name}`);
-      const task = uploadBytesResumable(storageRef, file);
-      await new Promise<void>((resolve, reject) => {
-        task.on(
-          "state_changed",
-          () => {},
-          reject,
-          () => resolve(),
-        );
-      });
-      const url = await getDownloadURL(storageRef);
+      const result = await uploadFileToWorker(file, "message_attachment", creatorHandle);
       return {
-        url,
+        url: result.url,
         mimeType: file.type,
         originalName: file.name,
         fileSize: file.size,
@@ -191,7 +181,7 @@ export function CommunityChatView({
     } finally {
       setUploading(false);
     }
-  }, [chatId]);
+  }, [creatorHandle]);
 
   const handleSendText = async () => {
     if (!inputText.trim() || !user || sending) return;
@@ -217,7 +207,7 @@ export function CommunityChatView({
     const file = e.target.files?.[0];
     if (!file) return;
     setShowAttachMenu(false);
-    const attachment = await uploadFile(file);
+    const attachment = await handleFileUpload(file);
     if (!attachment) return;
     setSending(true);
     try {

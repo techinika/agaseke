@@ -11,6 +11,7 @@ import {
   where,
   doc,
   getDoc,
+  getDocs,
 } from "firebase/firestore";
 import { Heart, Loader, ShieldCheck, Smartphone, X } from "lucide-react";
 import Link from "next/link";
@@ -41,6 +42,7 @@ export function SupportModal({
   const [redirectUrl, setRedirectUrl] = useState("");
   const [isClosing, setIsClosing] = useState(false);
   const [creatorCurrency, setCreatorCurrency] = useState("RWF");
+  const [minSupportAmount, setMinSupportAmount] = useState(100);
 
   useEffect(() => {
     if (!creatorId) return;
@@ -50,7 +52,16 @@ export function SupportModal({
         const creatorSnap = await getDoc(creatorRef);
         if (creatorSnap.exists()) {
           const data = creatorSnap.data();
-          setCreatorCurrency(data.currency || "RWF");
+          const currency = data.currency || "RWF";
+          setCreatorCurrency(currency);
+
+          const currenciesSnap = await getDocs(collection(db, "currencies"));
+          const matched = currenciesSnap.docs.find(
+            (d) => d.data().code === currency,
+          );
+          if (matched) {
+            setMinSupportAmount(matched.data().minSupportAmount || 100);
+          }
         }
       } catch { /* silently fail */ }
     };
@@ -193,8 +204,8 @@ export function SupportModal({
   };
 
   const handlePesapalSupport = async () => {
-    if (!amount || parseInt(amount) < 100) {
-      return toast.error("Minimum gift amount is 100 RWF");
+    if (!amount || parseInt(amount) < minSupportAmount) {
+      return toast.error(`Minimum gift amount is ${minSupportAmount} ${creatorCurrency}`);
     }
 
     setIsSubmitting(true);
@@ -371,7 +382,7 @@ export function SupportModal({
             }
             disabled={
               !amount ||
-              parseInt(amount) < 100 ||
+              parseInt(amount) < minSupportAmount ||
               (paymentMethod === "momo" && !phone) ||
               isSubmitting
             }
