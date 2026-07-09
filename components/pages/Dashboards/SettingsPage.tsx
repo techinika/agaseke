@@ -539,43 +539,67 @@ export default function CreatorSettings() {
               <section className="bg-card border border-border rounded-lg p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4">
                 <h3 className="text-lg font-black uppercase">Location & Currency</h3>
                 <p className="text-sm text-muted-foreground">
-                  Set your country and preferred currency. You can only use currencies available in your country.
+                  Your country and currency were set during onboarding and cannot be changed.
                 </p>
                 <div className="space-y-6">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
                       Your Country
                     </label>
-                    <select
-                      value={creatorData?.country || ""}
-                      onChange={(e) => handleUpdate("country", e.target.value)}
-                      className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
-                    >
-                      <option value="">Select country...</option>
-                      {countries.map((c: any) => (
-                        <option key={c.id} value={c.code}>
-                          {c.flag || ""} {c.name}
-                        </option>
-                      ))}
-                    </select>
+                    {creatorData?.country ? (
+                      <>
+                        <div className="w-full bg-muted p-4 rounded-lg text-sm font-bold opacity-60 cursor-not-allowed flex items-center gap-2">
+                          {countries.find((c: any) => c.code === creatorData.country)?.flag || ""}
+                          {" "}
+                          {countries.find((c: any) => c.code === creatorData.country)?.name || creatorData.country}
+                        </div>
+                        <p className="text-xs text-amber-600 font-semibold flex items-center gap-1">
+                          ⚠ Country cannot be changed once set.
+                        </p>
+                      </>
+                    ) : (
+                      <select
+                        value={creatorData?.country || ""}
+                        onChange={(e) => handleUpdate("country", e.target.value)}
+                        className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
+                      >
+                        <option value="">Select country...</option>
+                        {countries.map((c: any) => (
+                          <option key={c.id} value={c.code}>
+                            {c.flag || ""} {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
                       Preferred Currency
                     </label>
-                    <select
-                      value={creatorData?.currency || ""}
-                      onChange={(e) => handleUpdate("currency", e.target.value)}
-                      className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
-                      disabled={!creatorData?.country}
-                    >
-                      <option value="">Select currency...</option>
-                      {availableCurrencies.map((c: any) => (
-                        <option key={c.code} value={c.code}>
-                          {c.code} - {c.name} ({c.symbol})
-                        </option>
-                      ))}
-                    </select>
+                    {creatorData?.currency ? (
+                      <>
+                        <div className="w-full bg-muted p-4 rounded-lg text-sm font-bold opacity-60 cursor-not-allowed flex items-center gap-2">
+                          {creatorData.currency} - {currencies.find((c: any) => c.code === creatorData.currency)?.name || ""} ({currencies.find((c: any) => c.code === creatorData.currency)?.symbol || ""})
+                        </div>
+                        <p className="text-xs text-amber-600 font-semibold flex items-center gap-1">
+                          ⚠ Currency cannot be changed once set.
+                        </p>
+                      </>
+                    ) : (
+                      <select
+                        value={creatorData?.currency || ""}
+                        onChange={(e) => handleUpdate("currency", e.target.value)}
+                        className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
+                        disabled={!creatorData?.country}
+                      >
+                        <option value="">Select currency...</option>
+                        {availableCurrencies.map((c: any) => (
+                          <option key={c.code} value={c.code}>
+                            {c.code} - {c.name} ({c.symbol})
+                          </option>
+                        ))}
+                      </select>
+                    )}
                     {creatorData?.country && availableCurrencies.length === 0 && (
                       <p className="text-xs text-amber-600 bg-amber-50 p-3 rounded-lg mt-2">
                         No currencies configured for this country yet. Contact an admin to add currencies.

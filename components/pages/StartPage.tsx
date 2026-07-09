@@ -423,6 +423,11 @@ export default function CreatorOnboarding() {
                     </option>
                   ))}
                 </select>
+                {formData.country && (
+                  <p className="text-xs text-amber-600 font-semibold flex items-center gap-1">
+                    ⚠ Once set, your country cannot be changed. Choose carefully.
+                  </p>
+                )}
               </div>
               {formData.country && (
                 <div className="space-y-2">

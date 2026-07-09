@@ -293,7 +293,7 @@ export default function DashboardLayout({
             <ThemeToggle />
             <button
               onClick={() => setShowFeedback(true)}
-              className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-orange-600 hidden md:block"
+              className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-orange-600"
               title="Feedback"
             >
               <MessageSquare size={20} />

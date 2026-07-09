@@ -859,6 +859,12 @@ For issues or feature requests, please open an issue on GitHub.
 - **Removed `isCreator` and `isSupporterOf` from read rule**: After the initial split, even the `isCreator` check (which uses `get()`) caused Firestore query rejection. Simplified to a single conditional: `allow read: if isAuth() && !resource.data.isPrivate`. This rule has zero `get()` calls and is fully statically verifiable. Private content reads are now gated entirely by the client ΓÇö only supporters fetch private posts; any permission failure is caught gracefully.
 - **Decoupled private content query in SupporterSpace**: Moved the private content query out of `Promise.all` into a separate try/catch block so a permission failure on the private query doesn't crash the entire supporter page load.
 
+### Irreversible Country/Currency & Mobile Feedback Button (July 2026)
+- **Country/Currency irreversible**: Added warnings on onboarding (`StartPage.tsx`) that country and currency cannot be changed once set. Made both fields read-only in `SettingsPage.tsx` once set, displaying the current value as muted text with an irreversible notice.
+- **ActivityRow currency fix**: Changed `sup.currency || creatorCurrency` fallback to `sup.currency || "RWF"` so old pre-USD transactions don't get mislabeled when a creator switches currencies.
+- **"gifted you" → "supported you"**: Renamed the remaining "gifted you" text in `ActivityRow.tsx` to "supported you".
+- **Feedback button on mobile**: Removed `hidden md:block` from the feedback button in the dashboard header so it's visible on all screen sizes. Header is already sticky.
+
 ### Public Page Fixes & Button Rename (July 2026)
 - **Support button rename**: Changed "Gift Once" button text to "Support {creatorFirstName}" across all public profile subpages.
 - **Firestore composite index fix**: Removed `orderBy("createdAt")` from `creatorContent` queries in CommunityPage.tsx — now uses client-side sorting, eliminating the need for a composite index.
