@@ -66,32 +66,23 @@ export default function PayoutsPage() {
       try {
         const creatorRef = doc(db, "creators", creator.handle);
         const snap = await getDoc(creatorRef);
-        if (snap.exists()) {
-          const currency = snap.data().currency || "RWF";
-          setCreatorCurrency(currency);
-        }
+        if (!snap.exists()) return;
+        const data = snap.data();
+        const currency = data.currency || "RWF";
+        setCreatorCurrency(currency);
 
         const currenciesSnap = await getDocs(collection(db, "currencies"));
         const currencies: any[] = currenciesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-        const [supportsSnap, snap2] = await Promise.all([
-          getDocs(query(collection(db, "supportedCreators"), where("creatorId", "==", creator.handle))),
-          snap.exists() ? snap : null,
-        ]);
-        const mainCurrency = snap2?.data()?.currency || "RWF";
-
-        const hasUSD = supportsSnap.docs.some((d) => (d.data().currency || "RWF") === "USD");
-        const totalPending = creator?.pendingPayout || 0;
-        const totalPendingUSD = creator?.pendingPayoutUSD || 0;
-
-        const rwfMatched = currencies.find((c: any) => c.code === mainCurrency);
+        const usdPending = creator?.pendingPayoutUSD || 0;
+        const rwfMatched = currencies.find((c: any) => c.code === currency);
         const usdMatched = currencies.find((c: any) => c.code === "USD");
 
         const balances: Array<{ currency: string; pending: number; threshold: number }> = [
-          { currency: mainCurrency, pending: totalPending, threshold: rwfMatched?.payoutThreshold || 10000 },
+          { currency, pending: creator?.pendingPayout || 0, threshold: rwfMatched?.payoutThreshold || 10000 },
         ];
-        if (hasUSD) {
-          balances.push({ currency: "USD", pending: totalPendingUSD, threshold: usdMatched?.payoutThreshold || 10000 });
+        if (usdPending > 0) {
+          balances.push({ currency: "USD", pending: usdPending, threshold: usdMatched?.payoutThreshold || 10000 });
         }
         if (rwfMatched) {
           setWithdrawThreshold(rwfMatched.payoutThreshold || 10000);
@@ -272,12 +263,20 @@ export default function PayoutsPage() {
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">
                   Total Earnings
                 </p>
-                <h2 className="text-4xl font-black">
-                  {(creator?.totalEarnings || 0).toLocaleString()}{" "}
-                  <span className="text-sm font-bold text-muted-foreground">
-                    {getCurrencySymbol(creatorCurrency)}
-                  </span>
-                </h2>
+                <div className="space-y-1">
+                  <h2 className="text-2xl font-black">
+                    {(creator?.totalEarnings || 0).toLocaleString()}{" "}
+                    <span className="text-sm font-bold text-muted-foreground">
+                      {getCurrencySymbol(creatorCurrency)}
+                    </span>
+                  </h2>
+                  {(creator?.totalEarningsUSD || 0) > 0 && (
+                    <h2 className="text-2xl font-black">
+                      {(creator?.totalEarningsUSD || 0).toLocaleString()}{" "}
+                      <span className="text-sm font-bold text-muted-foreground">$</span>
+                    </h2>
+                  )}
+                </div>
               </div>
               <div className="bg-card p-8 rounded-lg border border-border shadow-sm">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">

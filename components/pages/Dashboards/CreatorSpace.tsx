@@ -40,7 +40,6 @@ export default function CreatorDashboard() {
   const router = useRouter();
   const [creatorCurrency, setCreatorCurrency] = useState("RWF");
   const [perCurrencyPayouts, setPerCurrencyPayouts] = useState<Array<{ currency: string; pending: number }>>([]);
-  const [hasUSDSupport, setHasUSDSupport] = useState(false);
   const [data, setData] = useState<any>({
     recentSupport: [],
     history: [],
@@ -63,31 +62,23 @@ export default function CreatorDashboard() {
           setCreatorCurrency(mainCurrency);
         }
 
-        const [supportSnap, allSupportsSnap] = await Promise.all([
-          getDocs(query(
-            collection(db, "supportedCreators"),
-            where("creatorId", "==", cid),
-            orderBy("createdAt", "desc"),
-            limit(10),
-          )),
-          getDocs(query(
-            collection(db, "supportedCreators"),
-            where("creatorId", "==", cid),
-          )),
-        ]);
+        const supportSnap = await getDocs(query(
+          collection(db, "supportedCreators"),
+          where("creatorId", "==", cid),
+          orderBy("createdAt", "desc"),
+          limit(10),
+        ));
         const supports = supportSnap.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
 
-        const hasUSD = allSupportsSnap.docs.some((d) => (d.data().currency || "RWF") === "USD");
-        setHasUSDSupport(hasUSD);
-
         const balances: Array<{ currency: string; pending: number }> = [
           { currency: mainCurrency, pending: creator?.pendingPayout || 0 },
         ];
-        if (hasUSD) {
-          balances.push({ currency: "USD", pending: creator?.pendingPayoutUSD || 0 });
+        const usdPending = creator?.pendingPayoutUSD || 0;
+        if (usdPending > 0) {
+          balances.push({ currency: "USD", pending: usdPending });
         }
         setPerCurrencyPayouts(balances);
 
