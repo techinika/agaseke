@@ -27,6 +27,11 @@ export async function handleSupportCallback(
     referralShare: number;
   };
 
+  const currency = (txData.currency as string) || "RWF";
+  const isUSD = currency === "USD";
+  const payoutField = isUSD ? "pendingPayoutUSD" : "pendingPayout";
+  const earningsField = isUSD ? "totalEarningsUSD" : "totalEarnings";
+
   const now = new Date().toISOString();
 
   await firestorePost(env, "platformIncome", {
@@ -77,9 +82,9 @@ export async function handleSupportCallback(
     });
   }
 
-  await incrementField(env, `creators/${txData.creatorId}`, "totalEarnings", creatorShare);
+  await incrementField(env, `creators/${txData.creatorId}`, earningsField, creatorShare);
   await incrementField(env, `creators/${txData.creatorId}`, "totalSupporters", 1);
-  await incrementField(env, `creators/${txData.creatorId}`, "pendingPayout", creatorShare);
+  await incrementField(env, `creators/${txData.creatorId}`, payoutField, creatorShare);
 
   if (supporterId && supporterId !== "anonymous") {
     await firestorePatch(env, `creators/${txData.creatorId}`, {
@@ -99,8 +104,8 @@ export async function handleSupportCallback(
       },
     });
 
-    await incrementField(env, `creators/${txData.referralId}`, "totalEarnings", referralShare);
-    await incrementField(env, `creators/${txData.referralId}`, "pendingPayout", referralShare);
+    await incrementField(env, `creators/${txData.referralId}`, earningsField, referralShare);
+    await incrementField(env, `creators/${txData.referralId}`, payoutField, referralShare);
   }
 
   if (supporterId && supporterId !== "anonymous") {

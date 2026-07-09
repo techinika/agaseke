@@ -50,6 +50,7 @@ export default function PayoutsPage() {
   const [perCurrencyBalances, setPerCurrencyBalances] = useState<Array<{ currency: string; pending: number; threshold: number }>>([]);
 
   const pendingAmount = creator?.pendingPayout || 0;
+  const pendingAmountUSD = creator?.pendingPayoutUSD || 0;
   const isVerified = creator?.verified || false;
   const payoutPref = String(
     verificationRequest?.payoutPreference ?? "",
@@ -70,41 +71,32 @@ export default function PayoutsPage() {
           setCreatorCurrency(currency);
         }
 
-        const [currenciesSnap, supportsSnap] = await Promise.all([
-          getDocs(collection(db, "currencies")),
-          getDocs(query(collection(db, "supportedCreators"), where("creatorId", "==", creator.handle))),
-        ]);
-
+        const currenciesSnap = await getDocs(collection(db, "currencies"));
         const currencies: any[] = currenciesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-        const currencyMap = new Map<string, number>();
-        supportsSnap.forEach((d) => {
-          const data = d.data();
-          const cur = data.currency || "RWF";
-          currencyMap.set(cur, (currencyMap.get(cur) || 0) + (data.amount || 0));
-        });
+        const [supportsSnap, snap2] = await Promise.all([
+          getDocs(query(collection(db, "supportedCreators"), where("creatorId", "==", creator.handle))),
+          snap.exists() ? snap : null,
+        ]);
+        const mainCurrency = snap2?.data()?.currency || "RWF";
 
-        const mainCurrency = snap.data()?.currency || "RWF";
+        const hasUSD = supportsSnap.docs.some((d) => (d.data().currency || "RWF") === "USD");
         const totalPending = creator?.pendingPayout || 0;
-        const totalFromSupports = Array.from(currencyMap.values()).reduce((a, b) => a + b, 0);
+        const totalPendingUSD = creator?.pendingPayoutUSD || 0;
 
-        const balances = currencies.map((cur: any) => {
-          const code = cur.code;
-          const pending = totalFromSupports > 0
-            ? Math.round((totalPending * (currencyMap.get(code) || 0)) / totalFromSupports)
-            : code === mainCurrency ? totalPending : 0;
-          return {
-            currency: code,
-            pending: code === mainCurrency ? totalPending : pending,
-            threshold: cur.payoutThreshold || 10000,
-          };
-        }).filter((b) => b.pending > 0);
+        const rwfMatched = currencies.find((c: any) => c.code === mainCurrency);
+        const usdMatched = currencies.find((c: any) => c.code === "USD");
 
-        const matched = currencies.find((c: any) => c.code === mainCurrency);
-        if (matched) {
-          setWithdrawThreshold(matched.payoutThreshold || 10000);
+        const balances: Array<{ currency: string; pending: number; threshold: number }> = [
+          { currency: mainCurrency, pending: totalPending, threshold: rwfMatched?.payoutThreshold || 10000 },
+        ];
+        if (hasUSD) {
+          balances.push({ currency: "USD", pending: totalPendingUSD, threshold: usdMatched?.payoutThreshold || 10000 });
         }
-        setPerCurrencyBalances(balances.length > 0 ? balances : [{ currency: mainCurrency, pending: totalPending, threshold: matched?.payoutThreshold || 10000 }]);
+        if (rwfMatched) {
+          setWithdrawThreshold(rwfMatched.payoutThreshold || 10000);
+        }
+        setPerCurrencyBalances(balances);
       } catch { /* silently fail */ }
     };
     fetchCreatorData();

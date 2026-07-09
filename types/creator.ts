@@ -15,8 +15,10 @@ export interface Creator {
   bannerURL?: string;
   photoURL?: string;
   totalEarnings: number;
+  totalEarningsUSD?: number;
   totalSupporters: number;
   pendingPayout: number;
+  pendingPayoutUSD?: number;
   socials: {
     instagram: string | null;
     linkedin: string | null;

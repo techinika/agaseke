@@ -121,7 +121,7 @@ export async function initiateCardPayment(
       },
       body: JSON.stringify({
         id: merchantRef,
-        currency: "RWF",
+        currency: currency || "RWF",
         amount: totalAmount,
         description: isStoreTransaction
           ? `Purchase: ${productName}`

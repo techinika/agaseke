@@ -40,6 +40,7 @@ export default function CreatorDashboard() {
   const router = useRouter();
   const [creatorCurrency, setCreatorCurrency] = useState("RWF");
   const [perCurrencyPayouts, setPerCurrencyPayouts] = useState<Array<{ currency: string; pending: number }>>([]);
+  const [hasUSDSupport, setHasUSDSupport] = useState(false);
   const [data, setData] = useState<any>({
     recentSupport: [],
     history: [],
@@ -79,24 +80,16 @@ export default function CreatorDashboard() {
           ...doc.data(),
         }));
 
-        const currencyTotals = new Map<string, number>();
-        allSupportsSnap.forEach((d) => {
-          const data = d.data();
-          const cur = data.currency || "RWF";
-          currencyTotals.set(cur, (currencyTotals.get(cur) || 0) + (data.amount || 0));
-        });
-        const totalPending = creator?.pendingPayout || 0;
-        const totalFromSupports = Array.from(currencyTotals.values()).reduce((a, b) => a + b, 0);
-        const perCurrencies = Array.from(currencyTotals.entries())
-          .filter(([, amt]) => amt > 0)
-          .map(([cur, amt]) => ({
-            currency: cur,
-            pending: totalFromSupports > 0 ? Math.round((totalPending * amt) / totalFromSupports) : cur === mainCurrency ? totalPending : 0,
-          }));
-        if (perCurrencies.length === 0) {
-          perCurrencies.push({ currency: mainCurrency, pending: totalPending });
+        const hasUSD = allSupportsSnap.docs.some((d) => (d.data().currency || "RWF") === "USD");
+        setHasUSDSupport(hasUSD);
+
+        const balances: Array<{ currency: string; pending: number }> = [
+          { currency: mainCurrency, pending: creator?.pendingPayout || 0 },
+        ];
+        if (hasUSD) {
+          balances.push({ currency: "USD", pending: creator?.pendingPayoutUSD || 0 });
         }
-        setPerCurrencyPayouts(perCurrencies);
+        setPerCurrencyPayouts(balances);
 
         const contentQ = query(
           collection(db, "creatorContent"),

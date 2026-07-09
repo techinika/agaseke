@@ -27,6 +27,11 @@ export async function handleStoreCallback(
     referralShare: number;
   };
 
+  const currency = (txData.currency as string) || "RWF";
+  const isUSD = currency === "USD";
+  const payoutField = isUSD ? "pendingPayoutUSD" : "pendingPayout";
+  const earningsField = isUSD ? "totalEarningsUSD" : "totalEarnings";
+
   const productId = txData.productId as string | undefined;
   const quantity = Number(txData.quantity) || 1;
 
@@ -72,8 +77,8 @@ export async function handleStoreCallback(
       },
     });
 
-    await incrementField(env, `creators/${txData.referralId}`, "totalEarnings", referralShare);
-    await incrementField(env, `creators/${txData.referralId}`, "pendingPayout", referralShare);
+    await incrementField(env, `creators/${txData.referralId}`, earningsField, referralShare);
+    await incrementField(env, `creators/${txData.referralId}`, payoutField, referralShare);
   }
 
   const orderResult = await firestorePost(env, "storeOrders", {
@@ -122,8 +127,8 @@ export async function handleStoreCallback(
     },
   });
 
-  await incrementField(env, `creators/${txData.creatorId}`, "totalEarnings", creatorShare);
-  await incrementField(env, `creators/${txData.creatorId}`, "pendingPayout", creatorShare);
+  await incrementField(env, `creators/${txData.creatorId}`, earningsField, creatorShare);
+  await incrementField(env, `creators/${txData.creatorId}`, payoutField, creatorShare);
 
   if (
     productId &&

@@ -27,6 +27,11 @@ export async function handleBookingCallback(
     referralShare: number;
   };
 
+  const currency = (txData.currency as string) || "RWF";
+  const isUSD = currency === "USD";
+  const payoutField = isUSD ? "pendingPayoutUSD" : "pendingPayout";
+  const earningsField = isUSD ? "totalEarningsUSD" : "totalEarnings";
+
   const bookingId = txData.bookingId as string | undefined;
   if (!bookingId) {
     console.error("Booking callback: No bookingId in txData");
@@ -55,8 +60,8 @@ export async function handleBookingCallback(
     },
   });
 
-  await incrementField(env, `creators/${txData.creatorId}`, "totalEarnings", creatorShare);
-  await incrementField(env, `creators/${txData.creatorId}`, "pendingPayout", creatorShare);
+  await incrementField(env, `creators/${txData.creatorId}`, earningsField, creatorShare);
+  await incrementField(env, `creators/${txData.creatorId}`, payoutField, creatorShare);
 
   const includeReferral = !!txData.includeReferral;
   if (includeReferral && txData.referralUid && referralShare > 0) {
@@ -70,8 +75,8 @@ export async function handleBookingCallback(
       },
     });
 
-    await incrementField(env, `creators/${txData.referralId}`, "totalEarnings", referralShare);
-    await incrementField(env, `creators/${txData.referralId}`, "pendingPayout", referralShare);
+    await incrementField(env, `creators/${txData.referralId}`, earningsField, referralShare);
+    await incrementField(env, `creators/${txData.referralId}`, payoutField, referralShare);
   }
 
   await firestorePatch(env, `bookingRequests/${bookingId}`, {

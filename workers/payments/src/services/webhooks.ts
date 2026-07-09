@@ -118,6 +118,10 @@ async function handleGatheringPayment(
   totalAmount: number,
   txRef: string
 ): Promise<void> {
+  const currency = (txData.currency as string) || "RWF";
+  const isUSD = currency === "USD";
+  const payoutField = isUSD ? "pendingPayoutUSD" : "pendingPayout";
+  const earningsField = isUSD ? "totalEarningsUSD" : "totalEarnings";
   const includeReferral = !!txData.includeReferral;
   const platformSharePercentage = includeReferral
     ? Number(env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL || 0.15)
@@ -151,8 +155,8 @@ async function handleGatheringPayment(
   });
 
   await firestoreIncrement(env, `creators/${txData.creatorId}`, {
-    totalEarnings: Math.round(creatorShare),
-    pendingPayout: Math.round(creatorShare),
+    [earningsField]: Math.round(creatorShare),
+    [payoutField]: Math.round(creatorShare),
   });
 
   if (includeReferral && txData.referralUid) {
@@ -167,8 +171,8 @@ async function handleGatheringPayment(
     });
 
     await firestoreIncrement(env, `creators/${txData.referralId}`, {
-      totalEarnings: Math.round(referralShare),
-      pendingPayout: Math.round(referralShare),
+      [earningsField]: Math.round(referralShare),
+      [payoutField]: Math.round(referralShare),
     });
   }
 

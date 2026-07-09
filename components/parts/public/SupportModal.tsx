@@ -42,7 +42,9 @@ export function SupportModal({
   const [redirectUrl, setRedirectUrl] = useState("");
   const [isClosing, setIsClosing] = useState(false);
   const [creatorCurrency, setCreatorCurrency] = useState("RWF");
+  const [selectedCurrency, setSelectedCurrency] = useState("RWF");
   const [minSupportAmount, setMinSupportAmount] = useState(100);
+  const [availableCurrencies, setAvailableCurrencies] = useState<string[]>(["RWF"]);
 
   useEffect(() => {
     if (!creatorId) return;
@@ -54,8 +56,13 @@ export function SupportModal({
           const data = creatorSnap.data();
           const currency = data.currency || "RWF";
           setCreatorCurrency(currency);
+          setSelectedCurrency(currency);
 
           const currenciesSnap = await getDocs(collection(db, "currencies"));
+          const codes = currenciesSnap.docs.map((d) => d.data().code);
+          const hasUSD = codes.includes("USD");
+          setAvailableCurrencies(hasUSD ? ["RWF", "USD"] : ["RWF"]);
+
           const matched = currenciesSnap.docs.find(
             (d) => d.data().code === currency,
           );
@@ -83,6 +90,10 @@ export function SupportModal({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  useEffect(() => {
+    if (selectedCurrency === "USD") setPaymentMethod("card");
+  }, [selectedCurrency]);
 
   useEffect(() => {
     return () => {
@@ -130,7 +141,7 @@ export function SupportModal({
         referralId,
         supporterId: currentUser?.uid || "anonymous",
         includeReferral,
-        currency: creatorCurrency,
+        currency: selectedCurrency,
       });
 
       const q = query(
@@ -205,7 +216,7 @@ export function SupportModal({
 
   const handlePesapalSupport = async () => {
     if (!amount || parseInt(amount) < minSupportAmount) {
-      return toast.error(`Minimum gift amount is ${minSupportAmount} ${creatorCurrency}`);
+      return toast.error(`Minimum gift amount is ${minSupportAmount} ${selectedCurrency}`);
     }
 
     setIsSubmitting(true);
@@ -224,7 +235,7 @@ export function SupportModal({
         includeReferral,
         referralUid,
         referralId,
-        currency: creatorCurrency,
+        currency: selectedCurrency,
       });
 
       setRedirectUrl(data.redirect_url);
@@ -256,9 +267,25 @@ export function SupportModal({
     <div className={`fixed inset-0 z-[100] flex items-end sm:items-center justify-center ${isClosing ? "animate-out fade-out duration-200" : "animate-in fade-in duration-200"} bg-foreground/60 backdrop-blur-md`}>
       <div className={`bg-card w-full max-w-lg rounded-t-2xl sm:rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto ${isClosing ? "animate-out slide-out-to-bottom-full sm:zoom-out-95 duration-200" : "animate-in slide-in-from-bottom-full sm:zoom-in-95 duration-200"}`}>
         <div className="sticky top-0 bg-card z-10 p-4 sm:p-6 pb-0 flex justify-between items-center">
-          <h3 className="text-xl sm:text-2xl font-bold tracking-tight">
-            Send gift to {creatorName.split(" ")[0]}
-          </h3>
+            <div className="flex items-center gap-3">
+              <h3 className="text-xl sm:text-2xl font-bold tracking-tight">
+                Send gift to {creatorName.split(" ")[0]}
+              </h3>
+              {availableCurrencies.length > 1 && (
+                <select
+                  value={selectedCurrency}
+                  onChange={(e) => {
+                    setSelectedCurrency(e.target.value);
+                    setPaymentMethod(e.target.value === "USD" ? "card" : "momo");
+                  }}
+                  className="text-xs font-bold bg-orange-100 text-orange-700 px-2 py-1 rounded-lg border border-orange-200 outline-none"
+                >
+                  {availableCurrencies.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              )}
+            </div>
           <button
             onClick={handleClose}
             className="p-2 sm:p-3 bg-muted rounded-full text-muted-foreground hover:text-foreground transition-colors"
@@ -283,61 +310,45 @@ export function SupportModal({
                     onChange={(e) => setAmount(e.target.value)}
                   />
                   <span className="block text-[10px] font-bold text-muted-foreground mt-2 uppercase tracking-[0.3em]">
-                    {creatorCurrency} ({getCurrencySymbol(creatorCurrency)})
+                    {selectedCurrency} ({getCurrencySymbol(selectedCurrency)})
                   </span>
                 </div>
               </div>
 
               {/* Payment Method Selector */}
-              <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
-            <button
-              onClick={() => setPaymentMethod("momo")}
-              className={`flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-xl border-2 transition-all ${
-                paymentMethod === "momo"
-                  ? "border-orange-500 bg-orange-50"
-                  : "border-border hover:border-border"
-              }`}
-            >
-              <Smartphone
-                size={20}
-                className={
-                  paymentMethod === "momo"
-                    ? "text-orange-600"
-                    : "text-muted-foreground"
-                }
-              />
-              <span
-                className={`text-[10px] font-bold uppercase tracking-widest ${paymentMethod === "momo" ? "text-orange-900" : "text-muted-foreground"}`}
-              >
-                MoMo
-              </span>
-            </button>
-
-            <button
-              onClick={() => setPaymentMethod("card")}
-              className={`flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-xl border-2 transition-all ${
-                paymentMethod === "card"
-                  ? "border-orange-500 bg-orange-50"
-                  : "border-border hover:border-border"
-              }`}
-            >
-              <div className="flex gap-1">
-                <ShieldCheck
-                  size={20}
-                  className={
-                    paymentMethod === "card"
-                      ? "text-orange-600"
-                      : "text-muted-foreground"
-                  }
-                />
-              </div>
-              <span
-                className={`text-[10px] font-bold uppercase tracking-widest ${paymentMethod === "card" ? "text-orange-900" : "text-muted-foreground"}`}
-              >
-                Bank Cards
-              </span>
-            </button>
-          </div>
+              {(selectedCurrency === "RWF" ? (
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                  <button
+                    onClick={() => setPaymentMethod("momo")}
+                    className={`flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-xl border-2 transition-all ${
+                      paymentMethod === "momo"
+                        ? "border-orange-500 bg-orange-50"
+                        : "border-border hover:border-border"
+                    }`}
+                  >
+                    <Smartphone size={20} className={paymentMethod === "momo" ? "text-orange-600" : "text-muted-foreground"} />
+                    <span className={`text-[10px] font-bold uppercase tracking-widest ${paymentMethod === "momo" ? "text-orange-900" : "text-muted-foreground"}`}>MoMo</span>
+                  </button>
+                  <button
+                    onClick={() => setPaymentMethod("card")}
+                    className={`flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-xl border-2 transition-all ${
+                      paymentMethod === "card"
+                        ? "border-orange-500 bg-orange-50"
+                        : "border-border hover:border-border"
+                    }`}
+                  >
+                    <ShieldCheck size={20} className={paymentMethod === "card" ? "text-orange-600" : "text-muted-foreground"} />
+                    <span className={`text-[10px] font-bold uppercase tracking-widest ${paymentMethod === "card" ? "text-orange-900" : "text-muted-foreground"}`}>Bank Cards</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="mb-4 sm:mb-6">
+                  <div className="bg-muted rounded-xl p-4 flex items-center justify-center gap-3">
+                    <ShieldCheck size={20} className="text-orange-600" />
+                    <span className="text-sm font-bold">Pay with Bank Card</span>
+                  </div>
+                </div>
+              )}
 
           <div className="space-y-3 sm:space-y-4">
             {paymentMethod === "momo" && (
@@ -433,7 +444,7 @@ export function SupportModal({
                 Payment Verified!
               </h4>
               <p className="text-muted-foreground font-medium leading-relaxed text-sm sm:text-base">
-                  Your gift of <b>{amount} {creatorCurrency}</b> was delivered.
+                  Your gift of <b>{amount} {selectedCurrency}</b> was delivered.
               </p>
               <button
                 onClick={handleClose}
