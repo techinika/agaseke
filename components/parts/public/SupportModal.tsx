@@ -216,7 +216,7 @@ export function SupportModal({
 
   const handlePesapalSupport = async () => {
     if (!amount || parseInt(amount) < minSupportAmount) {
-      return toast.error(`Minimum gift amount is ${minSupportAmount} ${selectedCurrency}`);
+      return toast.error(`Minimum support amount is ${minSupportAmount} ${selectedCurrency}`);
     }
 
     setIsSubmitting(true);
@@ -269,7 +269,7 @@ export function SupportModal({
         <div className="sticky top-0 bg-card z-10 p-4 sm:p-6 pb-0 flex justify-between items-center">
             <div className="flex items-center gap-3">
               <h3 className="text-xl sm:text-2xl font-bold tracking-tight">
-                Send gift to {creatorName.split(" ")[0]}
+                Support {creatorName.split(" ")[0]}
               </h3>
               {availableCurrencies.length > 1 && (
                 <select
@@ -299,7 +299,7 @@ export function SupportModal({
             <div className="space-y-5 sm:space-y-8">
               <div className="text-center">
                 <p className="text-muted-foreground text-xs sm:text-sm font-medium mb-3 sm:mb-4">
-                  How much would you like to gift {creatorName.split(" ")[0]}?
+                  How much would you like to support {creatorName.split(" ")[0]}?
                 </p>
                 <div className="relative">
                   <input
@@ -404,8 +404,8 @@ export function SupportModal({
             ) : (
               <>
                 {paymentMethod === "momo"
-                  ? "Gift with MoMo"
-                  : "Gift with Card"}
+                  ? "Support with MoMo"
+                  : "Support with Card"}
               </>
             )}
           </button>
@@ -444,7 +444,7 @@ export function SupportModal({
                 Payment Verified!
               </h4>
               <p className="text-muted-foreground font-medium leading-relaxed text-sm sm:text-base">
-                  Your gift of <b>{amount} {selectedCurrency}</b> was delivered.
+                  Your support of <b>{amount} {selectedCurrency}</b> was delivered.
               </p>
               <button
                 onClick={handleClose}

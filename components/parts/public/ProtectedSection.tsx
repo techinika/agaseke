@@ -41,16 +41,16 @@ export const ProtectedSection = ({
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center animate-in fade-in">
         <Heart className="text-orange-200 mb-4" size={48} />
-        <h3 className="text-xl font-bold">Send a Gift to Unlock</h3>
+        <h3 className="text-xl font-bold">Support to Unlock</h3>
         <p className="text-slate-500 max-w-xs mx-auto mb-6">
-          This feature is exclusive to supporters. Send a small gift to enable
+          This feature is exclusive to supporters. Send a small support to enable
           it.
         </p>
         <button
           onClick={() => setIsModalOpen(true)}
           className="bg-orange-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-orange-700 transition-all"
         >
-          Send a Gift
+          Support
         </button>
       </div>
     );

@@ -286,7 +286,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
             className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-orange-700 transition"
           >
             <Heart size={18} className="fill-current" />
-            Gift Once
+            Support
           </button>
         </div>
 

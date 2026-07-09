@@ -159,7 +159,7 @@ export const SendGiftSection = ({
               >
                 Log in
               </Link>{" "}
-              to stay in touch and track your gifts.
+              to stay in touch and track your support.
             </p>
           </div>
         )}
