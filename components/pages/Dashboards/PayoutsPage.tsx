@@ -47,7 +47,7 @@ export default function PayoutsPage() {
   const [withdrawType, setWithdrawType] = useState<"all" | "custom">("all");
   const [customAmount, setCustomAmount] = useState<string>("");
   const [verificationRequest, setVerificationRequest] = useState<any>(null);
-  const [perCurrencyBalances, setPerCurrencyBalances] = useState<Array<{ currency: string; pending: number; threshold: number }>>([]);
+  const [perCurrencyBalances, setPerCurrencyBalances] = useState<Array<{ currency: string; pending: number; threshold: number; earnings: number }>>([]);
 
   const pendingAmount = creator?.pendingPayout || 0;
   const pendingAmountUSD = creator?.pendingPayoutUSD || 0;
@@ -78,11 +78,11 @@ export default function PayoutsPage() {
         const rwfMatched = currencies.find((c: any) => c.code === currency);
         const usdMatched = currencies.find((c: any) => c.code === "USD");
 
-        const balances: Array<{ currency: string; pending: number; threshold: number }> = [
-          { currency, pending: creator?.pendingPayout || 0, threshold: rwfMatched?.payoutThreshold || 10000 },
+        const balances: Array<{ currency: string; pending: number; threshold: number; earnings: number }> = [
+          { currency, pending: creator?.pendingPayout || 0, threshold: rwfMatched?.payoutThreshold || 10000, earnings: creator?.totalEarnings || 0 },
         ];
         if (usdPending > 0) {
-          balances.push({ currency: "USD", pending: usdPending, threshold: usdMatched?.payoutThreshold || 10000 });
+          balances.push({ currency: "USD", pending: usdPending, threshold: usdMatched?.payoutThreshold || 10000, earnings: creator?.totalEarningsUSD || 0 });
         }
         if (rwfMatched) {
           setWithdrawThreshold(rwfMatched.payoutThreshold || 10000);
@@ -264,18 +264,14 @@ export default function PayoutsPage() {
                   Total Earnings
                 </p>
                 <div className="space-y-1">
-                  <h2 className="text-2xl font-black">
-                    {(creator?.totalEarnings || 0).toLocaleString()}{" "}
-                    <span className="text-sm font-bold text-muted-foreground">
-                      {getCurrencySymbol(creatorCurrency)}
-                    </span>
-                  </h2>
-                  {(creator?.totalEarningsUSD || 0) > 0 && (
-                    <h2 className="text-2xl font-black">
-                      {(creator?.totalEarningsUSD || 0).toLocaleString()}{" "}
-                      <span className="text-sm font-bold text-muted-foreground">$</span>
+                  {perCurrencyBalances.map((b) => (
+                    <h2 key={b.currency} className="text-2xl font-black">
+                      {b.earnings.toLocaleString()}{" "}
+                      <span className="text-sm font-bold text-muted-foreground">
+                        {getCurrencySymbol(b.currency)}
+                      </span>
                     </h2>
-                  )}
+                  ))}
                 </div>
               </div>
               <div className="bg-card p-8 rounded-lg border border-border shadow-sm">
