@@ -73,13 +73,20 @@ export default function CreatorDashboard() {
           ...doc.data(),
         }));
 
-        const balances: Array<{ currency: string; pending: number }> = [
-          { currency: mainCurrency, pending: creator?.pendingPayout || 0 },
-        ];
-        const usdPending = creator?.pendingPayoutUSD || 0;
-        if (usdPending > 0) {
-          balances.push({ currency: "USD", pending: usdPending });
-        }
+        const currenciesSnap = await getDocs(collection(db, "currencies"));
+        const currencyCodes = currenciesSnap.docs.map((d) => d.data().code);
+        const hasUSD = currencyCodes.includes("USD");
+
+        const getPending = (code: string) => code === "RWF" ? (creator?.pendingPayout || 0) : (creator as any)?.[`pendingPayout${code}`] || 0;
+
+        const displayedCodes = [mainCurrency];
+        if (hasUSD && mainCurrency !== "USD") displayedCodes.push("USD");
+        if (mainCurrency === "USD" && currencyCodes.includes("RWF")) displayedCodes.push("RWF");
+
+        const balances = displayedCodes.map((code) => ({
+          currency: code,
+          pending: getPending(code),
+        }));
         setPerCurrencyPayouts(balances);
 
         const contentQ = query(
@@ -222,7 +229,7 @@ export default function CreatorDashboard() {
                       : sup.supporterName || "A Supporter"
                   }
                   amount={sup.amount?.toLocaleString()}
-                  currency={sup.currency || creatorCurrency}
+                  currency={sup.currency || "RWF"}
                   time={
                     sup.createdAt
                       ? formatDistanceToNow(sup.createdAt.toDate(), {

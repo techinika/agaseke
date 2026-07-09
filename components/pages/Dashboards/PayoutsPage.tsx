@@ -72,21 +72,29 @@ export default function PayoutsPage() {
         setCreatorCurrency(currency);
 
         const currenciesSnap = await getDocs(collection(db, "currencies"));
-        const currencies: any[] = currenciesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        const currencyCodes = currenciesSnap.docs.map((d) => d.data().code);
+        const hasUSD = currencyCodes.includes("USD");
 
-        const usdPending = creator?.pendingPayoutUSD || 0;
-        const rwfMatched = currencies.find((c: any) => c.code === currency);
-        const usdMatched = currencies.find((c: any) => c.code === "USD");
+        const getPending = (code: string) => code === "RWF" ? (creator?.pendingPayout || 0) : (creator as any)?.[`pendingPayout${code}`] || 0;
+        const getEarnings = (code: string) => code === "RWF" ? (creator?.totalEarnings || 0) : (creator as any)?.[`totalEarnings${code}`] || 0;
+        const getThreshold = (code: string) => {
+          const matched = currenciesSnap.docs.find((d) => d.data().code === code);
+          return matched?.data().payoutThreshold || 10000;
+        };
 
-        const balances: Array<{ currency: string; pending: number; threshold: number; earnings: number }> = [
-          { currency, pending: creator?.pendingPayout || 0, threshold: rwfMatched?.payoutThreshold || 10000, earnings: creator?.totalEarnings || 0 },
-        ];
-        if (usdPending > 0) {
-          balances.push({ currency: "USD", pending: usdPending, threshold: usdMatched?.payoutThreshold || 10000, earnings: creator?.totalEarningsUSD || 0 });
-        }
-        if (rwfMatched) {
-          setWithdrawThreshold(rwfMatched.payoutThreshold || 10000);
-        }
+        const displayedCodes = [currency];
+        if (hasUSD && currency !== "USD") displayedCodes.push("USD");
+        if (currency === "USD" && currencyCodes.includes("RWF")) displayedCodes.push("RWF");
+
+        const balances = displayedCodes.map((code) => ({
+          currency: code,
+          pending: getPending(code),
+          threshold: getThreshold(code),
+          earnings: getEarnings(code),
+        }));
+
+        const mainMatched = currenciesSnap.docs.find((d) => d.data().code === currency);
+        setWithdrawThreshold(mainMatched?.data().payoutThreshold || 10000);
         setPerCurrencyBalances(balances);
       } catch { /* silently fail */ }
     };

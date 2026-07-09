@@ -11,7 +11,7 @@ export default function ActivityRow({ name, amount, time, currency = "RWF" }: an
         <div className="flex items-center justify-between">
           <p className="text-sm font-bold text-foreground">
             {name}{" "}
-            <span className="font-normal text-muted-foreground ml-1">gifted you</span>
+            <span className="font-normal text-muted-foreground ml-1">supported you</span>
           </p>
           <span className="text-[10px] font-bold text-slate-300 uppercase">
             {time}
