@@ -1,5 +1,6 @@
 import { FolderOpen, ChevronRight, Check } from "lucide-react";
-import { Product, FolderData } from "./types";
+import { Product, FolderData, getProductCurrency, getProductPrice } from "./types";
+import { formatCurrency } from "@/types/currency";
 
 const platformSharePercentage =
   Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
@@ -22,12 +23,13 @@ export function FolderCard({
     (p) => !purchasedProductIds.has(p.id),
   );
   const totalPrice = unpurchased.reduce((sum, p) => {
-    let price = p.price;
+    let price = getProductPrice(p);
     if ((p.platformFeePayer || "buyer") === "buyer") {
       price += price * platformSharePercentage;
     }
     return sum + price;
   }, 0);
+  const bundleCurrency = unpurchased.length > 0 ? getProductCurrency(unpurchased[0]) : "RWF";
   const discountedPrice = folder.discountEnabled
     ? totalPrice - (totalPrice * folder.discountPercentage) / 100
     : totalPrice;
@@ -80,7 +82,7 @@ export function FolderCard({
               >
                 {purchasedProductIds.has(p.id)
                   ? "Owned"
-                  : `${p.price.toLocaleString()} RWF`}
+                  : formatCurrency(getProductPrice(p), getProductCurrency(p))}
               </span>
             </div>
           ))}
@@ -94,7 +96,7 @@ export function FolderCard({
           <div className="mt-4 flex items-center justify-between">
             <div>
               <p className="text-lg font-bold text-foreground">
-                {discountedPrice.toLocaleString()} RWF
+                {formatCurrency(discountedPrice, bundleCurrency)}
               </p>
               {folder.discountEnabled && (
                 <p className="text-xs text-green-600 font-bold">

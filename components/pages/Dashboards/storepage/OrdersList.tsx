@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ShoppingCart, Search, Truck } from "lucide-react";
-import { Order } from "@/types/store";
+import { Order, getProductCurrency, getProductPrice } from "@/types/store";
+import { formatCurrency } from "@/types/currency";
 
 export default function OrdersList({
   orders,
@@ -96,13 +97,13 @@ export default function OrdersList({
                     {item.quantity}x {item.productName}
                   </span>
                   <span className="font-medium">
-                    {item.price.toLocaleString()} RWF
+                    {formatCurrency(item.price, "RWF")}
                   </span>
                 </div>
               ))}
               <div className="border-t border-border-strong mt-3 pt-3 flex justify-between font-bold">
                 <span>Total</span>
-                <span>{order.total.toLocaleString()} RWF</span>
+                <span>{formatCurrency(order.total, "RWF")}</span>
               </div>
             </div>
 

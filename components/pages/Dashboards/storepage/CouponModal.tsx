@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { X, Loader } from "lucide-react";
 import { toast } from "sonner";
-import { Product } from "@/types/store";
+import { Product, getProductCurrency, getProductPrice } from "@/types/store";
+import { formatCurrency } from "@/types/currency";
 
 export default function CouponModal({
   coupon,
@@ -171,7 +172,7 @@ export default function CouponModal({
                   />
                   <span className="font-medium">{product.name}</span>
                   <span className="text-xs text-muted-foreground">
-                    {product.price.toLocaleString()} RWF
+                    {formatCurrency(getProductPrice(product), getProductCurrency(product))}
                   </span>
                 </label>
               ))}

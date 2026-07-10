@@ -1,6 +1,7 @@
 import { ChevronRight, Package, ShoppingCart } from "lucide-react";
-import { Product, FolderData } from "./types";
+import { Product, FolderData, getProductCurrency, getProductPrice } from "./types";
 import { ProductCard } from "./ProductCard";
+import { formatCurrency } from "@/types/currency";
 
 export function FolderExplorer({
   folder,
@@ -13,6 +14,7 @@ export function FolderExplorer({
   isLoggedIn,
   folderTotal,
   folderPlatformFee,
+  currency = "RWF",
 }: {
   folder: FolderData;
   products: Product[];
@@ -24,6 +26,7 @@ export function FolderExplorer({
   isLoggedIn: boolean;
   folderTotal: number;
   folderPlatformFee: number;
+  currency?: string;
 }) {
   const unpurchased = products.filter((p) => !purchasedProductIds.has(p.id));
   const totalWithFee = folderTotal + folderPlatformFee;
@@ -50,16 +53,16 @@ export function FolderExplorer({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-lg font-bold text-foreground">
-                Bundle Total: {folderTotal.toLocaleString()} RWF
+                Bundle Total: {formatCurrency(folderTotal, currency)}
               </p>
               {folderPlatformFee > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  + Platform fee: {folderPlatformFee.toLocaleString()} RWF
+                  + Platform fee: {formatCurrency(folderPlatformFee, currency)}
                 </p>
               )}
               {folderPlatformFee > 0 && (
                 <p className="text-sm font-bold text-orange-600">
-                  Total: {totalWithFee.toLocaleString()} RWF
+                  Total: {formatCurrency(totalWithFee, currency)}
                 </p>
               )}
               {folder.discountEnabled && (

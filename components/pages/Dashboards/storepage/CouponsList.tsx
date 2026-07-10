@@ -1,6 +1,7 @@
 import React from "react";
 import { Tag, Edit, Trash2 } from "lucide-react";
 import { Coupon } from "@/types/store";
+import { formatCurrency } from "@/types/currency";
 
 export default function CouponsList({
   coupons,
@@ -47,11 +48,11 @@ export default function CouponsList({
           <p className="text-2xl font-bold text-foreground mb-2">
             {coupon.discountType === "percentage"
               ? `${coupon.discountValue}% OFF`
-              : `${coupon.discountValue.toLocaleString()} RWF OFF`}
+              : `${formatCurrency(coupon.discountValue, "RWF")} OFF`}
           </p>
           {coupon.minPurchase && (
             <p className="text-xs text-muted-foreground mb-2">
-              Min. purchase: {coupon.minPurchase.toLocaleString()} RWF
+              Min. purchase: {formatCurrency(coupon.minPurchase, "RWF")}
             </p>
           )}
           <p className="text-xs text-muted-foreground mb-4">

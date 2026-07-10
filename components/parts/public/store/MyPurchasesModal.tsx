@@ -2,8 +2,9 @@ import { useState } from "react";
 import { Package, Download, X, Loader } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Product, Order } from "./types";
+import { Product, Order, getProductCurrency, getProductPrice } from "./types";
 import { downloadProduct } from "@/lib/downloadProduct";
+import { formatCurrency } from "@/types/currency";
 
 export function MyPurchasesModal({
   orders,
@@ -96,7 +97,7 @@ export function MyPurchasesModal({
                       {item.productName}
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      {item.quantity}x {item.price.toLocaleString()} RWF
+                      {item.quantity}x {formatCurrency(item.price, "RWF")}
                       {item.selectedSize && ` - Size: ${item.selectedSize}`}
                     </p>
                   </div>

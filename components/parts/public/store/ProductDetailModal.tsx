@@ -11,8 +11,9 @@ import {
   Loader,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Product } from "./types";
+import { Product, getProductCurrency, getProductPrice } from "./types";
 import { downloadProduct } from "@/lib/downloadProduct";
+import { formatCurrency } from "@/types/currency";
 
 const platformSharePercentage =
   Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
@@ -40,10 +41,11 @@ export function ProductDetailModal({
     product.sizes?.[0],
   );
 
+  const basePrice = getProductPrice(product);
   const priceWithFee =
-    product.price +
+    basePrice +
     ((product.platformFeePayer || "buyer") === "buyer"
-      ? product.price * platformSharePercentage
+      ? basePrice * platformSharePercentage
       : 0);
 
   const handleAdd = () => {
@@ -109,11 +111,11 @@ export function ProductDetailModal({
 
             <div>
               <div className="text-3xl font-bold">
-                {product.price.toLocaleString()} RWF
+                {formatCurrency(basePrice, getProductCurrency(product))}
               </div>
               {product.platformFeePayer === "buyer" && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  {priceWithFee.toLocaleString()} RWF with platform fee
+                  {formatCurrency(priceWithFee, getProductCurrency(product))} with platform fee
                 </p>
               )}
             </div>

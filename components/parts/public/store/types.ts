@@ -9,6 +9,8 @@ export interface Product {
   name: string;
   description: string;
   price: number;
+  priceUSD?: number;
+  currency?: "RWF" | "USD";
   type: ProductType;
   stock: number;
   imageUrl?: string;
@@ -81,6 +83,15 @@ export interface ShippingAddress {
   address: string;
   city: string;
   country: string;
+}
+
+export function getProductCurrency(product: { currency?: string }): "RWF" | "USD" {
+  return (product.currency as "RWF" | "USD") || "RWF";
+}
+
+export function getProductPrice(product: { price: number; priceUSD?: number; currency?: string }): number {
+  const c = getProductCurrency(product);
+  return c === "USD" ? (product.priceUSD ?? product.price) : product.price;
 }
 
 export interface Coupon {

@@ -12,8 +12,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Product } from "./types";
+import { Product, getProductCurrency, getProductPrice } from "./types";
 import { downloadProduct } from "@/lib/downloadProduct";
+import { formatCurrency } from "@/types/currency";
 
 const platformSharePercentage =
   Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
@@ -44,10 +45,11 @@ export function ProductCard({
   );
   const isOutOfStock = product.type === "physical" && product.stock <= 0;
 
+  const basePrice = getProductPrice(product);
   const priceWithFee =
-    product.price +
+    basePrice +
     ((product.platformFeePayer || "buyer") === "buyer"
-      ? product.price * platformSharePercentage
+      ? basePrice * platformSharePercentage
       : 0);
 
   const handleAdd = () => {
@@ -125,12 +127,12 @@ export function ProductCard({
         <div className="flex items-center justify-between mt-4">
           <div>
             <span className="text-xl font-bold">
-              {product.price.toLocaleString()} RWF
+              {formatCurrency(basePrice, getProductCurrency(product))}
             </span>
             {product.platformFeePayer === "buyer" && (
               <p className="text-[10px] text-muted-foreground">
                 +{platformSharePercentage * 100}% fee ={" "}
-                {priceWithFee.toLocaleString()} RWF
+                {formatCurrency(priceWithFee, getProductCurrency(product))}
               </p>
             )}
           </div>

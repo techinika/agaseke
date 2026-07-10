@@ -17,7 +17,8 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService";
-import { CartItem, ShippingAddress } from "./types";
+import { CartItem, ShippingAddress, getProductCurrency, getProductPrice } from "./types";
+import { formatCurrency } from "@/types/currency";
 
 const platformSharePercentage =
   Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
@@ -32,6 +33,7 @@ export function CheckoutModal({
   getItemPrice,
   total,
   currentUser,
+  currency = "RWF",
 }: {
   cart: CartItem[];
   creatorId: string;
@@ -42,6 +44,7 @@ export function CheckoutModal({
   getItemPrice: (item: CartItem) => number;
   total: number;
   currentUser: any;
+  currency?: string;
 }) {
   const [step, setStep] = useState<"info" | "shipping" | "payment">("info");
   const [couponCode, setCouponCode] = useState("");
@@ -99,7 +102,7 @@ export function CheckoutModal({
       const coupon = snapshot.docs[0].data();
       if (coupon.minPurchase && total < coupon.minPurchase) {
         toast.error(
-          `Minimum purchase of ${coupon.minPurchase.toLocaleString()} RWF required`,
+          `Minimum purchase of ${formatCurrency(coupon.minPurchase, currency)} required`,
         );
         return;
       }
@@ -118,7 +121,7 @@ export function CheckoutModal({
       setCouponDiscount(discount);
       setAppliedCoupon(coupon.code);
       toast.success(
-        `Coupon applied! You save ${discount.toLocaleString()} RWF`,
+        `Coupon applied! You save ${formatCurrency(discount, currency)}`,
       );
     } catch (error) {
       toast.error("Failed to apply coupon");
@@ -156,6 +159,7 @@ export function CheckoutModal({
 
       const firstItem = cart[0];
       const amountToPay = buyerPaysMore ? totalWithPlatformFee : finalTotal;
+      const productPrice = firstItem ? getProductPrice(firstItem.product) : 0;
       const productData = {
         productId: firstItem?.product.id,
         quantity: cart.reduce((sum, item) => sum + item.quantity, 0),
@@ -165,12 +169,13 @@ export function CheckoutModal({
         buyerName: currentUser.displayName || "Customer",
         phone: phone,
         selectedSize: firstItem?.selectedSize,
-        productPrice: firstItem?.product.price,
+        productPrice,
         productName: firstItem?.product.name,
         creatorId: creatorHandle,
         creatorUid: firstItem?.product.creatorId,
         platformFeePayer: firstItem?.product.platformFeePayer || "buyer",
         amount: amountToPay,
+        currency,
         email: currentUser.email || "",
         firstName: currentUser.displayName?.split(" ")[0] || "Customer",
         lastName: currentUser.displayName?.split(" ")[1] || "",
@@ -244,12 +249,12 @@ export function CheckoutModal({
                     <span>
                       {item.quantity}x {item.product.name}
                     </span>
-                    <span>{getItemPrice(item).toLocaleString()} RWF</span>
+                    <span>{formatCurrency(getItemPrice(item), currency)}</span>
                   </div>
                 ))}
                 <div className="border-t border-border pt-2 flex justify-between font-bold">
                   <span>Subtotal</span>
-                  <span>{total.toLocaleString()} RWF</span>
+                  <span>{formatCurrency(total, currency)}</span>
                 </div>
               </div>
 
@@ -284,14 +289,14 @@ export function CheckoutModal({
                 <div className="bg-green-50 text-green-700 p-3 rounded-lg text-sm font-medium flex items-center gap-2">
                   <Check size={16} />
                   Coupon &quot;{appliedCoupon}&quot; applied! You save{" "}
-                  {couponDiscount.toLocaleString()} RWF
+                  {formatCurrency(couponDiscount, currency)}
                 </div>
               )}
 
               {couponDiscount > 0 && (
                 <div className="flex justify-between text-lg font-bold text-green-600">
                   <span>Total</span>
-                  <span>{finalTotal.toLocaleString()} RWF</span>
+                  <span>{formatCurrency(finalTotal, currency)}</span>
                 </div>
               )}
             </div>
@@ -372,15 +377,12 @@ export function CheckoutModal({
                 <div className="flex justify-between text-2xl font-bold text-orange-600">
                   <span>Total</span>
                   <span>
-                    {buyerPaysMore
-                      ? totalWithPlatformFee.toLocaleString()
-                      : finalTotal.toLocaleString()}{" "}
-                    RWF
+                    {formatCurrency(buyerPaysMore ? totalWithPlatformFee : finalTotal, currency)}
                   </span>
                 </div>
                 {buyerPaysMore && (
                   <p className="text-xs text-muted-foreground">
-                    (Includes platform fee: {platformFee.toLocaleString()} RWF)
+                    (Includes platform fee: {formatCurrency(platformFee, currency)})
                   </p>
                 )}
               </div>

@@ -1,6 +1,7 @@
 import React from "react";
 import { Package, Edit, Trash2 } from "lucide-react";
-import { Product } from "@/types/store";
+import { Product, getProductCurrency, getProductPrice } from "@/types/store";
+import { formatCurrency } from "@/types/currency";
 
 export default function ProductsList({
   products,
@@ -64,7 +65,7 @@ export default function ProductsList({
             </p>
             <div className="flex items-center justify-between mt-4">
               <span className="font-bold text-lg">
-                {product.price.toLocaleString()} RWF
+                {formatCurrency(getProductPrice(product), getProductCurrency(product))}
               </span>
               {product.type === "physical" && (
                 <span className="text-xs text-muted-foreground">

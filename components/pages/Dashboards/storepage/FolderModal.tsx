@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { X, Upload, Image as ImageIcon, Loader } from "lucide-react";
 import { toast } from "sonner";
 import { uploadFile } from "@/lib/uploadService";
-import { Product } from "@/types/store";
+import { Product, getProductCurrency, getProductPrice } from "@/types/store";
+import { formatCurrency } from "@/types/currency";
 
 export default function FolderModal({
   folder,
@@ -63,7 +64,7 @@ export default function FolderModal({
 
   const totalPrice = formData.productIds.reduce((sum: number, id: string) => {
     const product = products.find((p) => p.id === id);
-    return sum + (product?.price || 0);
+    return sum + (product ? getProductPrice(product) : 0);
   }, 0);
 
   const effectivePrice = formData.bundlePrice > 0 ? formData.bundlePrice : totalPrice;
@@ -184,7 +185,7 @@ export default function FolderModal({
                   />
                   <span className="font-medium">{product.name}</span>
                   <span className="text-xs text-muted-foreground">
-                    {product.price.toLocaleString()} RWF
+                    {formatCurrency(getProductPrice(product), getProductCurrency(product))}
                   </span>
                 </label>
               ))}
@@ -194,11 +195,11 @@ export default function FolderModal({
           {formData.productIds.length > 0 && (
             <div className="p-4 bg-muted rounded-lg space-y-1">
               <p className="text-sm text-muted-foreground">
-                Sum of products: {totalPrice.toLocaleString()} RWF
+                Sum of products: {formatCurrency(totalPrice, "RWF")}
               </p>
               {formData.bundlePrice > 0 && (
                 <p className="text-sm font-bold text-orange-600">
-                  Bundle price: {formData.bundlePrice.toLocaleString()} RWF
+                  Bundle price: {formatCurrency(formData.bundlePrice, "RWF")}
                 </p>
               )}
             </div>
@@ -272,7 +273,7 @@ export default function FolderModal({
               />
               {formData.discountPercentage > 0 && effectivePrice > 0 && (
                 <p className="text-sm text-green-600 mt-2">
-                  You save: {discountAmount.toLocaleString()} RWF (
+                  You save: {formatCurrency(discountAmount, "RWF")} (
                   {formData.discountPercentage}% off)
                 </p>
               )}

@@ -3,8 +3,9 @@ import { Truck, X, Check, Download, Loader } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Timestamp } from "firebase/firestore";
-import { Order, Product } from "./types";
+import { Order, Product, getProductCurrency, getProductPrice } from "./types";
 import { downloadProduct } from "@/lib/downloadProduct";
+import { formatCurrency } from "@/types/currency";
 
 const statusSteps = ["pending", "paid", "processing", "shipped", "delivered"];
 const statusLabels: Record<string, string> = {
@@ -125,10 +126,7 @@ export function OrderTrackingModal({
                         </span>
                         <div className="flex items-center gap-3">
                           <span className="font-medium">
-                            {typeof item.price === "number"
-                              ? item.price.toLocaleString()
-                              : "0"}{" "}
-                            RWF
+                            {formatCurrency(typeof item.price === "number" ? item.price : 0, "RWF")}
                           </span>
                           {order.status !== "cancelled" && item.productId && (
                             <button
@@ -197,7 +195,7 @@ export function OrderTrackingModal({
 
                   <div className="flex justify-between items-center mt-4 pt-4 border-t border-border-strong">
                     <span className="font-bold">
-                      Total: {safeTotal.toLocaleString()} RWF
+                      Total: {formatCurrency(safeTotal, "RWF")}
                     </span>
                     {order.status === "pending" && (
                       <Link

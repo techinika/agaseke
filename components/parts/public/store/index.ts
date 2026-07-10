@@ -7,3 +7,4 @@ export { CheckoutModal } from "./CheckoutModal";
 export { OrderTrackingModal } from "./OrderTrackingModal";
 export { MyPurchasesModal } from "./MyPurchasesModal";
 export type { Product, FolderData, CartItem, Order, OrderItem, ShippingAddress } from "./types";
+export { getProductCurrency, getProductPrice } from "./types";

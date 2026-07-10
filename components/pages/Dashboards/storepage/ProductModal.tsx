@@ -33,6 +33,8 @@ export default function ProductModal({
     name: product?.name || "",
     description: product?.description || "",
     price: product?.price || 0,
+    priceUSD: product?.priceUSD || 0,
+    currency: product?.currency || "RWF",
     type: product?.type || ("digital" as "digital" | "physical"),
     stock: product?.stock || 0,
     imageUrl: product?.imageUrl || "",
@@ -116,6 +118,8 @@ export default function ProductModal({
         name: formData.name,
         description: formData.description,
         price: formData.price,
+        priceUSD: formData.currency === "USD" ? formData.priceUSD : null,
+        currency: formData.currency,
         type: formData.type,
         active: formData.active,
         updatedAt: serverTimestamp(),
@@ -248,22 +252,80 @@ export default function ProductModal({
               />
             </div>
 
+            <div className="col-span-2">
+              <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
+                Currency
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFormData((prev) => ({ ...prev, currency: "RWF" }))
+                  }
+                  className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
+                    formData.currency === "RWF"
+                      ? "bg-orange-600 text-white"
+                      : "bg-muted text-muted-foreground border border-border"
+                  }`}
+                >
+                  RWF
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFormData((prev) => ({ ...prev, currency: "USD" }))
+                  }
+                  className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
+                    formData.currency === "USD"
+                      ? "bg-orange-600 text-white"
+                      : "bg-muted text-muted-foreground border border-border"
+                  }`}
+                >
+                  USD
+                </button>
+              </div>
+            </div>
+
             <div>
               <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
-                Price (RWF) *
+                Price ({formData.currency}) *
               </label>
               <input
                 type="number"
-                value={formData.price}
+                value={formData.currency === "USD" ? formData.priceUSD : formData.price}
                 onChange={(e) =>
                   setFormData((prev) => ({
                     ...prev,
-                    price: parseInt(e.target.value) || 0,
+                    ...(prev.currency === "USD"
+                      ? { priceUSD: parseInt(e.target.value) || 0 }
+                      : { price: parseInt(e.target.value) || 0 }),
                   }))
                 }
                 className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
               />
             </div>
+
+            {formData.currency === "USD" && (
+              <div>
+                <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
+                  Price (RWF)
+                </label>
+                <input
+                  type="number"
+                  value={formData.price}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      price: parseInt(e.target.value) || 0,
+                    }))
+                  }
+                  className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  RWF equivalent for local payments
+                </p>
+              </div>
+            )}
 
             <div className="col-span-2 p-4 bg-orange-50 rounded-lg">
               <div className="flex items-center justify-between">

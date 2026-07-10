@@ -31,6 +31,8 @@ import {
   MyPurchasesModal,
 } from "./store";
 import type { Product, FolderData, CartItem, Order } from "./store";
+import { getProductCurrency, getProductPrice } from "./store/types";
+import { formatCurrency } from "@/types/currency";
 
 function logErrorToServer(message: string, metadata?: Record<string, unknown>) {
   fetch("/api/log-error", {
@@ -273,7 +275,7 @@ export const StoreTab = ({
   const getCartTotal = useCallback(() => {
     let total = 0;
     cart.forEach((item) => {
-      let itemPrice = item.product.price * item.quantity;
+      let itemPrice = getProductPrice(item.product) * item.quantity;
 
       if (item.product.bulkPricing && item.product.bulkPricing.length > 0) {
         const applicableBulk = item.product.bulkPricing
@@ -292,7 +294,7 @@ export const StoreTab = ({
   }, [cart]);
 
   const getItemPrice = useCallback((item: CartItem) => {
-    let price = item.product.price * item.quantity;
+    let price = getProductPrice(item.product) * item.quantity;
 
     if (item.product.bulkPricing && item.product.bulkPricing.length > 0) {
       const applicableBulk = item.product.bulkPricing
@@ -311,7 +313,7 @@ export const StoreTab = ({
     const folderProducts = products.filter(
       (p) => folder.productIds.includes(p.id) && !purchasedProductIds.has(p.id),
     );
-    const total = folderProducts.reduce((sum, p) => sum + p.price, 0);
+    const total = folderProducts.reduce((sum, p) => sum + getProductPrice(p), 0);
     if (folder.discountEnabled && folder.discountPercentage > 0) {
       return total - (total * folder.discountPercentage) / 100;
     }
@@ -325,7 +327,7 @@ export const StoreTab = ({
     let fee = 0;
     for (const product of folderProducts) {
       if ((product.platformFeePayer || "buyer") === "buyer") {
-        fee += product.price * platformSharePercentage;
+        fee += getProductPrice(product) * platformSharePercentage;
       }
     }
     if (folder.discountEnabled && folder.discountPercentage > 0) {
@@ -372,6 +374,7 @@ export const StoreTab = ({
         isLoggedIn={isLoggedIn}
         folderTotal={getFolderTotal(activeFolder)}
         folderPlatformFee={getFolderPlatformFee(activeFolder)}
+        currency={getProductCurrency(folderProducts[0] || {})}
       />
     );
   }
@@ -394,6 +397,7 @@ export const StoreTab = ({
         onRemove={removeFromCart}
         getItemPrice={getItemPrice}
         total={getCartTotal()}
+        currency={cart.length > 0 ? getProductCurrency(cart[0].product) : "RWF"}
       />
     );
   }
@@ -419,6 +423,7 @@ export const StoreTab = ({
         getItemPrice={getItemPrice}
         total={getCartTotal()}
         currentUser={currentUser}
+        currency={cart.length > 0 ? getProductCurrency(cart[0].product) : "RWF"}
       />
     );
   }

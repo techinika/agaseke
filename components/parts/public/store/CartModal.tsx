@@ -1,5 +1,6 @@
 import { Plus, Minus, ShoppingCart, CreditCard, X, Package } from "lucide-react";
 import { CartItem } from "./types";
+import { formatCurrency } from "@/types/currency";
 
 export function CartModal({
   cart,
@@ -9,6 +10,7 @@ export function CartModal({
   onRemove,
   getItemPrice,
   total,
+  currency = "RWF",
 }: {
   cart: CartItem[];
   onClose: () => void;
@@ -21,6 +23,7 @@ export function CartModal({
   onRemove: (id: string, size?: string) => void;
   getItemPrice: (item: CartItem) => number;
   total: number;
+  currency?: string;
 }) {
   return (
     <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
@@ -68,7 +71,7 @@ export function CartModal({
                     </p>
                   )}
                   <p className="text-sm text-orange-600 font-bold mt-1">
-                    {getItemPrice(item).toLocaleString()} RWF
+                    {formatCurrency(getItemPrice(item), currency)}
                   </p>
                 </div>
                 <div className="flex flex-col items-end justify-between">
@@ -109,7 +112,7 @@ export function CartModal({
           <div className="p-6 border-t border-border space-y-4">
             <div className="flex justify-between text-lg font-bold">
               <span>Total</span>
-              <span>{total.toLocaleString()} RWF</span>
+              <span>{formatCurrency(total, currency)}</span>
             </div>
             <button
               onClick={onCheckout}

@@ -10,6 +10,8 @@ import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import DetailSkeleton from "@/components/ui/DetailSkeleton";
 import type { Product } from "@/components/parts/public/store/types";
+import { getProductCurrency, getProductPrice } from "@/components/parts/public/store/types";
+import { formatCurrency } from "@/types/currency";
 
 const platformSharePercentage = Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
 
@@ -82,7 +84,8 @@ export default function ProductDetailPage({ username, productId }: { username: s
   }
 
   const creatorName = creatorData.name || "Creator";
-  const priceWithFee = product.price + ((product.platformFeePayer || "buyer") === "buyer" ? product.price * platformSharePercentage : 0);
+  const basePrice = getProductPrice(product);
+  const priceWithFee = basePrice + ((product.platformFeePayer || "buyer") === "buyer" ? basePrice * platformSharePercentage : 0);
 
   return (
     <>
@@ -122,9 +125,9 @@ export default function ProductDetailPage({ username, productId }: { username: s
               <p className="text-muted-foreground leading-relaxed">{product.description}</p>
 
               <div>
-                <div className="text-4xl font-bold">{product.price.toLocaleString()} RWF</div>
+                <div className="text-4xl font-bold">{formatCurrency(basePrice, getProductCurrency(product))}</div>
                 {product.platformFeePayer === "buyer" && (
-                  <p className="text-sm text-muted-foreground mt-1">{priceWithFee.toLocaleString()} RWF with platform fee</p>
+                  <p className="text-sm text-muted-foreground mt-1">{formatCurrency(priceWithFee, getProductCurrency(product))} with platform fee</p>
                 )}
               </div>
 

@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { X, Loader } from "lucide-react";
 import { toast } from "sonner";
-import { Product } from "@/types/store";
+import { Product, getProductCurrency, getProductPrice } from "@/types/store";
+import { formatCurrency } from "@/types/currency";
 
 export default function CreateOrderModal({
   products,
@@ -28,7 +29,7 @@ export default function CreateOrderModal({
       ...prev,
       productIds: [
         ...prev.productIds,
-        { productId, quantity: 1, price: product.price },
+        { productId, quantity: 1, price: getProductPrice(product) },
       ],
     }));
   };
@@ -130,7 +131,7 @@ export default function CreateOrderModal({
               <option value="">Select a product to add</option>
               {products.map((product) => (
                 <option key={product.id} value={product.id}>
-                  {product.name} - {product.price.toLocaleString()} RWF
+                  {product.name} - {formatCurrency(getProductPrice(product), getProductCurrency(product))}
                 </option>
               ))}
             </select>
@@ -151,7 +152,7 @@ export default function CreateOrderModal({
                     <div className="flex-1">
                       <p className="font-medium">{product?.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {product?.price.toLocaleString()} RWF each
+                        {formatCurrency(product ? getProductPrice(product) : 0, product ? getProductCurrency(product) : "RWF")} each
                       </p>
                     </div>
                     <input
@@ -164,7 +165,7 @@ export default function CreateOrderModal({
                       className="w-16 bg-card border border-border-strong rounded-lg px-2 py-1 text-center"
                     />
                     <p className="font-bold w-24 text-right">
-                      {(item.price * item.quantity).toLocaleString()} RWF
+                      {formatCurrency(item.price * item.quantity, "RWF")}
                     </p>
                     <button
                       onClick={() => removeProduct(item.productId)}
@@ -182,7 +183,7 @@ export default function CreateOrderModal({
             <div className="p-4 bg-orange-50 rounded-lg flex justify-between items-center">
               <p className="font-bold">Total Amount</p>
               <p className="text-xl font-bold text-orange-600">
-                {totalAmount.toLocaleString()} RWF
+                {formatCurrency(totalAmount, "RWF")}
               </p>
             </div>
           )}
