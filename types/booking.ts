@@ -34,6 +34,8 @@ export interface BookingTier {
   description: string;
   purpose: string;
   price: number;
+  priceUSD?: number;
+  currency?: "RWF" | "USD";
   duration: number;
   access: BookingAccess;
   offers: string[];
@@ -60,6 +62,7 @@ export interface BookingRequest {
   tierName?: string;
   tierDuration?: number;
   paymentAmount?: number;
+  currency?: string;
   paymentStatus?: "none" | "pending" | "paid" | "failed";
   txRef?: string;
   createdAt: Timestamp | Date;

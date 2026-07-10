@@ -23,6 +23,7 @@ import Link from "next/link";
 import Navbar from "@/components/parts/Navigation";
 import Footer from "@/components/parts/Footer";
 import { logError } from "@/lib/logger";
+import { formatCurrency } from "@/types/currency";
 
 export default function BookingPayClient() {
   const params = useParams();
@@ -112,6 +113,7 @@ export default function BookingPayClient() {
         buyerName: currentUser.displayName || booking.bookerName || "Customer",
         creatorId: booking.creatorHandle,
         creatorUid: booking.creatorId || "",
+        currency: booking.currency || "RWF",
       };
 
       if (paymentMethod === "momo") {
@@ -249,7 +251,7 @@ export default function BookingPayClient() {
             <div className="border-t border-border pt-3 flex justify-between font-bold">
               <span>Amount</span>
               <span className="text-orange-600">
-                {(booking.paymentAmount || 0).toLocaleString()} RWF
+                {formatCurrency(booking.paymentAmount || 0, booking.currency || "RWF")}
               </span>
             </div>
           </div>
@@ -374,7 +376,7 @@ export default function BookingPayClient() {
                 ) : (
                   <>
                     <Check size={20} />
-                    Pay {(booking.paymentAmount || 0).toLocaleString()} RWF
+                    Pay {formatCurrency(booking.paymentAmount || 0, booking.currency || "RWF")}
                   </>
                 )}
               </button>

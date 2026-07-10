@@ -2,6 +2,8 @@ export interface BookingTier {
   id: string;
   name: string;
   price: number;
+  priceUSD?: number;
+  currency?: string;
   duration: number;
   active: boolean;
   availability: BookingAvailability;
@@ -39,6 +41,7 @@ export interface CreateBookingRequest {
   tierId?: string;
   tierName?: string;
   paymentAmount?: number;
+  currency?: string;
 }
 
 export interface RespondBookingRequest {
@@ -74,6 +77,7 @@ export interface BookingDocument {
   tierName?: string | null;
   tierDuration?: number | null;
   paymentAmount: number;
+  currency?: string;
   paymentStatus: string;
   txRef?: string | null;
   createdAt: string;

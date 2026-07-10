@@ -16,6 +16,7 @@ export interface CreateBookingRequest {
   tierId?: string | null;
   tierName?: string | null;
   paymentAmount?: number;
+  currency?: string;
 }
 
 export interface CreateBookingResponse {

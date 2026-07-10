@@ -58,11 +58,13 @@ function resolveAvailabilityAndPrice(
   effectiveTier: BookingTier | null;
   verifiedPaymentAmount: number;
   duration: number;
+  currency: string;
 } {
   let effectiveAvail: BookingAvailability | null = null;
   let effectiveTier: BookingTier | null = null;
   let verifiedPaymentAmount = 0;
   let duration = 0;
+  let currency = "RWF";
 
   if (tierId && creatorData.bookingTiers) {
     const tiers = creatorData.bookingTiers as BookingTier[];
@@ -72,6 +74,7 @@ function resolveAvailabilityAndPrice(
       effectiveAvail = effectiveTier.availability;
       verifiedPaymentAmount = effectiveTier.price;
       duration = effectiveTier.duration;
+      currency = effectiveTier.currency || "RWF";
     }
   } else if (creatorData.bookingAvailability) {
     effectiveAvail = creatorData.bookingAvailability as BookingAvailability;
@@ -82,7 +85,7 @@ function resolveAvailabilityAndPrice(
     }
   }
 
-  return { effectiveAvail, effectiveTier, verifiedPaymentAmount, duration };
+  return { effectiveAvail, effectiveTier, verifiedPaymentAmount, duration, currency };
 }
 
 export async function createBooking(
@@ -125,7 +128,7 @@ export async function createBooking(
     return { error: "Booking is not enabled for this creator" };
   }
 
-  const { effectiveAvail, effectiveTier, verifiedPaymentAmount, duration } =
+  const { effectiveAvail, effectiveTier, verifiedPaymentAmount, duration, currency } =
     resolveAvailabilityAndPrice(creatorData, body.tierId, body.paymentAmount, body.preferredTime);
 
   if (body.tierId && !effectiveTier) {
@@ -260,6 +263,7 @@ export async function createBooking(
     tierName: { stringValue: body.tierName || "" },
     tierDuration: { integerValue: String(duration) },
     paymentAmount: { integerValue: String(isPaidTier ? verifiedPaymentAmount : 0) },
+    currency: { stringValue: currency },
     paymentStatus: { stringValue: isPaidTier ? "pending" : "none" },
     txRef: { stringValue: txRef || "" },
     createdAt: { timestampValue: now },
@@ -286,6 +290,7 @@ export async function createBooking(
       bookerId: { stringValue: body.bookerId || auth.uid || "anonymous" },
       status: { stringValue: "pending" },
       type: { stringValue: "booking" },
+      currency: { stringValue: currency },
       createdAt: { timestampValue: now },
     };
 

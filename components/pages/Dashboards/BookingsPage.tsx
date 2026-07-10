@@ -45,6 +45,7 @@ import {
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { logError } from "@/lib/logger";
 import { decrypt, isEncrypted } from "@/lib/generalWorkerService";
+import { formatCurrency } from "@/types/currency";
 
 const DAYS_OF_WEEK = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -189,7 +190,7 @@ export default function BookingsPage() {
   };
 
   const addTier = () => {
-    const t: BookingTier = { id: Date.now().toString(), name: "", description: "", purpose: "", price: 0, duration: 30, access: "public", offers: [], availability: { daysOfWeek: [1, 2, 3, 4, 5], bookingType: "both", startDate: "", endDate: "", defaultSlots: [{ id: "1", startTime: "09:00", endTime: "10:00" }] }, active: true };
+    const t: BookingTier = { id: Date.now().toString(), name: "", description: "", purpose: "", price: 0, priceUSD: 0, currency: "RWF", duration: 30, access: "public", offers: [], availability: { daysOfWeek: [1, 2, 3, 4, 5], bookingType: "both", startDate: "", endDate: "", defaultSlots: [{ id: "1", startTime: "09:00", endTime: "10:00" }] }, active: true };
     setTiers([...tiers, t]);
     setEditingTierId(t.id);
   };
@@ -303,7 +304,7 @@ export default function BookingsPage() {
                           {booking.tierName && <span className="text-xs font-bold bg-orange-100 text-orange-700 px-2 py-1 rounded">{booking.tierName}</span>}
                           {booking.paymentStatus === "paid" && <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-1 rounded">Paid</span>}
                           {booking.paymentStatus === "pending" && <span className="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-1 rounded">Payment Pending</span>}
-                          {(booking.paymentAmount || 0) > 0 && <span className="text-xs text-muted-foreground">{(booking.paymentAmount || 0).toLocaleString()} RWF</span>}
+                          {(booking.paymentAmount || 0) > 0 && <span className="text-xs text-muted-foreground">{formatCurrency(booking.paymentAmount || 0, booking.currency || "RWF")}</span>}
                         </div>
                       )}
                       {(() => {
@@ -445,7 +446,7 @@ export default function BookingsPage() {
                         <div className="flex items-center justify-between p-4 bg-muted cursor-pointer" onClick={() => setEditingTierId(editingTierId === tier.id ? null : tier.id)}>
                           <div className="flex items-center gap-3">
                             <div className={`w-3 h-3 rounded-full ${tier.active ? "bg-green-500" : "bg-gray-300"}`} />
-                            <div><p className="font-bold">{tier.name || "Untitled Tier"}</p><p className="text-xs text-muted-foreground">{tier.price > 0 ? `${tier.price.toLocaleString()} RWF` : "Free"} &middot; {tier.duration}min &middot; {tier.access}</p></div>
+                            <div><p className="font-bold">{tier.name || "Untitled Tier"}</p><p className="text-xs text-muted-foreground">{tier.price > 0 ? formatCurrency(tier.price, tier.currency || "RWF") : "Free"} &middot; {tier.duration}min &middot; {tier.access}</p></div>
                           </div>
                           <button onClick={(e) => { e.stopPropagation(); removeTier(tier.id); }} className="p-2 text-muted-foreground hover:text-red-500"><X size={16} /></button>
                         </div>
@@ -454,7 +455,32 @@ export default function BookingsPage() {
                           <div className="p-6 space-y-5">
                             <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-2"><label className="text-sm font-bold">Tier Name</label><input type="text" value={tier.name} onChange={(e) => updateTier(tier.id, { name: e.target.value })} placeholder="e.g. Basic, Premium, VIP" className="w-full bg-muted p-3 rounded-lg text-sm font-medium outline-none" /></div>
-                              <div className="space-y-2"><label className="text-sm font-bold">Price (0 = Free)</label><input type="number" value={tier.price} onChange={(e) => updateTier(tier.id, { price: Number(e.target.value) })} placeholder="0" className="w-full bg-muted p-3 rounded-lg text-sm font-medium outline-none" /></div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-bold">Currency</label>
+                                <div className="flex gap-2">
+                                  <button type="button" onClick={() => updateTier(tier.id, { currency: "RWF" })}
+                                    className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${(tier.currency || "RWF") === "RWF" ? "bg-orange-600 text-white" : "bg-muted text-muted-foreground border border-border"}`}>RWF</button>
+                                  <button type="button" onClick={() => updateTier(tier.id, { currency: "USD" })}
+                                    className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${tier.currency === "USD" ? "bg-orange-600 text-white" : "bg-muted text-muted-foreground border border-border"}`}>USD</button>
+                                </div>
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-bold">Price ({(tier.currency || "RWF") === "USD" ? "USD" : "RWF"})</label>
+                                <input type="number" min={0} value={(tier.currency || "RWF") === "USD" ? (tier.priceUSD ?? "") : (tier.price || "")}
+                                  onChange={(e) => updateTier(tier.id, (tier.currency || "RWF") === "USD" ? { priceUSD: Number(e.target.value) } : { price: Number(e.target.value) })}
+                                  placeholder={(tier.currency || "RWF") === "USD" ? "10" : "5000"}
+                                  className="w-full bg-muted p-3 rounded-lg text-sm font-medium outline-none" />
+                              </div>
+                              {tier.currency === "USD" && (
+                                <div className="space-y-2">
+                                  <label className="text-sm font-bold">Price (RWF)</label>
+                                  <input type="number" min={0} value={tier.price || ""}
+                                    onChange={(e) => updateTier(tier.id, { price: Number(e.target.value) })}
+                                    placeholder="RWF equivalent"
+                                    className="w-full bg-muted p-3 rounded-lg text-sm font-medium outline-none" />
+                                  <p className="text-[10px] text-muted-foreground mt-1">RWF equivalent for local payments</p>
+                                </div>
+                              )}
                               <div className="space-y-2"><label className="text-sm font-bold">Duration (minutes)</label><input type="number" value={tier.duration} onChange={(e) => updateTier(tier.id, { duration: Number(e.target.value) })} placeholder="30" className="w-full bg-muted p-3 rounded-lg text-sm font-medium outline-none" /></div>
                               <div className="space-y-2"><label className="text-sm font-bold">Access</label><select value={tier.access} onChange={(e) => updateTier(tier.id, { access: e.target.value as "public" | "supporters" })} className="w-full bg-muted p-3 rounded-lg text-sm font-medium outline-none"><option value="public">Anyone</option><option value="supporters">Supporters Only</option></select></div>
                             </div>
