@@ -27,6 +27,7 @@ import {
   type CommunityTier,
 } from "@/lib/communityService";
 import { PAYMENTS_WORKER_URL } from "@/lib/paymentsService";
+import { formatCurrency } from "@/types/currency";
 
 interface SubscribeModalProps {
   isOpen: boolean;
@@ -92,8 +93,9 @@ export function SubscribeModal({
         tierName: selectedTier.name,
         creatorId: creatorUid,
         creatorHandle,
-        amount: selectedTier.price,
+        amount: selectedTier.currency === "USD" && selectedTier.priceUSD ? selectedTier.priceUSD : selectedTier.price,
         interval: selectedTier.interval,
+        currency: selectedTier.currency || "RWF",
         paymentMethod,
         supporterId: user.uid,
       };
@@ -215,7 +217,7 @@ export function SubscribeModal({
                         />
                       </div>
                       <p className="text-2xl font-bold text-orange-600 mb-2">
-                        {tier.price.toLocaleString()} RWF
+                        {formatCurrency(tier.price, tier.currency || "RWF")}
                         <span className="text-xs font-normal text-muted-foreground ml-1">
                           /{tier.interval === "yearly" ? "year" : "month"}
                         </span>
@@ -250,12 +252,12 @@ export function SubscribeModal({
               <div className="bg-muted rounded-lg p-4">
                 <p className="text-xs text-muted-foreground mb-1">Selected Plan</p>
                 <p className="font-bold">{selectedTier.name}</p>
-                <p className="text-lg font-bold text-orange-600">
-                  {selectedTier.price.toLocaleString()} RWF
-                  <span className="text-xs font-normal text-muted-foreground ml-1">
-                    /{selectedTier.interval === "yearly" ? "year" : "month"}
-                  </span>
-                </p>
+                  <p className="text-lg font-bold text-orange-600">
+                    {formatCurrency(selectedTier.price, selectedTier.currency || "RWF")}
+                    <span className="text-xs font-normal text-muted-foreground ml-1">
+                      /{selectedTier.interval === "yearly" ? "year" : "month"}
+                    </span>
+                  </p>
               </div>
 
               <div>

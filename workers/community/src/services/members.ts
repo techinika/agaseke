@@ -12,6 +12,7 @@ export interface MemberInfo {
   subscribedAt: string;
   expiresAt: string;
   amount: number;
+  currency?: string;
   interval: string;
   autoRenew: boolean;
 }
@@ -35,6 +36,7 @@ export async function getMembers(
       subscribedAt: (data.subscribedAt as string) || "",
       expiresAt: (data.expiresAt as string) || "",
       amount: Number(data.amount) || 0,
+      currency: (data.currency as string) || "RWF",
       interval: (data.interval as string) || "monthly",
       autoRenew: !!data.autoRenew,
     };

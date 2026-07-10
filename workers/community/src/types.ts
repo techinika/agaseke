@@ -13,6 +13,8 @@ export interface TierData {
   name: string;
   description: string;
   price: number;
+  priceUSD?: number;
+  currency?: "RWF" | "USD";
   interval: "monthly" | "yearly";
   benefits: string[];
   isActive: boolean;
@@ -31,6 +33,7 @@ export interface SubscribeRequest {
   firstName?: string;
   lastName?: string;
   supporterId?: string;
+  currency?: string;
   request?: Request;
 }
 

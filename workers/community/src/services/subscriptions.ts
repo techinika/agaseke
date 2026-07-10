@@ -41,6 +41,7 @@ export async function initiateSubscription(
     paymentMethod: data.paymentMethod,
     autoRenew: true,
     amount: data.amount,
+            currency: (sub.currency as string) || "RWF",
     interval: data.interval,
     currentPeriodStart: now,
     currentPeriodEnd: periodEnd.toISOString(),
@@ -59,7 +60,7 @@ export async function initiateSubscription(
     communityTierId: data.tierId,
     communityInterval: data.interval,
     communitySubscriptionId: subscriptionId,
-    currency: "RWF",
+            currency: (sub.currency as string) || "RWF",
   };
 
   if (data.paymentMethod === "momo") {
@@ -266,7 +267,7 @@ export async function processRenewals(env: Env): Promise<void> {
             communityTierId: tierId,
             communityInterval: sub.interval,
             communitySubscriptionId: subId,
-            currency: "RWF",
+    currency: data.currency || "RWF",
           }),
         });
 

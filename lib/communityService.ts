@@ -8,6 +8,8 @@ export interface CommunityTier {
   name: string;
   description: string;
   price: number;
+  priceUSD?: number;
+  currency?: "RWF" | "USD";
   interval: "monthly" | "yearly";
   benefits: string[];
   isActive: boolean;
@@ -27,6 +29,7 @@ export interface SubscribeRequest {
   firstName?: string;
   lastName?: string;
   supporterId?: string;
+  currency?: string;
 }
 
 export interface SubscribeResponse {
@@ -46,6 +49,7 @@ export interface MemberInfo {
   subscribedAt: string;
   expiresAt: string;
   amount: number;
+  currency?: string;
   interval: string;
   autoRenew: boolean;
 }

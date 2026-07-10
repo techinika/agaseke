@@ -21,12 +21,15 @@ import { db } from "@/db/firebase";
 import { collection, getCountFromServer, doc, updateDoc, increment } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { getMySubscriptions } from "@/lib/communityService";
+import { formatCurrency } from "@/types/currency";
 
 interface CommunityTier {
   id: string;
   name: string;
   description: string;
   price: number;
+  priceUSD?: number;
+  currency?: string;
   interval: "monthly" | "yearly";
   benefits: string[];
   memberCount?: number;
@@ -190,7 +193,7 @@ export const CommunityTab = ({
               >
                 <h4 className="font-bold text-sm mb-1">{tier.name}</h4>
                 <p className="text-2xl font-bold text-orange-600 mb-2">
-                  {tier.price.toLocaleString()} RWF
+                  {formatCurrency(tier.price, tier.currency || "RWF")}
                   <span className="text-xs font-normal text-muted-foreground ml-1">
                     /{tier.interval === "yearly" ? "year" : "month"}
                   </span>

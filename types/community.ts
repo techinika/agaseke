@@ -3,6 +3,8 @@ export interface CommunityTier {
   name: string;
   description: string;
   price: number;
+  priceUSD?: number;
+  currency?: "RWF" | "USD";
   interval: "monthly" | "yearly";
   benefits: string[];
   isActive: boolean;
@@ -24,6 +26,7 @@ export interface Subscription {
   paymentMethod: "momo" | "card";
   autoRenew: boolean;
   amount: number;
+  currency?: string;
   interval: "monthly" | "yearly";
   currentPeriodStart: string;
   currentPeriodEnd: string;

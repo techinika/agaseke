@@ -29,6 +29,7 @@ import {
   type CommunityTier,
   type MemberInfo,
 } from "@/lib/communityService";
+import { formatCurrency } from "@/types/currency";
 
 interface CommunitySettings {
   enabled: boolean;
@@ -41,6 +42,7 @@ function emptyTier(): CommunityTier {
     name: "",
     description: "",
     price: 0,
+    currency: "RWF",
     interval: "monthly",
     benefits: [],
     isActive: true,
@@ -273,33 +275,88 @@ export default function CommunityPage() {
                         className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm"
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-4">
                       <div>
                         <label className="text-xs font-bold text-muted-foreground mb-1 block">
-                          Price
+                          Currency
                         </label>
-                        <input
-                          type="number"
-                          min={0}
-                          value={tier.price || ""}
-                          onChange={(e) => updateTier(idx, "price", Number(e.target.value))}
-                          placeholder="5000"
-                          className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm"
-                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => updateTier(idx, "currency", "RWF")}
+                            className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
+                              (tier.currency || "RWF") === "RWF"
+                                ? "bg-orange-600 text-white"
+                                : "bg-muted text-muted-foreground border border-border"
+                            }`}
+                          >
+                            RWF
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateTier(idx, "currency", "USD")}
+                            className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
+                              tier.currency === "USD"
+                                ? "bg-orange-600 text-white"
+                                : "bg-muted text-muted-foreground border border-border"
+                            }`}
+                          >
+                            USD
+                          </button>
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-xs font-bold text-muted-foreground mb-1 block">
-                          Interval
-                        </label>
-                        <select
-                          value={tier.interval}
-                          onChange={(e) => updateTier(idx, "interval", e.target.value)}
-                          className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm"
-                        >
-                          <option value="monthly">Monthly</option>
-                          <option value="yearly">Yearly</option>
-                        </select>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-xs font-bold text-muted-foreground mb-1 block">
+                            Price ({(tier.currency || "RWF") === "USD" ? "USD" : "RWF"})
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={(tier.currency || "RWF") === "USD" ? (tier.priceUSD ?? "") : (tier.price || "")}
+                            onChange={(e) =>
+                              updateTier(
+                                idx,
+                                (tier.currency || "RWF") === "USD" ? "priceUSD" : "price",
+                                Number(e.target.value)
+                              )
+                            }
+                            placeholder={(tier.currency || "RWF") === "USD" ? "10" : "5000"}
+                            className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-muted-foreground mb-1 block">
+                            Interval
+                          </label>
+                          <select
+                            value={tier.interval}
+                            onChange={(e) => updateTier(idx, "interval", e.target.value)}
+                            className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm"
+                          >
+                            <option value="monthly">Monthly</option>
+                            <option value="yearly">Yearly</option>
+                          </select>
+                        </div>
                       </div>
+                      {tier.currency === "USD" && (
+                        <div>
+                          <label className="text-xs font-bold text-muted-foreground mb-1 block">
+                            Price (RWF)
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={tier.price || ""}
+                            onChange={(e) => updateTier(idx, "price", Number(e.target.value))}
+                            placeholder="RWF equivalent"
+                            className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm"
+                          />
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            RWF equivalent for local payments
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -422,7 +479,7 @@ export default function CommunityPage() {
                             </span>
                           </td>
                           <td className="p-4 font-medium">
-                            {m.amount.toLocaleString()} RWF
+                            {formatCurrency(m.amount, m.currency || "RWF")}
                             <span className="text-muted-foreground text-xs ml-1">
                               /{m.interval === "yearly" ? "yr" : "mo"}
                             </span>
