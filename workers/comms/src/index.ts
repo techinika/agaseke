@@ -112,6 +112,23 @@ async function sendEmail(
     sentCount += batchIds.length;
     lastId = batchIds[batchIds.length - 1]?.id ?? lastId;
 
+    const now = new Date().toISOString();
+    const writes = batch.map((email, i) => {
+      const info = meta[email] ?? {};
+      return firestorePost(env, "sentEmails", {
+        fields: {
+          email: { stringValue: email },
+          resendId: { stringValue: batchIds[i]?.id ?? "" },
+          purpose: { stringValue: req.purpose },
+          subject: { stringValue: batchPayload[i]?.subject ?? "" },
+          recipientName: { stringValue: info.name || "" },
+          sentAt: { timestampValue: now },
+        },
+      });
+    });
+
+    await Promise.allSettled(writes);
+
     console.info(
       `Batch sent: purpose=${req.purpose}, batch=${batch.length}, sent=${sentCount}/${allRecipients.length}`,
     );
