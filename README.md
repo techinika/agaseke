@@ -21,12 +21,13 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - Product-specific coupons
   - Folders (product bundles) with bundle discounts
   - Order management and tracking
-  - **Order progress tracking**: Start Processing ΓåÆ Mark as Shipped ΓåÆ Mark as Delivered
+  - **Order progress tracking**: Start Processing → Mark as Shipped → Mark as Delivered
   - **Go back** to previous status if mistakes or delays
   - **Email notifications** sent to customers when order status changes
   - Platform fee payer option (buyer pays 10% extra or creator absorbs 10%)
   - Reopen cancelled orders
   - Create manual orders from dashboard
+  - **Dual-currency pricing**: Products can be priced in RWF or USD via currency toggle; `priceUSD` field for USD prices, `formatCurrency` for locale-aware display throughout the store
 - **Sales** (`/creator/sales`):
   - Real-time sales statistics (Total Sales, Your Earnings, Total Orders, Unique Buyers)
   - Recent Sales table with product images, buyer profile photos/emails, product type badges
@@ -453,7 +454,9 @@ interface Chatroom {
 interface Product {
   name: string;
   description: string;
-  price: number;
+  price: number;                   // RWF amount (always set)
+  priceUSD?: number;               // USD amount (when currency === "USD")
+  currency?: "RWF" | "USD";        // Pricing currency (defaults to RWF)
   type: "digital" | "physical";
   stock?: number;                  // For physical products
   imageUrl?: string;
@@ -620,6 +623,13 @@ MIT License - see LICENSE file for details.
 For issues or feature requests, please open an issue on GitHub.
 
 ## Recent Updates
+
+### Dual-Currency Store Pricing (July 2026)
+- **Product interface extended**: Added `currency?: "RWF" | "USD"` and `priceUSD?: number` to both `types/store.ts` and `components/parts/public/store/types.ts`.
+- **Currency selector in ProductModal**: New RWF/USD toggle on create/edit form; when USD is selected, shows both `priceUSD` (primary) and `price` (RWF equivalent) inputs.
+- **Helper functions**: `getProductCurrency(product)` returns the product's currency (defaulting to RWF), `getProductPrice(product)` returns the correct price field based on currency.
+- **Format all price displays**: Replaced every hardcoded `"RWF"` string with `formatCurrency(getProductPrice(p), getProductCurrency(p))` across 17 display components — ProductCard, ProductDetailModal, ProductDetailPage, CartModal, CheckoutModal, FolderCard, FolderExplorer, OrderTrackingModal, MyPurchasesModal, ProductsList, OrdersList, CreateOrderModal, FolderModal, FoldersList, CouponModal.
+- **Cart/checkout currency-aware**: `getItemPrice`/`getCartTotal` use `getProductPrice`; payment data sent to workers includes `currency` field; `CartModal`, `CheckoutModal`, and `FolderExplorer` accept a `currency` prop for formatted display.
 
 ### Homepage Renovation & Currency Fixes (July 2026)
 - **Hero redesigned**: Problem-first narrative ΓÇö "You're Working Hard. But the Money Isn't Coming." banner, followed by pain points (no Mobile Money support on global platforms, scattered tools, brands ignore small creators) and a "That changes now" pivot. Left column (3/5) has the copy + claim handle CTA + payment methods, right column (2/5) has fanned creator cards.
