@@ -29,6 +29,7 @@ export interface Env {
   APP_URL: string;
   ASSETS_URL: string;
   RESEND_API_KEY: string;
+  RESEND_WEBHOOK_SECRET?: string;
 }
 
 export interface CommsRequest {

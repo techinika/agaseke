@@ -1,4 +1,4 @@
-import type { EmailService, EmailAddresses, EmailTemplateData } from "../types";
+import type { EmailService, EmailAddresses, EmailTemplateData, Env } from "../types";
 import { fetchSupporters } from "./helpers";
 
 export const contentNew: EmailService = {

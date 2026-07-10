@@ -195,9 +195,9 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
 - **Storage**: Cloudinary (images, videos, files), Cloudflare R2 (asset uploads)
 - **File Uploads**: Cloudflare Worker (`workers/upload/`) ΓÇö Firebase JWT auth, R2 storage, Firestore metadata
 - **Payments**: PesaPal (Mobile Money), Paypack (Mobile Money)
-- **Email**: Cloudflare Worker (workers/comms/) ΓÇö native Email binding, 18 email purposes, unified template
+- **Email**: Cloudflare Worker (workers/comms/) ΓÇö Resend API, 19 email purposes, BCC for multi-recipient, unified template
 - **Community Subscriptions**: Cloudflare Worker (workers/community/) ΓÇö Firebase REST auth, tier management, subscription lifecycle, auto-renewals
-- **Email (legacy)**: API routes with Nodemailer/SMTP (being migrated to comms Worker)
+- **Email (legacy)**: API routes with Nodemailer/SMTP (migrated to comms Worker)
 
 ## Getting Started
 
@@ -308,7 +308,7 @@ agaseke/
 Γöé   ΓööΓöÇΓöÇ booking.ts                # Booking types
 Γö£ΓöÇΓöÇ workers/                       # Cloudflare Workers
 Γöé   Γö£ΓöÇΓöÇ upload/                   # File upload Worker (R2 + Firestore)
-Γöé   Γö£ΓöÇΓöÇ comms/                    # Email comms Worker (18 purposes, unified template)
+Γöé   Γö£ΓöÇΓöÇ comms/                    # Email comms Worker (Resend, 19 purposes, BCC, webhook)
 Γöé   Γö£ΓöÇΓöÇ payments/                 # Payments Worker (Momo + Card with Paypack/PesaPal)
 Γöé   ΓööΓöÇΓöÇ community/                # Community subscriptions Worker (tiers, subscriptions, renewals)
 ΓööΓöÇΓöÇ public/                      # Static assets

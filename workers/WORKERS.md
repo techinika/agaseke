@@ -25,12 +25,14 @@ All workers use dual-path authentication: **jose JWKS first** (correct `service_
 | `FIREBASE_PROJECT_ID`   | string | no     | Firebase project ID                                       |
 | `FIREBASE_CLIENT_EMAIL` | string | no     | Firebase service account email                            |
 | `FIREBASE_PRIVATE_KEY`  | string | yes    | Firebase service account private key                      |
-| `FROM_EMAIL`            | string | no     | Sender email address (e.g.`no-reply@agaseke.me`)        |
+| `FROM_EMAIL`            | string | no     | Sender email address (e.g.`no-reply@comms.agaseke.me`)  |
 | `FROM_NAME`             | string | no     | Sender display name (e.g.`Agaseke`)                     |
 | `APP_URL`               | string | no     | Base app URL for email links (e.g.`https://agaseke.me`) |
 | `ASSETS_URL`            | string | no     | Base URL for email asset URLs                             |
+| `RESEND_API_KEY`        | string | yes    | Resend API key for sending emails                         |
+| `RESEND_WEBHOOK_SECRET` | string | yes    | Resend webhook signing secret                             |
 
-**Binding:** `EMAIL` — Cloudflare Email Sending (`send_email`)
+**Webhook:** `POST /webhook` — Resend event receiver (bounces, deliveries, opens, clicks). Events persisted to Firestore `emailEvents` collection.
 
 ## agaseke-store
 

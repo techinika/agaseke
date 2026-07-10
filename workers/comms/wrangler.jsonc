@@ -1,17 +1,29 @@
 {
-  "$schema": "../../node_modules/wrangler/config-schema.json",
-  "name": "agaseke-comms",
-  "main": "src/index.ts",
-  "compatibility_date": "2026-07-06",
-  "keep_vars": true,
-  "compatibility_flags": ["nodejs_compat"],
-  "observability": {
-    "enabled": true
-  },
-  "vars": {
-    "FIREBASE_PROJECT_ID": "agaseke4creators",
-    "FROM_EMAIL": "no-reply@agaseke.me",
-    "FROM_NAME": "Agaseke",
-    "RESEND_API_KEY": ""
-  }
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"name": "agaseke-comms",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-07-06",
+	"keep_vars": true,
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"observability": {
+		"enabled": true,
+	},
+	"vars": {
+		"FIREBASE_PROJECT_ID": "agaseke4creators",
+		"FROM_EMAIL": "no-reply@comms.agaseke.me",
+		"FROM_NAME": "Agaseke",
+	},
+	"routes": [
+		{
+			"pattern": "comms.api.agaseke.me",
+			"zone_name": "agaseke.me",
+			"custom_domain": true,
+			"enabled": true,
+			"previews_enabled": false,
+		},
+	],
+	"workers_dev": true,
+	"preview_urls": true,
 }

@@ -1,12 +1,12 @@
 # Agaseke Comms Worker
 
-Cloudflare Worker that handles all transactional email sending. Authenticates via Firebase (jose JWKS first, Firebase REST fallback). Uses Cloudflare's native Email binding (`env.EMAIL`) — zero SMTP config, no API keys, automatic SPF/DKIM/DMARC management via Cloudflare DNS.
+Cloudflare Worker that handles all transactional email sending via Resend. Authenticates via Firebase (jose JWKS first, Firebase REST fallback).
 
 ## Architecture
 
 ```
 Client (browser + Firebase token)
-  │  POST { purpose, to, data }
+  │  POST { purpose, data }
   ▼
 Cloudflare Worker (agaseke-comms)
   │  1. Verify Firebase token (jose JWKS → Firebase REST fallback)
@@ -14,12 +14,12 @@ Cloudflare Worker (agaseke-comms)
   │  3. Resolve recipients (fetch from Firestore if needed)
   │  4. Build template data (service-specific)
   │  5. Render unified HTML template
-  │  6. Send via env.EMAIL.send()
+  │  6. Send via Resend API (BCC for multi-recipient)
   ▼
 Response: { success, messageId, purpose, recipientCount }
 ```
 
-## Email Purposes (18 services)
+## Email Purposes (19 services)
 
 | purpose              | Trigger                    | Recipient     | Subject                                        |
 |----------------------|----------------------------|---------------|------------------------------------------------|
@@ -43,15 +43,23 @@ Response: { success, messageId, purpose, recipientCount }
 | `verification_feedback`| Verification reviewed     | Creator       | Agaseke Verification Successful/Action Required|
 | `broadcast`          | Admin broadcast            | Bulk list     | Admin-provided subject                         |
 
+## Webhook
+
+The worker exposes `POST /webhook` for receiving Resend events (bounces, deliveries, opens, clicks, etc.).
+- Verifies payload signature using `RESEND_WEBHOOK_SECRET` via Resend SDK
+- Persists every event to Firestore `emailEvents` collection
+- Endpoint URL to configure in Resend dashboard: `https://comms.api.agaseke.me/webhook`
+
+Configure with:
+```bash
+npx wrangler secret put RESEND_WEBHOOK_SECRET
+```
+
+## Recipient Privacy
+
+When an email has multiple recipients (e.g. `gathering_created`, `content_new`, `broadcast`), all recipients are sent via BCC to prevent them from seeing each other's email addresses. Any CC fields from services or requests are also converted to BCC.
+
 ## Setup
-
-### Prerequisites
-
-- Cloudflare account with a domain (e.g. `agaseke.me`) added
-- Email Sending enabled for your domain:
-  ```bash
-  npx wrangler email sending enable agaseke.me
-  ```
 
 ### Environment Variables
 
@@ -63,10 +71,12 @@ All vars are managed in the **Cloudflare Dashboard** → Workers & Pages → `ag
 | `FIREBASE_PROJECT_ID` | no | Firebase project ID |
 | `FIREBASE_CLIENT_EMAIL` | no | Firebase service account email |
 | `FIREBASE_PRIVATE_KEY` | yes | Firebase service account private key |
-| `FROM_EMAIL` | no | Sender address (e.g. `no-reply@agaseke.me`) |
+| `FROM_EMAIL` | no | Sender address (e.g. `no-reply@comms.agaseke.me`) |
 | `FROM_NAME` | no | Sender name (e.g. `Agaseke`) |
 | `APP_URL` | no | Base app URL (e.g. `https://agaseke.me`) |
 | `ASSETS_URL` | no | Base URL for email assets |
+| `RESEND_API_KEY` | yes | Resend API key for sending emails |
+| `RESEND_WEBHOOK_SECRET` | yes | Resend webhook signing secret |
 
 ### Deploy
 
@@ -94,7 +104,6 @@ NEXT_PUBLIC_COMMS_WORKER_URL=https://comms.api.agaseke.me
 ```json
 {
   "purpose": "booking_request",
-  "to": "creator@example.com",
   "data": {
     "creatorName": "John",
     "bookerName": "Jane",
@@ -111,9 +120,20 @@ NEXT_PUBLIC_COMMS_WORKER_URL=https://comms.api.agaseke.me
 ```json
 {
   "success": true,
-  "messageId": "<message-id@yourdomain.com>",
+  "messageId": "<resend-email-id>",
   "purpose": "booking_request",
   "recipientCount": 1
+}
+```
+
+### POST /webhook
+
+Resend event receiver. Configure in Resend dashboard to point to `https://comms.api.agaseke.me/webhook`.
+
+**Response:**
+```json
+{
+  "received": true
 }
 ```
 
@@ -135,4 +155,4 @@ cd workers/comms
 npx wrangler dev --remote
 ```
 
-Use `--remote` so email sends are proxied to the real Cloudflare Email Service (local `wrangler dev` can't send emails without it).
+Use `--remote` so the Resend API can be reached from the worker.

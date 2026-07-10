@@ -1,4 +1,4 @@
-import type { EmailService, EmailAddresses, EmailTemplateData } from "../types";
+import type { EmailService, EmailAddresses, EmailTemplateData, Env } from "../types";
 import { fetchSupporters, fetchCreatorEmail } from "./helpers";
 
 export const gatheringCreated: EmailService = {
