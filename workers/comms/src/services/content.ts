@@ -4,8 +4,11 @@ import { fetchSupporters } from "./helpers";
 export const contentNew: EmailService = {
   purpose: "content_new",
   async resolveRecipients(data) {
-    const emails = await fetchSupporters(data.creatorId as string, data.env as Env);
-    return { to: emails };
+    const { emails, names } = await fetchSupporters(data.creatorId as string, data.env as Env);
+    return {
+      to: emails,
+      recipientMeta: Object.fromEntries(emails.map((e) => [e, { name: names[e] }])),
+    };
   },
   buildSubject(data) {
     return `New content from ${data.creatorName as string} on Agaseke!`;

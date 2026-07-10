@@ -59,29 +59,37 @@ async function firestoreFetch(env: Env, path: string): Promise<Record<string, un
   return res.json() as Promise<Record<string, unknown>>;
 }
 
-export async function fetchSupporters(creatorId: string, env: Env): Promise<string[]> {
-  if (!creatorId) return [];
+export async function fetchSupporters(
+  creatorId: string,
+  env: Env,
+): Promise<{ emails: string[]; names: Record<string, string> }> {
+  const empty = { emails: [], names: {} };
+  if (!creatorId) return empty;
 
   try {
     const data = await firestoreFetch(
       env,
       `supportedCreators?filter=creatorId=%22${creatorId}%22`
     );
-    if (!data) return [];
+    if (!data) return empty;
 
     const docs = data.documents as Array<{ fields?: Record<string, { stringValue?: string }> }> | undefined;
-    if (!docs) return [];
+    if (!docs) return empty;
 
     const emails: string[] = [];
+    const names: Record<string, string> = {};
     for (const doc of docs) {
-      if (doc.fields?.supporterEmail?.stringValue) {
-        emails.push(doc.fields.supporterEmail.stringValue);
+      const email = doc.fields?.supporterEmail?.stringValue;
+      if (email) {
+        emails.push(email);
+        const rawName = doc.fields?.supporterName?.stringValue;
+        names[email] = rawName || email.split("@")[0] || "there";
       }
     }
-    return emails;
+    return { emails, names };
   } catch (err) {
     console.error("fetchSupporters error:", err);
-    return [];
+    return empty;
   }
 }
 

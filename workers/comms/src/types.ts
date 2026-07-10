@@ -66,8 +66,14 @@ export interface EmailService {
   buildSubject(data: Record<string, unknown>): string;
 }
 
+export interface RecipientInfo {
+  name?: string;
+  handle?: string;
+}
+
 export interface EmailAddresses {
   to: string | string[];
   cc?: string | string[];
   bcc?: string | string[];
+  recipientMeta?: Record<string, RecipientInfo>;
 }

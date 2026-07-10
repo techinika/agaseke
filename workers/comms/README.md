@@ -55,6 +55,17 @@ Configure with:
 npx wrangler secret put RESEND_WEBHOOK_SECRET
 ```
 
+## Template Variables
+
+The following placeholders are automatically replaced per-recipient in email subject, body, and HTML:
+
+| Variable     | Replaced with                                  |
+|-------------|------------------------------------------------|
+| `[NAME]`    | Recipient's name (from profile, or email prefix) |
+| `[HANDLE]`  | Creator's handle/username                      |
+
+These work in all emails, including broadcasts. The replacement happens at send time so each recipient gets personalized content.
+
 ## Batch Sending
 
 All emails are sent via `resend.batch.send()` in chunks of 100, regardless of recipient count. Each recipient receives an individual email — no BCC needed, no recipient list exposure. This works seamlessly for 1 or 1000+ recipients.

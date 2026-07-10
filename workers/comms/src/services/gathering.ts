@@ -4,8 +4,11 @@ import { fetchSupporters, fetchCreatorEmail } from "./helpers";
 export const gatheringCreated: EmailService = {
   purpose: "gathering_created",
   async resolveRecipients(data) {
-    const emails = await fetchSupporters(data.creatorId as string, data.env as Env);
-    return { to: emails };
+    const { emails, names } = await fetchSupporters(data.creatorId as string, data.env as Env);
+    return {
+      to: emails,
+      recipientMeta: Object.fromEntries(emails.map((e) => [e, { name: names[e] }])),
+    };
   },
   buildSubject(data) {
     return `New gathering: ${data.gatheringTitle as string} by ${data.creatorName as string}`;

@@ -66,20 +66,40 @@ async function sendEmail(
   const subject = service.buildSubject(enrichedData);
   const from = `${env.FROM_NAME} <${env.FROM_EMAIL}>`;
 
-  const html = renderEmailHtml(templateData, appUrl, assetsUrl);
-  const text = renderEmailText(templateData.body, appUrl);
+  const creatorHandle = ((enrichedData as Record<string, unknown>).creatorHandle as string) || "";
+  const meta = addresses.recipientMeta ?? {};
+
+  const rawHtml = renderEmailHtml(templateData, appUrl, assetsUrl);
+  const rawText = renderEmailText(templateData.body, appUrl);
+  const rawSubject = subject;
 
   let sentCount = 0;
   let lastId: string | undefined;
 
   for (const batch of chunk(allRecipients, BATCH_SIZE)) {
-    const batchPayload = batch.map((email) => ({
-      from,
-      to: [email],
-      subject,
-      html,
-      text,
-    }));
+    const batchPayload = batch.map((email) => {
+      const info = meta[email] ?? {};
+      const name = info.name || email.split("@")[0] || "there";
+      const handle = info.handle || creatorHandle;
+
+      const personalHtml = rawHtml
+        .replace(/\[NAME\]/g, name)
+        .replace(/\[HANDLE\]/g, handle);
+      const personalText = rawText
+        .replace(/\[NAME\]/g, name)
+        .replace(/\[HANDLE\]/g, handle);
+      const personalSubject = rawSubject
+        .replace(/\[NAME\]/g, name)
+        .replace(/\[HANDLE\]/g, handle);
+
+      return {
+        from,
+        to: [email],
+        subject: personalSubject,
+        html: personalHtml,
+        text: personalText,
+      };
+    });
 
     const { data, error } = await resend.batch.send(batchPayload);
 
