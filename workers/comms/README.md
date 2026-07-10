@@ -14,7 +14,7 @@ Cloudflare Worker (agaseke-comms)
   │  3. Resolve recipients (fetch from Firestore if needed)
   │  4. Build template data (service-specific)
   │  5. Render unified HTML template
-  │  6. Send via Resend API (BCC for multi-recipient)
+  │  6. Send via Resend batch API (individual emails, 100 per call)
   ▼
 Response: { success, messageId, purpose, recipientCount }
 ```
@@ -55,9 +55,9 @@ Configure with:
 npx wrangler secret put RESEND_WEBHOOK_SECRET
 ```
 
-## Recipient Privacy
+## Batch Sending
 
-When an email has multiple recipients (e.g. `gathering_created`, `content_new`, `broadcast`), all recipients are sent via BCC to prevent them from seeing each other's email addresses. Any CC fields from services or requests are also converted to BCC.
+All emails are sent via `resend.batch.send()` in chunks of 100, regardless of recipient count. Each recipient receives an individual email — no BCC needed, no recipient list exposure. This works seamlessly for 1 or 1000+ recipients.
 
 ## Setup
 

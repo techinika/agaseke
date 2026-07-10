@@ -61,66 +61,40 @@ async function sendEmail(
   const reqCc = toArray(req.cc);
   const reqBcc = toArray(req.bcc);
 
+  const allRecipients = [...new Set([...toArr, ...ccArr, ...bccFromService, ...reqCc, ...reqBcc])];
+
   const subject = service.buildSubject(enrichedData);
   const from = `${env.FROM_NAME} <${env.FROM_EMAIL}>`;
 
   const html = renderEmailHtml(templateData, appUrl, assetsUrl);
   const text = renderEmailText(templateData.body, appUrl);
 
-  const allBcc = [...new Set([...ccArr, ...bccFromService, ...reqCc, ...reqBcc])];
-
-  const totalRecipients = toArr.length + allBcc.length;
-  const allRecipients = [...new Set([...toArr, ...allBcc])];
-
   let sentCount = 0;
   let lastId: string | undefined;
 
-  const useBatch = allRecipients.length > 50;
-
-  if (useBatch) {
-    for (const batch of chunk(allRecipients, BATCH_SIZE)) {
-      const batchPayload = batch.map((email) => ({
-        from,
-        to: [email],
-        subject,
-        html,
-        text,
-      }));
-
-      const { data, error } = await resend.batch.send(batchPayload);
-
-      if (error) {
-        console.error(`Resend batch error: purpose=${req.purpose}`, error);
-        throw new Error(error.message);
-      }
-
-      const batchIds: { id: string }[] = (data as unknown as { data: { id: string }[] })?.data ?? [];
-      sentCount += batchIds.length;
-      lastId = batchIds[batchIds.length - 1]?.id ?? lastId;
-
-      console.info(
-        `Batch sent: purpose=${req.purpose}, batch=${batch.length}, sent=${sentCount}/${allRecipients.length}`,
-      );
-    }
-  } else {
-    const sendParams = {
+  for (const batch of chunk(allRecipients, BATCH_SIZE)) {
+    const batchPayload = batch.map((email) => ({
       from,
-      to: toArr.length > 1 ? [env.FROM_EMAIL] : toArr,
-      bcc: toArr.length > 1 ? [...new Set([...toArr, ...allBcc])] : (allBcc.length ? allBcc : undefined),
+      to: [email],
       subject,
       html,
       text,
-    };
+    }));
 
-    const { data, error } = await resend.emails.send(sendParams);
+    const { data, error } = await resend.batch.send(batchPayload);
 
     if (error) {
-      console.error(`Resend error: purpose=${req.purpose}`, error);
+      console.error(`Resend batch error: purpose=${req.purpose}`, error);
       throw new Error(error.message);
     }
 
-    sentCount = totalRecipients;
-    lastId = data?.id;
+    const batchIds: { id: string }[] = (data as unknown as { data: { id: string }[] })?.data ?? [];
+    sentCount += batchIds.length;
+    lastId = batchIds[batchIds.length - 1]?.id ?? lastId;
+
+    console.info(
+      `Batch sent: purpose=${req.purpose}, batch=${batch.length}, sent=${sentCount}/${allRecipients.length}`,
+    );
   }
 
   console.info(
