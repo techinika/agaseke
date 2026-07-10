@@ -229,6 +229,7 @@ export default function PublicProfile({ username }: { username: string }) {
         setIsModalOpen={setIsModalOpen}
         currentUser={currentUser}
         bookingEnabled={creatorData?.bookingEnabled === true}
+        communityEnabled={creatorData?.communityEnabled === true}
       />
 
       <TabManager

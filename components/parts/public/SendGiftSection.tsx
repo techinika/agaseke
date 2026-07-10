@@ -7,6 +7,7 @@ import {
   LogIn,
   Share2,
   User,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -26,6 +27,7 @@ export const SendGiftSection = ({
   setIsModalOpen,
   currentUser,
   bookingEnabled,
+  communityEnabled,
 }: {
   name: string;
   socials: {
@@ -45,6 +47,7 @@ export const SendGiftSection = ({
   setIsModalOpen: any;
   currentUser: any;
   bookingEnabled?: boolean;
+  communityEnabled?: boolean;
 }) => {
   const pathname = usePathname();
   return (
@@ -146,6 +149,16 @@ export const SendGiftSection = ({
           >
             <Calendar size={16} className="text-orange-600" />
             Book a Meeting
+          </Link>
+        )}
+
+        {communityEnabled && (
+          <Link
+            href={`/${handle}/community`}
+            className="w-full mt-3 py-3 px-4 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-100"
+          >
+            <Users size={16} />
+            Join {name.split(" ")[0]}&apos;s Community
           </Link>
         )}
 
