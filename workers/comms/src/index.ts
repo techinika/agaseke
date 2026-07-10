@@ -25,6 +25,14 @@ function toArray(v: string | string[] | undefined | null): string[] {
   return (Array.isArray(v) ? v : [v]).filter(Boolean);
 }
 
+const BATCH_SIZE = 100;
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) result.push(arr.slice(i, i + size));
+  return result;
+}
+
 async function sendEmail(
   req: CommsRequest,
   env: Env,
@@ -61,40 +69,69 @@ async function sendEmail(
 
   const allBcc = [...new Set([...ccArr, ...bccFromService, ...reqCc, ...reqBcc])];
 
-  const sendParams: {
-    from: string;
-    to: string[];
-    bcc?: string[];
-    subject: string;
-    html: string;
-    text: string;
-  } = {
-    from,
-    to: toArr.length > 1 ? [env.FROM_EMAIL] : toArr,
-    bcc: toArr.length > 1 ? [...new Set([...toArr, ...allBcc])] : (allBcc.length ? allBcc : undefined),
-    subject,
-    html,
-    text,
-  };
+  const totalRecipients = toArr.length + allBcc.length;
+  const allRecipients = [...new Set([...toArr, ...allBcc])];
 
-  const { data, error } = await resend.emails.send(sendParams);
+  let sentCount = 0;
+  let lastId: string | undefined;
 
-  if (error) {
-    console.error(`Resend error: purpose=${req.purpose}`, error);
-    throw new Error(error.message);
+  const useBatch = allRecipients.length > 50;
+
+  if (useBatch) {
+    for (const batch of chunk(allRecipients, BATCH_SIZE)) {
+      const batchPayload = batch.map((email) => ({
+        from,
+        to: [email],
+        subject,
+        html,
+        text,
+      }));
+
+      const { data, error } = await resend.batch.send(batchPayload);
+
+      if (error) {
+        console.error(`Resend batch error: purpose=${req.purpose}`, error);
+        throw new Error(error.message);
+      }
+
+      const batchIds: { id: string }[] = (data as unknown as { data: { id: string }[] })?.data ?? [];
+      sentCount += batchIds.length;
+      lastId = batchIds[batchIds.length - 1]?.id ?? lastId;
+
+      console.info(
+        `Batch sent: purpose=${req.purpose}, batch=${batch.length}, sent=${sentCount}/${allRecipients.length}`,
+      );
+    }
+  } else {
+    const sendParams = {
+      from,
+      to: toArr.length > 1 ? [env.FROM_EMAIL] : toArr,
+      bcc: toArr.length > 1 ? [...new Set([...toArr, ...allBcc])] : (allBcc.length ? allBcc : undefined),
+      subject,
+      html,
+      text,
+    };
+
+    const { data, error } = await resend.emails.send(sendParams);
+
+    if (error) {
+      console.error(`Resend error: purpose=${req.purpose}`, error);
+      throw new Error(error.message);
+    }
+
+    sentCount = totalRecipients;
+    lastId = data?.id;
   }
 
-  const totalRecipients = toArr.length + allBcc.length;
-
   console.info(
-    `Email sent: purpose=${req.purpose}, to=${toArr.length}, cc/bcc=${allBcc.length}, emailId=${data?.id}`,
+    `Email sent: purpose=${req.purpose}, recipients=${allRecipients.length}, emailId=${lastId}`,
   );
 
   return {
     success: true,
-    messageId: data?.id,
+    messageId: lastId,
     purpose: req.purpose,
-    recipientCount: totalRecipients,
+    recipientCount: allRecipients.length,
   };
 }
 
