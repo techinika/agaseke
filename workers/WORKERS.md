@@ -34,6 +34,8 @@ All workers use dual-path authentication: **jose JWKS first** (correct `service_
 
 **Webhook:** `POST /webhook` — Resend event receiver (bounces, deliveries, opens, clicks). Events persisted to Firestore `emailEvents` collection.
 
+**Sent archive:** Every email is logged to Firestore `sentEmails` collection with recipient, subject, purpose, and Resend ID.
+
 ## agaseke-store
 
 | Variable                  | Type   | Secret | Description                          |

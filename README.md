@@ -324,6 +324,8 @@ agaseke/
 | `profiles` | User profile data |
 | `supportedCreators` | Support transactions (creatorId, amount, supporterId) |
 | `activityLogs` | Platform activity logs for admin monitoring |
+| `sentEmails` | Archive of all transactional emails sent via comms Worker |
+| `emailEvents` | Resend webhook events (bounces, deliveries, opens, clicks) |
 
 ### Messaging
 

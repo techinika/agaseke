@@ -70,6 +70,19 @@ These work in all emails, including broadcasts. The replacement happens at send 
 
 All emails are sent via `resend.batch.send()` in chunks of 100, regardless of recipient count. Each recipient receives an individual email — no BCC needed, no recipient list exposure. This works seamlessly for 1 or 1000+ recipients.
 
+## Sent Email Archive
+
+Every sent email is persisted to the `sentEmails` Firestore collection after delivery, with:
+
+| Field | Description |
+|---|---|
+| `email` | Recipient email address |
+| `resendId` | Resend email ID from the send response |
+| `purpose` | Email purpose identifier |
+| `subject` | Rendered subject line (with personalization applied) |
+| `recipientName` | Recipient's name (if available) |
+| `sentAt` | ISO timestamp of when the email was sent |
+
 ## Setup
 
 ### Environment Variables
