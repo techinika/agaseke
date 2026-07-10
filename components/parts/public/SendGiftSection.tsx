@@ -142,16 +142,6 @@ export const SendGiftSection = ({
           </div>
         </button>
 
-        {bookingEnabled && (
-          <Link
-            href={`/${handle}/booking`}
-            className="w-full mt-3 py-3 px-4 border border-border rounded-lg text-muted-foreground font-medium text-sm hover:bg-muted transition-all flex items-center justify-center gap-2"
-          >
-            <Calendar size={16} className="text-orange-600" />
-            Book a Meeting
-          </Link>
-        )}
-
         {communityEnabled && (
           <Link
             href={`/${handle}/community`}
@@ -159,6 +149,16 @@ export const SendGiftSection = ({
           >
             <Users size={16} />
             Join {name.split(" ")[0]}&apos;s Community
+          </Link>
+        )}
+
+        {bookingEnabled && (
+          <Link
+            href={`/${handle}/booking`}
+            className="w-full mt-3 py-3 px-4 border border-slate-200 rounded-lg text-muted-foreground font-medium text-sm hover:bg-muted transition-all flex items-center justify-center gap-2"
+          >
+            <Calendar size={16} className="text-orange-600" />
+            Book a Meeting
           </Link>
         )}
 
