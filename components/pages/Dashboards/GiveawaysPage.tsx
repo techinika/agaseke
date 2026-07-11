@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   Gift,
   Plus,
@@ -50,7 +51,6 @@ export default function GiveawaysPage() {
   const [giveaways, setGiveaways] = useState<Giveaway[]>([]);
   const [entries, setEntries] = useState<Record<string, GiveawayEntry[]>>({});
   const [loading, setLoading] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
   const [editingGiveaway, setEditingGiveaway] = useState<Giveaway | null>(null);
   const [selectedGiveaway, setSelectedGiveaway] = useState<Giveaway | null>(
     null,
@@ -270,12 +270,12 @@ export default function GiveawaysPage() {
           </button>
           <h1 className="text-xl font-bold uppercase">Giveaways</h1>
         </div>
-        <button
-          onClick={() => setIsCreating(true)}
+        <Link
+          href="/creator/giveaways/new"
           className="bg-orange-600 text-white px-6 py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:bg-orange-700 transition shadow-lg"
         >
           <Plus size={18} /> New Giveaway
-        </button>
+        </Link>
       </aside>
 
       <main className="flex-1 p-8">
@@ -294,12 +294,12 @@ export default function GiveawaysPage() {
                 <p className="text-muted-foreground text-sm mt-2">
                   Create your first giveaway to engage your audience
                 </p>
-                <button
-                  onClick={() => setIsCreating(true)}
-                  className="mt-4 bg-orange-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-orange-700 transition"
+                <Link
+                  href="/creator/giveaways/new"
+                  className="mt-4 inline-block bg-orange-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-orange-700 transition"
                 >
                   Create Giveaway
-                </button>
+                </Link>
               </div>
             ) : (
               <div className="space-y-4">
@@ -409,15 +409,12 @@ export default function GiveawaysPage() {
         </div>
       </main>
 
-      {(isCreating || editingGiveaway) && (
+      {editingGiveaway && (
         <GiveawayModal
           giveaway={editingGiveaway}
           creatorId={creator?.uid || ""}
           creatorName={creator?.name || ""}
-          onClose={() => {
-            setIsCreating(false);
-            setEditingGiveaway(null);
-          }}
+          onClose={() => setEditingGiveaway(null)}
         />
       )}
 

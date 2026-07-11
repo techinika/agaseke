@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Gathering, type EventType } from "./types";
+import { formatCurrency } from "@/types/currency";
 
 const EVENT_TYPE_CONFIG: Record<
   string,
@@ -101,7 +102,7 @@ export function GatheringCard({
             })()}
             {(gathering.ticketPrice ?? 0) > 0 && (
               <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
-                {(gathering.ticketPrice ?? 0).toLocaleString()} RWF
+                {formatCurrency(gathering.currency === "USD" && gathering.priceUSD ? gathering.priceUSD : (gathering.ticketPrice ?? 0), gathering.currency || "RWF")}
               </span>
             )}
           </div>
@@ -168,7 +169,7 @@ export function GatheringCard({
                 ? `${gathering.capacity - (gathering.attendeesCount || 0)} spots left`
                 : gathering.eventType === "ticketed" ||
                     (gathering.ticketPrice ?? 0) > 0
-                  ? `Buy ticket for ${(gathering.ticketPrice ?? 0).toLocaleString()} RWF`
+                  ? `Buy ticket for ${formatCurrency(gathering.currency === "USD" && gathering.priceUSD ? gathering.priceUSD : (gathering.ticketPrice ?? 0), gathering.currency || "RWF")}`
                   : gathering.eventType === "supporters" ||
                       gathering.eventType === "supporters_tiered" ||
                       (gathering.minSupportTier ?? 0) > 0

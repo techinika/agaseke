@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   Building2,
   Plus,
@@ -48,7 +49,6 @@ export default function PartnersPage() {
   const { creator } = useAuth();
   const [partners, setPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
   const [editingPartner, setEditingPartner] = useState<Partner | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [deletingPartnerId, setDeletingPartnerId] = useState<string | null>(
@@ -122,15 +122,12 @@ export default function PartnersPage() {
           </button>
           <h1 className="text-xl font-bold uppercase">Partners</h1>
         </div>
-        <button
-          onClick={() => {
-            setEditingPartner(null);
-            setShowModal(true);
-          }}
+        <Link
+          href="/creator/partners/new"
           className="bg-orange-600 text-white px-6 py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:bg-orange-700 transition shadow-lg"
         >
           <Plus size={18} /> Add Partner
-        </button>
+        </Link>
       </aside>
 
       <main className="flex-1 p-8">
@@ -151,12 +148,12 @@ export default function PartnersPage() {
             <p className="text-muted-foreground text-sm mt-2">
               Add brands and businesses you collaborate with
             </p>
-            <button
-              onClick={() => setShowModal(true)}
-              className="mt-4 bg-orange-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-orange-700 transition"
+            <Link
+              href="/creator/partners/new"
+              className="mt-4 inline-block bg-orange-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-orange-700 transition"
             >
               Add Your First Partner
-            </button>
+            </Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -224,10 +221,7 @@ export default function PartnersPage() {
                       {partner.featured ? "Unfeature" : "Feature"}
                     </button>
                     <button
-                      onClick={() => {
-                        setEditingPartner(partner);
-                        setShowModal(true);
-                      }}
+                      onClick={() => setEditingPartner(partner)}
                       className="p-2 text-muted-foreground hover:text-muted-foreground border border-border-strong rounded-lg transition"
                     >
                       <Edit size={14} />
@@ -246,14 +240,11 @@ export default function PartnersPage() {
         )}
       </main>
 
-      {showModal && (
+      {editingPartner && (
         <PartnerModal
           partner={editingPartner}
           creatorId={creator?.uid || ""}
-          onClose={() => {
-            setShowModal(false);
-            setEditingPartner(null);
-          }}
+          onClose={() => setEditingPartner(null)}
         />
       )}
 

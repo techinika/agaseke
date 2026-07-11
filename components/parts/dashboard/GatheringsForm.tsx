@@ -11,6 +11,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/logger";
 import type { EventType } from "@/components/parts/public/gatherings/types";
+import { formatCurrency } from "@/types/currency";
 
 interface GatheringsFormProps {
   gatheringId?: string;
@@ -39,6 +40,8 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
     eventType: "public" as EventType,
     minSupportTier: 0,
     ticketPrice: 0,
+    priceUSD: 0,
+    currency: "RWF" as "RWF" | "USD",
     supporterPrice: 0,
     capacity: 20,
     active: true,
@@ -64,6 +67,8 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
           eventType: data.eventType || guessEventType(data),
           minSupportTier: data.minSupportTier || 0,
           ticketPrice: data.ticketPrice || 0,
+          priceUSD: data.priceUSD || 0,
+          currency: data.currency || "RWF",
           supporterPrice: data.supporterPrice || 0,
           capacity: data.capacity || 0,
           active: data.status === "Upcoming",
@@ -103,6 +108,8 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
         eventType: formData.eventType,
         minSupportTier: formData.eventType === "supporters_tiered" ? formData.minSupportTier : 0,
         ticketPrice: formData.eventType === "ticketed" ? formData.ticketPrice : 0,
+        priceUSD: formData.eventType === "ticketed" && formData.currency === "USD" ? formData.priceUSD : 0,
+        currency: formData.eventType === "ticketed" ? formData.currency : "RWF",
         supporterPrice: formData.eventType === "ticketed" ? formData.supporterPrice : 0,
         capacity: formData.capacity || 0,
         creatorId: creator.uid,
@@ -265,19 +272,71 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
-                  Ticket Price (RWF)
+                  Currency
                 </label>
-                <input
-                  type="number"
-                  placeholder="e.g. 10000"
-                  value={formData.ticketPrice || ""}
-                  onChange={(e) => setFormData({ ...formData, ticketPrice: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-muted p-4 rounded-xl text-sm outline-none font-bold focus:ring-2 focus:ring-orange-100"
-                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, currency: "RWF" })}
+                    className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
+                      formData.currency === "RWF"
+                        ? "bg-orange-600 text-white"
+                        : "bg-muted text-muted-foreground border border-border"
+                    }`}
+                  >
+                    RWF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, currency: "USD" })}
+                    className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
+                      formData.currency === "USD"
+                        ? "bg-orange-600 text-white"
+                        : "bg-muted text-muted-foreground border border-border"
+                    }`}
+                  >
+                    USD
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
-                  Supporter Discount (RWF) <span className="text-orange-500">optional</span>
+                  Ticket Price ({formData.currency === "USD" ? "USD" : "RWF"})
+                </label>
+                <input
+                  type="number"
+                  placeholder={formData.currency === "USD" ? "e.g. 10" : "e.g. 10000"}
+                  value={formData.currency === "USD" ? (formData.priceUSD || "") : (formData.ticketPrice || "")}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    ...(formData.currency === "USD"
+                      ? { priceUSD: parseInt(e.target.value) || 0 }
+                      : { ticketPrice: parseInt(e.target.value) || 0 }
+                    ),
+                  })}
+                  className="w-full bg-muted p-4 rounded-xl text-sm outline-none font-bold focus:ring-2 focus:ring-orange-100"
+                />
+              </div>
+              {formData.currency === "USD" && (
+                <div>
+                  <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
+                    Ticket Price (RWF)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="RWF equivalent"
+                    value={formData.ticketPrice || ""}
+                    onChange={(e) => setFormData({ ...formData, ticketPrice: parseInt(e.target.value) || 0 })}
+                    className="w-full bg-muted p-4 rounded-xl text-sm outline-none font-bold focus:ring-2 focus:ring-orange-100"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    RWF equivalent for local payments
+                  </p>
+                </div>
+              )}
+              <div>
+                <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
+                  Supporter Discount ({formData.currency === "USD" ? "USD" : "RWF"}) <span className="text-orange-500">optional</span>
                 </label>
                 <input
                   type="number"

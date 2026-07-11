@@ -10,6 +10,8 @@ export interface Gathering {
   capacity?: number;
   minSupportTier?: number;
   ticketPrice?: number;
+  priceUSD?: number;
+  currency?: string;
   attendeesCount?: number;
   creatorId: string;
   status?: string;

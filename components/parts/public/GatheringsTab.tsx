@@ -24,6 +24,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { GatheringCard, PastGatheringCard } from "./gatherings";
 import type { Gathering } from "./gatherings";
+import { formatCurrency } from "@/types/currency";
 import { logError, logInfo } from "@/lib/logger";
 import { QRCodeCanvas } from "qrcode.react";
 
@@ -320,7 +321,8 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
     }
     setPaying(true);
     try {
-      const amount = gathering.ticketPrice || 0;
+      const currency = gathering.currency || "RWF";
+      const amount = currency === "USD" && gathering.priceUSD ? gathering.priceUSD : (gathering.ticketPrice || 0);
       let ref: string;
       if (payMethod === "momo") {
         const data = await initiateMomoPayment({
@@ -333,6 +335,7 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
           attendeeName: profile.displayName || user.email || undefined,
           attendeeEmail: user.email || undefined,
           includeReferral: false,
+          currency,
         });
         ref = data.ref;
       } else {
@@ -348,6 +351,7 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
           attendeeName: profile.displayName || user.email || undefined,
           attendeeEmail: user.email || undefined,
           includeReferral: false,
+          currency,
         });
         ref = data.merchant_reference || data.ref;
         if (data.redirect_url) {
@@ -472,7 +476,7 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
           </div>
           <div className="bg-muted/50 rounded-xl border border-border p-4">
             <p className="text-sm text-muted-foreground">
-              A minimum contribution of {Math.min(...lockedGatherings.map(g => g.minSupportTier || 0))} RWF is required to unlock exclusive gatherings.
+              A minimum contribution of {formatCurrency(Math.min(...lockedGatherings.map(g => g.minSupportTier || 0)), "RWF")} is required to unlock exclusive gatherings.
             </p>
           </div>
         </div>
@@ -516,7 +520,7 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
               <div className="bg-muted p-4 rounded-lg">
                 <p className="text-sm text-muted-foreground">Event</p>
                 <p className="font-bold">{payingGathering.title}</p>
-                <p className="text-2xl font-bold text-orange-600 mt-2">{payingGathering.ticketPrice?.toLocaleString()} RWF</p>
+                <p className="text-2xl font-bold text-orange-600 mt-2">{formatCurrency(payingGathering.currency === "USD" && payingGathering.priceUSD ? payingGathering.priceUSD : (payingGathering.ticketPrice || 0), payingGathering.currency || "RWF")}</p>
               </div>
 
               <div className="flex gap-2">
@@ -554,7 +558,7 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
                 className="w-full py-4 bg-orange-600 text-white rounded-xl font-bold text-lg hover:bg-orange-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {paying ? <Loader size={20} className="animate-spin" /> : null}
-                {paying ? "Processing..." : `Pay ${payingGathering.ticketPrice?.toLocaleString()} RWF`}
+                {paying ? "Processing..." : `Pay ${formatCurrency(payingGathering.currency === "USD" && payingGathering.priceUSD ? payingGathering.priceUSD : (payingGathering.ticketPrice || 0), payingGathering.currency || "RWF")}`}
               </button>
             </div>
           </div>
