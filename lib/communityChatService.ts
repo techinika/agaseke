@@ -77,7 +77,7 @@ export async function ensureChatExists(
       lastMessageAt: null,
       lastSenderName: "",
       memberCount: 0,
-    }).catch(() => {});
+    }).catch((err) => { console.error("Failed to ensure chat exists", err); });
   }
 }
 

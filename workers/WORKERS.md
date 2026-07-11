@@ -115,12 +115,14 @@ All workers use dual-path authentication: **jose JWKS first** (correct `service_
 
 ## agaseke-general
 
-General-purpose utility worker handling encryption, decryption, and other basic server-side operations. Serves at `api.agaseke.me`.
+General-purpose utility worker handling encryption, decryption, error logging, notifications, and other server-side operations. Serves at `api.agaseke.me`.
 
 | Variable | Type | Secret | Description |
 |---|---|---|---|
 | `FIREBASE_API_KEY` | string | yes | Firebase Web API key |
 | `FIREBASE_PROJECT_ID` | string | no | Firebase project ID (`agaseke4creators`) |
+| `FIREBASE_CLIENT_EMAIL` | string | no | Firebase service account email |
+| `FIREBASE_PRIVATE_KEY` | string | yes | Firebase service account private key |
 | `ENCRYPTION_KEY` | string | yes | AES-256-GCM encryption key (SHA-256 derived) |
 | `INTERNAL_AUTH_SECRET` | string | yes | Shared secret for internal proxied requests |
 
@@ -128,9 +130,13 @@ General-purpose utility worker handling encryption, decryption, and other basic 
 - `POST /api/general/encrypt` — Encrypt text with AES-256-GCM
 - `POST /api/general/decrypt` — Decrypt text with AES-256-GCM
 - `POST /api/general/is-encrypted` — Check if string is encrypted
+- `POST /api/general/log-error` — Write error log to Firestore `activityLogs` (no auth, rate-limited)
+- `POST /api/general/notification` — Create in-app notification (Firebase auth, rate-limited)
 - `GET /health` — Health check
 
-**Auth:** Firebase Bearer token (jose JWKS first, Firebase REST fallback), or `X-Internal-Auth` header for legacy Next.js proxy routes.
+**Auth:** Firebase Bearer token (jose JWKS first, Firebase REST fallback), or `X-Internal-Auth` header for internal proxied requests.
+
+**Rate limiting:** All endpoints (except /health) are rate-limited per client IP via in-memory sliding window. /api/general/log-error allows 10 req/min; authenticated endpoints allow 20-30 req/min.
 
 ## Shared vars (across all workers)
 

@@ -72,7 +72,7 @@ export default function CreatorSettings() {
         const q = query(collection(db, "categories"), orderBy("createdAt", "desc"));
         const snap = await getDocs(q);
         setCategories(snap.docs.map((d) => d.data().name || "").filter(Boolean));
-      } catch { /* silently fail */ }
+      } catch (e) { console.error("Failed to fetch categories", e); }
     };
     fetchCategories();
   }, []);
@@ -88,7 +88,7 @@ export default function CreatorSettings() {
         setCountries(countriesSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
         setCurrencies(currenciesSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
         setCountryCurrencies(mappingsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      } catch { /* silently fail */ }
+      } catch (e) { console.error("Failed to fetch countries/currencies", e); }
     };
     fetchData();
   }, []);

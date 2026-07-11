@@ -158,7 +158,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
       setAttendanceDocId(docRef.id);
       updateDoc(doc(db, "creatorGatherings", gathering.id), {
         attendeesCount: (gathering.attendeesCount || 0) + 1,
-      }).catch(() => {});
+      }).catch((err) => { console.error("Failed to update attendees count", err); });
       setIsRsvped(true);
 
       logInfo("gathering", `RSVP confirmed for gathering: "${gathering.title}"`, {
@@ -177,7 +177,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
         gatheringTitle: gathering.title,
         gatheringDate: gathering.date,
         gatheringTime: gathering.time,
-      }).catch(() => {});
+      }).catch((err) => { console.error("Failed to send RSVP email", err); });
 
       toast.success("RSVP confirmed!");
     } catch (e) {

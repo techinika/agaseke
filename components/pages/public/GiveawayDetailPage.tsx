@@ -56,7 +56,7 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
           const es = await getDocs(eq);
           setParticipating(es.docs.some(d => d.data().giveawayId === giveawayId));
         }
-      } catch (e) { console.error(e); }
+      } catch (e) { console.error("Failed to load giveaway", e); toast.error("Failed to load giveaway"); }
       finally { setLoading(false); }
     };
     fetch();

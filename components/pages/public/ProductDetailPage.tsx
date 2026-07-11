@@ -52,7 +52,7 @@ export default function ProductDetailPage({ username, productId }: { username: s
             setFileUrl((found.data() as any).items?.[0]?.fileUrl);
           }
         }
-      } catch (e) { console.error(e); }
+      } catch (e) { console.error("Failed to load product", e); toast.error("Failed to load product"); }
       finally { setLoading(false); }
     };
     fetch();

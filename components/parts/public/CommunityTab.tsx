@@ -100,7 +100,7 @@ export const CommunityTab = ({
     if (!user) return;
     getMySubscriptions().then((subs) => {
       setSubscribedTierIds(new Set(subs.filter((s) => s.status === "active").map((s) => s.tierId)));
-    }).catch(() => {});
+    }).catch((err) => { console.error("Failed to fetch subscriptions", err); });
   }, [user]);
 
   const allPosts = isSupporter
@@ -149,7 +149,7 @@ export const CommunityTab = ({
           if (!postId || viewedPosts.current.has(postId)) continue;
           viewedPosts.current.add(postId);
           const postRef = doc(db, "creatorContent", postId);
-          updateDoc(postRef, { views: increment(1) }).catch(() => {});
+          updateDoc(postRef, { views: increment(1) }).catch((err) => { console.error("Failed to update view count", err); });
         }
       },
       { threshold: 0.3 },

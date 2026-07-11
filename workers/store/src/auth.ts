@@ -57,7 +57,7 @@ async function verifyWithFirebaseREST(
 ): Promise<{ uid: string; email: string | null } | Response> {
   try {
     const url = `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`;
-    console.log("Calling Firebase REST:", url.replace(apiKey, "***"));
+    
 
     const res = await fetch(url, {
       method: "POST",
@@ -66,7 +66,6 @@ async function verifyWithFirebaseREST(
     });
 
     const errText = await res.text();
-    console.log("Firebase REST response:", res.status, errText);
 
     if (!res.ok) {
       let structuredErr;
@@ -97,9 +96,8 @@ async function verifyWithJose(
 ): Promise<{ uid: string; email: string | null } | Response> {
   try {
     const header = decodeProtectedHeader(idToken);
-    console.log("Token header:", JSON.stringify(header));
   } catch (e) {
-    console.log("Failed to decode token header:", e);
+    console.error("Failed to decode token header:", e);
   }
 
   try {
@@ -107,7 +105,7 @@ async function verifyWithJose(
       issuer: `https://securetoken.google.com/${projectId}`,
       audience: projectId,
     });
-    console.log("Verified with Firebase JWKS");
+    
     return { uid: payload.sub as string, email: (payload.email as string) || null };
   } catch (err: any) {
     return unauthorized(origin, `Jose verification failed: ${err.message}`, err);
@@ -131,10 +129,8 @@ export async function requireAuth(
 
   const joseResult = await verifyWithJose(idToken, projectId, origin);
   if (!(joseResult instanceof Response)) {
-    console.log("Jose verification succeeded");
     return joseResult;
   }
 
-  console.log("Jose failed, falling back to Firebase REST API...");
   return verifyWithFirebaseREST(idToken, apiKey, origin);
 }

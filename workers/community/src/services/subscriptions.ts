@@ -41,7 +41,7 @@ export async function initiateSubscription(
     paymentMethod: data.paymentMethod,
     autoRenew: true,
     amount: data.amount,
-            currency: (sub.currency as string) || "RWF",
+            currency: data.currency || "RWF",
     interval: data.interval,
     currentPeriodStart: now,
     currentPeriodEnd: periodEnd.toISOString(),
@@ -60,7 +60,7 @@ export async function initiateSubscription(
     communityTierId: data.tierId,
     communityInterval: data.interval,
     communitySubscriptionId: subscriptionId,
-            currency: (sub.currency as string) || "RWF",
+            currency: data.currency || "RWF",
   };
 
   if (data.paymentMethod === "momo") {
@@ -217,7 +217,7 @@ export async function processRenewals(env: Env): Promise<void> {
         message: `Your ${tierName} subscription has ended. Renew to keep your benefits and community access.`,
         link: `/${creatorHandle}/community`,
         metadata: { subscriptionId: subId, tierId, status: "expired" },
-      }).catch(() => {});
+      }).catch((err) => { console.error("Failed to create subscription expired notification", err); });
 
       await logActivity(env, "info", "community", `Subscription ${subId} auto-expired`, {
         userId,
@@ -238,7 +238,7 @@ export async function processRenewals(env: Env): Promise<void> {
         message: `Your ${tierName} subscription expires in ${daysLeft} day${daysLeft === 1 ? "" : "s"}. Renew to keep access.`,
         link: `/${creatorHandle}/community`,
         metadata: { subscriptionId: subId, tierId, expiresAt: expiresAt.toISOString(), daysLeft },
-      }).catch(() => {});
+      }).catch((err) => { console.error("Failed to create subscription expiring notification", err); });
 
       await firestoreSet(env, `communitySubscriptions/${subId}`, convertToFields({
         ...sub,
@@ -281,7 +281,7 @@ export async function processRenewals(env: Env): Promise<void> {
             message: `We couldn't renew your ${tierName} subscription. Update your payment method to keep access.`,
             link: `/${creatorHandle}/community`,
             metadata: { subscriptionId: subId, tierId, error: errText.slice(0, 200) },
-          }).catch(() => {});
+          }).catch((err) => { console.error("Failed to create renewal failed notification", err); });
         }
       } catch (err) {
         console.error(`Renewal error for ${subId}:`, err);

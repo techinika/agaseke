@@ -33,6 +33,9 @@ import { GatheringsTab } from "../parts/public/GatheringsTab";
 import { Building2, ExternalLink } from "lucide-react";
 import { normalizeSocialUrl } from "@/lib/urlUtils";
 
+const GENERAL_WORKER_URL =
+  process.env.NEXT_PUBLIC_GENERAL_WORKER_URL || "http://localhost:8787";
+
 export default function PublicProfile({ username }: { username: string }) {
   const { user: currentUser, isLoggedIn, isCreator } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -77,7 +80,7 @@ export default function PublicProfile({ username }: { username: string }) {
         }
       } catch (error) {
         console.error("Error fetching creator:", error);
-        fetch("/api/log-error", {
+        fetch(`${GENERAL_WORKER_URL}/api/general/log-error`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -185,7 +188,7 @@ export default function PublicProfile({ username }: { username: string }) {
     sessionStorage.setItem(key, "1");
     viewCounted.current = true;
     const creatorRef = doc(db, "creators", username);
-    updateDoc(creatorRef, { views: increment(1) }).catch(() => {});
+    updateDoc(creatorRef, { views: increment(1) }).catch((err) => { console.error("Failed to update view count", err); });
   }, [username]);
 
   if (loading) return <Loading />;

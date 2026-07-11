@@ -16,11 +16,14 @@ interface ErrorContentProps {
   reset: () => void;
 }
 
+const GENERAL_WORKER_URL =
+  process.env.NEXT_PUBLIC_GENERAL_WORKER_URL || "http://localhost:8787";
+
 const ErrorContent = ({ error, reset }: ErrorContentProps) => {
   const router = useRouter();
 
   useEffect(() => {
-    fetch("/api/log-error", {
+    fetch(`${GENERAL_WORKER_URL}/api/general/log-error`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -34,7 +37,7 @@ const ErrorContent = ({ error, reset }: ErrorContentProps) => {
           userAgent: window.navigator.userAgent,
         },
       }),
-    }).catch(console.error);
+    }).catch(() => {});
   }, [error]);
 
   return (

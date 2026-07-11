@@ -501,7 +501,7 @@ export default function SupporterSpace() {
             if (item) {
               updateDoc(doc(db, "creatorContent", postId), {
                 views: increment(1),
-              }).catch(() => {});
+              }).catch((err) => { console.error("Failed to update view count", err); });
               setFeed((prev) =>
                 prev.map((f) =>
                   f.id === postId ? { ...f, views: (f.views || 0) + 1 } : f,

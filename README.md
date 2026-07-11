@@ -1,4 +1,4 @@
-﻿# Agaseke
+# Agaseke
 
 Agaseke is a comprehensive content monetization platform built with Next.js 16, Firebase, and TypeScript. It empowers creators to build communities, share exclusive content, sell merchandise and digital products, and earn revenue through subscriptions, tips, and direct sales.
 
@@ -195,10 +195,13 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
 - **Authentication**: Firebase Auth
 - **Storage**: Cloudinary (images, videos, files), Cloudflare R2 (asset uploads)
 - **File Uploads**: Cloudflare Worker (`workers/upload/`) ΓÇö Firebase JWT auth, R2 storage, Firestore metadata
-- **Payments**: PesaPal (Mobile Money), Paypack (Mobile Money)
-- **Email**: Cloudflare Worker (workers/comms/) ΓÇö Resend batch API, 19 email purposes, unified template
-- **Community Subscriptions**: Cloudflare Worker (workers/community/) ΓÇö Firebase REST auth, tier management, subscription lifecycle, auto-renewals
-- **Email (legacy)**: API routes with Nodemailer/SMTP (migrated to comms Worker)
+- **Payments**: Cloudflare Worker (`workers/payments/`) ΓÇö PesaPal (Card), Paypack (Mobile Money)
+- **Bookings**: Cloudflare Worker (`workers/bookings/`) ΓÇö Booking lifecycle, payment callbacks, Firestore
+- **Store**: Cloudflare Worker (`workers/store/`) ΓÇö Store callbacks, digital download authorization
+- **Support**: Cloudflare Worker (`workers/support/`) ΓÇö Support payment callbacks, status queries
+- **Email**: Cloudflare Worker (`workers/comms/`) ΓÇö Resend batch API, 19 email purposes, unified template
+- **Community Subscriptions**: Cloudflare Worker (`workers/community/`) ΓÇö Firebase REST auth, tier management, subscription lifecycle, auto-renewals
+- **General Utility**: Cloudflare Worker (`workers/general/`) ΓÇö Encryption/decryption, error logging, notifications, rate-limited endpoints
 
 ## Getting Started
 
@@ -309,9 +312,13 @@ agaseke/
 Γöé   ΓööΓöÇΓöÇ booking.ts                # Booking types
 Γö£ΓöÇΓöÇ workers/                       # Cloudflare Workers
 Γöé   Γö£ΓöÇΓöÇ upload/                   # File upload Worker (R2 + Firestore)
-Γöé   Γö£ΓöÇΓöÇ comms/                    # Email comms Worker (Resend, 19 purposes, BCC, webhook)
+Γöé   Γö£ΓöÇΓöÇ comms/                    # Email comms Worker (Resend, 19 purposes, webhook)
 Γöé   Γö£ΓöÇΓöÇ payments/                 # Payments Worker (Momo + Card with Paypack/PesaPal)
-Γöé   ΓööΓöÇΓöÇ community/                # Community subscriptions Worker (tiers, subscriptions, renewals)
+Γöé   Γö£ΓöÇΓöÇ bookings/                 # Bookings Worker (create, respond, callback, availability)
+Γöé   Γö£ΓöÇΓöÇ store/                    # Store Worker (callbacks, digital downloads, status)
+Γöé   Γö£ΓöÇΓöÇ support/                  # Support Worker (payment callbacks, status)
+Γöé   Γö£ΓöÇΓöÇ community/                # Community subscriptions Worker (tiers, subscriptions, renewals)
+Γöé   ΓööΓöÇΓöÇ general/                  # General utility Worker (encryption, error logging, notifications)
 ΓööΓöÇΓöÇ public/                      # Static assets
 ```
 
@@ -888,3 +895,19 @@ For issues or feature requests, please open an issue on GitHub.
 - **Community button on public profile**: Added "Join {name}'s Community" button below the support button on `SendGiftSection.tsx`, matching the booking button in size (`w-full mt-3 py-3 px-4`) with a distinct emerald color scheme (`bg-emerald-600 text-white`). Passes `communityEnabled` from the `PublicProfile` page to conditionally render when tiered community subscriptions are enabled. Links to `/{handle}/community` for subscription management.
 - **Dual-currency community tier pricing**: Added `currency` and `priceUSD` fields to the `CommunityTier` interface across all type definitions (`types/community.ts`, `lib/communityService.ts`, `workers/community/src/types.ts`). Dashboard tier editor now has an RWF/USD currency toggle with conditional `priceUSD` input (and RWF equivalent field when USD is selected). Worker tiers service (`tiers.ts`) passes currency to Firestore on save and maps it on read. Worker subscriptions service (`subscriptions.ts`) uses tier currency in payment body instead of hardcoded `"RWF"`, and the subscription document stores the currency for renewal use. Public display uses `formatCurrency()` in `CommunityTab.tsx` and `SubscribeModal.tsx`. Members table in dashboard shows formatted currency via `formatCurrency()`.
 - **Dual-currency booking tier pricing**: Added `currency` and `priceUSD` fields to `BookingTier` and `currency` to `BookingRequest`/`CreateBookingRequest`/`BookingDocument`. Dashboard tier editor (`BookingsPage.tsx`) has RWF/USD currency toggle with conditional `priceUSD` input and RWF equivalent field. Booking worker `create.ts` reads tier currency and passes it through to Firestore booking doc and SQS payment body. Public booking page (`BookingPage.tsx`) displays prices with `formatCurrency()` and sends currency in `createBooking` payload. PayClient displays amounts with `formatCurrency()` and passes `currency` in payment initiation payload.
+
+### API Route Migration & General Worker (July 2026)
+- **Removed old Next.js API routes**: `app/api/log-error/route.ts` and `app/api/comms/post/notification/route.ts` deleted. Replaced by general worker endpoints.
+- **General worker endpoints**: `POST /api/general/log-error` (no auth, writes to Firestore `activityLogs`) and `POST /api/general/notification` (Firebase auth, creates in-app notifications).
+- **All client callers updated** (7 components + ErrorContent) to call the general worker directly.
+- **New env vars**: `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` for Firestore OAuth2 token generation.
+
+### Worker Security & Rate Limiting (July 2026)
+- **Rate limiting added to all 8 workers**: IP-based sliding window rate limiter per endpoint. Limits: 10 req/min (payment/booking create) to 60 req/min (tier reads). 429 responses include `Retry-After` header.
+- **Timing-safe comparisons**: SHA-256 + `crypto.subtle.timingSafeEqual` for X-Internal-Auth and webhook HMAC verification.
+- **CORS fallback fix**: Workers echo origin instead of falling back to ALLOWED_ORIGINS[0].
+- **Generic error messages**: All workers return `"Internal server error"` instead of leaking details.
+- **Firestore query injection fix**: URL-encoded query parameters in comms worker.
+- **Base64 upload validation**: Size check before decode, preventing OOM crashes.
+- **Console.log removed** from auth.ts across all workers.
+- **33 empty catch blocks filled** with console.error logging.

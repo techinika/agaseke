@@ -11,6 +11,7 @@ import { respondToBooking } from "./services/respond";
 import { checkDateAvailability } from "./services/availability";
 import { handleBookingCallback } from "./services/callback";
 import { logActivity } from "./logger";
+import { checkRateLimit } from "./rateLimit";
 
 function json(data: unknown, status = 200, origin?: string | null): Response {
   return new Response(JSON.stringify(data), {
@@ -24,6 +25,28 @@ function json(data: unknown, status = 200, origin?: string | null): Response {
 
 function badRequest(message: string, origin?: string | null): Response {
   return json({ error: message }, 400, origin);
+}
+
+function getClientIp(request: Request): string {
+  return request.headers.get("CF-Connecting-IP") ||
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "unknown";
+}
+
+function isRateLimited(request: Request, maxRequests = 30, windowMs = 60000): Response | null {
+  const ip = getClientIp(request);
+  const path = new URL(request.url).pathname;
+  const result = checkRateLimit(`${ip}:${path}`, maxRequests, windowMs);
+  if (!result.allowed) {
+    return new Response(JSON.stringify({ error: "Too many requests" }), {
+      status: 429,
+      headers: {
+        "content-type": "application/json",
+        "retry-after": String(Math.ceil((result.resetAt - Date.now()) / 1000)),
+      },
+    });
+  }
+  return null;
 }
 
 export default {
@@ -45,6 +68,8 @@ export default {
     }
 
     if (url.pathname === "/api/bookings/callback") {
+      const limited = isRateLimited(request, 30, 60000);
+      if (limited) return limited;
       const authHeader = request.headers.get("X-Internal-Auth");
       if (!authHeader || authHeader !== env.INTERNAL_AUTH_SECRET) {
         return json({ error: "Unauthorized" }, 401, origin);
@@ -65,6 +90,8 @@ export default {
       if (auth instanceof Response) return auth;
 
       if (url.pathname === "/api/bookings/create") {
+        const limited = isRateLimited(request, 10, 60000);
+        if (limited) return limited;
         const body = (await request.json()) as CreateBookingRequest;
         body.bookerId = auth.uid;
         const result = await createBooking(env, body, auth);
@@ -75,6 +102,8 @@ export default {
       }
 
       if (url.pathname === "/api/bookings/respond") {
+        const limited = isRateLimited(request, 10, 60000);
+        if (limited) return limited;
         const body = (await request.json()) as RespondBookingRequest;
         const result = await respondToBooking(env, body, auth);
         if (!result.success) {
@@ -85,6 +114,8 @@ export default {
       }
 
       if (url.pathname === "/api/bookings/availability") {
+        const limited = isRateLimited(request, 30, 60000);
+        if (limited) return limited;
         const body = (await request.json()) as AvailabilityRequest;
         if (!body.creatorHandle) {
           return badRequest("Missing required field: creatorHandle", origin);

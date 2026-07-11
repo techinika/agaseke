@@ -145,7 +145,7 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
           gatheringTime: formData.time,
           gatheringLocation: formData.location,
           gatheringDescription: formData.description,
-        }).catch(() => {});
+        }).catch((err) => { console.error("Failed to send gathering created email", err); });
       }
 
       router.push("/creator/gatherings");

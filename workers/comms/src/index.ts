@@ -5,6 +5,29 @@ import type { Env, CommsRequest, CommsResponse } from "./types";
 import { getService } from "./services";
 import { renderEmailHtml, renderEmailText } from "./template";
 import { firestorePost } from "./firestore";
+import { checkRateLimit } from "./rateLimit";
+
+function getClientIp(request: Request): string {
+  return request.headers.get("CF-Connecting-IP") ||
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "unknown";
+}
+
+function isRateLimited(request: Request, maxRequests = 30, windowMs = 60000): Response | null {
+  const ip = getClientIp(request);
+  const path = new URL(request.url).pathname;
+  const result = checkRateLimit(`${ip}:${path}`, maxRequests, windowMs);
+  if (!result.allowed) {
+    return new Response(JSON.stringify({ error: "Too many requests" }), {
+      status: 429,
+      headers: {
+        "content-type": "application/json",
+        "retry-after": String(Math.ceil((result.resetAt - Date.now()) / 1000)),
+      },
+    });
+  }
+  return null;
+}
 
 function json(data: unknown, status = 200, origin?: string | null): Response {
   return new Response(JSON.stringify(data), {
@@ -200,10 +223,14 @@ export default {
     }
 
     if (url.pathname === "/webhook") {
+      const limited = isRateLimited(request, 30, 60000);
+      if (limited) return limited;
       return handleWebhook(request, env);
     }
 
     try {
+      const limited = isRateLimited(request, 20, 60000);
+      if (limited) return limited;
       const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
       if (auth instanceof Response) return auth;
 

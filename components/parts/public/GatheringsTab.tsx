@@ -202,7 +202,7 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
 
       updateDoc(doc(db, "creatorGatherings", gathering.id), {
         attendeesCount: (gathering.attendeesCount || 0) + 1,
-      }).catch(() => {});
+      }).catch((err) => { console.error("Failed to update attendees count", err); });
 
       setRsvpedIds((prev) => new Set(prev).add(gathering.id));
 
@@ -222,7 +222,7 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
         gatheringTitle: gathering.title,
         gatheringDate: gathering.date,
         gatheringTime: gathering.time,
-      }).catch(() => {});
+      }).catch((err) => { console.error("Failed to send RSVP email", err); });
 
       toast.success("RSVP confirmed!");
     } catch (error) {
@@ -245,6 +245,7 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
 
   const payingRef = useRef(false);
   const userRef = useRef(user);
+  const paymentTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     payingRef.current = paying;
@@ -253,6 +254,12 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
   useEffect(() => {
     userRef.current = user;
   }, [user]);
+
+  useEffect(() => {
+    return () => {
+      if (paymentTimeoutRef.current) clearTimeout(paymentTimeoutRef.current);
+    };
+  }, []);
 
   const listenForTransaction = useCallback((ref: string, gathering: Gathering) => {
     const txRef = collection(db, "transactions");
@@ -291,7 +298,8 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
         unsub();
       }
     });
-    setTimeout(() => {
+    if (paymentTimeoutRef.current) clearTimeout(paymentTimeoutRef.current);
+    paymentTimeoutRef.current = setTimeout(() => {
       unsub();
       if (payingRef.current) {
         setPaying(false);

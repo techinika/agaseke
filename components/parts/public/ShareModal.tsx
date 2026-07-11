@@ -2,7 +2,7 @@
 "use client";
 
 import { CheckCircle2, Copy, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export const ShareModal = ({
   setIsShareModalOpen,
@@ -14,12 +14,19 @@ export const ShareModal = ({
   username: string;
 }) => {
   const [copySuccess, setCopySuccess] = useState(false);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const profileUrl = `https://agaseke.me/${username}`;
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    };
+  }, []);
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(profileUrl);
       setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+      copyTimeoutRef.current = setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
       console.error("Failed to copy!", err);
     }

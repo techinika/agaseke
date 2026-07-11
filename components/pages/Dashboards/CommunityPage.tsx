@@ -80,7 +80,7 @@ export default function CommunityPage() {
 
   useEffect(() => {
     if (!creator?.handle || !settings.enabled) return;
-    getCommunityMembers(creator.handle).then(setMembers).catch(() => {});
+    getCommunityMembers(creator.handle).then(setMembers).catch((err) => { console.error("Failed to fetch community members", err); });
   }, [creator?.handle, settings.enabled]);
 
   const updateTier = (index: number, field: string, value: any) => {

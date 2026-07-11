@@ -185,7 +185,7 @@ export default function GatheringsPage() {
         eventDate: activeEvent.date,
         eventTime: activeEvent.time,
         eventLocation: activeEvent.location,
-      }).catch(() => {});
+      }).catch((err) => { console.error("Failed to send check-in email", err); });
 
       logActivity({
         level: "success",
@@ -229,7 +229,7 @@ export default function GatheringsPage() {
         creatorName: creator?.name,
         eventTitle: activeEvent.title,
         eventDate: activeEvent.date,
-      }).catch(() => {});
+      }).catch((err) => { console.error("Failed to send declined email", err); });
 
       logActivity({
         level: "warning",
@@ -275,7 +275,7 @@ export default function GatheringsPage() {
         eventTitle: activeEvent?.title,
         eventDate: activeEvent?.date,
         action: `undo_${previousStatus}`,
-      }).catch(() => {});
+      }).catch((err) => { console.error("Failed to send undo email", err); });
 
       logActivity({
         level: "info",

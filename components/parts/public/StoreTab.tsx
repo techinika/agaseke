@@ -34,8 +34,11 @@ import type { Product, FolderData, CartItem, Order } from "./store";
 import { getProductCurrency, getProductPrice } from "./store/types";
 import { formatCurrency } from "@/types/currency";
 
+const GENERAL_WORKER_URL =
+  process.env.NEXT_PUBLIC_GENERAL_WORKER_URL || "http://localhost:8787";
+
 function logErrorToServer(message: string, metadata?: Record<string, unknown>) {
-  fetch("/api/log-error", {
+  fetch(`${GENERAL_WORKER_URL}/api/general/log-error`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

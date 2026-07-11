@@ -56,6 +56,7 @@ export default function DashboardLayout({
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [feedback, setFeedback] = useState({ referralLikelihood: 0, loveScale: 0, message: "" });
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!creator?.handle) return;
@@ -106,11 +107,18 @@ export default function DashboardLayout({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    };
+  }, []);
+
   const copyLink = () => {
     if (!creator?.handle) return;
     navigator.clipboard.writeText(`agaseke.me/${creator.handle}`);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
   };
 
   const handleFeedbackSubmit = async (e: React.FormEvent) => {

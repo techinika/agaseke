@@ -9,6 +9,29 @@ import {
   extFromMime,
 } from "./types";
 import { createAssetDocument } from "./firestore";
+import { checkRateLimit } from "./rateLimit";
+
+function getClientIp(request: Request): string {
+  return request.headers.get("CF-Connecting-IP") ||
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "unknown";
+}
+
+function isRateLimited(request: Request, maxRequests = 30, windowMs = 60000): Response | null {
+  const ip = getClientIp(request);
+  const path = new URL(request.url).pathname;
+  const result = checkRateLimit(`${ip}:${path}`, maxRequests, windowMs);
+  if (!result.allowed) {
+    return new Response(JSON.stringify({ error: "Too many requests" }), {
+      status: 429,
+      headers: {
+        "content-type": "application/json",
+        "retry-after": String(Math.ceil((result.resetAt - Date.now()) / 1000)),
+      },
+    });
+  }
+  return null;
+}
 
 function json(data: unknown, status = 200, origin?: string | null): Response {
   return new Response(JSON.stringify(data), {
@@ -252,6 +275,14 @@ async function handleBase64Upload(
 
     const detectedType = matches[1];
     const base64 = matches[2];
+    const maxImageMB = parseInt(env.MAX_IMAGE_SIZE_MB || "20");
+    const maxImageBytes = maxImageMB * 1024 * 1024;
+
+    // Estimate decoded size: base64 is ~4/3 of binary
+    if ((base64.length * 3) / 4 > maxImageBytes) {
+      return json({ error: `File too large. Maximum size is ${maxImageMB}MB.` }, 400, origin);
+    }
+
     const binaryStr = atob(base64);
     const bytes = new Uint8Array(binaryStr.length);
     for (let i = 0; i < binaryStr.length; i++) {
@@ -303,17 +334,6 @@ async function handleBase64Upload(
     return json({ error: message }, 500, origin);
   }
 }
-
-/** Cloudflare Image Resizing – re-encodes JPEG/PNG to WebP at edge.
- *  Requires Image Resizing subscription on the zone. No-op otherwise. */
-async function optimizeWithCfImage(
-  buffer: ArrayBuffer,
-  contentType: string,
-  env: Env,
-): Promise<{ buffer: ArrayBuffer; contentType: string } | null> {
-  return null;
-}
-
 function deriveBaseUrl(request: Request): string {
   const url = new URL(request.url);
   return `${url.protocol}//${url.hostname}${url.port ? `:${url.port}` : ""}`;
@@ -334,6 +354,8 @@ export default {
 
     try {
       if (request.method === "POST") {
+        const limited = isRateLimited(request, 10, 60000);
+        if (limited) return limited;
         return await handleUpload(request, env);
       }
 
@@ -346,9 +368,8 @@ export default {
         origin,
       );
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Internal error";
       console.error("Worker error:", request.method, request.url, err);
-      return json({ error: message }, 500, origin);
+      return json({ error: "Internal server error" }, 500, origin);
     }
   },
 };

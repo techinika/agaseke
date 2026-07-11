@@ -53,6 +53,7 @@ export function SubscribeModal({
   const [step, setStep] = useState<"browse" | "payment" | "processing" | "success" | "error">("browse");
   const [errorMessage, setErrorMessage] = useState("");
   const processingRef = useRef<string | null>(null);
+  const paymentTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!isOpen || !creatorHandle) return;
@@ -73,8 +74,21 @@ export function SubscribeModal({
       setPhone("");
       setErrorMessage("");
       processingRef.current = null;
+      if (paymentTimeoutRef.current) {
+        clearTimeout(paymentTimeoutRef.current);
+        paymentTimeoutRef.current = null;
+      }
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (paymentTimeoutRef.current) {
+        clearTimeout(paymentTimeoutRef.current);
+        paymentTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   const handleSubscribe = async () => {
     if (!selectedTier || !paymentMethod || !user) return;
@@ -135,7 +149,8 @@ export function SubscribeModal({
         }
       );
 
-      setTimeout(() => {
+      if (paymentTimeoutRef.current) clearTimeout(paymentTimeoutRef.current);
+      paymentTimeoutRef.current = setTimeout(() => {
         unsub();
         if (processingRef.current === subId && step === "processing") {
           setErrorMessage("Payment confirmation timed out. Check your transactions.");

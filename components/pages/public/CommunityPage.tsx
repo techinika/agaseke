@@ -21,6 +21,9 @@ import { CommunityTab } from "@/components/parts/public/CommunityTab";
 import { SubscribeModal } from "@/components/parts/public/SubscribeModal";
 import Loading from "@/app/loading";
 
+const GENERAL_WORKER_URL =
+  process.env.NEXT_PUBLIC_GENERAL_WORKER_URL || "http://localhost:8787";
+
 interface CommunityPageProps {
   username: string;
 }
@@ -94,7 +97,7 @@ export default function CommunityPage({ username }: CommunityPageProps) {
         setPublicPosts(publicList);
       } catch (error) {
         console.error("Error fetching public posts:", error);
-        fetch("/api/log-error", {
+        fetch(`${GENERAL_WORKER_URL}/api/general/log-error`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -136,7 +139,7 @@ export default function CommunityPage({ username }: CommunityPageProps) {
         }
       } catch (error) {
         console.error("Error checking support status:", error);
-        fetch("/api/log-error", {
+        fetch(`${GENERAL_WORKER_URL}/api/general/log-error`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Package, Download, X, Loader } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -56,6 +56,13 @@ export function MyPurchasesModal({
     })
     .flat();
 
+  const downloadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (downloadTimeoutRef.current) clearTimeout(downloadTimeoutRef.current);
+    };
+  }, []);
+
   const handleDownload = async (productId: string) => {
     setDownloadingProduct(productId);
     try {
@@ -63,7 +70,8 @@ export function MyPurchasesModal({
     } catch (e) {
       toast.error((e as Error).message);
     }
-    setTimeout(() => setDownloadingProduct(null), 1000);
+    if (downloadTimeoutRef.current) clearTimeout(downloadTimeoutRef.current);
+    downloadTimeoutRef.current = setTimeout(() => setDownloadingProduct(null), 1000);
   };
 
   return (

@@ -335,7 +335,7 @@ export default function StorePage() {
           items: order.items,
           total: order.total,
           trackingNumber: order.trackingNumber,
-        }).catch(() => {});
+        }).catch((err) => { console.error("Failed to send store status email", err); });
       }
     } catch (error) {
       toast.error("Failed to update order");

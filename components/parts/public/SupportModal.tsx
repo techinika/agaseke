@@ -76,6 +76,8 @@ export function SupportModal({
   }, [creatorId]);
 
   const unsubscribeRef = useRef<(() => void) | null>(null);
+  const supportTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -98,6 +100,8 @@ export function SupportModal({
   useEffect(() => {
     return () => {
       if (unsubscribeRef.current) unsubscribeRef.current();
+      if (supportTimeoutRef.current) clearTimeout(supportTimeoutRef.current);
+      if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
     };
   }, []);
 
@@ -168,7 +172,7 @@ export function SupportModal({
         }
       });
 
-      setTimeout(() => {
+      supportTimeoutRef.current = setTimeout(() => {
         if (unsubscribeRef.current) {
           unsubscribeRef.current();
           setStep("error");
@@ -185,7 +189,8 @@ export function SupportModal({
   const handleClose = () => {
     if (unsubscribeRef.current) unsubscribeRef.current();
     setIsClosing(true);
-    setTimeout(() => {
+    if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+    closeTimeoutRef.current = setTimeout(() => {
       setIsClosing(false);
       onClose();
     }, 250);

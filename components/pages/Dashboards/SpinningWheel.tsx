@@ -28,6 +28,7 @@ export default function SpinningWheel({
   const [spinNumber, setSpinNumber] = useState(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number | undefined>(undefined);
+  const winnerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const wheelColors = [
     "#ea580c", // orange-600
@@ -128,6 +129,7 @@ export default function SpinningWheel({
 
   const spinWheel = async () => {
     if (spinning) return;
+    if (winnerTimeoutRef.current) clearTimeout(winnerTimeoutRef.current);
     setSpinning(true);
 
     const selectedParticipant = participants[Math.floor(Math.random() * participants.length)];
@@ -166,7 +168,7 @@ export default function SpinningWheel({
         setSpinNumber(prev => prev + 1);
         
         // Show winner for 2 seconds before allowing next spin
-        setTimeout(() => {
+        winnerTimeoutRef.current = setTimeout(() => {
           setCurrentWinner(null);
         }, 2000);
       }
@@ -204,6 +206,7 @@ export default function SpinningWheel({
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
+      if (winnerTimeoutRef.current) clearTimeout(winnerTimeoutRef.current);
     };
   }, []);
 

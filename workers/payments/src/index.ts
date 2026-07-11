@@ -5,6 +5,7 @@ import { initiateMomoPayment } from "./services/momo";
 import { initiateCardPayment } from "./services/card";
 import { handlePaypackWebhook, handlePesapalIPN } from "./services/webhooks";
 import { logActivity } from "./logger";
+import { checkRateLimit } from "./rateLimit";
 
 function json(data: unknown, status = 200, origin?: string | null): Response {
   return new Response(JSON.stringify(data), {
@@ -15,6 +16,28 @@ function json(data: unknown, status = 200, origin?: string | null): Response {
 
 function badRequest(message: string, origin?: string | null): Response {
   return json({ error: message }, 400, origin);
+}
+
+function getClientIp(request: Request): string {
+  return request.headers.get("CF-Connecting-IP") ||
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "unknown";
+}
+
+function isRateLimited(request: Request, maxRequests = 30, windowMs = 60000): Response | null {
+  const ip = getClientIp(request);
+  const path = new URL(request.url).pathname;
+  const result = checkRateLimit(`${ip}:${path}`, maxRequests, windowMs);
+  if (!result.allowed) {
+    return new Response(JSON.stringify({ error: "Too many requests" }), {
+      status: 429,
+      headers: {
+        "content-type": "application/json",
+        "retry-after": String(Math.ceil((result.resetAt - Date.now()) / 1000)),
+      },
+    });
+  }
+  return null;
 }
 
 export default {
@@ -33,6 +56,8 @@ export default {
       }
 
       if (path === "/api/payments/webhooks/paypack" && request.method === "POST") {
+        const limited = isRateLimited(request, 20, 60000);
+        if (limited) return limited;
         const body = await request.text();
         const signature = request.headers.get("x-paypack-signature");
         const result = await handlePaypackWebhook(env, body, signature);
@@ -40,6 +65,8 @@ export default {
       }
 
       if (path === "/api/payments/webhooks/pesapal" && request.method === "POST") {
+        const limited = isRateLimited(request, 20, 60000);
+        if (limited) return limited;
         const body = (await request.json()) as PesapalIPNPayload;
         const result = await handlePesapalIPN(env, body);
         return json(result, 200, origin);
@@ -53,12 +80,16 @@ export default {
       if (auth instanceof Response) return auth;
 
       if (path === "/api/payments/momo/initiate") {
+        const limited = isRateLimited(request, 10, 60000);
+        if (limited) return limited;
         const body = (await request.json()) as MomoInitRequest;
         const result = await initiateMomoPayment(env, body, auth.uid);
         return json(result, 200, origin);
       }
 
       if (path === "/api/payments/card/initiate") {
+        const limited = isRateLimited(request, 10, 60000);
+        if (limited) return limited;
         const body = (await request.json()) as CardInitRequest;
         const result = await initiateCardPayment(env, body, auth.uid);
         return json(result, 200, origin);
@@ -72,7 +103,7 @@ export default {
         path: url.pathname,
         method: request.method,
         error: err instanceof Error ? err.message : String(err),
-      }).catch(() => {});
+      }).catch((logErr) => { console.error("Failed to log activity", logErr); });
       return json({ error: message }, 500, origin);
     }
   },

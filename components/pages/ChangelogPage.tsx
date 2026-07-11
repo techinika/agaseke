@@ -51,7 +51,7 @@ export default function ChangelogPage() {
         })) as ChangelogEntry[];
         setEntries(data);
       })
-      .catch(() => {})
+      .catch((err) => { console.error("Failed to fetch changelog entries", err); })
       .finally(() => setLoading(false));
   }, []);
 

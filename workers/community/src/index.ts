@@ -10,6 +10,7 @@ import {
   processRenewals,
 } from "./services/subscriptions";
 import { logActivity } from "./logger";
+import { checkRateLimit } from "./rateLimit";
 
 function json(data: unknown, status = 200, origin?: string | null): Response {
   return new Response(JSON.stringify(data), {
@@ -19,6 +20,28 @@ function json(data: unknown, status = 200, origin?: string | null): Response {
       ...corsHeaders(origin || null),
     },
   });
+}
+
+function getClientIp(request: Request): string {
+  return request.headers.get("CF-Connecting-IP") ||
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "unknown";
+}
+
+function isRateLimited(request: Request, maxRequests = 30, windowMs = 60000): Response | null {
+  const ip = getClientIp(request);
+  const path = new URL(request.url).pathname;
+  const result = checkRateLimit(`${ip}:${path}`, maxRequests, windowMs);
+  if (!result.allowed) {
+    return new Response(JSON.stringify({ error: "Too many requests" }), {
+      status: 429,
+      headers: {
+        "content-type": "application/json",
+        "retry-after": String(Math.ceil((result.resetAt - Date.now()) / 1000)),
+      },
+    });
+  }
+  return null;
 }
 
 export default {
@@ -37,6 +60,8 @@ export default {
       }
 
       if (path === "/api/community/tiers" && request.method === "GET") {
+        const limited = isRateLimited(request, 60, 60000);
+        if (limited) return limited;
         const creatorHandle = url.searchParams.get("creatorHandle");
         if (!creatorHandle)
           return json({ error: "creatorHandle required" }, 400, origin);
@@ -45,6 +70,8 @@ export default {
       }
 
       if (path === "/api/community/tiers/save" && request.method === "POST") {
+        const limited = isRateLimited(request, 20, 60000);
+        if (limited) return limited;
         const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
         if (auth instanceof Response) return auth;
 
@@ -65,6 +92,8 @@ export default {
         path === "/api/community/subscribe/initiate" &&
         request.method === "POST"
       ) {
+        const limited = isRateLimited(request, 10, 60000);
+        if (limited) return limited;
         const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
         if (auth instanceof Response) return auth;
 
@@ -77,6 +106,8 @@ export default {
       }
 
       if (path === "/api/community/callback" && request.method === "POST") {
+        const limited = isRateLimited(request, 30, 60000);
+        if (limited) return limited;
         const internalAuth = request.headers.get("X-Internal-Auth");
         if (internalAuth !== env.INTERNAL_AUTH_SECRET) {
           return json({ error: "Unauthorized" }, 401, origin);
@@ -94,6 +125,8 @@ export default {
       }
 
       if (path === "/api/community/members" && request.method === "GET") {
+        const limited = isRateLimited(request, 30, 60000);
+        if (limited) return limited;
         const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
         if (auth instanceof Response) return auth;
 
@@ -113,6 +146,8 @@ export default {
         path === "/api/community/my-subscriptions" &&
         request.method === "GET"
       ) {
+        const limited = isRateLimited(request, 30, 60000);
+        if (limited) return limited;
         const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
         if (auth instanceof Response) return auth;
 
@@ -121,6 +156,8 @@ export default {
       }
 
       if (path === "/api/community/cancel" && request.method === "POST") {
+        const limited = isRateLimited(request, 10, 60000);
+        if (limited) return limited;
         const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
         if (auth instanceof Response) return auth;
 
@@ -144,7 +181,7 @@ export default {
           path: url.pathname,
           method: request.method,
         },
-      ).catch(() => {});
+      ).catch((logErr) => { console.error("Failed to log activity", logErr); });
       return json({ error: message }, 500, origin);
     }
   },

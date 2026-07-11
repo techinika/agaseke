@@ -3,6 +3,29 @@ import { corsHeaders } from "./cors";
 import type { Env } from "./types";
 import { handleSupportCallback } from "./services/callback";
 import { logActivity } from "./logger";
+import { checkRateLimit } from "./rateLimit";
+
+function getClientIp(request: Request): string {
+  return request.headers.get("CF-Connecting-IP") ||
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "unknown";
+}
+
+function isRateLimited(request: Request, maxRequests = 30, windowMs = 60000): Response | null {
+  const ip = getClientIp(request);
+  const path = new URL(request.url).pathname;
+  const result = checkRateLimit(`${ip}:${path}`, maxRequests, windowMs);
+  if (!result.allowed) {
+    return new Response(JSON.stringify({ error: "Too many requests" }), {
+      status: 429,
+      headers: {
+        "content-type": "application/json",
+        "retry-after": String(Math.ceil((result.resetAt - Date.now()) / 1000)),
+      },
+    });
+  }
+  return null;
+}
 
 function json(data: unknown, status = 200, origin?: string | null): Response {
   return new Response(JSON.stringify(data), {
@@ -33,6 +56,8 @@ export default {
     }
 
     if (url.pathname === "/api/support/callback") {
+      const limited = isRateLimited(request, 30, 60000);
+      if (limited) return limited;
       const authHeader = request.headers.get("X-Internal-Auth");
       if (!authHeader || authHeader !== env.INTERNAL_AUTH_SECRET) {
         return json({ error: "Unauthorized" }, 401, origin);
@@ -53,6 +78,8 @@ export default {
       if (auth instanceof Response) return auth;
 
       if (url.pathname === "/api/support/status" && request.method === "POST") {
+        const limited = isRateLimited(request, 20, 60000);
+        if (limited) return limited;
         const body = (await request.json()) as { ref?: string };
         if (!body.ref) {
           return json({ error: "Missing ref" }, 400, origin);

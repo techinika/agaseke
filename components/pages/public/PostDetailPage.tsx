@@ -13,6 +13,9 @@ import DetailSkeleton from "@/components/ui/DetailSkeleton";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { LinkifyText } from "@/components/ui/LinkifyText";
 
+const GENERAL_WORKER_URL =
+  process.env.NEXT_PUBLIC_GENERAL_WORKER_URL || "http://localhost:8787";
+
 const extractYouTubeId = (url: string): string | null => {
   const patterns = [
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s?]+)/,
@@ -63,7 +66,7 @@ export default function PostDetailPage({ username, postId }: { username: string;
         if (!postSnap.exists()) { setLoading(false); return; }
         const postData = { id: postSnap.id, ...postSnap.data() };
         setPost(postData);
-      } catch (e) { console.error(e); }
+      } catch (e) { console.error("Failed to load post", e); toast.error("Failed to load post"); }
       finally { setLoading(false); }
     };
     fetch();
@@ -73,7 +76,7 @@ export default function PostDetailPage({ username, postId }: { username: string;
     if (loading || !postId || viewCounted.current) return;
     viewCounted.current = true;
     const postRef = doc(db, "creatorContent", postId);
-    updateDoc(postRef, { views: increment(1) }).catch(() => {});
+    updateDoc(postRef, { views: increment(1) }).catch((err) => { console.error("Failed to update view count", err); });
   }, [loading, postId]);
 
   useEffect(() => {
@@ -123,18 +126,21 @@ export default function PostDetailPage({ username, postId }: { username: string;
       await updateDoc(postRef, { "stats.likes": increment(1) });
       setUserLiked(true);
       if (currentUser.uid !== creatorData?.uid) {
-        fetch("/api/comms/post/notification", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            creatorUid: creatorData?.uid,
-            type: "like",
-            actorName: profile?.displayName || currentUser.displayName || "Anonymous",
-            actorId: currentUser.uid,
-            postTitle: post?.title,
-            postId,
-            username,
-          }),
+        currentUser.getIdToken().then((token) => {
+          fetch(`${GENERAL_WORKER_URL}/api/general/notification`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({
+              userId: creatorData?.uid,
+              type: "new_like",
+              title: "New Like!",
+              message: `${profile?.displayName || currentUser.displayName || "Someone"} liked your post${post?.title ? ` "${post.title}"` : ""}`,
+              link: `/${username}/community/${postId}`,
+              actorName: profile?.displayName || currentUser.displayName || "Anonymous",
+              actorId: currentUser.uid,
+              metadata: { postId, postTitle: post?.title, username },
+            }),
+          }).catch(() => {});
         }).catch(() => {});
       }
     }
@@ -157,18 +163,21 @@ export default function PostDetailPage({ username, postId }: { username: string;
       });
       setNewComment("");
       if (currentUser.uid !== creatorData?.uid) {
-        fetch("/api/comms/post/notification", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            creatorUid: creatorData?.uid,
-            type: "comment",
-            actorName: profile?.displayName || currentUser.displayName || "Anonymous",
-            actorId: currentUser.uid,
-            postTitle: post?.title,
-            postId,
-            username,
-          }),
+        currentUser.getIdToken().then((token) => {
+          fetch(`${GENERAL_WORKER_URL}/api/general/notification`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({
+              userId: creatorData?.uid,
+              type: "new_comment",
+              title: "New Comment!",
+              message: `${profile?.displayName || currentUser.displayName || "Someone"} commented on your post${post?.title ? ` "${post.title}"` : ""}`,
+              link: `/${username}/community/${postId}`,
+              actorName: profile?.displayName || currentUser.displayName || "Anonymous",
+              actorId: currentUser.uid,
+              metadata: { postId, postTitle: post?.title, username },
+            }),
+          }).catch(() => {});
         }).catch(() => {});
       }
     } catch { toast.error("Failed to add comment"); }
