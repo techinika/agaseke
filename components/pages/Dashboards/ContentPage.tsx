@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { sendCommsEmail } from "@/lib/commsService";
 import {
   Plus,
@@ -58,7 +59,6 @@ interface Comment {
 export default function ContentManager() {
   const { creator, profile } = useAuth();
   const [activeTab, setActiveTab] = useState("All");
-  const [isCreating, setIsCreating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [posts, setPosts] = useState<any[]>([]);
@@ -256,7 +256,6 @@ export default function ContentManager() {
         }
       }
 
-      setIsCreating(false);
       setEditingPost(null);
       resetForm();
     } catch (error) {
@@ -275,7 +274,6 @@ export default function ContentManager() {
       isPrivate: post.isPrivate,
     });
     setUploadedUrl(post.contentUrl);
-    setIsCreating(true);
   };
 
   const resetForm = () => {
@@ -387,12 +385,13 @@ export default function ContentManager() {
           )}
         </div>
 
-        <button
-          onClick={() => { setIsCreating(true); setShowSidebar(false); }}
+        <Link
+          href="/creator/content/new"
+          onClick={() => setShowSidebar(false)}
           className="mt-4 w-full bg-orange-500 text-white py-3 rounded-lg font-medium text-sm flex items-center justify-center gap-2 hover:bg-orange-600 transition"
         >
           <Plus size={18} /> New Post
-        </button>
+        </Link>
       </aside>
 
       <main className="flex-1 p-4 lg:p-6 overflow-hidden">
@@ -406,12 +405,12 @@ export default function ContentManager() {
               <p className="text-xs lg:text-sm text-muted-foreground mt-1 hidden lg:block">Manage your posts and see comments</p>
             </div>
           </div>
-          <button
-            onClick={() => setIsCreating(true)}
+          <Link
+            href="/creator/content/new"
             className="bg-orange-500 text-white px-3 lg:px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 hover:bg-orange-600 transition"
           >
             <Plus size={18} /> <span className="hidden sm:inline">New Post</span>
-          </button>
+          </Link>
         </div>
 
         {selectedPost ? (
@@ -543,34 +542,17 @@ export default function ContentManager() {
         )}
       </main>
 
-      {isCreating && (
+      {editingPost && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-card w-full max-w-lg rounded-lg p-4 lg:p-6 shadow-xl my-8">
             <div className="flex justify-between items-center mb-4 lg:mb-6">
-              <h2 className="text-lg lg:text-xl font-bold">{editingPost ? "Edit Post" : "New Post"}</h2>
-              <button onClick={() => { setIsCreating(false); setEditingPost(null); resetForm(); }} className="p-2 hover:bg-muted rounded-full">
+              <h2 className="text-lg lg:text-xl font-bold">Edit Post</h2>
+              <button onClick={() => { setEditingPost(null); resetForm(); }} className="p-2 hover:bg-muted rounded-full">
                 <X size={20} />
               </button>
             </div>
 
             <div className="space-y-4">
-              {!editingPost && (
-                <div className="flex gap-2 p-1 bg-muted rounded-lg">
-                  {["text", "video", "image", "document"].map((t) => (
-                    <button key={t} onClick={() => { resetForm(); setNewPost({ ...newPost, type: t }); }} className={`flex-1 py-2 rounded-lg text-xs font-medium uppercase ${newPost.type === t ? "bg-card text-orange-600 shadow" : "text-muted-foreground"}`}>
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {newPost.type !== "text" && !editingPost && (
-                <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-border rounded-lg p-6 flex flex-col items-center cursor-pointer hover:border-orange-400 transition">
-                  <input type="file" ref={fileInputRef} hidden onChange={handleFileChange} accept={newPost.type === "image" ? "image/*" : newPost.type === "video" ? "video/*" : ".pdf,.doc,.docx"} />
-                  {isUploading ? <Loader className="animate-spin text-orange-500" size={24} /> : uploadedUrl ? <div className="text-green-600 text-sm font-medium">File ready</div> : <><UploadCloud size={24} className="text-muted-foreground mb-2" /><p className="text-sm text-muted-foreground">Click to upload {newPost.type}</p></>}
-                </div>
-              )}
-
               <input type="text" placeholder="Post Title" value={newPost.title} onChange={(e) => setNewPost({ ...newPost, title: e.target.value })} className="w-full text-sm lg:text-lg font-medium px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" />
               
               <textarea placeholder="Write your content..." value={newPost.description} onChange={(e) => setNewPost({ ...newPost, description: e.target.value })} className="w-full h-32 px-4 py-3 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none" />
@@ -588,7 +570,7 @@ export default function ContentManager() {
               </div>
 
               <button onClick={handleAddContent} disabled={!newPost.title || isUploading} className="w-full bg-foreground text-background py-3 rounded-lg font-medium hover:bg-orange-500 transition disabled:opacity-50 flex items-center justify-center gap-2">
-                {isUploading ? <Loader className="animate-spin" size={18} /> : editingPost ? "Save Changes" : "Publish"}
+                {isUploading ? <Loader className="animate-spin" size={18} /> : "Save Changes"}
               </button>
             </div>
           </div>

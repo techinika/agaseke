@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { sendCommsEmail } from "@/lib/commsService";
 import {
   Plus,
@@ -52,16 +53,11 @@ export default function StorePage() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [folders, setFolders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
   const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
   const [deleteCouponId, setDeleteCouponId] = useState<string | null>(null);
   const [deleteFolderId, setDeleteFolderId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [showCouponModal, setShowCouponModal] = useState(false);
-  const [showFolderModal, setShowFolderModal] = useState(false);
-  const [showCreateOrderModal, setShowCreateOrderModal] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
   const [editingFolder, setEditingFolder] = useState<any | null>(null);
   const [folderFormData, setFolderFormData] = useState({
@@ -404,39 +400,36 @@ export default function StorePage() {
             {activeTab === "folders" && "Folders"}
           </h3>
           {activeTab === "products" && (
-            <button
-              onClick={() => setIsCreating(true)}
+            <Link
+              href="/creator/store/products/new"
               className="bg-orange-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-orange-700 transition"
             >
               <Plus size={16} /> Add Product
-            </button>
+            </Link>
           )}
           {activeTab === "coupons" && (
-            <button
-              onClick={() => {
-                setEditingCoupon(null);
-                setShowCouponModal(true);
-              }}
+            <Link
+              href="/creator/store/coupons/new"
               className="bg-orange-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-orange-700 transition"
             >
               <Plus size={16} /> Create Coupon
-            </button>
+            </Link>
           )}
           {activeTab === "folders" && (
-            <button
-              onClick={() => setShowFolderModal(true)}
+            <Link
+              href="/creator/store/folders/new"
               className="bg-orange-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-orange-700 transition"
             >
               <Plus size={16} /> Create Folder
-            </button>
+            </Link>
           )}
           {activeTab === "orders" && (
-            <button
-              onClick={() => setShowCreateOrderModal(true)}
+            <Link
+              href="/creator/store/orders/new"
               className="bg-orange-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-orange-700 transition"
             >
               <Plus size={16} /> Create Order
-            </button>
+            </Link>
           )}
         </div>
 
@@ -460,7 +453,6 @@ export default function StorePage() {
             coupons={coupons}
             onEdit={(coupon: Coupon) => {
               setEditingCoupon(coupon);
-              setShowCouponModal(true);
             }}
             onDelete={handleDeleteCoupon}
           />
@@ -482,21 +474,17 @@ export default function StorePage() {
                 imageUrl: folder.imageUrl || "",
                 bundlePrice: folder.bundlePrice || 0,
               });
-              setShowFolderModal(true);
             }}
             onDelete={handleDeleteFolder}
           />
         )}
       </main>
 
-      {(isCreating || editingProduct) && (
+      {editingProduct && (
         <ProductModal
           product={editingProduct}
           creatorId={creator?.uid || ""}
-          onClose={() => {
-            setIsCreating(false);
-            setEditingProduct(null);
-          }}
+          onClose={() => setEditingProduct(null)}
         />
       )}
 
@@ -533,14 +521,11 @@ export default function StorePage() {
         variant="danger"
       />
 
-      {showCouponModal && (
+      {editingCoupon && (
         <CouponModal
           coupon={editingCoupon}
           products={products}
-          onClose={() => {
-            setShowCouponModal(false);
-            setEditingCoupon(null);
-          }}
+          onClose={() => setEditingCoupon(null)}
           onSave={handleCreateCoupon}
         />
       )}
