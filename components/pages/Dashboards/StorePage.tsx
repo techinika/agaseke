@@ -39,7 +39,6 @@ import {
   CouponModal,
   FoldersList,
   FolderModal,
-  CreateOrderModal,
   ProductModal,
 } from "./storepage/index";
 
@@ -183,7 +182,6 @@ export default function StorePage() {
         createdAt: serverTimestamp(),
       });
       toast.success("Coupon created!");
-      setShowCouponModal(false);
       setEditingCoupon(null);
     } catch (error) {
       console.error("Create coupon error:", error);
@@ -241,7 +239,6 @@ export default function StorePage() {
         });
         toast.success("Folder created!");
       }
-      setShowFolderModal(false);
       setEditingFolder(null);
       setFolderFormData({
         name: "",
@@ -256,37 +253,6 @@ export default function StorePage() {
     } catch (error) {
       console.error("Create folder error:", error);
       toast.error("Failed to save folder");
-    }
-  };
-
-  const handleCreateOrder = async (orderData: {
-    customerName: string;
-    customerEmail: string;
-    productIds: { productId: string; quantity: number; price: number }[];
-    notes: string;
-  }) => {
-    try {
-      const totalAmount = orderData.productIds.reduce(
-        (sum, item) => sum + item.price * item.quantity,
-        0,
-      );
-
-      await addDoc(collection(db, "storeOrders"), {
-        ...orderData,
-        creatorId: creator?.uid,
-        customerId: "",
-        status: "pending" as const,
-        totalAmount,
-        paymentStatus: "unpaid" as const,
-        paymentMethod: "",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-      toast.success("Order created!");
-      setShowCreateOrderModal(false);
-    } catch (error) {
-      console.error("Create order error:", error);
-      toast.error("Failed to create order");
     }
   };
 
@@ -530,27 +496,18 @@ export default function StorePage() {
         />
       )}
 
-      {showFolderModal && (
+      {editingFolder && (
         <FolderModal
           folder={editingFolder}
           products={products}
           formData={folderFormData}
           setFormData={setFolderFormData}
-          onClose={() => {
-            setShowFolderModal(false);
-            setEditingFolder(null);
-          }}
+          onClose={() => setEditingFolder(null)}
           onSave={handleCreateFolder}
         />
       )}
 
-      {showCreateOrderModal && (
-        <CreateOrderModal
-          products={products}
-          onClose={() => setShowCreateOrderModal(false)}
-          onSave={handleCreateOrder}
-        />
-      )}
+
     </div>
   );
 }
