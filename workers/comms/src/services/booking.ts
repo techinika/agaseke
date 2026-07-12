@@ -20,7 +20,7 @@ export const bookingRequest: EmailService = {
                <tr><td style="padding:6px 0;color:#888;">Time</td><td style="padding:6px 0;">${data.preferredTime as string}</td></tr>
                <tr><td style="padding:6px 0;color:#888;">Type</td><td style="padding:6px 0;text-transform:capitalize;">${data.preferredType as string}</td></tr>
                ${data.tierName ? `<tr><td style="padding:6px 0;color:#888;">Tier</td><td style="padding:6px 0;">${data.tierName as string}</td></tr>` : ""}
-               ${data.paymentAmount ? `<tr><td style="padding:6px 0;color:#888;">Amount</td><td style="padding:6px 0;font-weight:600;">${data.paymentAmount as string}</td></tr>` : ""}
+               ${data.paymentAmount ? `<tr><td style="padding:6px 0;color:#888;">Amount</td><td style="padding:6px 0;font-weight:600;">${data.paymentAmount as string} ${(data.currency as string) || ""}</td></tr>` : ""}
              </table>
              ${data.reason ? `<p><strong>Reason:</strong><br>${data.reason as string}</p>` : ""}`,
       ctaText: "Manage Bookings",

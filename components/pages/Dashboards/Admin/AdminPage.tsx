@@ -416,6 +416,13 @@ export default function AdminDashboard() {
       );
       const earnersSnap = await getDocs(earnersQuery);
 
+      const earnersUSDQuery = query(
+        collection(db, "creators"),
+        orderBy("totalEarningsUSD", "desc"),
+        limit(5),
+      );
+      const earnersUSDSnap = await getDocs(earnersUSDQuery);
+
       // Top viewed
       const viewsQuery = query(
         collection(db, "creators"),
@@ -489,7 +496,15 @@ export default function AdminDashboard() {
         pendingTransactionCount: pendingCount,
         pendingTransactionAmount: pendingAmount,
       });
-      setTopEarners(earnersSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      const rwfEarners = earnersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const usdEarners = earnersUSDSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const mergedEarners = [...rwfEarners];
+      for (const usdEarner of usdEarners) {
+        if (!mergedEarners.some((e) => e.id === usdEarner.id)) {
+          mergedEarners.push(usdEarner);
+        }
+      }
+      setTopEarners(mergedEarners.sort((a, b) => Math.max(b.totalEarnings || 0, (b.totalEarningsUSD || 0) * 1000) - Math.max(a.totalEarnings || 0, (a.totalEarningsUSD || 0) * 1000)).slice(0, 5));
       setTopViewed(viewsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
       setWithdrawals(
         withdrawalSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
@@ -1464,7 +1479,7 @@ export default function AdminDashboard() {
                   key={creator.id}
                   rank={i + 1}
                   name={creator.name || creator.id}
-                  subText={`${(creator.totalEarnings || 0).toLocaleString()} RWF`}
+                  subText={`${(creator.totalEarnings || 0).toLocaleString()} RWF${creator.totalEarningsUSD ? ` / ${creator.totalEarningsUSD.toLocaleString()} USD` : ""}`}
                 />
               ))}
               {topEarners.length === 0 && (

@@ -120,6 +120,9 @@ export default {
           body.totalAmount,
           body.paymentRef,
           body.paymentMethod,
+          body.platformShare,
+          body.creatorShare,
+          body.referralShare,
         );
         return json({ received: true }, 200, origin);
       }

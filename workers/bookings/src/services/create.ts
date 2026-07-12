@@ -72,9 +72,10 @@ function resolveAvailabilityAndPrice(
 
     if (effectiveTier) {
       effectiveAvail = effectiveTier.availability;
-      verifiedPaymentAmount = effectiveTier.price;
+      const tierCurrency = effectiveTier.currency || "RWF";
+      verifiedPaymentAmount = tierCurrency === "USD" && effectiveTier.priceUSD ? effectiveTier.priceUSD : effectiveTier.price;
       duration = effectiveTier.duration;
-      currency = effectiveTier.currency || "RWF";
+      currency = tierCurrency;
     }
   } else if (creatorData.bookingAvailability) {
     effectiveAvail = creatorData.bookingAvailability as BookingAvailability;

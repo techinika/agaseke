@@ -1,40 +1,31 @@
-import React, { useState } from "react";
-import {
-  X,
-  Upload,
-  Image as ImageIcon,
-  Check,
-  FileText,
-  Loader,
-} from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { X, Loader, Upload, Image as ImageIcon, FileText, Check } from "lucide-react";
 import { toast } from "sonner";
-import { apiPostFormData } from "@/lib/apiClient";
 import { uploadFile } from "@/lib/uploadService";
-import { serverTimestamp } from "firebase/firestore";
-import {
-  addDoc,
-  updateDoc,
-  collection,
-  doc,
-} from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/db/firebase";
-import { Product } from "@/types/store";
+import { Product, getProductCurrency, getProductPrice } from "@/types/store";
+import { formatCurrency } from "@/types/currency";
+import { useAuth } from "@/auth/AuthContext";
 
 export default function ProductModal({
   product,
-  creatorId,
   onClose,
+  onSave,
 }: {
-  product: Product | null;
-  creatorId: string;
+  product?: Product | null;
   onClose: () => void;
+  onSave: (data: any) => void;
 }) {
+  const { creator } = useAuth();
+  const defaultCurrency = (creator?.currency as "RWF" | "USD") || "RWF";
+  const [hasMixedCurrencies, setHasMixedCurrencies] = useState(false);
   const [formData, setFormData] = useState({
     name: product?.name || "",
     description: product?.description || "",
     price: product?.price || 0,
     priceUSD: product?.priceUSD || 0,
-    currency: product?.currency || "RWF",
+    currency: product?.currency || defaultCurrency,
     type: product?.type || ("digital" as "digital" | "physical"),
     stock: product?.stock || 0,
     imageUrl: product?.imageUrl || "",
@@ -57,6 +48,17 @@ export default function ProductModal({
   const [newSize, setNewSize] = useState("");
   const [newBulkMin, setNewBulkMin] = useState(0);
   const [newBulkDiscount, setNewBulkDiscount] = useState(0);
+
+  useEffect(() => {
+    if (!creator?.uid) return;
+    const check = async () => {
+      const q = query(collection(db, "storeProducts"), where("creatorId", "==", creator.uid));
+      const snap = await getDocs(q);
+      const otherCurrency = snap.docs.find((d) => d.data().currency && d.data().currency !== defaultCurrency);
+      setHasMixedCurrencies(!!otherCurrency || (!!product && product.currency !== defaultCurrency));
+    };
+    check();
+  }, [creator?.uid, defaultCurrency, product]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -252,39 +254,41 @@ export default function ProductModal({
               />
             </div>
 
-            <div className="col-span-2">
-              <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
-                Currency
-              </label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setFormData((prev) => ({ ...prev, currency: "RWF" }))
-                  }
-                  className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
-                    formData.currency === "RWF"
-                      ? "bg-orange-600 text-white"
-                      : "bg-muted text-muted-foreground border border-border"
-                  }`}
-                >
-                  RWF
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setFormData((prev) => ({ ...prev, currency: "USD" }))
-                  }
-                  className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
-                    formData.currency === "USD"
-                      ? "bg-orange-600 text-white"
-                      : "bg-muted text-muted-foreground border border-border"
-                  }`}
-                >
-                  USD
-                </button>
+            {hasMixedCurrencies && (
+              <div className="col-span-2">
+                <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
+                  Currency
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({ ...prev, currency: "RWF" }))
+                    }
+                    className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
+                      formData.currency === "RWF"
+                        ? "bg-orange-600 text-white"
+                        : "bg-muted text-muted-foreground border border-border"
+                    }`}
+                  >
+                    RWF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({ ...prev, currency: "USD" }))
+                    }
+                    className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
+                      formData.currency === "USD"
+                        ? "bg-orange-600 text-white"
+                        : "bg-muted text-muted-foreground border border-border"
+                    }`}
+                  >
+                    USD
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             <div>
               <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">

@@ -246,7 +246,7 @@ export async function initiateCardPayment(
   await notifyAdmins(
     env,
     "New Transaction",
-    `${txTypeLabel} of ${totalAmount.toLocaleString()} RWF initiated`,
+    `${txTypeLabel} of ${totalAmount.toLocaleString()} ${currency || "RWF"} initiated`,
     "/admin/payouts"
   );
 

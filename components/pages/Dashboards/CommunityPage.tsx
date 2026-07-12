@@ -36,13 +36,13 @@ interface CommunitySettings {
   tiers: CommunityTier[];
 }
 
-function emptyTier(): CommunityTier {
+function emptyTier(defaultCurrency: "RWF" | "USD"): CommunityTier {
   return {
     id: `tier-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     name: "",
     description: "",
     price: 0,
-    currency: "RWF",
+    currency: defaultCurrency,
     interval: "monthly",
     benefits: [],
     isActive: true,
@@ -51,6 +51,8 @@ function emptyTier(): CommunityTier {
 
 export default function CommunityPage() {
   const { creator } = useAuth();
+  const defaultCurrency = (creator?.currency as "RWF" | "USD") || "RWF";
+  const [hasMixedCurrencies, setHasMixedCurrencies] = useState(false);
   const [settings, setSettings] = useState<CommunitySettings>({
     enabled: false,
     tiers: [],
@@ -70,8 +72,10 @@ export default function CommunityPage() {
       const communityTiers = (data.communityTiers || []) as CommunityTier[];
       setSettings({
         enabled: !!data.communityEnabled,
-        tiers: communityTiers.length > 0 ? communityTiers : [emptyTier()],
+        tiers: communityTiers.length > 0 ? communityTiers : [emptyTier(defaultCurrency)],
       });
+      const otherCurrency = communityTiers.find((t) => t.currency && t.currency !== defaultCurrency);
+      setHasMixedCurrencies(!!otherCurrency);
       setLoading(false);
     });
 
@@ -98,7 +102,7 @@ export default function CommunityPage() {
     }
     setSettings((prev) => ({
       ...prev,
-      tiers: [...prev.tiers, emptyTier()],
+      tiers: [...prev.tiers, emptyTier(defaultCurrency)],
     }));
   };
 
@@ -276,33 +280,34 @@ export default function CommunityPage() {
                       />
                     </div>
                     <div className="space-y-4">
-                      <div>
-                        <label className="text-xs font-bold text-muted-foreground mb-1 block">
-                          Currency
-                        </label>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => updateTier(idx, "currency", "RWF")}
-                            className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
-                              (tier.currency || "RWF") === "RWF"
-                                ? "bg-orange-600 text-white"
-                                : "bg-muted text-muted-foreground border border-border"
-                            }`}
-                          >
-                            RWF
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => updateTier(idx, "currency", "USD")}
-                            className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
-                              tier.currency === "USD"
-                                ? "bg-orange-600 text-white"
-                                : "bg-muted text-muted-foreground border border-border"
-                            }`}
-                          >
-                            USD
-                          </button>
+                      {hasMixedCurrencies && (
+                        <div>
+                          <label className="text-xs font-bold text-muted-foreground mb-1 block">
+                            Currency
+                          </label>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => updateTier(idx, "currency", "RWF")}
+                              className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
+                                (tier.currency || defaultCurrency) === "RWF"
+                                  ? "bg-orange-600 text-white"
+                                  : "bg-muted text-muted-foreground border border-border"
+                              }`}
+                            >
+                              RWF
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateTier(idx, "currency", "USD")}
+                              className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
+                                tier.currency === "USD"
+                                  ? "bg-orange-600 text-white"
+                                  : "bg-muted text-muted-foreground border border-border"
+                              }`}
+                            >
+                              USD
+                            </button>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2">

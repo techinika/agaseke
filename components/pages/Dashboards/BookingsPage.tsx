@@ -92,6 +92,8 @@ export default function BookingsPage() {
   });
   const [saving, setSaving] = useState(false);
   const [showAddSlot, setShowAddSlot] = useState(false);
+  const defaultCurrency = (creator?.currency as "RWF" | "USD") || "RWF";
+  const [hasMixedCurrencies, setHasMixedCurrencies] = useState(false);
   const [newSlot, setNewSlot] = useState({ startTime: "09:00", endTime: "10:00" });
 
   useEffect(() => {
@@ -99,8 +101,11 @@ export default function BookingsPage() {
       if (creator.bookingMode) setBookingMode(creator.bookingMode);
       if (creator.bookingTiers) setTiers(creator.bookingTiers);
       if (creator.bookingAvailability) setAvailability(creator.bookingAvailability);
+      const existingTiers = (creator.bookingTiers || []) as BookingTier[];
+      const otherCurrency = existingTiers.find((t) => t.currency && t.currency !== defaultCurrency);
+      setHasMixedCurrencies(!!otherCurrency);
     }
-  }, [creator]);
+  }, [creator, defaultCurrency]);
 
   useEffect(() => {
     if (!creator?.handle) return;
@@ -190,7 +195,7 @@ export default function BookingsPage() {
   };
 
   const addTier = () => {
-    const t: BookingTier = { id: Date.now().toString(), name: "", description: "", purpose: "", price: 0, priceUSD: 0, currency: "RWF", duration: 30, access: "public", offers: [], availability: { daysOfWeek: [1, 2, 3, 4, 5], bookingType: "both", startDate: "", endDate: "", defaultSlots: [{ id: "1", startTime: "09:00", endTime: "10:00" }] }, active: true };
+    const t: BookingTier = { id: Date.now().toString(), name: "", description: "", purpose: "", price: 0, priceUSD: 0, currency: defaultCurrency, duration: 30, access: "public", offers: [], availability: { daysOfWeek: [1, 2, 3, 4, 5], bookingType: "both", startDate: "", endDate: "", defaultSlots: [{ id: "1", startTime: "09:00", endTime: "10:00" }] }, active: true };
     setTiers([...tiers, t]);
     setEditingTierId(t.id);
   };
@@ -455,15 +460,17 @@ export default function BookingsPage() {
                           <div className="p-6 space-y-5">
                             <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-2"><label className="text-sm font-bold">Tier Name</label><input type="text" value={tier.name} onChange={(e) => updateTier(tier.id, { name: e.target.value })} placeholder="e.g. Basic, Premium, VIP" className="w-full bg-muted p-3 rounded-lg text-sm font-medium outline-none" /></div>
-                              <div className="space-y-2">
-                                <label className="text-sm font-bold">Currency</label>
-                                <div className="flex gap-2">
-                                  <button type="button" onClick={() => updateTier(tier.id, { currency: "RWF" })}
-                                    className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${(tier.currency || "RWF") === "RWF" ? "bg-orange-600 text-white" : "bg-muted text-muted-foreground border border-border"}`}>RWF</button>
-                                  <button type="button" onClick={() => updateTier(tier.id, { currency: "USD" })}
-                                    className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${tier.currency === "USD" ? "bg-orange-600 text-white" : "bg-muted text-muted-foreground border border-border"}`}>USD</button>
+                              {hasMixedCurrencies && (
+                                <div className="space-y-2">
+                                  <label className="text-sm font-bold">Currency</label>
+                                  <div className="flex gap-2">
+                                    <button type="button" onClick={() => updateTier(tier.id, { currency: "RWF" })}
+                                      className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${(tier.currency || defaultCurrency) === "RWF" ? "bg-orange-600 text-white" : "bg-muted text-muted-foreground border border-border"}`}>RWF</button>
+                                    <button type="button" onClick={() => updateTier(tier.id, { currency: "USD" })}
+                                      className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${tier.currency === "USD" ? "bg-orange-600 text-white" : "bg-muted text-muted-foreground border border-border"}`}>USD</button>
+                                  </div>
                                 </div>
-                              </div>
+                              )}
                               <div className="space-y-2">
                                 <label className="text-sm font-bold">Price ({(tier.currency || "RWF") === "USD" ? "USD" : "RWF"})</label>
                                 <input type="number" min={0} value={(tier.currency || "RWF") === "USD" ? (tier.priceUSD ?? "") : (tier.price || "")}

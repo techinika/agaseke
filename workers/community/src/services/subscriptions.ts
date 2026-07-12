@@ -1,5 +1,5 @@
-import type { Env, SubscribeRequest } from "../types";
-import { firestoreSet, firestoreQueryAll, convertToFields, convertFromFields, firestoreGet } from "../firestore";
+import type { Env, SubscribeRequest, CallbackPayload } from "../types";
+import { firestoreSet, firestoreQueryAll, firestorePost, convertToFields, convertFromFields, firestoreGet } from "../firestore";
 import { logActivity } from "../logger";
 import { createNotification } from "../adminNotifications";
 import { addChatMember, updateChatMemberStatus } from "./members";
@@ -41,7 +41,7 @@ export async function initiateSubscription(
     paymentMethod: data.paymentMethod,
     autoRenew: true,
     amount: data.amount,
-            currency: data.currency || "RWF",
+    currency: data.currency || "RWF",
     interval: data.interval,
     currentPeriodStart: now,
     currentPeriodEnd: periodEnd.toISOString(),
@@ -60,7 +60,7 @@ export async function initiateSubscription(
     communityTierId: data.tierId,
     communityInterval: data.interval,
     communitySubscriptionId: subscriptionId,
-            currency: data.currency || "RWF",
+    currency: data.currency || "RWF",
   };
 
   if (data.paymentMethod === "momo") {
@@ -109,7 +109,10 @@ export async function handlePaymentCallback(
   txData: Record<string, unknown>,
   totalAmount: number,
   paymentRef: string,
-  paymentMethod: "momo" | "card"
+  paymentMethod: "momo" | "card",
+  platformShare = 0,
+  creatorShare = 0,
+  referralShare = 0
 ): Promise<void> {
   const subscriptionId = txData.communitySubscriptionId as string;
   if (!subscriptionId) {
@@ -147,6 +150,53 @@ export async function handlePaymentCallback(
     updatedAt: now,
   }));
 
+  const currency = (txData.currency as string) || "RWF";
+  const isUSD = currency === "USD";
+  const payoutField = isUSD ? "pendingPayoutUSD" : "pendingPayout";
+  const earningsField = isUSD ? "totalEarningsUSD" : "totalEarnings";
+
+  await firestorePost(env, "platformIncome", {
+    fields: convertToFields({
+      amount: Math.round(platformShare),
+      txRef: paymentRef,
+      reason: "community_subscription",
+      createdAt: now,
+    }),
+  });
+
+  await firestorePost(env, "creatorIncome", {
+    fields: convertToFields({
+      creatorUid: txData.creatorUid as string,
+      amount: Math.round(creatorShare),
+      txRef: paymentRef,
+      reason: "community_subscription",
+      createdAt: now,
+    }),
+  });
+
+  const { firestoreIncrement } = await import("../firestore");
+  await firestoreIncrement(env, `creators/${txData.creatorId}`, {
+    [earningsField]: Math.round(creatorShare),
+    [payoutField]: Math.round(creatorShare),
+  });
+
+  if (referralShare > 0 && txData.referralUid) {
+    await firestorePost(env, "creatorIncome", {
+      fields: convertToFields({
+        creatorUid: txData.referralUid as string,
+        amount: Math.round(referralShare),
+        txRef: paymentRef,
+        reason: "referral_commission",
+        createdAt: now,
+      }),
+    });
+
+    await firestoreIncrement(env, `creators/${txData.referralId}`, {
+      [earningsField]: Math.round(referralShare),
+      [payoutField]: Math.round(referralShare),
+    });
+  }
+
   const profileDoc = await firestoreGet(env, `profiles/${sub.userId}`);
   const userName = profileDoc
     ? ((convertFromFields(profileDoc.fields as Record<string, unknown>).displayName as string) || (sub.userEmail as string) || "")
@@ -158,6 +208,8 @@ export async function handlePaymentCallback(
     paymentRef,
     amount: totalAmount,
     tierId: sub.tierId,
+    creatorShare,
+    platformShare,
   });
 }
 
@@ -267,7 +319,7 @@ export async function processRenewals(env: Env): Promise<void> {
             communityTierId: tierId,
             communityInterval: sub.interval,
             communitySubscriptionId: subId,
-    currency: data.currency || "RWF",
+            currency: sub.currency || "RWF",
           }),
         });
 

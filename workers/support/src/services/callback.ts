@@ -119,7 +119,7 @@ export async function handleSupportCallback(
       userId: txData.creatorUid as string,
       type: "support_received",
       title: "New Support Received!",
-      message: `You received ${totalAmount.toLocaleString()} RWF in support${isAnonymous ? " from an anonymous supporter" : ""}`,
+      message: `You received ${totalAmount.toLocaleString()} ${currency} in support${isAnonymous ? " from an anonymous supporter" : ""}`,
       metadata: { txRef: paymentRef, amount: totalAmount, creatorShare },
       link: "/creator/supporters",
       actorId: isAnonymous ? undefined : supporterId,

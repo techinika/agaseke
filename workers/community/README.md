@@ -57,6 +57,11 @@ Initiate a subscription. Creates a subscription document and forwards payment to
 
 Internal callback from Payments Worker. Requires `X-Internal-Auth` header matching `INTERNAL_AUTH_SECRET`.
 
+On successful payment, the worker:
+- Activates the subscription and updates the member's status
+- Writes `platformIncome` and `creatorIncome` records with proper platform/creator/referral splits
+- Increments the correct earnings field (`totalEarningsUSD` for USD subscriptions or `totalEarnings` for RWF) on the creator doc with pending payout
+
 ### GET /api/community/members?creatorHandle={handle}
 
 List all members for a creator's community. Requires Firebase auth (creator only).

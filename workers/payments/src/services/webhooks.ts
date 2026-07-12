@@ -227,7 +227,7 @@ async function handleGatheringPayment(
   await notifyAdmins(
     env,
     "Ticket Sale",
-    `Ticket sale of ${totalAmount.toLocaleString()} RWF from ${(txData.attendeeName as string) || "someone"}`,
+    `Ticket sale of ${totalAmount.toLocaleString()} ${(txData.currency as string) || "RWF"} from ${(txData.attendeeName as string) || "someone"}`,
     "/admin/transactions"
   );
 }

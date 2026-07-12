@@ -84,6 +84,8 @@ All workers use dual-path authentication: **jose JWKS first** (correct `service_
 | `PAYMENTS_WORKER_URL` | string | no | Payments worker URL (e.g. `https://payments.api.agaseke.me`) |
 | `COMMUNITY_WORKER_URL` | string | no | Self URL for callbacks (e.g. `https://community.api.agaseke.me`) |
 
+**Callback payload:** Payments worker forwards `platformShare`, `creatorShare`, and `referralShare` to the callback endpoint. On successful payment, the worker writes income records (`platformIncome`, `creatorIncome`) and increments earnings on the creator doc.
+
 **Scheduled:** `processRenewals` runs on a cron trigger to auto-renew expiring subscriptions.
 
 ## agaseke-payments

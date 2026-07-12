@@ -42,4 +42,7 @@ export interface CallbackPayload {
   totalAmount: number;
   paymentRef: string;
   paymentMethod: "momo" | "card";
+  platformShare: number;
+  creatorShare: number;
+  referralShare: number;
 }

@@ -58,6 +58,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { LinkifyText } from "@/components/ui/LinkifyText";
 import { uploadFile } from "@/lib/uploadService";
+import { formatCurrency } from "@/types/currency";
 
 interface Comment {
   id: string;
@@ -1651,8 +1652,7 @@ export default function SupporterSpace() {
                           </p>
                         </div>
                         <span className="text-xs font-medium text-emerald-600">
-                          {Number(purchase.totalAmount || 0).toLocaleString()}{" "}
-                          {purchase.currency || "RWF"}
+                          {formatCurrency(Number(purchase.totalAmount || 0), purchase.currency || "RWF")}
                         </span>
                       </div>
                     ))}

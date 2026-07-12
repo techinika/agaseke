@@ -6,7 +6,7 @@ import { sendCommsEmail } from "@/lib/commsService";
 import { useRouter } from "next/navigation";
 import { Loader, ArrowLeft, Globe, Users, ShieldCheck, Ticket, X } from "lucide-react";
 import { db } from "@/db/firebase";
-import { collection, addDoc, doc, updateDoc, serverTimestamp, getDoc } from "firebase/firestore";
+import { collection, addDoc, doc, updateDoc, serverTimestamp, getDoc, query, where, getDocs } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/logger";
@@ -21,8 +21,10 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
   const { creator } = useAuth();
   const router = useRouter();
   const isEditing = !!gatheringId;
+  const defaultCurrency = (creator?.currency as "RWF" | "USD") || "RWF";
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
+  const [hasMixedCurrencies, setHasMixedCurrencies] = useState(false);
 
   const eventTypeOptions: { value: EventType; icon: React.ReactNode; title: string; desc: string }[] = [
     { value: "public", icon: <Globe size={24} />, title: "Public", desc: "Everyone can see and RSVP for free" },
@@ -41,7 +43,7 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
     minSupportTier: 0,
     ticketPrice: 0,
     priceUSD: 0,
-    currency: "RWF" as "RWF" | "USD",
+    currency: defaultCurrency,
     supporterPrice: 0,
     capacity: 20,
     active: true,
@@ -83,6 +85,17 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
     };
     fetchEvent();
   }, [gatheringId, creator, router]);
+
+  useEffect(() => {
+    if (!creator?.uid) return;
+    const check = async () => {
+      const q = query(collection(db, "creatorGatherings"), where("creatorId", "==", creator.uid));
+      const snap = await getDocs(q);
+      const otherCurrency = snap.docs.find((d) => d.data().currency && d.data().currency !== defaultCurrency);
+      setHasMixedCurrencies(!!otherCurrency);
+    };
+    check();
+  }, [creator?.uid, defaultCurrency]);
 
   const guessEventType = (data: any): EventType => {
     if (data.eventType) return data.eventType;
@@ -270,35 +283,37 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
 
           {formData.eventType === "ticketed" && (
             <div className="space-y-4">
-              <div>
-                <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
-                  Currency
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, currency: "RWF" })}
-                    className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
-                      formData.currency === "RWF"
-                        ? "bg-orange-600 text-white"
-                        : "bg-muted text-muted-foreground border border-border"
-                    }`}
-                  >
-                    RWF
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, currency: "USD" })}
-                    className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
-                      formData.currency === "USD"
-                        ? "bg-orange-600 text-white"
-                        : "bg-muted text-muted-foreground border border-border"
-                    }`}
-                  >
-                    USD
-                  </button>
+              {hasMixedCurrencies && (
+                <div>
+                  <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
+                    Currency
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, currency: "RWF" })}
+                      className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
+                        formData.currency === "RWF"
+                          ? "bg-orange-600 text-white"
+                          : "bg-muted text-muted-foreground border border-border"
+                      }`}
+                    >
+                      RWF
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, currency: "USD" })}
+                      className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
+                        formData.currency === "USD"
+                          ? "bg-orange-600 text-white"
+                          : "bg-muted text-muted-foreground border border-border"
+                      }`}
+                    >
+                      USD
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
               <div>
                 <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
                   Ticket Price ({formData.currency === "USD" ? "USD" : "RWF"})

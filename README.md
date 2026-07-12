@@ -911,3 +911,12 @@ For issues or feature requests, please open an issue on GitHub.
 - **Base64 upload validation**: Size check before decode, preventing OOM crashes.
 - **Console.log removed** from auth.ts across all workers.
 - **33 empty catch blocks filled** with console.error logging.
+
+### Mixed-Currencies Awareness & Income Tracking (July 2026)
+- **Smart currency toggle**: Currency picker (RWF/USD) in store products, gathering tickets, booking tiers, and community membership forms now only appears when the creator already has items in more than one currency. Single-currency creators see no toggle — reducing UI noise.
+- **Default currency from profile**: All new items default to `creator.currency` (falls back to `"RWF"`) instead of hardcoding `"RWF"`.
+- **Community subscription income tracking**: On successful payment, the community worker now writes `platformIncome` and `creatorIncome` records with proper platform/creator/referral splits, using the correct earnings field (`totalEarningsUSD` vs `totalEarnings`) based on the subscription's currency.
+- **Admin leaderboard dual-currency**: Top earners now merge both RWF (`totalEarnings`) and USD (`totalEarningsUSD`) earnings with a combined sort, showing both amounts in the display.
+- **Dynamic currency in notifications**: All backend worker notifications (`payments`, `bookings`, `support`) now use the transaction's actual currency in admin alert messages instead of hardcoded `"RWF"`.
+- **Booking priceUSD verification**: Server-side booking validation uses `priceUSD` when the tier currency is USD, matching the frontend display.
+- **Notification messages include currency**: Booking payment notifications for both creator and buyer now include the transaction currency. Email booking request templates show the amount with its currency suffix.
