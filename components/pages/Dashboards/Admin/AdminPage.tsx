@@ -504,7 +504,7 @@ export default function AdminDashboard() {
           mergedEarners.push(usdEarner);
         }
       }
-      setTopEarners(mergedEarners.sort((a, b) => Math.max(b.totalEarnings || 0, (b.totalEarningsUSD || 0) * 1000) - Math.max(a.totalEarnings || 0, (a.totalEarningsUSD || 0) * 1000)).slice(0, 5));
+      setTopEarners(mergedEarners.sort((a: any, b: any) => Math.max(b.totalEarnings || 0, (b.totalEarningsUSD || 0) * 1000) - Math.max(a.totalEarnings || 0, (a.totalEarningsUSD || 0) * 1000)).slice(0, 5));
       setTopViewed(viewsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
       setWithdrawals(
         withdrawalSnap.docs.map((d) => ({ id: d.id, ...d.data() })),

@@ -449,7 +449,6 @@ export default function StorePage() {
       {editingProduct && (
         <ProductModal
           product={editingProduct}
-          creatorId={creator?.uid || ""}
           onClose={() => setEditingProduct(null)}
         />
       )}

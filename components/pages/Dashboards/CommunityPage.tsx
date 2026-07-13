@@ -308,8 +308,9 @@ export default function CommunityPage() {
                             >
                               USD
                             </button>
+                          </div>
                         </div>
-                      </div>
+                      )}
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <label className="text-xs font-bold text-muted-foreground mb-1 block">

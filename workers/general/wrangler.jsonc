@@ -1,32 +1,35 @@
 {
-  "$schema": "../../node_modules/wrangler/config-schema.json",
-  "name": "agaseke-general",
-  "main": "src/index.ts",
-  "compatibility_date": "2026-07-06",
-  "keep_vars": true,
-  "compatibility_flags": ["nodejs_compat"],
-  "routes": [
-    {
-      "pattern": "api.agaseke.me",
-      "custom_domain": true,
-      "zone_name": "agaseke.me",
-      "enabled": true,
-      "previews_enabled": false
-    },
-  ],
-  "vars": {
-    "FIREBASE_PROJECT_ID": "agaseke4creators"
-  },
-  "observability": {
-    "enabled": true,
-    "head_sampling_rate": 0.1,
-    "logs": {
-      "head_sampling_rate": 0.1
-    },
-    "traces": {
-      "head_sampling_rate": 0.1,
-    },
-  },
-  "workers_dev": true,
-  "preview_urls": true,
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"name": "agaseke-general",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-07-06",
+	"keep_vars": true,
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"routes": [
+		{
+			"pattern": "api.agaseke.me",
+			"custom_domain": true,
+			"zone_name": "agaseke.me",
+			"enabled": true,
+			"previews_enabled": false
+		},
+	],
+	"vars": {
+		"FIREBASE_PROJECT_ID": "agaseke4creators"
+	},
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 0.1,
+		"logs": {
+			"head_sampling_rate": 0.1
+		},
+		"traces": {
+			"head_sampling_rate": 0.1,
+			"enabled": true,
+		},
+	},
+	"workers_dev": true,
+	"preview_urls": true,
 }

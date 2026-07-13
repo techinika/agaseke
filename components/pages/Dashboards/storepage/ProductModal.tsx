@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { X, Loader, Upload, Image as ImageIcon, FileText, Check } from "lucide-react";
 import { toast } from "sonner";
 import { uploadFile } from "@/lib/uploadService";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, addDoc, updateDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/db/firebase";
 import { Product, getProductCurrency, getProductPrice } from "@/types/store";
 import { formatCurrency } from "@/types/currency";
@@ -11,11 +11,9 @@ import { useAuth } from "@/auth/AuthContext";
 export default function ProductModal({
   product,
   onClose,
-  onSave,
 }: {
   product?: Product | null;
   onClose: () => void;
-  onSave: (data: any) => void;
 }) {
   const { creator } = useAuth();
   const defaultCurrency = (creator?.currency as "RWF" | "USD") || "RWF";
@@ -116,7 +114,7 @@ export default function ProductModal({
     setSaving(true);
     try {
       const productData: Record<string, any> = {
-        creatorId,
+        creatorId: creator?.uid || "",
         name: formData.name,
         description: formData.description,
         price: formData.price,
