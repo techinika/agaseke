@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { X, Loader, Upload, Image as ImageIcon, FileText, Check } from "lucide-react";
 import { toast } from "sonner";
 import { uploadFile } from "@/lib/uploadService";
-import { collection, query, where, getDocs, addDoc, updateDoc, doc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, updateDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/db/firebase";
 import { Product, getProductCurrency, getProductPrice } from "@/types/store";
 import { formatCurrency } from "@/types/currency";
@@ -17,7 +17,6 @@ export default function ProductModal({
 }) {
   const { creator } = useAuth();
   const defaultCurrency = (creator?.currency as "RWF" | "USD") || "RWF";
-  const [hasMixedCurrencies, setHasMixedCurrencies] = useState(false);
   const [formData, setFormData] = useState({
     name: product?.name || "",
     description: product?.description || "",
@@ -46,17 +45,6 @@ export default function ProductModal({
   const [newSize, setNewSize] = useState("");
   const [newBulkMin, setNewBulkMin] = useState(0);
   const [newBulkDiscount, setNewBulkDiscount] = useState(0);
-
-  useEffect(() => {
-    if (!creator?.uid) return;
-    const check = async () => {
-      const q = query(collection(db, "storeProducts"), where("creatorId", "==", creator.uid));
-      const snap = await getDocs(q);
-      const otherCurrency = snap.docs.find((d) => d.data().currency && d.data().currency !== defaultCurrency);
-      setHasMixedCurrencies(!!otherCurrency || (!!product && product.currency !== defaultCurrency));
-    };
-    check();
-  }, [creator?.uid, defaultCurrency, product]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -252,41 +240,39 @@ export default function ProductModal({
               />
             </div>
 
-            {hasMixedCurrencies && (
-              <div className="col-span-2">
-                <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
-                  Currency
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFormData((prev) => ({ ...prev, currency: "RWF" }))
-                    }
-                    className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
-                      formData.currency === "RWF"
-                        ? "bg-orange-600 text-white"
-                        : "bg-muted text-muted-foreground border border-border"
-                    }`}
-                  >
-                    RWF
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFormData((prev) => ({ ...prev, currency: "USD" }))
-                    }
-                    className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
-                      formData.currency === "USD"
-                        ? "bg-orange-600 text-white"
-                        : "bg-muted text-muted-foreground border border-border"
-                    }`}
-                  >
-                    USD
-                  </button>
-                </div>
+            <div className="col-span-2">
+              <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
+                Currency
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFormData((prev) => ({ ...prev, currency: "RWF" }))
+                  }
+                  className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
+                    formData.currency === "RWF"
+                      ? "bg-orange-600 text-white"
+                      : "bg-muted text-muted-foreground border border-border"
+                  }`}
+                >
+                  RWF
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFormData((prev) => ({ ...prev, currency: "USD" }))
+                  }
+                  className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
+                    formData.currency === "USD"
+                      ? "bg-orange-600 text-white"
+                      : "bg-muted text-muted-foreground border border-border"
+                  }`}
+                >
+                  USD
+                </button>
               </div>
-            )}
+            </div>
 
             <div>
               <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
@@ -307,24 +293,26 @@ export default function ProductModal({
               />
             </div>
 
-            {formData.currency === "USD" && (
+            {formData.currency !== defaultCurrency && (
               <div>
                 <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
-                  Price (RWF)
+                  Price ({defaultCurrency})
                 </label>
                 <input
                   type="number"
-                  value={formData.price}
+                  value={formData.currency === "USD" ? formData.price : formData.priceUSD}
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
-                      price: parseInt(e.target.value) || 0,
+                      ...(prev.currency === "USD"
+                        ? { price: parseInt(e.target.value) || 0 }
+                        : { priceUSD: parseInt(e.target.value) || 0 }),
                     }))
                   }
                   className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
                 />
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  RWF equivalent for local payments
+                  {defaultCurrency} equivalent for local payments
                 </p>
               </div>
             )}

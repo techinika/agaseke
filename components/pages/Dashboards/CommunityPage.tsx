@@ -52,7 +52,6 @@ function emptyTier(defaultCurrency: "RWF" | "USD"): CommunityTier {
 export default function CommunityPage() {
   const { creator } = useAuth();
   const defaultCurrency = (creator?.currency as "RWF" | "USD") || "RWF";
-  const [hasMixedCurrencies, setHasMixedCurrencies] = useState(false);
   const [settings, setSettings] = useState<CommunitySettings>({
     enabled: false,
     tiers: [],
@@ -74,8 +73,6 @@ export default function CommunityPage() {
         enabled: !!data.communityEnabled,
         tiers: communityTiers.length > 0 ? communityTiers : [emptyTier(defaultCurrency)],
       });
-      const otherCurrency = communityTiers.find((t) => t.currency && t.currency !== defaultCurrency);
-      setHasMixedCurrencies(!!otherCurrency);
       setLoading(false);
     });
 
@@ -280,37 +277,35 @@ export default function CommunityPage() {
                       />
                     </div>
                     <div className="space-y-4">
-                      {hasMixedCurrencies && (
-                        <div>
-                          <label className="text-xs font-bold text-muted-foreground mb-1 block">
-                            Currency
-                          </label>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => updateTier(idx, "currency", "RWF")}
-                              className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
-                                (tier.currency || defaultCurrency) === "RWF"
-                                  ? "bg-orange-600 text-white"
-                                  : "bg-muted text-muted-foreground border border-border"
-                              }`}
-                            >
-                              RWF
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => updateTier(idx, "currency", "USD")}
-                              className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
-                                tier.currency === "USD"
-                                  ? "bg-orange-600 text-white"
-                                  : "bg-muted text-muted-foreground border border-border"
-                              }`}
-                            >
-                              USD
-                            </button>
-                          </div>
+                      <div>
+                        <label className="text-xs font-bold text-muted-foreground mb-1 block">
+                          Currency
+                        </label>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => updateTier(idx, "currency", "RWF")}
+                            className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
+                              (tier.currency || defaultCurrency) === "RWF"
+                                ? "bg-orange-600 text-white"
+                                : "bg-muted text-muted-foreground border border-border"
+                            }`}
+                          >
+                            RWF
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateTier(idx, "currency", "USD")}
+                            className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
+                              tier.currency === "USD"
+                                ? "bg-orange-600 text-white"
+                                : "bg-muted text-muted-foreground border border-border"
+                            }`}
+                          >
+                            USD
+                          </button>
                         </div>
-                      )}
+                      </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <label className="text-xs font-bold text-muted-foreground mb-1 block">
@@ -345,21 +340,21 @@ export default function CommunityPage() {
                           </select>
                         </div>
                       </div>
-                      {tier.currency === "USD" && (
+                      {tier.currency !== defaultCurrency && (
                         <div>
                           <label className="text-xs font-bold text-muted-foreground mb-1 block">
-                            Price (RWF)
+                            Price ({defaultCurrency})
                           </label>
                           <input
                             type="number"
                             min={0}
-                            value={tier.price || ""}
-                            onChange={(e) => updateTier(idx, "price", Number(e.target.value))}
-                            placeholder="RWF equivalent"
+                            value={tier.currency === "USD" ? (tier.price || "") : (tier.priceUSD ?? "")}
+                            onChange={(e) => updateTier(idx, tier.currency === "USD" ? "price" : "priceUSD", Number(e.target.value))}
+                            placeholder={`${defaultCurrency} equivalent`}
                             className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm"
                           />
                           <p className="text-[10px] text-muted-foreground mt-1">
-                            RWF equivalent for local payments
+                            {defaultCurrency} equivalent for local payments
                           </p>
                         </div>
                       )}
