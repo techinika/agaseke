@@ -14,6 +14,7 @@ import {
   Calendar,
   User,
   Share2,
+  Heart,
 } from "lucide-react";
 import { SupportModal } from "@/components/parts/public/SupportModal";
 import { db } from "@/db/firebase";
@@ -205,6 +206,10 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
   const handle = creatorData.handle || post?.creatorId || "";
   const creatorName = creatorData.name || handle || "Creator";
   const creatorPhoto = creatorData.profilePicture || null;
+  const creatorUid = creatorData.uid || post?.creatorUid || "";
+  const defaultMessage = post?.title
+    ? `I love this post! "${post.title}"`
+    : "I love this post!";
 
   if (loading) {
     return (
@@ -422,15 +427,24 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
           )}
 
           {/* Stats */}
-          <div className="mt-6 pt-4 border-t border-border flex items-center gap-4 text-sm text-muted-foreground">
-            {post.views !== undefined && (
+          <div className="mt-6 pt-4 border-t border-border flex items-center justify-between text-sm text-muted-foreground">
+            <div className="flex items-center gap-4">
+              {post.views !== undefined && (
+                <span className="flex items-center gap-1">
+                  <Eye size={16} /> {post.views} views
+                </span>
+              )}
               <span className="flex items-center gap-1">
-                <Eye size={16} /> {post.views} views
+                <MessageCircle size={16} /> {comments.length}
               </span>
-            )}
-            <span className="flex items-center gap-1">
-              <MessageCircle size={16} /> {comments.length}
-            </span>
+            </div>
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="flex items-center gap-1.5 text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
+            >
+              <Heart size={14} className="sm:size-[16]" />
+              <span className="hidden sm:inline">Support</span>
+            </button>
           </div>
         </article>
 
@@ -477,7 +491,7 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
           ) : (
             <p className="mt-6 text-sm text-muted-foreground">
               <Link
-                href="/login"
+                href={`/login?redirect=${encodeURIComponent(`/explore/posts/${postId}`)}`}
                 className="text-orange-600 font-medium hover:underline"
               >
                 Log in
@@ -607,10 +621,12 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
       {/* Support Modal */}
       {isModalOpen && handle && (
         <SupportModal
-          creatorHandle={handle}
-          creatorName={creatorName}
-          creatorPhoto={creatorPhoto}
+          isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
+          creatorName={creatorName}
+          creatorId={handle}
+          uid={creatorUid}
+          defaultMessage={defaultMessage}
         />
       )}
     </div>

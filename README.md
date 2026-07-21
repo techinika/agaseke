@@ -947,3 +947,7 @@ For issues or feature requests, please open an issue on GitHub.
 - **Enhanced `/explore` (creators) metadata**: Richer title/description/OG tags with hreflang and country name; added `CollectionPage` JSON-LD structured data with organization publisher and about section.
 - **Enhanced `/explore/posts` metadata**: Same improvements — richer metadata, hreflang, `CollectionPage` structured data.
 - **ExplorePostDetailPage**: Server-side `generateMetadata` for dynamic OG images, article schema with author attribution, and per-post keywords.
+- **Noindex on all private routes**: Added `robots: { index: false, follow: false }` to creator layout (covers all creator pages including client-component chat) and admin payouts page — ensuring no dashboard/auth page can be indexed.
+- **Support button on public post detail**: Added support button (Heart icon) in the stats footer of `/explore/posts/[post-id]`, right-aligned next to views/comments. Opens `SupportModal` with pre-filled heartfelt message. Button is smaller on mobile (hidden text label).
+- **SupportModal `defaultMessage` prop**: Added optional `defaultMessage` prop to pre-fill the heartfelt message textarea, used by the explore post detail page with `"I love this post! \"[title]\""`.
+- **Login redirect on post comments**: "Log in to join the conversation" link now includes `?redirect=/explore/posts/[post-id]` so users return to the exact post after authentication.

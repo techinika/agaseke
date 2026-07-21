@@ -29,10 +29,11 @@ export function SupportModal({
   includeReferral,
   referralUid = "",
   referralId = "",
+  defaultMessage = "",
 }: any) {
   const { user: currentUser } = useAuth();
   const [amount, setAmount] = useState("");
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(defaultMessage);
   const [phone, setPhone] = useState("");
   const [step, setStep] = useState("input");
   const [errorMessage, setErrorMessage] = useState("");
