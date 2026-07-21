@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
-  Heart,
   Loader,
   FileText,
   MessageCircle,
@@ -62,8 +61,6 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
   const [post, setPost] = useState<any>(null);
   const [creatorData, setCreatorData] = useState<any>({});
   const [comments, setComments] = useState<any[]>([]);
-  const [likes, setLikes] = useState<Set<string>>(new Set());
-  const [userLiked, setUserLiked] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
@@ -132,44 +129,6 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
     }, () => {});
     return () => unsub();
   }, [postId]);
-
-  useEffect(() => {
-    if (!currentUser?.uid || !postId) return;
-    const checkLike = async () => {
-      const likeRef = collection(db, "creatorContent", postId, "likes");
-      const q = query(likeRef, where("userId", "==", currentUser.uid));
-      const snap = await getDocs(q);
-      setUserLiked(!snap.empty);
-    };
-    checkLike();
-  }, [currentUser?.uid, postId]);
-
-  useEffect(() => {
-    if (!postId) return;
-    const likesRef = collection(db, "creatorContent", postId, "likes");
-    const unsub = onSnapshot(likesRef, (snap) => {
-      setLikes(new Set(snap.docs.map((d) => d.data().userId)));
-    }, () => {});
-    return () => unsub();
-  }, [postId]);
-
-  const handleLike = useCallback(async () => {
-    if (!currentUser?.uid) {
-      toast.error("Please log in to like");
-      return;
-    }
-    const postRef = doc(db, "creatorContent", postId);
-    const likeRef = collection(db, "creatorContent", postId, "likes");
-    const q = query(likeRef, where("userId", "==", currentUser.uid));
-    const snap = await getDocs(q);
-    if (!snap.empty) {
-      await deleteDoc(snap.docs[0].ref);
-      await updateDoc(postRef, { "stats.likes": increment(-1) });
-    } else {
-      await addDoc(likeRef, { userId: currentUser.uid, createdAt: serverTimestamp() });
-      await updateDoc(postRef, { "stats.likes": increment(1) });
-    }
-  }, [currentUser?.uid, postId]);
 
   const handleComment = async () => {
     if (!currentUser?.uid) {
@@ -303,13 +262,25 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
               <p className="text-sm text-muted-foreground">@{handle}</p>
             )}
           </div>
-          <button
-            onClick={handleShare}
-            className="p-3 bg-muted rounded-full hover:bg-muted/80 transition-colors"
-            title="Share"
-          >
-            <Share2 size={18} />
-          </button>
+          <div className="flex items-center gap-2">
+            {handle && (
+              <Link
+                href={`/${handle}`}
+                className="flex items-center gap-2 px-4 py-2.5 bg-orange-500 text-white rounded-full text-sm font-medium hover:bg-orange-600 transition-colors"
+                title="View Profile"
+              >
+                <User size={16} />
+                <span className="hidden sm:inline">View Profile</span>
+              </Link>
+            )}
+            <button
+              onClick={handleShare}
+              className="p-3 bg-muted rounded-full hover:bg-muted/80 transition-colors"
+              title="Share"
+            >
+              <Share2 size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Post Content */}
@@ -418,28 +389,13 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
               </span>
             )}
             <span className="flex items-center gap-1">
-              <Heart size={16} /> {likes.size}
-            </span>
-            <span className="flex items-center gap-1">
               <MessageCircle size={16} /> {comments.length}
             </span>
           </div>
         </article>
 
-        {/* Like & Comment Section */}
+        {/* Comments Section */}
         <div className="mt-8 bg-card rounded-2xl border border-border p-6">
-          {/* Like Button */}
-          <button
-            onClick={handleLike}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all text-sm ${
-              userLiked
-                ? "bg-red-50 text-red-600 border border-red-200"
-                : "bg-muted text-muted-foreground border border-border hover:bg-muted/80"
-            }`}
-          >
-            <Heart size={18} fill={userLiked ? "currentColor" : "none"} />
-            {userLiked ? "Liked" : "Like"} ({likes.size})
-          </button>
 
           {/* Comment Form */}
           {currentUser ? (
@@ -477,7 +433,7 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
             </div>
           ) : (
             <p className="mt-6 text-sm text-muted-foreground">
-              <Link href="/login" className="text-orange-600 font-medium hover:underline">Log in</Link> to like and comment.
+              <Link href="/login" className="text-orange-600 font-medium hover:underline">Log in</Link> to join the conversation.
             </p>
           )}
 
