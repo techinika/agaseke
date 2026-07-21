@@ -22,6 +22,7 @@ import {
   ExternalLink,
   ChevronLeft,
   ChevronRight,
+  Download,
 } from "lucide-react";
 import { db } from "@/db/firebase";
 import {
@@ -242,6 +243,61 @@ export default function AdminUsersPage() {
     }
   };
 
+  const [csvDownloading, setCsvDownloading] = useState(false);
+
+  const downloadCSV = async () => {
+    setCsvDownloading(true);
+    try {
+      const profilesRef = collection(db, "profiles");
+      const q = query(profilesRef, orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(q);
+      const allUsers = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as UserProfile[];
+
+      const headers = [
+        "UID", "Email", "Display Name", "Type", "Username",
+        "Is Admin", "Onboarded", "Phone", "Total Support",
+        "Supported Creators", "Created At", "Last Login",
+      ];
+      const rows = allUsers.map((u) => [
+        u.id,
+        u.email || "",
+        u.displayName || "",
+        u.type || "",
+        u.username || "",
+        u.isAdmin ? "Yes" : "No",
+        u.onboarded ? "Yes" : "No",
+        u.phoneNumber || "",
+        u.totalSupport ?? 0,
+        u.totalSupportedCreators ?? 0,
+        u.createdAt?.toDate?.()?.toISOString() || "",
+        u.lastLogin?.toDate?.()?.toISOString() || "",
+      ]);
+
+      const csv = [
+        headers.join(","),
+        ...rows.map((r) =>
+          r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")
+        ),
+      ].join("\n");
+
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `users-${new Date().toISOString().split("T")[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Downloaded ${allUsers.length} users`);
+    } catch {
+      toast.error("Failed to export users");
+    } finally {
+      setCsvDownloading(false);
+    }
+  };
+
   if (loading) {
     return <Loading />;
   }
@@ -249,13 +305,23 @@ export default function AdminUsersPage() {
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
       <main className="max-w-7xl mx-auto px-6 mt-12">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground uppercase">
-            User Management
-          </h1>
-          <p className="text-muted-foreground font-medium mt-1">
-            View and manage all platform users
-          </p>
+        <header className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground uppercase">
+              User Management
+            </h1>
+            <p className="text-muted-foreground font-medium mt-1">
+              View and manage all platform users
+            </p>
+          </div>
+          <button
+            onClick={downloadCSV}
+            disabled={csvDownloading}
+            className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition disabled:opacity-50"
+          >
+            <Download size={16} />
+            {csvDownloading ? "Downloading..." : "Download CSV"}
+          </button>
         </header>
 
         {/* Stats Cards */}
