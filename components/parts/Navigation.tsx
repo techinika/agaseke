@@ -14,6 +14,7 @@ import {
   Calendar,
   Bell,
   Megaphone,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/auth/AuthContext";
@@ -90,6 +91,12 @@ const Navbar = () => {
                 icon={<Search size={14} />}
                 label="Explore"
                 active={isActive("/explore")}
+              />
+              <NavLink
+                href="/explore/posts"
+                icon={<FileText size={14} />}
+                label="Posts"
+                active={isActive("/explore/posts")}
               />
               <NavLink
                 href="/help-center"
