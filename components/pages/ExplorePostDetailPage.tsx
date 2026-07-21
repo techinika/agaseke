@@ -253,13 +253,6 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
       <div className="max-w-4xl mx-auto px-6 pt-8">
-        {/* Back link */}
-        <Link
-          href="/explore/posts"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-8 font-medium"
-        >
-          <ArrowLeft size={18} /> Back to posts
-        </Link>
 
         {/* Author Header */}
         <div className="flex flex-wrap items-center gap-4 mb-8 p-4 bg-card rounded-xl border border-border">
