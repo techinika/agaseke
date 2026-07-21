@@ -1499,28 +1499,26 @@ export default function SupporterSpace() {
                               <MapPin size={14} /> {item.location}
                             </span>
                           )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSupportItem(item);
+                            }}
+                            className="flex items-center gap-1 text-xs sm:text-sm px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
+                          >
+                            <Heart size={12} className="sm:size-[14]" />
+                            <span className="hidden sm:inline">Support</span>
+                          </button>
                           {item.type === "content" && (
-                            <>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSupportItem(item);
-                                }}
-                                className="flex items-center gap-1 text-xs sm:text-sm px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
-                              >
-                                <Heart size={12} className="sm:size-[14]" />
-                                <span className="hidden sm:inline">Support</span>
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  router.push(`/supporter/${item.id}`);
-                                }}
-                                className="text-xs text-orange-500 hover:underline font-medium"
-                              >
-                                View Post
-                              </button>
-                            </>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/supporter/${item.id}`);
+                              }}
+                              className="text-xs text-orange-500 hover:underline font-medium"
+                            >
+                              View Post
+                            </button>
                           )}
                         </div>
                       </div>
