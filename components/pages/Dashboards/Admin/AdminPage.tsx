@@ -7,6 +7,7 @@ import { db } from "@/db/firebase";
 import {
   collection,
   getDocs,
+  getDoc,
   query,
   orderBy,
   limit,
@@ -776,18 +777,12 @@ export default function AdminDashboard() {
     const { target, type, category } = modal;
 
     let userEmail = "";
-    const profilesSnap = await getDocs(
-      query(
-        collection(db, "profiles"),
-        where(
-          "username",
-          "==",
-          category === "withdrawal" ? target.handle : target.uid,
-        ),
-      ),
-    );
-    if (!profilesSnap.empty) {
-      userEmail = profilesSnap.docs[0].data().email || "";
+    const profileId = category === "withdrawal" ? target.handle : target.uid;
+    if (profileId) {
+      const profileSnap = await getDoc(doc(db, "profiles", profileId));
+      if (profileSnap.exists()) {
+        userEmail = profileSnap.data().email || "";
+      }
     }
 
     try {

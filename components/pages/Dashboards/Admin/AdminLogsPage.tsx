@@ -42,7 +42,23 @@ interface LogItem {
   creatorId?: string;
   creatorHandle?: string;
   metadata?: Record<string, unknown>;
-  createdAt?: Timestamp;
+  createdAt?: Timestamp | Date | string | { seconds: number; nanoseconds?: number };
+}
+
+function toDateSafe(value: LogItem["createdAt"]): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === "string") {
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof value === "object" && "toDate" in value && typeof value.toDate === "function") {
+    return (value as Timestamp).toDate();
+  }
+  if (typeof value === "object" && "seconds" in value) {
+    return new Date((value as { seconds: number }).seconds * 1000);
+  }
+  return null;
 }
 
 export default function AdminLogsPage() {
@@ -106,7 +122,7 @@ export default function AdminLogsPage() {
       ),
       ...filteredLogs.map((log) =>
         [
-          log.createdAt?.toDate().toISOString() || "",
+          toDateSafe(log.createdAt)?.toISOString() || "",
           log.level,
           log.category,
           `"${log.message.replace(/"/g, '""')}"`,
@@ -325,7 +341,7 @@ export default function AdminLogsPage() {
                           {log.category}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          {log.createdAt?.toDate().toLocaleString() ||
+                          {toDateSafe(log.createdAt)?.toLocaleString() ||
                             "Unknown time"}
                         </span>
                       </div>
@@ -391,7 +407,7 @@ export default function AdminLogsPage() {
                     <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-1">Timestamp</p>
                     <p className="text-sm text-foreground flex items-center gap-1">
                       <Calendar size={14} className="text-muted-foreground" />
-                      {selectedLog.createdAt?.toDate().toLocaleString() || "N/A"}
+                      {toDateSafe(selectedLog.createdAt)?.toLocaleString() || "N/A"}
                     </p>
                   </div>
                   <div>
