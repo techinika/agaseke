@@ -22,6 +22,7 @@ import { collection, getCountFromServer, doc, updateDoc, increment } from "fireb
 import { useAuth } from "@/auth/AuthContext";
 import { getMySubscriptions } from "@/lib/communityService";
 import { formatCurrency } from "@/types/currency";
+import { SupportModal } from "@/components/parts/public/SupportModal";
 
 interface CommunityTier {
   id: string;
@@ -42,6 +43,7 @@ interface CommunityTabProps {
   name: string;
   compact?: boolean;
   username?: string;
+  uid?: string;
   communityEnabled?: boolean;
   communityTiers?: CommunityTier[];
   onSubscribe?: () => void;
@@ -54,6 +56,7 @@ export const CommunityTab = ({
   name,
   compact = false,
   username = "",
+  uid = "",
   communityEnabled = false,
   communityTiers = [],
   onSubscribe,
@@ -62,6 +65,7 @@ export const CommunityTab = ({
   const [viewingImage, setViewingImage] = useState<{ url: string } | null>(null);
   const [viewingDocument, setViewingDocument] = useState<{ url: string; title: string } | null>(null);
   const [documentIndex, setDocumentIndex] = useState<Record<string, number>>({});
+  const [supportItem, setSupportItem] = useState<any>(null);
   const { user } = useAuth();
   const [subscribedTierIds, setSubscribedTierIds] = useState<Set<string>>(new Set());
 
@@ -391,6 +395,15 @@ export const CommunityTab = ({
                   </span>
                 </div>
               )}
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSupportItem(item);
+                }}
+                className="flex items-center gap-1 text-xs sm:text-sm px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
+              >
+                <Heart size={12} className="sm:size-[14]" />
+              </button>
               <Link
                 href={`/${username}/community/${item.id}`}
                 className="flex items-center gap-1 text-orange-600 font-medium hover:underline"
@@ -435,6 +448,21 @@ export const CommunityTab = ({
             <iframe src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocument.url)}&embedded=true`} className="w-full h-[80vh] bg-card" title="Document Viewer" />
           </div>
         </div>
+      )}
+
+      {supportItem && (
+        <SupportModal
+          isOpen={!!supportItem}
+          onClose={() => setSupportItem(null)}
+          creatorName={name}
+          creatorId={username}
+          uid={uid}
+          defaultMessage={
+            supportItem?.title
+              ? `I love this post! "${supportItem.title}"`
+              : "I love this post!"
+          }
+        />
       )}
     </div>
   );

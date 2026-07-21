@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import Navbar from "@/components/parts/Navigation";
 import MobileBottomBar from "@/components/parts/MobileBottomBar";
+import { SupportModal } from "@/components/parts/public/SupportModal";
 import { useAuth } from "@/auth/AuthContext";
 import Loading from "@/app/loading";
 import {
@@ -129,6 +130,7 @@ export default function SupporterSpace() {
   const [viewingImage, setViewingImage] = useState<{ url: string } | null>(
     null,
   );
+  const [supportItem, setSupportItem] = useState<any>(null);
   const postRefs = useRef<Record<string, HTMLDivElement>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [newPost, setNewPost] = useState({
@@ -1491,22 +1493,36 @@ export default function SupporterSpace() {
                             <Eye size={16} /> {item.views || 0}
                           </span>
                         </div>
-                        {item.type === "gathering" && (
-                          <span className="text-xs text-orange-600 flex items-center gap-1">
-                            <MapPin size={14} /> {item.location}
-                          </span>
-                        )}
-                        {item.type === "content" && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`/supporter/${item.id}`);
-                            }}
-                            className="text-xs text-orange-500 hover:underline font-medium"
-                          >
-                            View Post
-                          </button>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {item.type === "gathering" && (
+                            <span className="text-xs text-orange-600 flex items-center gap-1">
+                              <MapPin size={14} /> {item.location}
+                            </span>
+                          )}
+                          {item.type === "content" && (
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSupportItem(item);
+                                }}
+                                className="flex items-center gap-1 text-xs sm:text-sm px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
+                              >
+                                <Heart size={12} className="sm:size-[14]" />
+                                <span className="hidden sm:inline">Support</span>
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  router.push(`/supporter/${item.id}`);
+                                }}
+                                className="text-xs text-orange-500 hover:underline font-medium"
+                              >
+                                View Post
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </div>
 
                       {showCommentFor === item.id && renderPostComments(item)}
@@ -1776,6 +1792,21 @@ export default function SupporterSpace() {
             className="max-w-full max-h-full object-contain animate-in zoom-in-95 duration-200"
           />
         </div>
+      )}
+
+      {supportItem && (
+        <SupportModal
+          isOpen={!!supportItem}
+          onClose={() => setSupportItem(null)}
+          creatorName={supportItem.creatorName || "Creator"}
+          creatorId={supportItem.creatorHandle || supportItem.creatorId || ""}
+          uid={supportItem.creatorUid || ""}
+          defaultMessage={
+            supportItem?.title
+              ? `I love this post! "${supportItem.title}"`
+              : "I love this post!"
+          }
+        />
       )}
     </div>
   );

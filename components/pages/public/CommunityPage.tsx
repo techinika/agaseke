@@ -213,6 +213,7 @@ export default function CommunityPage({ username }: CommunityPageProps) {
             isSupporter={isSupporter}
             name={creatorName}
             username={username}
+            uid={creatorData?.uid || ""}
             communityEnabled={creatorData?.communityEnabled as boolean}
             communityTiers={creatorData?.communityTiers || []}
             onSubscribe={() => setIsSubscribeModalOpen(true)}

@@ -256,6 +256,7 @@ export default function PublicProfile({ username }: { username: string }) {
             name={creator?.name}
             compact={true}
             username={username}
+            uid={creator?.uid || ""}
           />
         )}
 
