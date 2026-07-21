@@ -446,7 +446,7 @@ export default function AdminDashboard() {
         orderBy("createdAt", "desc"),
       );
       const verificationSnap = await getDocs(verificationQuery);
-      const enrichedVerifications = await Promise.all(
+      const enrichedAll = await Promise.all(
         verificationSnap.docs.map(async (d) => {
           const data = d.data();
           let creatorData: any = {};
@@ -510,7 +510,12 @@ export default function AdminDashboard() {
       setWithdrawals(
         withdrawalSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
       );
-      setVerifications(enrichedVerifications);
+      const seenUids = new Set<string>();
+      setVerifications(enrichedAll.filter((item) => {
+        if (!item.uid || seenUids.has(item.uid)) return false;
+        seenUids.add(item.uid);
+        return true;
+      }));
     } catch (error) {
       console.error("Error fetching admin stats:", error);
     } finally {
@@ -559,7 +564,15 @@ export default function AdminDashboard() {
           }
           return { id: d.id, ...data, ...creatorData };
         }),
-      ).then(setVerifications);
+      ).then((items) => {
+        const seen = new Set<string>();
+        const deduped = items.filter((item) => {
+          if (!item.uid || seen.has(item.uid)) return false;
+          seen.add(item.uid);
+          return true;
+        });
+        setVerifications(deduped);
+      });
     });
 
     // Activity logs listener (recent 10)
@@ -863,16 +876,16 @@ export default function AdminDashboard() {
           collection(db, "verificationRequests"),
           where("uid", "==", target.uid),
           where("status", "==", "pending"),
-          orderBy("createdAt", "desc"),
-          limit(1),
         );
         const pendingSnap = await getDocs(pendingVerifications);
-        if (!pendingSnap.empty) {
-          await updateDoc(doc(db, "verificationRequests", pendingSnap.docs[0].id), {
-            status: isApprove ? "approved" : "rejected",
-            updatedAt: serverTimestamp(),
-          });
-        }
+        await Promise.all(
+          pendingSnap.docs.map((d) =>
+            updateDoc(doc(db, "verificationRequests", d.id), {
+              status: isApprove ? "approved" : "rejected",
+              updatedAt: serverTimestamp(),
+            }),
+          ),
+        );
 
         await sendCommsEmail("verification_feedback", {
           email: userEmail,

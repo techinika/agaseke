@@ -6,6 +6,10 @@ import {
   addDoc,
   collection,
   serverTimestamp,
+  query,
+  where,
+  getDocs,
+  limit,
 } from "firebase/firestore";
 import {
   RecaptchaVerifier,
@@ -127,6 +131,19 @@ export const VerificationPage = () => {
         idDocumentUrl,
         createdAt: serverTimestamp(),
       };
+
+      const existingQ = query(
+        collection(db, "verificationRequests"),
+        where("uid", "==", creator?.uid),
+        where("status", "==", "pending"),
+        limit(1),
+      );
+      const existingSnap = await getDocs(existingQ);
+      if (!existingSnap.empty) {
+        toast.error("You already have a pending verification request");
+        setLoading(false);
+        return;
+      }
 
       await addDoc(collection(db, "verificationRequests"), payload);
       await updateDoc(doc(db, "creators", String(creator?.handle)), {

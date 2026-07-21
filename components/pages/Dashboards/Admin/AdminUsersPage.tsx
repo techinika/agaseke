@@ -198,12 +198,28 @@ export default function AdminUsersPage() {
         },
       );
 
+      const uid = verifyingUser.uid || verifyingUser.id;
+      const pendingQ = query(
+        collection(db, "verificationRequests"),
+        where("uid", "==", uid),
+        where("status", "==", "pending"),
+      );
+      const pendingSnap = await getDocs(pendingQ);
+      await Promise.all(
+        pendingSnap.docs.map((d) =>
+          updateDoc(doc(db, "verificationRequests", d.id), {
+            status: "approved",
+            updatedAt: new Date(),
+          }),
+        ),
+      );
+
       await sendCommsEmail("verification_feedback", {
         email: verifyingUser.email,
         name: verifyingUser.displayName,
         approved: true,
         reason: "",
-        creatorUid: verifyingUser.uid || verifyingUser.id,
+        creatorUid: uid,
         handle: verifyingUser.username || verifyingUser.id,
       });
 
