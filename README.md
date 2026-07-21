@@ -924,3 +924,10 @@ For issues or feature requests, please open an issue on GitHub.
 ### Verification Email & Activity Logs Fix (July 2026)
 - **Fixed "No recipients resolved" on verification feedback email**: Admin approval/rejection of KYC verification was failing with a 500 error because the profile lookup queried `where("username", "==", target.uid)`, but `username` is the creator handle (e.g. `gisa_patrick`), not the UID. Since profile document IDs are always the Firebase Auth UID, replaced the query with a direct `getDoc(doc(db, "profiles", target.uid))`.
 - **Fixed "createdAt?.toDate is not a function" on activity logs page**: The admin logs page (`/admin/logs`) crashed when rendering logs written by Cloudflare Workers via REST API, which store timestamps differently than the Firebase client SDK. Added a `toDateSafe()` helper that handles Firestore `Timestamp` objects, ISO strings, raw `{seconds, nanoseconds}` objects, and native `Date` objects. Replaced all three bare `.toDate()` call sites (CSV export, log list, detail panel).
+
+### Verification Requests Deduplication (July 2026)
+- **Fixed stale/duplicate verification requests in admin dashboard**: The admin verification list was showing already-verified users and duplicate entries for the same user. Four causes fixed:
+  - `AdminUsersPage.verifyUser()` was marking creators verified directly without updating their `verificationRequests` documents, leaving stale `pending` records. Now queries and approves all pending requests for that user.
+  - `AdminPage.handleAction()` only updated `limit(1)` pending request per user, so if duplicates existed, older ones stayed `pending`. Now updates all pending requests for that user.
+  - `VerifyPage.handleFinalSubmit()` used `addDoc` without checking for existing pending requests, allowing multiple submissions. Now queries for existing pending requests and rejects duplicates.
+  - Admin page verification listener and `fetchData()` now deduplicate by `uid` client-side (keeping the most recent), so any existing DB cruft is hidden from the UI.
