@@ -17,14 +17,60 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
 function getStaticPages(): MetadataRoute.Sitemap {
   return [
-    { url: baseUrl, lastModified: new Date(), changeFrequency: "daily" as const, priority: 1 },
-    { url: `${baseUrl}/explore`, lastModified: new Date(), changeFrequency: "daily" as const, priority: 0.9 },
-    { url: `${baseUrl}/help-center`, lastModified: new Date(), changeFrequency: "monthly" as const, priority: 0.5 },
-    { url: `${baseUrl}/login`, lastModified: new Date(), changeFrequency: "monthly" as const, priority: 0.3 },
-    { url: `${baseUrl}/privacy`, lastModified: new Date(), changeFrequency: "yearly" as const, priority: 0.3 },
-    { url: `${baseUrl}/terms`, lastModified: new Date(), changeFrequency: "yearly" as const, priority: 0.3 },
-    { url: `${baseUrl}/payout-policy`, lastModified: new Date(), changeFrequency: "yearly" as const, priority: 0.3 },
-    { url: `${baseUrl}/changelog`, lastModified: new Date(), changeFrequency: "monthly" as const, priority: 0.4 },
+    {
+      url: baseUrl,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 1,
+    },
+    {
+      url: `${baseUrl}/explore`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/explore/posts`,
+      lastModified: new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.9,
+    },
+    {
+      url: `${baseUrl}/help-center`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.5,
+    },
+    {
+      url: `${baseUrl}/login`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.3,
+    },
+    {
+      url: `${baseUrl}/privacy`,
+      lastModified: new Date(),
+      changeFrequency: "yearly" as const,
+      priority: 0.3,
+    },
+    {
+      url: `${baseUrl}/terms`,
+      lastModified: new Date(),
+      changeFrequency: "yearly" as const,
+      priority: 0.3,
+    },
+    {
+      url: `${baseUrl}/payout-policy`,
+      lastModified: new Date(),
+      changeFrequency: "yearly" as const,
+      priority: 0.3,
+    },
+    {
+      url: `${baseUrl}/changelog`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.4,
+    },
   ];
 }
 

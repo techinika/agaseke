@@ -49,7 +49,8 @@ const extractYouTubeId = (url: string): string | null => {
 };
 
 const hasYouTubeLink = (text: string): string | null => {
-  const urlPattern = /https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)[^\s]+/gi;
+  const urlPattern =
+    /https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)[^\s]+/gi;
   const match = text.match(urlPattern);
   if (match) return match[0];
   return null;
@@ -124,9 +125,13 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
     if (!postId) return;
     const commentsRef = collection(db, "creatorContent", postId, "comments");
     const q = query(commentsRef, orderBy("createdAt", "asc"));
-    const unsub = onSnapshot(q, (snap) => {
-      setComments(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    }, () => {});
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setComments(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      },
+      () => {},
+    );
     return () => unsub();
   }, [postId]);
 
@@ -141,7 +146,8 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
       const commentsRef = collection(db, "creatorContent", postId, "comments");
       await addDoc(commentsRef, {
         userId: currentUser.uid,
-        userName: profile?.displayName || currentUser.displayName || "Anonymous",
+        userName:
+          profile?.displayName || currentUser.displayName || "Anonymous",
         userPhoto: profile?.photoURL || currentUser.photoURL || "",
         content: newComment.trim(),
         createdAt: serverTimestamp(),
@@ -160,10 +166,13 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
   const handleEditComment = async (commentId: string) => {
     if (!editCommentContent.trim()) return;
     try {
-      await updateDoc(doc(db, "creatorContent", postId, "comments", commentId), {
-        content: editCommentContent.trim(),
-        editedAt: serverTimestamp(),
-      });
+      await updateDoc(
+        doc(db, "creatorContent", postId, "comments", commentId),
+        {
+          content: editCommentContent.trim(),
+          editedAt: serverTimestamp(),
+        },
+      );
       setEditingCommentId(null);
       setEditCommentContent("");
     } catch {
@@ -210,7 +219,10 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold">Post not found</h1>
-          <Link href="/explore/posts" className="text-orange-600 font-medium mt-4 inline-block hover:underline">
+          <Link
+            href="/explore/posts"
+            className="text-orange-600 font-medium mt-4 inline-block hover:underline"
+          >
             &larr; Back to posts
           </Link>
         </div>
@@ -226,9 +238,12 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
     return id ? { videoId: id } : null;
   })();
 
-  const pages = post.type === "document" && post.contentUrl
-    ? (Array.isArray(post.contentUrl) ? post.contentUrl : [post.contentUrl])
-    : [];
+  const pages =
+    post.type === "document" && post.contentUrl
+      ? Array.isArray(post.contentUrl)
+        ? post.contentUrl
+        : [post.contentUrl]
+      : [];
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
@@ -242,11 +257,15 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
         </Link>
 
         {/* Author Header */}
-        <div className="flex items-center gap-4 mb-8 p-4 bg-card rounded-xl border border-border">
+        <div className="flex flex-wrap items-center gap-4 mb-8 p-4 bg-card rounded-xl border border-border">
           <Link href={`/${handle}`} className="shrink-0">
             <div className="w-14 h-14 rounded-full bg-muted overflow-hidden">
               {creatorPhoto ? (
-                <img src={creatorPhoto} alt={creatorName} className="w-full h-full object-cover" />
+                <img
+                  src={creatorPhoto}
+                  alt={creatorName}
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <User size={24} className="text-muted-foreground" />
@@ -255,7 +274,10 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
             </div>
           </Link>
           <div className="flex-1">
-            <Link href={`/${handle}`} className="font-bold text-lg hover:text-orange-600 transition-colors">
+            <Link
+              href={`/${handle}`}
+              className="font-bold text-lg hover:text-orange-600 transition-colors"
+            >
               {creatorName}
             </Link>
             {handle && (
@@ -288,7 +310,13 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
           {/* Type Badge + Date */}
           <div className="flex items-center justify-between mb-6">
             <span className="text-[10px] font-bold bg-muted px-2 py-1 rounded uppercase tracking-widest text-muted-foreground">
-              {post.type === "video" ? "Video" : post.type === "image" ? "Image" : post.type === "document" ? "Document" : "Post"}
+              {post.type === "video"
+                ? "Video"
+                : post.type === "image"
+                  ? "Image"
+                  : post.type === "document"
+                    ? "Document"
+                    : "Post"}
             </span>
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <Calendar size={12} />
@@ -329,21 +357,31 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
                 </div>
                 <div>
                   <p className="font-semibold">Document</p>
-                  <p className="text-sm text-muted-foreground">{pages.length} page{pages.length > 1 ? "s" : ""}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {pages.length} page{pages.length > 1 ? "s" : ""}
+                  </p>
                 </div>
               </div>
               {pages.length > 1 && (
                 <div className="flex items-center justify-between mb-4">
                   <button
-                    onClick={() => setDocumentIndex(Math.max(0, documentIndex - 1))}
+                    onClick={() =>
+                      setDocumentIndex(Math.max(0, documentIndex - 1))
+                    }
                     disabled={documentIndex === 0}
                     className="p-2 bg-card border rounded-lg disabled:opacity-50"
                   >
                     <ChevronLeft size={18} />
                   </button>
-                  <span className="text-sm font-medium">{documentIndex + 1} of {pages.length}</span>
+                  <span className="text-sm font-medium">
+                    {documentIndex + 1} of {pages.length}
+                  </span>
                   <button
-                    onClick={() => setDocumentIndex(Math.min(pages.length - 1, documentIndex + 1))}
+                    onClick={() =>
+                      setDocumentIndex(
+                        Math.min(pages.length - 1, documentIndex + 1),
+                      )
+                    }
                     disabled={documentIndex === pages.length - 1}
                     className="p-2 bg-card border rounded-lg disabled:opacity-50"
                   >
@@ -360,7 +398,9 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
           )}
 
           {/* Title */}
-          <h1 className="text-2xl md:text-3xl font-bold mb-4">{post.title || "Untitled"}</h1>
+          <h1 className="text-2xl md:text-3xl font-bold mb-4">
+            {post.title || "Untitled"}
+          </h1>
 
           {/* Description */}
           {post.description || post.content ? (
@@ -396,7 +436,6 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
 
         {/* Comments Section */}
         <div className="mt-8 bg-card rounded-2xl border border-border p-6">
-
           {/* Comment Form */}
           {currentUser ? (
             <div className="mt-6 flex gap-3">
@@ -427,13 +466,23 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
                   disabled={!newComment.trim() || submittingComment}
                   className="px-4 py-2 bg-orange-500 text-white rounded-xl text-sm font-medium hover:bg-orange-600 transition disabled:opacity-50"
                 >
-                  {submittingComment ? <Loader size={16} className="animate-spin" /> : "Post"}
+                  {submittingComment ? (
+                    <Loader size={16} className="animate-spin" />
+                  ) : (
+                    "Post"
+                  )}
                 </button>
               </div>
             </div>
           ) : (
             <p className="mt-6 text-sm text-muted-foreground">
-              <Link href="/login" className="text-orange-600 font-medium hover:underline">Log in</Link> to join the conversation.
+              <Link
+                href="/login"
+                className="text-orange-600 font-medium hover:underline"
+              >
+                Log in
+              </Link>{" "}
+              to join the conversation.
             </p>
           )}
 
@@ -444,7 +493,11 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
                 <div key={comment.id} className="flex gap-3">
                   <div className="w-8 h-8 rounded-full bg-muted overflow-hidden shrink-0">
                     {comment.userPhoto ? (
-                      <img src={comment.userPhoto} alt="" className="w-full h-full object-cover" />
+                      <img
+                        src={comment.userPhoto}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <User size={14} className="text-muted-foreground" />
@@ -459,12 +512,27 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
                           <input
                             type="text"
                             value={editCommentContent}
-                            onChange={(e) => setEditCommentContent(e.target.value)}
+                            onChange={(e) =>
+                              setEditCommentContent(e.target.value)
+                            }
                             className="flex-1 bg-background border rounded-lg px-3 py-1 text-sm outline-none"
                             autoFocus
                           />
-                          <button onClick={() => handleEditComment(comment.id)} className="text-orange-600 text-sm font-medium">Save</button>
-                          <button onClick={() => { setEditingCommentId(null); setEditCommentContent(""); }} className="text-muted-foreground text-sm">Cancel</button>
+                          <button
+                            onClick={() => handleEditComment(comment.id)}
+                            className="text-orange-600 text-sm font-medium"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingCommentId(null);
+                              setEditCommentContent("");
+                            }}
+                            className="text-muted-foreground text-sm"
+                          >
+                            Cancel
+                          </button>
                         </div>
                       ) : (
                         <p className="text-sm mt-0.5">{comment.content}</p>
@@ -472,12 +540,16 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
                     </div>
                     <div className="flex items-center gap-3 mt-1 px-1">
                       <span className="text-[10px] text-muted-foreground">
-                        {comment.createdAt?.toDate?.().toLocaleDateString() || ""}
+                        {comment.createdAt?.toDate?.().toLocaleDateString() ||
+                          ""}
                       </span>
                       {currentUser?.uid === comment.userId && (
                         <>
                           <button
-                            onClick={() => { setEditingCommentId(comment.id); setEditCommentContent(comment.content); }}
+                            onClick={() => {
+                              setEditingCommentId(comment.id);
+                              setEditCommentContent(comment.content);
+                            }}
                             className="text-[10px] text-muted-foreground hover:text-foreground"
                           >
                             Edit
@@ -501,8 +573,18 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
           {deleteCommentId && (
             <div className="mt-4 flex items-center gap-3 p-3 bg-red-50 rounded-xl border border-red-200">
               <p className="text-sm text-red-700">Delete this comment?</p>
-              <button onClick={() => handleDeleteComment(deleteCommentId)} className="text-sm font-bold text-red-600 hover:underline">Yes</button>
-              <button onClick={() => setDeleteCommentId(null)} className="text-sm text-muted-foreground hover:underline">No</button>
+              <button
+                onClick={() => handleDeleteComment(deleteCommentId)}
+                className="text-sm font-bold text-red-600 hover:underline"
+              >
+                Yes
+              </button>
+              <button
+                onClick={() => setDeleteCommentId(null)}
+                className="text-sm text-muted-foreground hover:underline"
+              >
+                No
+              </button>
             </div>
           )}
         </div>
@@ -510,8 +592,15 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
 
       {/* Image Lightbox */}
       {viewingImage && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setViewingImage(null)}>
-          <img src={viewingImage} alt="Post image" className="max-w-full max-h-full object-contain rounded-lg" />
+        <div
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          onClick={() => setViewingImage(null)}
+        >
+          <img
+            src={viewingImage}
+            alt="Post image"
+            className="max-w-full max-h-full object-contain rounded-lg"
+          />
         </div>
       )}
 
