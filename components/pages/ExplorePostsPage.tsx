@@ -314,7 +314,7 @@ export default function ExplorePostsPage() {
                   })()}
 
                   {/* Title */}
-                  <Link href={`/${item.authorHandle}/community/${item.id}`} className="block group">
+                  <Link href={`/explore/posts/${item.id}`} className="block group">
                     <h4 className="font-bold text-lg mb-2 group-hover:text-orange-600 transition-colors">
                       {item.title || "Untitled"}
                     </h4>
@@ -382,7 +382,7 @@ export default function ExplorePostsPage() {
                       </span>
                     )}
                     <Link
-                      href={`/${item.authorHandle}/community/${item.id}`}
+                      href={`/explore/posts/${item.id}`}
                       className="flex items-center gap-1 text-orange-600 font-medium hover:underline ml-auto"
                     >
                       View Post <ArrowRight size={12} />

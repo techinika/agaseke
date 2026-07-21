@@ -933,10 +933,17 @@ For issues or feature requests, please open an issue on GitHub.
   - Admin page verification listener and `fetchData()` now deduplicate by `uid` client-side (keeping the most recent), so any existing DB cruft is hidden from the UI.
 
 ### Public Explore Posts Page (July 2026)
-- **New `/explore/posts` page** for SEO: A dedicated discoverable page listing all public posts from every creator, with full SEO metadata (Open Graph, Twitter Cards, JSON-LD breadcrumbs, robots).
+- **New `/explore/posts` page** for SEO: A dedicated discoverable page listing all public posts from every creator, with full SEO metadata (Open Graph, Twitter Cards, JSON-LD breadcrumbs, `CollectionPage` schema, hreflang).
 - **Author attribution**: Each post card shows the creator's avatar, name, and handle linked to their profile — making the page valuable for creator discovery.
 - **Cursor-based pagination**: Loads 10 posts at a time with a "Load More" button, matching the existing explore page pattern.
 - **Full media support**: Renders images, videos, documents (with page navigation), YouTube embeds, and text content with "Read more" truncation — matching the community tab experience.
 - **Client-side search**: Filter posts by title, content, or creator name/handle without additional Firestore queries.
 - **Image lightbox & document viewer**: Click images to view full-screen; click documents to open in an overlay with Google Docs viewer.
+- **Post detail page at `/explore/posts/[post-id]`**: Individual post view with dynamic server-side SEO metadata (OG, Twitter, article schema), creator attribution, full content rendering, like/comment system, and share button.
 - **Navigation link**: Added "Posts" nav item in the desktop navigation bar next to "Explore" and "Help".
+- **Links updated**: "View Post" and title links on the explore posts page now point to `/explore/posts/[id]` instead of creator community pages.
+
+### SEO Improvements (July 2026)
+- **Enhanced `/explore` (creators) metadata**: Richer title/description/OG tags with hreflang and country name; added `CollectionPage` JSON-LD structured data with organization publisher and about section.
+- **Enhanced `/explore/posts` metadata**: Same improvements — richer metadata, hreflang, `CollectionPage` structured data.
+- **ExplorePostDetailPage**: Server-side `generateMetadata` for dynamic OG images, article schema with author attribution, and per-post keywords.
