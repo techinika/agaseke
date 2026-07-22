@@ -1,6 +1,6 @@
 import type { EmailService, EmailPurpose } from "../types";
 
-import { welcomeCreator, profileLive } from "./welcome";
+import { welcomeUser, welcomeCreator, profileLive } from "./welcome";
 import { bookingRequest, bookingResponse } from "./booking";
 import { gatheringCreated, gatheringRsvp, gatheringCheckin, gatheringDeclined, gatheringUndo } from "./gathering";
 import { storeOrder, storeStatus } from "./store";
@@ -12,6 +12,7 @@ import { verificationRequest, verificationFeedback } from "./verification";
 import { broadcast } from "./broadcast";
 
 const registry: Record<EmailPurpose, EmailService> = {
+  welcome_user: welcomeUser,
   welcome_creator: welcomeCreator,
   profile_live: profileLive,
   booking_request: bookingRequest,

@@ -47,7 +47,7 @@ export const handleGoogleLogin = async (
       await setDoc(userRef, initialProfile);
 
       try {
-        await sendCommsEmail("profile_live", {
+        await sendCommsEmail("welcome_user", {
           email: user.email,
           name: user.displayName || "Supporter",
         });

@@ -1,7 +1,7 @@
 import { auth } from "@/db/firebase";
 
 export type EmailPurpose =
-  | "welcome_creator" | "profile_live" | "booking_request" | "booking_response"
+  | "welcome_user" | "welcome_creator" | "profile_live" | "booking_request" | "booking_response"
   | "gathering_created" | "gathering_rsvp" | "gathering_checkin" | "gathering_declined"
   | "gathering_undo" | "message_new" | "message_digest" | "store_order" | "store_status"
   | "support_received" | "payout_processed" | "content_new" | "verification_request"

@@ -1,4 +1,5 @@
 export type EmailPurpose =
+  | "welcome_user"
   | "welcome_creator"
   | "profile_live"
   | "booking_request"

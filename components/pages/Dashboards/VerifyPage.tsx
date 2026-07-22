@@ -126,6 +126,7 @@ export const VerificationPage = () => {
         bankName: formData.get("bankName"),
         accountName: formData.get("accountName"),
         accountNumber: formData.get("accountNumber"),
+        swiftCode: formData.get("swiftCode") || "N/A",
         payoutPreference: formData.get("payoutPreference"),
         status: "pending",
         idDocumentUrl,
@@ -288,6 +289,18 @@ export const VerificationPage = () => {
                     name="accountNumber"
                     required
                     disabled={!isEditing}
+                    className="w-full bg-muted border-none rounded-lg p-4 outline-none focus:ring-2 focus:ring-black transition"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                    SWIFT Code
+                  </label>
+                  <input
+                    name="swiftCode"
+                    disabled={!isEditing}
+                    placeholder="e.g. BOERW RW"
                     className="w-full bg-muted border-none rounded-lg p-4 outline-none focus:ring-2 focus:ring-black transition"
                   />
                 </div>
