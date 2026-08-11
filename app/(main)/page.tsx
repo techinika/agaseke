@@ -13,7 +13,7 @@ async function getFeaturedCreators() {
       .orderBy("createdAt", "desc")
       .limit(5)
       .get();
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    return snap.docs.map((d) => JSON.parse(JSON.stringify({ id: d.id, ...d.data() })));
   } catch (error) {
     console.error("Error fetching featured creators:", error);
     return [];
