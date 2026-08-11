@@ -47,34 +47,67 @@ async function getPublicProfileData(username: string) {
   const creatorId = creator.uid as string;
   const handle = (creator.handle as string) || username;
 
-  try {
-    const [partnersSnap, postsSnap, referralSnap] = await Promise.all([
-    adminDb
-      .collection("creatorPartners")
-      .where("creatorId", "==", creatorId)
-      .where("featured", "==", true)
-      .get(),
-    adminDb
-      .collection("creatorContent")
-      .where("creatorId", "in", [handle, creatorId])
-      .where("isPrivate", "==", false)
-      .orderBy("createdAt", "desc")
-      .limit(3)
-      .get(),
+  const safe = async <T,>(fn: () => Promise<T>, fallback: T): Promise<T> => {
+    try {
+      return await fn();
+    } catch (error) {
+      console.error("Error fetching optional profile data:", error);
+      return fallback;
+    }
+  };
+
+  const [partnersSnap, postsSnap, referralSnap] = await Promise.all([
+    safe(
+      () =>
+        adminDb
+          .collection("creatorPartners")
+          .where("creatorId", "==", creatorId)
+          .where("featured", "==", true)
+          .get(),
+      null,
+    ),
+    safe(
+      () =>
+        adminDb
+          .collection("creatorContent")
+          .where("creatorId", "in", [handle, creatorId])
+          .where("isPrivate", "==", false)
+          .limit(10)
+          .get(),
+      null,
+    ),
     profile?.referralCreator
-      ? adminDb.collection("creators").doc(String(profile.referralCreator)).get()
+      ? safe(
+          () =>
+            adminDb
+              .collection("creators")
+              .doc(String(profile.referralCreator))
+              .get(),
+          null,
+        )
       : Promise.resolve(null),
   ]);
 
-  const partners = partnersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  const publicPosts = postsSnap.docs.map((d) => {
-    const post = d.data();
-    return {
-      id: d.id,
-      ...post,
-      createdAt: post.createdAt?.toDate?.()?.toISOString() ?? null,
-    };
-  });
+  const partners = partnersSnap?.docs
+    ? partnersSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    : [];
+  const rawPosts = postsSnap?.docs
+    ? postsSnap.docs.map((d) => {
+        const post = d.data();
+        return {
+          id: d.id,
+          ...post,
+          createdAt: post.createdAt?.toDate?.()?.toISOString() ?? null,
+        };
+      })
+    : [];
+  const publicPosts = rawPosts
+    .sort(
+      (a, b) =>
+        (b.createdAt ? new Date(b.createdAt).getTime() : 0) -
+        (a.createdAt ? new Date(a.createdAt).getTime() : 0),
+    )
+    .slice(0, 3);
   const referralId = referralSnap?.exists
     ? (referralSnap.data()?.uid as string) || null
     : null;
@@ -86,10 +119,6 @@ async function getPublicProfileData(username: string) {
     publicPosts,
     referralId,
   };
-  } catch (error) {
-    console.error("Error fetching public profile data:", error);
-    return null;
-  }
 }
 
 export async function generateMetadata({

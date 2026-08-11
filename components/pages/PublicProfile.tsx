@@ -9,16 +9,14 @@ import {
   getDocs,
   increment,
   limit,
-  orderBy,
   query,
   updateDoc,
   where,
   Timestamp,
 } from "firebase/firestore";
 import { db } from "@/db/firebase";
-import Loading from "@/app/loading";
+import { useRouter } from "next/navigation";
 import NotFound from "@/app/not-found";
-import { Creator } from "@/types/creator";
 import { useAuth } from "@/auth/AuthContext";
 import { SupportModal } from "../parts/public/SupportModal";
 import CreatorSchema from "../seo/CreatorSchma";
@@ -53,6 +51,41 @@ function TabFallback() {
   );
 }
 
+function ProfileSkeleton() {
+  return (
+    <div className="mx-auto max-w-2xl px-6" aria-busy="true">
+      <div className="mt-8">
+        <div className="h-40 sm:h-52 bg-muted/60 rounded-2xl animate-pulse" />
+        <div className="mt-6 flex items-center gap-4">
+          <div className="w-20 h-20 rounded-full bg-muted/60 animate-pulse" />
+          <div className="flex-1 space-y-3">
+            <div className="h-5 w-1/2 bg-muted/60 rounded-lg animate-pulse" />
+            <div className="h-3 w-1/3 bg-muted/60 rounded-lg animate-pulse" />
+          </div>
+        </div>
+        <div className="mt-5 space-y-2">
+          <div className="h-3 w-full bg-muted/60 rounded-lg animate-pulse" />
+          <div className="h-3 w-4/5 bg-muted/60 rounded-lg animate-pulse" />
+        </div>
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <div className="h-12 bg-muted/60 rounded-xl animate-pulse" />
+          <div className="h-12 bg-muted/60 rounded-xl animate-pulse" />
+        </div>
+      </div>
+      <div className="mt-10 flex gap-6 border-b border-border">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="h-4 w-16 bg-muted/60 rounded-lg animate-pulse" />
+        ))}
+      </div>
+      <div className="mt-8 space-y-4">
+        <div className="h-28 bg-muted/60 rounded-2xl animate-pulse" />
+        <div className="h-28 bg-muted/60 rounded-2xl animate-pulse" />
+        <div className="h-28 bg-muted/60 rounded-2xl animate-pulse" />
+      </div>
+    </div>
+  );
+}
+
 const GENERAL_WORKER_URL =
   process.env.NEXT_PUBLIC_GENERAL_WORKER_URL || "http://localhost:8787";
 
@@ -72,10 +105,12 @@ export default function PublicProfile({
   initialReferralId?: string | null;
 }) {
   const { user: currentUser, isLoggedIn, isCreator } = useAuth();
+  const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [creatorData, setCreatorData] = useState<any>(initialCreator || null);
   const [profileData, setProfileData] = useState<any>(initialProfile || null);
   const [loading, setLoading] = useState(!initialCreator);
+  const [fetchError, setFetchError] = useState(false);
   const [referralId, setReferralId] = useState<string | null>(
     initialReferralId ?? null,
   );
@@ -127,9 +162,12 @@ export default function PublicProfile({
               }
             }
           }
+        } else {
+          setFetchError(true);
         }
       } catch (error) {
         console.error("Error fetching creator:", error);
+        setFetchError(true);
         fetch(`${GENERAL_WORKER_URL}/api/general/log-error`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -161,11 +199,19 @@ export default function PublicProfile({
             contentRef,
             where("creatorId", "in", [creatorData.handle, creatorData.uid]),
             where("isPrivate", "==", false),
-            orderBy("createdAt", "desc"),
-            limit(3),
+            limit(10),
           );
           const publicSnap = await getDocs(publicQ);
-          setPublicPosts(publicSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+          setPublicPosts(
+            publicSnap.docs
+              .map((doc) => ({ id: doc.id, ...doc.data() }) as any)
+              .sort(
+                (a, b) =>
+                  (b.createdAt?.toMillis?.() || 0) -
+                  (a.createdAt?.toMillis?.() || 0),
+              )
+              .slice(0, 3),
+          );
         } catch (error) {
           console.error("Error fetching public posts:", error);
         }
@@ -192,11 +238,19 @@ export default function PublicProfile({
             contentRef,
             where("creatorId", "in", [creatorData.handle, creatorData.uid]),
             where("isPrivate", "==", true),
-            orderBy("createdAt", "desc"),
-            limit(3),
+            limit(10),
           );
           const privateSnap = await getDocs(privateQ);
-          setPrivatePosts(privateSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+          setPrivatePosts(
+            privateSnap.docs
+              .map((doc) => ({ id: doc.id, ...doc.data() }) as any)
+              .sort(
+                (a, b) =>
+                  (b.createdAt?.toMillis?.() || 0) -
+                  (a.createdAt?.toMillis?.() || 0),
+              )
+              .slice(0, 3),
+          );
         }
       } catch (error) {
         console.error("Error checking support status:", error);
@@ -244,7 +298,28 @@ export default function PublicProfile({
     updateDoc(creatorRef, { views: increment(1) }).catch((err) => { console.error("Failed to update view count", err); });
   }, [username]);
 
-  if (loading) return <Loading />;
+  if (loading) return <ProfileSkeleton />;
+  if (fetchError && !creatorData) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] px-6">
+        <div className="text-center max-w-md">
+          <h2 className="text-2xl font-bold text-foreground mb-2">
+            Couldn&apos;t load this profile
+          </h2>
+          <p className="text-muted-foreground mb-6">
+            There was a network error while fetching this creator. Please try
+            again.
+          </p>
+          <button
+            onClick={() => router.refresh()}
+            className="bg-foreground text-background px-6 py-3 rounded-lg font-bold hover:bg-orange-600 transition"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
   if (!creatorData) return <NotFound />;
 
   const creator = {

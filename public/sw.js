@@ -5,7 +5,13 @@ const PRECACHE_URLS = ["/", "/offline"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(PRECACHE_URLS)),
+    caches
+      .open(CACHE)
+      .then((cache) =>
+        Promise.allSettled(
+          PRECACHE_URLS.map((url) => cache.add(url).catch(() => {})),
+        ),
+      ),
   );
   self.skipWaiting();
 });
@@ -43,14 +49,23 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(networkFirst(request));
 });
 
+function isCacheable(response) {
+  if (!response) return false;
+  if (response.redirected) return false;
+  if (response.type === "opaque" || response.type === "opaqueredirect") {
+    return false;
+  }
+  return response.ok;
+}
+
 async function cacheFirst(request, cacheName) {
   const cached = await caches.match(request);
   if (cached) return cached;
   try {
     const response = await fetch(request);
-    if (response.ok) {
+    if (isCacheable(response)) {
       const cache = await caches.open(cacheName);
-      cache.put(request, response.clone());
+      await cache.put(request, response.clone());
     }
     return response;
   } catch {
@@ -61,9 +76,9 @@ async function cacheFirst(request, cacheName) {
 async function networkFirst(request) {
   try {
     const response = await fetch(request);
-    if (response.ok) {
+    if (isCacheable(response)) {
       const cache = await caches.open(CACHE);
-      if (request.method === "GET") cache.put(request, response.clone());
+      if (request.method === "GET") await cache.put(request, response.clone());
     }
     return response;
   } catch {
