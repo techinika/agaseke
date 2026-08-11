@@ -40,7 +40,11 @@ import MobileBottomBar from "@/components/parts/MobileBottomBar";
 import { FaCcVisa, FaCcMastercard, FaCcAmex } from "react-icons/fa";
 import { FeatureCard, Step } from "./landingpage/index";
 
-export default function LandingPage() {
+export default function LandingPage({
+  initialCreators,
+}: {
+  initialCreators?: any[];
+}) {
   const { isCreator, user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -49,8 +53,12 @@ export default function LandingPage() {
     "idle" | "checking" | "available" | "taken" | "invalid"
   >("idle");
 
-  const [featuredCreators, setFeaturedCreators] = useState<any[]>([]);
-  const [featuredLoading, setFeaturedLoading] = useState(true);
+  const [featuredCreators, setFeaturedCreators] = useState<any[]>(
+    initialCreators || [],
+  );
+  const [featuredLoading, setFeaturedLoading] = useState(
+    !initialCreators?.length,
+  );
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
 
   const fallbackCreators = [
@@ -97,6 +105,8 @@ export default function LandingPage() {
   ];
 
   useEffect(() => {
+    if (initialCreators?.length) return;
+
     const fetchFeatured = async () => {
       try {
         const creatorsRef = collection(db, "creators");
@@ -111,6 +121,7 @@ export default function LandingPage() {
       }
     };
     fetchFeatured();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function getFlagEmoji(countryCode: string): string {

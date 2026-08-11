@@ -2,6 +2,24 @@ import LandingPage from "@/components/pages/LandingPage";
 import HomeSchema from "@/components/seo/HomeSchema";
 import { Metadata } from "next";
 
+export const revalidate = 300;
+
+import { adminDb } from "@/db/firebaseAdmin";
+
+async function getFeaturedCreators() {
+  try {
+    const snap = await adminDb
+      .collection("creators")
+      .orderBy("createdAt", "desc")
+      .limit(5)
+      .get();
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  } catch (error) {
+    console.error("Error fetching featured creators:", error);
+    return [];
+  }
+}
+
 export const metadata: Metadata = {
   title: "Agaseke | African Creator Community & Monetization Platform",
   description:
@@ -64,11 +82,12 @@ export const metadata: Metadata = {
   classification: "Creator Monetization Platform",
 };
 
-function page() {
+async function page() {
+  const featuredCreators = await getFeaturedCreators();
   return (
     <>
       <HomeSchema />
-      <LandingPage />
+      <LandingPage initialCreators={featuredCreators} />
     </>
   );
 }

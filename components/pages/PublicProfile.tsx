@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Suspense, lazy } from "react";
 import {
   collection,
   doc,
@@ -13,6 +13,7 @@ import {
   query,
   updateDoc,
   where,
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "@/db/firebase";
 import Loading from "@/app/loading";
@@ -26,31 +27,80 @@ import { LoginNotice } from "../parts/public/LoginNotice";
 import { TabManager } from "../parts/public/TabManager";
 import { SendGiftSection } from "../parts/public/SendGiftSection";
 import { CommunityTab } from "../parts/public/CommunityTab";
-import { StoreTab } from "../parts/public/StoreTab";
-import { GiveawayTab } from "../parts/public/GiveawayTab";
-import { MessageTab } from "../parts/public/MessageTab";
-import { GatheringsTab } from "../parts/public/GatheringsTab";
 import { Building2, ExternalLink } from "lucide-react";
 import { normalizeSocialUrl } from "@/lib/urlUtils";
+
+const LazyStoreTab = lazy(() =>
+  import("../parts/public/StoreTab").then((m) => ({ default: m.StoreTab })),
+);
+const LazyGiveawayTab = lazy(() =>
+  import("../parts/public/GiveawayTab").then((m) => ({ default: m.GiveawayTab })),
+);
+const LazyMessageTab = lazy(() =>
+  import("../parts/public/MessageTab").then((m) => ({ default: m.MessageTab })),
+);
+const LazyGatheringsTab = lazy(() =>
+  import("../parts/public/GatheringsTab").then((m) => ({ default: m.GatheringsTab })),
+);
+
+function TabFallback() {
+  return (
+    <div className="space-y-4" aria-busy="true">
+      <div className="h-32 bg-muted/60 rounded-2xl animate-pulse" />
+      <div className="h-24 bg-muted/60 rounded-2xl animate-pulse" />
+      <div className="h-24 bg-muted/60 rounded-2xl animate-pulse" />
+    </div>
+  );
+}
 
 const GENERAL_WORKER_URL =
   process.env.NEXT_PUBLIC_GENERAL_WORKER_URL || "http://localhost:8787";
 
-export default function PublicProfile({ username }: { username: string }) {
+export default function PublicProfile({
+  username,
+  initialCreator,
+  initialProfile,
+  initialPartners,
+  initialPublicPosts,
+  initialReferralId,
+}: {
+  username: string;
+  initialCreator?: any;
+  initialProfile?: any;
+  initialPartners?: any[];
+  initialPublicPosts?: any[];
+  initialReferralId?: string | null;
+}) {
   const { user: currentUser, isLoggedIn, isCreator } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [creatorData, setCreatorData] = useState<any>(null);
-  const [profileData, setProfileData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [referralId, setReferralId] = useState<string | null>(null);
+  const [creatorData, setCreatorData] = useState<any>(initialCreator || null);
+  const [profileData, setProfileData] = useState<any>(initialProfile || null);
+  const [loading, setLoading] = useState(!initialCreator);
+  const [referralId, setReferralId] = useState<string | null>(
+    initialReferralId ?? null,
+  );
   const [isSupporter, setIsSupporter] = useState(false);
-  const [publicPosts, setPublicPosts] = useState<any[]>([]);
+  const [publicPosts, setPublicPosts] = useState<any[]>(
+    initialPublicPosts?.length
+      ? initialPublicPosts.map((p) => ({
+          ...p,
+          createdAt:
+            typeof p.createdAt === "string"
+              ? Timestamp.fromMillis(new Date(p.createdAt).getTime())
+              : p.createdAt,
+        }))
+      : [],
+  );
   const [privatePosts, setPrivatePosts] = useState<any[]>([]);
-  const [featuredPartners, setFeaturedPartners] = useState<any[]>([]);
+  const [featuredPartners, setFeaturedPartners] = useState<any[]>(
+    initialPartners || [],
+  );
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("community");
 
   useEffect(() => {
+    if (initialCreator || !username) return;
+
     const fetchData = async () => {
       try {
         const creatorRef = doc(db, "creators", username as string);
@@ -94,7 +144,8 @@ export default function PublicProfile({ username }: { username: string }) {
         setLoading(false);
       }
     };
-    if (username) fetchData();
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username]);
 
   useEffect(() => {
@@ -103,19 +154,21 @@ export default function PublicProfile({ username }: { username: string }) {
 
       const contentRef = collection(db, "creatorContent");
 
-      // Always fetch public posts (regardless of login status)
-      try {
-        const publicQ = query(
-          contentRef,
-          where("creatorId", "in", [creatorData.handle, creatorData.uid]),
-          where("isPrivate", "==", false),
-          orderBy("createdAt", "desc"),
-          limit(3),
-        );
-        const publicSnap = await getDocs(publicQ);
-        setPublicPosts(publicSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-      } catch (error) {
-        console.error("Error fetching public posts:", error);
+      // Only re-fetch public posts when we don't already have server-provided ones
+      if (!initialPublicPosts?.length) {
+        try {
+          const publicQ = query(
+            contentRef,
+            where("creatorId", "in", [creatorData.handle, creatorData.uid]),
+            where("isPrivate", "==", false),
+            orderBy("createdAt", "desc"),
+            limit(3),
+          );
+          const publicSnap = await getDocs(publicQ);
+          setPublicPosts(publicSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+        } catch (error) {
+          console.error("Error fetching public posts:", error);
+        }
       }
 
       // Only check support status and fetch private posts if logged in
@@ -155,7 +208,7 @@ export default function PublicProfile({ username }: { username: string }) {
 
   // Fetch featured partners when creatorData is available
   useEffect(() => {
-    if (!creatorData?.uid) return;
+    if (!creatorData?.uid || initialPartners?.length) return;
 
     const fetchPartners = async () => {
       try {
@@ -261,59 +314,67 @@ export default function PublicProfile({ username }: { username: string }) {
         )}
 
         {activeTab === "message" && (
-          <MessageTab
-            isLoggedIn={isLoggedIn}
-            isSupporter={isSupporter}
-            setIsModalOpen={setIsModalOpen}
-            name={creator?.name}
-            handle={username}
-            creatorId={creator.uid}
-            currentUserId={currentUser?.uid || undefined}
-            currentUserName={currentUser?.displayName || undefined}
-            creatorData={creatorData}
-            messagingEnabled={creatorData?.messagingEnabled !== false}
-            messagingAllowAll={creatorData?.messagingAllowAll !== false}
-            messagingMinAmount={creatorData?.messagingMinAmount || 0}
-            userTotalSupport={profileData?.totalSupport || 0}
-          />
+          <Suspense fallback={<TabFallback />}>
+            <LazyMessageTab
+              isLoggedIn={isLoggedIn}
+              isSupporter={isSupporter}
+              setIsModalOpen={setIsModalOpen}
+              name={creator?.name}
+              handle={username}
+              creatorId={creator.uid}
+              currentUserId={currentUser?.uid || undefined}
+              currentUserName={currentUser?.displayName || undefined}
+              creatorData={creatorData}
+              messagingEnabled={creatorData?.messagingEnabled !== false}
+              messagingAllowAll={creatorData?.messagingAllowAll !== false}
+              messagingMinAmount={creatorData?.messagingMinAmount || 0}
+              userTotalSupport={profileData?.totalSupport || 0}
+            />
+          </Suspense>
         )}
 
         {activeTab === "store" && (
-          <StoreTab
-            creatorId={creator.uid}
-            creatorName={creator.name}
-            creatorHandle={username}
-            storePublic={creatorData?.storePublic !== false}
-            isLoggedIn={isLoggedIn}
-            isSupporter={isSupporter}
-            setIsModalOpen={setIsModalOpen}
-            compact={false}
-          />
+          <Suspense fallback={<TabFallback />}>
+            <LazyStoreTab
+              creatorId={creator.uid}
+              creatorName={creator.name}
+              creatorHandle={username}
+              storePublic={creatorData?.storePublic !== false}
+              isLoggedIn={isLoggedIn}
+              isSupporter={isSupporter}
+              setIsModalOpen={setIsModalOpen}
+              compact={false}
+            />
+          </Suspense>
         )}
 
         {activeTab === "giveaways" && (
-          <GiveawayTab
-            creatorId={creator.uid}
-            creatorName={creator.name}
-            creatorHandle={username}
-            isLoggedIn={isLoggedIn}
-            isSupporter={isSupporter}
-            userTotalSupport={profileData?.totalSupport || 0}
-            setIsModalOpen={setIsModalOpen}
-            currentUserId={currentUser?.uid}
-            compact={true}
-            username={username}
-          />
+          <Suspense fallback={<TabFallback />}>
+            <LazyGiveawayTab
+              creatorId={creator.uid}
+              creatorName={creator.name}
+              creatorHandle={username}
+              isLoggedIn={isLoggedIn}
+              isSupporter={isSupporter}
+              userTotalSupport={profileData?.totalSupport || 0}
+              setIsModalOpen={setIsModalOpen}
+              currentUserId={currentUser?.uid}
+              compact={true}
+              username={username}
+            />
+          </Suspense>
         )}
 
         {activeTab === "gatherings" && (
-          <GatheringsTab
-            creatorId={creator.uid}
-            creatorHandle={username}
-            isSupporter={isSupporter}
-            compact={true}
-            username={username}
-          />
+          <Suspense fallback={<TabFallback />}>
+            <LazyGatheringsTab
+              creatorId={creator.uid}
+              creatorHandle={username}
+              isSupporter={isSupporter}
+              compact={true}
+              username={username}
+            />
+          </Suspense>
         )}
       </main>
 

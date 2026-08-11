@@ -232,6 +232,11 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.firebasestorage.app
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 
+# Firebase Admin (server-side ISR data fetching — public profiles & homepage)
+FIREBASE_PROJECT_ID=your_project_id
+FIREBASE_CLIENT_EMAIL=your_service_account_email
+FIREBASE_PRIVATE_KEY=your_service_account_private_key
+
 # Cloudinary
 NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
@@ -953,3 +958,10 @@ For issues or feature requests, please open an issue on GitHub.
 - **Login redirect on post comments**: "Log in to join the conversation" link now includes `?redirect=/explore/posts/[post-id]` so users return to the exact post after authentication.
 - **Support button on supporter feed & community tab**: Added per-post support button (Heart icon) on `/supporter` feed (`SupporterSpace.tsx`) and public community profile tab (`CommunityTab.tsx`). Each post card footer now shows a support button that opens `SupportModal` with the post's creator info and default message.
 - **Admin users CSV export**: Added "Download CSV" button on `/admin/users` that fetches all platform users and exports basic info (UID, email, display name, type, username, admin status, phone, support stats, timestamps) to a date-stamped CSV file.
+
+### Public Profile & Homepage Performance Optimization (August 2026)
+- **Server-side profile data fetch**: `app/(public_profile)/[username]/page.tsx` now fetches creator + profile + featured partners + public posts + referral ID in parallel (`Promise.all`) via `getPublicProfileData`, serializes Firestore data to JSON, and passes it to `PublicProfile` as initial props. `getCreatorData` is wrapped in React `cache()` so `generateMetadata` and the page share one fetch.
+- **No more client fetch waterfall**: `PublicProfile.tsx` seeds its state from server props; the original client-side fetch effects only run as a fallback when server data is absent. Public posts `createdAt` ISO strings are converted back to Firestore `Timestamp`s so the community tab's `.toMillis()`/`.toDate()` still work.
+- **Lazy-loaded profile tabs**: `StoreTab`, `GiveawayTab`, `MessageTab`, and `GatheringsTab` are now code-split via `React.lazy` + `Suspense` with a pulse-skeleton fallback. Only the default `CommunityTab` ships on first paint — the heavy store module (product/checkout modals) no longer loads until the Store tab is opened.
+- **Homepage ISR**: `app/(main)/page.tsx` added `export const revalidate = 300` and server-fetches featured creators via the admin SDK, passing `initialCreators` to `LandingPage`. The client-side Firestore fetch + loading spinner only run when server data is unavailable.
+- **Lazy Firebase admin init**: `db/firebaseAdmin.ts` rewritten to lazy-initialize the admin app (via Proxy) only when a Firestore/Auth method is actually called and valid `FIREBASE_*` env vars exist. Fixes the build-time `Error: The default Firebase app does not exist` when Firebase service-account creds are absent.
