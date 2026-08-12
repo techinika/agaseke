@@ -903,7 +903,7 @@ For issues or feature requests, please open an issue on GitHub.
 
 ### API Route Migration & General Worker (July 2026)
 - **Removed old Next.js API routes**: `app/api/log-error/route.ts` and `app/api/comms/post/notification/route.ts` deleted. Replaced by general worker endpoints.
-- **General worker endpoints**: `POST /api/general/log-error` (no auth, writes to Firestore `activityLogs`) and `POST /api/general/notification` (Firebase auth, creates in-app notifications).
+- **General worker endpoints**: `POST /api/general/log-error` (no auth, enqueues to `agaseke-log-queue`) and `POST /api/general/notification` (Firebase auth, enqueues in-app notification). Writes are consumed by the worker's queue handler into Firestore `activityLogs` / `notifications` with retries.
 - **All client callers updated** (7 components + ErrorContent) to call the general worker directly.
 - **New env vars**: `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` for Firestore OAuth2 token generation.
 

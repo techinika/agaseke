@@ -33,6 +33,7 @@ import {
 import type { Product, FolderData, CartItem, Order } from "./store";
 import { getProductCurrency, getProductPrice } from "./store/types";
 import { formatCurrency } from "@/types/currency";
+import { TabErrorState } from "@/components/ui/TabErrorState";
 
 const GENERAL_WORKER_URL =
   process.env.NEXT_PUBLIC_GENERAL_WORKER_URL || "http://localhost:8787";
@@ -78,6 +79,8 @@ export const StoreTab = ({
   const [products, setProducts] = useState<Product[]>([]);
   const [folders, setFolders] = useState<FolderData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
@@ -118,6 +121,7 @@ export const StoreTab = ({
           productData = productData.slice(0, limitCount);
         }
         setProducts(productData);
+        setFetchError(false);
 
         if (!compact) {
           const foldersRef = collection(db, "storeFolders");
@@ -136,6 +140,7 @@ export const StoreTab = ({
         }
       } catch (error) {
         console.error("Error fetching data:", error);
+        setFetchError(true);
         logErrorToServer("Error fetching store data", {
           creatorId,
           error: String(error),
@@ -146,7 +151,7 @@ export const StoreTab = ({
     };
 
     fetchData();
-  }, [creatorId, canAccess, compact]);
+  }, [creatorId, canAccess, compact, retryKey]);
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -358,6 +363,19 @@ export const StoreTab = ({
       <div className="animate-in fade-in duration-500 flex items-center justify-center h-[400px]">
         <Loader className="animate-spin text-orange-500" size={32} />
       </div>
+    );
+  }
+
+  if (fetchError && products.length === 0) {
+    return (
+      <TabErrorState
+        message="There was a problem fetching store products. Please try again."
+        onRetry={() => {
+          setFetchError(false);
+          setLoading(true);
+          setRetryKey((k) => k + 1);
+        }}
+      />
     );
   }
 

@@ -7,6 +7,21 @@
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
+	"queues": {
+		"producers": [
+			{
+				"queue": "agaseke-email-queue",
+				"binding": "AGASEKE_EMAIL_QUEUE"
+			}
+		],
+		"consumers": [
+			{
+				"queue": "agaseke-email-queue",
+				"max_batch_size": 25,
+				"max_retries": 3
+			}
+		]
+	},
 	"observability": {
 		"enabled": true,
 	},

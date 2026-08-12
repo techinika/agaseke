@@ -1,11 +1,12 @@
 import { Resend } from "resend";
 import { requireAuth } from "./auth";
 import { corsHeaders } from "./cors";
-import type { Env, CommsRequest, CommsResponse } from "./types";
+import type { Env, CommsRequest, CommsResponse, EmailQueueMessage, EmailService } from "./types";
 import { getService } from "./services";
 import { renderEmailHtml, renderEmailText } from "./template";
 import { firestorePost } from "./firestore";
 import { checkRateLimit } from "./rateLimit";
+import type { MessageBatch } from "@cloudflare/workers-types";
 
 function getClientIp(request: Request): string {
   return request.headers.get("CF-Connecting-IP") ||
@@ -50,10 +51,86 @@ function toArray(v: string | string[] | undefined | null): string[] {
 
 const BATCH_SIZE = 100;
 
+const BULK_PURPOSES = new Set(["broadcast", "message_digest", "content_new"]);
+
 function chunk<T>(arr: T[], size: number): T[][] {
   const result: T[][] = [];
   for (let i = 0; i < arr.length; i += size) result.push(arr.slice(i, i + size));
   return result;
+}
+
+async function sendEmailBatch(
+  allRecipients: string[],
+  recipientMeta: Record<string, { name?: string; handle?: string }>,
+  service: EmailService,
+  enrichedData: Record<string, unknown>,
+  env: Env,
+): Promise<{ lastId?: string; count: number }> {
+  const resend = new Resend(env.RESEND_API_KEY);
+  const appUrl = env.APP_URL || "https://agaseke.me";
+
+  const templateData = await service.buildTemplateData(enrichedData, env);
+  const subject = service.buildSubject(enrichedData);
+  const from = `${env.FROM_NAME} <${env.FROM_EMAIL}>`;
+  const creatorHandle = ((enrichedData as Record<string, unknown>).creatorHandle as string) || "";
+
+  const rawHtml = renderEmailHtml(templateData, appUrl, env.ASSETS_URL || appUrl);
+  const rawText = renderEmailText(templateData.body, appUrl);
+  const rawSubject = subject;
+
+  let sentCount = 0;
+  let lastId: string | undefined;
+  const purpose = enrichedData.purpose as string;
+
+  for (const batchChunk of chunk(allRecipients, BATCH_SIZE)) {
+    const batchPayload = batchChunk.map((email) => {
+      const info = recipientMeta[email] ?? {};
+      const name = info.name || email.split("@")[0] || "there";
+      const handle = info.handle || creatorHandle;
+
+      return {
+        from,
+        to: [email],
+        subject: rawSubject.replace(/\[NAME\]/g, name).replace(/\[HANDLE\]/g, handle),
+        html: rawHtml.replace(/\[NAME\]/g, name).replace(/\[HANDLE\]/g, handle),
+        text: rawText.replace(/\[NAME\]/g, name).replace(/\[HANDLE\]/g, handle),
+      };
+    });
+
+    const { data, error } = await resend.batch.send(batchPayload);
+
+    if (error) {
+      console.error(`Resend batch error: purpose=${purpose}`, error);
+      throw new Error(error.message);
+    }
+
+    const batchIds: { id: string }[] = (data as unknown as { data: { id: string }[] })?.data ?? [];
+    sentCount += batchIds.length;
+    lastId = batchIds[batchIds.length - 1]?.id ?? lastId;
+
+    const now = new Date().toISOString();
+    const writes = batchChunk.map((email, i) => {
+      const info = recipientMeta[email] ?? {};
+      return firestorePost(env, "sentEmails", {
+        fields: {
+          email: { stringValue: email },
+          resendId: { stringValue: batchIds[i]?.id ?? "" },
+          purpose: { stringValue: purpose },
+          subject: { stringValue: batchPayload[i]?.subject ?? "" },
+          recipientName: { stringValue: info.name || "" },
+          sentAt: { timestampValue: now },
+        },
+      });
+    });
+
+    await Promise.allSettled(writes);
+
+    console.info(
+      `Batch sent: purpose=${purpose}, batch=${batchChunk.length}, sent=${sentCount}/${allRecipients.length}`,
+    );
+  }
+
+  return { lastId, count: allRecipients.length };
 }
 
 async function sendEmail(
@@ -61,19 +138,14 @@ async function sendEmail(
   env: Env,
   auth: { uid: string; email: string | null },
 ): Promise<CommsResponse> {
-  const resend = new Resend(env.RESEND_API_KEY);
-
   const service = getService(req.purpose);
   if (!service) throw new Error(`Unknown purpose: ${req.purpose}`);
 
   const appUrl = env.APP_URL || "https://agaseke.me";
-  const assetsUrl = env.ASSETS_URL || appUrl;
+  const enrichedData = { ...req.data, env, appUrl, purpose: req.purpose };
 
-  const enrichedData = { ...req.data, env, appUrl };
-
-  const [addresses, templateData] = await Promise.all([
+  const [addresses] = await Promise.all([
     service.resolveRecipients(enrichedData, env),
-    service.buildTemplateData(enrichedData, env),
   ]);
 
   const toArr = toArray(addresses.to);
@@ -85,87 +157,49 @@ async function sendEmail(
   const reqBcc = toArray(req.bcc);
 
   const allRecipients = [...new Set([...toArr, ...ccArr, ...bccFromService, ...reqCc, ...reqBcc])];
-
-  const subject = service.buildSubject(enrichedData);
-  const from = `${env.FROM_NAME} <${env.FROM_EMAIL}>`;
-
-  const creatorHandle = ((enrichedData as Record<string, unknown>).creatorHandle as string) || "";
   const meta = addresses.recipientMeta ?? {};
 
-  const rawHtml = renderEmailHtml(templateData, appUrl, assetsUrl);
-  const rawText = renderEmailText(templateData.body, appUrl);
-  const rawSubject = subject;
-
-  let sentCount = 0;
-  let lastId: string | undefined;
-
-  for (const batch of chunk(allRecipients, BATCH_SIZE)) {
-    const batchPayload = batch.map((email) => {
-      const info = meta[email] ?? {};
-      const name = info.name || email.split("@")[0] || "there";
-      const handle = info.handle || creatorHandle;
-
-      const personalHtml = rawHtml
-        .replace(/\[NAME\]/g, name)
-        .replace(/\[HANDLE\]/g, handle);
-      const personalText = rawText
-        .replace(/\[NAME\]/g, name)
-        .replace(/\[HANDLE\]/g, handle);
-      const personalSubject = rawSubject
-        .replace(/\[NAME\]/g, name)
-        .replace(/\[HANDLE\]/g, handle);
-
+  if (BULK_PURPOSES.has(req.purpose) && env.AGASEKE_EMAIL_QUEUE) {
+    let sendTarget: string[] = toArr;
+    if (ccArr.length > 0 || bccFromService.length > 0 || reqCc.length > 0 || reqBcc.length > 0) {
+      sendTarget = allRecipients;
+      console.warn(`Bulk purpose "${req.purpose}" with cc/bcc delivered inline`);
+      const result = await sendEmailBatch(sendTarget, meta, service, enrichedData, env);
       return {
-        from,
-        to: [email],
-        subject: personalSubject,
-        html: personalHtml,
-        text: personalText,
+        success: true,
+        messageId: result.lastId,
+        purpose: req.purpose,
+        recipientCount: result.count,
+        queued: false,
       };
-    });
-
-    const { data, error } = await resend.batch.send(batchPayload);
-
-    if (error) {
-      console.error(`Resend batch error: purpose=${req.purpose}`, error);
-      throw new Error(error.message);
     }
 
-    const batchIds: { id: string }[] = (data as unknown as { data: { id: string }[] })?.data ?? [];
-    sentCount += batchIds.length;
-    lastId = batchIds[batchIds.length - 1]?.id ?? lastId;
-
-    const now = new Date().toISOString();
-    const writes = batch.map((email, i) => {
-      const info = meta[email] ?? {};
-      return firestorePost(env, "sentEmails", {
-        fields: {
-          email: { stringValue: email },
-          resendId: { stringValue: batchIds[i]?.id ?? "" },
-          purpose: { stringValue: req.purpose },
-          subject: { stringValue: batchPayload[i]?.subject ?? "" },
-          recipientName: { stringValue: info.name || "" },
-          sentAt: { timestampValue: now },
-        },
-      });
-    });
-
-    await Promise.allSettled(writes);
-
-    console.info(
-      `Batch sent: purpose=${req.purpose}, batch=${batch.length}, sent=${sentCount}/${allRecipients.length}`,
-    );
+    const message: EmailQueueMessage = {
+      purpose: req.purpose as EmailQueueMessage["purpose"],
+      to: sendTarget,
+      data: req.data,
+      recipientMeta: meta,
+    };
+    await env.AGASEKE_EMAIL_QUEUE.send(message);
+    return {
+      success: true,
+      purpose: req.purpose,
+      recipientCount: sendTarget.length,
+      queued: true,
+    };
   }
 
+  const result = await sendEmailBatch(allRecipients, meta, service, enrichedData, env);
   console.info(
-    `Email sent: purpose=${req.purpose}, recipients=${allRecipients.length}, emailId=${lastId}`,
+    `Email sent: purpose=${req.purpose}, recipients=${result.count}, emailId=${result.lastId}`,
   );
 
   return {
     success: true,
-    messageId: lastId,
+    messageId: result.lastId,
     purpose: req.purpose,
-    recipientCount: allRecipients.length,
+    recipientCount: result.count,
+    queued: false,
   };
 }
 
@@ -245,6 +279,36 @@ export default {
       const message = err instanceof Error ? err.message : "Internal error";
       console.error("Comms error:", request.method, request.url, err);
       return json({ error: message }, 500, origin);
+    }
+  },
+
+  async queue(batch: MessageBatch<EmailQueueMessage>, env: Env) {
+    for (const message of batch.messages) {
+      const job = message.body;
+      try {
+        const service = getService(job.purpose as CommsRequest["purpose"]);
+        if (!service) {
+          console.error(`Comms queue: unknown purpose ${job.purpose}`);
+          continue;
+        }
+
+        const appUrl = env.APP_URL || "https://agaseke.me";
+        const enrichedData = { ...job.data, env, appUrl, purpose: job.purpose };
+
+        const result = await sendEmailBatch(
+          job.to,
+          job.recipientMeta ?? {},
+          service,
+          enrichedData,
+          env,
+        );
+        console.info(
+          `Queued email sent: purpose=${job.purpose}, recipients=${result.count}, emailId=${result.lastId}`,
+        );
+      } catch (error) {
+        console.error(`Comms queue processing error for ${job.purpose}:`, error);
+        message.retry();
+      }
     }
   },
 };

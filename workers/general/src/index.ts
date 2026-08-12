@@ -4,7 +4,8 @@ import { encrypt, decrypt, isEncrypted } from "./encryption";
 import { logError } from "./logger";
 import { firestorePost } from "./firestore";
 import { checkRateLimit } from "./rateLimit";
-import type { Env } from "./types";
+import type { Env, QueueJob } from "./types";
+import type { MessageBatch } from "@cloudflare/workers-types";
 
 function json(data: unknown, status = 200, origin?: string | null): Response {
   return new Response(JSON.stringify(data), {
@@ -121,14 +122,19 @@ export default {
           message?: string;
           metadata?: Record<string, unknown>;
         };
-        await logError(
-          env as unknown as Record<string, string>,
-          body.level || "error",
-          body.category || "client",
-          body.message || "No message",
-          body.metadata,
-        );
-        return json({ success: true }, 200, origin);
+
+        if (!body.message || typeof body.message !== "string") {
+          return json({ error: "message is required" }, 400, origin);
+        }
+
+        await env.AGASEKE_LOG_QUEUE.send({
+          kind: "log",
+          level: body.level || "error",
+          category: body.category || "client",
+          message: body.message,
+          metadata: body.metadata,
+        });
+        return json({ success: true, queued: true }, 200, origin);
       }
 
       if (path === "/api/general/notification" && request.method === "POST") {
@@ -151,29 +157,59 @@ export default {
           return json({ error: "userId, type, title, and message are required" }, 400, origin);
         }
 
-        const now = new Date().toISOString();
-        const fields: Record<string, unknown> = {
-          userId: { stringValue: body.userId },
-          type: { stringValue: body.type },
-          title: { stringValue: body.title.slice(0, 200) },
-          message: { stringValue: body.message.slice(0, 1000) },
-          read: { booleanValue: false },
-          createdAt: { timestampValue: now },
-        };
-
-        if (body.link) fields.link = { stringValue: body.link };
-        if (body.metadata) {
-          fields.metadata = { stringValue: JSON.stringify(body.metadata).slice(0, 5000) };
-        }
-
-        await firestorePost(env, `notifications`, { fields });
-        return json({ success: true }, 200, origin);
+        await env.AGASEKE_LOG_QUEUE.send({
+          kind: "notification",
+          userId: body.userId,
+          type: body.type,
+          title: body.title,
+          message: body.message,
+          link: body.link,
+          metadata: body.metadata,
+        });
+        return json({ success: true, queued: true }, 200, origin);
       }
 
       return json({ error: "Not found" }, 404, origin);
     } catch {
       console.error("General worker error:", request.method, url.pathname);
       return json({ error: "Internal server error" }, 500, origin);
+    }
+  },
+
+  async queue(batch: MessageBatch<QueueJob>, env: Env) {
+    for (const message of batch.messages) {
+      const job = message.body;
+      try {
+        if (job.kind === "log") {
+          await logError(
+            env as unknown as Record<string, string>,
+            job.level,
+            job.category,
+            job.message,
+            job.metadata,
+          );
+        } else {
+          const now = new Date().toISOString();
+          const fields: Record<string, unknown> = {
+            userId: { stringValue: job.userId },
+            type: { stringValue: job.type },
+            title: { stringValue: job.title.slice(0, 200) },
+            message: { stringValue: job.message.slice(0, 1000) },
+            read: { booleanValue: false },
+            createdAt: { timestampValue: now },
+          };
+
+          if (job.link) fields.link = { stringValue: job.link };
+          if (job.metadata) {
+            fields.metadata = { stringValue: JSON.stringify(job.metadata).slice(0, 5000) };
+          }
+
+          await firestorePost(env, `notifications`, { fields });
+        }
+      } catch (err) {
+        console.error("General worker queue processing error:", err);
+        message.retry();
+      }
     }
   },
 };

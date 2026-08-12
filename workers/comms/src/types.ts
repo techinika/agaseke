@@ -1,3 +1,5 @@
+import type { Queue } from "@cloudflare/workers-types";
+
 export type EmailPurpose =
   | "welcome_user"
   | "welcome_creator"
@@ -31,6 +33,19 @@ export interface Env {
   ASSETS_URL: string;
   RESEND_API_KEY: string;
   RESEND_WEBHOOK_SECRET?: string;
+  AGASEKE_EMAIL_QUEUE: Queue<EmailQueueMessage>;
+}
+
+export type BulkEmailPurpose =
+  | "broadcast"
+  | "message_digest"
+  | "content_new";
+
+export interface EmailQueueMessage {
+  purpose: BulkEmailPurpose;
+  to: string[];
+  data: Record<string, unknown>;
+  recipientMeta?: Record<string, { name?: string; handle?: string }>;
 }
 
 export interface CommsRequest {
@@ -46,6 +61,7 @@ export interface CommsResponse {
   messageId?: string;
   purpose: EmailPurpose;
   recipientCount: number;
+  queued?: boolean;
 }
 
 export interface EmailTemplateData {

@@ -22,6 +22,7 @@ import { ProtectedSection } from "./ProtectedSection";
 import { toast } from "sonner";
 import { ChatHeader, MessageBubble, MessageInput } from "./message";
 import type { Message } from "./message";
+import { TabErrorState } from "@/components/ui/TabErrorState";
 
 const GENERAL_WORKER_URL =
   process.env.NEXT_PUBLIC_GENERAL_WORKER_URL || "http://localhost:8787";
@@ -71,6 +72,8 @@ export const MessageTab = ({
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const decryptedCache = useRef<Map<string, string>>(new Map());
 
@@ -151,6 +154,7 @@ export const MessageTab = ({
         }
       } catch (error) {
         console.error("Error finding/creating chatroom:", error);
+        setFetchError(true);
         logErrorToServer("Error finding/creating chatroom", {
           creatorId,
           currentUserId,
@@ -167,7 +171,7 @@ export const MessageTab = ({
     return () => {
       isMounted = false;
     };
-  }, [isLoggedIn, isSupporter, currentUserId, creatorId, currentUserName]);
+  }, [isLoggedIn, isSupporter, currentUserId, creatorId, currentUserName, retryKey]);
 
   useEffect(() => {
     if (!chatroomId) return;
@@ -329,6 +333,19 @@ export const MessageTab = ({
       <div className="animate-in fade-in duration-500 flex items-center justify-center h-[400px]">
         <Loader className="animate-spin text-orange-500" size={32} />
       </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <TabErrorState
+        message="There was a problem connecting to the chat. Please try again."
+        onRetry={() => {
+          setFetchError(false);
+          setLoading(true);
+          setRetryKey((k) => k + 1);
+        }}
+      />
     );
   }
 

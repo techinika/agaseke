@@ -36,6 +36,8 @@ All workers use dual-path authentication: **jose JWKS first** (correct `service_
 
 **Sent archive:** Every email is logged to Firestore `sentEmails` collection with recipient, subject, purpose, and Resend ID.
 
+**Queue:** `agaseke-email-queue` — bulk sends (`broadcast`, `message_digest`, `content_new`) are enqueued and delivered by the worker's queue consumer instead of holding the HTTP request open. Non-bulk purposes still send inline. Queue must be created in the dashboard before deploy.
+
 ## agaseke-store
 
 | Variable                  | Type   | Secret | Description                          |
@@ -128,12 +130,14 @@ General-purpose utility worker handling encryption, decryption, error logging, n
 | `ENCRYPTION_KEY` | string | yes | AES-256-GCM encryption key (SHA-256 derived) |
 | `INTERNAL_AUTH_SECRET` | string | yes | Shared secret for internal proxied requests |
 
+**Queue:** `agaseke-log-queue` — `/api/general/log-error` and `/api/general/notification` enqueue jobs and return immediately. The same worker consumes the queue and writes `activityLogs` / `notifications` in batches with retries (max 3, 5s delay). Queue must be created in the dashboard before deploy.
+
 **Endpoints:**
 - `POST /api/general/encrypt` — Encrypt text with AES-256-GCM
 - `POST /api/general/decrypt` — Decrypt text with AES-256-GCM
 - `POST /api/general/is-encrypted` — Check if string is encrypted
-- `POST /api/general/log-error` — Write error log to Firestore `activityLogs` (no auth, rate-limited)
-- `POST /api/general/notification` — Create in-app notification (Firebase auth, rate-limited)
+- `POST /api/general/log-error` — Enqueue error log to Firestore `activityLogs` (no auth, rate-limited)
+- `POST /api/general/notification` — Enqueue in-app notification (Firebase auth, rate-limited)
 - `GET /health` — Health check
 
 **Auth:** Firebase Bearer token (jose JWKS first, Firebase REST fallback), or `X-Internal-Auth` header for internal proxied requests.

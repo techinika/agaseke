@@ -7,6 +7,21 @@
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
+	"queues": {
+		"producers": [
+			{
+				"queue": "agaseke-log-queue",
+				"binding": "AGASEKE_LOG_QUEUE"
+			}
+		],
+		"consumers": [
+			{
+				"queue": "agaseke-log-queue",
+				"max_batch_size": 100,
+				"max_retries": 3
+			}
+		]
+	},
 	"routes": [
 		{
 			"pattern": "api.agaseke.me",

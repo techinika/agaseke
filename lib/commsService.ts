@@ -12,6 +12,7 @@ export interface CommsResponse {
   messageId?: string;
   purpose: EmailPurpose;
   recipientCount: number;
+  queued?: boolean;
 }
 
 export const COMMS_WORKER_URL =

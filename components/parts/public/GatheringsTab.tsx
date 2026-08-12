@@ -27,6 +27,7 @@ import type { Gathering } from "./gatherings";
 import { formatCurrency } from "@/types/currency";
 import { logError, logInfo } from "@/lib/logger";
 import { QRCodeCanvas } from "qrcode.react";
+import { TabErrorState } from "@/components/ui/TabErrorState";
 
 interface GatheringsTabProps {
   creatorId: string;
@@ -41,6 +42,8 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
   const [gatherings, setGatherings] = useState<Gathering[]>([]);
   const [pastGatherings, setPastGatherings] = useState<Gathering[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const [rsvping, setRsvping] = useState<string | null>(null);
   const [rsvpedIds, setRsvpedIds] = useState<Set<string>>(new Set());
   const [showPast, setShowPast] = useState(false);
@@ -73,8 +76,10 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
         });
 
         setGatherings(sortedGatherings);
+        setFetchError(false);
       } catch (error) {
         console.error("Error fetching gatherings:", error);
+        setFetchError(true);
         logError("gathering", "GatheringsTab: Error fetching gatherings", {
           creatorId,
           metadata: { errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
@@ -171,7 +176,7 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
 
     fetchAll();
     fetchPastGatherings();
-  }, [creatorId, creatorHandle, user]);
+  }, [creatorId, creatorHandle, user, retryKey]);
 
   const handleRSVP = async (gathering: Gathering) => {
     if (!user || !profile) {
@@ -394,6 +399,19 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
   const lockedGatherings = !isCreatorViewing
     ? gatherings.filter((g) => !meetsTier(g))
     : [];
+
+  if (fetchError && gatherings.length === 0 && pastGatherings.length === 0) {
+    return (
+      <TabErrorState
+        message="There was a problem fetching events. Please try again."
+        onRetry={() => {
+          setFetchError(false);
+          setLoading(true);
+          setRetryKey((k) => k + 1);
+        }}
+      />
+    );
+  }
 
   if (loading) {
     return (

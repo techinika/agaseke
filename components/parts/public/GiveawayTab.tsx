@@ -21,6 +21,7 @@ import {
   EndedGiveawayCard,
 } from "./giveaway";
 import type { Giveaway } from "./giveaway";
+import { TabErrorState } from "@/components/ui/TabErrorState";
 
 const GENERAL_WORKER_URL =
   process.env.NEXT_PUBLIC_GENERAL_WORKER_URL || "http://localhost:8787";
@@ -62,6 +63,8 @@ export const GiveawayTab = ({
   const [activeGiveaways, setActiveGiveaways] = useState<Giveaway[]>([]);
   const [endedGiveaways, setEndedGiveaways] = useState<Giveaway[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const [participating, setParticipating] = useState<Set<string>>(new Set());
   const [showWinners, setShowWinners] = useState<Giveaway | null>(null);
 
@@ -111,6 +114,7 @@ export const GiveawayTab = ({
 
         setActiveGiveaways(active);
         setEndedGiveaways(ended);
+        setFetchError(false);
 
         if (currentUser?.uid) {
           const entriesRef = collection(db, "giveawayEntries");
@@ -126,6 +130,7 @@ export const GiveawayTab = ({
         }
       } catch (error) {
         console.error("Error fetching giveaways:", error);
+        setFetchError(true);
         logErrorToServer("Error fetching giveaways", { creatorId, error: String(error) });
       } finally {
         setLoading(false);
@@ -133,7 +138,7 @@ export const GiveawayTab = ({
     };
 
     fetchGiveaways();
-  }, [creatorId, currentUser?.uid]);
+  }, [creatorId, currentUser?.uid, retryKey]);
 
   const canAccess = (giveaway: Giveaway) => {
     if (giveaway.access === "public") return true;
@@ -205,6 +210,19 @@ export const GiveawayTab = ({
       <div className="animate-in fade-in duration-500 flex items-center justify-center h-[400px]">
         <Loader className="animate-spin text-orange-500" size={32} />
       </div>
+    );
+  }
+
+  if (fetchError && activeGiveaways.length === 0 && endedGiveaways.length === 0) {
+    return (
+      <TabErrorState
+        message="There was a problem fetching giveaways. Please try again."
+        onRetry={() => {
+          setFetchError(false);
+          setLoading(true);
+          setRetryKey((k) => k + 1);
+        }}
+      />
     );
   }
 
