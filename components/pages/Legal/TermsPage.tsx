@@ -110,10 +110,10 @@ export default function TermsPage() {
             </p>
             <div className="space-y-4">
               <a
-                href="mailto:agasekeforcreators@gmail.com"
+                href="mailto:hello@agaseke.me"
                 className="flex items-center gap-3 text-orange-700 font-bold hover:underline"
               >
-                <Mail size={20} /> agasekeforcreators@gmail.com
+                <Mail size={20} /> hello@agaseke.me
               </a>
               <a
                 href="https://instagram.com/agaseke_support"

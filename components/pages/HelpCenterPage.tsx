@@ -90,11 +90,11 @@ export default function HelpCenter() {
               Response within 24 hours
             </p>
             <Link
-              href="mailto:agasekeforcreators@gmail.com"
+              href="mailto:hello@agaseke.me"
               target="_blank"
               className="text-orange-600 font-bold hover:underline text-sm"
             >
-              agasekeforcreators@gmail.com
+              hello@agaseke.me
             </Link>
           </div>
 

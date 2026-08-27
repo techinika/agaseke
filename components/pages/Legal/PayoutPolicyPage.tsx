@@ -176,10 +176,10 @@ export default function PayoutPolicy() {
               Questions about your specific payout?
             </p>
             <a
-              href="mailto:agasekeforcreators@gmail.com"
+              href="mailto:hello@agaseke.me"
               className="text-orange-600 font-bold hover:underline"
             >
-              agasekeforcreators@gmail.com
+              hello@agaseke.me
             </a>
           </section>
         </div>

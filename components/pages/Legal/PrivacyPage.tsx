@@ -103,7 +103,7 @@ export default function PrivacyPage() {
               or security concerns:
             </p>
             <div className="space-y-2">
-              <p className="font-bold">agasekeforcreators@gmail.com</p>
+              <p className="font-bold">hello@agaseke.me</p>
               <p className="text-sm text-muted-foreground">Subject: Privacy Inquiry</p>
             </div>
           </section>
