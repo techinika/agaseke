@@ -121,7 +121,7 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
 ### For Supporters
 
 - **Public Profiles**: Browse creator content at `/[username]`
-- **Public Article Pages**: Full article reading experience at `/articles/[slug]` (no login required) with cover, author link, publish date, views/comments, share button, and supporter gating for private articles
+- **Public Article Pages**: Full article reading experience at `/articles/[slug]` (no login required) with cover, author link, publish date, views/comments, share button, and supporter gating for private articles. Articles also surface in the Explore feed (`/explore/posts`) and creator community pages.
 - **Public Profile Subpages**: Full-page versions of each tab with SEO-friendly URLs:
   - `/[username]/community` - All public posts and supporter-only content
   - `/[username]/community/[postId]` - Individual post detail with comments and likes
