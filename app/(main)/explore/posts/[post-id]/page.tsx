@@ -44,8 +44,13 @@ export async function generateMetadata({
 
   const displayName = (creator as any)?.name || creatorHandle || "Creator";
   const title = (post as any).title || "Untitled Post";
-  const description = ((post as any).description || (post as any).content || "").slice(0, 200);
+  const rawDesc = (post as any).shortDescription || (post as any).description || (post as any).content || "";
+  const description = rawDesc.slice(0, 200);
   const image = (post as any).contentUrl || `${baseUrl}/agaseke.png`;
+  const canonical =
+    (post as any).type === "article" && (post as any).slug
+      ? `/articles/${(post as any).slug}`
+      : `/explore/posts/${postId}`;
 
   return {
     title: `${title} by ${displayName} | Agaseke Posts`,
@@ -59,12 +64,12 @@ export async function generateMetadata({
       "public post",
     ],
     alternates: {
-      canonical: `/explore/posts/${postId}`,
+      canonical,
     },
     openGraph: {
       title: `${title} | ${displayName}`,
       description: description || `View this post by ${displayName}.`,
-      url: `${baseUrl}/explore/posts/${postId}`,
+      url: `${baseUrl}${canonical}`,
       siteName: "Agaseke",
       images: [{ url: image, width: 800, height: 800, alt: title }],
       type: "article",

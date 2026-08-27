@@ -9,6 +9,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   entries.push(...(await getCreatorPages()));
   entries.push(...(await getProductPages()));
   entries.push(...(await getPostPages()));
+  entries.push(...(await getArticlePages()));
   entries.push(...(await getGiveawayPages()));
   entries.push(...(await getGatheringPages()));
 
@@ -181,6 +182,7 @@ async function getPostPages(): Promise<MetadataRoute.Sitemap> {
       .get();
     for (const doc of postSnap.docs) {
       const data = doc.data();
+      if (data.type === "article") continue;
       const username = uidToUsername.get(data.creatorId);
       if (!username) continue;
       entries.push({
@@ -192,6 +194,26 @@ async function getPostPages(): Promise<MetadataRoute.Sitemap> {
     }
   } catch (error) {
     console.error("Error generating posts sitemap:", error);
+  }
+  return entries;
+}
+
+async function getArticlePages(): Promise<MetadataRoute.Sitemap> {
+  const entries: MetadataRoute.Sitemap = [];
+  try {
+    const articleSnap = await adminDb.collection("creatorContent").get();
+    for (const doc of articleSnap.docs) {
+      const data = doc.data();
+      if (data.type !== "article" || data.isPrivate || !data.slug) continue;
+      entries.push({
+        url: `${baseUrl}/articles/${data.slug}`,
+        lastModified: data.updatedAt?.toDate?.() || data.createdAt?.toDate?.() || new Date(),
+        changeFrequency: "monthly" as const,
+        priority: 0.7,
+      });
+    }
+  } catch (error) {
+    console.error("Error generating articles sitemap:", error);
   }
   return entries;
 }

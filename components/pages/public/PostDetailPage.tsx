@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { ArrowLeft, Heart, Loader, FileText, Lock, MessageCircle, Pencil, Trash2, Check, X, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { SupportModal } from "@/components/parts/public/SupportModal";
+import RichContentRenderer from "@/components/ui/RichContentRenderer";
 import { db } from "@/db/firebase";
 import { doc, getDoc, getDocs, collection, query, where, orderBy, addDoc, deleteDoc, updateDoc, onSnapshot, serverTimestamp, increment } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
@@ -263,7 +264,7 @@ export default function PostDetailPage({ username, postId }: { username: string;
               </div>
               <div className="ml-auto flex items-center gap-2">
                 <span className="text-[10px] font-bold bg-muted px-2 py-1 rounded uppercase tracking-widest text-muted-foreground">
-                  {post.type === "video" ? "Video" : post.type === "image" ? "Image" : post.type === "document" ? "Document" : "Post"}
+                  {post.type === "video" ? "Video" : post.type === "image" ? "Image" : post.type === "document" ? "Document" : post.type === "article" ? "Article" : "Post"}
                 </span>
                 {post.isPrivate && (
                   <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
@@ -275,9 +276,27 @@ export default function PostDetailPage({ username, postId }: { username: string;
 
             <h1 className="text-2xl font-bold text-foreground mb-3">{post.title}</h1>
 
-            <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed mb-4">
-              <LinkifyText text={post.description || post.content} />
-            </div>
+            {post.type === "article" ? (
+              <div className="mb-4">
+                {(post.coverUrl || post.contentUrl) && (
+                  <img
+                    src={post.coverUrl || post.contentUrl}
+                    alt={post.title}
+                    className="w-full max-h-[420px] object-cover rounded-xl mb-4"
+                  />
+                )}
+                {post.shortDescription && (
+                  <p className="text-sm text-muted-foreground italic mb-4">
+                    {post.shortDescription}
+                  </p>
+                )}
+                <RichContentRenderer html={post.htmlContent || ""} />
+              </div>
+            ) : (
+              <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed mb-4">
+                <LinkifyText text={post.description || post.content} />
+              </div>
+            )}
 
             {(() => {
               const text = post.description || post.content || "";

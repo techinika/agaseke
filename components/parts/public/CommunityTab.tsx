@@ -262,7 +262,9 @@ export const CommunityTab = ({
                     ? "Image"
                     : item.type === "document"
                       ? "Document"
-                      : "Post"}
+                      : item.type === "article"
+                        ? "Article"
+                        : "Post"}
               </span>
               <span
                 className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest ${
@@ -282,6 +284,16 @@ export const CommunityTab = ({
                 )}
               </span>
             </div>
+
+            {item.type === "article" && (item.coverUrl || item.contentUrl) && (
+              <div className="mb-3 rounded-lg overflow-hidden">
+                <img
+                  src={item.coverUrl || item.contentUrl}
+                  alt={item.title}
+                  className="w-full h-48 object-cover"
+                />
+              </div>
+            )}
 
             {item.type === "image" && item.contentUrl && (
               <div className="mb-3 rounded-lg overflow-hidden cursor-zoom-in" onClick={() => setViewingImage({ url: item.contentUrl })}>

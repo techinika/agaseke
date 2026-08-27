@@ -36,6 +36,7 @@ import {
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { LinkifyText } from "@/components/ui/LinkifyText";
+import RichContentRenderer from "@/components/ui/RichContentRenderer";
 
 const extractYouTubeId = (url: string): string | null => {
   const patterns = [
@@ -314,7 +315,9 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
                   ? "Image"
                   : post.type === "document"
                     ? "Document"
-                    : "Post"}
+                    : post.type === "article"
+                      ? "Article"
+                      : "Post"}
             </span>
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <Calendar size={12} />
@@ -400,12 +403,33 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
             {post.title || "Untitled"}
           </h1>
 
-          {/* Description */}
-          {post.description || post.content ? (
-            <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-base">
-              <LinkifyText text={post.description || post.content} />
+          {/* Article content */}
+          {post.type === "article" ? (
+            <div>
+              {(post.coverUrl || post.contentUrl) && (
+                <img
+                  src={post.coverUrl || post.contentUrl}
+                  alt={post.title}
+                  className="w-full max-h-[420px] object-cover rounded-xl mb-4"
+                />
+              )}
+              {post.shortDescription && (
+                <p className="text-sm text-muted-foreground italic mb-4">
+                  {post.shortDescription}
+                </p>
+              )}
+              <RichContentRenderer html={post.htmlContent || ""} />
             </div>
-          ) : null}
+          ) : (
+            /* Description */
+            <>
+              {post.description || post.content ? (
+                <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-base">
+                  <LinkifyText text={post.description || post.content} />
+                </div>
+              ) : null}
+            </>
+          )}
 
           {/* YouTube Embed */}
           {youtubeUrl && (

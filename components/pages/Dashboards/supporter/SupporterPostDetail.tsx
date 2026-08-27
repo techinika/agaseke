@@ -35,6 +35,7 @@ import {
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { LinkifyText } from "@/components/ui/LinkifyText";
+import RichContentRenderer from "@/components/ui/RichContentRenderer";
 import Navbar from "@/components/parts/Navigation";
 
 interface Comment {
@@ -298,9 +299,27 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
               {post.title}
             </h1>
 
-            <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed mb-4">
-              <LinkifyText text={post.description || post.content} />
-            </div>
+            {post.type === "article" ? (
+              <div className="mb-4">
+                {(post.coverUrl || post.contentUrl) && (
+                  <img
+                    src={post.coverUrl || post.contentUrl}
+                    alt={post.title}
+                    className="w-full max-h-[420px] object-cover rounded-xl mb-4"
+                  />
+                )}
+                {post.shortDescription && (
+                  <p className="text-sm text-muted-foreground italic mb-4">
+                    {post.shortDescription}
+                  </p>
+                )}
+                <RichContentRenderer html={post.htmlContent || ""} />
+              </div>
+            ) : (
+              <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed mb-4">
+                <LinkifyText text={post.description || post.content} />
+              </div>
+            )}
 
             {post.type === "image" &&
               !Array.isArray(post.contentUrl) &&

@@ -244,7 +244,9 @@ export default function ExplorePostsPage() {
                             ? "Image"
                             : item.type === "document"
                               ? "Document"
-                              : "Post"}
+                              : item.type === "article"
+                                ? "Article"
+                                : "Post"}
                       </span>
                       <span className="flex items-center gap-1 text-[10px] font-bold bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400 px-2 py-1 rounded uppercase tracking-widest">
                         <Globe size={10} /> Public
@@ -253,6 +255,16 @@ export default function ExplorePostsPage() {
                   </div>
 
                   {/* Media */}
+                  {item.type === "article" && (item.coverUrl || item.contentUrl) && (
+                    <div className="mb-3 rounded-lg overflow-hidden">
+                      <img
+                        src={item.coverUrl || item.contentUrl}
+                        alt={item.title}
+                        className="w-full h-48 object-cover"
+                      />
+                    </div>
+                  )}
+
                   {item.type === "image" && item.contentUrl && (
                     <div className="mb-3 rounded-lg overflow-hidden cursor-zoom-in" onClick={() => setViewingImage(item.contentUrl)}>
                       <img

@@ -30,8 +30,8 @@ import {
   ImageUp,
   Camera,
   Save,
-  UploadCloud,
   Trash2,
+  ArrowRight,
 } from "lucide-react";
 import Navbar from "@/components/parts/Navigation";
 import MobileBottomBar from "@/components/parts/MobileBottomBar";
@@ -1073,158 +1073,6 @@ export default function SupporterSpace() {
           ))}
         </div>
 
-        {auth.isCreator && (
-          <div className="bg-card rounded-xl border border-border p-4 mb-6 shadow-sm">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-sm shrink-0">
-                {auth.profile?.displayName?.[0] || auth.user?.email?.[0] || "C"}
-              </div>
-              <div className="flex-1 min-w-0">
-                <textarea
-                  value={newPost.description}
-                  onChange={(e) =>
-                    setNewPost((prev) => ({
-                      ...prev,
-                      description: e.target.value,
-                    }))
-                  }
-                  placeholder="What's on your mind?"
-                  rows={newPost.description ? 3 : 1}
-                  className="w-full text-sm bg-transparent outline-none resize-none placeholder:text-muted-foreground/50"
-                />
-                {(isUploading || filePreview || uploadedUrl || failedFile) && (
-                  <div className="mb-2">
-                    {isUploading ? (
-                      <div className="flex items-center gap-2 text-xs text-orange-600 bg-orange-50 px-3 py-2 rounded-lg">
-                        <Loader size={14} className="animate-spin" />
-                        <span>Uploading...</span>
-                      </div>
-                    ) : failedFile ? (
-                      <div className="relative">
-                        {newPost.type === "image" ? (
-                          <img src={filePreview!} alt="Preview" className="w-full max-h-48 object-cover rounded-lg border border-red-300" />
-                        ) : newPost.type === "video" ? (
-                          <video src={filePreview!} controls className="w-full max-h-48 rounded-lg border border-red-300" />
-                        ) : (
-                          <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg border border-red-200">
-                            <File size={14} />
-                            <span>Upload failed</span>
-                          </div>
-                        )}
-                        <div className="absolute bottom-2 right-2 flex gap-2">
-                          <button onClick={handleRetryUpload} className="px-3 py-1.5 bg-orange-500 text-white text-xs font-medium rounded-lg hover:bg-orange-600 transition">
-                            Retry
-                          </button>
-                          <button onClick={() => { setFailedFile(null); setFilePreview(null); setUploadedUrl(""); setNewPost((prev) => ({ ...prev, type: "text" })); }} className="p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition">
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    ) : filePreview && !uploadedUrl ? (
-                      <div className="relative">
-                        {newPost.type === "image" ? (
-                          <img src={filePreview} alt="Preview" className="w-full max-h-48 object-cover rounded-lg border border-border" />
-                        ) : newPost.type === "video" ? (
-                          <video src={filePreview} controls className="w-full max-h-48 rounded-lg border border-border" />
-                        ) : (
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted px-3 py-2 rounded-lg">
-                            <File size={14} />
-                            <span>Preparing file...</span>
-                          </div>
-                        )}
-                      </div>
-                    ) : uploadedUrl && (
-                      <div className="relative">
-                        {newPost.type === "image" ? (
-                          <img src={uploadedUrl} alt="Uploaded" className="w-full max-h-48 object-cover rounded-lg border border-border" />
-                        ) : newPost.type === "video" ? (
-                          <video src={uploadedUrl} controls className="w-full max-h-48 rounded-lg border border-border" />
-                        ) : (
-                          <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 px-3 py-2 rounded-lg">
-                            <FileText size={14} />
-                            <span className="font-medium">File attached</span>
-                          </div>
-                        )}
-                        <button onClick={() => { setUploadedUrl(""); setFilePreview(null); setFailedFile(null); setNewPost((prev) => ({ ...prev, type: "text" })); }} className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  hidden
-                  onChange={handleFileUpload}
-                />
-              </div>
-            </div>
-            <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => {
-                    setMediaType("image");
-                    if (fileInputRef.current) fileInputRef.current.accept = "image/*";
-                    fileInputRef.current?.click();
-                  }}
-                  className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-green-600 transition"
-                  title="Add Image"
-                >
-                  <Image size={16} />
-                </button>
-                <button
-                  onClick={() => {
-                    setMediaType("video");
-                    if (fileInputRef.current) fileInputRef.current.accept = "video/*";
-                    fileInputRef.current?.click();
-                  }}
-                  className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-blue-600 transition"
-                  title="Add Video"
-                >
-                  <Video size={16} />
-                </button>
-                <button
-                  onClick={() => {
-                    setMediaType("document");
-                    if (fileInputRef.current) fileInputRef.current.accept = ".pdf,.doc,.docx";
-                    fileInputRef.current?.click();
-                  }}
-                  className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-orange-600 transition"
-                  title="Add Document"
-                >
-                  <File size={16} />
-                </button>
-                <div className="w-px h-5 bg-border mx-1" />
-                <button
-                  onClick={() =>
-                    setNewPost((prev) => ({
-                      ...prev,
-                      isPrivate: !prev.isPrivate,
-                    }))
-                  }
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition ${newPost.isPrivate ? "bg-amber-50 text-amber-700" : "bg-green-50 text-green-700"}`}
-                >
-                  {newPost.isPrivate ? <Lock size={12} /> : <Globe size={12} />}
-                  {newPost.isPrivate ? "Supporters" : "Public"}
-                </button>
-              </div>
-              <button
-                onClick={handleCreatePost}
-                disabled={!newPost.description.trim() || posting}
-                className="bg-foreground text-background px-5 py-2 rounded-lg text-xs font-bold hover:bg-orange-600 transition disabled:opacity-40 flex items-center gap-2"
-              >
-                {posting ? (
-                  <Loader size={14} className="animate-spin" />
-                ) : (
-                  <Save size={14} />
-                )}
-                {posting ? "Posting..." : "Post"}
-              </button>
-            </div>
-          </div>
-        )}
-
         {gatheringItems.length > 0 && (
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
@@ -1304,6 +1152,157 @@ export default function SupporterSpace() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-8">
+            {auth.isCreator && (
+              <div className="bg-card rounded-xl border border-border p-4 mb-6 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-sm shrink-0">
+                    {auth.profile?.displayName?.[0] || auth.user?.email?.[0] || "C"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <textarea
+                      value={newPost.description}
+                      onChange={(e) =>
+                        setNewPost((prev) => ({
+                          ...prev,
+                          description: e.target.value,
+                        }))
+                      }
+                      placeholder="What's on your mind?"
+                      rows={newPost.description ? 3 : 1}
+                      className="w-full text-sm bg-transparent outline-none resize-none placeholder:text-muted-foreground/50"
+                    />
+                    {(isUploading || filePreview || uploadedUrl || failedFile) && (
+                      <div className="mb-2">
+                        {isUploading ? (
+                          <div className="flex items-center gap-2 text-xs text-orange-600 bg-orange-50 px-3 py-2 rounded-lg">
+                            <Loader size={14} className="animate-spin" />
+                            <span>Uploading...</span>
+                          </div>
+                        ) : failedFile ? (
+                          <div className="relative">
+                            {newPost.type === "image" ? (
+                              <img src={filePreview!} alt="Preview" className="w-full max-h-48 object-cover rounded-lg border border-red-300" />
+                            ) : newPost.type === "video" ? (
+                              <video src={filePreview!} controls className="w-full max-h-48 rounded-lg border border-red-300" />
+                            ) : (
+                              <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg border border-red-200">
+                                <File size={14} />
+                                <span>Upload failed</span>
+                              </div>
+                            )}
+                            <div className="absolute bottom-2 right-2 flex gap-2">
+                              <button onClick={handleRetryUpload} className="px-3 py-1.5 bg-orange-500 text-white text-xs font-medium rounded-lg hover:bg-orange-600 transition">
+                                Retry
+                              </button>
+                              <button onClick={() => { setFailedFile(null); setFilePreview(null); setUploadedUrl(""); setNewPost((prev) => ({ ...prev, type: "text" })); }} className="p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition">
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        ) : filePreview && !uploadedUrl ? (
+                          <div className="relative">
+                            {newPost.type === "image" ? (
+                              <img src={filePreview} alt="Preview" className="w-full max-h-48 object-cover rounded-lg border border-border" />
+                            ) : newPost.type === "video" ? (
+                              <video src={filePreview} controls className="w-full max-h-48 rounded-lg border border-border" />
+                            ) : (
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted px-3 py-2 rounded-lg">
+                                <File size={14} />
+                                <span>Preparing file...</span>
+                              </div>
+                            )}
+                          </div>
+                        ) : uploadedUrl && (
+                          <div className="relative">
+                            {newPost.type === "image" ? (
+                              <img src={uploadedUrl} alt="Uploaded" className="w-full max-h-48 object-cover rounded-lg border border-border" />
+                            ) : newPost.type === "video" ? (
+                              <video src={uploadedUrl} controls className="w-full max-h-48 rounded-lg border border-border" />
+                            ) : (
+                              <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 px-3 py-2 rounded-lg">
+                                <FileText size={14} />
+                                <span className="font-medium">File attached</span>
+                              </div>
+                            )}
+                            <button onClick={() => { setUploadedUrl(""); setFilePreview(null); setFailedFile(null); setNewPost((prev) => ({ ...prev, type: "text" })); }} className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition">
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      hidden
+                      onChange={handleFileUpload}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        setMediaType("image");
+                        if (fileInputRef.current) fileInputRef.current.accept = "image/*";
+                        fileInputRef.current?.click();
+                      }}
+                      className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-green-600 transition"
+                      title="Add Image"
+                    >
+                      <Image size={16} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setMediaType("video");
+                        if (fileInputRef.current) fileInputRef.current.accept = "video/*";
+                        fileInputRef.current?.click();
+                      }}
+                      className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-blue-600 transition"
+                      title="Add Video"
+                    >
+                      <Video size={16} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setMediaType("document");
+                        if (fileInputRef.current) fileInputRef.current.accept = ".pdf,.doc,.docx";
+                        fileInputRef.current?.click();
+                      }}
+                      className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-orange-600 transition"
+                      title="Add Document"
+                    >
+                      <File size={16} />
+                    </button>
+                    <div className="w-px h-5 bg-border mx-1" />
+                    <button
+                      onClick={() =>
+                        setNewPost((prev) => ({
+                          ...prev,
+                          isPrivate: !prev.isPrivate,
+                        }))
+                      }
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition ${newPost.isPrivate ? "bg-amber-50 text-amber-700" : "bg-green-50 text-green-700"}`}
+                    >
+                      {newPost.isPrivate ? <Lock size={12} /> : <Globe size={12} />}
+                      {newPost.isPrivate ? "Supporters" : "Public"}
+                    </button>
+                  </div>
+                  <button
+                    onClick={handleCreatePost}
+                    disabled={!newPost.description.trim() || posting}
+                    className="bg-foreground text-background px-5 py-2 rounded-lg text-xs font-bold hover:bg-orange-600 transition disabled:opacity-40 flex items-center gap-2"
+                  >
+                    {posting ? (
+                      <Loader size={14} className="animate-spin" />
+                    ) : (
+                      <Save size={14} />
+                    )}
+                    {posting ? "Posting..." : "Post"}
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="space-y-4">
               {contentItems.length > 0 ? (
                 contentItems.map((item) => {
@@ -1366,22 +1365,55 @@ export default function SupporterSpace() {
                         </div>
 
                         <div className="mt-4">
-                          {item.title && (
-                          <h3 className="font-semibold text-lg text-foreground mb-2">
-                            {item.title}
-                          </h3>
-                        )}
-                          <div>
-                            {renderPostText(
-                              item.description || "",
-                              item.id,
-                              expandedPostId === item.id,
-                            )}
-                          </div>
-                          {renderYouTubeEmbed(item.description || "")}
+                          {item.type === "article" ? (
+                            <>
+                              {(item.coverUrl || item.contentUrl) && (
+                                <img
+                                  src={item.coverUrl || item.contentUrl}
+                                  alt={item.title || "Article cover"}
+                                  className="w-full h-52 object-cover rounded-lg mb-3"
+                                />
+                              )}
+                              {item.title && (
+                                <h3 className="font-semibold text-lg text-foreground mb-2">
+                                  {item.title}
+                                </h3>
+                              )}
+                              <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
+                                {item.shortDescription || item.description}
+                              </p>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  router.push(`/supporter/${item.id}`);
+                                }}
+                                className="mt-3 inline-flex items-center gap-1 text-sm text-orange-600 font-medium hover:underline"
+                              >
+                                Read Article <ArrowRight size={14} />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              {item.title && (
+                                <h3 className="font-semibold text-lg text-foreground mb-2">
+                                  {item.title}
+                                </h3>
+                              )}
+                              <div>
+                                {renderPostText(
+                                  item.description || "",
+                                  item.id,
+                                  expandedPostId === item.id,
+                                )}
+                              </div>
+                              {renderYouTubeEmbed(item.description || "")}
+                            </>
+                          )}
                         </div>
 
-                        {item.contentUrl && expandedPostId !== item.id && (
+                        {item.contentUrl &&
+                          expandedPostId !== item.id &&
+                          item.type !== "article" && (
                           <div
                             onClick={(e) => e.stopPropagation()}
                             className="mt-3 rounded-lg overflow-hidden bg-muted"

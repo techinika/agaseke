@@ -11,6 +11,14 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - Public and private posts
   - Support-only exclusive content
   - Media uploads (images, videos, documents)
+  - **Articles** (`/creator/content/articles`):
+    - Long-form articles with a TipTap WYSIWYG editor (headings, bold/italic/underline/strike, bullet & ordered lists, quotes, code blocks, dividers, links, undo/redo)
+    - Inline media blocks (image + video) with **captions and alt text**, wrapped in `<figure>/<figcaption>`
+    - Cover image with short description (auto-derived from content if blank, max 160 chars)
+    - Optional unique **slug** (auto-generated from title, editable via "Generate"; reused for feeds) — enables a public page at `/articles/[slug]`. Not required: content works fine without one, and existing posts without slugs are unaffected. Taken slugs auto-suffix on create, blocked on edit
+    - Public or supporters-only visibility (private articles show a teaser + support gate)
+    - **Email notifications to supporters** when a new article is posted
+    - Rich HTML rendering (sanitized with DOMPurify) on community, explore, and supporter feeds
   - **Email notifications to supporters** when new content is posted
 - **Store** (`/creator/store`):
   - Digital products (PDFs, videos, audio, images)
@@ -113,6 +121,7 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
 ### For Supporters
 
 - **Public Profiles**: Browse creator content at `/[username]`
+- **Public Article Pages**: Full article reading experience at `/articles/[slug]` (no login required) with cover, author link, publish date, views/comments, share button, and supporter gating for private articles
 - **Public Profile Subpages**: Full-page versions of each tab with SEO-friendly URLs:
   - `/[username]/community` - All public posts and supporter-only content
   - `/[username]/community/[postId]` - Individual post detail with comments and likes
@@ -177,6 +186,7 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - FAQPage schema for help center
 - **Sitemap**:
   - Auto-generated from creator profiles
+  - Includes public article slug pages (`/articles/{slug}`) with no-index-less, canonical URLs
   - Dynamic priorities and change frequencies
   - Image metadata for rich results
 - **Robots.txt**:
@@ -191,6 +201,7 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
 - **Framework**: Next.js 16 (App Router, Turbopack)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
+- **Rich Text**: TipTap 3 + ProseMirror (article editor with custom `mediaBlock` node); DOMPurify for HTML sanitization
 - **Database**: Firebase Firestore
 - **Authentication**: Firebase Auth
 - **Storage**: Cloudinary (images, videos, files), Cloudflare R2 (asset uploads)
@@ -267,9 +278,12 @@ npm run dev
 agaseke/
 Γö£ΓöÇΓöÇ app/
 Γöé   Γö£ΓöÇΓöÇ (auth)/                  # Login, signup pages
+Γöé   Γö£ΓöÇΓöÇ (main)/                  # Public, non-auth routes
+Γöé   Γöé   ΓööΓöÇΓöÇ articles/[slug]      # Public article reader (SSR + ISR)
 Γöé   Γö£ΓöÇΓöÇ (dashboards)/            # Creator dashboard routes
 Γöé   Γöé   ΓööΓöÇΓöÇ creator/
-Γöé   Γöé       Γö£ΓöÇΓöÇ content/         # Content management
+Γöé   Γöé       Γö£ΓöÇΓöÇ content/         # Content management (posts + articles)
+Γöé   Γöé       Γöé   ΓööΓöÇΓöÇ articles/     # Article manager, new & edit
 Γöé   Γöé       Γö£ΓöÇΓöÇ gatherings/       # Events management
 Γöé   Γöé       Γö£ΓöÇΓöÇ messages/        # Messaging inbox
 Γöé   Γöé       Γö£ΓöÇΓöÇ payouts/          # Earnings & payouts
@@ -298,10 +312,14 @@ agaseke/
 Γö£ΓöÇΓöÇ components/
 Γöé   Γö£ΓöÇΓöÇ pages/
 Γöé   Γöé   Γö£ΓöÇΓöÇ Dashboards/          # Dashboard components
+Γöé   Γöé   Γö£ΓöÇΓöÇ public/              # Public non-auth pages
+Γöé   Γöé   Γöé   ΓööΓöÇΓöÇ ArticleReaderPage.tsx # /articles/[slug] reader (cover, body, support gate)
 Γöé   Γöé   ΓööΓöÇΓöÇ PublicProfile.tsx     # Public profile page
 Γöé   Γö£ΓöÇΓöÇ parts/
 Γöé   Γöé   Γö£ΓöÇΓöÇ dashboard/           # Dashboard UI parts
-Γöé   Γöé   Γöé   ΓööΓöÇΓöÇ gatherings/      # Gathering sub-components (ListPanel, DetailPanel, CheckInModal)
+Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ gatherings/      # Gathering sub-components (ListPanel, DetailPanel, CheckInModal)
+Γöé   Γöé   Γöé   Γö£ΓöÇΓöÇ RichTextEditor.tsx # TipTap article editor (toolbar, media, caption/alt modal)
+Γöé   Γöé   Γöé   ΓööΓöÇΓöÇ tiptap/          # Custom TipTap nodes (mediaBlock with figure/figcaption)
 Γöé   Γöé   ΓööΓöÇΓöÇ public/              # Public profile parts
 Γöé   Γöé       Γö£ΓöÇΓöÇ CommunityTab.tsx  # Content display
 Γöé   Γöé       Γö£ΓöÇΓöÇ MessageTab.tsx    # Messaging UI
@@ -351,7 +369,7 @@ agaseke/
 
 | Collection | Description |
 |------------|-------------|
-| `creatorContent` | Posts (public/private) |
+| `creatorContent` | Posts (public/private) + Articles (`type: "article"` with `title`, optional `slug`, `htmlContent`, `coverUrl`, `shortDescription`) |
 | `creatorGatherings` | Events |
 | `gatheringsAttendance` | RSVP records |
 
@@ -635,6 +653,16 @@ MIT License - see LICENSE file for details.
 For issues or feature requests, please open an issue on GitHub.
 
 ## Recent Updates
+
+### Articles & TipTap Editor (August 2026)
+- **Long-form articles**: Creators can now publish articles with full rich-text editing via TipTap (`@tiptap/react` + StarterKit). Toolbar supports paragraphs, H1–H4, bold/italic/underline/strike, bullet & ordered lists, quotes, code blocks, dividers, links, and undo/redo.
+- **Inline media blocks**: Custom `mediaBlock` TipTap node (`components/parts/dashboard/tiptap/MediaNode.ts`) renders `<figure><img|video/><figcaption/></figure>` for images and videos. Uploads go through the `uploadFile` worker (`post_image` / `post_video`) and a modal lets creators add **alt text** (images) and **captions** (images + videos) before inserting. Bare `img[src]`/`video[src]` blocks are parsed into media blocks on load.
+- **Article data model**: Articles live in the existing `creatorContent` collection with `type: "article"`, plus `title`, `htmlContent`, `coverUrl`/`contentUrl`, `shortDescription` (max 160 chars, auto-derived from HTML when blank), `description`, `isPrivate`, `views`, `commentCount`. Existing posts are unaffected.
+- **Optional unique slugs**: `slugify()`/`fallbackSlug()` in `lib/slug.ts`. The slug field is auto-derived from the title, editable, and **optional** — posts/backwards-compatible content without slugs work everywhere; a slug simply enables a public page at `/articles/[slug]`. On create, taken slugs auto-append a random suffix; on edit, duplicate slugs are blocked.
+- **Public article pages**: `/articles/[slug]` (SSR, ISR `revalidate = 300`) renders cover, title, author (linked to `/[handle]`), publish date, views/comments, share button, and the sanitized HTML body. Private articles show a teaser + supporter gate opening the `SupportModal`. Route is public with full `generateMetadata` (canonical `/articles/{slug}`, OG/Twitter, keywords).
+- **Content manager**: New Articles tab in `/creator/content` and a dedicated manager at `/creator/content/articles` (live `onSnapshot`, search, cover thumbnails, edit/delete with `ConfirmModal`). Create/edit forms live at `/creator/content/articles/new` and `/creator/content/articles/[articleId]`.
+- **Safe HTML everywhere**: `lib/articleHtml.ts` sanitizes HTML with DOMPurify (allowlist covers `figure`/`figcaption`, videos); `components/ui/RichContentRenderer.tsx` renders article bodies on supporter feeds, community tab, post detail, and explore pages. Post-detail metadata canonical-redirects to `/articles/{slug}` when a slug exists.
+- **SEO & sitemap**: Public article slug pages are added to `app/sitemap.ts` (`/articles/{slug}`, priority 0.7) — articles without slugs are skipped automatically.
 
 ### Dual-Currency Store Pricing (July 2026)
 - **Product interface extended**: Added `currency?: "RWF" | "USD"` and `priceUSD?: number` to both `types/store.ts` and `components/parts/public/store/types.ts`.

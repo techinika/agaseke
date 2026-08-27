@@ -35,15 +35,22 @@ export async function generateMetadata({
   const displayName = creator.name || username;
   const title = (post as any).title || "Post";
   const image = (post as any).contentUrl || `${baseUrl}/agaseke.png`;
+  const description =
+    (post as any).shortDescription ||
+    `View "${title}" by ${displayName} on Agaseke.`;
+  const canonical =
+    (post as any).type === "article" && (post as any).slug
+      ? `/articles/${(post as any).slug}`
+      : `/${username}/community/${postId}`;
 
   return {
     title: `${title} | ${displayName} Community | Agaseke`,
-    description: `View "${title}" by ${displayName} on Agaseke.`,
-    alternates: { canonical: `/${username}/community/${postId}` },
+    description,
+    alternates: { canonical },
     openGraph: {
       title: `${title} | ${displayName}`,
-      description: `View this post by ${displayName}.`,
-      url: `${baseUrl}/${username}/community/${postId}`,
+      description,
+      url: `${baseUrl}${canonical}`,
       siteName: "Agaseke",
       images: [{ url: image, width: 800, height: 800, alt: title }],
       type: "article",
@@ -51,7 +58,7 @@ export async function generateMetadata({
     twitter: {
       card: "summary_large_image",
       title: `${title} | ${displayName}`,
-      description: `View this post by ${displayName}.`,
+      description,
       images: [image],
     },
     robots: { index: true, follow: true },

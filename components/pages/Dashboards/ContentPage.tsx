@@ -24,6 +24,7 @@ import {
   Send,
   Heart,
   Menu,
+  BookOpen,
 } from "lucide-react";
 import { db, auth } from "@/db/firebase";
 import {
@@ -41,8 +42,10 @@ import {
 } from "firebase/firestore";
 import { toast } from "sonner";
 import { useAuth } from "@/auth/AuthContext";
+import { useRouter } from "next/navigation";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { LinkifyText } from "@/components/ui/LinkifyText";
+import RichContentRenderer from "@/components/ui/RichContentRenderer";
 import { uploadFile } from "@/lib/uploadService";
 
 interface Comment {
@@ -58,6 +61,7 @@ interface Comment {
 
 export default function ContentManager() {
   const { creator, profile } = useAuth();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("All");
   const [isUploading, setIsUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -266,6 +270,10 @@ export default function ContentManager() {
   };
 
   const startEdit = (post: any) => {
+    if (post.type === "article") {
+      router.push(`/creator/content/articles/${post.id}`);
+      return;
+    }
     setEditingPost(post);
     setNewPost({
       title: post.title,
@@ -303,7 +311,8 @@ export default function ContentManager() {
     const matchesTab = activeTab === "All" ||
       (activeTab === "Videos" && post.type === "video") ||
       (activeTab === "Images" && post.type === "image") ||
-      (activeTab === "Documents" && post.type === "document");
+      (activeTab === "Documents" && post.type === "document") ||
+      (activeTab === "Articles" && post.type === "article");
     const matchesSearch = (post.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (post.description || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesTab && matchesSearch;
@@ -337,7 +346,7 @@ export default function ContentManager() {
         </div>
 
         <div className="flex gap-1 mb-4 overflow-x-auto pb-2">
-          {["All", "Videos", "Images", "Documents"].map((tab) => (
+          {["All", "Videos", "Images", "Documents", "Articles"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -368,6 +377,7 @@ export default function ContentManager() {
                   <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center shrink-0">
                     {post.type === "video" ? <Video size={16} className="text-muted-foreground" /> :
                      post.type === "image" ? <ImageIcon size={16} className="text-muted-foreground" /> :
+                     post.type === "article" ? <BookOpen size={16} className="text-muted-foreground" /> :
                      <FileText size={16} className="text-muted-foreground" />}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -392,6 +402,14 @@ export default function ContentManager() {
         >
           <Plus size={18} /> New Post
         </Link>
+
+        <Link
+          href="/creator/content/articles/new"
+          onClick={() => setShowSidebar(false)}
+          className="mt-2 w-full bg-foreground text-background py-3 rounded-lg font-medium text-sm flex items-center justify-center gap-2 hover:bg-orange-600 hover:text-white transition"
+        >
+          <BookOpen size={18} /> New Article
+        </Link>
       </aside>
 
       <main className="flex-1 p-4 lg:p-6 overflow-hidden">
@@ -405,12 +423,20 @@ export default function ContentManager() {
               <p className="text-xs lg:text-sm text-muted-foreground mt-1 hidden lg:block">Manage your posts and see comments</p>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+          <Link
+            href="/creator/content/articles"
+            className="bg-foreground text-background px-3 lg:px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 hover:bg-orange-600 hover:text-white transition"
+          >
+            <BookOpen size={18} /> <span className="hidden sm:inline">Articles</span>
+          </Link>
           <Link
             href="/creator/content/new"
             className="bg-orange-500 text-white px-3 lg:px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 hover:bg-orange-600 transition"
           >
             <Plus size={18} /> <span className="hidden sm:inline">New Post</span>
           </Link>
+        </div>
         </div>
 
         {selectedPost ? (
@@ -448,9 +474,18 @@ export default function ContentManager() {
                   <video src={selectedPost.contentUrl} controls className="w-full h-full" />
                 </div>
               )}
+              {selectedPost.type === "article" && (selectedPost.coverUrl || selectedPost.contentUrl) && (
+                <div className="aspect-video bg-muted">
+                  <img src={selectedPost.coverUrl || selectedPost.contentUrl} alt={selectedPost.title} className="w-full h-full object-cover" />
+                </div>
+              )}
 
               <div className="p-4 lg:p-6">
-                <div className="prose max-w-none text-foreground whitespace-pre-wrap text-sm lg:text-base"><LinkifyText text={selectedPost.description} /></div>
+                {selectedPost.type === "article" ? (
+                  <RichContentRenderer html={selectedPost.htmlContent || ""} className="text-sm lg:text-base" />
+                ) : (
+                  <div className="prose max-w-none text-foreground whitespace-pre-wrap text-sm lg:text-base"><LinkifyText text={selectedPost.description} /></div>
+                )}
 
                 {selectedPost.type === "document" && selectedPost.contentUrl && (
                   <a href={selectedPost.contentUrl} target="_blank" rel="noopener noreferrer" className="mt-4 flex items-center gap-3 p-4 bg-muted rounded-lg border border-border hover:bg-muted transition">
