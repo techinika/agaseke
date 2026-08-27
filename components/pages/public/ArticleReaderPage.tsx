@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Eye,
@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { doc, increment, updateDoc } from "firebase/firestore";
+import { db } from "@/db/firebase";
 import RichContentRenderer from "@/components/ui/RichContentRenderer";
 import { SupportModal } from "@/components/parts/public/SupportModal";
 import { baseUrl } from "@/lib/baseUrl";
@@ -49,6 +51,21 @@ export default function ArticleReaderPage({
 }) {
   const [supportOpen, setSupportOpen] = useState(false);
   const [sharing, setSharing] = useState(false);
+
+  const viewCounted = useRef(false);
+
+  useEffect(() => {
+    if (!article.id || viewCounted.current) return;
+    const key = `viewed_article_${article.id}`;
+    if (typeof window !== "undefined" && sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+    viewCounted.current = true;
+    updateDoc(doc(db, "creatorContent", article.id), {
+      views: increment(1),
+    }).catch(() => {
+      /* silently ignore view-count failures */
+    });
+  }, [article.id]);
 
   const handleShare = async () => {
     const url = `${baseUrl}/articles/${article.slug}`;
