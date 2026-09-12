@@ -9,6 +9,7 @@ import {
   Banknote,
   ArrowRight,
   Loader2,
+  MessageCircle,
 } from "lucide-react";
 import Footer from "@/components/parts/Footer";
 import { db } from "@/db/firebase";
@@ -181,6 +182,16 @@ export default function PayoutPolicy() {
             >
               hello@agaseke.me
             </a>
+            <div className="mt-3">
+              <a
+                href="https://whatsapp.com/channel/0029Vb9AemqFy72CiwMyQf06"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-muted-foreground font-bold hover:text-emerald-600 hover:underline text-sm"
+              >
+                <MessageCircle size={16} /> Announcements on WhatsApp
+              </a>
+            </div>
           </section>
         </div>
       </main>

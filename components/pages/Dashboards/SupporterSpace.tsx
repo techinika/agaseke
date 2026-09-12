@@ -93,6 +93,8 @@ const hasYouTubeLink = (text: string): string | null => {
   return null;
 };
 
+const POSTS_PER_PAGE = 10;
+
 export default function SupporterSpace() {
   const auth = useAuth();
   const router = useRouter();
@@ -105,6 +107,8 @@ export default function SupporterSpace() {
     "all",
   );
   const [searchTerm, setSearchTerm] = useState("");
+  const [visibleCount, setVisibleCount] = useState(POSTS_PER_PAGE);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const [expandedPostId, setExpandedPostId] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, Comment[]>>(
@@ -525,7 +529,7 @@ export default function SupporterSpace() {
     });
 
     return () => observer.disconnect();
-  }, [feed]);
+  }, [feed, visibleCount]);
 
   const fetchComments = async (postId: string) => {
     if (comments[postId] && comments[postId].length > 0) return;
@@ -745,6 +749,24 @@ const searchedContentItems = searchTerm.trim()
       );
       return eventDate.getTime() >= endOfToday.getTime();
     });
+
+  const visibleItems = searchedContentItems.slice(0, visibleCount);
+  const hasMore = visibleCount < searchedContentItems.length;
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount((prev) => prev + POSTS_PER_PAGE);
+        }
+      },
+      { rootMargin: "400px 0px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [searchedContentItems.length, hasMore]);
 
   const renderYouTubeEmbed = (text: string) => {
     const youtubeUrl = hasYouTubeLink(text);
@@ -1072,7 +1094,10 @@ const searchedContentItems = searchTerm.trim()
             ].map((filter) => (
               <button
                 key={filter.key}
-                onClick={() => setFeedFilter(filter.key as any)}
+                onClick={() => {
+                  setFeedFilter(filter.key as any);
+                  setVisibleCount(POSTS_PER_PAGE);
+                }}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                   feedFilter === filter.key
                     ? "bg-foreground text-background"
@@ -1092,13 +1117,19 @@ const searchedContentItems = searchTerm.trim()
             <input
               type="text"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setVisibleCount(POSTS_PER_PAGE);
+              }}
               placeholder="Search by creator..."
               className="w-full pl-9 pr-8 py-2 rounded-lg bg-card border border-border text-sm outline-none focus:ring-2 focus:ring-orange-100 placeholder:text-muted-foreground/60"
             />
             {searchTerm && (
               <button
-                onClick={() => setSearchTerm("")}
+                onClick={() => {
+                setSearchTerm("");
+                setVisibleCount(POSTS_PER_PAGE);
+              }}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition"
                 aria-label="Clear search"
               >
@@ -1340,7 +1371,8 @@ const searchedContentItems = searchTerm.trim()
             )}
             <div className="space-y-4">
               {searchedContentItems.length > 0 ? (
-                searchedContentItems.map((item) => {
+                <>
+                  {visibleItems.map((item) => {
                   return (
                     <div
                       key={item.id}
@@ -1593,7 +1625,22 @@ const searchedContentItems = searchTerm.trim()
                       {showCommentFor === item.id && renderPostComments(item)}
                     </div>
                   );
-                })
+                  })}
+                  {hasMore && (
+                    <div
+                      ref={sentinelRef}
+                      className="flex items-center justify-center py-8"
+                    >
+                      <Loader
+                        className="animate-spin text-muted-foreground"
+                        size={22}
+                      />
+                      <span className="text-xs text-muted-foreground ml-2">
+                        Loading more posts...
+                      </span>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="text-center py-16 bg-card rounded-lg border border-border">
                   <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">

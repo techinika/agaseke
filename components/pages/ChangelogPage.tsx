@@ -2,7 +2,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Package, Zap, Calendar, Tag, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { Package, Zap, Calendar, Tag, ChevronRight, MessageCircle } from "lucide-react";
 import { db } from "@/db/firebase";
 import {
   collection,
@@ -72,6 +73,14 @@ export default function ChangelogPage() {
           <p className="text-orange-100 text-lg max-w-2xl mx-auto">
             Track our progress. See what we've built and what's coming next.
           </p>
+          <Link
+            href="https://whatsapp.com/channel/0029Vb9AemqFy72CiwMyQf06"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 bg-white/10 border border-white/30 hover:bg-white/20 transition-all rounded-full px-5 py-2.5 mt-6 text-sm font-bold text-white"
+          >
+            <MessageCircle size={16} /> Get announcements & new features on our WhatsApp Channel
+          </Link>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
 import React from "react";
 import Navbar from "@/components/parts/Navigation";
-import { Mail, Instagram, Twitter } from "lucide-react";
+import { Mail, Instagram, Twitter, MessageCircle } from "lucide-react";
 import Footer from "@/components/parts/Footer";
 
 export default function TermsPage() {
@@ -126,6 +126,12 @@ export default function TermsPage() {
                 className="flex items-center gap-3 text-orange-700 font-bold hover:underline"
               >
                 <Twitter size={20} /> @agaseke_support
+              </a>
+              <a
+                href="https://whatsapp.com/channel/0029Vb9AemqFy72CiwMyQf06"
+                className="flex items-center gap-3 text-orange-700 font-bold hover:underline"
+              >
+                <MessageCircle size={20} /> Announcements on WhatsApp
               </a>
             </div>
           </section>

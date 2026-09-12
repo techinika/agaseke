@@ -1,6 +1,6 @@
 import React from "react";
 import Navbar from "@/components/parts/Navigation";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, MessageCircle } from "lucide-react";
 import Footer from "@/components/parts/Footer";
 
 export default function PrivacyPage() {
@@ -105,6 +105,14 @@ export default function PrivacyPage() {
             <div className="space-y-2">
               <p className="font-bold">hello@agaseke.me</p>
               <p className="text-sm text-muted-foreground">Subject: Privacy Inquiry</p>
+              <a
+                href="https://whatsapp.com/channel/0029Vb9AemqFy72CiwMyQf06"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-bold flex items-center gap-2 hover:underline"
+              >
+                <MessageCircle size={16} /> Announcements on WhatsApp
+              </a>
             </div>
           </section>
         </div>

@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { FaInstagram, FaTwitter, FaLinkedin, FaYoutube } from "react-icons/fa";
+import {
+  FaInstagram,
+  FaTwitter,
+  FaLinkedin,
+  FaYoutube,
+  FaWhatsapp,
+} from "react-icons/fa";
 import {
   SocialIcon,
   FooterGroup,
@@ -36,6 +42,11 @@ export default function Footer() {
                 href="https://www.youtube.com/channel/UCeLwxQrpnxYip5G-jXyTRBQ"
                 icon={<FaYoutube size={20} />}
               />
+              <SocialIcon
+                href="https://whatsapp.com/channel/0029Vb9AemqFy72CiwMyQf06"
+                icon={<FaWhatsapp size={20} />}
+                title="WhatsApp Channel"
+              />
             </div>
           </div>
 
@@ -61,6 +72,22 @@ export default function Footer() {
                 { label: "Terms", href: "/terms" },
                 { label: "Content Guidelines", href: "/content-guidelines" },
                 { label: "Payout Policy", href: "/payout-policy" },
+              ]}
+            />
+
+            <FooterGroup
+              title="Community"
+              links={[
+                {
+                  label: "WhatsApp Channel",
+                  href: "https://whatsapp.com/channel/0029Vb9AemqFy72CiwMyQf06",
+                  isExternal: true,
+                },
+                {
+                  label: "WhatsApp Group",
+                  href: "https://chat.whatsapp.com/DSLKCybSApGKrEmn0HvlLx",
+                  isExternal: true,
+                },
               ]}
             />
           </div>

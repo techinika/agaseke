@@ -76,7 +76,7 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - Configure meeting type (online, in-person, or both)
   - Location or video link settings
   - Paid tiered booking system with tier selection (choose a tier with a price)
-  - Calendar integration: Google Calendar, Yahoo Calendar, Apple/Outlook (.ics) buttons in response email
+  - Calendar integration: Google Calendar, Yahoo Calendar, Apple/Outlook (.ics) buttons in response email and on the Upcoming Meetings cards in the creator dashboard (add a confirmed booking to your own calendar without waiting for the email)
   - Meeting location/link displayed in booking summary and confirmation email
   - Server-side validation: date range, day-of-week, time slot matching, and price verification
   - Duration-aware conflict detection (overlapping time ranges instead of exact string match)
@@ -676,6 +676,16 @@ MIT License - see LICENSE file for details.
 For issues or feature requests, please open an issue on GitHub.
 
 ## Recent Updates
+
+### WhatsApp Channel & Supporter Feed Scroll (September 2026)
+
+- **WhatsApp updates channel**: Agaseke now runs a WhatsApp channel (`https://whatsapp.com/channel/0029Vb9AemqFy72CiwMyQf06`) to announce new updates, features, and creator highlights. The link is promoted on the Help Center (new card), Changelog header banner, site footer (icon + "Community" links group), and the contact sections of the Terms, Privacy, Content Guidelines, and Payout Policy pages.
+- **Supporter feed loads on scroll** (`SupporterSpace`): the `/supporter` feed now shows 10 posts by default and loads 10 more each time you scroll to the bottom (IntersectionObserver sentinel). Switching filter tabs or searching resets the list to the first page, and view counting re-observes newly rendered posts.
+
+### Dashboard Booking Calendar & Earn Cards (September 2026)
+
+- **Add confirmed bookings to your calendar** (`BookingsPage` / `lib/bookingCalendar.ts`): Upcoming Meetings cards on the creator dashboard now show **Add to Google Calendar**, **Yahoo Calendar**, and **Apple/Outlook (.ics download)** buttons, so the creator can add a confirmed booking to their own calendar without waiting for the response email. The booking_response email now also receives real calendar links (`googleCalUrl`/`yahooCalUrl`/`icsUrl`) instead of `undefined` — the "Add to calendar" links in the confirmation email work now too. Calendar events include date/time, duration (from the tier or 60 min default), meeting type, tier/price, location (tier or default availability online link/physical address), and the booking reason.
+- **Dashboard earn cards** (`CreatorSpace`): New **"Ways to earn & build trust"** section between the stats cards and Recent Support/Your Activity with link cards for Exclusive Content, Membership Tiers, Giveaways, Paid Bookings, Gatherings & Events, and Merch Store.
 
 ### Explore Feed Filter, Article Links & Comment Fixes (September 2026)
 

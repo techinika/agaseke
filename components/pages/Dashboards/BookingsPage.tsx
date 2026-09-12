@@ -14,6 +14,9 @@ import {
   Loader,
   Users,
   CalendarDays,
+  CalendarPlus,
+  CalendarSync,
+  Download,
   ChevronDown,
   ChevronUp,
   MessageSquare,
@@ -46,6 +49,11 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { logError } from "@/lib/logger";
 import { decrypt, isEncrypted } from "@/lib/generalWorkerService";
 import { formatCurrency } from "@/types/currency";
+import {
+  buildCalendarEvent,
+  buildIcsDataUrl,
+  type CalendarEventInput,
+} from "@/lib/bookingCalendar";
 
 const DAYS_OF_WEEK = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -133,11 +141,66 @@ export default function BookingsPage() {
     return () => unsub();
   }, [creator?.handle]);
 
+  const toCalendarInput = (booking: BookingRequest): CalendarEventInput => {
+    const tier = booking.tierId
+      ? tiers.find((t) => t.id === booking.tierId)
+      : undefined;
+    const durationMinutes = booking.tierDuration || tier?.duration || 60;
+    const tierOnlineLink = (tier?.availability?.onlineLink as string) || "";
+    const tierLocation = (tier?.availability?.location as string) || "";
+    const onlineLink =
+      tierOnlineLink || (availability.onlineLink as string) || "";
+    const meetingLocation =
+      booking.meetingLocation ||
+      tierLocation ||
+      (availability.location as string) ||
+      "";
+    const location =
+      booking.preferredType === "online"
+        ? onlineLink || "Online meeting"
+        : meetingLocation || "In-person meeting";
+    const typeLabel =
+      booking.preferredType === "online"
+        ? "Online"
+        : booking.preferredType === "physical"
+          ? "In-person"
+          : "Meeting";
+    const notes =
+      decryptedReasons[booking.id] ||
+      (!isEncrypted(booking.reason || "") ? booking.reason : "") ||
+      "";
+    const details = [
+      `${typeLabel} meeting with ${booking.bookerName}`,
+      booking.tierName ? `Tier: ${booking.tierName}` : "",
+      booking.paymentAmount && booking.paymentAmount > 0
+        ? `Price: ${formatCurrency(
+            booking.paymentAmount,
+            booking.currency || "RWF",
+          )}`
+        : "",
+      location ? `Location: ${location}` : "",
+      notes ? `Notes: ${notes}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    return {
+      id: booking.id,
+      title: `Meeting with ${booking.bookerName}`,
+      description: details,
+      location,
+      startDate: booking.preferredDate,
+      startTime: booking.preferredTime,
+      durationMinutes,
+    };
+  };
+
   const handleRespond = async (bookingId: string, status: "accepted" | "declined", note?: string) => {
     try {
       await updateDoc(doc(db, "bookingRequests", bookingId), { status, respondedAt: serverTimestamp(), responseNote: note || "" });
       const booking = bookings.find((b) => b.id === bookingId);
       if (booking) {
+        const cal = buildCalendarEvent(toCalendarInput(booking));
         await sendCommsEmail("booking_response", {
             bookerEmail: booking.bookerEmail,
             bookerName: booking.bookerName,
@@ -150,6 +213,9 @@ export default function BookingsPage() {
             preferredType: booking.preferredType,
             tierName: booking.tierName || "",
             creatorHandle: creator?.handle || "",
+            googleCalUrl: cal.googleCalUrl,
+            yahooCalUrl: cal.yahooCalUrl,
+            icsUrl: buildIcsDataUrl(cal.icsContent),
           });
       }
       toast.success(`Booking ${status}`);
@@ -321,19 +387,36 @@ export default function BookingsPage() {
               <section className="bg-card border border-border rounded-lg p-6">
                 <h2 className="text-lg font-black uppercase mb-4 flex items-center gap-2"><Calendar className="text-green-500" size={20} /> Upcoming Meetings</h2>
                 <div className="space-y-4">
-                  {upcomingBookings.map((booking) => (
-                    <div key={booking.id} className="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-100 dark:border-green-800">
-                      <div className="flex justify-between items-start">
-                        <div><p className="font-black text-lg">{booking.bookerName}</p><p className="text-sm text-muted-foreground">{booking.bookerEmail}</p></div>
-                        <span className="px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full">Confirmed</span>
+                  {upcomingBookings.map((booking) => {
+                    const cal = buildCalendarEvent(toCalendarInput(booking));
+                    return (
+                      <div key={booking.id} className="p-4 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-100 dark:border-green-800">
+                        <div className="flex justify-between items-start">
+                          <div><p className="font-black text-lg">{booking.bookerName}</p><p className="text-sm text-muted-foreground">{booking.bookerEmail}</p></div>
+                          <span className="px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full">Confirmed</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4 mt-4">
+                          <div className="flex items-center gap-2 text-sm"><CalendarDays size={16} className="text-muted-foreground" /><span>{formatDate(booking.preferredDate)}</span></div>
+                          <div className="flex items-center gap-2 text-sm"><Clock size={16} className="text-muted-foreground" /><span>{booking.preferredTime}</span></div>
+                          <div className="flex items-center gap-2 text-sm">{booking.preferredType === "online" ? <Video size={16} /> : <MapPin size={16} />}<span className="capitalize">{booking.preferredType}</span></div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-green-200 dark:border-green-800">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mr-1">
+                            Add to calendar:
+                          </span>
+                          <a href={cal.googleCalUrl} target="_blank" rel="noopener noreferrer" title="Add to Google Calendar" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border rounded-full text-xs font-bold hover:border-orange-200 dark:hover:border-orange-900 transition-all">
+                            <CalendarPlus size={14} className="text-blue-600" /> Google
+                          </a>
+                          <a href={cal.yahooCalUrl} target="_blank" rel="noopener noreferrer" title="Add to Yahoo Calendar" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border rounded-full text-xs font-bold hover:border-orange-200 dark:hover:border-orange-900 transition-all">
+                            <CalendarSync size={14} className="text-violet-600" /> Yahoo
+                          </a>
+                          <a href={buildIcsDataUrl(cal.icsContent)} download={`agaseke-booking-${booking.id}.ics`} title="Download .ics (Apple Calendar / Outlook)" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border rounded-full text-xs font-bold hover:border-orange-200 dark:hover:border-orange-900 transition-all">
+                            <Download size={14} className="text-orange-600" /> Apple / Outlook
+                          </a>
+                        </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-4 mt-4">
-                        <div className="flex items-center gap-2 text-sm"><CalendarDays size={16} className="text-muted-foreground" /><span>{formatDate(booking.preferredDate)}</span></div>
-                        <div className="flex items-center gap-2 text-sm"><Clock size={16} className="text-muted-foreground" /><span>{booking.preferredTime}</span></div>
-                        <div className="flex items-center gap-2 text-sm">{booking.preferredType === "online" ? <Video size={16} /> : <MapPin size={16} />}<span className="capitalize">{booking.preferredType}</span></div>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </section>
             )}
