@@ -134,6 +134,7 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - `/[username]/booking` - Book a meeting with the creator
   - `/[username]/messaging` - Direct message the creator
 - **Community Interaction**: Like posts and leave comments on creator content
+- **Supporter Feed** (`/supporter`): Personalized content feed with All / Following / For You filter tabs and a creator-name search box (with clear button) — responsive, stacking on mobile and sitting beside the filters on larger screens
 - **Support**: One-time payments via mobile money (MomoPay) or card (credit/debit)
 - **Community Membership**: Subscribe to creator membership tiers with recurring payments (monthly/yearly) via Momo or card
 - **Support**: Quick one-time support button available on all profile subpages
@@ -675,6 +676,13 @@ MIT License - see LICENSE file for details.
 For issues or feature requests, please open an issue on GitHub.
 
 ## Recent Updates
+
+### Supporter Feed Search & Feed Count Removal (September 2026)
+
+- **Removed the post count subtitle**: The "{n} posts in your feed" line under the `/supporter` welcome heading is gone.
+- **Creator-name search**: Added a search box to the right of the All / Following / For You filter tabs that filters the feed by creator name or handle (case-insensitive, with a one-click clear button). A "No creators match your search" empty state shows when the search yields no results.
+- **Responsive layout**: On mobile the filter tabs and search stack vertically (search takes full width); on `sm+` the tabs stay left and the search is a right-aligned, fixed-width field.
+- Also fixed two pre-existing `prefer-const` lint errors in `SupporterSpace.tsx`.
 
 ### DB Activity Auditing, Email Recording & Article Comments (September 2026)
 

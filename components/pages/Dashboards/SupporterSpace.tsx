@@ -32,6 +32,7 @@ import {
   Save,
   Trash2,
   ArrowRight,
+  Search,
 } from "lucide-react";
 import Navbar from "@/components/parts/Navigation";
 import MobileBottomBar from "@/components/parts/MobileBottomBar";
@@ -103,6 +104,7 @@ export default function SupporterSpace() {
   const [feedFilter, setFeedFilter] = useState<"all" | "following" | "public">(
     "all",
   );
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [expandedPostId, setExpandedPostId] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, Comment[]>>(
@@ -318,7 +320,7 @@ export default function SupporterSpace() {
             getDocs(purchasesQuery),
           ]);
 
-        let allContentDocs = [...publicSnap.docs];
+        const allContentDocs = [...publicSnap.docs];
 
         // Private content fetch — decoupled so a permission failure doesn't crash the page
         if (privateContentQ) {
@@ -333,7 +335,7 @@ export default function SupporterSpace() {
           }
         }
 
-        let profileMap = new Map();
+        const profileMap = new Map();
         const supportedCreatorUids = new Set<string>();
         const supportedHandles = new Set<string>();
         const creatorMap = new Map();
@@ -715,6 +717,16 @@ export default function SupporterSpace() {
     return true;
   });
   const contentItems = filteredFeed.filter((item) => item.type !== "gathering");
+const searchedContentItems = searchTerm.trim()
+  ? contentItems.filter((item) => {
+      const name = (item.creatorName || item.creatorHandle || "")
+        .toString()
+        .toLowerCase();
+      const handle = (item.creatorHandle || "").toString().toLowerCase();
+      const term = searchTerm.trim().toLowerCase();
+      return name.includes(term) || handle.includes(term);
+    })
+  : contentItems;
   const gatheringItems = filteredFeed
     .filter((item) => item.type === "gathering")
     .filter((item) => {
@@ -1042,9 +1054,6 @@ export default function SupporterSpace() {
               Welcome back,{" "}
               {auth.profile?.displayName?.split(" ")[0] || "Supporter"}
             </h1>
-            <p className="text-sm text-muted-foreground">
-              {contentItems.length} posts in your feed
-            </p>
           </div>
           <Link
             href={auth?.isCreator ? "/creator" : "/onboarding"}
@@ -1054,24 +1063,49 @@ export default function SupporterSpace() {
           </Link>
         </div>
 
-        <div className="flex gap-2 mb-6">
-          {[
-            { key: "all", label: "All" },
-            { key: "following", label: "Following" },
-            { key: "public", label: "For You" },
-          ].map((filter) => (
-            <button
-              key={filter.key}
-              onClick={() => setFeedFilter(filter.key as any)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                feedFilter === filter.key
-                  ? "bg-foreground text-background"
-                  : "bg-card text-muted-foreground border border-border hover:bg-muted"
-              }`}
-            >
-              {filter.label}
-            </button>
-          ))}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
+          <div className="flex gap-2 flex-wrap">
+            {[
+              { key: "all", label: "All" },
+              { key: "following", label: "Following" },
+              { key: "public", label: "For You" },
+            ].map((filter) => (
+              <button
+                key={filter.key}
+                onClick={() => setFeedFilter(filter.key as any)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                  feedFilter === filter.key
+                    ? "bg-foreground text-background"
+                    : "bg-card text-muted-foreground border border-border hover:bg-muted"
+                }`}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="relative flex-1 sm:max-w-xs sm:ml-auto">
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+            />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by creator..."
+              className="w-full pl-9 pr-8 py-2 rounded-lg bg-card border border-border text-sm outline-none focus:ring-2 focus:ring-orange-100 placeholder:text-muted-foreground/60"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition"
+                aria-label="Clear search"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
         </div>
 
         {gatheringItems.length > 0 && (
@@ -1305,8 +1339,8 @@ export default function SupporterSpace() {
               </div>
             )}
             <div className="space-y-4">
-              {contentItems.length > 0 ? (
-                contentItems.map((item) => {
+              {searchedContentItems.length > 0 ? (
+                searchedContentItems.map((item) => {
                   return (
                     <div
                       key={item.id}
@@ -1566,11 +1600,13 @@ export default function SupporterSpace() {
                     <User className="text-muted-foreground" size={24} />
                   </div>
                   <p className="text-muted-foreground text-sm">
-                    {feedFilter === "following"
-                      ? "No posts from creators you follow"
-                      : feedFilter === "public"
-                        ? "No public posts available"
-                        : "No posts in your feed yet"}
+                    {contentItems.length === 0
+                      ? feedFilter === "following"
+                        ? "No posts from creators you follow"
+                        : feedFilter === "public"
+                          ? "No public posts available"
+                          : "No posts in your feed yet"
+                      : "No creators match your search"}
                   </p>
                   <button
                     onClick={() => router.push("/explore")}
