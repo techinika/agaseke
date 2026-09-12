@@ -116,7 +116,23 @@ Before sending, the sender domain must be verified in SES and the account taken 
 
 1. **Verify the domain** — SES → Identities → Create identity → Domain: `comms.agaseke.me`, add the SPF/DKIM records SES provides (see [email-best-practices skill](../../.agents/skills/email-best-practices/SKILL.md)).
 2. **Create a configuration set** for event tracking (optional but recommended) and attach an SNS topic via Event destinations — see [Webhook](#webhook).
-3. **Create an IAM user** with a policy granting `ses:SendEmail` (and scoped to the verified domain) and store its access keys as the AWS secrets above.
+3. **Create an IAM user** with `ses:SendEmail` (and `ses:SendRawEmail`) scoped to the verified identity, then store its access keys as the AWS secrets above. As an inline policy:
+
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Action": ["ses:SendEmail", "ses:SendRawEmail"],
+         "Resource": "arn:aws:ses:us-east-1:YOUR_ACCOUNT_ID:identity/comms.agaseke.me"
+       }
+     ]
+   }
+   ```
+
+   > **Gotcha:** `ses:SendEmail` without the matching IAM permission fails with HTTP `403` `AccessDenied` — the worker logs it as `SES api error: status=403, body=... User 'arn:aws:iam::...:user/<name>' is not authorized to perform 'ses:SendEmail' on resource '...identity/comms.agaseke.me'`. Granting the policy above fixes it; no code redeploy is needed.
+
 4. **Leave sandbox** — SES → Account dashboard → Request production access (needed to send to non-verified recipients).
 
 ### Deploy

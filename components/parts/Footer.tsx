@@ -15,8 +15,7 @@ export default function Footer() {
               agaseke<span className="text-orange-600">.me</span>
             </div>
             <p className="text-sm leading-relaxed mb-8">
-              The private community platform for content creators, artists, and
-              influencers across Africa.
+              The private community platform for content creators, artists, YouTubers, Bloggers, and Influencers. Your biggest fans support you directly through tips, subscriptions, and exclusive content.
             </p>
 
             {/* Social Media Icons */}

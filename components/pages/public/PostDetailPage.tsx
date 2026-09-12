@@ -213,7 +213,7 @@ export default function PostDetailPage({ username, postId }: { username: string;
 
   const startEditing = (comment: any) => {
     setEditingCommentId(comment.id);
-    setEditCommentContent(comment.content);
+    setEditCommentContent(comment.content || comment.text || "");
   };
 
   if (loading) return <DetailSkeleton />;
@@ -383,7 +383,7 @@ export default function PostDetailPage({ username, postId }: { username: string;
                       <button onClick={() => { setEditingCommentId(null); setEditCommentContent(""); }} className="p-1.5 text-muted-foreground hover:bg-muted dark:hover:bg-card-hover rounded-lg transition"><X size={16} /></button>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground mt-0.5 whitespace-pre-wrap"><LinkifyText text={c.content} /></p>
+                    <p className="text-sm text-muted-foreground mt-0.5 whitespace-pre-wrap"><LinkifyText text={c.content || c.text} /></p>
                   )}
                   <div className="flex items-center gap-3 mt-1">
                     <p className="text-[10px] text-muted-foreground">{c.createdAt?.toDate?.().toLocaleDateString() || ""}</p>

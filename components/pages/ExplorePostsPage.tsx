@@ -63,34 +63,13 @@ export default function ExplorePostsPage() {
   const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"all" | "articles" | "posts">(
+    "all",
+  );
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
   const [documentIndex, setDocumentIndex] = useState<Record<string, number>>({});
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [viewingDocument, setViewingDocument] = useState<{ url: string; title: string } | null>(null);
-
-  useEffect(() => {
-    async function init() {
-      setLoading(true);
-      const creatorsSnap = await getDocs(collection(db, "creators"));
-      const map = new Map<string, any>();
-      const list: any[] = [];
-      creatorsSnap.docs.forEach((d) => {
-        const data = d.data();
-        const entry = {
-          name: data.name || d.id,
-          handle: d.id,
-          uid: data.uid,
-          photoURL: data.profilePicture || data.photoURL || null,
-        };
-        map.set(d.id, entry);
-        if (data.uid) map.set(data.uid, entry);
-      });
-      setCreatorMap(map);
-      await fetchPosts(map, null);
-      setLoading(false);
-    }
-    init();
-  }, []);
 
   const fetchPosts = async (cmap: Map<string, any>, cursor: QueryDocumentSnapshot<DocumentData> | null) => {
     try {
@@ -134,6 +113,29 @@ export default function ExplorePostsPage() {
     }
   };
 
+  useEffect(() => {
+    async function init() {
+      setLoading(true);
+      const creatorsSnap = await getDocs(collection(db, "creators"));
+      const map = new Map<string, any>();
+      creatorsSnap.docs.forEach((d) => {
+        const data = d.data();
+        const entry = {
+          name: data.name || d.id,
+          handle: d.id,
+          uid: data.uid,
+          photoURL: data.profilePicture || data.photoURL || null,
+        };
+        map.set(d.id, entry);
+        if (data.uid) map.set(data.uid, entry);
+      });
+      setCreatorMap(map);
+      await fetchPosts(map, null);
+      setLoading(false);
+    }
+    init();
+  }, []);
+
   const loadMore = async () => {
     if (!lastVisible || !hasMore) return;
     setLoadingMore(true);
@@ -150,15 +152,29 @@ export default function ExplorePostsPage() {
     });
   };
 
-  const filteredPosts = searchTerm
-    ? posts.filter(
+  const itemHref = (item: any): string =>
+    item.type === "article" && item.slug
+      ? `/articles/${item.slug}`
+      : `/explore/posts/${item.id}`;
+
+  const filteredPosts = (() => {
+    let result = posts;
+    if (typeFilter === "articles") {
+      result = result.filter((p) => p.type === "article");
+    } else if (typeFilter === "posts") {
+      result = result.filter((p) => p.type !== "article");
+    }
+    if (searchTerm) {
+      result = result.filter(
         (p) =>
           (p.title || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
           (p.description || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
           (p.authorName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
           (p.authorHandle || "").toLowerCase().includes(searchTerm.toLowerCase()),
-      )
-    : posts;
+      );
+    }
+    return result;
+  })();
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
@@ -172,7 +188,7 @@ export default function ExplorePostsPage() {
             </span>
           </h1>
           <p className="text-muted-foreground font-medium text-lg max-w-xl mx-auto mb-10">
-            Explore stories, videos, and content from creators across Africa.
+            Explore stories, videos, and content from creators across Agaseke.
           </p>
           <div className="max-w-2xl mx-auto relative group">
             <Search
@@ -186,7 +202,29 @@ export default function ExplorePostsPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-card border border-border shadow-xl shadow-border rounded-lg py-6 pl-14 pr-6 text-lg outline-none focus:ring-4 focus:ring-orange-50 transition-all font-medium"
             />
-          </div>
+            </div>
+
+            <div className="mt-6 inline-flex items-center gap-1 bg-card border border-border rounded-full p-1 shadow-sm">
+              {(
+                [
+                  { key: "all", label: "All" },
+                  { key: "posts", label: "Posts" },
+                  { key: "articles", label: "Articles" },
+                ] as const
+              ).map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setTypeFilter(key)}
+                  className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors ${
+                    typeFilter === key
+                      ? "bg-orange-600 text-white"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
         </div>
       </header>
 
@@ -201,9 +239,15 @@ export default function ExplorePostsPage() {
           <>
             <div className="flex items-center justify-between mb-8 px-2">
               <h3 className="text-xs font-bold uppercase tracking-[0.3em] text-muted-foreground">
-                {searchTerm ? `Searching for "${searchTerm}"` : "Latest Public Posts"}
+                {searchTerm
+                  ? `Searching for "${searchTerm}"`
+                  : typeFilter === "articles"
+                    ? "Latest Public Articles"
+                    : typeFilter === "posts"
+                      ? "Latest Public Posts"
+                      : "Latest Public Content"}
               </h3>
-              <span className="text-xs text-muted-foreground">{filteredPosts.length} post{filteredPosts.length !== 1 ? "s" : ""}</span>
+              <span className="text-xs text-muted-foreground">{filteredPosts.length} item{filteredPosts.length !== 1 ? "s" : ""}</span>
             </div>
 
             <div className="grid grid-cols-1 gap-6">
@@ -328,7 +372,7 @@ export default function ExplorePostsPage() {
                   })()}
 
                   {/* Title */}
-                  <Link href={`/explore/posts/${item.id}`} className="block group">
+                  <Link href={itemHref(item)} className="block group">
                     <h4 className="font-bold text-lg mb-2 group-hover:text-orange-600 transition-colors">
                       {item.title || "Untitled"}
                     </h4>
@@ -337,31 +381,52 @@ export default function ExplorePostsPage() {
                   {/* Description */}
                   {item.description || item.content ? (
                     <div className="text-muted-foreground text-sm whitespace-pre-wrap leading-relaxed">
-                      {(item.description || item.content).length > 200 &&
-                      !expandedPosts.has(item.id) ? (
-                        <>
-                          <LinkifyText text={(item.description || item.content).slice(0, 200)} />
-                          <span>...</span>
-                          <button
-                            onClick={() => toggleExpand(item.id)}
-                            className="ml-1 text-orange-600 font-medium hover:underline"
-                          >
-                            Read more
-                          </button>
-                        </>
+                      {item.type === "article" ? (
+                        <LinkifyText
+                          text={
+                            (item.description || item.content).length > 200
+                              ? `${(item.description || item.content).slice(0, 200)}...`
+                              : item.description || item.content
+                          }
+                        />
                       ) : (
                         <>
-                          <LinkifyText text={item.description || item.content} />
-                          {(item.description || item.content).length > 200 && (
-                            <button
-                              onClick={() => toggleExpand(item.id)}
-                              className="ml-1 text-orange-600 font-medium hover:underline"
-                            >
-                              Read less
-                            </button>
+                          {(item.description || item.content).length > 200 &&
+                          !expandedPosts.has(item.id) ? (
+                            <>
+                              <LinkifyText text={(item.description || item.content).slice(0, 200)} />
+                              <span>...</span>
+                              <button
+                                onClick={() => toggleExpand(item.id)}
+                                className="ml-1 text-orange-600 font-medium hover:underline"
+                              >
+                                Read more
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <LinkifyText text={item.description || item.content} />
+                              {(item.description || item.content).length > 200 && (
+                                <button
+                                  onClick={() => toggleExpand(item.id)}
+                                  className="ml-1 text-orange-600 font-medium hover:underline"
+                                >
+                                  Read less
+                                </button>
+                              )}
+                            </>
                           )}
                         </>
                       )}
+                      {item.type === "article" &&
+                        (item.description || item.content).length > 200 && (
+                          <Link
+                            href={itemHref(item)}
+                            className="ml-1 text-orange-600 font-medium hover:underline inline"
+                          >
+                            Read more
+                          </Link>
+                        )}
                     </div>
                   ) : null}
 
@@ -396,10 +461,11 @@ export default function ExplorePostsPage() {
                       </span>
                     )}
                     <Link
-                      href={`/explore/posts/${item.id}`}
+                      href={itemHref(item)}
                       className="flex items-center gap-1 text-orange-600 font-medium hover:underline ml-auto"
                     >
-                      View Post <ArrowRight size={12} />
+                      {item.type === "article" ? "Read Article" : "View Post"}{" "}
+                      <ArrowRight size={12} />
                     </Link>
                   </div>
                 </div>
@@ -413,7 +479,13 @@ export default function ExplorePostsPage() {
                 </div>
                 <h3 className="text-3xl font-bold tracking-tighter">No posts found</h3>
                 <p className="text-muted-foreground mt-2 font-medium">
-                  {searchTerm ? "Try a different search term." : "No public posts have been published yet."}
+                  {searchTerm
+                    ? "Try a different search term."
+                    : typeFilter === "articles"
+                      ? "No public articles have been published yet."
+                      : typeFilter === "posts"
+                        ? "No public posts have been published yet."
+                        : "No public content has been published yet."}
                 </p>
               </div>
             )}

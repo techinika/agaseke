@@ -193,6 +193,9 @@ export async function sendSesEmail(env: Env, input: SesEmailInput): Promise<stri
 
   if (!res.ok) {
     const errText = await res.text();
+    console.error(
+      `SES api error: status=${res.status}, body=${errText.slice(0, 2000)}`,
+    );
     throw new Error(`SES error (${res.status}): ${errText.slice(0, 500)}`);
   }
 

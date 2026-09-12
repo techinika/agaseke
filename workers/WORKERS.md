@@ -49,6 +49,8 @@ Every Firestore read/write (GET/POST/PATCH/DELETE — Firestore REST; no PUT) pe
 
 **Queue:** `agaseke-email-queue` — bulk sends (`broadcast`, `message_digest`, `content_new`) are enqueued and delivered by the worker's queue consumer instead of holding the HTTP request open. Non-bulk purposes still send inline. Queue must be created in the dashboard before deploy.
 
+**SES troubleshooting:** The worker logs `status` + response `body` on every failed SES send. The common failure is HTTP `403` `AccessDenied` — the IAM user behind `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` must be granted `ses:SendEmail` (and `ses:SendRawEmail`) on the verified identity (e.g. `arn:aws:ses:us-east-1:<acct>:identity/comms.agaseke.me`). See `workers/comms/README.md` for the exact inline policy.
+
 ## agaseke-store
 
 | Variable                  | Type   | Secret | Description                          |

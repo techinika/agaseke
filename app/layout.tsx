@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     template: "%s | Agaseke",
   },
   description:
-    "A private community platform for content creators and influencers across Africa. Your biggest fans support you directly through tips, subscriptions, and exclusive content — paid out to your Mobile Money or Bank account.",
+    "A private community platform for content creators and influencers. Your biggest fans support you directly through tips, subscriptions, and exclusive content — paid out to your Mobile Money or Bank account.",
   keywords: [
     "Agaseke",
     "creator community platform",
@@ -58,7 +58,7 @@ export const metadata: Metadata = {
     siteName: "Agaseke",
     title: "Agaseke | Build Your Private Creator Community",
     description:
-      "A private community platform for content creators across Africa. Your fans support you directly through tips, subscriptions, and purchases.",
+      "A private community platform for content creators. Your fans support you directly through tips, subscriptions, and purchases.",
     url: BASE_URL,
     images: [
       {
@@ -73,7 +73,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Agaseke | Build Your Private Creator Community",
     description:
-      "A private community platform for creators across Africa. Your fans support you directly through tips, subscriptions, and exclusive content.",
+      "A private community platform for creators. Your fans support you directly through tips, subscriptions, and exclusive content.",
     site: "@Agaseke_support",
     creator: "@Agaseke_support",
     images: ["/agaseke.png"],

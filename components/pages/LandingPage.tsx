@@ -279,7 +279,7 @@ export default function LandingPage({
     name: "Agaseke",
     url: "https://agaseke.me",
     description:
-      "A private community platform for content creators and influencers across Africa. Your biggest fans support you directly through tips, subscriptions, and exclusive content.",
+      "A private community platform for content creators and influencers. Your biggest fans support you directly through tips, subscriptions, and exclusive content.",
     applicationCategory: "BusinessApplication",
     operatingSystem: "All",
     offers: {
@@ -320,7 +320,7 @@ export default function LandingPage({
               </div>
               <p className="text-sm font-medium text-muted-foreground">
                 For <strong>Influencers, Podcasters, Artists, </strong>
-                and <strong>Content Creators</strong> across Africa.
+                and <strong>Content Creators</strong>, YouTubers, Bloggers, etc.
               </p>
             </div>
 

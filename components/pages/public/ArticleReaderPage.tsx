@@ -15,6 +15,8 @@ import {
   LogIn,
   Sparkles,
   FileText,
+  Play,
+  Type,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -537,7 +539,9 @@ export default function ArticleReaderPage({
                           </button>
                         </div>
                       ) : (
-                        <p className="text-sm mt-0.5">{comment.content}</p>
+                        <p className="text-sm mt-0.5">
+                          {comment.content || comment.text}
+                        </p>
                       )}
                     </div>
                     <div className="flex items-center gap-3 mt-1 px-1">
@@ -550,7 +554,9 @@ export default function ArticleReaderPage({
                           <button
                             onClick={() => {
                               setEditingCommentId(comment.id);
-                              setEditCommentContent(comment.content);
+                              setEditCommentContent(
+                                comment.content || comment.text || "",
+                              );
                             }}
                             className="text-[10px] text-muted-foreground hover:text-foreground"
                           >
@@ -600,9 +606,15 @@ export default function ArticleReaderPage({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {moreContent.map((item) => {
                 const typeLabel =
-                  item.type === "article" || item.type === "post"
-                    ? item.type
-                    : "post";
+                  item.type === "video"
+                    ? "video"
+                    : item.type === "document"
+                      ? "document"
+                      : item.type === "image"
+                        ? "image"
+                        : item.type === "article"
+                          ? "article"
+                          : "post";
                 return (
                   <Link
                     key={item.id}
@@ -623,7 +635,15 @@ export default function ArticleReaderPage({
                       </div>
                     ) : (
                       <div className="aspect-[16/9] bg-muted flex items-center justify-center">
-                        <FileText size={24} className="text-muted-foreground" />
+                        {item.type === "video" ? (
+                          <div className="w-12 h-12 rounded-full bg-orange-500/15 text-orange-600 dark:text-orange-400 flex items-center justify-center">
+                            <Play size={22} className="ml-0.5 fill-current" />
+                          </div>
+                        ) : item.type === "document" ? (
+                          <FileText size={26} className="text-muted-foreground" />
+                        ) : (
+                          <Type size={26} className="text-muted-foreground" />
+                        )}
                       </div>
                     )}
                     <div className="p-3">

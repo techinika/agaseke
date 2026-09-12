@@ -566,7 +566,9 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
                           </button>
                         </div>
                       ) : (
-                        <p className="text-sm mt-0.5">{comment.content}</p>
+                        <p className="text-sm mt-0.5">
+                          {comment.content || comment.text}
+                        </p>
                       )}
                     </div>
                     <div className="flex items-center gap-3 mt-1 px-1">
@@ -579,7 +581,9 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
                           <button
                             onClick={() => {
                               setEditingCommentId(comment.id);
-                              setEditCommentContent(comment.content);
+                              setEditCommentContent(
+                                comment.content || comment.text || "",
+                              );
                             }}
                             className="text-[10px] text-muted-foreground hover:text-foreground"
                           >

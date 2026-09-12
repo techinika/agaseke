@@ -116,7 +116,12 @@ async function sendSesBatch(
           },
           sentAt: { timestampValue: now },
         });
-        console.error(`SES send failed: purpose=${purpose}, email=${item.email}`, err);
+        console.error(
+          `SES send failed: purpose=${purpose}, email=${item.email}, reason=${
+            err instanceof Error ? err.message : String(err)
+          }`,
+          err,
+        );
       }
     }
   }

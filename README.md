@@ -677,6 +677,14 @@ For issues or feature requests, please open an issue on GitHub.
 
 ## Recent Updates
 
+### Explore Feed Filter, Article Links & Comment Fixes (September 2026)
+
+- **Explore content filter**: `/explore/posts` gained an **All / Posts / Articles** filter toggle under the search box. Selecting "Posts" or "Articles" narrows the feed to that content type; the heading, post count, and empty state adapt to the active filter.
+- **Articles open the reader**: Articles in the explore feed (and the "More from this creator" section on article pages) link directly to the public reader at `/articles/[slug]` via a "Read Article" / "Read more" link — no detour through the post detail page. Non-article posts keep the existing detail view at `/explore/posts/[id]`.
+- **Comment text fix**: Public reader pages (`ArticleReaderPage`, `ExplorePostDetailPage`, `PostDetailPage`) now fall back to `comment.content || comment.text`. Supporter-side comment writers save `text`, so the reader silently dropped the message — comments now display and edit correctly on every public surface.
+- **"More from this creator" icons**: Placeholder tiles now show an icon matching each item's type (Play for video, FileText for documents, Type for text, image/article/post labels) instead of always rendering a document icon.
+- **Comms worker SES diagnostics**: `workers/comms` now logs the SES API `status` + response `body` (and the send-failure `reason`) on every failed send. During the September email outage this surfaced the real cause: the IAM user used by the worker must be granted `ses:SendEmail` on the verified identity `comms.agaseke.me` — see `workers/comms/README.md`.
+
 ### Supporter Feed Search & Feed Count Removal (September 2026)
 
 - **Removed the post count subtitle**: The "{n} posts in your feed" line under the `/supporter` welcome heading is gone.

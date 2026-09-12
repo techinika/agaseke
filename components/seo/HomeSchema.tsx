@@ -7,7 +7,7 @@ export default function HomeSchema() {
     {
       question: "What is Agaseke?",
       answer:
-        "Agaseke is a private community platform for content creators and influencers across Africa. Your biggest fans can support you directly through one-time tips, monthly subscriptions, and purchases of your exclusive content — all paid out to your Mobile Money or Bank account.",
+        "Agaseke is a private community platform for content creators and influencers. Your biggest fans can support you directly through one-time tips, monthly subscriptions, and purchases of your exclusive content — all paid out to your Mobile Money or Bank account.",
     },
     {
       question: "How is this different from social media?",
