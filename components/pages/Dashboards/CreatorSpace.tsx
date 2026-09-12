@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   Wallet,
   TrendingUp,
@@ -12,6 +13,13 @@ import {
   FileText,
   Heart,
   Coffee,
+  Lock,
+  Crown,
+  Gift,
+  CalendarCheck,
+  ShoppingBag,
+  Ticket,
+  ChevronRight,
 } from "lucide-react";
 import { db } from "@/db/firebase";
 import {
@@ -209,6 +217,81 @@ export default function CreatorDashboard() {
           value={creator?.totalSupporters?.toLocaleString() || "0"}
           icon={<Heart size={16} />}
         />
+      </div>
+
+      {/* Ways to Earn & Build Trust */}
+      <div className="mb-10">
+        <h4 className="text-lg font-bold tracking-tight mb-4">
+          Ways to earn &amp; build trust
+        </h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[
+            {
+              href: "/creator/content",
+              icon: <Lock size={20} />,
+              title: "Exclusive Content",
+              description:
+                "Publish posts and articles only your supporters can see, giving them value beyond everyone else.",
+            },
+            {
+              href: "/creator/community",
+              icon: <Crown size={20} />,
+              title: "Membership Tiers",
+              description:
+                "Create subscription tiers so loyal followers can support you regularly and unlock rewards.",
+            },
+            {
+              href: "/creator/giveaways",
+              icon: <Gift size={20} />,
+              title: "Giveaways",
+              description:
+                "Organize giveaways and reward your supporters to grow loyalty and expand your reach.",
+            },
+            {
+              href: "/creator/bookings",
+              icon: <Ticket size={20} />,
+              title: "Paid Bookings",
+              description:
+                "Offer paid one-on-one meetings and let supporters book time with you.",
+            },
+            {
+              href: "/creator/gatherings",
+              icon: <CalendarCheck size={20} />,
+              title: "Gatherings & Events",
+              description:
+                "Host ticketed events, manage RSVPs, and check in attendees in one place.",
+            },
+            {
+              href: "/creator/store",
+              icon: <ShoppingBag size={20} />,
+              title: "Merch Store",
+              description:
+                "Sell digital products and merchandise directly to your audience.",
+            },
+          ].map((card) => (
+            <Link
+              key={card.href}
+              href={card.href}
+              className="group bg-card rounded-lg border border-border p-6 shadow-sm hover:shadow-md hover:border-orange-200 dark:hover:border-orange-900 transition-all"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="w-10 h-10 rounded-lg bg-orange-100 dark:bg-orange-500/15 text-orange-600 dark:text-orange-400 flex items-center justify-center">
+                  {card.icon}
+                </div>
+                <ChevronRight
+                  size={18}
+                  className="text-muted-foreground group-hover:text-orange-500 group-hover:translate-x-1 transition-all"
+                />
+              </div>
+              <p className="font-bold text-sm text-foreground mb-1.5">
+                {card.title}
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {card.description}
+              </p>
+            </Link>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">

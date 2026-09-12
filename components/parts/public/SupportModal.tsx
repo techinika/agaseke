@@ -44,7 +44,10 @@ export function SupportModal({
   const [isClosing, setIsClosing] = useState(false);
   const [creatorCurrency, setCreatorCurrency] = useState("RWF");
   const [selectedCurrency, setSelectedCurrency] = useState("RWF");
-  const [minSupportAmount, setMinSupportAmount] = useState(1);
+  const [minByCurrency, setMinByCurrency] = useState<Record<string, number>>({
+    RWF: 100,
+    USD: 1,
+  });
   const [availableCurrencies, setAvailableCurrencies] = useState<string[]>(["RWF"]);
 
   useEffect(() => {
@@ -64,12 +67,13 @@ export function SupportModal({
           const hasUSD = codes.includes("USD");
           setAvailableCurrencies(hasUSD ? ["RWF", "USD"] : ["RWF"]);
 
-          const matched = currenciesSnap.docs.find(
-            (d) => d.data().code === currency,
-          );
-          if (matched) {
-            setMinSupportAmount(matched.data().minSupportAmount || 100);
-          }
+          const mins: Record<string, number> = { RWF: 100, USD: 1 };
+          currenciesSnap.docs.forEach((d) => {
+            const code = d.data().code as string;
+            mins[code] =
+              Number(d.data().minSupportAmount) || (code === "USD" ? 1 : 100);
+          });
+          setMinByCurrency(mins);
         }
       } catch { /* silently fail */ }
     };
@@ -107,6 +111,10 @@ export function SupportModal({
   }, []);
 
   if (!isOpen) return null;
+
+  const minSupportAmount =
+    minByCurrency[selectedCurrency] ??
+    (selectedCurrency === "USD" ? 1 : 100);
 
   const CREATOR_SHARE = Number(process.env.NEXT_PUBLIC_CREATOR_SHARE) || 0.9;
 

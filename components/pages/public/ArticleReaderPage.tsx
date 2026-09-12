@@ -625,7 +625,25 @@ export default function ArticleReaderPage({
                     }
                     className="group rounded-xl border border-border overflow-hidden hover:shadow-md transition bg-card"
                   >
-                    {item.coverUrl ? (
+                    {item.type === "video" ? (
+                      <div className="relative aspect-[16/9] bg-slate-950 overflow-hidden">
+                        {item.coverUrl &&
+                          !/\.(mp4|webm|mov|m4v|mkv|m3u8)([?#]|$)/i.test(
+                            item.coverUrl,
+                          ) && (
+                            <img
+                              src={item.coverUrl}
+                              alt={item.title}
+                              className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-30 transition-opacity duration-300"
+                            />
+                          )}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-12 h-12 rounded-full bg-orange-500 text-white flex items-center justify-center shadow-lg ring-4 ring-orange-500/20">
+                            <Play size={22} className="ml-0.5 fill-current" />
+                          </div>
+                        </div>
+                      </div>
+                    ) : item.coverUrl ? (
                       <div className="aspect-[16/9] bg-muted overflow-hidden">
                         <img
                           src={item.coverUrl}
@@ -635,11 +653,7 @@ export default function ArticleReaderPage({
                       </div>
                     ) : (
                       <div className="aspect-[16/9] bg-muted flex items-center justify-center">
-                        {item.type === "video" ? (
-                          <div className="w-12 h-12 rounded-full bg-orange-500/15 text-orange-600 dark:text-orange-400 flex items-center justify-center">
-                            <Play size={22} className="ml-0.5 fill-current" />
-                          </div>
-                        ) : item.type === "document" ? (
+                        {item.type === "document" ? (
                           <FileText size={26} className="text-muted-foreground" />
                         ) : (
                           <Type size={26} className="text-muted-foreground" />
