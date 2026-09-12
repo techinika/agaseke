@@ -31,8 +31,9 @@ export interface Env {
   FROM_NAME: string;
   APP_URL: string;
   ASSETS_URL: string;
-  RESEND_API_KEY: string;
-  RESEND_WEBHOOK_SECRET?: string;
+  AWS_ACCESS_KEY_ID: string;
+  AWS_SECRET_ACCESS_KEY: string;
+  AWS_REGION?: string;
   AGASEKE_EMAIL_QUEUE: Queue<EmailQueueMessage>;
 }
 

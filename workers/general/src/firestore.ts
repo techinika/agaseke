@@ -1,4 +1,5 @@
 import * as jose from "jose";
+import { auditedFetch } from "./audit";
 
 let cachedToken: { token: string; expiresAt: number } | null = null;
 
@@ -68,7 +69,7 @@ export async function firestorePost(
   if (!token) return null;
 
   const url = getFirestoreUrl(env.FIREBASE_PROJECT_ID, path);
-  const res = await fetch(url, {
+  const res = await auditedFetch(env, "POST", path, url, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify(body),

@@ -121,7 +121,7 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
 ### For Supporters
 
 - **Public Profiles**: Browse creator content at `/[username]`
-- **Public Article Pages**: Full article reading experience at `/articles/[slug]` (no login required) with cover, author link, publish date, views/comments, share button, and supporter gating for private articles. Articles also surface in the Explore feed (`/explore/posts`) and creator community pages.
+- **Public Article Pages**: Full article reading experience at `/articles/[slug]` (no login required) with cover, author link, publish date, views/comments, share button, a live comment section (real-time via `onSnapshot`, add/edit/delete), and supporter gating for private articles. Logged-out readers get a "Log in to join the conversation" prompt that passes `referral=<creator handle>` — signing in through the article makes the creator your referral (same as the profile page). A "More from [creator]" section below the comments shows up to 3 other public posts from the same creator (hidden when none exist). Articles also surface in the Explore feed (`/explore/posts`) and creator community pages.
 - **Public Profile Subpages**: Full-page versions of each tab with SEO-friendly URLs:
   - `/[username]/community` - All public posts and supporter-only content
   - `/[username]/community/[postId]` - Individual post detail with comments and likes
@@ -170,6 +170,8 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - Click any log row to open detail side panel with full message, timestamp, user/creator info, and formatted metadata JSON
   - Comprehensive error logging: all server catch blocks log full error data to Firestore `activityLogs` with creator name + current user context
   - Client-side error logging via `logError` from `@/lib/logger` in all booking and payment components
+  - **DB activity auditing**: Every Cloudflare Worker Firestore operation (GET/POST/PATCH/DELETE) is recorded to `activityLogs` with `category: "db"` (level `info` on success, `error` on failure, including latency) — fire-and-forget writes deferred via `ctx.waitUntil` that never delay requests or surface errors to users (see `workers/WORKERS.md`)
+  - **Non-blocking loggers**: `lib/logger` (client) and `lib/adminLogger` (server) fire-and-forget their writes — a slow/failed log write never blocks the caller and is invisible to users
 
 ### SEO & Discovery
 
@@ -210,7 +212,7 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
 - **Bookings**: Cloudflare Worker (`workers/bookings/`) ΓÇö Booking lifecycle, payment callbacks, Firestore
 - **Store**: Cloudflare Worker (`workers/store/`) ΓÇö Store callbacks, digital download authorization
 - **Support**: Cloudflare Worker (`workers/support/`) ΓÇö Support payment callbacks, status queries
-- **Email**: Cloudflare Worker (`workers/comms/`) ΓÇö Resend batch API, 19 email purposes, unified template
+- **Email**: Cloudflare Worker (`workers/comms/`) ΓÇö Amazon SES (SigV4), 19 email purposes, unified template
 - **Community Subscriptions**: Cloudflare Worker (`workers/community/`) ΓÇö Firebase REST auth, tier management, subscription lifecycle, auto-renewals
 - **General Utility**: Cloudflare Worker (`workers/general/`) ΓÇö Encryption/decryption, error logging, notifications, rate-limited endpoints
 
@@ -227,6 +229,7 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
 ### Installation
 
 1. Clone and install:
+
 ```bash
 git clone https://github.com/techinika/agaseke.git
 cd agaseke
@@ -234,6 +237,7 @@ npm install
 ```
 
 2. Create `.env.local`:
+
 ```env
 # Firebase
 NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
@@ -268,6 +272,7 @@ NEXT_PUBLIC_BASE_URL=http://localhost:3000
 ```
 
 3. Run development server:
+
 ```bash
 npm run dev
 ```
@@ -335,7 +340,7 @@ agaseke/
 Γöé   ΓööΓöÇΓöÇ booking.ts                # Booking types
 Γö£ΓöÇΓöÇ workers/                       # Cloudflare Workers
 Γöé   Γö£ΓöÇΓöÇ upload/                   # File upload Worker (R2 + Firestore)
-Γöé   Γö£ΓöÇΓöÇ comms/                    # Email comms Worker (Resend, 19 purposes, webhook)
+Γöé   Γö£ΓöÇΓöÇ comms/                    # Email comms Worker (Amazon SES, 19 purposes, webhook)
 Γöé   Γö£ΓöÇΓöÇ payments/                 # Payments Worker (Momo + Card with Paypack/PesaPal)
 Γöé   Γö£ΓöÇΓöÇ bookings/                 # Bookings Worker (create, respond, callback, availability)
 Γöé   Γö£ΓöÇΓöÇ store/                    # Store Worker (callbacks, digital downloads, status)
@@ -349,56 +354,57 @@ agaseke/
 
 ### Core Collections
 
-| Collection | Description |
-|------------|-------------|
-| `creators` | Creator profiles with settings |
-| `profiles` | User profile data |
-| `supportedCreators` | Support transactions (creatorId, amount, supporterId) |
-| `activityLogs` | Platform activity logs for admin monitoring |
-| `sentEmails` | Archive of all transactional emails sent via comms Worker |
-| `emailEvents` | Resend webhook events (bounces, deliveries, opens, clicks) |
+| Collection            | Description                                                |
+| --------------------- | ---------------------------------------------------------- |
+| `creators`          | Creator profiles with settings                             |
+| `profiles`          | User profile data                                          |
+| `supportedCreators` | Support transactions (creatorId, amount, supporterId)      |
+| `activityLogs`      | Platform activity logs for admin monitoring (`category: "db"` entries from worker auditing) |
+| `sentEmails`        | Archive of every email attempt via comms Worker (status: `sent`/`failed`, SES `messageId`, `error` on failure) |
+| `emailEvents`       | SES/SNS webhook events (deliveries, bounces, complaints) |
 
 ### Messaging
 
-| Collection | Description |
-|------------|-------------|
-| `chatrooms` | Conversations between creator and supporter |
-| `chatrooms/{id}/messages` | Individual messages |
+| Collection                  | Description                                 |
+| --------------------------- | ------------------------------------------- |
+| `chatrooms`               | Conversations between creator and supporter |
+| `chatrooms/{id}/messages` | Individual messages                         |
 
 ### Content
 
-| Collection | Description |
-|------------|-------------|
-| `creatorContent` | Posts (public/private) + Articles (`type: "article"` with `title`, optional `slug`, `htmlContent`, `coverUrl`, `shortDescription`) |
-| `creatorGatherings` | Events |
-| `gatheringsAttendance` | RSVP records |
+| Collection               | Description                                                                                                                                    |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `creatorContent`       | Posts (public/private) + Articles (`type: "article"` with `title`, optional `slug`, `htmlContent`, `coverUrl`, `shortDescription`) |
+| `creatorGatherings`    | Events                                                                                                                                         |
+| `gatheringsAttendance` | RSVP records                                                                                                                                   |
 
 ### Store
 
-| Collection | Description |
-|------------|-------------|
-| `storeProducts` | Products (digital/physical) |
-| `storeOrders` | Customer orders |
-| `storeCoupons` | Discount coupons |
-| `sales` | Individual sale records with earnings breakdown |
+| Collection        | Description                                     |
+| ----------------- | ----------------------------------------------- |
+| `storeProducts` | Products (digital/physical)                     |
+| `storeOrders`   | Customer orders                                 |
+| `storeCoupons`  | Discount coupons                                |
+| `sales`         | Individual sale records with earnings breakdown |
 
 ### Giveaways
 
-| Collection | Description |
-|------------|-------------|
-| `giveaways` | Giveaway contests |
-| `giveawayEntries` | Participant entries |
+| Collection          | Description                 |
+| ------------------- | --------------------------- |
+| `giveaways`       | Giveaway contests           |
+| `giveawayEntries` | Participant entries         |
 | `creatorPartners` | Brand/business partnerships |
 
 ### Bookings
 
-| Collection | Description |
-|------------|-------------|
+| Collection          | Description              |
+| ------------------- | ------------------------ |
 | `bookingRequests` | Meeting booking requests |
 
 ## Key Interfaces
 
 ### Creator Settings (Firestore)
+
 ```typescript
 interface Creator {
   messagingEnabled?: boolean;      // Enable/disable messaging
@@ -414,6 +420,7 @@ interface Creator {
 ```
 
 ### Booking Request
+
 ```typescript
 interface BookingRequest {
   creatorId: string;
@@ -467,6 +474,7 @@ interface BookingTier {
 ```
 
 ### Chatroom
+
 ```typescript
 interface Chatroom {
   creatorId: string;
@@ -480,6 +488,7 @@ interface Chatroom {
 ```
 
 ### Store Product
+
 ```typescript
 interface Product {
   name: string;
@@ -500,6 +509,7 @@ interface Product {
 ```
 
 ### Order
+
 ```typescript
 interface Order {
   buyerId: string;
@@ -513,6 +523,7 @@ interface Order {
 ```
 
 ### Giveaway
+
 ```typescript
 interface Giveaway {
   title: string;
@@ -539,6 +550,7 @@ interface GiveawayReward {
 ## API Routes
 
 ### Email Notifications
+
 - `POST /api/comms/email/message` - New message notification
 - `POST /api/comms/email/store/order` - Order confirmation
 - `POST /api/comms/email/store/status` - Order status change notification
@@ -554,6 +566,7 @@ interface GiveawayReward {
 - `POST /api/comms/email/booking/response` - Booking response notification to booker
 
 ### Bookings
+
 - `POST /api/bookings` - Submit a booking request (validates availability, price, conflicts; encrypts reason)
 - `POST /api/encrypt` - Encrypt text with AES-256-GCM (server-side utility)
 - `POST /api/decrypt` - Decrypt text with AES-256-GCM (server-side utility)
@@ -562,6 +575,7 @@ interface GiveawayReward {
 - `POST /api/support/with-momo/webhook` - Webhook for MoMo booking payments (notifies buyer + admin)
 
 ### File Uploads
+
 - `POST <NEXT_PUBLIC_UPLOAD_WORKER_URL>` - Upload Worker (Firebase JWT auth ΓåÆ R2 ΓåÆ Firestore)
 - `POST /api/upload/content/image` - Image upload (legacy)
 - `POST /api/upload/content/video` - Video upload (legacy)
@@ -569,6 +583,7 @@ interface GiveawayReward {
 - `POST /api/upload/picture` - Profile picture (legacy)
 
 ### Payments
+
 - `POST /api/support/with-momo/pay` - Mobile money payment
 - Webhook handlers for payment confirmation
 
@@ -586,6 +601,7 @@ Features are controlled via creator settings in Firestore:
 ### Store Access Control
 
 When `storePublic: false`:
+
 - Only supporters can view and purchase
 - Public users see "Support to access" message
 
@@ -603,16 +619,19 @@ When `storePublic: false`:
 ## UI/UX Improvements
 
 ### Confirmation Modals
+
 - Added `ConfirmModal` component (`components/ui/ConfirmModal.tsx`) for consistent delete confirmations
 - Replaced all `confirm()` browser dialogs with proper modal UI
 - Replaced all `alert()` calls with toast notifications
 
 ### Dashboard Layout
+
 - Consistent sidebar layout with Back button and primary action aligned horizontally
 - Broadcast Email button moved to sidebar on Supporters page
 - Add Partner button moved to sidebar on Partners page
 
 ### Account Deletion
+
 - Profile deletion now checks for creator status and pending payouts
 - If pending payout exists, user must withdraw funds first
 - Firebase auth account deleted, profile archived with `status: "archived"`
@@ -621,16 +640,19 @@ When `storePublic: false`:
 ## Development
 
 ### Build
+
 ```bash
 npm run build
 ```
 
 ### Lint
+
 ```bash
 npm run lint
 ```
 
 ### Type Check
+
 ```bash
 npm run typecheck
 ```
@@ -654,7 +676,18 @@ For issues or feature requests, please open an issue on GitHub.
 
 ## Recent Updates
 
+### DB Activity Auditing, Email Recording & Article Comments (September 2026)
+
+- **Full DB activity auditing across all workers**: Every Firestore operation (GET/POST/PATCH/DELETE — Firestore REST, no PUT) in all 8 Cloudflare Workers is wrapped by the shared `src/audit.ts` (`auditedFetch`) and recorded to `activityLogs` with `category: "db"`, `type: "db_operation"`, and level `info`/`error` (including duration in ms and HTTP status or error message). Recording is **fire-and-forget** — deferred in memory and flushed via `ctx.waitUntil()` (`drainPending`) so it never delays the HTTP response, and even if a write fails the user never sees it. Queue/scheduled handlers end with `await flushPending()`. Token-minting and external-service calls are not audited.
+- **Full email recording in the comms worker**: Every send attempt (**success and failure**) is persisted to `sentEmails` with `status` (`sent`/`failed`), `from`, SES `messageId`, `error` on failure, recipient, subject, purpose, and timestamp.
+- **Non-blocking app loggers**: `lib/logger.ts` and `lib/adminLogger.ts` now fire-and-forget their Firestore writes — log calls never block the caller and failures are silent.
+- **Admin logs UI**: Added a **Database** category filter/color (`category: "db"`) so worker audit records render and filter cleanly on `/admin/logs`.
+- **Article comments**: Public article pages (`/articles/[slug]`) gained a live comment section (real-time via `onSnapshot`, add/edit/delete, `commentCount` kept in sync with `increment()`).
+- **Referral login prompt**: The comment section's logged-out CTA links to `/login?referral=<creator handle>&redirect=…`, so signing in through the article attributes the creator as your referral — matching the profile-page behavior.
+- **"More from the creator"**: Below the comments, up to 3 other public posts from the same creator are shown (articles link to `/articles/[slug]`, others to `/explore/posts/[id]`); the section is hidden when the creator has no other content.
+
 ### Articles & TipTap Editor (August 2026)
+
 - **Long-form articles**: Creators can now publish articles with full rich-text editing via TipTap (`@tiptap/react` + StarterKit). Toolbar supports paragraphs, H1–H4, bold/italic/underline/strike, bullet & ordered lists, quotes, code blocks, dividers, links, and undo/redo.
 - **Inline media blocks**: Custom `mediaBlock` TipTap node (`components/parts/dashboard/tiptap/MediaNode.ts`) renders `<figure><img|video/><figcaption/></figure>` for images and videos. Uploads go through the `uploadFile` worker (`post_image` / `post_video`) and a modal lets creators add **alt text** (images) and **captions** (images + videos) before inserting. Bare `img[src]`/`video[src]` blocks are parsed into media blocks on load.
 - **Article data model**: Articles live in the existing `creatorContent` collection with `type: "article"`, plus `title`, `htmlContent`, `coverUrl`/`contentUrl`, `shortDescription` (max 160 chars, auto-derived from HTML when blank), `description`, `isPrivate`, `views`, `commentCount`. Existing posts are unaffected.
@@ -665,6 +698,7 @@ For issues or feature requests, please open an issue on GitHub.
 - **SEO & sitemap**: Public article slug pages are added to `app/sitemap.ts` (`/articles/{slug}`, priority 0.7) — articles without slugs are skipped automatically.
 
 ### Dual-Currency Store Pricing (July 2026)
+
 - **Product interface extended**: Added `currency?: "RWF" | "USD"` and `priceUSD?: number` to both `types/store.ts` and `components/parts/public/store/types.ts`.
 - **Currency selector in ProductModal**: New RWF/USD toggle on create/edit form; when USD is selected, shows both `priceUSD` (primary) and `price` (RWF equivalent) inputs.
 - **Helper functions**: `getProductCurrency(product)` returns the product's currency (defaulting to RWF), `getProductPrice(product)` returns the correct price field based on currency.
@@ -672,6 +706,7 @@ For issues or feature requests, please open an issue on GitHub.
 - **Cart/checkout currency-aware**: `getItemPrice`/`getCartTotal` use `getProductPrice`; payment data sent to workers includes `currency` field; `CartModal`, `CheckoutModal`, and `FolderExplorer` accept a `currency` prop for formatted display.
 
 ### Homepage Renovation & Currency Fixes (July 2026)
+
 - **Hero redesigned**: Problem-first narrative ΓÇö "You're Working Hard. But the Money Isn't Coming." banner, followed by pain points (no Mobile Money support on global platforms, scattered tools, brands ignore small creators) and a "That changes now" pivot. Left column (3/5) has the copy + claim handle CTA + payment methods, right column (2/5) has fanned creator cards.
 - **Pan-African positioning**: Removed all Rwanda-only references from homepage, layout metadata, footer, and FAQ structured data. Open to everyone, especially African creators.
 - **Currency-configurable payout threshold**: `AdminCurrenciesPage.tsx` now stores a `payoutThreshold` per currency. `PayoutPolicyPage.tsx` and `PayoutsPage.tsx` read dynamically from Firestore.
@@ -691,6 +726,7 @@ For issues or feature requests, please open an issue on GitHub.
 - **Desktop creator button prominent**: Orange background, shadow-lg shadow-orange-200, label "Creator Dashboard" or "Become Creator".
 
 ### Sales Dashboard & Store Enhancements (May 2026)
+
 - **Sales Page** (`/creator/sales`): New dashboard page for tracking product sales and earnings
   - Real-time sales statistics: Total Sales, Your Earnings, Total Orders, Unique Buyers
   - Recent Sales table with product images, buyer profile photos/emails, product type (Digital/Physical) badges
@@ -704,12 +740,14 @@ For issues or feature requests, please open an issue on GitHub.
 - **Sales Collection**: Each sale record includes `productId`, `buyerId`, `creatorId`, `creatorUid`, `productName`, `buyerName`, `buyerEmail`, `quantity`, `productPrice`, `totalAmount`, `platformFee`, `creatorEarnings`, `referralEarnings`, `referralUid`, `status`, `paymentMethod`, `createdAt`
 
 ### SEO & Discovery Enhancements (May 2025)
+
 - **Dynamic Metadata**: Server-side `generateMetadata` for all creator profile pages (`/[username]`, `/[username]/community`, `/[username]/store`, `/[username]/gatherings`, `/[username]/giveaways`, `/[username]/messaging`)
 - **Sitemap**: Auto-generated sitemap includes all creator profiles, enabled subpages, AND individual detail pages (products, posts, giveaways, gatherings) with UID-to-username mapping
 - **baseUrl**: Separated `baseUrl` utility to `lib/baseUrl.ts` to avoid firebase-admin being bundled in client components
 - **Payment Confirmation**: Different confirmation messages for store payments ("Confirming your order payment..." / "Your payment of X RWF has been processed successfully.") vs support gifts ("Confirming your gift..." / "Your gift of X RWF has been sent successfully.")
 
 ### Detail Pages & PWA (May 2026)
+
 - **Product Detail Pages**: `/[username]/store/[productId]` ΓÇö Full product view instead of modal, with add-to-cart, size selection, bulk pricing
 - **Post Detail Pages**: `/[username]/community/[postId]` ΓÇö Full post view with comments and likes system
 - **Giveaway Detail Pages**: `/[username]/giveaways/[giveawayId]` ΓÇö Full giveaway view with enter, share, and winner viewing
@@ -719,6 +757,7 @@ For issues or feature requests, please open an issue on GitHub.
 - **Progressive Web App**: Added manifest.json, service worker with cache-first strategy for static assets, and install prompts
 
 ### Performance & SEO Improvements (May 2026)
+
 - **Server-Side JSON-LD**: Schema components (`HomeSchema`, `ExploreSchema`, `CreatorSchema`) migrated from client-side `document.createElement` to server-rendered `<script>` tags ΓÇö structured data now visible to all crawlers
 - **Full SEO Metadata Coverage**: Added `openGraph` + `twitter:card` metadata to 13 previously-missing pages (changelog, help-center, payout-policy, profile, login, onboarding, dashboard index pages)
 - **Twitter Cards on Detail Pages**: Added twitter metadata to all 5 detail page types (`[postId]`, `[productId]`, `[giveawayId]`, `[gatheringId]`, `booking`)
@@ -736,6 +775,7 @@ For issues or feature requests, please open an issue on GitHub.
 - **Notification Icons**: Added missing `new_like` and `new_comment` icon entries in `NotificationDrawer`
 
 ### Gatherings & Event Perfection (May 2026)
+
 - **Description Field**: Added `description` textarea to gathering create/edit form on creator dashboard; displayed on gathering cards
 - **Paid Gatherings**: `ticketPrice` field in create/edit form ΓÇö paid gatherings visible to everyone, payment flows through existing Momo/Card pay routes with `type: "gathering"`; webhooks/IPNs create `gatheringsAttendance` with `paid: true` on confirmation
 - **Payment Modal in GatheringsTab**: Paid gatherings trigger a payment modal (Momo/Card toggle, phone input, pay button) before creating attendance record; listens to `transactions` collection via `onSnapshot` for confirmation with 2-minute timeout
@@ -752,6 +792,7 @@ For issues or feature requests, please open an issue on GitHub.
 - **Log Category Fix**: `GatheringsForm.tsx` and all gathering-related `logActivity` calls use `category: "gathering"` instead of `"general"`
 
 ### Comprehensive Error Logging (May 2026)
+
 - **Server-Side Firestore Logging**: Every catch block in all API routes now writes to `activityLogs` collection via `adminDb.collection("activityLogs").add()` with:
   - Creator name (`creatorName`) and current logged-in user info (`userId`, `userEmail`, `userName`)
   - Full error serialization via `JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000)`
@@ -760,6 +801,7 @@ For issues or feature requests, please open an issue on GitHub.
 - **Admin Logs Detail Panel**: Click any log row to open slide-in side panel with full entry details and formatted metadata JSON
 
 ### Admin Panel Enhancements (May 2026)
+
 - **User Side Panel**: Clicking a user row opens a slide-in side panel showing full profile (from `profiles` collection) and creator profile (from `creators` collection) if exists
 - **User Pagination**: Replaced `onSnapshot` with `getDocs` + `startAfter` cursor-based pagination (25 per page)
 - **Phone Number Display**: Added `phoneNumber` field to `UserProfile` interface and displayed in side panel
@@ -767,10 +809,12 @@ For issues or feature requests, please open an issue on GitHub.
 - **Transaction Breakdown**: Added time-filtered (Day/Week/Month/Annual) transaction breakdown table by type (Support, Store, Booking, Gathering) and status (Successful/Failed/Pending) with totals row to admin dashboard
 
 ### Bug Fixes (May 2025)
+
 - **Store Checkout**: Fixed creator ID mismatch - now uses `creatorHandle` (username) for `creatorId` field and `creatorUid` for `creatorUid` field when processing store orders
 - **Payment Transaction**: Fixed transaction lookup by ensuring proper reference matching in IPN handler
 
 ### Content Formatting, Support Button & Media Enhancements (June 2026)
+
 - **Whitespace preservation**: Added `whitespace-pre-wrap` to comment text, reply text, and gathering description elements across supporter and public pages so newlines and spaces render correctly in non-HTML content
 - **Support button**: Added quick support button to gathering detail page and community post detail page, matching the pattern on other public subpages
 - **Post detail page alignment**: Public `PostDetailPage` now shows creator avatar, name, and handle at the top; image uses `object-contain`; video uses `aspect-video` with `controlsList="nodownload"`; document viewer added with page navigation ΓÇö matching `/supporter` layout
@@ -780,6 +824,7 @@ For issues or feature requests, please open an issue on GitHub.
 - Files updated: `SupporterSpace.tsx`, `SupporterPostDetail.tsx`, `PostDetailPage.tsx`, `ContentPage.tsx`, `CommunityTab.tsx`, `GatheringDetailPage.tsx`, `Navigation.tsx`, `SupportModal.tsx`
 
 ### Verification & Payouts Fix (June 2026)
+
 - **Payouts Destination Display**: Changed from showing `payoutNumber` to showing the payout type (`Bank Account`, `Mobile Money`, `Airtel Money`) from the creator's `verificationRequests` submission, including account name and number. Shows "Not Verified" when not verified.
 - **Admin Verification Approval**: Admin approve/reject now updates the corresponding `verificationRequests` document's `status` to `"approved"` or `"rejected"` alongside the existing `creators` doc update.
 - **Supporter Following List Fixed**: The supporter sidebar "Following" list was empty because `supportedCreators` stores handles while content uses UIDs. Now properly maps handles ΓåÆ UIDs when building the following list and content filters.
@@ -787,6 +832,7 @@ For issues or feature requests, please open an issue on GitHub.
 - **Gathering Attendance Lookup**: Changed attendance queries from `where("supporterId", ...)` to `where("gatheringId", ...)` with local filtering, fixing page refresh issues where paid tickets weren't detected after reload.
 
 ### Data Model Unification & Views Fix (May 2026)
+
 - **Views Not Incrementing Fix**: Supporter feed (`/supporter`) IntersectionObserver filtered posts by `f.type === "content"`, excluding types like "image", "video", "document". Changed to `f.type !== "gathering"` ΓÇö all content types now count views.
 - **Observer Optimization**: Replaced `seenPosts` state with `useRef` to prevent re-render loops where every view disconnected/reconnected the observer. Local feed state now updates immediately when a view is counted.
 - **Comment/Like Data Model Unification**: Supporter pages now use subcollections (`creatorContent/{postId}/comments`, `creatorContent/{postId}/likes`) matching public/community pages, instead of separate top-level collections (`postComments`, `postLikes`). Comments and likes are now visible across all pages (supporter feed, supporter post detail, public profile, community page).
@@ -796,11 +842,13 @@ For issues or feature requests, please open an issue on GitHub.
 - **Support Button on Booking Page**: Added quick support button and `SupportModal` to the booking page (`/[username]/booking`), matching the pattern on other public subpages.
 
 ### Dark Mode Theme-ification (May 2026)
+
 - **Replaced hardcoded colors with CSS variable theme classes across 40+ files**: All page backgrounds (`bg-[#FBFBFC]`/`bg-[#F9FAFB]`/`bg-white`), text colors (`text-gray-*`/`text-slate-*`), borders (`border-gray-*`/`border-slate-*`), and surface backgrounds (`bg-gray-*`/`bg-slate-*`) replaced with theme-aware classes (`bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-card`, `bg-muted`, `bg-foreground`).
 - Dark mode now works across all pages: supporter dashboard, creator dashboard, admin dashboard, public profile pages, navigation, footer, modals, and UI components.
 - Uses Tailwind v4's `@custom-variant dark` with class-based toggling via `next-themes` ΓÇö `.dark` class on `<html>` switches all CSS variables to the dark palette.
 
 ### Booking System Enhancements (May 2026)
+
 - **Paid Tiered Booking**: Creators can set paid tiers with prices and durations; bookers select a tier during booking and pay before the request is submitted
 - **Server-Side Validation**: Booking API validates date range, day-of-week, time slot matching, and price verification against Firestore tiers
 - **Conflict Detection**: Duration-aware overlap detection instead of exact string match for time slot conflicts
@@ -813,6 +861,7 @@ For issues or feature requests, please open an issue on GitHub.
 - **Robust Creator Lookup**: Profiles collection fallback resolves handle ΓåÆ uid ΓåÆ creator document, fixing null document ID mismatches
 
 ### Public Profile Architecture Refactor (June 2026)
+
 - **Shared Layout**: Created `app/(public_profile)/layout.tsx` providing Navbar, Footer, and wrapper for all 11 public profile routes ΓÇö eliminated per-page duplication
 - **Subpage Refactor**: Removed individual Navbar/Footer/wrapper from `PublicProfile.tsx` and 10 subpage components (Community, Store, Messaging, Giveaways, Gatherings, Booking, PostDetail, ProductDetail, GiveawayDetail, GatheringDetail)
 - **SEO Consolidation**: Deleted `SeoUpdater.tsx` (client-side DOM mutations that competed with server metadata); consolidated all JSON-LD schema into `CreatorSchma.tsx` (merged interactionStatistic, image, sameAs from the removed inline script)
@@ -821,15 +870,18 @@ For issues or feature requests, please open an issue on GitHub.
 - **View Count Dedup**: Session-storage + `useRef` guard prevents incrementing Firestore view counter on repeated navigations within the same session
 
 ### Firestore Security Rules (June 2026)
+
 - **Comprehensive Rules**: Generated complete Firestore security rules covering all 25 collections with helper functions (`isAuth`, `isAdmin`, `isCreator`, `isOwner`, `isSupporterOf`), role-based access (admin/creator/user), and server-side-only collections
 - **Documentation**: Full rules with architecture notes, limitations (auto-generated doc IDs in `supportedCreators`), and migration guidance written to `rules.txt`
 - **Syntax Fixes**: Fixed `rules_version` quoting and path variable concatenation in rule functions
 
 ### App Check Integration (June 2026)
+
 - **Client-Side App Check**: Added `initializeAppCheck` with `ReCaptchaV3Provider` to `db/firebase.ts`, gated behind `typeof window !== "undefined"` for Next.js SSR safety
 - **Configuration**: Added `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` to `.env.example`; requires registering a reCAPTCHA v3 site key in Firebase Console under App Check
 
 ### Admin Dashboard Stats Fix (June 2026)
+
 - **Admin Read Overrides**: Fixed 4 collections in Firestore security rules (`rules.txt`) that blocked the admin dashboard (`/admin`) from reading stats, causing all values to show 0 with "Missing or insufficient permissions":
   - `platformIncome`: Changed from `allow read, write: if false` to `allow read: if isAdmin(request.auth.uid)`
   - `supportedCreators`: Added `isAdmin(request.auth.uid)` override so admin can read all support relationships
@@ -837,44 +889,56 @@ For issues or feature requests, please open an issue on GitHub.
   - `giveaways`: Added `isAdmin(request.auth.uid)` override so admin sees draft giveaways too
 
 ### Changelog Page Permission Fix (June 2026)
+
 - **Added `changelog` collection rule**: The `changelog` collection had no matching security rule, so Firestore's default deny rejected all reads. Added public read (`allow read: if true`) and admin-only write rules.
 
 ### User Feedback Collection Rules (June 2026)
+
 - **Added `userFeedback` collection rule**: Admin-only read (`allow read: if isAdmin()`), any authenticated user can submit (`allow create: if isAuth()`) via the FeedbackFAB component. Fixes permission error on `/admin/feedback`.
 
 ### Supporter Feed Gatherings Separation (June 2026)
+
 - **Separated gatherings from content feed**: Gatherings no longer mixed in with content posts on `/supporter`. Rendered in their own "Upcoming Events" section above the feed with distinct orange-accented cards showing date badge, time, location, attendee count, and ticket price. Clicking navigates to `/${creatorHandle}/gatherings/${gatheringId}`.
 
 ### Mobile Bottom Tab Bar (June 2026)
+
 - **Sticky bottom tabs on mobile**: Public profile navigation tabs (`TabManager`) now stick to the bottom of the viewport on mobile (`fixed bottom-0`) with a top shadow and backdrop blur. Desktop behavior unchanged (sticky at top with bottom border). Active tab icon scales up on mobile for visual feedback.
 
 ### CreatorContent Security Rule Fix (June 2026)
+
 - **Fixed creatorId vs uid mismatch**: The `creatorContent` collection stores `creatorId` as the creator's handle (username), but the Firestore rules compared it against `request.auth.uid` (Firebase UID). Changed create/update/delete rules to use `isCreator(creatorId)` which looks up the handle in the `creators` collection and verifies the owning UID matches the requesting user. Fixes permission-denied errors when creating or managing content in the creator dashboard.
 - **Fixed isAdmin checks in 3 collections**: Changed `isAdmin(resource.data.uid/creatorId)` to `isAdmin(request.auth.uid)` in `creators`, `creatorGatherings`, and `storeProducts` rules. The old form checked if the *document owner* was an admin instead of checking if the *requesting user* was an admin.
 
 ### Condensed Creator Sidebar (June 2026)
+
 - **Grouped sidebar menu**: Condensed the creator dashboard sidebar from 14 flat items into 6 compact groups with expandable sub-menus. Groups: Overview (standalone), Content (Posts, Notices), Commerce (Store, Sales), Community (Events, Bookings, Giveaways, Messages, Supporters), Partners (standalone), Account (Verify, Payouts, Settings). Sub-items that are disabled in creator settings are conditionally hidden.
 - **Payouts moved to Account**: Moved `/creator/payouts` from the Commerce group to the Account group (Verify, Payouts, Settings) for clearer logical grouping ΓÇö payouts are account-level, not store-specific.
 
 ### Predictable SupportedCreators Doc IDs (June 2026)
+
 - **Migrated to predictable doc IDs**: Changed `handleSupportPayment.ts` to use `{supporterId}_{creatorHandle}` as document IDs in `supportedCreators` instead of auto-generated IDs. Anonymous supporters still use auto-generated IDs (not applicable for `isSupporterOf` checks).
 - **Enforced supporter-only private content reads**: The `creatorContent` Firestore rule now restricts private content reads to the creator and their supporters via `isSupporterOf(creatorId)`. Public content remains readable by any authenticated user.
 - **Allowed non-creator counter updates**: Non-creator users can now increment `views`, `commentCount`, and `stats.likes` on `creatorContent` documents (via `affectedKeys().hasOnly()` rule). This ensures like/comment/view counts update correctly when supporters interact with content.
 - **Reinstated `await` on `updateDoc`**: Removed fire-and-forget `.catch(() => {})` patterns from `SupporterSpace.tsx` and `SupporterPostDetail.tsx` for comment and like counter updates. Now properly awaited with error propagation. View count tracking remains fire-and-forget (background noise in observer callbacks).
 
 ### Payouts Moved to Account Group (June 2026)
+
 - **Moved /creator/payouts**: Relocated the Payouts link from the Commerce sidebar group to the Account group (now: Verify, Payouts, Settings). Payouts are account-level, not store-specific.
 
 ### NoticesPage Encoding Fix (June 2026)
+
 - **Fixed unicode character encoding**: Replaced garbled close button icon in `NoticesPage.tsx` with a standard bullet character.
 
 ### Admin Verification Requests Fix (June 2026)
+
 - **Fixed wrong collection query**: Admin page was querying `creators` collection (`verified == false && verificationStatus == "pending"`) but the verify page writes to `verificationRequests` collection. Changed to query `verificationRequests` where `status == "pending"` and enrich with creator profile data (name, handle, profilePicture) via a uid-based lookup. Also fixed approve/reject handler to reference the creator doc by `handle` instead of `target.id` (now the request doc ID).
 
 ### Dual-ID Supporter Check (June 2026)
+
 - **Added `supporterUids` map to creator docs**: Each creator doc now has a `supporterUids` map (`{ uid: true }`) that tracks unique supporter UIDs. Set server-side in `handleSupportPayment.ts` during support transactions.
 
 ### Comms Worker ΓÇö Cloudflare Native Email (July 2026)
+
 - **New Cloudflare Worker** (`workers/comms/`): Replaces all Nodemailer/SMTP-based email routes with Cloudflare's native `env.EMAIL.send()` binding. Zero SMTP config, zero API keys, automatic SPF/DKIM/DMARC via Cloudflare DNS.
 - **Single unified template**: `renderEmailHtml()` builds a responsive HTML email from per-service template data (header color, title, body, CTA, footer). Each service only provides data, not markup.
 - **18 email services** covering all transactional email purposes: welcome, profile live, booking request/response, gathering created/RSVP/checkin/declined/undo, message new/digest, store order/status, support received, payout processed, content new, verification request/feedback, broadcast.
@@ -882,6 +946,7 @@ For issues or feature requests, please open an issue on GitHub.
 - **Firestore helpers**: `fetchSupporters()` and `fetchCreatorEmail()` fetch recipient emails from Firestore using the service account OAuth flow (cached 1-hour tokens).
 
 ### Workers Auth & CORS Standardization (July 2026)
+
 - **All 7 workers now use dual-path auth**: Jose JWKS verification first (correct `service_accounts/v1/jwk/` endpoint), Firebase REST API as fallback. Previously all workers used Firebase REST only, and the upload worker had a broken X.509 certificate URL instead of the correct JWKS endpoint.
 - **CORS extracted to shared `cors.ts`**: Removed duplicate inline CORS functions from all 6 workers. Single `cors.ts` per worker with `X-Firebase-AppCheck` header support.
 - **Auth order swapped**: Jose first (fast, local, no network), Firebase REST fallback — avoids unnecessary failing network call on every request.
@@ -890,6 +955,7 @@ For issues or feature requests, please open an issue on GitHub.
 - **Enhanced logging**: Token header (`kid`, `alg`) logged on every auth attempt; API key masked in logs.
 
 ### Upload Worker & Asset Type Migration (July 2026)
+
 - **New Cloudflare Worker** (`workers/upload/`): Handles all file uploads ΓÇö Firebase JWT auth via `jose` + Google JWKS, stores in R2 bucket (`agaseke-assets`), records metadata in Firestore `assets` collection. No GET handler; files served directly from R2 via custom domain `assets.agaseke.me`.
 - **9 asset types**: `creator_profile`, `creator_cover`, `post_image`, `post_video`, `post_document`, `product_thumbnail`, `product_content`, `partner_logo`, `verification_document` ΓÇö each with its own R2 path prefix and Firestore usage description.
 - **Frontend upload service** (`lib/uploadService.ts`): `uploadFile()` (FormData) and `uploadBase64Image()` (JSON/base64) with typed `AssetType`, auto-attaches Firebase ID token as `Authorization: Bearer`.
@@ -900,6 +966,7 @@ For issues or feature requests, please open an issue on GitHub.
 - **Added migration script**: `scripts/backfillSupporterUids.js` ΓÇö run once to populate `supporterUids` on all existing creator docs from current `supportedCreators` records.
 
 ### MobileBottomBar Component (June 2026)
+
 - **Reusable sticky bottom bar**: Extracted the mobile bottom navigation into a reusable `MobileBottomBar` component (`components/parts/MobileBottomBar.tsx`). Appears on `/supporter`, `/explore`, and the homepage for all logged-in users on mobile screens. Hidden on `lg+` screens. Includes compact `size={14}` icons with `text-[8px]` labels.
 - **Admin button**: Shows a Shield icon linking to `/admin` when the user has `isAdmin: true`.
 - **Solid background**: Uses `bg-background` (opaque) instead of translucent backdrop blur to prevent overlap visibility issues.
@@ -908,16 +975,19 @@ For issues or feature requests, please open an issue on GitHub.
 - **Navbar spacing**: Reduced `pt-20` ΓåÆ `pt-12` on the content container to tighten the gap between the sticky navbar and page content.
 
 ### Simplified CreatorContent Read Rule (June 2026)
+
 - **Removed `isCreator` and `isSupporterOf` from read rule**: After the initial split, even the `isCreator` check (which uses `get()`) caused Firestore query rejection. Simplified to a single conditional: `allow read: if isAuth() && !resource.data.isPrivate`. This rule has zero `get()` calls and is fully statically verifiable. Private content reads are now gated entirely by the client ΓÇö only supporters fetch private posts; any permission failure is caught gracefully.
 - **Decoupled private content query in SupporterSpace**: Moved the private content query out of `Promise.all` into a separate try/catch block so a permission failure on the private query doesn't crash the entire supporter page load.
 
 ### Irreversible Country/Currency & Mobile Feedback Button (July 2026)
+
 - **Country/Currency irreversible**: Added warnings on onboarding (`StartPage.tsx`) that country and currency cannot be changed once set. Made both fields read-only in `SettingsPage.tsx` once set, displaying the current value as muted text with an irreversible notice.
 - **ActivityRow currency fix**: Changed `sup.currency || creatorCurrency` fallback to `sup.currency || "RWF"` so old pre-USD transactions don't get mislabeled when a creator switches currencies.
 - **"gifted you" → "supported you"**: Renamed the remaining "gifted you" text in `ActivityRow.tsx` to "supported you".
 - **Feedback button on mobile**: Removed `hidden md:block` from the feedback button in the dashboard header so it's visible on all screen sizes. Header is already sticky.
 
 ### Public Page Fixes & Button Rename (July 2026)
+
 - **Support button rename**: Changed "Gift Once" button text to "Support {creatorFirstName}" across all public profile subpages.
 - **Firestore composite index fix**: Removed `orderBy("createdAt")` from `creatorContent` queries in CommunityPage.tsx — now uses client-side sorting, eliminating the need for a composite index.
 - **SupportModal NaN fix**: `NEXT_PUBLIC_CREATOR_SHARE` now falls back to `0.9` if unset, preventing `NaN` from being sent to `sendSupportEmail`. Replaced hardcoded `0.9` with the env var.
@@ -930,12 +1000,14 @@ For issues or feature requests, please open an issue on GitHub.
 - **Dual-currency booking tier pricing**: Added `currency` and `priceUSD` fields to `BookingTier` and `currency` to `BookingRequest`/`CreateBookingRequest`/`BookingDocument`. Dashboard tier editor (`BookingsPage.tsx`) has RWF/USD currency toggle with conditional `priceUSD` input and RWF equivalent field. Booking worker `create.ts` reads tier currency and passes it through to Firestore booking doc and SQS payment body. Public booking page (`BookingPage.tsx`) displays prices with `formatCurrency()` and sends currency in `createBooking` payload. PayClient displays amounts with `formatCurrency()` and passes `currency` in payment initiation payload.
 
 ### API Route Migration & General Worker (July 2026)
+
 - **Removed old Next.js API routes**: `app/api/log-error/route.ts` and `app/api/comms/post/notification/route.ts` deleted. Replaced by general worker endpoints.
 - **General worker endpoints**: `POST /api/general/log-error` (no auth, enqueues to `agaseke-log-queue`) and `POST /api/general/notification` (Firebase auth, enqueues in-app notification). Writes are consumed by the worker's queue handler into Firestore `activityLogs` / `notifications` with retries.
 - **All client callers updated** (7 components + ErrorContent) to call the general worker directly.
 - **New env vars**: `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` for Firestore OAuth2 token generation.
 
 ### Worker Security & Rate Limiting (July 2026)
+
 - **Rate limiting added to all 8 workers**: IP-based sliding window rate limiter per endpoint. Limits: 10 req/min (payment/booking create) to 60 req/min (tier reads). 429 responses include `Retry-After` header.
 - **Timing-safe comparisons**: SHA-256 + `crypto.subtle.timingSafeEqual` for X-Internal-Auth and webhook HMAC verification.
 - **CORS fallback fix**: Workers echo origin instead of falling back to ALLOWED_ORIGINS[0].
@@ -946,6 +1018,7 @@ For issues or feature requests, please open an issue on GitHub.
 - **33 empty catch blocks filled** with console.error logging.
 
 ### Mixed-Currencies Awareness & Income Tracking (July 2026)
+
 - **Smart currency toggle**: Currency picker (RWF/USD) in store products, gathering tickets, booking tiers, and community membership forms now only appears when the creator already has items in more than one currency. Single-currency creators see no toggle — reducing UI noise.
 - **Default currency from profile**: All new items default to `creator.currency` (falls back to `"RWF"`) instead of hardcoding `"RWF"`.
 - **Community subscription income tracking**: On successful payment, the community worker now writes `platformIncome` and `creatorIncome` records with proper platform/creator/referral splits, using the correct earnings field (`totalEarningsUSD` vs `totalEarnings`) based on the subscription's currency.
@@ -955,10 +1028,12 @@ For issues or feature requests, please open an issue on GitHub.
 - **Notification messages include currency**: Booking payment notifications for both creator and buyer now include the transaction currency. Email booking request templates show the amount with its currency suffix.
 
 ### Verification Email & Activity Logs Fix (July 2026)
+
 - **Fixed "No recipients resolved" on verification feedback email**: Admin approval/rejection of KYC verification was failing with a 500 error because the profile lookup queried `where("username", "==", target.uid)`, but `username` is the creator handle (e.g. `gisa_patrick`), not the UID. Since profile document IDs are always the Firebase Auth UID, replaced the query with a direct `getDoc(doc(db, "profiles", target.uid))`.
 - **Fixed "createdAt?.toDate is not a function" on activity logs page**: The admin logs page (`/admin/logs`) crashed when rendering logs written by Cloudflare Workers via REST API, which store timestamps differently than the Firebase client SDK. Added a `toDateSafe()` helper that handles Firestore `Timestamp` objects, ISO strings, raw `{seconds, nanoseconds}` objects, and native `Date` objects. Replaced all three bare `.toDate()` call sites (CSV export, log list, detail panel).
 
 ### Verification Requests Deduplication (July 2026)
+
 - **Fixed stale/duplicate verification requests in admin dashboard**: The admin verification list was showing already-verified users and duplicate entries for the same user. Four causes fixed:
   - `AdminUsersPage.verifyUser()` was marking creators verified directly without updating their `verificationRequests` documents, leaving stale `pending` records. Now queries and approves all pending requests for that user.
   - `AdminPage.handleAction()` only updated `limit(1)` pending request per user, so if duplicates existed, older ones stayed `pending`. Now updates all pending requests for that user.
@@ -966,6 +1041,7 @@ For issues or feature requests, please open an issue on GitHub.
   - Admin page verification listener and `fetchData()` now deduplicate by `uid` client-side (keeping the most recent), so any existing DB cruft is hidden from the UI.
 
 ### Public Explore Posts Page (July 2026)
+
 - **New `/explore/posts` page** for SEO: A dedicated discoverable page listing all public posts from every creator, with full SEO metadata (Open Graph, Twitter Cards, JSON-LD breadcrumbs, `CollectionPage` schema, hreflang).
 - **Author attribution**: Each post card shows the creator's avatar, name, and handle linked to their profile — making the page valuable for creator discovery.
 - **Cursor-based pagination**: Loads 10 posts at a time with a "Load More" button, matching the existing explore page pattern.
@@ -977,6 +1053,7 @@ For issues or feature requests, please open an issue on GitHub.
 - **Links updated**: "View Post" and title links on the explore posts page now point to `/explore/posts/[id]` instead of creator community pages.
 
 ### SEO Improvements (July 2026)
+
 - **Enhanced `/explore` (creators) metadata**: Richer title/description/OG tags with hreflang and country name; added `CollectionPage` JSON-LD structured data with organization publisher and about section.
 - **Enhanced `/explore/posts` metadata**: Same improvements — richer metadata, hreflang, `CollectionPage` structured data.
 - **ExplorePostDetailPage**: Server-side `generateMetadata` for dynamic OG images, article schema with author attribution, and per-post keywords.
@@ -988,6 +1065,7 @@ For issues or feature requests, please open an issue on GitHub.
 - **Admin users CSV export**: Added "Download CSV" button on `/admin/users` that fetches all platform users and exports basic info (UID, email, display name, type, username, admin status, phone, support stats, timestamps) to a date-stamped CSV file.
 
 ### Public Profile & Homepage Performance Optimization (August 2026)
+
 - **Server-side profile data fetch**: `app/(public_profile)/[username]/page.tsx` now fetches creator + profile + featured partners + public posts + referral ID in parallel (`Promise.all`) via `getPublicProfileData`, serializes Firestore data to JSON, and passes it to `PublicProfile` as initial props. `getCreatorData` is wrapped in React `cache()` so `generateMetadata` and the page share one fetch.
 - **No more client fetch waterfall**: `PublicProfile.tsx` seeds its state from server props; the original client-side fetch effects only run as a fallback when server data is absent. Public posts `createdAt` ISO strings are converted back to Firestore `Timestamp`s so the community tab's `.toMillis()`/`.toDate()` still work.
 - **Lazy-loaded profile tabs**: `StoreTab`, `GiveawayTab`, `MessageTab`, and `GatheringsTab` are now code-split via `React.lazy` + `Suspense` with a pulse-skeleton fallback. Only the default `CommunityTab` ships on first paint — the heavy store module (product/checkout modals) no longer loads until the Store tab is opened.

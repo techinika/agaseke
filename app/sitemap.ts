@@ -16,6 +16,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return entries;
 }
 
+const lastMod = (
+  data:
+    | { updatedAt?: { toDate?: () => Date }; createdAt?: { toDate?: () => Date } }
+    | undefined,
+): Date =>
+  data?.updatedAt?.toDate?.() || data?.createdAt?.toDate?.() || new Date();
+
 function getStaticPages(): MetadataRoute.Sitemap {
   return [
     {
@@ -67,6 +74,12 @@ function getStaticPages(): MetadataRoute.Sitemap {
       priority: 0.3,
     },
     {
+      url: `${baseUrl}/content-guidelines`,
+      lastModified: new Date(),
+      changeFrequency: "yearly" as const,
+      priority: 0.3,
+    },
+    {
       url: `${baseUrl}/changelog`,
       lastModified: new Date(),
       changeFrequency: "monthly" as const,
@@ -86,20 +99,20 @@ async function getCreatorPages(): Promise<MetadataRoute.Sitemap> {
 
       entries.push({
         url: `${baseUrl}/${username}`,
-        lastModified: new Date(),
+        lastModified: lastMod(data),
         changeFrequency: "weekly" as const,
         priority: 0.8,
       });
       entries.push({
         url: `${baseUrl}/${username}/community`,
-        lastModified: new Date(),
+        lastModified: lastMod(data),
         changeFrequency: "weekly" as const,
         priority: 0.6,
       });
       if (data.storeEnabled) {
         entries.push({
           url: `${baseUrl}/${username}/store`,
-          lastModified: new Date(),
+          lastModified: lastMod(data),
           changeFrequency: "daily" as const,
           priority: 0.7,
         });
@@ -107,7 +120,7 @@ async function getCreatorPages(): Promise<MetadataRoute.Sitemap> {
       if (data.gatheringsEnabled) {
         entries.push({
           url: `${baseUrl}/${username}/gatherings`,
-          lastModified: new Date(),
+          lastModified: lastMod(data),
           changeFrequency: "weekly" as const,
           priority: 0.6,
         });
@@ -115,7 +128,7 @@ async function getCreatorPages(): Promise<MetadataRoute.Sitemap> {
       if (data.giveawayEnabled) {
         entries.push({
           url: `${baseUrl}/${username}/giveaways`,
-          lastModified: new Date(),
+          lastModified: lastMod(data),
           changeFrequency: "weekly" as const,
           priority: 0.6,
         });
@@ -123,7 +136,7 @@ async function getCreatorPages(): Promise<MetadataRoute.Sitemap> {
       if (data.bookingEnabled) {
         entries.push({
           url: `${baseUrl}/${username}/booking`,
-          lastModified: new Date(),
+          lastModified: lastMod(data),
           changeFrequency: "monthly" as const,
           priority: 0.5,
         });
@@ -155,7 +168,7 @@ async function getProductPages(): Promise<MetadataRoute.Sitemap> {
       if (!username) continue;
       entries.push({
         url: `${baseUrl}/${username}/store/${doc.id}`,
-        lastModified: new Date(),
+        lastModified: lastMod(data),
         changeFrequency: "weekly" as const,
         priority: 0.6,
       });
@@ -187,7 +200,7 @@ async function getPostPages(): Promise<MetadataRoute.Sitemap> {
       if (!username) continue;
       entries.push({
         url: `${baseUrl}/${username}/community/${doc.id}`,
-        lastModified: new Date(),
+        lastModified: lastMod(data),
         changeFrequency: "monthly" as const,
         priority: 0.5,
       });
@@ -204,7 +217,7 @@ async function getArticlePages(): Promise<MetadataRoute.Sitemap> {
     const articleSnap = await adminDb.collection("creatorContent").get();
     for (const doc of articleSnap.docs) {
       const data = doc.data();
-      if (data.type !== "article" || data.isPrivate || !data.slug) continue;
+      if (data.type !== "article" || !data.slug || data.status === "draft") continue;
       entries.push({
         url: `${baseUrl}/articles/${data.slug}`,
         lastModified: data.updatedAt?.toDate?.() || data.createdAt?.toDate?.() || new Date(),
@@ -235,7 +248,7 @@ async function getGiveawayPages(): Promise<MetadataRoute.Sitemap> {
       if (!username) continue;
       entries.push({
         url: `${baseUrl}/${username}/giveaways/${doc.id}`,
-        lastModified: new Date(),
+        lastModified: lastMod(data),
         changeFrequency: "monthly" as const,
         priority: 0.5,
       });
@@ -263,7 +276,7 @@ async function getGatheringPages(): Promise<MetadataRoute.Sitemap> {
       if (!username) continue;
       entries.push({
         url: `${baseUrl}/${username}/gatherings/${doc.id}`,
-        lastModified: new Date(),
+        lastModified: lastMod(data),
         changeFrequency: "monthly" as const,
         priority: 0.5,
       });

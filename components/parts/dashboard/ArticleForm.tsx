@@ -10,6 +10,9 @@ import {
   Globe,
   ImagePlus,
   X,
+  Save,
+  Rocket,
+  Monitor,
 } from "lucide-react";
 import { db } from "@/db/firebase";
 import {
@@ -49,7 +52,8 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
   const [isPrivate, setIsPrivate] = useState(false);
   const [coverUrl, setCoverUrl] = useState("");
   const [isUploadingCover, setIsUploadingCover] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<"draft" | "published">("draft");
+  const [saving, setSaving] = useState<"draft" | "publish" | null>(null);
   const [loading, setLoading] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
 
@@ -75,6 +79,7 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
         setBodyHtml(data.htmlContent || "");
         setIsPrivate(!!data.isPrivate);
         setCoverUrl(data.coverUrl || data.contentUrl || "");
+        setStatus(data.status === "draft" ? "draft" : "published");
         if (data.creatorId !== creator?.handle && data.creatorUid !== creator?.uid) {
           toast.error("You don't have permission to edit this article");
           router.push(backHref);
@@ -108,18 +113,18 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (publish: boolean) => {
     if (!creator?.uid || !creator?.handle) {
       toast.error("Please sign in as a creator");
       return;
     }
-    if (!title.trim()) {
+    if (publish && !title.trim()) {
       toast.error("A title is required for articles");
       return;
     }
 
     const cleanBody = sanitizeArticleHtml(bodyHtml);
-    if (!cleanBody) {
+    if (publish && !cleanBody) {
       toast.error("Article content cannot be empty");
       return;
     }
@@ -128,7 +133,9 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
       ? shortDescription.trim().slice(0, SHORT_DESC_MAX)
       : articleToPlainText(cleanBody, SHORT_DESC_MAX);
 
-    setSaving(true);
+    const nextStatus: "draft" | "published" = publish ? "published" : "draft";
+
+    setSaving(publish ? "publish" : "draft");
     try {
       let finalSlug = (slugTouched ? slug.trim() : slugify(title)) || "";
       const hasSlug = !!finalSlug;
@@ -146,7 +153,7 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
           toast.error(
             `Slug "${finalSlug}" is already in use by another article. Choose a different slug.`,
           );
-          setSaving(false);
+          setSaving(null);
           return;
         }
 
@@ -159,83 +166,156 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
         }
       }
 
+      const payload: Record<string, unknown> = {
+        title: title.trim(),
+        ...(hasSlug && { slug: finalSlug }),
+        description: desc,
+        shortDescription: desc,
+        htmlContent: cleanBody,
+        coverUrl: coverUrl || null,
+        contentUrl: coverUrl || null,
+        isPrivate,
+        status: nextStatus,
+        updatedAt: serverTimestamp(),
+      };
+
+      const wasPublished = articleId && status === "published";
+      const shouldNotify = publish && (!articleId || !wasPublished);
+
       if (articleId) {
-        await updateDoc(doc(db, "creatorContent", articleId), {
-          title: title.trim(),
-          ...(hasSlug && { slug: finalSlug }),
-          description: desc,
-          shortDescription: desc,
-          htmlContent: cleanBody,
-          coverUrl: coverUrl || null,
-          contentUrl: coverUrl || null,
-          isPrivate,
-          updatedAt: serverTimestamp(),
-        });
-        toast.success("Article updated!");
+        await updateDoc(doc(db, "creatorContent", articleId), payload);
+        toast.success(
+          publish
+            ? wasPublished
+              ? "Article changes saved & published!"
+              : "Article published!"
+            : "Draft saved",
+        );
       } else {
         const docRef = await addDoc(collection(db, "creatorContent"), {
+          ...payload,
           creatorId: creator.handle,
           creatorUid: creator.uid,
           type: "article",
-          title: title.trim(),
-          ...(hasSlug && { slug: finalSlug }),
-          description: desc,
-          shortDescription: desc,
-          htmlContent: cleanBody,
-          coverUrl: coverUrl || null,
-          contentUrl: coverUrl || null,
-          isPrivate,
           createdAt: serverTimestamp(),
           views: 0,
         });
 
-        toast.success("Article published!");
+        toast.success(publish ? "Article published!" : "Draft saved");
 
-        try {
-          const response = await sendCommsEmail("content_new", {
-            creatorId: creator.handle,
-            creatorName: creator?.name || "Creator",
-            creatorHandle: creator?.handle,
-            contentTitle: title.trim(),
-            contentDescription: desc,
-            contentType: isPrivate ? "private" : "public",
-            contentId: docRef.id,
-          });
-          if (response.success && response.recipientCount > 0) {
-            toast.success(
-              `Notified ${response.recipientCount} supporter(s) about your new article!`,
-            );
+        if (shouldNotify) {
+          try {
+            const response = await sendCommsEmail("content_new", {
+              creatorId: creator.handle,
+              creatorName: creator?.name || "Creator",
+              creatorHandle: creator?.handle,
+              contentTitle: title.trim(),
+              contentDescription: desc,
+              contentType: isPrivate ? "private" : "public",
+              contentId: docRef.id,
+            });
+            if (response.success && response.recipientCount > 0) {
+              toast.success(
+                `Notified ${response.recipientCount} supporter(s) about your new article!`,
+              );
+            }
+          } catch (notifyError) {
+            console.error("Failed to notify supporters:", notifyError);
           }
-        } catch (notifyError) {
-          console.error("Failed to notify supporters:", notifyError);
         }
       }
 
       router.push(backHref);
     } catch (error) {
       console.error("Failed to save article", error);
-      toast.error(articleId ? "Failed to update article." : "Failed to publish article.");
+      toast.error(articleId ? "Failed to update article." : "Failed to save article.");
     } finally {
-      setSaving(false);
+      setSaving(null);
     }
   };
 
+  const articleUrlSlug =
+    slug ||
+    slugify(title) ||
+    fallbackSlug(slugify(title) || undefined);
+
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        <div className="flex items-center gap-4 mb-8">
-          <button
-            onClick={() => router.push(backHref)}
-            className="p-2 hover:bg-muted rounded-lg transition"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <h1 className="text-2xl font-bold uppercase tracking-tight">
-            {articleId ? "Edit Article" : "New Article"}
-          </h1>
-          {articleId && loading && (
-            <Loader className="animate-spin text-orange-500" size={18} />
-          )}
+      <div className="max-w-7xl mx-auto px-4 lg:px-8 pb-24">
+        {/* Top toolbar */}
+        <div className="sticky top-0 z-30 -mx-4 lg:-mx-8 px-4 lg:px-8 bg-background/95 backdrop-blur border-b border-border">
+          <div className="flex items-center gap-3 h-16">
+            <button
+              onClick={() => router.push(backHref)}
+              className="p-2 hover:bg-muted rounded-lg transition"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <div className="flex items-center gap-3 min-w-0">
+              <h1 className="text-lg md:text-xl font-bold uppercase tracking-tight truncate">
+                {articleId ? "Edit Article" : "New Article"}
+              </h1>
+              <span
+                className={`hidden sm:inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded ${
+                  status === "draft"
+                    ? "bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400"
+                    : "bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400"
+                }`}
+              >
+                {status === "draft" ? "Draft" : "Published"}
+              </span>
+            </div>
+
+            {articleId && loading && (
+              <Loader className="animate-spin text-orange-500" size={18} />
+            )}
+
+            <div className="flex-1" />
+
+            <button
+              onClick={() => router.push(backHref)}
+              className="hidden sm:inline-flex px-4 py-2.5 border-2 border-border rounded-xl font-bold text-sm hover:bg-muted transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => handleSubmit(false)}
+              disabled={!!saving}
+              className="inline-flex items-center gap-2 px-4 py-2.5 border-2 border-border rounded-xl font-bold text-sm hover:bg-muted transition disabled:opacity-50"
+              title="Saves a private draft that only you can see and edit"
+            >
+              {saving === "draft" ? (
+                <Loader className="animate-spin" size={16} />
+              ) : (
+                <Save size={16} />
+              )}
+              {saving === "draft" ? "Saving..." : "Save Draft"}
+            </button>
+            <button
+              onClick={() => handleSubmit(true)}
+              disabled={!title.trim() || !!saving}
+              className="inline-flex items-center gap-2 bg-orange-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-orange-600 transition-all disabled:opacity-50"
+            >
+              {saving === "publish" ? (
+                <Loader className="animate-spin" size={16} />
+              ) : (
+                <Rocket size={16} />
+              )}
+              {saving === "publish" ? "Publishing..." : "Publish"}
+            </button>
+          </div>
+        </div>
+
+        {/* Big-screen notice */}
+        <div className="mt-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/40 p-4 text-sm text-amber-900 dark:text-amber-200">
+          <div className="mt-0.5">
+            <Monitor size={18} className="text-amber-600 dark:text-amber-400" />
+          </div>
+          <p>
+            <strong>Writing tip:</strong> for the best writing experience,
+            create articles on a big screen — a tablet or computer. The editor
+            and formatting tools are optimized for larger displays.
+          </p>
         </div>
 
         {loading && articleId ? (
@@ -243,149 +323,17 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
             <Loader className="animate-spin text-orange-500" size={32} />
           </div>
         ) : (
-          <div className="bg-card rounded-2xl border border-border p-6 md:p-8 space-y-8">
-            <div>
-              <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
-                Article Title <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                placeholder="A compelling title (required)"
-                value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                  if (!slugTouched) setSlug(slugify(e.target.value));
-                }}
-                className="w-full bg-muted p-4 rounded-xl text-base font-bold outline-none focus:ring-2 focus:ring-orange-100"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
-                Article Slug{" "}
-                <span className="normal-case font-medium tracking-normal">
-                  (optional; unique — enables a public page at
-                  /articles/your-slug)
-                </span>
-              </label>
-              <div className="flex items-stretch gap-2">
-                <input
-                  type="text"
-                  placeholder="your-article-slug"
-                  value={slug}
-                  onChange={(e) => {
-                    setSlug(e.target.value);
-                    setSlugTouched(true);
-                  }}
-                  className="flex-1 bg-muted p-4 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-orange-100"
-                />
-                <button
-                  onClick={() => {
-                    setSlug(slugify(title) || fallbackSlug(slugify(title) || undefined));
-                    setSlugTouched(false);
-                  }}
-                  className="px-4 py-2 bg-muted rounded-xl text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-orange-600 hover:bg-muted transition"
-                  title="Regenerate from title"
-                >
-                  Generate
-                </button>
-              </div>
-              {slug || (title && slugify(title)) ? (
-                <p className="text-xs text-muted-foreground mt-2 break-all">
-                  Article URL:{" "}
-                  <span className="text-orange-600 font-medium">
-                    {baseUrl}/articles/
-                    {slug ||
-                      slugify(title) ||
-                      fallbackSlug(slugify(title) || undefined)}
-                  </span>
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground mt-2">
-                  No public URL yet — add a slug to publish at{" "}
-                  <span className="text-orange-600 font-medium">
-                    {baseUrl}/articles/your-slug
-                  </span>
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
-                Cover Image
-              </label>
-              {coverUrl ? (
-                <div className="relative rounded-xl overflow-hidden border border-border">
-                  <img
-                    src={coverUrl}
-                    alt="Article cover"
-                    className="w-full max-h-72 object-cover"
-                  />
-                  <button
-                    onClick={() => setCoverUrl("")}
-                    className="absolute top-3 right-3 p-2 bg-black/60 text-white rounded-full hover:bg-black/80 transition"
-                    title="Remove cover"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              ) : (
-                <div
-                  onClick={() => coverInputRef.current?.click()}
-                  className="border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center cursor-pointer hover:border-orange-400 transition bg-muted/40"
-                >
-                  <input
-                    type="file"
-                    ref={coverInputRef}
-                    hidden
-                    accept="image/*"
-                    onChange={handleCoverUpload}
-                  />
-                  {isUploadingCover ? (
-                    <Loader className="animate-spin text-orange-500" size={24} />
-                  ) : (
-                    <>
-                      <ImagePlus size={24} className="text-muted-foreground mb-2" />
-                      <p className="text-sm text-muted-foreground">
-                        Upload a cover image (used for previews &amp; SEO)
-                      </p>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-2">
+          <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
+            {/* Main editor area (left) */}
+            <div className="bg-card rounded-2xl border border-border p-4 md:p-6">
+              <div className="flex items-center justify-between mb-3">
                 <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest block">
-                  Short Description
+                  Article Content <span className="text-red-500">*</span>
                 </label>
-                <span
-                  className={`text-xs ${
-                    shortDescription.length > SHORT_DESC_MAX
-                      ? "text-red-500 font-bold"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  {shortDescription.length}/{SHORT_DESC_MAX}
+                <span className="text-[11px] text-muted-foreground normal-case tracking-normal">
+                  Images &amp; videos upload through Agaseke
                 </span>
               </div>
-              <textarea
-                placeholder="A short summary (~160 characters) shown in feeds and search engines. Leave blank to auto-generate from content."
-                value={shortDescription}
-                maxLength={SHORT_DESC_MAX}
-                onChange={(e) => setShortDescription(e.target.value)}
-                className="w-full bg-muted p-4 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-100 resize-none h-24"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
-                Article Content <span className="text-red-500">*</span>
-                <span className="normal-case font-medium tracking-normal text-muted-foreground ml-2">
-                  Images & videos upload through Agaseke
-                </span>
-              </label>
               <RichTextEditor
                 content={bodyHtml}
                 onChange={setBodyHtml}
@@ -393,52 +341,169 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
               />
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-muted rounded-xl">
-              <div className="flex items-center gap-3">
-                <div
-                  className={`p-2 rounded-lg ${
-                    isPrivate
-                      ? "bg-amber-100 text-amber-600"
-                      : "bg-green-100 text-green-600"
-                  }`}
-                >
-                  {isPrivate ? <Lock size={18} /> : <Globe size={18} />}
-                </div>
-                <span className="text-sm font-medium">
-                  {isPrivate ? "Supporters Only" : "Public"}
-                </span>
+            {/* Metadata panel (right) */}
+            <div className="bg-card rounded-2xl border border-border p-5 space-y-6 lg:sticky lg:top-[88px]">
+              <div>
+                <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
+                  Article Title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="A compelling title (required)"
+                  value={title}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    if (!slugTouched) setSlug(slugify(e.target.value));
+                  }}
+                  className="w-full bg-muted p-4 rounded-xl text-base font-bold outline-none focus:ring-2 focus:ring-orange-100"
+                />
               </div>
-              <button
-                onClick={() => setIsPrivate(!isPrivate)}
-                className="text-xs text-orange-600 font-medium px-3 py-1.5 bg-card border border-orange-200 rounded-lg hover:bg-orange-50"
-              >
-                Change
-              </button>
-            </div>
 
-            <div className="flex gap-3">
-              <button
-                onClick={() => router.push(backHref)}
-                className="flex-1 py-4 border-2 border-border rounded-xl font-bold text-sm hover:bg-muted transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={!title.trim() || saving}
-                className="flex-[2] bg-foreground text-background py-4 rounded-xl font-bold text-lg hover:bg-orange-500 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {saving ? (
-                  <Loader className="animate-spin" size={20} />
-                ) : null}
-                {saving
-                  ? articleId
-                    ? "Saving..."
-                    : "Publishing..."
-                  : articleId
-                    ? "Save Changes"
-                    : "Publish Article"}
-              </button>
+              <div>
+                <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
+                  Article Slug{" "}
+                  <span className="normal-case font-medium tracking-normal">
+                    (optional; unique — enables a public page at
+                    /articles/your-slug)
+                  </span>
+                </label>
+                <div className="flex items-stretch gap-2">
+                  <input
+                    type="text"
+                    placeholder="your-article-slug"
+                    value={slug}
+                    onChange={(e) => {
+                      setSlug(e.target.value);
+                      setSlugTouched(true);
+                    }}
+                    className="flex-1 bg-muted p-4 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-orange-100"
+                  />
+                  <button
+                    onClick={() => {
+                      setSlug(slugify(title) || fallbackSlug(slugify(title) || undefined));
+                      setSlugTouched(false);
+                    }}
+                    className="px-4 py-2 bg-muted rounded-xl text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-orange-600 hover:bg-muted transition"
+                    title="Regenerate from title"
+                  >
+                    Generate
+                  </button>
+                </div>
+                {articleUrlSlug ? (
+                  <p className="text-xs text-muted-foreground mt-2 break-all">
+                    Article URL:{" "}
+                    <span className="text-orange-600 font-medium">
+                      {baseUrl}/articles/{articleUrlSlug}
+                    </span>
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    No public URL yet — add a slug to publish at{" "}
+                    <span className="text-orange-600 font-medium">
+                      {baseUrl}/articles/your-slug
+                    </span>
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
+                  Cover Image
+                </label>
+                {coverUrl ? (
+                  <div className="relative rounded-xl overflow-hidden border border-border">
+                    <img
+                      src={coverUrl}
+                      alt="Article cover"
+                      className="w-full max-h-72 object-cover"
+                    />
+                    <button
+                      onClick={() => setCoverUrl("")}
+                      className="absolute top-3 right-3 p-2 bg-black/60 text-white rounded-full hover:bg-black/80 transition"
+                      title="Remove cover"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => coverInputRef.current?.click()}
+                    className="border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center cursor-pointer hover:border-orange-400 transition bg-muted/40"
+                  >
+                    <input
+                      type="file"
+                      ref={coverInputRef}
+                      hidden
+                      accept="image/*"
+                      onChange={handleCoverUpload}
+                    />
+                    {isUploadingCover ? (
+                      <Loader className="animate-spin text-orange-500" size={24} />
+                    ) : (
+                      <>
+                        <ImagePlus size={24} className="text-muted-foreground mb-2" />
+                        <p className="text-sm text-muted-foreground text-center">
+                          Upload a cover image (used for previews &amp; SEO)
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest block">
+                    Short Description
+                  </label>
+                  <span
+                    className={`text-xs ${
+                      shortDescription.length > SHORT_DESC_MAX
+                        ? "text-red-500 font-bold"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {shortDescription.length}/{SHORT_DESC_MAX}
+                  </span>
+                </div>
+                <textarea
+                  placeholder="A short summary (~160 characters) shown in feeds and search engines. Leave blank to auto-generate from content."
+                  value={shortDescription}
+                  maxLength={SHORT_DESC_MAX}
+                  onChange={(e) => setShortDescription(e.target.value)}
+                  className="w-full bg-muted p-4 rounded-xl text-sm outline-none focus:ring-2 focus:ring-orange-100 resize-none h-24"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-muted rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`p-2 rounded-lg ${
+                      isPrivate
+                        ? "bg-amber-100 text-amber-600"
+                        : "bg-green-100 text-green-600"
+                    }`}
+                  >
+                    {isPrivate ? <Lock size={18} /> : <Globe size={18} />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">
+                      {isPrivate ? "Supporters Only" : "Public"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {isPrivate
+                        ? "Only your supporters can read past the preview"
+                        : "Anyone can read this article"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsPrivate(!isPrivate)}
+                  className="text-xs text-orange-600 font-medium px-3 py-1.5 bg-card border border-orange-200 rounded-lg hover:bg-orange-50"
+                >
+                  Change
+                </button>
+              </div>
             </div>
           </div>
         )}

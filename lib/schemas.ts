@@ -190,3 +190,91 @@ export function getFAQSchema(questions: Array<{ question: string; answer: string
     })),
   };
 }
+
+export function getArticleSchema({
+  headline,
+  description,
+  image,
+  url,
+  authorName,
+  authorUrl,
+  publishedTime,
+  modifiedTime,
+}: {
+  headline: string;
+  description: string;
+  image: string;
+  url: string;
+  authorName: string;
+  authorUrl?: string;
+  publishedTime?: string;
+  modifiedTime?: string;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline,
+    description,
+    image: image || undefined,
+    url,
+    author: {
+      "@type": "Person",
+      name: authorName,
+      ...(authorUrl && { url: authorUrl }),
+    },
+    publisher: getOrganizationSchema(),
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": url,
+    },
+    ...(publishedTime && { datePublished: publishedTime }),
+    ...(modifiedTime && { dateModified: modifiedTime }),
+    ...((publishedTime || modifiedTime) && {
+      dateCreated: publishedTime || modifiedTime,
+    }),
+  };
+}
+
+export function getEventSchema({
+  name,
+  description,
+  image,
+  url,
+  organizerName,
+  organizerUrl,
+  startDate,
+  endDate,
+  location,
+}: {
+  name: string;
+  description: string;
+  image: string;
+  url: string;
+  organizerName: string;
+  organizerUrl?: string;
+  startDate?: string;
+  endDate?: string;
+  location?: string;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name,
+    description,
+    image: image || undefined,
+    url,
+    organizer: {
+      "@type": "Person",
+      name: organizerName,
+      ...(organizerUrl && { url: organizerUrl }),
+    },
+    ...(startDate && { startDate }),
+    ...(endDate && { endDate }),
+    ...(location && {
+      location: {
+        "@type": "Place",
+        name: location,
+      },
+    }),
+  };
+}

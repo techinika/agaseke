@@ -105,7 +105,9 @@ export default function ExplorePostsPage() {
         q = query(q, startAfter(cursor));
       }
       const snap = await getDocs(q);
-      const fetched = snap.docs.map((d) => {
+      const fetched = snap.docs
+        .filter((d) => d.data().status !== "draft")
+        .map((d) => {
         const data = d.data();
         const creatorId = data.creatorId || data.creatorUid || "";
         const creator = cmap.get(creatorId) || cmap.get(data.creatorUid) || cmap.get(data.creatorId);

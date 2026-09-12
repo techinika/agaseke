@@ -303,6 +303,7 @@ export default function AdminLogsPage() {
                   <option value="giveaway">Giveaway</option>
                   <option value="messaging">Messaging</option>
                   <option value="verification">Verification</option>
+                  <option value="db">Database</option>
                   <option value="admin">Admin</option>
                   <option value="system">System</option>
                 </select>

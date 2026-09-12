@@ -163,6 +163,10 @@ export default function LandingPage({
       setUsernameStatus("idle");
       return;
     }
+    if (username.length > 19) {
+      setUsernameStatus("invalid");
+      return;
+    }
 
     const validUsernameRegex = /^[a-z0-9_]+$/;
     if (!validUsernameRegex.test(username)) {
@@ -198,6 +202,7 @@ export default function LandingPage({
             username === "profile" ||
             username === "payout" ||
             username === "payout-policy" ||
+            username === "content-guidelines" ||
             username === "onboarding" ||
             username === "payment" ||
             username === "dashboard" ||
@@ -257,12 +262,14 @@ export default function LandingPage({
   }, [username]);
 
   const handleClaim = () => {
-    if (username.length > 2) {
+    if (username.length < 3) {
+      toast.info("Please enter a username (at least 3 characters).");
+    } else if (username.length > 19) {
+      toast.error("Username must be under 20 characters.");
+    } else {
       router.push(
         `/login?username=${username}&redirect=${encodeURIComponent(pathname)}`,
       );
-    } else {
-      toast.info("Please enter a username (at least 3 characters).");
     }
   };
 
@@ -353,6 +360,7 @@ export default function LandingPage({
                         autoFocus
                         type="text"
                         value={username}
+                        maxLength={19}
                         onChange={(e) =>
                           setUsername(
                             e.target.value
@@ -601,7 +609,7 @@ export default function LandingPage({
         <div className="max-w-5xl mx-auto px-6 py-10 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           <div>
             <p className="text-3xl md:text-4xl font-black text-foreground">
-              100+
+              300+
             </p>
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
               Creators Onboarded

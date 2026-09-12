@@ -11,6 +11,8 @@ import {
 } from "./services/subscriptions";
 import { logActivity } from "./logger";
 import { checkRateLimit } from "./rateLimit";
+import { drainPending, flushPending } from "./audit";
+import type { ExecutionContext } from "@cloudflare/workers-types";
 
 function json(data: unknown, status = 200, origin?: string | null): Response {
   return new Response(JSON.stringify(data), {
@@ -45,152 +47,157 @@ function isRateLimited(request: Request, maxRequests = 30, windowMs = 60000): Re
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const origin = request.headers.get("origin");
-    const url = new URL(request.url);
-    const path = url.pathname;
-
-    if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: corsHeaders(origin) });
-    }
-
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     try {
-      if (path === "/health" && request.method === "GET") {
-        return json({ status: "ok" }, 200, origin);
+      const origin = request.headers.get("origin");
+      const url = new URL(request.url);
+      const path = url.pathname;
+
+      if (request.method === "OPTIONS") {
+        return new Response(null, { status: 204, headers: corsHeaders(origin) });
       }
 
-      if (path === "/api/community/tiers" && request.method === "GET") {
-        const limited = isRateLimited(request, 60, 60000);
-        if (limited) return limited;
-        const creatorHandle = url.searchParams.get("creatorHandle");
-        if (!creatorHandle)
-          return json({ error: "creatorHandle required" }, 400, origin);
-        const result = await getTiers(env, creatorHandle);
-        return json(result, 200, origin);
-      }
-
-      if (path === "/api/community/tiers/save" && request.method === "POST") {
-        const limited = isRateLimited(request, 20, 60000);
-        if (limited) return limited;
-        const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
-        if (auth instanceof Response) return auth;
-
-        const body = (await request.json()) as {
-          creatorHandle: string;
-          tiers: TierData[];
-          enabled: boolean;
-        };
-        const creatorDoc = await fetchCreatorUid(env, body.creatorHandle);
-        if (creatorDoc !== auth.uid)
-          return json({ error: "Forbidden" }, 403, origin);
-
-        await saveTiers(env, body.creatorHandle, body.tiers, body.enabled);
-        return json({ success: true }, 200, origin);
-      }
-
-      if (
-        path === "/api/community/subscribe/initiate" &&
-        request.method === "POST"
-      ) {
-        const limited = isRateLimited(request, 10, 60000);
-        if (limited) return limited;
-        const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
-        if (auth instanceof Response) return auth;
-
-        const body = (await request.json()) as SubscribeRequest & {
-          request: Request;
-        };
-        body.request = request;
-        const result = await initiateSubscription(env, body, auth.uid);
-        return json(result, 200, origin);
-      }
-
-      if (path === "/api/community/callback" && request.method === "POST") {
-        const limited = isRateLimited(request, 30, 60000);
-        if (limited) return limited;
-        const internalAuth = request.headers.get("X-Internal-Auth");
-        if (internalAuth !== env.INTERNAL_AUTH_SECRET) {
-          return json({ error: "Unauthorized" }, 401, origin);
+      try {
+        if (path === "/health" && request.method === "GET") {
+          return json({ status: "ok" }, 200, origin);
         }
 
-        const body = (await request.json()) as CallbackPayload;
-        await handlePaymentCallback(
+        if (path === "/api/community/tiers" && request.method === "GET") {
+          const limited = isRateLimited(request, 60, 60000);
+          if (limited) return limited;
+          const creatorHandle = url.searchParams.get("creatorHandle");
+          if (!creatorHandle)
+            return json({ error: "creatorHandle required" }, 400, origin);
+          const result = await getTiers(env, creatorHandle);
+          return json(result, 200, origin);
+        }
+
+        if (path === "/api/community/tiers/save" && request.method === "POST") {
+          const limited = isRateLimited(request, 20, 60000);
+          if (limited) return limited;
+          const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
+          if (auth instanceof Response) return auth;
+
+          const body = (await request.json()) as {
+            creatorHandle: string;
+            tiers: TierData[];
+            enabled: boolean;
+          };
+          const creatorDoc = await fetchCreatorUid(env, body.creatorHandle);
+          if (creatorDoc !== auth.uid)
+            return json({ error: "Forbidden" }, 403, origin);
+
+          await saveTiers(env, body.creatorHandle, body.tiers, body.enabled);
+          return json({ success: true }, 200, origin);
+        }
+
+        if (
+          path === "/api/community/subscribe/initiate" &&
+          request.method === "POST"
+        ) {
+          const limited = isRateLimited(request, 10, 60000);
+          if (limited) return limited;
+          const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
+          if (auth instanceof Response) return auth;
+
+          const body = (await request.json()) as SubscribeRequest & {
+            request: Request;
+          };
+          body.request = request;
+          const result = await initiateSubscription(env, body, auth.uid);
+          return json(result, 200, origin);
+        }
+
+        if (path === "/api/community/callback" && request.method === "POST") {
+          const limited = isRateLimited(request, 30, 60000);
+          if (limited) return limited;
+          const internalAuth = request.headers.get("X-Internal-Auth");
+          if (internalAuth !== env.INTERNAL_AUTH_SECRET) {
+            return json({ error: "Unauthorized" }, 401, origin);
+          }
+
+          const body = (await request.json()) as CallbackPayload;
+          await handlePaymentCallback(
+            env,
+            body.txData,
+            body.totalAmount,
+            body.paymentRef,
+            body.paymentMethod,
+            body.platformShare,
+            body.creatorShare,
+            body.referralShare,
+          );
+          return json({ received: true }, 200, origin);
+        }
+
+        if (path === "/api/community/members" && request.method === "GET") {
+          const limited = isRateLimited(request, 30, 60000);
+          if (limited) return limited;
+          const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
+          if (auth instanceof Response) return auth;
+
+          const creatorHandle = url.searchParams.get("creatorHandle");
+          if (!creatorHandle)
+            return json({ error: "creatorHandle required" }, 400, origin);
+
+          const creatorDoc = await fetchCreatorUid(env, creatorHandle);
+          if (creatorDoc !== auth.uid)
+            return json({ error: "Forbidden" }, 403, origin);
+
+          const members = await getMembers(env, creatorHandle);
+          return json({ members }, 200, origin);
+        }
+
+        if (
+          path === "/api/community/my-subscriptions" &&
+          request.method === "GET"
+        ) {
+          const limited = isRateLimited(request, 30, 60000);
+          if (limited) return limited;
+          const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
+          if (auth instanceof Response) return auth;
+
+          const subs = await getMemberSubscriptions(env, auth.uid);
+          return json({ subscriptions: subs }, 200, origin);
+        }
+
+        if (path === "/api/community/cancel" && request.method === "POST") {
+          const limited = isRateLimited(request, 10, 60000);
+          if (limited) return limited;
+          const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
+          if (auth instanceof Response) return auth;
+
+          const { subscriptionId } = (await request.json()) as {
+            subscriptionId: string;
+          };
+          await cancelSubscription(env, subscriptionId, auth.uid);
+          return json({ success: true }, 200, origin);
+        }
+
+        return json({ error: "Not found" }, 404, origin);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Internal error";
+        console.error("Community error:", request.method, url.pathname, err);
+        await logActivity(
           env,
-          body.txData,
-          body.totalAmount,
-          body.paymentRef,
-          body.paymentMethod,
-          body.platformShare,
-          body.creatorShare,
-          body.referralShare,
-        );
-        return json({ received: true }, 200, origin);
+          "error",
+          "community",
+          `Community error: ${message}`,
+          {
+            path: url.pathname,
+            method: request.method,
+          },
+        ).catch((logErr) => { console.error("Failed to log activity", logErr); });
+        return json({ error: message }, 500, origin);
       }
-
-      if (path === "/api/community/members" && request.method === "GET") {
-        const limited = isRateLimited(request, 30, 60000);
-        if (limited) return limited;
-        const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
-        if (auth instanceof Response) return auth;
-
-        const creatorHandle = url.searchParams.get("creatorHandle");
-        if (!creatorHandle)
-          return json({ error: "creatorHandle required" }, 400, origin);
-
-        const creatorDoc = await fetchCreatorUid(env, creatorHandle);
-        if (creatorDoc !== auth.uid)
-          return json({ error: "Forbidden" }, 403, origin);
-
-        const members = await getMembers(env, creatorHandle);
-        return json({ members }, 200, origin);
-      }
-
-      if (
-        path === "/api/community/my-subscriptions" &&
-        request.method === "GET"
-      ) {
-        const limited = isRateLimited(request, 30, 60000);
-        if (limited) return limited;
-        const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
-        if (auth instanceof Response) return auth;
-
-        const subs = await getMemberSubscriptions(env, auth.uid);
-        return json({ subscriptions: subs }, 200, origin);
-      }
-
-      if (path === "/api/community/cancel" && request.method === "POST") {
-        const limited = isRateLimited(request, 10, 60000);
-        if (limited) return limited;
-        const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
-        if (auth instanceof Response) return auth;
-
-        const { subscriptionId } = (await request.json()) as {
-          subscriptionId: string;
-        };
-        await cancelSubscription(env, subscriptionId, auth.uid);
-        return json({ success: true }, 200, origin);
-      }
-
-      return json({ error: "Not found" }, 404, origin);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Internal error";
-      console.error("Community error:", request.method, url.pathname, err);
-      await logActivity(
-        env,
-        "error",
-        "community",
-        `Community error: ${message}`,
-        {
-          path: url.pathname,
-          method: request.method,
-        },
-      ).catch((logErr) => { console.error("Failed to log activity", logErr); });
-      return json({ error: message }, 500, origin);
+    } finally {
+      drainPending(ctx);
     }
   },
 
   async scheduled(event: ScheduledEvent, env: Env): Promise<void> {
     await processRenewals(env);
+    await flushPending();
   },
 };
 

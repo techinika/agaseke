@@ -7,6 +7,16 @@ Set them at: **Cloudflare Dashboard → Workers & Pages → [worker] → Setting
 
 All workers use dual-path authentication: **jose JWKS first** (correct `service_accounts/v1/jwk/` endpoint), **Firebase REST API fallback**. Token headers (`kid`, `alg`) are logged for debugging. CORS is handled via a shared `cors.ts` with `X-Firebase-AppCheck` header support.
 
+## Audit Logging (all workers)
+
+Every Firestore read/write (GET/POST/PATCH/DELETE — Firestore REST; no PUT) performed by a worker is audited through the shared `src/audit.ts` module:
+
+- `auditedFetch(env, method, path, url, init?)` wraps the raw Firestore REST call via `fetch` and, on completion (success **or** failure), records an entry to the Firestore `activityLogs` collection with category `"db"`, type `"db_operation"`, and level `info`/`error` (including latency in ms and the HTTP status or error message). Network failures are rethrown so the original caller still sees them.
+- Audit writes are **fire-and-forget**: `deferAudit(promise)` queues entries in memory and `drainPending(ctx)` flushes them via `ctx.waitUntil()` inside each worker's fetch handler (`try/finally`), so DB activity recording never blocks the HTTP response and never surfaces errors to end users. Queue/scheduled handlers end with `await flushPending()` so entries are flushed before the invocation completes.
+- Auth token-minting calls (`oauth2.googleapis.com/token`) and external-service requests are **not** audited — only Firestore operations.
+
+`activityLogs` entries written by workers use `category: "db"`, `level: "error"` on failure, and include `type`, `method`, `path`, `status` (on success), `error` (on failure), `userId`/`creatorHandle` where available, `durationMs`, and `createdAt`. The admin `activityLogs` UI in the Next.js app renders these under the **Database** category filter.
+
 ## agaseke-bookings
 
 | Variable                  | Type   | Secret | Description                                |
@@ -29,12 +39,13 @@ All workers use dual-path authentication: **jose JWKS first** (correct `service_
 | `FROM_NAME`             | string | no     | Sender display name (e.g.`Agaseke`)                     |
 | `APP_URL`               | string | no     | Base app URL for email links (e.g.`https://agaseke.me`) |
 | `ASSETS_URL`            | string | no     | Base URL for email asset URLs                             |
-| `RESEND_API_KEY`        | string | yes    | Resend API key for sending emails                         |
-| `RESEND_WEBHOOK_SECRET` | string | yes    | Resend webhook signing secret                             |
+| `AWS_ACCESS_KEY_ID`     | string | yes    | AWS access key with `ses:SendEmail` permission           |
+| `AWS_SECRET_ACCESS_KEY` | string | yes    | AWS secret access key                                     |
+| `AWS_REGION`            | string | no     | AWS region for SES (default `us-east-1`)                 |
 
-**Webhook:** `POST /webhook` — Resend event receiver (bounces, deliveries, opens, clicks). Events persisted to Firestore `emailEvents` collection.
+**Webhook:** `POST /webhook` — Amazon SES/SNS event receiver (deliveries, bounces, complaints, subscriptions). Events persisted to Firestore `emailEvents` collection.
 
-**Sent archive:** Every email is logged to Firestore `sentEmails` collection with recipient, subject, purpose, and Resend ID.
+**Sent archive:** Every attempted email (sent **and** failed) is logged to Firestore `sentEmails` collection with recipient, subject, purpose, SES `messageId`, `from`, `status` (`sent`/`failed`), and the `error` on failure. Email sending runs through SES; see `workers/comms/README.md` for setup.
 
 **Queue:** `agaseke-email-queue` — bulk sends (`broadcast`, `message_digest`, `content_new`) are enqueued and delivered by the worker's queue consumer instead of holding the HTTP request open. Non-bulk purposes still send inline. Queue must be created in the dashboard before deploy.
 

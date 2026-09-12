@@ -5,6 +5,7 @@ import { adminDb } from "@/db/firebaseAdmin";
 import { Metadata } from "next";
 import { baseUrl } from "@/lib/baseUrl";
 import GatheringDetailPage from "@/components/pages/public/GatheringDetailPage";
+import EventSchema from "@/components/seo/EventSchema";
 
 async function getCreatorData(username: string) {
   try {
@@ -34,17 +35,19 @@ export async function generateMetadata({
 
   const displayName = creator.name || username;
   const title = (gathering as any).title || "Event";
+  const image = (gathering as any).coverUrl || creator.profilePicture || `${baseUrl}/agaseke.png`;
 
   return {
     title: `${title} | ${displayName} Events | Agaseke`,
     description: `RSVP to ${title} by ${displayName} on Agaseke.`,
     alternates: { canonical: `/${username}/gatherings/${gatheringId}` },
+    keywords: [displayName, username, title, "event", "gathering", "meetup", "Agaseke"],
     openGraph: {
       title: `${title} | ${displayName}`,
       description: `RSVP to ${title} by ${displayName}.`,
       url: `${baseUrl}/${username}/gatherings/${gatheringId}`,
       siteName: "Agaseke",
-      images: [{ url: creator.profilePicture || `${baseUrl}/agaseke.png`, width: 400, height: 400, alt: displayName }],
+      images: [{ url: image, width: 400, height: 400, alt: title }],
       type: "website",
     },
     twitter: {
@@ -59,7 +62,29 @@ export async function generateMetadata({
 
 async function page({ params }: { params: Promise<{ username: string; gatheringId: string }> }) {
   const { username, gatheringId } = await params;
-  return <GatheringDetailPage username={username} gatheringId={gatheringId} />;
+  const [creator, gathering] = await Promise.all([getCreatorData(username), getGathering(gatheringId)]);
+  const displayName = creator?.name || username;
+  const title = (gathering as any)?.title || "Event";
+
+  return (
+    <>
+      <EventSchema
+        name={title}
+        description={(gathering as any)?.description || `RSVP to ${title} by ${displayName} on Agaseke.`}
+        image={(gathering as any)?.coverUrl || creator?.profilePicture || `${baseUrl}/agaseke.png`}
+        url={`/${username}/gatherings/${gatheringId}`}
+        organizerName={displayName}
+        organizerUrl={`/${username}`}
+        startDate={
+          (gathering as any)?.date
+            ? new Date(`${(gathering as any).date}T${(gathering as any).time || "00:00"}`).toISOString()
+            : undefined
+        }
+        location={(gathering as any)?.location || undefined}
+      />
+      <GatheringDetailPage username={username} gatheringId={gatheringId} />
+    </>
+  );
 }
 
 export default page;

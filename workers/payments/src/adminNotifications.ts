@@ -1,5 +1,6 @@
 import type { Env } from "./types";
 import { firestorePost, convertToFields } from "./firestore";
+import { auditedFetch } from "./audit";
 
 export interface CreateNotificationParams {
   userId: string;
@@ -95,7 +96,7 @@ async function firestoreQueryAdmins(
   if (!token) return [];
 
   const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/profiles:runQuery`;
-  const res = await fetch(url, {
+  const res = await auditedFetch(env, "POST", "profiles:runQuery", url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,

@@ -10,6 +10,8 @@ import {
 } from "./types";
 import { createAssetDocument } from "./firestore";
 import { checkRateLimit } from "./rateLimit";
+import { drainPending } from "./audit";
+import type { ExecutionContext } from "@cloudflare/workers-types";
 
 function getClientIp(request: Request): string {
   return request.headers.get("CF-Connecting-IP") ||
@@ -342,34 +344,38 @@ function deriveBaseUrl(request: Request): string {
 // ── Main fetch handler ──────────────────────────────────────
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const origin = request.headers.get("origin");
-
-    if (request.method === "OPTIONS") {
-      return new Response(null, {
-        status: 204,
-        headers: { ...corsHeaders(origin) },
-      });
-    }
-
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     try {
-      if (request.method === "POST") {
-        const limited = isRateLimited(request, 10, 60000);
-        if (limited) return limited;
-        return await handleUpload(request, env);
+      const origin = request.headers.get("origin");
+
+      if (request.method === "OPTIONS") {
+        return new Response(null, {
+          status: 204,
+          headers: { ...corsHeaders(origin) },
+        });
       }
 
-      return json(
-        {
-          error:
-            "Not found. POST / to upload (assetType required). Assets are served via https://assets.agaseke.me/{publicId}",
-        },
-        404,
-        origin,
-      );
-    } catch (err: unknown) {
-      console.error("Worker error:", request.method, request.url, err);
-      return json({ error: "Internal server error" }, 500, origin);
+      try {
+        if (request.method === "POST") {
+          const limited = isRateLimited(request, 10, 60000);
+          if (limited) return limited;
+          return await handleUpload(request, env);
+        }
+
+        return json(
+          {
+            error:
+              "Not found. POST / to upload (assetType required). Assets are served via https://assets.agaseke.me/{publicId}",
+          },
+          404,
+          origin,
+        );
+      } catch (err: unknown) {
+        console.error("Worker error:", request.method, request.url, err);
+        return json({ error: "Internal server error" }, 500, origin);
+      }
+    } finally {
+      drainPending(ctx);
     }
   },
 };

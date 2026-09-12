@@ -72,6 +72,10 @@ export default function CreatorOnboarding() {
       setUsernameStatus("idle");
       return;
     }
+    if (formData.username.length > 19) {
+      setUsernameStatus("invalid");
+      return;
+    }
 
     const validUsernameRegex = /^[a-z0-9_]+$/;
     if (!validUsernameRegex.test(formData.username)) {
@@ -107,6 +111,7 @@ export default function CreatorOnboarding() {
             formData.username === "profile" ||
             formData.username === "payout" ||
             formData.username === "payout-policy" ||
+            formData.username === "content-guidelines" ||
             formData.username === "onboarding" ||
             formData.username === "payment" ||
             formData.username === "dashboard" ||
@@ -339,6 +344,7 @@ export default function CreatorOnboarding() {
               <input
                 autoFocus
                 type="text"
+                maxLength={19}
                 className={`w-full p-5 pl-28 bg-muted border-2 rounded-lg text-xl font-bold outline-none transition-all ${
                   usernameStatus === "taken"
                     ? "border-red-400"
@@ -381,8 +387,8 @@ export default function CreatorOnboarding() {
             )}
             {usernameStatus === "invalid" && (
               <p className="text-red-500 text-xs font-bold text-center">
-                Sorry, this username is invalid. Username should not have
-                special characters like @ or !
+                Sorry, that username is too long or invalid. Keep it between 3
+                and 19 characters using only letters, numbers, and underscores.
               </p>
             )}
             <button

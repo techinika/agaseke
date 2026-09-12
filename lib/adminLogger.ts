@@ -13,6 +13,7 @@ export type LogCategory =
   | "verification"
   | "admin"
   | "system"
+  | "db"
   | "general";
 
 export interface LogEntry {
@@ -29,17 +30,18 @@ export interface LogEntry {
   userAgent?: string;
 }
 
-export async function logActivity(data: LogEntry): Promise<string | null> {
-  try {
-    const logRef = await adminDb.collection("activityLogs").add({
+export function logActivity(data: LogEntry): Promise<string | null> {
+  void adminDb
+    .collection("activityLogs")
+    .add({
       ...data,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    })
+    .then(() => undefined)
+    .catch((error) => {
+      console.error("Failed to log activity:", error);
     });
-    return logRef.id;
-  } catch (error) {
-    console.error("Failed to log activity:", error);
-    return null;
-  }
+  return Promise.resolve(null);
 }
 
 export function logInfo(

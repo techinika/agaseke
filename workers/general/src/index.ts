@@ -4,8 +4,9 @@ import { encrypt, decrypt, isEncrypted } from "./encryption";
 import { logError } from "./logger";
 import { firestorePost } from "./firestore";
 import { checkRateLimit } from "./rateLimit";
+import { drainPending, flushPending } from "./audit";
 import type { Env, QueueJob } from "./types";
-import type { MessageBatch } from "@cloudflare/workers-types";
+import type { MessageBatch, ExecutionContext } from "@cloudflare/workers-types";
 
 function json(data: unknown, status = 200, origin?: string | null): Response {
   return new Response(JSON.stringify(data), {
@@ -50,129 +51,133 @@ function isInternalAuth(request: Request, secret: string): boolean {
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const origin = request.headers.get("origin");
-    const url = new URL(request.url);
-    const path = url.pathname;
-
-    if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: corsHeaders(origin) });
-    }
-
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     try {
-      if (path === "/health" && request.method === "GET") {
-        return json({ status: "ok" }, 200, origin);
+      const origin = request.headers.get("origin");
+      const url = new URL(request.url);
+      const path = url.pathname;
+
+      if (request.method === "OPTIONS") {
+        return new Response(null, { status: 204, headers: corsHeaders(origin) });
       }
 
-      if (path === "/api/general/encrypt" && request.method === "POST") {
-        const limited = isRateLimited(request, 30, 60000);
-        if (limited) return limited;
+      try {
+        if (path === "/health" && request.method === "GET") {
+          return json({ status: "ok" }, 200, origin);
+        }
 
-        if (!isInternalAuth(request, env.INTERNAL_AUTH_SECRET)) {
+        if (path === "/api/general/encrypt" && request.method === "POST") {
+          const limited = isRateLimited(request, 30, 60000);
+          if (limited) return limited;
+
+          if (!isInternalAuth(request, env.INTERNAL_AUTH_SECRET)) {
+            const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
+            if (auth instanceof Response) return auth;
+          }
+
+          const { text } = (await request.json()) as { text: string };
+          if (!text || typeof text !== "string") {
+            return json({ error: "Text is required" }, 400, origin);
+          }
+
+          const encrypted = await encrypt(text, env.ENCRYPTION_KEY);
+          return json({ encrypted }, 200, origin);
+        }
+
+        if (path === "/api/general/decrypt" && request.method === "POST") {
+          const limited = isRateLimited(request, 30, 60000);
+          if (limited) return limited;
+
+          if (!isInternalAuth(request, env.INTERNAL_AUTH_SECRET)) {
+            const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
+            if (auth instanceof Response) return auth;
+          }
+
+          const { encrypted } = (await request.json()) as { encrypted: string };
+          if (!encrypted || typeof encrypted !== "string") {
+            return json({ error: "Encrypted text is required" }, 400, origin);
+          }
+
+          const plaintext = await decrypt(encrypted, env.ENCRYPTION_KEY);
+          return json({ plaintext }, 200, origin);
+        }
+
+        if (path === "/api/general/is-encrypted" && request.method === "POST") {
+          const limited = isRateLimited(request, 30, 60000);
+          if (limited) return limited;
+
+          const { text } = (await request.json()) as { text: string };
+          if (!text || typeof text !== "string") {
+            return json({ error: "Text is required" }, 400, origin);
+          }
+
+          return json({ isEncrypted: isEncrypted(text) }, 200, origin);
+        }
+
+        if (path === "/api/general/log-error" && request.method === "POST") {
+          const limited = isRateLimited(request, 10, 60000);
+          if (limited) return limited;
+
+          const body = (await request.json()) as {
+            level?: string;
+            category?: string;
+            message?: string;
+            metadata?: Record<string, unknown>;
+          };
+
+          if (!body.message || typeof body.message !== "string") {
+            return json({ error: "message is required" }, 400, origin);
+          }
+
+          await env.AGASEKE_LOG_QUEUE.send({
+            kind: "log",
+            level: body.level || "error",
+            category: body.category || "client",
+            message: body.message,
+            metadata: body.metadata,
+          });
+          return json({ success: true, queued: true }, 200, origin);
+        }
+
+        if (path === "/api/general/notification" && request.method === "POST") {
+          const limited = isRateLimited(request, 20, 60000);
+          if (limited) return limited;
+
           const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
           if (auth instanceof Response) return auth;
+
+          const body = (await request.json()) as {
+            userId: string;
+            type: string;
+            title: string;
+            message: string;
+            link?: string;
+            metadata?: Record<string, unknown>;
+          };
+
+          if (!body.userId || !body.type || !body.title || !body.message) {
+            return json({ error: "userId, type, title, and message are required" }, 400, origin);
+          }
+
+          await env.AGASEKE_LOG_QUEUE.send({
+            kind: "notification",
+            userId: body.userId,
+            type: body.type,
+            title: body.title,
+            message: body.message,
+            link: body.link,
+            metadata: body.metadata,
+          });
+          return json({ success: true, queued: true }, 200, origin);
         }
 
-        const { text } = (await request.json()) as { text: string };
-        if (!text || typeof text !== "string") {
-          return json({ error: "Text is required" }, 400, origin);
-        }
-
-        const encrypted = await encrypt(text, env.ENCRYPTION_KEY);
-        return json({ encrypted }, 200, origin);
+        return json({ error: "Not found" }, 404, origin);
+      } catch {
+        console.error("General worker error:", request.method, url.pathname);
+        return json({ error: "Internal server error" }, 500, origin);
       }
-
-      if (path === "/api/general/decrypt" && request.method === "POST") {
-        const limited = isRateLimited(request, 30, 60000);
-        if (limited) return limited;
-
-        if (!isInternalAuth(request, env.INTERNAL_AUTH_SECRET)) {
-          const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
-          if (auth instanceof Response) return auth;
-        }
-
-        const { encrypted } = (await request.json()) as { encrypted: string };
-        if (!encrypted || typeof encrypted !== "string") {
-          return json({ error: "Encrypted text is required" }, 400, origin);
-        }
-
-        const plaintext = await decrypt(encrypted, env.ENCRYPTION_KEY);
-        return json({ plaintext }, 200, origin);
-      }
-
-      if (path === "/api/general/is-encrypted" && request.method === "POST") {
-        const limited = isRateLimited(request, 30, 60000);
-        if (limited) return limited;
-
-        const { text } = (await request.json()) as { text: string };
-        if (!text || typeof text !== "string") {
-          return json({ error: "Text is required" }, 400, origin);
-        }
-
-        return json({ isEncrypted: isEncrypted(text) }, 200, origin);
-      }
-
-      if (path === "/api/general/log-error" && request.method === "POST") {
-        const limited = isRateLimited(request, 10, 60000);
-        if (limited) return limited;
-
-        const body = (await request.json()) as {
-          level?: string;
-          category?: string;
-          message?: string;
-          metadata?: Record<string, unknown>;
-        };
-
-        if (!body.message || typeof body.message !== "string") {
-          return json({ error: "message is required" }, 400, origin);
-        }
-
-        await env.AGASEKE_LOG_QUEUE.send({
-          kind: "log",
-          level: body.level || "error",
-          category: body.category || "client",
-          message: body.message,
-          metadata: body.metadata,
-        });
-        return json({ success: true, queued: true }, 200, origin);
-      }
-
-      if (path === "/api/general/notification" && request.method === "POST") {
-        const limited = isRateLimited(request, 20, 60000);
-        if (limited) return limited;
-
-        const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
-        if (auth instanceof Response) return auth;
-
-        const body = (await request.json()) as {
-          userId: string;
-          type: string;
-          title: string;
-          message: string;
-          link?: string;
-          metadata?: Record<string, unknown>;
-        };
-
-        if (!body.userId || !body.type || !body.title || !body.message) {
-          return json({ error: "userId, type, title, and message are required" }, 400, origin);
-        }
-
-        await env.AGASEKE_LOG_QUEUE.send({
-          kind: "notification",
-          userId: body.userId,
-          type: body.type,
-          title: body.title,
-          message: body.message,
-          link: body.link,
-          metadata: body.metadata,
-        });
-        return json({ success: true, queued: true }, 200, origin);
-      }
-
-      return json({ error: "Not found" }, 404, origin);
-    } catch {
-      console.error("General worker error:", request.method, url.pathname);
-      return json({ error: "Internal server error" }, 500, origin);
+    } finally {
+      drainPending(ctx);
     }
   },
 
@@ -211,5 +216,7 @@ export default {
         message.retry();
       }
     }
+
+    await flushPending();
   },
 };

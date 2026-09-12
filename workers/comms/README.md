@@ -1,6 +1,6 @@
 # Agaseke Comms Worker
 
-Cloudflare Worker that handles all transactional email sending via Resend. Authenticates via Firebase (jose JWKS first, Firebase REST fallback).
+Cloudflare Worker that handles all transactional email sending via Amazon SES (AWS Signature V4 via Web Crypto — no AWS SDK). Authenticates via Firebase (jose JWKS first, Firebase REST fallback).
 
 ## Architecture
 
@@ -14,7 +14,7 @@ Cloudflare Worker (agaseke-comms)
   │  3. Resolve recipients (fetch from Firestore if needed)
   │  4. Build template data (service-specific)
   │  5. Render unified HTML template
-  │  6. Send via Resend batch API (individual emails, 100 per call)
+  │  6. Send via SES v2 SendEmail (individual emails, 8 concurrent)
   ▼
 Response: { success, messageId, purpose, recipientCount }
 ```
@@ -45,15 +45,15 @@ Response: { success, messageId, purpose, recipientCount }
 
 ## Webhook
 
-The worker exposes `POST /webhook` for receiving Resend events (bounces, deliveries, opens, clicks, etc.).
-- Verifies payload signature using `RESEND_WEBHOOK_SECRET` via Resend SDK
+The worker exposes `POST /webhook` for receiving Amazon SES delivery events (bounces, complaints, deliveries) via an SNS topic.
+- Handles SNS `SubscriptionConfirmation`, `Notification`, and `UnsubscribeConfirmation` message types
 - Persists every event to Firestore `emailEvents` collection
-- Endpoint URL to configure in Resend dashboard: `https://comms.api.agaseke.me/webhook`
+- Endpoint URL to configure as the SNS subscription: `https://comms.api.agaseke.me/webhook`
 
-Configure with:
-```bash
-npx wrangler secret put RESEND_WEBHOOK_SECRET
-```
+To enable events:
+1. Create an SNS topic in the SES region.
+2. Add an HTTPS/SMS/Email subscription pointing at the webhook URL above and confirm it (subscription confirmations are logged, not auto-confirmed).
+3. In SES → Configuration sets → Event destinations, route `Send`, `Delivery`, `Bounce`, `Complaint`, and `Reject` events to the SNS topic.
 
 ## Template Variables
 
@@ -68,20 +68,27 @@ These work in all emails, including broadcasts. The replacement happens at send 
 
 ## Batch Sending
 
-All emails are sent via `resend.batch.send()` in chunks of 100, regardless of recipient count. Each recipient receives an individual email — no BCC needed, no recipient list exposure. This works seamlessly for 1 or 1000+ recipients.
+All emails are sent via SES v2 `SendEmail`, one call per recipient with 8 concurrent in-flight requests (purposeful, not per-call BCC — each recipient gets an individual email, so no recipient list exposure). Recipients are processed in chunks of 100 for progress logging. This works seamlessly for 1 or 1000+ recipients.
 
 ## Sent Email Archive
 
-Every sent email is persisted to the `sentEmails` Firestore collection after delivery, with:
+Every send attempt — **success and failure** — is persisted to the `sentEmails` Firestore collection, so all email activity is fully recorded. Writes are fire-and-forget (deferred via `ctx.waitUntil`) and never delay the response; failures are silent.
 
 | Field | Description |
 |---|---|
 | `email` | Recipient email address |
-| `resendId` | Resend email ID from the send response |
+| `from` | Sender address used for the send |
+| `messageId` | SES message ID from the send response |
 | `purpose` | Email purpose identifier |
 | `subject` | Rendered subject line (with personalization applied) |
 | `recipientName` | Recipient's name (if available) |
-| `sentAt` | ISO timestamp of when the email was sent |
+| `status` | `sent` or `failed` |
+| `error` | Failure reason (only set when `status` is `failed`) |
+| `sentAt` | ISO timestamp of the send attempt |
+
+## Firestore Audit Logging
+
+Every Firestore operation in this worker is audited to the `activityLogs` collection with `category: "db"` via `src/audit.ts` (`auditedFetch`) — deferred in memory and flushed with `ctx.waitUntil()` inside the fetch handler, always flushed at the end of the queue handler. Recording is non-blocking: it never delays the response and failures are invisible to callers. See `workers/WORKERS.md`.
 
 ## Setup
 
@@ -99,8 +106,18 @@ All vars are managed in the **Cloudflare Dashboard** → Workers & Pages → `ag
 | `FROM_NAME` | no | Sender name (e.g. `Agaseke`) |
 | `APP_URL` | no | Base app URL (e.g. `https://agaseke.me`) |
 | `ASSETS_URL` | no | Base URL for email assets |
-| `RESEND_API_KEY` | yes | Resend API key for sending emails |
-| `RESEND_WEBHOOK_SECRET` | yes | Resend webhook signing secret |
+| `AWS_ACCESS_KEY_ID` | yes | AWS access key with SES SendEmail permission |
+| `AWS_SECRET_ACCESS_KEY` | yes | AWS secret access key |
+| `AWS_REGION` | no | AWS region for SES (default `us-east-1`) |
+
+### AWS prerequisites
+
+Before sending, the sender domain must be verified in SES and the account taken out of sandbox mode:
+
+1. **Verify the domain** — SES → Identities → Create identity → Domain: `comms.agaseke.me`, add the SPF/DKIM records SES provides (see [email-best-practices skill](../../.agents/skills/email-best-practices/SKILL.md)).
+2. **Create a configuration set** for event tracking (optional but recommended) and attach an SNS topic via Event destinations — see [Webhook](#webhook).
+3. **Create an IAM user** with a policy granting `ses:SendEmail` (and scoped to the verified domain) and store its access keys as the AWS secrets above.
+4. **Leave sandbox** — SES → Account dashboard → Request production access (needed to send to non-verified recipients).
 
 ### Deploy
 
@@ -144,7 +161,7 @@ NEXT_PUBLIC_COMMS_WORKER_URL=https://comms.api.agaseke.me
 ```json
 {
   "success": true,
-  "messageId": "<resend-email-id>",
+  "messageId": "<ses-message-id>",
   "purpose": "booking_request",
   "recipientCount": 1
 }
@@ -152,7 +169,7 @@ NEXT_PUBLIC_COMMS_WORKER_URL=https://comms.api.agaseke.me
 
 ### POST /webhook
 
-Resend event receiver. Configure in Resend dashboard to point to `https://comms.api.agaseke.me/webhook`.
+SES/SNS event receiver. Configure an SES event destination → SNS topic subscription pointing to `https://comms.api.agaseke.me/webhook`.
 
 **Response:**
 ```json
@@ -179,4 +196,4 @@ cd workers/comms
 npx wrangler dev --remote
 ```
 
-Use `--remote` so the Resend API can be reached from the worker.
+Use `--remote` so the SES API can be reached from the worker. Local sends still require verified SES credentials in SSEP (sandbox rules apply).

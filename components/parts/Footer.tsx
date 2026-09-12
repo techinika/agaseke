@@ -60,6 +60,7 @@ export default function Footer() {
               links={[
                 { label: "Privacy", href: "/privacy" },
                 { label: "Terms", href: "/terms" },
+                { label: "Content Guidelines", href: "/content-guidelines" },
                 { label: "Payout Policy", href: "/payout-policy" },
               ]}
             />

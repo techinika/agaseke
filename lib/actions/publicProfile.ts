@@ -64,11 +64,13 @@ export async function getCreatorPosts(creatorUid: string, creatorHandle: string,
       .orderBy("createdAt", "desc")
       .limit(limitCount)
       .get();
-    return snap.docs.map((d) => ({
-      id: d.id,
-      ...d.data(),
-      createdAt: d.data().createdAt?.toDate?.()?.toISOString() || null,
-    }));
+    return snap.docs
+      .map((d) => ({
+        id: d.id,
+        ...d.data(),
+        createdAt: d.data().createdAt?.toDate?.()?.toISOString() || null,
+      }))
+      .filter((p: any) => p.status !== "draft");
   } catch (error) {
     console.error("Server action error (getCreatorPosts):", error);
     return [];

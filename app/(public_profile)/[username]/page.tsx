@@ -99,7 +99,7 @@ async function getPublicProfileData(username: string) {
           ...post,
           createdAt: post.createdAt?.toDate?.()?.toISOString() ?? null,
         };
-      })
+      }).filter((p: any) => p.status !== "draft")
     : [];
   const publicPosts = rawPosts
     .sort(

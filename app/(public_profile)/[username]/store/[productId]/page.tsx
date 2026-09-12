@@ -5,6 +5,7 @@ import { adminDb } from "@/db/firebaseAdmin";
 import { Metadata } from "next";
 import { baseUrl } from "@/lib/baseUrl";
 import ProductDetailPage from "@/components/pages/public/ProductDetailPage";
+import ProductSchema from "@/components/seo/ProductSchema";
 
 async function getCreatorData(username: string) {
   try {
@@ -35,11 +36,17 @@ export async function generateMetadata({
   const displayName = creator.name || username;
   const name = (product as any).name || "Product";
   const image = (product as any).imageUrl || `${baseUrl}/agaseke.png`;
+  const currency = (product as any).currency === "USD" ? "USD" : "RWF";
+  const price =
+    currency === "USD"
+      ? (product as any).priceUSD ?? (product as any).price ?? 0
+      : (product as any).price ?? 0;
 
   return {
     title: `${name} | ${displayName} Store | Agaseke`,
     description: `Buy ${name} from ${displayName} on Agaseke.`,
     alternates: { canonical: `/${username}/store/${productId}` },
+    keywords: [name, displayName, username, "digital product", "store", "Agaseke"],
     openGraph: {
       title: `${name} | ${displayName}`,
       description: `Buy ${name} from ${displayName}'s store.`,
@@ -60,7 +67,30 @@ export async function generateMetadata({
 
 async function page({ params }: { params: Promise<{ username: string; productId: string }> }) {
   const { username, productId } = await params;
-  return <ProductDetailPage username={username} productId={productId} />;
+  const [creator, product] = await Promise.all([getCreatorData(username), getProduct(productId)]);
+  const displayName = creator?.name || username;
+  const name = (product as any)?.name || "Product";
+  const currency = (product as any)?.currency === "USD" ? "USD" : "RWF";
+  const price =
+    currency === "USD"
+      ? (product as any)?.priceUSD ?? (product as any)?.price ?? 0
+      : (product as any)?.price ?? 0;
+
+  return (
+    <>
+      <ProductSchema
+        name={name}
+        description={(product as any)?.description || `Buy ${name} from ${displayName} on Agaseke.`}
+        price={price}
+        currency={currency}
+        image={(product as any)?.imageUrl || `${baseUrl}/agaseke.png`}
+        creatorName={displayName}
+        creatorHandle={username}
+        url={`/${username}/store/${productId}`}
+      />
+      <ProductDetailPage username={username} productId={productId} />
+    </>
+  );
 }
 
 export default page;

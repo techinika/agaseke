@@ -37,6 +37,7 @@ import { toast } from "sonner";
 import { LinkifyText } from "@/components/ui/LinkifyText";
 import RichContentRenderer from "@/components/ui/RichContentRenderer";
 import Navbar from "@/components/parts/Navigation";
+import { SupportModal } from "@/components/parts/public/SupportModal";
 
 interface Comment {
   id: string;
@@ -63,6 +64,7 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [documentIndex, setDocumentIndex] = useState(0);
+  const [supportOpen, setSupportOpen] = useState(false);
   const viewCounted = useRef(false);
 
   useEffect(() => {
@@ -76,6 +78,10 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
           return;
         }
         const postData = { id: postSnap.id, ...postSnap.data() };
+        if ((postData as any).status === "draft") {
+          setLoading(false);
+          return;
+        }
         setPost(postData);
 
         const creatorRef = doc(db, "creators", (postData as any).creatorId);
@@ -275,24 +281,33 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
 
         <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
           <div className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <Link href={`/${post.creatorId}`} className="shrink-0">
-                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-medium">
-                  {creator?.name?.[0] || "?"}
-                </div>
-              </Link>
-              <div>
-                <Link
-                  href={`/${post.creatorId}`}
-                  className="font-semibold text-foreground hover:text-blue-600"
-                >
-                  {creator?.name || post.creatorId}
+            <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <Link href={`/${post.creatorId}`} className="shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-medium">
+                    {creator?.name?.[0] || "?"}
+                  </div>
                 </Link>
-                <p className="text-xs text-muted-foreground">
-                  @{post.creatorId} ·{" "}
-                  {post.createdAt?.toDate?.()?.toLocaleDateString()}
-                </p>
+                <div>
+                  <Link
+                    href={`/${post.creatorId}`}
+                    className="font-semibold text-foreground hover:text-blue-600"
+                  >
+                    {creator?.name || post.creatorId}
+                  </Link>
+                  <p className="text-xs text-muted-foreground">
+                    @{post.creatorId} ·{" "}
+                    {post.createdAt?.toDate?.()?.toLocaleDateString()}
+                  </p>
+                </div>
               </div>
+              <button
+                onClick={() => setSupportOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary hover:bg-primary/20 transition-colors rounded-lg font-semibold text-sm shrink-0"
+              >
+                <Heart size={16} className="fill-current" />
+                Support
+              </button>
             </div>
 
             <h1 className="text-2xl font-bold text-foreground mb-3">
@@ -411,6 +426,12 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
               <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-muted text-muted-foreground">
                 <MessageCircle size={18} /> {comments.length}
               </span>
+              <button
+                onClick={() => setSupportOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition"
+              >
+                <Heart size={18} className="fill-current" /> Support
+              </button>
             </div>
           </div>
 
@@ -536,6 +557,16 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
           </div>
         </div>
       </div>
+
+      <SupportModal
+        isOpen={supportOpen}
+        onClose={() => setSupportOpen(false)}
+        creatorName={creator?.name || post.creatorId || "Creator"}
+        creatorId={post.creatorId || ""}
+        uid={creator?.uid || ""}
+        includeReferral={false}
+        defaultMessage={post.title ? `I love this post! "${post.title}"` : "I love this post!"}
+      />
     </div>
   );
 }

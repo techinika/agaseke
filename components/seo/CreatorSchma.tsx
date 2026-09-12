@@ -28,6 +28,23 @@ export default function CreatorSchema({
       creator.socials?.instagram
         ? `https://instagram.com/${creator.socials.instagram}`
         : null,
+      creator.socials?.linkedin
+        ? `https://linkedin.com/in/${creator.socials.linkedin}`
+        : null,
+      creator.socials?.youtube
+        ? typeof creator.socials.youtube === "string" &&
+          creator.socials.youtube.startsWith("http")
+          ? creator.socials.youtube
+          : `https://youtube.com/@${creator.socials.youtube}`
+        : null,
+      creator.socials?.tiktok
+        ? `https://tiktok.com/@${creator.socials.tiktok}`
+        : null,
+      creator.socials?.web &&
+      typeof creator.socials.web === "string" &&
+      /^https?:\/\//.test(creator.socials.web)
+        ? creator.socials.web
+        : null,
     ].filter(Boolean),
   };
 

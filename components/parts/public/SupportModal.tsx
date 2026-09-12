@@ -44,7 +44,7 @@ export function SupportModal({
   const [isClosing, setIsClosing] = useState(false);
   const [creatorCurrency, setCreatorCurrency] = useState("RWF");
   const [selectedCurrency, setSelectedCurrency] = useState("RWF");
-  const [minSupportAmount, setMinSupportAmount] = useState(100);
+  const [minSupportAmount, setMinSupportAmount] = useState(1);
   const [availableCurrencies, setAvailableCurrencies] = useState<string[]>(["RWF"]);
 
   useEffect(() => {

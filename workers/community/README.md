@@ -78,6 +78,10 @@ Cancel a subscription.
 
 The worker runs a scheduled handler (`processRenewals`) that checks for subscriptions expiring within 3 days and initiates auto-renewal payments.
 
+## Firestore Audit Logging
+
+Every Firestore operation in this worker (GET/POST/PATCH/DELETE) is audited to the `activityLogs` collection with `category: "db"` via `src/audit.ts` (`auditedFetch`) — deferred in memory and flushed via `ctx.waitUntil()` inside the fetch handler, and `flushPending()` at the end of the scheduled handler. Recording is non-blocking: it never delays the response and failures are invisible to callers. See `workers/WORKERS.md`.
+
 ## Setup
 
 ### Environment Variables

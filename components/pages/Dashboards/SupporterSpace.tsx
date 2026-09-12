@@ -367,6 +367,7 @@ export default function SupporterSpace() {
         const contents = allContentDocs
           .map((d) => ({ id: d.id, ...d.data() }))
           .filter((item: any) => {
+            if (item.status === "draft") return false;
             const isSupportedByHandle = supportedHandles.has(item.creatorId);
             const isSupportedByUid = supportedCreatorUids.has(item.creatorId);
             const isSupported = isSupportedByHandle || isSupportedByUid;

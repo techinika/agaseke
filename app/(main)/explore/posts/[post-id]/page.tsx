@@ -3,8 +3,15 @@ export const revalidate = 300;
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { adminDb } from "@/db/firebaseAdmin";
 import { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { baseUrl } from "@/lib/baseUrl";
 import ExplorePostDetailPage from "@/components/pages/ExplorePostDetailPage";
+import ArticleReaderPage from "@/components/pages/public/ArticleReaderPage";
+import ArticleSchema from "@/components/seo/ArticleSchema";
+import {
+  serializeReaderArticle,
+  serializeReaderCreator,
+} from "@/lib/articleReader";
 
 async function getPost(postId: string) {
   try {
@@ -34,7 +41,7 @@ export async function generateMetadata({
   const { "post-id": postId } = await params;
   const post = await getPost(postId);
 
-  if (!post) {
+  if (!post || (post as any).status === "draft") {
     return { title: "Post Not Found | Agaseke", robots: { index: false } };
   }
 
@@ -105,5 +112,37 @@ export default async function Page({
   params: Promise<{ "post-id": string }>;
 }) {
   const { "post-id": postId } = await params;
+  const post = await getPost(postId);
+
+  if ((post as any)?.status === "draft") {
+    notFound();
+  }
+
+  const isArticle = (post as any)?.type === "article" && (post as any)?.slug;
+
+  if (isArticle) {
+    const creatorHandle = (post as any)?.creatorId || "";
+    const creator = creatorHandle ? await getCreatorByHandle(creatorHandle) : null;
+    const displayName = (creator as any)?.name || creatorHandle || "Creator";
+    const title = (post as any)?.title || "Untitled";
+    const article = serializeReaderArticle(post);
+    const serializedCreator = serializeReaderCreator(creator, creatorHandle);
+
+    return (
+      <>
+        <ArticleSchema
+          headline={title}
+          description={(post as any)?.shortDescription || `Read "${title}" by ${displayName} on Agaseke.`}
+          image={(post as any)?.contentUrl || `${baseUrl}/agaseke.png`}
+          url={`/articles/${(post as any)?.slug}`}
+          authorName={displayName}
+          authorUrl={`/${creatorHandle}`}
+          publishedTime={(post as any)?.createdAt?.toDate?.()?.toISOString?.() as string | undefined}
+        />
+        <ArticleReaderPage article={article} creator={serializedCreator} />
+      </>
+    );
+  }
+
   return <ExplorePostDetailPage postId={postId} />;
 }

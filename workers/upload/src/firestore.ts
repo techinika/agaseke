@@ -1,5 +1,6 @@
 import * as jose from "jose";
 import type { Env, AssetDocument, AssetType } from "./types";
+import { auditedFetch } from "./audit";
 
 function normalizePrivateKey(key: string): string {
   const cleaned = key.replace(/\\n/g, "\n");
@@ -87,7 +88,10 @@ export async function createAssetDocument(
       fields[key] = { stringValue: val };
     }
 
-    const res = await fetch(
+    const res = await auditedFetch(
+      env,
+      "POST",
+      "assets",
       `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/assets`,
       {
         method: "POST",

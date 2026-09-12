@@ -14,6 +14,7 @@ export type LogCategory =
   | "verification"
   | "admin"
   | "system"
+  | "db"
   | "general";
 
 export interface LogEntry {
@@ -30,17 +31,16 @@ export interface LogEntry {
   userAgent?: string;
 }
 
-export async function logActivity(data: LogEntry): Promise<string | null> {
-  try {
-    const logRef = await addDoc(collection(db, "activityLogs"), {
-      ...data,
-      createdAt: serverTimestamp(),
+export function logActivity(data: LogEntry): Promise<string | null> {
+  void addDoc(collection(db, "activityLogs"), {
+    ...data,
+    createdAt: serverTimestamp(),
+  })
+    .then(() => undefined)
+    .catch((error) => {
+      console.error("Failed to log activity:", error);
     });
-    return logRef.id;
-  } catch (error) {
-    console.error("Failed to log activity:", error);
-    return null;
-  }
+  return Promise.resolve(null);
 }
 
 export function logInfo(
@@ -108,6 +108,8 @@ export function getCategoryColor(category: LogCategory): string {
       return "text-orange-600 bg-orange-50";
     case "verification":
       return "text-blue-600 bg-blue-50";
+    case "db":
+      return "text-indigo-600 bg-indigo-50";
     case "admin":
       return "text-slate-600 bg-slate-50";
     case "system":

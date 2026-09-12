@@ -29,6 +29,7 @@
 		"FIREBASE_PROJECT_ID": "agaseke4creators",
 		"FROM_EMAIL": "no-reply@comms.agaseke.me",
 		"FROM_NAME": "Agaseke",
+		"AWS_REGION": "us-east-1"
 	},
 	"routes": [
 		{

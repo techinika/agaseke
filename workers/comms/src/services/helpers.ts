@@ -1,5 +1,6 @@
 import * as jose from "jose";
 import type { Env } from "../types";
+import { auditedFetch } from "../audit";
 
 function normalizePrivateKey(key: string): string {
   const cleaned = key.replace(/\\n/g, "\n");
@@ -53,7 +54,9 @@ async function firestoreFetch(env: Env, path: string): Promise<Record<string, un
   if (!token) return null;
 
   const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/${path}`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const res = await auditedFetch(env, "GET", path, url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   if (!res.ok) return null;
 
   return res.json() as Promise<Record<string, unknown>>;

@@ -101,7 +101,7 @@ export default function ArticlesPage() {
                 Articles
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Manage your published articles
+                Manage your articles &amp; drafts
               </p>
             </div>
           </div>
@@ -189,6 +189,11 @@ export default function ArticlesPage() {
                     <span className="text-[10px] font-bold bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-400 px-2 py-1 rounded uppercase tracking-widest">
                       Article
                     </span>
+                    {article.status === "draft" && (
+                      <span className="text-[10px] font-bold bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400 px-2 py-1 rounded uppercase tracking-widest">
+                        Draft
+                      </span>
+                    )}
                     <span
                       className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest ${
                         article.isPrivate

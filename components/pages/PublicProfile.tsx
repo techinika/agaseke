@@ -205,6 +205,7 @@ export default function PublicProfile({
           setPublicPosts(
             publicSnap.docs
               .map((doc) => ({ id: doc.id, ...doc.data() }) as any)
+              .filter((p: any) => p.status !== "draft")
               .sort(
                 (a, b) =>
                   (b.createdAt?.toMillis?.() || 0) -

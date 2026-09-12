@@ -92,8 +92,10 @@ export default function CommunityPage({ username }: CommunityPageProps) {
           limit(20),
         );
         const publicSnap = await getDocs(publicQ);
-        const publicList = publicSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        publicList.sort((a: any, b: any) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+        const publicList = publicSnap.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .filter((d: any) => d.status !== "draft")
+          .sort((a: any, b: any) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
         setPublicPosts(publicList);
       } catch (error) {
         console.error("Error fetching public posts:", error);

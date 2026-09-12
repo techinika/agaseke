@@ -1,12 +1,14 @@
-import { Resend } from "resend";
 import { requireAuth } from "./auth";
 import { corsHeaders } from "./cors";
-import type { Env, CommsRequest, CommsResponse, EmailQueueMessage, EmailService } from "./types";
+import type { Env, CommsRequest, CommsResponse, EmailQueueMessage, EmailService, EmailPurpose } from "./types";
 import { getService } from "./services";
 import { renderEmailHtml, renderEmailText } from "./template";
 import { firestorePost } from "./firestore";
 import { checkRateLimit } from "./rateLimit";
-import type { MessageBatch } from "@cloudflare/workers-types";
+import { sendSesEmail } from "./ses";
+import { deferAudit, drainPending, flushPending } from "./audit";
+import { logEmailSend } from "./logger";
+import type { MessageBatch, ExecutionContext } from "@cloudflare/workers-types";
 
 function getClientIp(request: Request): string {
   return request.headers.get("CF-Connecting-IP") ||
@@ -50,6 +52,7 @@ function toArray(v: string | string[] | undefined | null): string[] {
 }
 
 const BATCH_SIZE = 100;
+const SEND_CONCURRENCY = 8;
 
 const BULK_PURPOSES = new Set(["broadcast", "message_digest", "content_new"]);
 
@@ -59,19 +62,100 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return result;
 }
 
+async function sendSesBatch(
+  items: { email: string; name: string; subject: string; html: string; text: string }[],
+  purpose: string,
+  env: Env,
+  from: string,
+  uid: string,
+): Promise<{ sentCount: number; lastId?: string }> {
+  let sentCount = 0;
+  let lastId: string | undefined;
+  let index = 0;
+  const errors: unknown[] = [];
+
+  const archive = (fields: Record<string, unknown>): void => {
+    deferAudit(firestorePost(env, "sentEmails", { fields }));
+  };
+
+  async function worker(): Promise<void> {
+    while (index < items.length && errors.length === 0) {
+      const item = items[index++];
+      const now = new Date().toISOString();
+      try {
+        const messageId = await sendSesEmail(env, {
+          to: [item.email],
+          subject: item.subject,
+          html: item.html,
+          text: item.text,
+        });
+        sentCount += 1;
+        lastId = messageId;
+
+        archive({
+          email: { stringValue: item.email },
+          status: { stringValue: "sent" },
+          from: { stringValue: from },
+          messageId: { stringValue: messageId },
+          purpose: { stringValue: purpose },
+          subject: { stringValue: item.subject },
+          recipientName: { stringValue: item.name },
+          sentAt: { timestampValue: now },
+        });
+      } catch (err) {
+        errors.push(err);
+        archive({
+          email: { stringValue: item.email },
+          status: { stringValue: "failed" },
+          from: { stringValue: from },
+          purpose: { stringValue: purpose },
+          subject: { stringValue: item.subject },
+          recipientName: { stringValue: item.name },
+          error: {
+            stringValue: (err instanceof Error ? err.message : String(err)).slice(0, 2000),
+          },
+          sentAt: { timestampValue: now },
+        });
+        console.error(`SES send failed: purpose=${purpose}, email=${item.email}`, err);
+      }
+    }
+  }
+
+  const workers: Promise<void>[] = [];
+  const poolSize = Math.min(SEND_CONCURRENCY, items.length);
+  for (let i = 0; i < poolSize; i++) workers.push(worker());
+  await Promise.all(workers);
+
+  if (errors.length > 0) {
+    deferAudit(
+      logEmailSend(env, {
+        purpose: purpose as EmailPurpose,
+        recipientCount: items.length,
+        recipients: items.map((i) => i.email).join(", "),
+        subject: items[0]?.subject ?? "",
+        uid,
+        error: errors[0] instanceof Error ? errors[0].message : String(errors[0]),
+      }),
+    );
+    throw errors[0];
+  }
+
+  return { sentCount, lastId };
+}
+
 async function sendEmailBatch(
   allRecipients: string[],
   recipientMeta: Record<string, { name?: string; handle?: string }>,
   service: EmailService,
   enrichedData: Record<string, unknown>,
   env: Env,
+  uid = "",
 ): Promise<{ lastId?: string; count: number }> {
-  const resend = new Resend(env.RESEND_API_KEY);
   const appUrl = env.APP_URL || "https://agaseke.me";
+  const from = `${env.FROM_NAME} <${env.FROM_EMAIL}>`;
 
   const templateData = await service.buildTemplateData(enrichedData, env);
   const subject = service.buildSubject(enrichedData);
-  const from = `${env.FROM_NAME} <${env.FROM_EMAIL}>`;
   const creatorHandle = ((enrichedData as Record<string, unknown>).creatorHandle as string) || "";
 
   const rawHtml = renderEmailHtml(templateData, appUrl, env.ASSETS_URL || appUrl);
@@ -82,53 +166,46 @@ async function sendEmailBatch(
   let lastId: string | undefined;
   const purpose = enrichedData.purpose as string;
 
-  for (const batchChunk of chunk(allRecipients, BATCH_SIZE)) {
-    const batchPayload = batchChunk.map((email) => {
-      const info = recipientMeta[email] ?? {};
-      const name = info.name || email.split("@")[0] || "there";
-      const handle = info.handle || creatorHandle;
+  const items = allRecipients.map((email) => {
+    const info = recipientMeta[email] ?? {};
+    const name = info.name || email.split("@")[0] || "there";
+    const handle = info.handle || creatorHandle;
 
-      return {
-        from,
-        to: [email],
-        subject: rawSubject.replace(/\[NAME\]/g, name).replace(/\[HANDLE\]/g, handle),
-        html: rawHtml.replace(/\[NAME\]/g, name).replace(/\[HANDLE\]/g, handle),
-        text: rawText.replace(/\[NAME\]/g, name).replace(/\[HANDLE\]/g, handle),
-      };
-    });
+    return {
+      email,
+      name,
+      subject: rawSubject.replace(/\[NAME\]/g, name).replace(/\[HANDLE\]/g, handle),
+      html: rawHtml.replace(/\[NAME\]/g, name).replace(/\[HANDLE\]/g, handle),
+      text: rawText.replace(/\[NAME\]/g, name).replace(/\[HANDLE\]/g, handle),
+    };
+  });
 
-    const { data, error } = await resend.batch.send(batchPayload);
-
-    if (error) {
-      console.error(`Resend batch error: purpose=${purpose}`, error);
-      throw new Error(error.message);
-    }
-
-    const batchIds: { id: string }[] = (data as unknown as { data: { id: string }[] })?.data ?? [];
-    sentCount += batchIds.length;
-    lastId = batchIds[batchIds.length - 1]?.id ?? lastId;
-
-    const now = new Date().toISOString();
-    const writes = batchChunk.map((email, i) => {
-      const info = recipientMeta[email] ?? {};
-      return firestorePost(env, "sentEmails", {
-        fields: {
-          email: { stringValue: email },
-          resendId: { stringValue: batchIds[i]?.id ?? "" },
-          purpose: { stringValue: purpose },
-          subject: { stringValue: batchPayload[i]?.subject ?? "" },
-          recipientName: { stringValue: info.name || "" },
-          sentAt: { timestampValue: now },
-        },
-      });
-    });
-
-    await Promise.allSettled(writes);
+  for (const batchChunk of chunk(items, BATCH_SIZE)) {
+    const { sentCount: chunkSent, lastId: chunkLastId } = await sendSesBatch(
+      batchChunk,
+      purpose,
+      env,
+      from,
+      uid,
+    );
+    sentCount += chunkSent;
+    lastId = chunkLastId ?? lastId;
 
     console.info(
-      `Batch sent: purpose=${purpose}, batch=${batchChunk.length}, sent=${sentCount}/${allRecipients.length}`,
+      `Batch sent: purpose=${purpose}, batch=${chunkSent}, sent=${sentCount}/${allRecipients.length}`,
     );
   }
+
+  deferAudit(
+    logEmailSend(env, {
+      purpose: purpose as EmailPurpose,
+      recipientCount: allRecipients.length,
+      recipients: allRecipients.join(", "),
+      subject: rawSubject,
+      uid,
+      messageId: lastId,
+    }),
+  );
 
   return { lastId, count: allRecipients.length };
 }
@@ -164,7 +241,7 @@ async function sendEmail(
     if (ccArr.length > 0 || bccFromService.length > 0 || reqCc.length > 0 || reqBcc.length > 0) {
       sendTarget = allRecipients;
       console.warn(`Bulk purpose "${req.purpose}" with cc/bcc delivered inline`);
-      const result = await sendEmailBatch(sendTarget, meta, service, enrichedData, env);
+      const result = await sendEmailBatch(sendTarget, meta, service, enrichedData, env, auth.uid);
       return {
         success: true,
         messageId: result.lastId,
@@ -189,7 +266,7 @@ async function sendEmail(
     };
   }
 
-  const result = await sendEmailBatch(allRecipients, meta, service, enrichedData, env);
+  const result = await sendEmailBatch(allRecipients, meta, service, enrichedData, env, auth.uid);
   console.info(
     `Email sent: purpose=${req.purpose}, recipients=${result.count}, emailId=${result.lastId}`,
   );
@@ -204,81 +281,78 @@ async function sendEmail(
 }
 
 async function handleWebhook(request: Request, env: Env): Promise<Response> {
-  const resend = new Resend(env.RESEND_API_KEY);
-
-  const payload = await request.text();
-
-  if (!env.RESEND_WEBHOOK_SECRET) {
-    console.warn("RESEND_WEBHOOK_SECRET not set, skipping signature verification");
-    return json({ error: "Webhook secret not configured" }, 500);
-  }
-
+  let payload: Record<string, unknown>;
   try {
-    const event = resend.webhooks.verify({
-      payload,
-      headers: {
-        id: request.headers.get("svix-id") || "",
-        timestamp: request.headers.get("svix-timestamp") || "",
-        signature: request.headers.get("svix-signature") || "",
-      },
-      webhookSecret: env.RESEND_WEBHOOK_SECRET,
-    });
-
-    console.info(`Resend webhook: type=${event.type}`, event.data);
-
-    await firestorePost(env, "emailEvents", {
-      fields: {
-        type: { stringValue: event.type },
-        data: { stringValue: JSON.stringify(event.data) },
-        receivedAt: { stringValue: new Date().toISOString() },
-      },
-    }).catch((err: unknown) => {
-      console.error("Failed to store webhook event:", err);
-    });
-
-    return json({ received: true }, 200);
-  } catch (err) {
-    console.error("Webhook verification failed:", err);
-    return json({ error: "Invalid signature" }, 400);
+    payload = (await request.json()) as Record<string, unknown>;
+  } catch {
+    return json({ error: "Invalid JSON" }, 400);
   }
+
+  const type = String(payload.Type || "Notification");
+  const messageId = (payload.MessageId as string) || "";
+
+  await firestorePost(env, "emailEvents", {
+    fields: {
+      type: { stringValue: type },
+      messageId: { stringValue: messageId },
+      data: { stringValue: JSON.stringify(payload) },
+      receivedAt: { stringValue: new Date().toISOString() },
+    },
+  }).catch((err: unknown) => {
+    console.error("Failed to store webhook event:", err);
+  });
+
+  if (type === "SubscriptionConfirmation" || type === "UnsubscribeConfirmation") {
+    console.info(
+      `SNS ${type} received for ${messageId || "unknown"}; confirm the subscription in the AWS console.`,
+    );
+  } else if (type === "Notification") {
+    console.info(`SNS email event received: messageId=${messageId}`);
+  }
+
+  return json({ received: true }, 200);
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const origin = request.headers.get("origin");
-    const url = new URL(request.url);
-
-    if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: corsHeaders(origin) });
-    }
-
-    if (request.method !== "POST") {
-      return json({ error: "Method not allowed. Use POST." }, 405, origin);
-    }
-
-    if (url.pathname === "/webhook") {
-      const limited = isRateLimited(request, 30, 60000);
-      if (limited) return limited;
-      return handleWebhook(request, env);
-    }
-
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     try {
-      const limited = isRateLimited(request, 20, 60000);
-      if (limited) return limited;
-      const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
-      if (auth instanceof Response) return auth;
+      const origin = request.headers.get("origin");
+      const url = new URL(request.url);
 
-      const body = (await request.json()) as Partial<CommsRequest>;
-      if (!body.purpose || !body.data) {
-        return badRequest("Missing required fields: purpose, data", origin);
+      if (request.method === "OPTIONS") {
+        return new Response(null, { status: 204, headers: corsHeaders(origin) });
       }
 
-      const result = await sendEmail(body as CommsRequest, env, auth);
-      return json(result, 200, origin);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Internal error";
-      console.error("Comms error:", request.method, request.url, err);
-      return json({ error: message }, 500, origin);
+      if (request.method !== "POST") {
+        return json({ error: "Method not allowed. Use POST." }, 405, origin);
+      }
+
+      if (url.pathname === "/webhook") {
+        const limited = isRateLimited(request, 30, 60000);
+        if (limited) return limited;
+        return handleWebhook(request, env);
+      }
+
+      try {
+        const limited = isRateLimited(request, 20, 60000);
+        if (limited) return limited;
+        const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
+        if (auth instanceof Response) return auth;
+
+        const body = (await request.json()) as Partial<CommsRequest>;
+        if (!body.purpose || !body.data) {
+          return badRequest("Missing required fields: purpose, data", origin);
+        }
+
+        const result = await sendEmail(body as CommsRequest, env, auth);
+        return json(result, 200, origin);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Internal error";
+        console.error("Comms error:", request.method, request.url, err);
+        return json({ error: message }, 500, origin);
+      }
+    } finally {
+      drainPending(ctx);
     }
   },
 
@@ -310,5 +384,7 @@ export default {
         message.retry();
       }
     }
+
+    await flushPending();
   },
 };
