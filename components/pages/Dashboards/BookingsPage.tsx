@@ -52,10 +52,31 @@ import { formatCurrency } from "@/types/currency";
 import {
   buildCalendarEvent,
   buildIcsDataUrl,
+  type CalendarEvent,
   type CalendarEventInput,
 } from "@/lib/bookingCalendar";
 
 const DAYS_OF_WEEK = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+function CalendarButtons({ cal, bookingId }: { cal: CalendarEvent | null; bookingId: string }) {
+  if (!cal) return null;
+  return (
+    <>
+      <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mr-1">
+        Add to calendar:
+      </span>
+      <a href={cal.googleCalUrl} target="_blank" rel="noopener noreferrer" title="Add to Google Calendar" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border rounded-full text-xs font-bold hover:border-orange-200 dark:hover:border-orange-900 transition-all">
+        <CalendarPlus size={14} className="text-blue-600" /> Google
+      </a>
+      <a href={cal.yahooCalUrl} target="_blank" rel="noopener noreferrer" title="Add to Yahoo Calendar" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border rounded-full text-xs font-bold hover:border-orange-200 dark:hover:border-orange-900 transition-all">
+        <CalendarSync size={14} className="text-violet-600" /> Yahoo
+      </a>
+      <a href={buildIcsDataUrl(cal.icsContent)} download={`agaseke-booking-${bookingId}.ics`} title="Download .ics (Apple Calendar / Outlook)" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border rounded-full text-xs font-bold hover:border-orange-200 dark:hover:border-orange-900 transition-all">
+        <Download size={14} className="text-orange-600" /> Apple / Outlook
+      </a>
+    </>
+  );
+}
 
 function SlotAdder({ onAdd }: { onAdd: (slot: { startTime: string; endTime: string }) => void }) {
   const [open, setOpen] = useState(false);
@@ -100,6 +121,7 @@ export default function BookingsPage() {
   });
   const [saving, setSaving] = useState(false);
   const [showAddSlot, setShowAddSlot] = useState(false);
+  const [cancelBookingId, setCancelBookingId] = useState<string | null>(null);
   const defaultCurrency = (creator?.currency as "RWF" | "USD") || "RWF";
   const [newSlot, setNewSlot] = useState({ startTime: "09:00", endTime: "10:00" });
 
@@ -229,6 +251,40 @@ export default function BookingsPage() {
     }
   };
 
+  const handleCancelBooking = async (bookingId: string) => {
+    const booking = bookings.find((b) => b.id === bookingId);
+    if (!booking) return;
+    setSaving(true);
+    try {
+      await updateDoc(doc(db, "bookingRequests", bookingId), {
+        status: "cancelled",
+        cancelledAt: serverTimestamp(),
+      });
+      await sendCommsEmail("booking_cancelled", {
+        bookerEmail: booking.bookerEmail,
+        bookerName: booking.bookerName,
+        creatorName: creator?.name,
+        creatorHandle: creator?.handle || "",
+        bookingDate: booking.preferredDate,
+        bookingTime: booking.preferredTime,
+        preferredType: booking.preferredType,
+        tierName: booking.tierName || "",
+        meetingLocation: booking.meetingLocation || "",
+      });
+      toast.success("Booking cancelled — the booker has been notified by email");
+    } catch (err) {
+      toast.error("Failed to cancel booking");
+      logError("payment", "BookingsPage: Failed to cancel booking", {
+        creatorHandle: creator?.handle,
+        creatorId: creator?.uid,
+        metadata: { bookingId, creatorName: creator?.name, bookerName: booking.bookerName, error: String(err) },
+      });
+    } finally {
+      setSaving(false);
+      setCancelBookingId(null);
+    }
+  };
+
   const toggleDay = (day: number) => setAvailability((p) => ({ ...p, daysOfWeek: p.daysOfWeek.includes(day) ? p.daysOfWeek.filter((d) => d !== day) : [...p.daysOfWeek, day].sort() }));
   const addTimeSlot = () => {
     if (!newSlot.startTime || !newSlot.endTime) return;
@@ -309,7 +365,18 @@ export default function BookingsPage() {
 
   const pendingBookings = bookings.filter((b) => b.status === "pending");
   const rejectedBookings = bookings.filter((b) => b.status === "declined");
-  const upcomingBookings = bookings.filter((b) => b.status === "accepted");
+  const cancelledBookings = bookings.filter((b) => b.status === "cancelled");
+  const acceptedBookings = bookings.filter((b) => b.status === "accepted");
+
+  const pad2 = (n: number) => String(n).padStart(2, "0");
+  const now = new Date();
+  const todayKey = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+  const upcomingBookings = acceptedBookings.filter(
+    (b) => !b.preferredDate || b.preferredDate >= todayKey
+  );
+  const pastBookings = acceptedBookings.filter(
+    (b) => b.preferredDate && b.preferredDate < todayKey
+  );
 
   const formatDate = (date: string | Timestamp | Date) => {
     if (!date) return "";
@@ -335,8 +402,8 @@ export default function BookingsPage() {
           <button onClick={() => setActiveTab("availability")} className={`px-6 py-3 rounded-lg font-black text-sm transition-all ${activeTab === "availability" ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:bg-muted"}`}>Availability</button>
           <button onClick={() => setActiveTab("tiers")} className={`px-6 py-3 rounded-lg font-black text-sm transition-all ${activeTab === "tiers" ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:bg-muted"}`}>Tiers</button>
           <button onClick={() => setActiveTab("rejected")} className={`px-6 py-3 rounded-lg font-black text-sm transition-all ${activeTab === "rejected" ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:bg-muted"}`}>
-            Rejected
-            {rejectedBookings.length > 0 && <span className="ml-2 bg-red-500 text-white px-2 py-0.5 rounded-full text-xs">{rejectedBookings.length}</span>}
+            Rejected / Cancelled
+            {(rejectedBookings.length + cancelledBookings.length) > 0 && <span className="ml-2 bg-red-500 text-white px-2 py-0.5 rounded-full text-xs">{rejectedBookings.length + cancelledBookings.length}</span>}
           </button>
         </div>
 
@@ -401,22 +468,39 @@ export default function BookingsPage() {
                           <div className="flex items-center gap-2 text-sm">{booking.preferredType === "online" ? <Video size={16} /> : <MapPin size={16} />}<span className="capitalize">{booking.preferredType}</span></div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-green-200 dark:border-green-800">
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mr-1">
-                            Add to calendar:
-                          </span>
-                          {cal && (
-                            <>
-                              <a href={cal.googleCalUrl} target="_blank" rel="noopener noreferrer" title="Add to Google Calendar" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border rounded-full text-xs font-bold hover:border-orange-200 dark:hover:border-orange-900 transition-all">
-                                <CalendarPlus size={14} className="text-blue-600" /> Google
-                              </a>
-                              <a href={cal.yahooCalUrl} target="_blank" rel="noopener noreferrer" title="Add to Yahoo Calendar" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border rounded-full text-xs font-bold hover:border-orange-200 dark:hover:border-orange-900 transition-all">
-                                <CalendarSync size={14} className="text-violet-600" /> Yahoo
-                              </a>
-                              <a href={buildIcsDataUrl(cal.icsContent)} download={`agaseke-booking-${booking.id}.ics`} title="Download .ics (Apple Calendar / Outlook)" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border rounded-full text-xs font-bold hover:border-orange-200 dark:hover:border-orange-900 transition-all">
-                                <Download size={14} className="text-orange-600" /> Apple / Outlook
-                              </a>
-                            </>
-                          )}
+                          <CalendarButtons cal={cal} bookingId={booking.id} />
+                          <button
+                            onClick={() => setCancelBookingId(booking.id)}
+                            className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 border border-red-100 rounded-full text-xs font-bold hover:bg-red-100 transition-all"
+                          >
+                            <X size={14} /> Cancel Booking
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+            {pastBookings.length > 0 && (
+              <section className="bg-card border border-border rounded-lg p-6">
+                <h2 className="text-lg font-black uppercase mb-4 flex items-center gap-2"><CalendarDays className="text-muted-foreground" size={20} /> Past Meetings</h2>
+                <div className="space-y-4">
+                  {pastBookings.map((booking) => {
+                    const cal = buildCalendarEvent(toCalendarInput(booking));
+                    return (
+                      <div key={booking.id} className="p-4 bg-muted rounded-lg border border-border">
+                        <div className="flex justify-between items-start">
+                          <div><p className="font-black text-lg">{booking.bookerName}</p><p className="text-sm text-muted-foreground">{booking.bookerEmail}</p></div>
+                          <span className="px-3 py-1 bg-muted-foreground/10 text-muted-foreground text-xs font-bold rounded-full">Past</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4 mt-4">
+                          <div className="flex items-center gap-2 text-sm"><CalendarDays size={16} className="text-muted-foreground" /><span>{formatDate(booking.preferredDate)}</span></div>
+                          <div className="flex items-center gap-2 text-sm"><Clock size={16} className="text-muted-foreground" /><span>{booking.preferredTime}</span></div>
+                          <div className="flex items-center gap-2 text-sm">{booking.preferredType === "online" ? <Video size={16} /> : <MapPin size={16} />}<span className="capitalize">{booking.preferredType}</span></div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-border">
+                          <CalendarButtons cal={cal} bookingId={booking.id} />
                         </div>
                       </div>
                     );
@@ -430,22 +514,43 @@ export default function BookingsPage() {
 
         {activeTab === "rejected" && (
           <div className="space-y-6">
-            {rejectedBookings.length > 0 ? rejectedBookings.map((booking) => (
-              <div key={booking.id} className="bg-card border border-red-100 rounded-lg p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1"><p className="font-black text-lg">{booking.bookerName}</p><span className="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded uppercase">Rejected</span></div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1"><span className="flex items-center gap-1"><Mail size={14} />{booking.bookerEmail}</span></div>
+            {rejectedBookings.length === 0 && cancelledBookings.length === 0 ? (
+              <div className="bg-card border border-dashed border-border rounded-3xl p-16 text-center"><p className="text-muted-foreground text-lg font-medium">No rejected or cancelled bookings</p></div>
+            ) : (
+              <>
+                {rejectedBookings.map((booking) => (
+                  <div key={booking.id} className="bg-card border border-red-100 rounded-lg p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1"><p className="font-black text-lg">{booking.bookerName}</p><span className="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded uppercase">Rejected</span></div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1"><span className="flex items-center gap-1"><Mail size={14} />{booking.bookerEmail}</span></div>
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center gap-2 text-sm font-bold text-foreground mb-1"><Calendar size={14} />{booking.preferredDate}</div>
+                        <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground"><Clock size={14} />{booking.preferredTime}</div>
+                      </div>
+                    </div>
+                    <div className="bg-muted p-4 rounded-lg text-sm text-muted-foreground mb-4"><p className="font-bold mb-1">Reason:</p><p>{decryptedReasons[booking.id] || (!isEncrypted(booking.reason || "") ? booking.reason : null) || "No reason provided."}</p></div>
+                    {booking.responseNote && <div className="bg-red-50 p-3 rounded-lg text-sm text-red-700"><p className="font-bold mb-1">Note:</p><p>{booking.responseNote}</p></div>}
                   </div>
-                  <div className="text-right">
-                    <div className="flex items-center gap-2 text-sm font-bold text-foreground mb-1"><Calendar size={14} />{booking.preferredDate}</div>
-                    <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground"><Clock size={14} />{booking.preferredTime}</div>
+                ))}
+                {cancelledBookings.map((booking) => (
+                  <div key={booking.id} className="bg-card border border-red-100 rounded-lg p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1"><p className="font-black text-lg">{booking.bookerName}</p><span className="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-0.5 rounded uppercase">Cancelled</span></div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1"><span className="flex items-center gap-1"><Mail size={14} />{booking.bookerEmail}</span></div>
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center gap-2 text-sm font-bold text-foreground mb-1"><Calendar size={14} />{booking.preferredDate}</div>
+                        <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground"><Clock size={14} />{booking.preferredTime}</div>
+                      </div>
+                    </div>
+                    <div className="bg-muted p-4 rounded-lg text-sm text-muted-foreground"><p className="font-bold mb-1">Cancellation:</p><p>The booker was notified by email. If payment was made, a refund will be processed.</p></div>
                   </div>
-                </div>
-                <div className="bg-muted p-4 rounded-lg text-sm text-muted-foreground mb-4"><p className="font-bold mb-1">Reason:</p><p>{decryptedReasons[booking.id] || (!isEncrypted(booking.reason || "") ? booking.reason : null) || "No reason provided."}</p></div>
-                {booking.responseNote && <div className="bg-red-50 p-3 rounded-lg text-sm text-red-700"><p className="font-bold mb-1">Note:</p><p>{booking.responseNote}</p></div>}
-              </div>
-            )) : <div className="bg-card border border-dashed border-border rounded-3xl p-16 text-center"><p className="text-muted-foreground text-lg font-medium">No rejected bookings</p></div>}
+                ))}
+              </>
+            )}
           </div>
         )}
 
@@ -642,6 +747,19 @@ export default function BookingsPage() {
         title="Clear Availability?"
         message="This will hide the booking option on your public page. You can set it up again later."
         confirmText="Clear"
+        loading={saving}
+        variant="danger"
+      />
+
+      <ConfirmModal
+        isOpen={cancelBookingId !== null}
+        onClose={() => setCancelBookingId(null)}
+        onConfirm={() => {
+          if (cancelBookingId) return handleCancelBooking(cancelBookingId);
+        }}
+        title="Cancel this booking?"
+        message="The confirmed meeting will be cancelled and the booker will be notified by email. If they already paid, a refund will be processed."
+        confirmText="Cancel Booking"
         loading={saving}
         variant="danger"
       />

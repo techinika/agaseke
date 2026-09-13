@@ -1,7 +1,7 @@
 import type { EmailService, EmailPurpose } from "../types";
 
 import { welcomeUser, welcomeCreator, profileLive } from "./welcome";
-import { bookingRequest, bookingResponse } from "./booking";
+import { bookingRequest, bookingResponse, bookingCancelled } from "./booking";
 import { gatheringCreated, gatheringRsvp, gatheringCheckin, gatheringDeclined, gatheringUndo } from "./gathering";
 import { storeOrder, storeStatus } from "./store";
 import { messageNew, messageDigest } from "./message";
@@ -17,6 +17,7 @@ const registry: Partial<Record<EmailPurpose, EmailService>> = {
   profile_live: profileLive,
   booking_request: bookingRequest,
   booking_response: bookingResponse,
+  booking_cancelled: bookingCancelled,
   gathering_created: gatheringCreated,
   gathering_rsvp: gatheringRsvp,
   gathering_checkin: gatheringCheckin,

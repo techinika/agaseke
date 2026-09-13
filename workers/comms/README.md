@@ -27,6 +27,7 @@ Response: { success, messageId, purpose, recipientCount }
 | `profile_live`       | Profile published          | Creator       | Your creator profile is now live!              |
 | `booking_request`    | Fan requests booking       | Creator       | New booking request from {name}                |
 | `booking_response`   | Creator accepts/declines   | Booker        | Your booking with {name} is confirmed/Update...|
+| `booking_cancelled`  | Creator cancels meeting     | Booker        | Your booking with {name} has been cancelled    |
 | `gathering_created`  | Creator creates event      | All supporters| New gathering: {title} by {name}               |
 | `gathering_rsvp`     | Supporter RSVPs            | Creator       | New RSVP: {name} for "{title}"                 |
 | `gathering_checkin`  | Creator checks in attendee | Supporter     | Checked In: {title}                            |

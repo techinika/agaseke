@@ -6,6 +6,7 @@ export type EmailPurpose =
   | "profile_live"
   | "booking_request"
   | "booking_response"
+  | "booking_cancelled"
   | "gathering_created"
   | "gathering_rsvp"
   | "gathering_checkin"

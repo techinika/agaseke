@@ -29,6 +29,35 @@ export const bookingRequest: EmailService = {
   },
 };
 
+export const bookingCancelled: EmailService = {
+  purpose: "booking_cancelled",
+  async resolveRecipients(data) {
+    return { to: data.bookerEmail as string };
+  },
+  buildSubject(data) {
+    return `Your booking with ${data.creatorName as string} has been cancelled`;
+  },
+  async buildTemplateData(data) {
+    return {
+      headerColor: "#dc2626",
+      headerTitle: "Booking Cancelled",
+      title: `Your booking with ${data.creatorName as string} has been cancelled`,
+      body: `<p>We're sorry, but your booking with <strong>${data.creatorName as string}</strong> has been cancelled.</p>
+             <table style="width:100%;border-collapse:collapse;margin:8px 0;">
+               <tr><td style="padding:6px 0;color:#888;">Creator</td><td style="padding:6px 0;font-weight:600;">${data.creatorName as string}</td></tr>
+               <tr><td style="padding:6px 0;color:#888;">Date</td><td style="padding:6px 0;">${data.bookingDate as string}</td></tr>
+               <tr><td style="padding:6px 0;color:#888;">Time</td><td style="padding:6px 0;">${data.bookingTime as string}</td></tr>
+               <tr><td style="padding:6px 0;color:#888;">Type</td><td style="padding:6px 0;text-transform:capitalize;">${data.preferredType as string}</td></tr>
+               ${data.meetingLocation ? `<tr><td style="padding:6px 0;color:#888;">Location</td><td style="padding:6px 0;">${data.meetingLocation as string}</td></tr>` : ""}
+               ${data.tierName ? `<tr><td style="padding:6px 0;color:#888;">Tier</td><td style="padding:6px 0;">${data.tierName as string}</td></tr>` : ""}
+             </table>
+             <p>If you already paid for this booking, a refund will be processed shortly. You can book another time below.</p>`,
+      ctaText: "Book Again",
+      ctaUrl: `${data.appUrl}/${data.creatorHandle as string}/booking`,
+    };
+  },
+};
+
 export const bookingResponse: EmailService = {
   purpose: "booking_response",
   async resolveRecipients(data) {

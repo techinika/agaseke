@@ -677,6 +677,11 @@ For issues or feature requests, please open an issue on GitHub.
 
 ## Recent Updates
 
+### Booking Cancellation & Past Meetings (September 2026)
+
+- **Cancel a confirmed booking**: creators can cancel any upcoming accepted meeting from the Bookings dashboard. The booking becomes `cancelled` and the **booker is emailed automatically** (`booking_cancelled` purpose) with the meeting details and a "Book Again" link. Cancelled bookings are listed under the "Rejected / Cancelled" tab.
+- **Add-to-calendar always available**: confirmed meetings are now split into **Upcoming** and **Past Meetings**, and both keep the Google / Yahoo / Apple / Outlook add-to-calendar buttons — so you can still add a meeting to your calendar even after its date has passed.
+
 ### Booking Reminders & Calendar Fix (September 2026)
 
 - **Meeting reminders**: a daily Cloudflare Worker cron (07:00 UTC / 9:00 AM Kigali) finds every `accepted` booking scheduled for **tomorrow** and emails **both** the booker and the creator, and creates a `booking_reminder` in-app notification for each. A `reminderSent` flag on the booking document prevents duplicates if the cron replays. Requires deploying the `comms` worker with the new cron trigger.
