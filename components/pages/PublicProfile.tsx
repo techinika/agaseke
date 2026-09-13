@@ -117,13 +117,18 @@ export default function PublicProfile({
   const [isSupporter, setIsSupporter] = useState(false);
   const [publicPosts, setPublicPosts] = useState<any[]>(
     initialPublicPosts?.length
-      ? initialPublicPosts.map((p) => ({
-          ...p,
-          createdAt:
-            typeof p.createdAt === "string"
-              ? Timestamp.fromMillis(new Date(p.createdAt).getTime())
-              : p.createdAt,
-        }))
+      ? initialPublicPosts.map((p) => {
+          const toTs = (v: any) =>
+            typeof v === "string"
+              ? Timestamp.fromMillis(new Date(v).getTime())
+              : v;
+          return {
+            ...p,
+            createdAt: toTs(p.createdAt),
+            updatedAt: toTs(p.updatedAt),
+            publishedAt: toTs(p.publishedAt),
+          };
+        })
       : [],
   );
   const [privatePosts, setPrivatePosts] = useState<any[]>([]);

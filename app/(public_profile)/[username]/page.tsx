@@ -98,6 +98,8 @@ async function getPublicProfileData(username: string) {
           id: d.id,
           ...post,
           createdAt: post.createdAt?.toDate?.()?.toISOString() ?? null,
+          updatedAt: post.updatedAt?.toDate?.()?.toISOString() ?? null,
+          publishedAt: post.publishedAt?.toDate?.()?.toISOString() ?? null,
         };
       }).filter((p: any) => p.status !== "draft")
     : [];
