@@ -274,7 +274,9 @@ export default function PostDetailPage({ username, postId }: { username: string;
               </div>
             </div>
 
-            <h1 className="text-2xl font-bold text-foreground mb-3">{post.title}</h1>
+            {post.title && (
+              <h1 className="text-2xl font-bold text-foreground mb-3">{post.title}</h1>
+            )}
 
             {post.type === "article" ? (
               <div className="mb-4">

@@ -677,6 +677,10 @@ For issues or feature requests, please open an issue on GitHub.
 
 ## Recent Updates
 
+### Untitled Posts Fix (September 2026)
+
+- Posts without a title no longer render a title heading or fallback "Untitled" text anywhere on the reader side — the explore feed, public community tab, and post detail pages hide the title space entirely when a post has no title.
+
 ### Booking Cancellation & Past Meetings (September 2026)
 
 - **Cancel a confirmed booking**: creators can cancel any upcoming accepted meeting from the Bookings dashboard. The booking becomes `cancelled` and the **booker is emailed automatically** (`booking_cancelled` purpose) with the meeting details and a "Book Again" link. Cancelled bookings are listed under the "Rejected / Cancelled" tab.

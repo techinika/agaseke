@@ -372,11 +372,13 @@ export default function ExplorePostsPage() {
                   })()}
 
                   {/* Title */}
-                  <Link href={itemHref(item)} className="block group">
-                    <h4 className="font-bold text-lg mb-2 group-hover:text-orange-600 transition-colors">
-                      {item.title || "Untitled"}
-                    </h4>
-                  </Link>
+                  {item.title && (
+                    <Link href={itemHref(item)} className="block group">
+                      <h4 className="font-bold text-lg mb-2 group-hover:text-orange-600 transition-colors">
+                        {item.title}
+                      </h4>
+                    </Link>
+                  )}
 
                   {/* Description */}
                   {item.description || item.content ? (

@@ -399,9 +399,11 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
           )}
 
           {/* Title */}
-          <h1 className="text-2xl md:text-3xl font-bold mb-4">
-            {post.title || "Untitled"}
-          </h1>
+          {post.title && (
+            <h1 className="text-2xl md:text-3xl font-bold mb-4">
+              {post.title}
+            </h1>
+          )}
 
           {/* Article content */}
           {post.type === "article" ? (

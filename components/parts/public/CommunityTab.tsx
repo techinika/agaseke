@@ -343,9 +343,11 @@ export const CommunityTab = ({
               );
             })()}
 
-            <Link href={`/${username}/community/${item.id}`} className="block group">
-              <h4 className="font-bold text-lg mb-2 group-hover:text-orange-600 transition-colors">{item.title}</h4>
-            </Link>
+            {item.title && (
+              <Link href={`/${username}/community/${item.id}`} className="block group">
+                <h4 className="font-bold text-lg mb-2 group-hover:text-orange-600 transition-colors">{item.title}</h4>
+              </Link>
+            )}
             {item.description || item.content ? (
               <div className="text-muted-foreground text-sm whitespace-pre-wrap leading-relaxed">
                 {(item.description || item.content).length > 200 &&
