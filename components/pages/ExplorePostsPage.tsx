@@ -77,7 +77,7 @@ export default function ExplorePostsPage() {
       let q = query(
         postsRef,
         where("isPrivate", "==", false),
-        orderBy("publishedAt", "desc"),
+        orderBy("createdAt", "desc"),
         limit(ITEMS_PER_PAGE),
       );
       if (cursor) {
@@ -97,7 +97,12 @@ export default function ExplorePostsPage() {
           authorHandle: creator?.handle || creatorId,
           authorPhoto: creator?.photoURL || null,
         };
-      });
+      })
+      .sort(
+        (a: any, b: any) =>
+          (b.publishedAt?.toMillis?.() ?? b.createdAt?.toMillis?.() ?? 0) -
+          (a.publishedAt?.toMillis?.() ?? a.createdAt?.toMillis?.() ?? 0),
+      );
       if (!cursor) {
         setPosts(fetched);
       } else {

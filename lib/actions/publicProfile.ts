@@ -61,8 +61,8 @@ export async function getCreatorPosts(creatorUid: string, creatorHandle: string,
       .collection("creatorContent")
       .where("creatorId", "in", [creatorHandle, creatorUid])
       .where("isPrivate", "==", false)
-      .orderBy("publishedAt", "desc")
-      .limit(limitCount)
+      .orderBy("createdAt", "desc")
+      .limit(100)
       .get();
     return snap.docs
       .map((d) => ({
@@ -71,7 +71,12 @@ export async function getCreatorPosts(creatorUid: string, creatorHandle: string,
         createdAt: d.data().createdAt?.toDate?.()?.toISOString() || null,
         publishedAt: d.data().publishedAt?.toDate?.()?.toISOString() || null,
       }))
-      .filter((p: any) => p.status !== "draft");
+      .filter((p: any) => p.status !== "draft")
+      .sort(
+        (a: any, b: any) =>
+          Date.parse(b.publishedAt || b.createdAt) - Date.parse(a.publishedAt || a.createdAt),
+      )
+      .slice(0, limitCount);
   } catch (error) {
     console.error("Server action error (getCreatorPosts):", error);
     return [];

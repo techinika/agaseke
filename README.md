@@ -684,8 +684,8 @@ For issues or feature requests, please open an issue on GitHub.
 ### Article Update Button & Published Date Sorting (September 2026)
 
 - Editing an already-published article now shows an **Update** button (instead of Publish) and only refreshes `updatedAt` — `publishedAt` and `createdAt` are never overwritten.
-- `publishedAt` is stamped when content is first published (articles and posts) and all reader-side feeds/community tabs now sort by `publishedAt` (falling back to `createdAt` for legacy content). Article reader shows the publish date.
-- A one-off migration exists at `scripts/backfill-publishedAt.cjs` to stamp `publishedAt` on existing non-draft content: `node scripts/backfill-publishedAt.cjs`.
+- `publishedAt` is stamped when content is first published (articles and posts). All reader-side feeds sort by `publishedAt`, falling back to `createdAt` when the field is missing (legacy content stays visible; the server query stays on `createdAt` so nothing drops off). Article reader shows the publish date.
+- An optional migration exists at `scripts/backfill-publishedAt.cjs` to stamp `publishedAt` on existing non-draft content: `node scripts/backfill-publishedAt.cjs`.
 
 ### Untitled Posts Fix (September 2026)
 
