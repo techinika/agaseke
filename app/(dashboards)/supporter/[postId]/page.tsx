@@ -1,4 +1,6 @@
 import AuthGuard from "@/auth/AuthGuard";
+import Navbar from "@/components/parts/Navigation";
+import Footer from "@/components/parts/Footer";
 import SupporterPostDetail from "@/components/pages/Dashboards/supporter/SupporterPostDetail";
 import ArticleReaderPage from "@/components/pages/public/ArticleReaderPage";
 import {
@@ -26,10 +28,14 @@ export default async function Page({
 
     return (
       <AuthGuard>
+        <Navbar />
         <ArticleReaderPage
           article={serializeReaderArticle(post)}
           creator={serializeReaderCreator(creator, creatorHandle)}
+          backHref="/supporter"
+          backLabel="Back to My Feed"
         />
+        <Footer />
       </AuthGuard>
     );
   }

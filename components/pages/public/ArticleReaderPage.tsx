@@ -76,10 +76,14 @@ export default function ArticleReaderPage({
   article,
   creator,
   moreContent = [],
+  backHref,
+  backLabel,
 }: {
   article: ArticleReaderData;
   creator: CreatorReaderData;
   moreContent?: MoreCreatorItem[];
+  backHref?: string;
+  backLabel?: string;
 }) {
   const { user: currentUser, profile } = useAuth();
   const [supportOpen, setSupportOpen] = useState(false);
@@ -266,11 +270,11 @@ export default function ArticleReaderPage({
       <div className="max-w-3xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-8">
           <Link
-            href="/explore/posts"
+            href={backHref ?? "/explore/posts"}
             className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition inline-flex"
           >
             <ArrowLeft size={20} />
-            <span className="font-medium">Back to Explore</span>
+            <span className="font-medium">{backLabel ?? "Back to Explore"}</span>
           </Link>
           <button
             onClick={handleShare}

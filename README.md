@@ -677,6 +677,10 @@ For issues or feature requests, please open an issue on GitHub.
 
 ## Recent Updates
 
+### Supporter Article Read Page (September 2026)
+
+- Reading an article from the supporter feed (`/supporter/[postId]`) now renders with the standard nav header and footer, and the back link returns to `/supporter` instead of the explore posts page.
+
 ### Article Update Button & Published Date Sorting (September 2026)
 
 - Editing an already-published article now shows an **Update** button (instead of Publish) and only refreshes `updatedAt` — `publishedAt` and `createdAt` are never overwritten.
