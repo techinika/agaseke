@@ -81,14 +81,35 @@ export async function fetchSupporters(
 
     const emails: string[] = [];
     const names: Record<string, string> = {};
+    const uids = new Set<string>();
+
     for (const doc of docs) {
-      const email = doc.fields?.supporterEmail?.stringValue;
+      const fields = doc.fields || {};
+      const legacyEmail = fields.supporterEmail?.stringValue;
+      if (legacyEmail) {
+        if (!emails.includes(legacyEmail)) emails.push(legacyEmail);
+        const rawName = fields.supporterName?.stringValue;
+        names[legacyEmail] = rawName || legacyEmail.split("@")[0] || "there";
+        continue;
+      }
+      const uid = fields.supporterId?.stringValue;
+      if (uid && uid !== "anonymous") uids.add(uid);
+    }
+
+    // supportedCreators stores the supporter's auth UID, so resolve each
+    // supporter's email + display name from their profile document.
+    for (const uid of uids) {
+      const profile = await firestoreFetch(env, `profiles/${uid}`);
+      if (!profile?.fields) continue;
+      const fields = profile.fields as Record<string, { stringValue?: string }>;
+      const email = fields.email?.stringValue;
       if (email) {
-        emails.push(email);
-        const rawName = doc.fields?.supporterName?.stringValue;
+        if (!emails.includes(email)) emails.push(email);
+        const rawName = fields.displayName?.stringValue;
         names[email] = rawName || email.split("@")[0] || "there";
       }
     }
+
     return { emails, names };
   } catch (err) {
     console.error("fetchSupporters error:", err);

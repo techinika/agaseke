@@ -25,6 +25,11 @@
 	"observability": {
 		"enabled": true,
 	},
+	"triggers": {
+		"crons": [
+			"0 7 * * *"
+		]
+	},
 	"vars": {
 		"FIREBASE_PROJECT_ID": "agaseke4creators",
 		"FROM_EMAIL": "no-reply@comms.agaseke.me",

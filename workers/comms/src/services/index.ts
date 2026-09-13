@@ -11,7 +11,7 @@ import { contentNew } from "./content";
 import { verificationRequest, verificationFeedback } from "./verification";
 import { broadcast } from "./broadcast";
 
-const registry: Record<EmailPurpose, EmailService> = {
+const registry: Partial<Record<EmailPurpose, EmailService>> = {
   welcome_user: welcomeUser,
   welcome_creator: welcomeCreator,
   profile_live: profileLive,

@@ -95,3 +95,32 @@ export async function firestorePost(
 
   return res.json() as Promise<Record<string, unknown>>;
 }
+
+export async function firestorePatch(
+  env: Env,
+  path: string,
+  fields: Record<string, unknown>
+): Promise<Record<string, unknown> | null> {
+  const token = await getFirestoreToken(env);
+  if (!token) return null;
+
+  const fieldPaths = Object.keys(fields)
+    .map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`)
+    .join("&");
+  const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/${path}?${fieldPaths}`;
+
+  const res = await auditedFetch(env, "PATCH", path, url, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ fields }),
+  });
+  if (!res.ok) {
+    console.error("Firestore PATCH error:", res.status, await res.text());
+    return null;
+  }
+
+  return res.json() as Promise<Record<string, unknown>>;
+}

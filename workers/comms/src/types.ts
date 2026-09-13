@@ -18,6 +18,7 @@ export type EmailPurpose =
   | "support_received"
   | "payout_processed"
   | "content_new"
+  | "booking_reminder"
   | "verification_request"
   | "verification_feedback"
   | "broadcast";

@@ -24,9 +24,17 @@ const fmtUTC = (d: Date) =>
 const escIcs = (s = "") =>
   s.replace(/\\/g, "\\\\").replace(/\r?\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
 
-export function buildCalendarEvent(input: CalendarEventInput) {
+export interface CalendarEvent {
+  googleCalUrl: string;
+  yahooCalUrl: string;
+  icsContent: string;
+  seconds: number;
+}
+
+export function buildCalendarEvent(input: CalendarEventInput): CalendarEvent | null {
   const durationMinutes = input.durationMinutes || 60;
   const start = new Date(`${input.startDate}T${input.startTime}`);
+  if (Number.isNaN(start.getTime())) return null;
   const end = new Date(start.getTime() + durationMinutes * 60000);
   const timezone =
     (typeof Intl !== "undefined" &&

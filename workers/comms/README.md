@@ -42,6 +42,11 @@ Response: { success, messageId, purpose, recipientCount }
 | `verification_request`| KYC submitted             | Admin         | New KYC Verification Request: {name}           |
 | `verification_feedback`| Verification reviewed     | Creator       | Agaseke Verification Successful/Action Required|
 | `broadcast`          | Admin broadcast            | Bulk list     | Admin-provided subject                         |
+| `booking_reminder`   | Daily cron (9 AM Kigali)   | Booker+Creator| Reminder: meeting tomorrow                     |
+
+> **`booking_reminder`:** runs as a Cloudflare Cron Trigger at 07:00 UTC daily. For each `accepted` `bookingRequests` doc whose `preferredDate` is tomorrow (Africa/Kigali) and where `reminderSent` is not yet `true`, the worker emails the booker (from `bookerEmail`) and the creator (resolved from `profiles/{creatorUid}`), creates a `booking_reminder` in-app notification for both, and patches the doc with `reminderSent: true`. Emails are rendered directly (not through the service registry).
+
+> **`content_new` recipients:** the worker reads every `supportedCreators` doc for the creator, resolves each supporter's `supporterId` (UID) against its `profiles/{uid}` document (`email`/`displayName`), and sends to those emails. Anonymous supporters (no UID) can't be reached. The email button links to the creator's **public community page** (`/{handle}/community`).
 
 ## Webhook
 

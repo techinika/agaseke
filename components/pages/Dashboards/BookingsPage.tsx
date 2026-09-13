@@ -213,9 +213,9 @@ export default function BookingsPage() {
             preferredType: booking.preferredType,
             tierName: booking.tierName || "",
             creatorHandle: creator?.handle || "",
-            googleCalUrl: cal.googleCalUrl,
-            yahooCalUrl: cal.yahooCalUrl,
-            icsUrl: buildIcsDataUrl(cal.icsContent),
+            googleCalUrl: cal?.googleCalUrl || "",
+            yahooCalUrl: cal?.yahooCalUrl || "",
+            icsUrl: cal ? buildIcsDataUrl(cal.icsContent) : "",
           });
       }
       toast.success(`Booking ${status}`);
@@ -404,15 +404,19 @@ export default function BookingsPage() {
                           <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mr-1">
                             Add to calendar:
                           </span>
-                          <a href={cal.googleCalUrl} target="_blank" rel="noopener noreferrer" title="Add to Google Calendar" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border rounded-full text-xs font-bold hover:border-orange-200 dark:hover:border-orange-900 transition-all">
-                            <CalendarPlus size={14} className="text-blue-600" /> Google
-                          </a>
-                          <a href={cal.yahooCalUrl} target="_blank" rel="noopener noreferrer" title="Add to Yahoo Calendar" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border rounded-full text-xs font-bold hover:border-orange-200 dark:hover:border-orange-900 transition-all">
-                            <CalendarSync size={14} className="text-violet-600" /> Yahoo
-                          </a>
-                          <a href={buildIcsDataUrl(cal.icsContent)} download={`agaseke-booking-${booking.id}.ics`} title="Download .ics (Apple Calendar / Outlook)" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border rounded-full text-xs font-bold hover:border-orange-200 dark:hover:border-orange-900 transition-all">
-                            <Download size={14} className="text-orange-600" /> Apple / Outlook
-                          </a>
+                          {cal && (
+                            <>
+                              <a href={cal.googleCalUrl} target="_blank" rel="noopener noreferrer" title="Add to Google Calendar" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border rounded-full text-xs font-bold hover:border-orange-200 dark:hover:border-orange-900 transition-all">
+                                <CalendarPlus size={14} className="text-blue-600" /> Google
+                              </a>
+                              <a href={cal.yahooCalUrl} target="_blank" rel="noopener noreferrer" title="Add to Yahoo Calendar" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border rounded-full text-xs font-bold hover:border-orange-200 dark:hover:border-orange-900 transition-all">
+                                <CalendarSync size={14} className="text-violet-600" /> Yahoo
+                              </a>
+                              <a href={buildIcsDataUrl(cal.icsContent)} download={`agaseke-booking-${booking.id}.ics`} title="Download .ics (Apple Calendar / Outlook)" className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border rounded-full text-xs font-bold hover:border-orange-200 dark:hover:border-orange-900 transition-all">
+                                <Download size={14} className="text-orange-600" /> Apple / Outlook
+                              </a>
+                            </>
+                          )}
                         </div>
                       </div>
                     );

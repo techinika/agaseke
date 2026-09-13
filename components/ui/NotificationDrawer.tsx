@@ -60,6 +60,7 @@ const iconMap: Record<NotificationType, React.ReactNode> = {
   withdrawal: <Wallet size={18} className="text-orange-500" />,
   new_like: <Heart size={18} className="text-red-500" />,
   new_comment: <MessageSquare size={18} className="text-blue-500" />,
+  booking_reminder: <CalendarClock size={18} className="text-indigo-500" />,
 };
 
 const getIcon = (type: NotificationType): React.ReactNode => {

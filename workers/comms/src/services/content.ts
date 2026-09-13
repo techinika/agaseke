@@ -23,8 +23,8 @@ export const contentNew: EmailService = {
       title: `${data.creatorName as string} just posted ${isPrivate ? "exclusive" : "new"} content!`,
       body: `<p>${preview}${(data.contentDescription as string)?.length > 300 ? "..." : ""}</p>
              ${isPrivate ? `<p style="color:#8b5cf6;font-weight:600;">🔒 This is supporters-only content</p>` : ""}`,
-      ctaText: "View Content",
-      ctaUrl: `${data.appUrl}/${data.creatorHandle as string}/community/${data.contentId as string}`,
+      ctaText: "Open Community Page",
+      ctaUrl: `${data.appUrl}/${data.creatorHandle as string}/community`,
     };
   },
 };

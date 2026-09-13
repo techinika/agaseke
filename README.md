@@ -677,6 +677,17 @@ For issues or feature requests, please open an issue on GitHub.
 
 ## Recent Updates
 
+### Booking Reminders & Calendar Fix (September 2026)
+
+- **Meeting reminders**: a daily Cloudflare Worker cron (07:00 UTC / 9:00 AM Kigali) finds every `accepted` booking scheduled for **tomorrow** and emails **both** the booker and the creator, and creates a `booking_reminder` in-app notification for each. A `reminderSent` flag on the booking document prevents duplicates if the cron replays. Requires deploying the `comms` worker with the new cron trigger.
+- **Fixed `RangeError: Invalid time value` on the creator bookings page**: bookings created before a meeting time was stored reliably made `buildCalendarEvent` produce an invalid date (`toISOString()` threw). It now returns `null` for malformed times, and the Add-to-calendar buttons / booking-response emails only attach calendar links when the start time is valid.
+
+### Supporter Content Emails (September 2026)
+
+- Every new post or article from a creator (creator dashboard **or** the supporter page post form) now emails **all of that creator's supporters** with a button that opens the creator's **public community page** (`/{handle}/community`).
+- **Fixed a bug where these emails never sent:** the comms worker previously looked for a `supporterEmail` field on `supportedCreators` docs, but the support worker only stores the supporter's auth UID there — so recipient resolution always returned zero. The worker now resolves each `supporterId` against its `profiles/{uid}` doc to get the supporter's `email`/`displayName`. Requires redeploying the `comms` worker.
+- The email button was also changed from a post-specific deep link (`/community/[contentId]`) to the public community page.
+
 ### WhatsApp Channel & Supporter Feed Scroll (September 2026)
 
 - **WhatsApp updates channel**: Agaseke now runs a WhatsApp channel (`https://whatsapp.com/channel/0029Vb9AemqFy72CiwMyQf06`) to announce new updates, features, and creator highlights. The link is promoted on the Help Center (new card), Changelog header banner, site footer (icon + "Community" links group), and the contact sections of the Terms, Privacy, Content Guidelines, and Payout Policy pages.

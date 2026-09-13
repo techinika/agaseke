@@ -20,7 +20,8 @@ export type NotificationType =
   | "new_transaction"
   | "withdrawal"
   | "new_like"
-  | "new_comment";
+  | "new_comment"
+  | "booking_reminder";
 
 export interface Notification {
   id: string;
@@ -73,6 +74,7 @@ export function getNotificationIconKey(type: NotificationType): string {
     withdrawal: "wallet",
     new_like: "heart",
     new_comment: "messageSquare",
+    booking_reminder: "calendarClock",
   };
   return iconMap[type] || "bell";
 }

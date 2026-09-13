@@ -8,7 +8,8 @@ import { checkRateLimit } from "./rateLimit";
 import { sendSesEmail } from "./ses";
 import { deferAudit, drainPending, flushPending } from "./audit";
 import { logEmailSend } from "./logger";
-import type { MessageBatch, ExecutionContext } from "@cloudflare/workers-types";
+import type { MessageBatch, ExecutionContext, ScheduledController } from "@cloudflare/workers-types";
+import { sendBookingReminders } from "./services/bookingReminder";
 
 function getClientIp(request: Request): string {
   return request.headers.get("CF-Connecting-IP") ||
@@ -391,5 +392,15 @@ export default {
     }
 
     await flushPending();
+  },
+
+  async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    try {
+      await sendBookingReminders(env);
+    } catch (err) {
+      console.error("Booking reminder cron error:", err);
+    } finally {
+      drainPending(ctx);
+    }
   },
 };
