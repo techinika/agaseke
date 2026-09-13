@@ -677,6 +677,12 @@ For issues or feature requests, please open an issue on GitHub.
 
 ## Recent Updates
 
+### Article Update Button & Published Date Sorting (September 2026)
+
+- Editing an already-published article now shows an **Update** button (instead of Publish) and only refreshes `updatedAt` — `publishedAt` and `createdAt` are never overwritten.
+- `publishedAt` is stamped when content is first published (articles and posts) and all reader-side feeds/community tabs now sort by `publishedAt` (falling back to `createdAt` for legacy content). Article reader shows the publish date.
+- A one-off migration exists at `scripts/backfill-publishedAt.cjs` to stamp `publishedAt` on existing non-draft content: `node scripts/backfill-publishedAt.cjs`.
+
 ### Untitled Posts Fix (September 2026)
 
 - Posts without a title no longer render a title heading or fallback "Untitled" text anywhere on the reader side — the explore feed, public community tab, and post detail pages hide the title space entirely when a post has no title.

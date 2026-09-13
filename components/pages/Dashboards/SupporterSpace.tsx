@@ -223,6 +223,7 @@ export default function SupporterSpace() {
         contentUrl: uploadedUrl || null,
         isPrivate: newPost.isPrivate,
         createdAt: serverTimestamp(),
+        publishedAt: serverTimestamp(),
         views: 0,
       };
       const docRef = await addDoc(

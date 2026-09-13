@@ -95,7 +95,7 @@ export default function CommunityPage({ username }: CommunityPageProps) {
         const publicList = publicSnap.docs
           .map((doc) => ({ id: doc.id, ...doc.data() }))
           .filter((d: any) => d.status !== "draft")
-          .sort((a: any, b: any) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+          .sort((a: any, b: any) => (b.publishedAt?.toMillis?.() ?? b.createdAt?.toMillis?.() ?? 0) - (a.publishedAt?.toMillis?.() ?? a.createdAt?.toMillis?.() ?? 0));
         setPublicPosts(publicList);
       } catch (error) {
         console.error("Error fetching public posts:", error);
@@ -136,7 +136,7 @@ export default function CommunityPage({ username }: CommunityPageProps) {
           );
           const privateSnap = await getDocs(privateQ);
           const privateList = privateSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-          privateList.sort((a: any, b: any) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+          privateList.sort((a: any, b: any) => (b.publishedAt?.toMillis?.() ?? b.createdAt?.toMillis?.() ?? 0) - (a.publishedAt?.toMillis?.() ?? a.createdAt?.toMillis?.() ?? 0));
           setPrivatePosts(privateList);
         }
       } catch (error) {

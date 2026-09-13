@@ -239,7 +239,10 @@ export default function ContentManager() {
         await updateDoc(doc(db, "creatorContent", editingPost.id), contentData);
         toast.success("Post updated!");
       } else {
-        const docRef = await addDoc(collection(db, "creatorContent"), contentData);
+        const docRef = await addDoc(collection(db, "creatorContent"), {
+          ...contentData,
+          publishedAt: serverTimestamp(),
+        });
         toast.success("Content published!");
 
         try {

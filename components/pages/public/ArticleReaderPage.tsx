@@ -51,6 +51,7 @@ interface ArticleReaderData {
   commentCount: number;
   views: number;
   createdAt: string | null;
+  publishedAt?: string | null;
 }
 
 interface CreatorReaderData {
@@ -68,6 +69,7 @@ interface MoreCreatorItem {
   type: string;
   slug: string;
   createdAt: string | null;
+  publishedAt?: string | null;
 }
 
 export default function ArticleReaderPage({
@@ -302,7 +304,7 @@ export default function ArticleReaderPage({
               </span>
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Calendar size={12} />
-                {formatDate(article.createdAt)}
+                {formatDate(article.publishedAt || article.createdAt)}
               </span>
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Eye size={12} /> {article.views}
@@ -666,8 +668,8 @@ export default function ArticleReaderPage({
                       </p>
                       <p className="text-[11px] text-muted-foreground mt-1 capitalize">
                         {typeLabel}
-                        {item.createdAt
-                          ? ` · ${formatDate(item.createdAt)}`
+                        {item.createdAt || item.publishedAt
+                          ? ` · ${formatDate(item.publishedAt || item.createdAt)}`
                           : ""}
                       </p>
                     </div>

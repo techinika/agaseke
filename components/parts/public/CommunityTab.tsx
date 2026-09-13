@@ -110,7 +110,8 @@ export const CommunityTab = ({
   const allPosts = isSupporter
     ? [...privatePosts, ...publicPosts].sort(
         (a, b) =>
-          (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0),
+          (b.publishedAt?.toMillis?.() ?? b.createdAt?.toMillis?.() ?? 0) -
+          (a.publishedAt?.toMillis?.() ?? a.createdAt?.toMillis?.() ?? 0),
       )
     : publicPosts;
 

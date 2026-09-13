@@ -88,6 +88,7 @@ export default function PostForm() {
         contentUrl: uploadedUrl,
         isPrivate: newPost.isPrivate,
         createdAt: serverTimestamp(),
+        publishedAt: serverTimestamp(),
         views: 0,
       };
 

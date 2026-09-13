@@ -77,7 +77,7 @@ export default function ExplorePostsPage() {
       let q = query(
         postsRef,
         where("isPrivate", "==", false),
-        orderBy("createdAt", "desc"),
+        orderBy("publishedAt", "desc"),
         limit(ITEMS_PER_PAGE),
       );
       if (cursor) {

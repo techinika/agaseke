@@ -61,7 +61,7 @@ export async function getCreatorPosts(creatorUid: string, creatorHandle: string,
       .collection("creatorContent")
       .where("creatorId", "in", [creatorHandle, creatorUid])
       .where("isPrivate", "==", false)
-      .orderBy("createdAt", "desc")
+      .orderBy("publishedAt", "desc")
       .limit(limitCount)
       .get();
     return snap.docs
@@ -69,6 +69,7 @@ export async function getCreatorPosts(creatorUid: string, creatorHandle: string,
         id: d.id,
         ...d.data(),
         createdAt: d.data().createdAt?.toDate?.()?.toISOString() || null,
+        publishedAt: d.data().publishedAt?.toDate?.()?.toISOString() || null,
       }))
       .filter((p: any) => p.status !== "draft");
   } catch (error) {

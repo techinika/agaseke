@@ -166,6 +166,9 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
         }
       }
 
+      const wasPublished = articleId && status === "published";
+      const shouldNotify = publish && (!articleId || !wasPublished);
+
       const payload: Record<string, unknown> = {
         title: title.trim(),
         ...(hasSlug && { slug: finalSlug }),
@@ -178,16 +181,16 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
         status: nextStatus,
         updatedAt: serverTimestamp(),
       };
-
-      const wasPublished = articleId && status === "published";
-      const shouldNotify = publish && (!articleId || !wasPublished);
+      if (publish && !wasPublished) {
+        payload.publishedAt = serverTimestamp();
+      }
 
       if (articleId) {
         await updateDoc(doc(db, "creatorContent", articleId), payload);
         toast.success(
           publish
             ? wasPublished
-              ? "Article changes saved & published!"
+              ? "Article updated!"
               : "Article published!"
             : "Draft saved",
         );
@@ -301,7 +304,13 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
               ) : (
                 <Rocket size={16} />
               )}
-              {saving === "publish" ? "Publishing..." : "Publish"}
+              {saving === "publish"
+                ? status === "published"
+                  ? "Updating..."
+                  : "Publishing..."
+                : status === "published"
+                  ? "Update"
+                  : "Publish"}
             </button>
           </div>
         </div>
