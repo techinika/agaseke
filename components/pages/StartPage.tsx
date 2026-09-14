@@ -65,7 +65,7 @@ export default function CreatorOnboarding() {
   const [currencies, setCurrencies] = useState<any[]>([]);
   const [countryCurrencies, setCountryCurrencies] = useState<any[]>([]);
   const [availableCurrencies, setAvailableCurrencies] = useState<any[]>([]);
-  const [platformDefaultCurrency, setPlatformDefaultCurrency] = useState("RWF");
+  const [locationDataError, setLocationDataError] = useState(false);
 
   useEffect(() => {
     if (formData.username.length < 3) {
@@ -187,20 +187,28 @@ export default function CreatorOnboarding() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [countriesSnap, currenciesSnap, mappingsSnap, configSnap] = await Promise.all([
-          getDocs(query(collection(db, "countries"), orderBy("name", "asc"))),
-          getDocs(query(collection(db, "currencies"), orderBy("code", "asc"))),
-          getDocs(query(collection(db, "countryCurrencies"))),
-          getDoc(doc(db, "config", "currencies")),
-        ]);
-        setCountries(countriesSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-        setCurrencies(currenciesSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-        setCountryCurrencies(mappingsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-        if (configSnap.exists()) {
-          setPlatformDefaultCurrency(configSnap.data().defaultCurrency || "RWF");
-        }
+        const [countriesSnap, currenciesSnap, mappingsSnap] = await Promise.all(
+          [
+            getDocs(query(collection(db, "countries"), orderBy("name", "asc"))),
+            getDocs(
+              query(collection(db, "currencies"), orderBy("code", "asc")),
+            ),
+            getDocs(query(collection(db, "countryCurrencies"))),
+          ],
+        );
+        setCountries(
+          countriesSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+        );
+        setCurrencies(
+          currenciesSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+        );
+        setCountryCurrencies(
+          mappingsSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+        );
+        setLocationDataError(false);
       } catch (e) {
         console.error("Failed to load countries/currencies:", e);
+        setLocationDataError(true);
       }
     };
     fetchData();
@@ -211,13 +219,40 @@ export default function CreatorOnboarding() {
       setAvailableCurrencies([]);
       return;
     }
-    const mappings = countryCurrencies.filter((m: any) => m.countryCode === formData.country);
-    const available = currencies.filter((c: any) => mappings.some((m: any) => m.currencyCode === c.code));
+    const selectedCountry = formData.country.trim().toUpperCase();
+    const mappings = countryCurrencies.filter(
+      (m: any) =>
+        String(m.countryCode || "")
+          .trim()
+          .toUpperCase() === selectedCountry,
+    );
+    const available = currencies.filter((c: any) =>
+      mappings.some(
+        (m: any) =>
+          String(m.currencyCode || "")
+            .trim()
+            .toUpperCase() ===
+          String(c.code || "")
+            .trim()
+            .toUpperCase(),
+      ),
+    );
     setAvailableCurrencies(available);
     const defaultMapping = mappings.find((m: any) => m.isDefault);
     if (defaultMapping && !formData.currency) {
-      setFormData((prev) => ({ ...prev, currency: defaultMapping.currencyCode }));
-    } else if (!mappings.some((m: any) => m.currencyCode === formData.currency)) {
+      setFormData((prev) => ({
+        ...prev,
+        currency: String(defaultMapping.currencyCode).trim().toUpperCase(),
+      }));
+    } else if (
+      formData.currency &&
+      !mappings.some(
+        (m: any) =>
+          String(m.currencyCode || "")
+            .trim()
+            .toUpperCase() === formData.currency.trim().toUpperCase(),
+      )
+    ) {
       setFormData((prev) => ({ ...prev, currency: "" }));
     }
   }, [formData.country, countryCurrencies, currencies]);
@@ -228,11 +263,13 @@ export default function CreatorOnboarding() {
 
     if (!user) {
       toast.error("You must be logged in");
+      setLoading(false);
       return;
     }
 
     try {
-      const effectiveCurrency = formData.currency || platformDefaultCurrency;
+      const selectedCountry = formData.country.trim().toUpperCase() || null;
+      const selectedCurrency = formData.currency.trim().toUpperCase() || null;
       await setDoc(doc(db, "creators", formData.username), {
         uid: user.uid,
         name: formData.fullName,
@@ -240,8 +277,8 @@ export default function CreatorOnboarding() {
         handle: formData.username,
         payoutNumber: formData.momoNumber,
         network: formData.momoNetwork,
-        country: formData.country || null,
-        currency: effectiveCurrency,
+        country: selectedCountry,
+        currency: selectedCurrency,
         verified: false,
         totalEarnings: 0,
         totalEarningsUSD: 0,
@@ -270,8 +307,8 @@ export default function CreatorOnboarding() {
         username: formData.username,
         referralCreator: referralCreator ?? null,
         onboarded: true,
-        country: formData.country || null,
-        currency: effectiveCurrency,
+        country: selectedCountry,
+        currency: selectedCurrency,
       });
 
       try {
@@ -411,6 +448,11 @@ export default function CreatorOnboarding() {
               <p className="text-muted-foreground text-sm">
                 Where are you based and how should we show prices?
               </p>
+              <p className="text-xs text-muted-foreground bg-muted p-3 rounded-lg">
+                This is optional. You can set your country and currency later in
+                Creator Settings, but each one cannot be changed after it has
+                been set.
+              </p>
             </div>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -419,7 +461,13 @@ export default function CreatorOnboarding() {
                 </label>
                 <select
                   value={formData.country}
-                  onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      country: e.target.value.trim().toUpperCase(),
+                      currency: "",
+                    })
+                  }
                   className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
                 >
                   <option value="">Select your country...</option>
@@ -431,7 +479,8 @@ export default function CreatorOnboarding() {
                 </select>
                 {formData.country && (
                   <p className="text-xs text-amber-600 font-semibold flex items-center gap-1">
-                    ⚠ Once set, your country cannot be changed. Choose carefully.
+                    ⚠ Once set, your country cannot be changed. Choose
+                    carefully.
                   </p>
                 )}
               </div>
@@ -442,7 +491,9 @@ export default function CreatorOnboarding() {
                   </label>
                   <select
                     value={formData.currency}
-                    onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, currency: e.target.value })
+                    }
                     className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
                   >
                     <option value="">Select currency...</option>
@@ -454,11 +505,16 @@ export default function CreatorOnboarding() {
                   </select>
                   {formData.currency && (
                     <p className="text-xs text-amber-600 font-semibold flex items-center gap-1">
-                      ⚠ Once set, your currency cannot be changed. Choose carefully.
+                      ⚠ Once set, your currency cannot be changed. Choose
+                      carefully.
                     </p>
                   )}
                   {availableCurrencies.length === 0 && (
-                    <p className="text-xs text-muted-foreground">No currencies configured for this country yet.</p>
+                    <p className="text-xs text-muted-foreground">
+                      {locationDataError
+                        ? "Unable to load location settings. Please refresh and try again."
+                        : "No currencies configured for this country yet."}
+                    </p>
                   )}
                 </div>
               )}
@@ -472,7 +528,6 @@ export default function CreatorOnboarding() {
               </button>
               <button
                 onClick={nextStep}
-                disabled={!formData.country || !formData.currency}
                 className="flex-1 bg-foreground text-background py-5 rounded-lg font-bold text-lg hover:bg-orange-600 transition-all disabled:opacity-50"
               >
                 Continue
@@ -755,7 +810,10 @@ export default function CreatorOnboarding() {
                     Location
                   </span>
                   <span className="font-bold text-foreground">
-                    {countries.find((c: any) => c.code === formData.country)?.flag || ""} {countries.find((c: any) => c.code === formData.country)?.name || formData.country}
+                    {countries.find((c: any) => c.code === formData.country)
+                      ?.flag || ""}{" "}
+                    {countries.find((c: any) => c.code === formData.country)
+                      ?.name || formData.country}
                   </span>
                 </div>
               )}
@@ -765,7 +823,10 @@ export default function CreatorOnboarding() {
                     Currency
                   </span>
                   <span className="font-bold text-orange-600">
-                    {formData.currency} ({currencies.find((c: any) => c.code === formData.currency)?.symbol || ""})
+                    {formData.currency} (
+                    {currencies.find((c: any) => c.code === formData.currency)
+                      ?.symbol || ""}
+                    )
                   </span>
                 </div>
               )}
