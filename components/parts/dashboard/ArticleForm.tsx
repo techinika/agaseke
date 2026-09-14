@@ -134,9 +134,23 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
       : articleToPlainText(cleanBody, SHORT_DESC_MAX);
 
     const nextStatus: "draft" | "published" = publish ? "published" : "draft";
+    const isExistingDraft = !!articleId && status === "draft";
 
     setSaving(publish ? "publish" : "draft");
     try {
+      let destination = backHref;
+
+      if (publish && isExistingDraft) {
+        await updateDoc(doc(db, "creatorContent", articleId), {
+          status: "published",
+          publishedAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+        toast.success("Article published!");
+        router.push(backHref);
+        return;
+      }
+
       let finalSlug = (slugTouched ? slug.trim() : slugify(title)) || "";
       const hasSlug = !!finalSlug;
 
@@ -226,9 +240,13 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
             console.error("Failed to notify supporters:", notifyError);
           }
         }
+
+        if (!publish) {
+          destination = `/creator/content/articles/${docRef.id}`;
+        }
       }
 
-      router.push(backHref);
+      router.push(destination);
     } catch (error) {
       console.error("Failed to save article", error);
       toast.error(articleId ? "Failed to update article." : "Failed to save article.");
