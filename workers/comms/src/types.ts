@@ -21,6 +21,7 @@ export type EmailPurpose =
   | "content_new"
   | "booking_reminder"
   | "verification_request"
+  | "withdrawal_request"
   | "verification_feedback"
   | "broadcast";
 

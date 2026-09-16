@@ -5,6 +5,7 @@ export type EmailPurpose =
   | "gathering_created" | "gathering_rsvp" | "gathering_checkin" | "gathering_declined"
   | "gathering_undo" | "message_new" | "message_digest" | "store_order" | "store_status"
   | "support_received" | "payout_processed" | "content_new" | "verification_request"
+  | "withdrawal_request"
   | "verification_feedback" | "broadcast";
 
 export interface CommsResponse {

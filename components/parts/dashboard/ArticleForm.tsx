@@ -146,6 +146,24 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
           publishedAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
+        try {
+          const response = await sendCommsEmail("content_new", {
+            creatorId: creator.handle,
+            creatorName: creator.name || "Creator",
+            creatorHandle: creator.handle,
+            contentTitle: title.trim(),
+            contentDescription: desc,
+            contentType: isPrivate ? "private" : "public",
+            contentId: articleId,
+          });
+          if (response.success && response.recipientCount > 0) {
+            toast.success(
+              `Notified ${response.recipientCount} supporter(s) about your new article!`,
+            );
+          }
+        } catch (notifyError) {
+          console.error("Failed to notify supporters:", notifyError);
+        }
         toast.success("Article published!");
         router.push(backHref);
         return;

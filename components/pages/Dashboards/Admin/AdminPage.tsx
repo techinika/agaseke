@@ -849,6 +849,7 @@ export default function AdminDashboard() {
               title: "Withdrawal Rejected",
               message: `Withdrawal of ${target.amount?.toLocaleString()} ${target.currency || "RWF"} for ${target.creatorName} was rejected`,
               read: false,
+              createdAt: serverTimestamp(),
             };
             await addDoc(collection(db, "notifications"), notificationData);
           }

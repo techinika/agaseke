@@ -9,6 +9,7 @@ import { payoutProcessed } from "./payout";
 import { supportReceived } from "./support";
 import { contentNew } from "./content";
 import { verificationRequest, verificationFeedback } from "./verification";
+import { withdrawalRequest } from "./withdrawal";
 import { broadcast } from "./broadcast";
 
 const registry: Partial<Record<EmailPurpose, EmailService>> = {
@@ -31,6 +32,7 @@ const registry: Partial<Record<EmailPurpose, EmailService>> = {
   support_received: supportReceived,
   content_new: contentNew,
   verification_request: verificationRequest,
+  withdrawal_request: withdrawalRequest,
   verification_feedback: verificationFeedback,
   broadcast,
 };

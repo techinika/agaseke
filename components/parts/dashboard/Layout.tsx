@@ -82,6 +82,9 @@ export default function DashboardLayout({
 
     const unsub = onSnapshot(q, (snapshot) => {
       setUnreadCount(snapshot.size);
+    }, (error) => {
+      console.error("Failed to load notification count:", error);
+      setUnreadCount(0);
     });
 
     return () => unsub();

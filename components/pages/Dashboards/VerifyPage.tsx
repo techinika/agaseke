@@ -110,7 +110,7 @@ export const VerificationPage = () => {
       const idDocumentUrl = uploadResult.url;
 
       await sendCommsEmail("verification_request", {
-        adminEmail: process.env.NEXT_PUBLIC_ADMIN_EMAIL || "songa@agaseke.me",
+        adminEmail: process.env.NEXT_PUBLIC_ADMIN_EMAIL || "agasekeforcreators@gmail.com",
         uid: creator?.uid,
         accountName: formData.get("accountName"),
         bankName: formData.get("bankName"),

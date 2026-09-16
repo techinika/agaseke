@@ -8,11 +8,11 @@ import {
   AlertCircle,
   ArrowLeft,
   Loader,
-  Wallet,
   Clock,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { db } from "@/db/firebase";
+import { sendCommsEmail } from "@/lib/commsService";
 import {
   collection,
   query,
@@ -50,7 +50,6 @@ export default function PayoutsPage() {
   const [perCurrencyBalances, setPerCurrencyBalances] = useState<Array<{ currency: string; pending: number; threshold: number; earnings: number }>>([]);
 
   const pendingAmount = creator?.pendingPayout || 0;
-  const pendingAmountUSD = creator?.pendingPayoutUSD || 0;
   const isVerified = creator?.verified || false;
   const payoutPref = String(
     verificationRequest?.payoutPreference ?? "",
@@ -139,7 +138,7 @@ export default function PayoutsPage() {
       unsubRequests();
       unsubVerification();
     };
-  }, []);
+  }, [creator]);
 
   const handleWithdrawInit = () => {
     if (!isVerified) {
@@ -175,6 +174,9 @@ export default function PayoutsPage() {
 
     setIsSubmitting(true);
     try {
+      const profileSnap = await getDoc(doc(db, "profiles", creator.uid));
+      const creatorEmail = profileSnap.data()?.email || "";
+
       await addDoc(collection(db, "withdrawRequests"), {
         creatorId: creator.uid,
         creatorName: creator.name,
@@ -185,6 +187,15 @@ export default function PayoutsPage() {
         method: creator.network || "MTN",
         accountNumber: creator.payoutNumber || "",
         createdAt: serverTimestamp(),
+      });
+      await sendCommsEmail("withdrawal_request", {
+        adminEmail: process.env.NEXT_PUBLIC_ADMIN_EMAIL || "agasekeforcreators@gmail.com",
+        creatorName: creator.name,
+        creatorEmail,
+        amount: finalAmount,
+        currency: creatorCurrency,
+        method: creator.network || "MTN",
+        accountNumber: creator.payoutNumber || "",
       });
       setWithdrawStep(2);
     } catch (e) {

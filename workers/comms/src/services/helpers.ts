@@ -62,6 +62,43 @@ async function firestoreFetch(env: Env, path: string): Promise<Record<string, un
   return res.json() as Promise<Record<string, unknown>>;
 }
 
+async function firestoreRunQuery(
+  env: Env,
+  collectionId: string,
+  fieldPath: string,
+  value: { stringValue: string },
+): Promise<Array<{ document?: { fields?: Record<string, { stringValue?: string }> } }>> {
+  const token = await getFirestoreToken(env);
+  if (!token) return [];
+
+  const path = `${collectionId}:runQuery`;
+  const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents:runQuery`;
+  const res = await auditedFetch(env, "POST", path, url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath },
+            op: "EQUAL",
+            value,
+          },
+        },
+      },
+    }),
+  });
+
+  if (!res.ok) return [];
+  return (await res.json()) as Array<{
+    document?: { fields?: Record<string, { stringValue?: string }> };
+  }>;
+}
+
 export async function fetchSupporters(
   creatorId: string,
   env: Env,
@@ -70,14 +107,10 @@ export async function fetchSupporters(
   if (!creatorId) return empty;
 
   try {
-    const data = await firestoreFetch(
-      env,
-      `supportedCreators?filter=creatorId=%22${creatorId}%22`
-    );
-    if (!data) return empty;
-
-    const docs = data.documents as Array<{ fields?: Record<string, { stringValue?: string }> }> | undefined;
-    if (!docs) return empty;
+    const results = await firestoreRunQuery(env, "supportedCreators", "creatorId", {
+      stringValue: creatorId,
+    });
+    const docs = results.flatMap((result) => result.document ? [result.document] : []);
 
     const emails: string[] = [];
     const names: Record<string, string> = {};

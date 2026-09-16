@@ -79,7 +79,13 @@ export default function NotificationDrawer({
   const router = useRouter();
 
   useEffect(() => {
-    if (!isOpen || !userId) return;
+    if (!isOpen || !userId) {
+      setNotifications([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
 
     const q = query(
       collection(db, "notifications"),
@@ -93,6 +99,10 @@ export default function NotificationDrawer({
         ...doc.data(),
       })) as Notification[];
       setNotifications(notifs);
+      setLoading(false);
+    }, (error) => {
+      console.error("Failed to load notifications:", error);
+      setNotifications([]);
       setLoading(false);
     });
 
