@@ -46,6 +46,38 @@ export interface CardInitResponse {
   merchant_reference: string;
 }
 
+export interface UserTransaction {
+  ref: string;
+  type: string;
+  status: string;
+  currency: string;
+  paymentMethod: string;
+  amount: number;
+  createdAt: string;
+  successfulAt: string;
+  message: string;
+  creatorId: string;
+  creatorUid: string;
+  creatorName: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  selectedSize: string;
+  bookingId: string;
+  gatheringId: string;
+  attendeeName: string;
+  communityTierId: string;
+  communityInterval: string;
+  communitySubscriptionId: string;
+}
+
+export interface RetryTransactionResponse {
+  ref: string;
+  method: "momo" | "card";
+  redirect_url?: string;
+  merchant_reference?: string;
+}
+
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const user = auth.currentUser;
@@ -100,4 +132,49 @@ export async function initiateCardPayment(
   }
 
   return res.json();
+}
+
+async function parseError(res: Response, fallback: string): Promise<string> {
+  try {
+    const contentType = res.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const err = (await res.json()) as { error?: string };
+      if (err.error) return err.error;
+    }
+  } catch {}
+  return fallback;
+}
+
+export async function getUserTransactions(): Promise<UserTransaction[]> {
+  const headers = await getAuthHeaders();
+
+  const res = await fetch(`${PAYMENTS_WORKER_URL}/api/payments/transactions`, {
+    method: "GET",
+    headers: { Accept: "application/json", ...headers },
+  });
+
+  if (!res.ok) {
+    throw new Error(await parseError(res, "Failed to load transactions"));
+  }
+
+  const data = (await res.json()) as { transactions?: UserTransaction[] };
+  return data.transactions || [];
+}
+
+export async function retryTransaction(
+  ref: string,
+): Promise<RetryTransactionResponse> {
+  const headers = await getAuthHeaders();
+
+  const res = await fetch(`${PAYMENTS_WORKER_URL}/api/payments/transactions/retry`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ ref }),
+  });
+
+  if (!res.ok) {
+    throw new Error(await parseError(res, "Failed to retry payment"));
+  }
+
+  return res.json() as Promise<RetryTransactionResponse>;
 }

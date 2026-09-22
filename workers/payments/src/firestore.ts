@@ -164,6 +164,55 @@ export async function firestoreQuery(
     .map((d) => d.document);
 }
 
+export async function firestoreQueryAll(
+  env: Env,
+  collection: string,
+  field: string,
+  value: Record<string, unknown>
+): Promise<Array<{ name: string; fields: Record<string, unknown>; createTime: string; updateTime: string }>> {
+  const results: Array<{ name: string; fields: Record<string, unknown>; createTime: string; updateTime: string }> = [];
+
+  while (true) {
+    const token = await getFirestoreToken(env);
+    if (!token) break;
+
+    const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents:runQuery`;
+    const body: any = {
+      structuredQuery: {
+        from: [{ collectionId: collection }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath: field },
+            op: "EQUAL",
+            value,
+          },
+        },
+        limit: 300,
+      },
+    };
+    if (results.length > 0) body.structuredQuery.offset = results.length;
+
+    const res = await auditedFetch(env, "POST", `${collection}:runQuery`, url, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) break;
+
+    const data = (await res.json()) as Array<Record<string, unknown>>;
+    const docs = data
+      .filter((d): d is { document: { name: string; fields: Record<string, unknown>; createTime: string; updateTime: string } } =>
+        d !== null && typeof d === "object" && "document" in d
+      )
+      .map((d) => d.document);
+
+    results.push(...docs);
+    if (docs.length < 300) break;
+  }
+
+  return results;
+}
+
 export async function firestoreIncrement(
   env: Env,
   path: string,

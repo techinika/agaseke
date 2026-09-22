@@ -682,6 +682,13 @@ For issues or feature requests, please open an issue on GitHub.
 
 ## Recent Updates
 
+### Transactions Hub (September 2026)
+
+- **Your payment history in one place**: a new `/transactions` page lists every payment you've made across support, store, bookings, gatherings, and community subscriptions — showing status (Successful / Pending / Failed), what it was for, the creator you paid, the amount + currency, the method (MoMo/Card), and the transaction ref. Filter chips let you narrow to All / Successful / Pending / Failed, and a Refresh button re-checks statuses.
+- **Linked from the account dropdown**: a "Transactions" entry sits in the same dropdown as Notices and Account Settings.
+- **Retry failed payments**: failed transactions get a "Pay again" button. `POST /api/payments/transactions/retry` re-runs the original initiation (ownership-checked, only after the previous attempt settled), reusing the exact original request — which is now persisted on every transaction as `retryPayload` when a payment is created — so callbacks still land against the same booking/subscription/order. The old transaction is marked `retried`/`retriedAt`/`retriedRef`. Mobile Money is only re-offered when the transaction is RWF (USD retries are card-only, enforced server-side); a live banner follows the new payment ref and auto-refreshes the list when it settles.
+- **New payments worker endpoints**: `GET /api/payments/transactions` (Firebase-auth gated, rate-limited) returns only the caller's own transactions (matched by `supporterId` or `initiatedBy`), deduped, newest-first, with each creator's display name resolved from their profile.
+
 ### Community Subscription Renewal & Manage Page (September 2026)
 
 - **RWF + Mobile Money subscriptions auto-renew**: when auto-renew is on and a saved phone exists, the community worker's daily cron charges the stored MTN/Airtel number when a subscription is within 3 days of expiring (RWF only).

@@ -15,6 +15,7 @@ import {
   Bell,
   Megaphone,
   FileText,
+  Receipt,
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/auth/AuthContext";
@@ -222,6 +223,13 @@ const Navbar = () => {
                           href="/supporter/notices"
                           icon={<Megaphone size={18} />}
                           label="Notices"
+                          onClick={() => setIsDropdownOpen(false)}
+                        />
+
+                        <DropdownLink
+                          href="/transactions"
+                          icon={<Receipt size={18} />}
+                          label="Transactions"
                           onClick={() => setIsDropdownOpen(false)}
                         />
 

@@ -193,6 +193,7 @@ export async function initiateCardPayment(
     currency: currency || "RWF",
     createdAt: now,
     initiatedBy: uid,
+    retryPayload: body,
   };
 
   if (isStoreTransaction) {

@@ -150,6 +150,7 @@ export async function initiateMomoPayment(
     paymentMethod: "momo",
     createdAt: now,
     initiatedBy: uid,
+    retryPayload: body,
   };
 
   if (isStoreTransaction) {

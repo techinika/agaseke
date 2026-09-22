@@ -4,6 +4,8 @@ import type { Env, MomoInitRequest, CardInitRequest, PesapalIPNPayload } from ".
 import { initiateMomoPayment } from "./services/momo";
 import { initiateCardPayment } from "./services/card";
 import { handlePaypackWebhook, handlePesapalIPN } from "./services/webhooks";
+import { getUserTransactions } from "./services/transactions";
+import { retryTransaction, RetryError } from "./services/retry";
 import { logActivity } from "./logger";
 import { checkRateLimit } from "./rateLimit";
 import { drainPending } from "./audit";
@@ -81,6 +83,15 @@ export default {
           return json(result, 200, origin);
         }
 
+        if (path === "/api/payments/transactions" && request.method === "GET") {
+          const limited = isRateLimited(request, 30, 60000);
+          if (limited) return limited;
+          const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
+          if (auth instanceof Response) return auth;
+          const transactions = await getUserTransactions(env, auth.uid);
+          return json({ transactions }, 200, origin);
+        }
+
         if (request.method !== "POST") {
           return json({ error: "Method not allowed" }, 405, origin);
         }
@@ -102,6 +113,21 @@ export default {
           const body = (await request.json()) as CardInitRequest;
           const result = await initiateCardPayment(env, body, auth.uid);
           return json(result, 200, origin);
+        }
+
+        if (path === "/api/payments/transactions/retry") {
+          const limited = isRateLimited(request, 10, 60000);
+          if (limited) return limited;
+          const body = (await request.json()) as { ref?: string };
+          try {
+            const result = await retryTransaction(env, auth.uid, body.ref || "");
+            return json(result, 200, origin);
+          } catch (err) {
+            if (err instanceof RetryError) {
+              return json({ error: err.message }, err.statusCode, origin);
+            }
+            throw err;
+          }
         }
 
         return json({ error: "Not found" }, 404, origin);
