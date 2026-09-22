@@ -23,7 +23,8 @@ export type EmailPurpose =
   | "verification_request"
   | "withdrawal_request"
   | "verification_feedback"
-  | "broadcast";
+  | "broadcast"
+  | "subscription_renewal_reminder";
 
 export interface Env {
   FIREBASE_API_KEY: string;
@@ -37,6 +38,7 @@ export interface Env {
   AWS_ACCESS_KEY_ID: string;
   AWS_SECRET_ACCESS_KEY: string;
   AWS_REGION?: string;
+  INTERNAL_AUTH_SECRET: string;
   AGASEKE_EMAIL_QUEUE: Queue<EmailQueueMessage>;
 }
 

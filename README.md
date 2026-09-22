@@ -35,7 +35,7 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - Platform fee payer option (buyer pays 10% extra or creator absorbs 10%)
   - Reopen cancelled orders
   - Create manual orders from dashboard
-  - **Dual-currency pricing**: Products can be priced in RWF or USD via currency toggle; `priceUSD` field for USD prices, `formatCurrency` for locale-aware display throughout the store
+  - **Dual-currency pricing**: Products can be priced in RWF or USD via currency toggle; `priceUSD` field for USD prices, `formatCurrency` for locale-aware display throughout the store. **USD orders are paid by card only** — checkout hides Mobile Money and forces `card` (Paypack is RWF-only); RWF orders accept both Mobile Money and Card
 - **Sales** (`/creator/sales`):
   - Real-time sales statistics (Total Sales, Your Earnings, Total Orders, Unique Buyers)
   - Recent Sales table with product images, buyer profile photos/emails, product type badges
@@ -92,7 +92,7 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - Event creation with date, time, location, and description
   - Edit and update existing events
   - Enable/disable individual events (disabled events not shown publicly)
-  - Paid gatherings with ticket pricing (Momo/Card payment integration)
+  - Paid gatherings with ticket pricing (Momo/Card payment integration) — tickets priced in USD are paid by **card only** (MoMo hidden); RWF tickets accept both
   - Minimum support tier access control for gated events
   - RSVP capacity limits
   - Guest check-in with search and real-time attendee list via `onSnapshot`
@@ -104,6 +104,8 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - Up to 2 membership tiers (monthly/yearly)
   - Custom benefits per tier
   - Public membership display on community page
+  - **Dual-currency tier pricing**: tiers can be priced in RWF or USD (`currency` + `priceUSD`). USD tiers are charged the `priceUSD` amount and are paid by **card only** (MoMo hidden); RWF tiers accept both Mobile Money and Card
+  - **Subscription renewal** (via `/community/manage`): RWF subscriptions with a saved phone auto-renew via Mobile Money on the daily cron; all other cases email the subscriber a renewal reminder and provide a manage page to renew manually (MoMo/Card for RWF, card-only for USD), toggle auto-renew, update the saved phone, or cancel
 - **Supporters Perks**:
   - Configurable minimum support tiers
   - Store access control (public or supporters-only)
@@ -679,6 +681,22 @@ MIT License - see LICENSE file for details.
 For issues or feature requests, please open an issue on GitHub.
 
 ## Recent Updates
+
+### Community Subscription Renewal & Manage Page (September 2026)
+
+- **RWF + Mobile Money subscriptions auto-renew**: when auto-renew is on and a saved phone exists, the community worker's daily cron charges the stored MTN/Airtel number when a subscription is within 3 days of expiring (RWF only).
+- **Subscribers are emailed when it's time to renew**: subscriptions that can't be auto-charged (USD tiers, no saved phone, auto-renew off, or a failed auto-charge) get a `subscription_renewal_reminder` email once (deduped via `renewalEmailSent`/`expiryEmailSent` flags) with a link to the new manage page; expired subscriptions get an "ends now" variant. Emails are sent worker-to-worker over the Comms Worker using an `X-Internal-Auth` bypass (no user token exists in a cron).
+- **New renewal/manage pages**: `/community/manage` lists all of your subscriptions, and `/community/manage/[subscriptionId]` lets you renew manually — pick Mobile Money (RWF, with a saved-number prefill) or Card (RWF), or Card only for USD — plus toggle auto-renew and update your saved phone. Renewal reuses the same `communitySubscriptionId`, so a successful payment flows back through the payments callback and reactivates the subscription with a fresh period.
+- **New community worker endpoints**: `GET /api/community/subscription` (owner-only detail incl. `paymentMethod`, `phone`, `autoRenew`), `POST /api/community/renew` (server enforces card-only for USD), and `POST /api/community/update` (toggle `autoRenew`, update `phone`). Owner checks are enforced server-side.
+- **Unchargable auto-renewals are turned off**: USD subscriptions or ones without a saved phone can't be charged automatically, so the cron disables `autoRenew` for them and directs the subscriber to the renewal page instead of attempting a doomed MoMo charge.
+
+### Cross-Flow Currency Method & Fractional Amount Fixes (September 2026)
+
+- **Store checkouts priced in USD are now card-only**: `CheckoutModal` derives the order currency from the first product and, when USD, hides Mobile Money and forces `card` with a "priced in USD, so card payment is the only option" note (matching the bookings pay page). RWF orders keep both.
+- **USD gatherings are card-only**: the gatherings ticket modal hides Mobile Money for USD-priced events and forces `card`; `handlePaidRSVP` resolves the method from the gathering currency before charging.
+- **Community USD tiers are card-only with correct price display**: `SubscribeModal` hides Mobile Money for USD tiers, resolves the method from the tier currency, and now displays the charged `priceUSD` amount instead of the RWF `price` (both in the tier list and the "Selected Plan" summary).
+- **Store sale records no longer break on fractional prices**: the store payment callback wrote `productPrice`, `totalAmount`, and share fields as Firestore `integerValue` (`String(49.99)` is an invalid integer → the `storeOrders`/`sales` write could 400, leaving a paid purchase with no sale/earnings). These now use `doubleValue` when non-integer, and the rounding of `totalAmount` was removed. The "New Sale!" notification message also now uses the actual transaction currency instead of a hardcoded "RWF".
+- **Query-filter number encoding hardened**: `toFirestoreFilterValue` in the bookings, store, and support workers encoded any numeric filter as `integerValue: String(val)` (a fractional query value would 400); non-integers now use `doubleValue`, matching the payments and community workers.
 
 ### Booking Payment Currency, Notifications & Email Reliability Fixes (September 2026)
 

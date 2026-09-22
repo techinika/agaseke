@@ -53,6 +53,8 @@ Initiate a subscription. Creates a subscription document and forwards payment to
 }
 ```
 
+> **Currency rule:** the frontend (`SubscribeModal`) sends `currency` plus the charged amount (`priceUSD` when the tier is USD). USD tiers must use `paymentMethod: "card"` — the Payments Worker's MoMo guard (Paypack is RWF-only) rejects any non-RWF `initiateMomoPayment`, so USD subscriptions can never go through Mobile Money.
+
 ### POST /api/community/callback
 
 Internal callback from Payments Worker. Requires `X-Internal-Auth` header matching `INTERNAL_AUTH_SECRET`.
@@ -68,7 +70,41 @@ List all members for a creator's community. Requires Firebase auth (creator only
 
 ### GET /api/community/my-subscriptions
 
-Get current user's active subscriptions.
+Get current user's subscriptions (full subscription objects, including `subscriptionId`, `tierName`, `creatorHandle`, `amount`, `currency`, `interval`, `autoRenew`, and `expiresAt`).
+
+### GET /api/community/subscription?subscriptionId={id}
+
+Get one of the current user's subscriptions (owned check: `userId` must match the caller). Includes payment details (`paymentMethod`, saved `phone`, `autoRenew`) needed by the renewal/manage page.
+
+### POST /api/community/renew
+
+Initiate a renewal payment for an existing subscription (does **not** create a new subscription — the same subscription is reactivated via the payments callback). Requires Firebase auth; the subscription must belong to the caller.
+
+**Body:**
+```json
+{
+  "subscriptionId": "SUB-...",
+  "paymentMethod": "momo",
+  "phone": "07XX XXXXXX"
+}
+```
+
+The endpoint reuses the stored subscription's `amount`/`currency`/`interval` and forwards the payment to the Payments Worker with the same `communitySubscriptionId`, so a successful payment flows back through `POST /api/community/callback` and reactivates the subscription with a fresh period. The server enforces the currency rule (USD → card only) regardless of what the client sends.
+
+> **Currency rule:** the frontend (`SubscribeModal`) sends `currency` plus the charged amount (`priceUSD` when the tier is USD). USD tiers must use `paymentMethod: "card"` — the Payments Worker's MoMo guard (Paypack is RWF-only) rejects any non-RWF `initiateMomoPayment`, so USD subscriptions can never go through Mobile Money.
+
+### POST /api/community/update
+
+Manage the current user's subscription: toggle `autoRenew` and/or update the saved `phone` number. Requires Firebase auth (owner only).
+
+**Body:**
+```json
+{
+  "subscriptionId": "SUB-...",
+  "autoRenew": true,
+  "phone": "07XX XXXXXX"
+}
+```
 
 ### POST /api/community/cancel
 
@@ -76,7 +112,13 @@ Cancel a subscription.
 
 ## Scheduled Tasks
 
-The worker runs a scheduled handler (`processRenewals`) that checks for subscriptions expiring within 3 days and initiates auto-renewal payments.
+The worker runs a scheduled handler (`processRenewals`) that checks active subscriptions daily:
+
+- **Expired already** → marks the subscription `expired`, revokes chat access, sends a notification, and emails the subscriber once (flag `expiryEmailSent`) pointing them at the renewal page.
+- **Expiring ≤ 7 days and can't auto-renew** (auto-renew off, or no stored phone / USD tier) → sends an in-app notification (if auto-renew is off) and one reminder email (flag `renewalEmailSent`).
+- **Expiring ≤ 3 days with auto-renew on** → attempts a **Mobile Money** auto-renewal using the stored phone (RWF only). USD subscriptions or subscriptions without a stored phone have auto-renew turned off and the subscriber is directed to the renewal page instead. A failed auto-charge notifies the user and emails them to renew manually.
+
+Renewal/expiry reminder emails are sent from the Comms Worker via `POST {COMMS_WORKER_URL}/api/emails/send` with the `X-Internal-Auth` header, so no user Firebase token is needed for cron-triggered emails. Recipient email resolves from `sub.userEmail`, falling back to `profiles/{userId}.email`.
 
 ## Firestore Audit Logging
 
@@ -100,6 +142,7 @@ All vars are managed in the **Cloudflare Dashboard** → Workers & Pages → `ag
 | `FIREBASE_PRIVATE_KEY` | yes | Firebase service account private key |
 | `INTERNAL_AUTH_SECRET` | yes | Shared secret for inter-worker auth |
 | `PAYMENTS_WORKER_URL` | no | Payments worker URL (e.g. `https://payments.api.agaseke.me`) |
+| `COMMS_WORKER_URL` | no | Comms worker URL for renewal emails (e.g. `https://comms.api.agaseke.me`) |
 | `COMMUNITY_WORKER_URL` | no | Self URL for callbacks (e.g. `https://community.api.agaseke.me`) |
 
 ### Deploy

@@ -2,11 +2,13 @@ import { requireAuth } from "./auth";
 import { corsHeaders } from "./cors";
 import type { Env, TierData, SubscribeRequest, CallbackPayload } from "./types";
 import { getTiers, saveTiers } from "./services/tiers";
-import { getMembers, getMemberSubscriptions } from "./services/members";
+import { getMembers, getMemberSubscriptions, getSubscriptionById } from "./services/members";
 import {
   initiateSubscription,
   handlePaymentCallback,
   cancelSubscription,
+  renewSubscription,
+  updateSubscriptionSettings,
   processRenewals,
 } from "./services/subscriptions";
 import { logActivity } from "./logger";
@@ -171,6 +173,76 @@ export default {
             subscriptionId: string;
           };
           await cancelSubscription(env, subscriptionId, auth.uid);
+          return json({ success: true }, 200, origin);
+        }
+
+        if (
+          path === "/api/community/subscription" &&
+          request.method === "GET"
+        ) {
+          const limited = isRateLimited(request, 30, 60000);
+          if (limited) return limited;
+          const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
+          if (auth instanceof Response) return auth;
+
+          const subscriptionId = url.searchParams.get("subscriptionId");
+          if (!subscriptionId)
+            return json({ error: "subscriptionId required" }, 400, origin);
+
+          const sub = await getSubscriptionById(env, subscriptionId);
+          if (!sub) return json({ error: "Subscription not found" }, 404, origin);
+          if (sub.userId !== auth.uid)
+            return json({ error: "Forbidden" }, 403, origin);
+
+          return json({ subscription: sub }, 200, origin);
+        }
+
+        if (path === "/api/community/renew" && request.method === "POST") {
+          const limited = isRateLimited(request, 10, 60000);
+          if (limited) return limited;
+          const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
+          if (auth instanceof Response) return auth;
+
+          const body = (await request.json()) as {
+            subscriptionId: string;
+            paymentMethod: "momo" | "card";
+            phone?: string;
+            email?: string;
+            firstName?: string;
+            lastName?: string;
+          };
+
+          const sub = await getSubscriptionById(env, body.subscriptionId);
+          if (!sub) return json({ error: "Subscription not found" }, 404, origin);
+          if (sub.userId !== auth.uid)
+            return json({ error: "Forbidden" }, 403, origin);
+
+          const result = await renewSubscription(
+            env,
+            { ...body, request },
+            auth.uid,
+          );
+          return json(result, 200, origin);
+        }
+
+        if (path === "/api/community/update" && request.method === "POST") {
+          const limited = isRateLimited(request, 10, 60000);
+          if (limited) return limited;
+          const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
+          if (auth instanceof Response) return auth;
+
+          const body = (await request.json()) as {
+            subscriptionId: string;
+            autoRenew?: boolean;
+            phone?: string;
+          };
+
+          const sub = await getSubscriptionById(env, body.subscriptionId);
+          if (!sub) return json({ error: "Subscription not found" }, 404, origin);
+          if (sub.userId !== auth.uid)
+            return json({ error: "Forbidden" }, 403, origin);
+
+          await updateSubscriptionSettings(env, body, auth.uid);
           return json({ success: true }, 200, origin);
         }
 

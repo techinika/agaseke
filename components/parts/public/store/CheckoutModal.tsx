@@ -46,6 +46,7 @@ export function CheckoutModal({
   currentUser: any;
   currency?: string;
 }) {
+  const isUSD = currency === "USD";
   const [step, setStep] = useState<"info" | "shipping" | "payment">("info");
   const [couponCode, setCouponCode] = useState("");
   const [couponDiscount, setCouponDiscount] = useState(0);
@@ -59,7 +60,9 @@ export function CheckoutModal({
   });
   const [processing, setProcessing] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<"momo" | "card">("momo");
+  const [paymentMethod, setPaymentMethod] = useState<"momo" | "card">(
+    currency === "USD" ? "card" : "momo",
+  );
 
   const hasPhysicalProducts = cart.some(
     (item) => item.product.type === "physical",
@@ -148,7 +151,9 @@ export function CheckoutModal({
       return;
     }
 
-    if (paymentMethod === "momo" && !shippingAddress.phone) {
+    const method = isUSD ? "card" : paymentMethod;
+
+    if (method === "momo" && !shippingAddress.phone) {
       toast.error("Please enter your phone number");
       return;
     }
@@ -181,7 +186,7 @@ export function CheckoutModal({
         lastName: currentUser.displayName?.split(" ")[1] || "",
       };
 
-      if (paymentMethod === "momo") {
+      if (method === "momo") {
         await initiateMomoPayment(productData as any);
       } else {
         const paymentData = await initiateCardPayment(productData as any);
@@ -389,33 +394,40 @@ export function CheckoutModal({
 
               <div className="space-y-3">
                 <label className="text-sm font-bold">Payment Method</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod("momo")}
-                    className={`py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${
-                      paymentMethod === "momo"
-                        ? "border-orange-600 bg-orange-50 text-orange-600"
-                        : "border-border text-muted-foreground"
-                    }`}
-                  >
-                    Mobile Money
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod("card")}
-                    className={`py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${
-                      paymentMethod === "card"
-                        ? "border-orange-600 bg-orange-50 text-orange-600"
-                        : "border-border text-muted-foreground"
-                    }`}
-                  >
-                    Card Payment
-                  </button>
-                </div>
+                {isUSD ? (
+                  <p className="text-sm text-muted-foreground">
+                    This order is priced in USD, so card payment is the only
+                    option.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("momo")}
+                      className={`py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${
+                        paymentMethod === "momo"
+                          ? "border-orange-600 bg-orange-50 text-orange-600"
+                          : "border-border text-muted-foreground"
+                      }`}
+                    >
+                      Mobile Money
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("card")}
+                      className={`py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${
+                        paymentMethod === "card"
+                          ? "border-orange-600 bg-orange-50 text-orange-600"
+                          : "border-border text-muted-foreground"
+                      }`}
+                    >
+                      Card Payment
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {paymentMethod === "momo" && (
+              {!isUSD && paymentMethod === "momo" && (
                 <div className="bg-amber-50 rounded-xl p-4 flex items-start gap-3">
                   <AlertCircle size={20} className="text-amber-600 mt-0.5" />
                   <p className="text-sm text-amber-800">
@@ -425,7 +437,7 @@ export function CheckoutModal({
                 </div>
               )}
 
-              {paymentMethod === "momo" && (
+              {!isUSD && paymentMethod === "momo" && (
                 <div className="space-y-3">
                   <label className="text-sm font-bold">
                     MTN Mobile Money Number

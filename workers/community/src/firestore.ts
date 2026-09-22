@@ -219,6 +219,42 @@ export async function firestoreQueryAll(
   return results;
 }
 
+export async function firestoreIncrement(
+  env: Env,
+  path: string,
+  increments: Record<string, number>
+): Promise<boolean> {
+  const token = await getFirestoreToken(env);
+  if (!token) return false;
+
+  const docName = `projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/${path}`;
+  const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents:commit`;
+
+  const writes = [
+    {
+      transform: {
+        document: docName,
+        fieldTransforms: Object.entries(increments).map(([fieldPath, val]) => ({
+          fieldPath,
+          increment: Number.isInteger(val)
+            ? { integerValue: String(val) }
+            : { doubleValue: val },
+        })),
+      },
+    },
+  ];
+
+  const res = await auditedFetch(env, "POST", `${path}:commit`, url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ writes }),
+  });
+  return res.ok;
+}
+
 export function convertToFields(obj: Record<string, unknown>): Record<string, unknown> {
   const fields: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj)) {

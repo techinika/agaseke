@@ -350,7 +350,13 @@ export default {
       try {
         const limited = isRateLimited(request, 20, 60000);
         if (limited) return limited;
-        const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
+        const internalAuth = request.headers.get("X-Internal-Auth");
+        const auth =
+          internalAuth &&
+          env.INTERNAL_AUTH_SECRET &&
+          internalAuth === env.INTERNAL_AUTH_SECRET
+            ? { uid: "internal", email: null }
+            : await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
         if (auth instanceof Response) return auth;
 
         const body = (await request.json()) as Partial<CommsRequest>;

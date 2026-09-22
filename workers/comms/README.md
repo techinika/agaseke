@@ -19,7 +19,7 @@ Cloudflare Worker (agaseke-comms)
 Response: { success, messageId, purpose, recipientCount }
 ```
 
-## Email Purposes (22 services + `booking_reminder` cron)
+## Email Purposes (23 services + `booking_reminder` cron)
 
 | purpose               | Trigger                    | Recipient     | Subject                                        |
 |-----------------------|----------------------------|---------------|------------------------------------------------|
@@ -46,8 +46,11 @@ Response: { success, messageId, purpose, recipientCount }
 | `withdrawal_request`  | Creator requests payout    | Admin         | Withdrawal Request (creator, amount, method, account) |
 | `broadcast`          | Admin broadcast            | Bulk list     | Admin-provided subject                         |
 | `booking_reminder`   | Daily cron (9 AM Kigali)   | Booker+Creator| Reminder: meeting tomorrow                     |
+| `subscription_renewal_reminder` | Community cron (auto-renew) | Subscriber | Your {tierName} subscription is due for renewal |
 
 > **`booking_reminder`:** runs as a Cloudflare Cron Trigger at 07:00 UTC daily. For each `accepted` `bookingRequests` doc whose `preferredDate` is tomorrow (Africa/Kigali) and where `reminderSent` is not yet `true`, the worker emails the booker (from `bookerEmail`) and the creator (resolved from `profiles/{creatorUid}`), creates a `booking_reminder` in-app notification for both, and patches the doc with `reminderSent: true`. Emails are rendered directly (not through the service registry).
+
+> **`subscription_renewal_reminder`:** sent by the Community Worker's daily `processRenewals` cron when a subscription is about to expire (or has expired) and can't be charged automatically. The community worker calls `POST /api/emails/send` with the `X-Internal-Auth` header set to `INTERNAL_AUTH_SECRET` — when that header matches, the Firebase auth check is bypassed (no user token is available in a cron). Recipient comes from `data.userEmail`, and the CTA links to `{appUrl}/community/manage/{subscriptionId}`. `data.status` is `"renewal"` (due soon) or `"expired"` (already ended).
 
 > **`content_new` recipients:** the worker reads every `supportedCreators` doc for the creator, resolves each supporter's `supporterId` (UID) against its `profiles/{uid}` document (`email`/`displayName`), and sends to those emails. Anonymous supporters (no UID) can't be reached. The email button links to the creator's **public community page** (`/{handle}/community`). Resolution is instrumented: `fetchSupporters` logs `[comms] fetchSupporters query` (creator + `docCount`) and `[comms] fetchSupporters resolved` (`emailCount`/`uidCount`), and the endpoint logs the full request context when zero recipients would throw `No recipients resolved` — traceable via `wrangler tail`. The Post/Article forms show that error to the creator as a toast.
 
@@ -117,6 +120,7 @@ All vars are managed in the **Cloudflare Dashboard** → Workers & Pages → `ag
 | `AWS_ACCESS_KEY_ID` | yes | AWS access key with SES SendEmail permission |
 | `AWS_SECRET_ACCESS_KEY` | yes | AWS secret access key |
 | `AWS_REGION` | no | AWS region for SES (default `us-east-1`) |
+| `INTERNAL_AUTH_SECRET` | yes | Shared secret for inter-worker auth (allows `X-Internal-Auth` bypass of Firebase auth) |
 
 ### AWS prerequisites
 

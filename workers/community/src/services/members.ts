@@ -9,12 +9,17 @@ export interface MemberInfo {
   tierId: string;
   tierName: string;
   status: string;
+  creatorHandle?: string;
   subscribedAt: string;
   expiresAt: string;
   amount: number;
   currency?: string;
   interval: string;
   autoRenew: boolean;
+  phone?: string;
+  paymentMethod?: string;
+  renewalEmailSent?: boolean;
+  expiryEmailSent?: boolean;
 }
 
 export async function getMembers(
@@ -46,16 +51,57 @@ export async function getMembers(
 export async function getMemberSubscriptions(
   env: Env,
   userId: string
-): Promise<{ tierId: string; status: string; expiresAt: string }[]> {
+): Promise<MemberInfo[]> {
   const docs = await firestoreQueryAll(env, "communitySubscriptions", "userId", { stringValue: userId });
   return docs.map((doc) => {
     const data = convertFromFields(doc.fields);
+    const parts = doc.name.split("/");
     return {
+      subscriptionId: parts[parts.length - 1],
+      userId: (data.userId as string) || "",
+      userEmail: (data.userEmail as string) || "",
+      userName: (data.userName as string) || "",
       tierId: (data.tierId as string) || "",
+      tierName: (data.tierName as string) || "",
+      creatorHandle: (data.creatorHandle as string) || "",
       status: (data.status as string) || "",
+      subscribedAt: (data.subscribedAt as string) || "",
       expiresAt: (data.expiresAt as string) || "",
+      amount: Number(data.amount) || 0,
+      currency: (data.currency as string) || "RWF",
+      interval: (data.interval as string) || "monthly",
+      autoRenew: !!data.autoRenew,
     };
   });
+}
+
+export async function getSubscriptionById(
+  env: Env,
+  subscriptionId: string
+): Promise<MemberInfo | null> {
+  const doc = await firestoreGet(env, `communitySubscriptions/${subscriptionId}`);
+  if (!doc) return null;
+  const data = convertFromFields(doc.fields as Record<string, unknown>);
+  return {
+    subscriptionId,
+    userId: (data.userId as string) || "",
+    userEmail: (data.userEmail as string) || "",
+    userName: (data.userName as string) || "",
+    tierId: (data.tierId as string) || "",
+    tierName: (data.tierName as string) || "",
+    creatorHandle: (data.creatorHandle as string) || "",
+    status: (data.status as string) || "pending",
+    subscribedAt: (data.subscribedAt as string) || "",
+    expiresAt: (data.expiresAt as string) || "",
+    amount: Number(data.amount) || 0,
+    currency: (data.currency as string) || "RWF",
+    interval: (data.interval as string) || "monthly",
+    autoRenew: !!data.autoRenew,
+    phone: (data.phone as string) || "",
+    paymentMethod: (data.paymentMethod as string) || "",
+    renewalEmailSent: !!data.renewalEmailSent,
+    expiryEmailSent: !!data.expiryEmailSent,
+  };
 }
 
 async function ensureChatDocExists(

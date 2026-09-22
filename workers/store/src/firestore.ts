@@ -152,7 +152,7 @@ export async function firestoreRunQuery(
       };
     }
     if (typeof val === "string") return { stringValue: val };
-    if (typeof val === "number") return { integerValue: String(val) };
+    if (typeof val === "number") return Number.isInteger(val) ? { integerValue: String(val) } : { doubleValue: val };
     if (typeof val === "boolean") return { booleanValue: val };
     return { stringValue: String(val) };
   }

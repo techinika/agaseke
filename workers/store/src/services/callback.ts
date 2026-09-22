@@ -3,6 +3,11 @@ import { firestoreGet, firestorePost, firestorePatch, extractFirestoreDocument }
 import { logActivity } from "../logger";
 import { createNotification } from "../adminNotifications";
 
+function numberValue(value: unknown): Record<string, unknown> {
+  const num = Number(value || 0);
+  return Number.isInteger(num) ? { integerValue: String(num) } : { doubleValue: num };
+}
+
 async function incrementField(env: Env, path: string, field: string, amount: number): Promise<void> {
   const doc = await firestoreGet(env, path);
   if (!doc) return;
@@ -47,7 +52,7 @@ export async function handleStoreCallback(
 
   await firestorePost(env, "platformIncome", {
     fields: {
-      amount: { integerValue: String(platformShare) },
+      amount: numberValue(platformShare),
       txRef: { stringValue: paymentRef },
       reason: { stringValue: "product_sale_platform_fee" },
       productId: { stringValue: productId || "" },
@@ -58,7 +63,7 @@ export async function handleStoreCallback(
   await firestorePost(env, "creatorIncome", {
     fields: {
       creatorUid: { stringValue: txData.creatorUid as string },
-      amount: { integerValue: String(creatorShare) },
+      amount: numberValue(creatorShare),
       txRef: { stringValue: paymentRef },
       reason: { stringValue: "product_sale" },
       productId: { stringValue: productId || "" },
@@ -70,7 +75,7 @@ export async function handleStoreCallback(
     await firestorePost(env, "creatorIncome", {
       fields: {
         creatorUid: { stringValue: txData.referralUid as string },
-        amount: { integerValue: String(referralShare) },
+        amount: numberValue(referralShare),
         txRef: { stringValue: paymentRef },
         reason: { stringValue: "referral_commission" },
         createdAt: { timestampValue: now },
@@ -92,9 +97,9 @@ export async function handleStoreCallback(
       productName: { stringValue: (txData.productName as string) || "" },
       selectedSize: { stringValue: (txData.selectedSize as string) || "" },
       quantity: { integerValue: String(quantity) },
-      productPrice: { integerValue: String(txData.productPrice || 0) },
-      platformFee: { integerValue: String(platformShare) },
-      totalAmount: { integerValue: String(Math.round(totalAmount)) },
+      productPrice: numberValue(txData.productPrice),
+      platformFee: numberValue(platformShare),
+      totalAmount: numberValue(totalAmount),
       platformFeePayer: { stringValue: (txData.platformFeePayer as string) || "buyer" },
       status: { stringValue: "paid" },
       paymentMethod: { stringValue: paymentMethod },
@@ -114,11 +119,11 @@ export async function handleStoreCallback(
       productId: { stringValue: productId || "" },
       productName: { stringValue: (txData.productName as string) || "" },
       quantity: { integerValue: String(quantity) },
-      productPrice: { integerValue: String(txData.productPrice || 0) },
-      totalAmount: { integerValue: String(Math.round(totalAmount)) },
-      platformFee: { integerValue: String(platformShare) },
-      creatorEarnings: { integerValue: String(creatorShare) },
-      referralEarnings: { integerValue: String(referralShare) },
+      productPrice: numberValue(txData.productPrice),
+      totalAmount: numberValue(totalAmount),
+      platformFee: numberValue(platformShare),
+      creatorEarnings: numberValue(creatorShare),
+      referralEarnings: numberValue(referralShare),
       referralUid: { stringValue: (txData.referralUid as string) || "" },
       status: { stringValue: "completed" },
       paymentMethod: { stringValue: paymentMethod },
@@ -151,7 +156,7 @@ export async function handleStoreCallback(
       userId: txData.creatorUid as string,
       type: "new_sale",
       title: "New Sale!",
-      message: `${(txData.buyerName as string) || "Someone"} purchased ${(txData.productName as string) || "a product"} for ${totalAmount.toLocaleString()} RWF`,
+      message: `${(txData.buyerName as string) || "Someone"} purchased ${(txData.productName as string) || "a product"} for ${totalAmount.toLocaleString()} ${currency}`,
       metadata: {
         txRef: paymentRef,
         productId,

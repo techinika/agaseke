@@ -11,6 +11,7 @@ import { contentNew } from "./content";
 import { verificationRequest, verificationFeedback } from "./verification";
 import { withdrawalRequest } from "./withdrawal";
 import { broadcast } from "./broadcast";
+import { subscriptionRenewalReminder } from "./renewal";
 
 const registry: Partial<Record<EmailPurpose, EmailService>> = {
   welcome_user: welcomeUser,
@@ -35,6 +36,7 @@ const registry: Partial<Record<EmailPurpose, EmailService>> = {
   withdrawal_request: withdrawalRequest,
   verification_feedback: verificationFeedback,
   broadcast,
+  subscription_renewal_reminder: subscriptionRenewalReminder,
 };
 
 export function getService(purpose: EmailPurpose): EmailService | undefined {

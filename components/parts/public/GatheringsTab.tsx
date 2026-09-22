@@ -320,16 +320,17 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
       toast.error("Please log in to RSVP");
       return;
     }
-    if (!payPhone && payMethod === "momo") {
+    const currency = gathering.currency || "RWF";
+    const method = currency === "USD" ? "card" : payMethod;
+    if (!payPhone && method === "momo") {
       toast.error("Please enter your phone number");
       return;
     }
     setPaying(true);
     try {
-      const currency = gathering.currency || "RWF";
       const amount = currency === "USD" && gathering.priceUSD ? gathering.priceUSD : (gathering.ticketPrice || 0);
       let ref: string;
-      if (payMethod === "momo") {
+      if (method === "momo") {
         const data = await initiateMomoPayment({
           amount,
           phone: payPhone,
@@ -541,26 +542,33 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
                 <p className="text-2xl font-bold text-orange-600 mt-2">{formatCurrency(payingGathering.currency === "USD" && payingGathering.priceUSD ? payingGathering.priceUSD : (payingGathering.ticketPrice || 0), payingGathering.currency || "RWF")}</p>
               </div>
 
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setPayMethod("momo")}
-                  className={`flex-1 p-3 rounded-lg border-2 font-bold text-sm flex items-center justify-center gap-2 transition ${
-                    payMethod === "momo" ? "border-orange-500 bg-orange-50 text-orange-600" : "border-border text-muted-foreground"
-                  }`}
-                >
-                  <Smartphone size={18} /> MoMo
-                </button>
-                <button
-                  onClick={() => setPayMethod("card")}
-                  className={`flex-1 p-3 rounded-lg border-2 font-bold text-sm flex items-center justify-center gap-2 transition ${
-                    payMethod === "card" ? "border-orange-500 bg-orange-50 text-orange-600" : "border-border text-muted-foreground"
-                  }`}
-                >
-                  <CreditCard size={18} /> Card
-                </button>
-              </div>
+              {payingGathering.currency === "USD" ? (
+                <p className="text-sm text-muted-foreground">
+                  This event is priced in USD, so card payment is the only
+                  option.
+                </p>
+              ) : (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setPayMethod("momo")}
+                    className={`flex-1 p-3 rounded-lg border-2 font-bold text-sm flex items-center justify-center gap-2 transition ${
+                      payMethod === "momo" ? "border-orange-500 bg-orange-50 text-orange-600" : "border-border text-muted-foreground"
+                    }`}
+                  >
+                    <Smartphone size={18} /> MoMo
+                  </button>
+                  <button
+                    onClick={() => setPayMethod("card")}
+                    className={`flex-1 p-3 rounded-lg border-2 font-bold text-sm flex items-center justify-center gap-2 transition ${
+                      payMethod === "card" ? "border-orange-500 bg-orange-50 text-orange-600" : "border-border text-muted-foreground"
+                    }`}
+                  >
+                    <CreditCard size={18} /> Card
+                  </button>
+                </div>
+              )}
 
-              {payMethod === "momo" && (
+              {payingGathering.currency !== "USD" && payMethod === "momo" && (
                 <input
                   type="tel"
                   placeholder="Phone number (e.g. 078xxxxxxx)"
@@ -572,7 +580,12 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
 
               <button
                 onClick={() => handlePaidRSVP(payingGathering)}
-                disabled={paying || (payMethod === "momo" && !payPhone)}
+                disabled={
+                  paying ||
+                  (payingGathering.currency !== "USD" &&
+                    payMethod === "momo" &&
+                    !payPhone)
+                }
                 className="w-full py-4 bg-orange-600 text-white rounded-xl font-bold text-lg hover:bg-orange-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {paying ? <Loader size={20} className="animate-spin" /> : null}

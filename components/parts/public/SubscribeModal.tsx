@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import {
   collection,
   doc,
@@ -90,9 +91,16 @@ export function SubscribeModal({
     };
   }, []);
 
+  const tierAmount = (t: CommunityTier) =>
+    t.currency === "USD" && t.priceUSD ? t.priceUSD : t.price;
+
+  const isUSDTier = selectedTier?.currency === "USD";
+
   const handleSubscribe = async () => {
-    if (!selectedTier || !paymentMethod || !user) return;
-    if (paymentMethod === "momo" && !phone.trim()) {
+    if (!selectedTier || !user) return;
+    const method = isUSDTier ? "card" : paymentMethod;
+    if (!method) return;
+    if (method === "momo" && !phone.trim()) {
       toast.error("Enter your phone number");
       return;
     }
@@ -107,14 +115,14 @@ export function SubscribeModal({
         tierName: selectedTier.name,
         creatorId: creatorUid,
         creatorHandle,
-        amount: selectedTier.currency === "USD" && selectedTier.priceUSD ? selectedTier.priceUSD : selectedTier.price,
+        amount: tierAmount(selectedTier),
         interval: selectedTier.interval,
         currency: selectedTier.currency || "RWF",
-        paymentMethod,
+        paymentMethod: method,
         supporterId: user.uid,
       };
 
-      if (paymentMethod === "momo") {
+      if (method === "momo") {
         subData.phone = phone;
       } else {
         subData.email = user.email || "";
@@ -232,7 +240,7 @@ export function SubscribeModal({
                         />
                       </div>
                       <p className="text-2xl font-bold text-orange-600 mb-2">
-                        {formatCurrency(tier.price, tier.currency || "RWF")}
+                        {formatCurrency(tierAmount(tier), tier.currency || "RWF")}
                         <span className="text-xs font-normal text-muted-foreground ml-1">
                           /{tier.interval === "yearly" ? "year" : "month"}
                         </span>
@@ -268,7 +276,7 @@ export function SubscribeModal({
                 <p className="text-xs text-muted-foreground mb-1">Selected Plan</p>
                 <p className="font-bold">{selectedTier.name}</p>
                   <p className="text-lg font-bold text-orange-600">
-                    {formatCurrency(selectedTier.price, selectedTier.currency || "RWF")}
+                    {formatCurrency(tierAmount(selectedTier), selectedTier.currency || "RWF")}
                     <span className="text-xs font-normal text-muted-foreground ml-1">
                       /{selectedTier.interval === "yearly" ? "year" : "month"}
                     </span>
@@ -279,63 +287,70 @@ export function SubscribeModal({
                 <p className="text-xs font-bold text-muted-foreground mb-3">
                   Payment Method
                 </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => setPaymentMethod("momo")}
-                    className={`p-4 border rounded-lg text-center transition ${
-                      paymentMethod === "momo"
-                        ? "border-orange-500 bg-orange-50"
-                        : "border-border hover:border-orange-300"
-                    }`}
-                  >
-                    <Smartphone
-                      size={24}
-                      className={`mx-auto mb-2 ${
+                {isUSDTier ? (
+                  <p className="text-sm text-muted-foreground">
+                    This tier is priced in USD, so card payment is the only
+                    option.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setPaymentMethod("momo")}
+                      className={`p-4 border rounded-lg text-center transition ${
                         paymentMethod === "momo"
-                          ? "text-orange-600"
-                          : "text-muted-foreground"
-                      }`}
-                    />
-                    <span
-                      className={`text-xs font-bold ${
-                        paymentMethod === "momo"
-                          ? "text-orange-700"
-                          : "text-muted-foreground"
+                          ? "border-orange-500 bg-orange-50"
+                          : "border-border hover:border-orange-300"
                       }`}
                     >
-                      Mobile Money
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => setPaymentMethod("card")}
-                    className={`p-4 border rounded-lg text-center transition ${
-                      paymentMethod === "card"
-                        ? "border-orange-500 bg-orange-50"
-                        : "border-border hover:border-orange-300"
-                    }`}
-                  >
-                    <CreditCard
-                      size={24}
-                      className={`mx-auto mb-2 ${
+                      <Smartphone
+                        size={24}
+                        className={`mx-auto mb-2 ${
+                          paymentMethod === "momo"
+                            ? "text-orange-600"
+                            : "text-muted-foreground"
+                        }`}
+                      />
+                      <span
+                        className={`text-xs font-bold ${
+                          paymentMethod === "momo"
+                            ? "text-orange-700"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        Mobile Money
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setPaymentMethod("card")}
+                      className={`p-4 border rounded-lg text-center transition ${
                         paymentMethod === "card"
-                          ? "text-orange-600"
-                          : "text-muted-foreground"
-                      }`}
-                    />
-                    <span
-                      className={`text-xs font-bold ${
-                        paymentMethod === "card"
-                          ? "text-orange-700"
-                          : "text-muted-foreground"
+                          ? "border-orange-500 bg-orange-50"
+                          : "border-border hover:border-orange-300"
                       }`}
                     >
-                      Bank Card
-                    </span>
-                  </button>
-                </div>
+                      <CreditCard
+                        size={24}
+                        className={`mx-auto mb-2 ${
+                          paymentMethod === "card"
+                            ? "text-orange-600"
+                            : "text-muted-foreground"
+                        }`}
+                      />
+                      <span
+                        className={`text-xs font-bold ${
+                          paymentMethod === "card"
+                            ? "text-orange-700"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        Bank Card
+                      </span>
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {paymentMethod === "momo" && (
+              {!isUSDTier && paymentMethod === "momo" && (
                 <div>
                   <label className="text-xs font-bold text-muted-foreground mb-1 block">
                     Phone Number
@@ -351,7 +366,7 @@ export function SubscribeModal({
 
               <button
                 onClick={handleSubscribe}
-                disabled={!paymentMethod}
+                disabled={!isUSDTier && !paymentMethod}
                 className="w-full py-3 bg-orange-600 text-white text-sm font-bold rounded-lg hover:bg-orange-700 transition disabled:opacity-50"
               >
                 Subscribe Now
@@ -389,10 +404,17 @@ export function SubscribeModal({
               </p>
               <button
                 onClick={onClose}
-                className="px-6 py-3 bg-orange-600 text-white text-sm font-bold rounded-lg hover:bg-orange-700 transition"
+                className="px-6 py-3 bg-orange-600 text-white text-sm font-bold rounded-lg hover:bg-orange-700 transition block mx-auto"
               >
                 Done
               </button>
+              <Link
+                href="/community/manage"
+                onClick={onClose}
+                className="block mt-4 text-xs text-muted-foreground hover:text-orange-600 transition"
+              >
+                Manage my subscription
+              </Link>
             </div>
           )}
 

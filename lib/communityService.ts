@@ -46,12 +46,15 @@ export interface MemberInfo {
   tierId: string;
   tierName: string;
   status: string;
+  creatorHandle?: string;
   subscribedAt: string;
   expiresAt: string;
   amount: number;
   currency?: string;
   interval: string;
   autoRenew: boolean;
+  phone?: string;
+  paymentMethod?: string;
 }
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
@@ -120,14 +123,67 @@ export async function getCommunityMembers(
   return data.members || [];
 }
 
-export async function getMySubscriptions(): Promise<
-  { tierId: string; status: string; expiresAt: string }[]
-> {
+export async function getMySubscriptions(): Promise<MemberInfo[]> {
   const headers = await getAuthHeaders();
   const res = await fetch(`${COMMUNITY_WORKER_URL}/api/community/my-subscriptions`, { headers });
   if (!res.ok) return [];
   const data = await res.json();
   return data.subscriptions || [];
+}
+
+export async function getSubscription(
+  subscriptionId: string
+): Promise<MemberInfo> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(
+    `${COMMUNITY_WORKER_URL}/api/community/subscription?subscriptionId=${encodeURIComponent(subscriptionId)}`,
+    { headers }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Subscription not found" }));
+    throw new Error(err.error || "Subscription not found");
+  }
+  const data = await res.json();
+  return data.subscription;
+}
+
+export async function renewSubscription(
+  subscriptionId: string,
+  data: {
+    paymentMethod: "momo" | "card";
+    phone?: string;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+  }
+): Promise<SubscribeResponse> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${COMMUNITY_WORKER_URL}/api/community/renew`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ subscriptionId, ...data }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Renewal initiation failed" }));
+    throw new Error(err.error || "Renewal initiation failed");
+  }
+  return res.json();
+}
+
+export async function updateSubscriptionSettings(
+  subscriptionId: string,
+  data: { autoRenew?: boolean; phone?: string }
+): Promise<void> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${COMMUNITY_WORKER_URL}/api/community/update`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ subscriptionId, ...data }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Failed to update subscription" }));
+    throw new Error(err.error || "Failed to update subscription");
+  }
 }
 
 export async function cancelSubscription(

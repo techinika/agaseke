@@ -42,6 +42,7 @@ Every Firestore read/write (GET/POST/PATCH/DELETE — Firestore REST; no PUT) pe
 | `AWS_ACCESS_KEY_ID`     | string | yes    | AWS access key with `ses:SendEmail` permission           |
 | `AWS_SECRET_ACCESS_KEY` | string | yes    | AWS secret access key                                     |
 | `AWS_REGION`            | string | no     | AWS region for SES (default `us-east-1`)                 |
+| `INTERNAL_AUTH_SECRET`  | string | yes    | Shared secret for inter-worker auth (`X-Internal-Auth` header) |
 
 **Webhook:** `POST /webhook` — Amazon SES/SNS event receiver (deliveries, bounces, complaints, subscriptions). Events persisted to Firestore `emailEvents` collection.
 
@@ -52,6 +53,8 @@ Every Firestore read/write (GET/POST/PATCH/DELETE — Firestore REST; no PUT) pe
 **SES troubleshooting:** The worker logs `status` + response `body` on every failed SES send. The common failure is HTTP `403` `AccessDenied` — the IAM user behind `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` must be granted `ses:SendEmail` (and `ses:SendRawEmail`) on the verified identity (e.g. `arn:aws:ses:us-east-1:<acct>:identity/comms.agaseke.me`). See `workers/comms/README.md` for the exact inline policy.
 
 **Recipient diagnostics:** For `content_new`, recipient resolution is instrumented — `fetchSupporters` logs `[comms] fetchSupporters query` (creator + result count) and `[comms] fetchSupporters resolved` (email/UID counts), and the endpoint logs the full request context when zero recipients would throw `No recipients resolved` (traceable via `wrangler tail`). The app surfaces that error to the creator with a toast.
+
+**Internal auth bypass:** `POST /api/emails/send` skips Firebase auth when the `X-Internal-Auth` header equals `INTERNAL_AUTH_SECRET` — used by the community worker's `processRenewals` cron (`subscription_renewal_reminder` emails) where no user Firebase token exists.
 
 ## agaseke-store
 
@@ -64,6 +67,8 @@ Every Firestore read/write (GET/POST/PATCH/DELETE — Firestore REST; no PUT) pe
 | `INTERNAL_AUTH_SECRET`  | string | yes    | Shared secret for inter-worker auth  |
 
 **Binding:** `UPLOADS_BUCKET` — R2 bucket `agaseke-assets`
+
+**Fractional number writes:** the store callback (`src/services/callback.ts`) writes money fields with the `numberValue` helper — `integerValue` when the value is a whole number, otherwise `doubleValue`. Never write currency amounts with a literal `{ integerValue }` (a fractional USD price like `49.99` is an invalid integer and the whole `storeOrders`/`sales` write rejects with a 400). The same rule applies to query filters (`toFirestoreFilterValue`).
 
 ## agaseke-support
 
@@ -99,11 +104,12 @@ Every Firestore read/write (GET/POST/PATCH/DELETE — Firestore REST; no PUT) pe
 | `FIREBASE_PRIVATE_KEY` | string | yes | Firebase service account private key |
 | `INTERNAL_AUTH_SECRET` | string | yes | Shared secret for inter-worker auth |
 | `PAYMENTS_WORKER_URL` | string | no | Payments worker URL (e.g. `https://payments.api.agaseke.me`) |
+| `COMMS_WORKER_URL` | string | no | Comms worker URL for renewal emails (e.g. `https://comms.api.agaseke.me`) |
 | `COMMUNITY_WORKER_URL` | string | no | Self URL for callbacks (e.g. `https://community.api.agaseke.me`) |
 
 **Callback payload:** Payments worker forwards `platformShare`, `creatorShare`, and `referralShare` to the callback endpoint. On successful payment, the worker writes income records (`platformIncome`, `creatorIncome`) and increments earnings on the creator doc.
 
-**Scheduled:** `processRenewals` runs on a cron trigger to auto-renew expiring subscriptions.
+**Scheduled:** `processRenewals` runs on a cron trigger to auto-renew expiring subscriptions. RWF subscriptions with a saved phone and auto-renew on are charged via Mobile Money; everything else (USD tiers, no phone, auto-renew off, or a failed charge) gets a `subscription_renewal_reminder` email (via `COMMS_WORKER_URL` + `INTERNAL_AUTH_SECRET`) and an in-app notification pointing at `/community/manage/[subscriptionId]`, where the subscriber renews manually or manages settings. Unchargable auto-renewals are turned off.
 
 ## agaseke-payments
 

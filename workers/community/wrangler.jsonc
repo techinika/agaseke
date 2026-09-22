@@ -15,6 +15,7 @@
   },
   "vars": {
     "FIREBASE_PROJECT_ID": "agaseke4creators",
+    "COMMS_WORKER_URL": "https://comms.api.agaseke.me",
   },
   "routes": [
     {
