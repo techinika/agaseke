@@ -88,8 +88,10 @@ export default {
           if (limited) return limited;
           const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
           if (auth instanceof Response) return auth;
-          const transactions = await getUserTransactions(env, auth.uid);
-          return json({ transactions }, 200, origin);
+          const limit = Number(url.searchParams.get("limit")) || 20;
+          const offset = Number(url.searchParams.get("offset")) || 0;
+          const result = await getUserTransactions(env, auth.uid, limit, offset);
+          return json(result, 200, origin);
         }
 
         if (request.method !== "POST") {

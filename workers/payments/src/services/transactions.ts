@@ -28,6 +28,14 @@ export interface UserTransaction {
 
 const MAX_TRANSACTIONS = 100;
 
+export interface TransactionsPage {
+  transactions: UserTransaction[];
+  total: number;
+  counts: Record<string, number>;
+  limit: number;
+  offset: number;
+}
+
 function toNumber(value: unknown): number {
   if (value === null || value === undefined) return 0;
   if (typeof value === "number") return value;
@@ -39,7 +47,12 @@ function toString(value: unknown): string {
   return value === null || value === undefined ? "" : String(value);
 }
 
-export async function getUserTransactions(env: Env, uid: string): Promise<UserTransaction[]> {
+export async function getUserTransactions(
+  env: Env,
+  uid: string,
+  limit = 20,
+  offset = 0
+): Promise<TransactionsPage> {
   const [bySupporter, byInitiator] = await Promise.all([
     firestoreQueryAll(env, "transactions", "supporterId", { stringValue: uid }),
     firestoreQueryAll(env, "transactions", "initiatedBy", { stringValue: uid }),
@@ -58,6 +71,22 @@ export async function getUserTransactions(env: Env, uid: string): Promise<UserTr
 
   raw.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
 
+  const clampedLimit = Math.max(1, Math.min(limit, 50));
+  const clampedOffset = Math.max(0, offset);
+
+  const counts: Record<string, number> = {
+    all: raw.length,
+    successful: 0,
+    pending: 0,
+    failed: 0,
+  };
+  for (const t of raw) {
+    const status = toString(t.status);
+    if (counts[status] !== undefined) counts[status] += 1;
+  }
+
+  const page = raw.slice(clampedOffset, clampedOffset + clampedLimit).slice(0, MAX_TRANSACTIONS);
+
   const distinctCreatorUids = [...new Set(raw.map((t) => toString(t.creatorUid)).filter(Boolean))];
   const nameByUid: Record<string, string> = {};
   await Promise.all(
@@ -71,7 +100,7 @@ export async function getUserTransactions(env: Env, uid: string): Promise<UserTr
     })
   );
 
-  return raw.slice(0, MAX_TRANSACTIONS).map((t) => {
+  const transactions = page.map((t) => {
     const creatorUid = toString(t.creatorUid);
     return {
       ref: toString(t.ref),
@@ -98,4 +127,12 @@ export async function getUserTransactions(env: Env, uid: string): Promise<UserTr
       communitySubscriptionId: toString(t.communitySubscriptionId),
     };
   });
+
+  return {
+    transactions,
+    total: raw.length,
+    counts,
+    limit: clampedLimit,
+    offset: clampedOffset,
+  };
 }

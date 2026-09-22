@@ -121,6 +121,7 @@ export async function retryTransaction(
   if (method === "momo") {
     result = await initiateMomoPayment(env, payload as MomoInitRequest, uid);
   } else {
+    if (!payload.email) payload.email = "supporter@agaseke.me";
     result = await initiateCardPayment(env, payload as CardInitRequest, uid);
   }
 

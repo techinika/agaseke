@@ -78,6 +78,14 @@ export interface RetryTransactionResponse {
   merchant_reference?: string;
 }
 
+export interface TransactionsResponse {
+  transactions: UserTransaction[];
+  total: number;
+  counts: Record<string, number>;
+  limit: number;
+  offset: number;
+}
+
 async function getAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const user = auth.currentUser;
@@ -145,20 +153,25 @@ async function parseError(res: Response, fallback: string): Promise<string> {
   return fallback;
 }
 
-export async function getUserTransactions(): Promise<UserTransaction[]> {
+export async function getUserTransactions(
+  limit = 20,
+  offset = 0,
+): Promise<TransactionsResponse> {
   const headers = await getAuthHeaders();
 
-  const res = await fetch(`${PAYMENTS_WORKER_URL}/api/payments/transactions`, {
-    method: "GET",
-    headers: { Accept: "application/json", ...headers },
-  });
+  const res = await fetch(
+    `${PAYMENTS_WORKER_URL}/api/payments/transactions?limit=${limit}&offset=${offset}`,
+    {
+      method: "GET",
+      headers: { Accept: "application/json", ...headers },
+    },
+  );
 
   if (!res.ok) {
     throw new Error(await parseError(res, "Failed to load transactions"));
   }
 
-  const data = (await res.json()) as { transactions?: UserTransaction[] };
-  return data.transactions || [];
+  return (await res.json()) as TransactionsResponse;
 }
 
 export async function retryTransaction(
@@ -166,15 +179,28 @@ export async function retryTransaction(
 ): Promise<RetryTransactionResponse> {
   const headers = await getAuthHeaders();
 
-  const res = await fetch(`${PAYMENTS_WORKER_URL}/api/payments/transactions/retry`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({ ref }),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 25000);
 
-  if (!res.ok) {
-    throw new Error(await parseError(res, "Failed to retry payment"));
+  try {
+    const res = await fetch(`${PAYMENTS_WORKER_URL}/api/payments/transactions/retry`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ ref }),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      throw new Error(await parseError(res, "Failed to retry payment"));
+    }
+
+    return (await res.json()) as Promise<RetryTransactionResponse>;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error("Retry request timed out. Check your connection and try again.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
   }
-
-  return res.json() as Promise<RetryTransactionResponse>;
 }

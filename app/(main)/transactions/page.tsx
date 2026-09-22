@@ -21,7 +21,10 @@ import {
   Smartphone,
   CheckCircle2,
   XCircle,
+  ChevronDown,
 } from "lucide-react";
+
+const PAGE_SIZE = 20;
 
 function formatDate(iso: string): string {
   if (!iso) return "—";
@@ -88,44 +91,31 @@ function transactionTitle(tx: UserTransaction): string {
   return "Support contribution";
 }
 
+interface ActiveRetry {
+  oldRef: string;
+  newRef: string;
+  method: string;
+  redirectUrl?: string;
+  phase: "initiating" | "confirming" | "success" | "failed";
+  message?: string;
+}
+
 export default function TransactionsPage() {
   const { isLoggedIn } = useAuth();
   const [transactions, setTransactions] = useState<UserTransaction[]>([]);
+  const [total, setTotal] = useState(0);
+  const [counts, setCounts] = useState<Record<string, number>>({
+    all: 0,
+    successful: 0,
+    pending: 0,
+    failed: 0,
+  });
   const [filter, setFilter] = useState<Filter>("all");
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (!isLoggedIn) return;
-    getUserTransactions()
-      .then(setTransactions)
-      .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : "Failed to load transactions");
-      })
-      .finally(() => setLoading(false));
-  }, [isLoggedIn]);
-
-  const filtered = useMemo(
-    () => (filter === "all" ? transactions : transactions.filter((t) => t.status === filter)),
-    [transactions, filter]
-  );
-
-  const statusCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: transactions.length };
-    for (const t of transactions) {
-      counts[t.status] = (counts[t.status] || 0) + 1;
-    }
-    return counts;
-  }, [transactions]);
-
-  const [activeRetry, setActiveRetry] = useState<{
-    oldRef: string;
-    newRef: string;
-    method: string;
-    redirectUrl?: string;
-    phase: "initiating" | "confirming" | "success" | "failed";
-    message?: string;
-  } | null>(null);
+  const [activeRetry, setActiveRetry] = useState<ActiveRetry | null>(null);
   const unsubscribeRetryRef = useRef<(() => void) | null>(null);
 
   const stopListening = () => {
@@ -139,10 +129,38 @@ export default function TransactionsPage() {
     return () => stopListening();
   }, []);
 
+  const applyFirstPage = (limit: number) =>
+    getUserTransactions(limit, 0).then((data) => {
+      setTransactions(data.transactions);
+      setTotal(data.total);
+      setCounts(data.counts);
+    });
+
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    applyFirstPage(PAGE_SIZE)
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : "Failed to load transactions");
+      })
+      .finally(() => setLoading(false));
+  }, [isLoggedIn]);
+
   const refreshTransactions = () => {
-    getUserTransactions()
-      .then(setTransactions)
-      .catch(() => {});
+    applyFirstPage(PAGE_SIZE).catch(() => {});
+  };
+
+  const loadMore = async () => {
+    setLoadingMore(true);
+    try {
+      const data = await getUserTransactions(PAGE_SIZE, transactions.length);
+      setTransactions((prev) => [...prev, ...data.transactions]);
+      setTotal(data.total);
+      setCounts(data.counts);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to load more transactions");
+    } finally {
+      setLoadingMore(false);
+    }
   };
 
   const listenForPayment = (
@@ -178,14 +196,17 @@ export default function TransactionsPage() {
   };
 
   const handleRetry = async (tx: UserTransaction) => {
+    stopListening();
     setActiveRetry({
       oldRef: tx.ref,
       newRef: "",
       method: tx.paymentMethod,
       phase: "initiating",
     });
+    let newRef = "";
     try {
       const result = await retryTransaction(tx.ref);
+      newRef = result.ref;
       if (result.method === "card") {
         setActiveRetry({
           oldRef: tx.ref,
@@ -217,10 +238,28 @@ export default function TransactionsPage() {
         listenForPayment(result.ref, tx.ref, "momo");
       }
     } catch (err) {
-      setActiveRetry(null);
+      setActiveRetry({
+        oldRef: tx.ref,
+        newRef,
+        method: tx.paymentMethod,
+        phase: "failed",
+        message: err instanceof Error ? err.message : "Failed to retry payment",
+      });
       toast.error(err instanceof Error ? err.message : "Failed to retry payment");
     }
   };
+
+  const cancelRetry = () => {
+    stopListening();
+    setActiveRetry(null);
+  };
+
+  const filtered = useMemo(
+    () => (filter === "all" ? transactions : transactions.filter((t) => t.status === filter)),
+    [transactions, filter]
+  );
+
+  const hasMore = transactions.length < total;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
@@ -254,10 +293,9 @@ export default function TransactionsPage() {
           <p className="text-sm text-red-600 mb-2">{error}</p>
           <button
             onClick={() => {
-              setLoading(true);
               setError("");
-              getUserTransactions()
-                .then(setTransactions)
+              setLoading(true);
+              applyFirstPage(PAGE_SIZE)
                 .catch((err: unknown) =>
                   setError(err instanceof Error ? err.message : "Failed to load transactions")
                 )
@@ -289,7 +327,7 @@ export default function TransactionsPage() {
                       ? "Pending"
                       : "Failed"}
                 <span className="ml-1.5 text-xs opacity-70">
-                  {statusCounts[f as string] || 0}
+                  {counts[f as string] || 0}
                 </span>
               </button>
             ))}
@@ -357,15 +395,14 @@ export default function TransactionsPage() {
                       </a>
                     )}
                 </div>
-                {(activeRetry.phase === "success" ||
-                  activeRetry.phase === "failed") && (
-                  <button
-                    onClick={() => setActiveRetry(null)}
-                    className="ml-auto text-xs font-bold text-muted-foreground hover:text-foreground"
-                  >
-                    Dismiss
-                  </button>
-                )}
+<button
+                  onClick={cancelRetry}
+                  className="ml-auto text-xs font-bold text-muted-foreground hover:text-foreground shrink-0"
+                >
+                  {activeRetry.phase === "success" || activeRetry.phase === "failed"
+                    ? "Dismiss"
+                    : "Cancel"}
+                </button>
               </div>
             </div>
           )}
@@ -381,70 +418,95 @@ export default function TransactionsPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {filtered.map((tx) => (
-                <div
-                  key={tx.ref}
-                  className="bg-card border border-border rounded-xl p-4"
-                >
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold text-foreground truncate">
-                        {transactionTitle(tx)}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {typeLabel(tx.type)}
-                        {tx.paymentMethod ? ` · ${tx.paymentMethod === "card" ? "Card" : "MoMo"}` : ""}
-                        {tx.attendeeName ? ` · ${tx.attendeeName}` : ""}
-                        {tx.message ? ` · “${tx.message}”` : ""}
-                      </p>
-                    </div>
-                    <span
-                      className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${statusBadge(tx.status)}`}
-                    >
-                      {statusLabel(tx.status)}
-                    </span>
-                  </div>
-
-                  {tx.creatorId && (
-                    <Link
-                      href={`/${tx.creatorId}`}
-                      className="inline-flex items-center gap-1 text-xs font-bold text-orange-600 hover:underline mb-2"
-                    >
-                      <Receipt size={12} /> Paid to @{tx.creatorId}
-                      {tx.creatorName ? ` · ${tx.creatorName}` : ""}
-                    </Link>
-                  )}
-
-                  <div className="flex items-center justify-between border-t border-border pt-3">
-                    <div>
-                      <p className="text-lg font-black text-foreground">
-                        {formatCurrency(tx.amount, tx.currency)}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        {formatDate(tx.createdAt)} · {tx.ref}
-                      </p>
-                    </div>
-                    {tx.status === "failed" && (
-                      <button
-                        onClick={() => handleRetry(tx)}
-                        disabled={
-                          activeRetry !== null &&
-                          activeRetry.phase !== "success" &&
-                          activeRetry.phase !== "failed"
-                        }
-                        className="shrink-0 inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              {filtered.map((tx) => {
+                const isRetryingThis =
+                  activeRetry !== null &&
+                  activeRetry.oldRef === tx.ref &&
+                  (activeRetry.phase === "initiating" ||
+                    activeRetry.phase === "confirming");
+                return (
+                  <div
+                    key={tx.ref}
+                    className="bg-card border border-border rounded-xl p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-foreground truncate">
+                          {transactionTitle(tx)}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {typeLabel(tx.type)}
+                          {tx.paymentMethod ? ` · ${tx.paymentMethod === "card" ? "Card" : "MoMo"}` : ""}
+                          {tx.attendeeName ? ` · ${tx.attendeeName}` : ""}
+                          {tx.message ? ` · “${tx.message}”` : ""}
+                        </p>
+                      </div>
+                      <span
+                        className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${statusBadge(tx.status)}`}
                       >
-                        {tx.paymentMethod === "card" ? (
-                          <CreditCard size={15} />
-                        ) : (
-                          <Smartphone size={15} />
-                        )}
-                        Pay again
-                      </button>
+                        {statusLabel(tx.status)}
+                      </span>
+                    </div>
+
+                    {tx.creatorId && (
+                      <Link
+                        href={`/${tx.creatorId}`}
+                        className="inline-flex items-center gap-1 text-xs font-bold text-orange-600 hover:underline mb-2"
+                      >
+                        <Receipt size={12} /> Paid to @{tx.creatorId}
+                        {tx.creatorName ? ` · ${tx.creatorName}` : ""}
+                      </Link>
                     )}
+
+                    <div className="flex items-center justify-between border-t border-border pt-3">
+                      <div>
+                        <p className="text-lg font-black text-foreground">
+                          {formatCurrency(tx.amount, tx.currency)}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {formatDate(tx.createdAt)} · {tx.ref}
+                        </p>
+                      </div>
+                      {tx.status === "failed" && (
+                        <button
+                          onClick={() => handleRetry(tx)}
+                          disabled={isRetryingThis}
+                          className="shrink-0 inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          {isRetryingThis ? (
+                            <Loader className="animate-spin" size={15} />
+                          ) : tx.paymentMethod === "card" ? (
+                            <CreditCard size={15} />
+                          ) : (
+                            <Smartphone size={15} />
+                          )}
+                          {isRetryingThis ? "Retrying…" : "Pay again"}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
+            </div>
+          )}
+
+          {hasMore && (
+            <div className="mt-6 text-center">
+              <button
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="inline-flex items-center gap-2 px-6 py-3 text-sm font-bold text-foreground bg-card border border-border rounded-full hover:bg-muted transition disabled:opacity-60"
+              >
+                {loadingMore ? (
+                  <Loader className="animate-spin text-orange-500" size={16} />
+                ) : (
+                  <ChevronDown size={16} />
+                )}
+                Load more
+                <span className="text-xs text-muted-foreground">
+                  · {transactions.length} of {total}
+                </span>
+              </button>
             </div>
           )}
         </>
