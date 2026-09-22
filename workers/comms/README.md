@@ -19,11 +19,12 @@ Cloudflare Worker (agaseke-comms)
 Response: { success, messageId, purpose, recipientCount }
 ```
 
-## Email Purposes (19 services)
+## Email Purposes (22 services + `booking_reminder` cron)
 
-| purpose              | Trigger                    | Recipient     | Subject                                        |
-|----------------------|----------------------------|---------------|------------------------------------------------|
-| `welcome_creator`    | Creator signs up           | Creator       | Welcome to Agaseke - Start Earning...          |
+| purpose               | Trigger                    | Recipient     | Subject                                        |
+|-----------------------|----------------------------|---------------|------------------------------------------------|
+| `welcome_user`        | User signs up              | User          | Welcome to Agaseke - Supporting African Creativity! |
+| `welcome_creator`     | Creator signs up           | Creator       | Welcome to Agaseke - Start Earning...          |
 | `profile_live`       | Profile published          | Creator       | Your creator profile is now live!              |
 | `booking_request`    | Fan requests booking       | Creator       | New booking request from {name}                |
 | `booking_response`   | Creator accepts/declines   | Booker        | Your booking with {name} is confirmed/Update...|
@@ -42,12 +43,13 @@ Response: { success, messageId, purpose, recipientCount }
 | `content_new`        | Creator posts content      | All supporters| New content from {name} on Agaseke!            |
 | `verification_request`| KYC submitted             | Admin         | New KYC Verification Request: {name}           |
 | `verification_feedback`| Verification reviewed     | Creator       | Agaseke Verification Successful/Action Required|
+| `withdrawal_request`  | Creator requests payout    | Admin         | Withdrawal Request (creator, amount, method, account) |
 | `broadcast`          | Admin broadcast            | Bulk list     | Admin-provided subject                         |
 | `booking_reminder`   | Daily cron (9 AM Kigali)   | Booker+Creator| Reminder: meeting tomorrow                     |
 
 > **`booking_reminder`:** runs as a Cloudflare Cron Trigger at 07:00 UTC daily. For each `accepted` `bookingRequests` doc whose `preferredDate` is tomorrow (Africa/Kigali) and where `reminderSent` is not yet `true`, the worker emails the booker (from `bookerEmail`) and the creator (resolved from `profiles/{creatorUid}`), creates a `booking_reminder` in-app notification for both, and patches the doc with `reminderSent: true`. Emails are rendered directly (not through the service registry).
 
-> **`content_new` recipients:** the worker reads every `supportedCreators` doc for the creator, resolves each supporter's `supporterId` (UID) against its `profiles/{uid}` document (`email`/`displayName`), and sends to those emails. Anonymous supporters (no UID) can't be reached. The email button links to the creator's **public community page** (`/{handle}/community`).
+> **`content_new` recipients:** the worker reads every `supportedCreators` doc for the creator, resolves each supporter's `supporterId` (UID) against its `profiles/{uid}` document (`email`/`displayName`), and sends to those emails. Anonymous supporters (no UID) can't be reached. The email button links to the creator's **public community page** (`/{handle}/community`). Resolution is instrumented: `fetchSupporters` logs `[comms] fetchSupporters query` (creator + `docCount`) and `[comms] fetchSupporters resolved` (`emailCount`/`uidCount`), and the endpoint logs the full request context when zero recipients would throw `No recipients resolved` — traceable via `wrangler tail`. The Post/Article forms show that error to the creator as a toast.
 
 ## Webhook
 

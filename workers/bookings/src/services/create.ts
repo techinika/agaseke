@@ -21,11 +21,17 @@ function validateBookingInput(body: CreateBookingRequest): string | null {
   return null;
 }
 
+function amountField(value: number): Record<string, unknown> {
+  return Number.isInteger(value)
+    ? { integerValue: String(value) }
+    : { doubleValue: value };
+}
+
 async function resolveCreator(
   env: Env,
   handle: string
 ): Promise<{ doc: Record<string, unknown>; data: Record<string, unknown>; id: string } | null> {
-  let doc = await firestoreGet(env, `creators/${handle}`);
+  const doc = await firestoreGet(env, `creators/${handle}`);
   if (doc) {
     const fields = (doc as { fields?: Record<string, unknown> }).fields;
     if (!fields) return null;
@@ -262,8 +268,8 @@ export async function createBooking(
     status: { stringValue: "pending" },
     tierId: { stringValue: body.tierId || "" },
     tierName: { stringValue: body.tierName || "" },
-    tierDuration: { integerValue: String(duration) },
-    paymentAmount: { integerValue: String(isPaidTier ? verifiedPaymentAmount : 0) },
+    tierDuration: amountField(duration),
+    paymentAmount: amountField(isPaidTier ? verifiedPaymentAmount : 0),
     currency: { stringValue: currency },
     paymentStatus: { stringValue: isPaidTier ? "pending" : "none" },
     txRef: { stringValue: txRef || "" },
@@ -281,7 +287,7 @@ export async function createBooking(
   if (isPaidTier && txRef) {
     const transactionFields: Record<string, unknown> = {
       ref: { stringValue: txRef },
-      amount: { integerValue: String(verifiedPaymentAmount) },
+      amount: amountField(verifiedPaymentAmount),
       bookingId: { stringValue: bookingId },
       creatorId: { stringValue: creatorId },
       creatorUid: { stringValue: String(creatorData.uid || "") },

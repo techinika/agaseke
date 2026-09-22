@@ -54,6 +54,7 @@ export default function BookingPayClient() {
       }
       const data: any = { id: snap.id, ...snap.data() };
       setBooking(data);
+      if (data.currency === "USD") setPaymentMethod("card");
       if (data.paymentStatus === "paid") { setPaid(true); setConfirmed(true); }
       if (!data.paymentAmount || data.paymentAmount <= 0) {
         router.push(`/${data.creatorHandle || ""}/booking`);
@@ -112,7 +113,7 @@ export default function BookingPayClient() {
         buyerId: currentUser.uid,
         buyerName: currentUser.displayName || booking.bookerName || "Customer",
         creatorId: booking.creatorHandle,
-        creatorUid: booking.creatorId || "",
+        creatorUid: booking.creatorUid || "",
         currency: booking.currency || "RWF",
       };
 
@@ -178,6 +179,7 @@ export default function BookingPayClient() {
 
   const handle = booking.creatorHandle;
   const isPaid = booking.paymentStatus === "paid";
+  const isUSDBooking = booking.currency === "USD";
 
   return (
     <div className="min-h-screen bg-background">
@@ -298,31 +300,38 @@ export default function BookingPayClient() {
               {/* Payment Method */}
               <div className="space-y-3">
                 <p className="font-bold text-sm">Payment Method</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => setPaymentMethod("momo")}
-                    className={`py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${
-                      paymentMethod === "momo"
-                        ? "border-orange-600 bg-orange-50 text-orange-600"
-                        : "border-border text-muted-foreground"
-                    }`}
-                  >
-                    Mobile Money
-                  </button>
-                  <button
-                    onClick={() => setPaymentMethod("card")}
-                    className={`py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${
-                      paymentMethod === "card"
-                        ? "border-orange-600 bg-orange-50 text-orange-600"
-                        : "border-border text-muted-foreground"
-                    }`}
-                  >
-                    Card Payment
-                  </button>
-                </div>
+                {isUSDBooking ? (
+                  <p className="text-sm text-muted-foreground">
+                    This booking is priced in USD, so card payment is the only
+                    option.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setPaymentMethod("momo")}
+                      className={`py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${
+                        paymentMethod === "momo"
+                          ? "border-orange-600 bg-orange-50 text-orange-600"
+                          : "border-border text-muted-foreground"
+                      }`}
+                    >
+                      Mobile Money
+                    </button>
+                    <button
+                      onClick={() => setPaymentMethod("card")}
+                      className={`py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${
+                        paymentMethod === "card"
+                          ? "border-orange-600 bg-orange-50 text-orange-600"
+                          : "border-border text-muted-foreground"
+                      }`}
+                    >
+                      Card Payment
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {paymentMethod === "momo" && (
+              {!isUSDBooking && paymentMethod === "momo" && (
                 <div className="bg-amber-50 rounded-xl p-4 flex items-start gap-3">
                   <AlertCircle
                     size={20}
@@ -335,7 +344,7 @@ export default function BookingPayClient() {
                 </div>
               )}
 
-              {paymentMethod === "momo" && (
+              {!isUSDBooking && paymentMethod === "momo" && (
                 <div className="space-y-2">
                   <label className="text-sm font-bold">
                     MTN Mobile Money Number

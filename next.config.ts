@@ -20,7 +20,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "agaseke-assers.*.r2.cloudflarestorage.com",
+        hostname: "agaseke-assets.*.r2.cloudflarestorage.com",
         pathname: "/**",
       },
     ],

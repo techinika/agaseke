@@ -232,7 +232,15 @@ async function sendEmail(
   ]);
 
   const toArr = toArray(addresses.to);
-  if (toArr.length === 0) throw new Error("No recipients resolved");
+  if (toArr.length === 0) {
+    console.error("[comms] No recipients resolved", {
+      purpose: req.purpose,
+      data: req.data,
+      addresses,
+      hasQueue: Boolean(env.AGASEKE_EMAIL_QUEUE),
+    });
+    throw new Error("No recipients resolved");
+  }
 
   const ccArr = toArray(addresses.cc);
   const bccFromService = toArray(addresses.bcc);

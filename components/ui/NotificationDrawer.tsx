@@ -25,7 +25,7 @@ import {
   UserCheck,
   CreditCard,
 } from "lucide-react";
-import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, getDocs, writeBatch } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc, getDocs, writeBatch } from "firebase/firestore";
 import { db } from "@/db/firebase";
 import type { Notification, NotificationType } from "@/lib/notifications";
 import Link from "next/link";
@@ -78,6 +78,13 @@ export default function NotificationDrawer({
   const [markingAllRead, setMarkingAllRead] = useState(false);
   const router = useRouter();
 
+  const t = (v: any): number => {
+    if (!v) return 0;
+    if (typeof v.toMillis === "function") return v.toMillis();
+    if (typeof v === "string" || typeof v === "number") return new Date(v).getTime();
+    return 0;
+  };
+
   useEffect(() => {
     if (!isOpen || !userId) {
       setNotifications([]);
@@ -90,7 +97,6 @@ export default function NotificationDrawer({
     const q = query(
       collection(db, "notifications"),
       where("userId", "==", userId),
-      orderBy("createdAt", "desc")
     );
 
     const unsub = onSnapshot(q, (snapshot) => {
@@ -98,6 +104,10 @@ export default function NotificationDrawer({
         id: doc.id,
         ...doc.data(),
       })) as Notification[];
+      notifs.sort(
+        (a, b) =>
+          (t(a.createdAt) < t(b.createdAt) ? 1 : -1),
+      );
       setNotifications(notifs);
       setLoading(false);
     }, (error) => {
@@ -131,13 +141,13 @@ export default function NotificationDrawer({
       const q = query(
         collection(db, "notifications"),
         where("userId", "==", userId),
-        where("read", "==", false)
       );
       const snapshot = await getDocs(q);
+      const unreadDocs = snapshot.docs.filter((d) => !d.data().read);
 
-      if (!snapshot.empty) {
+      if (unreadDocs.length > 0) {
         const batch = writeBatch(db);
-        snapshot.docs.forEach((doc) => {
+        unreadDocs.forEach((doc) => {
           batch.update(doc.ref, { read: true });
         });
         await batch.commit();

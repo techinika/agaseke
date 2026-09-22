@@ -603,9 +603,9 @@ export default function AdminDashboard() {
       }));
 
       const now = new Date();
-      let labels: string[] = [];
-      let current: number[] = [];
-      let previous: number[] = [];
+      const labels: string[] = [];
+      const current: number[] = [];
+      const previous: number[] = [];
 
       const getCreationDate = (profile: any): Date | null => {
         if (profile.createdAt && typeof profile.createdAt.toDate === "function") {

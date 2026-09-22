@@ -15,7 +15,7 @@ function splitWithLinks(text: string): React.ReactNode[] {
       parts.push(text.slice(lastIndex, match.index));
     }
 
-    let url = match[0];
+    const url = match[0];
     let href = url;
 
     if (!url.startsWith("http://") && !url.startsWith("https://")) {

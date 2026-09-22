@@ -110,6 +110,7 @@ export default function PostForm() {
         }
       } catch (notifyError) {
         console.error("Failed to notify supporters:", notifyError);
+        toast.error(`Could not notify supporters: ${String(notifyError)}`);
       }
 
       resetForm();

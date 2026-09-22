@@ -237,19 +237,61 @@ export async function handlePaypackWebhook(
   body: string,
   signature: string | null
 ): Promise<{ received: boolean }> {
+  console.log("[paypack-webhook] verifying signature", {
+    bodyLength: body.length,
+    signaturePresent: Boolean(signature),
+    secretConfigured: Boolean(env.PAYPACK_WEBHOOK_SECRET),
+  });
   const valid = await verifyHmacSha256(body, env.PAYPACK_WEBHOOK_SECRET, signature);
   if (!valid) {
+    console.error("[paypack-webhook] signature verification failed", {
+      signaturePresent: Boolean(signature),
+      secretConfigured: Boolean(env.PAYPACK_WEBHOOK_SECRET),
+    });
     await logActivity(env, "error", "payment", "Momo webhook: Invalid signature", {
       signature,
     });
     throw new Error("Invalid signature");
   }
 
-  const payload = JSON.parse(body);
-  const { ref, status, client } = payload.data;
+  console.log("[paypack-webhook] signature verified");
 
+  let payload: { data?: { ref?: unknown; status?: unknown; client?: unknown } };
+  try {
+    payload = JSON.parse(body) as typeof payload;
+  } catch (err) {
+    console.error("[paypack-webhook] invalid JSON payload", {
+      error: err instanceof Error ? err.message : String(err),
+      bodyLength: body.length,
+    });
+    throw new Error("Invalid webhook JSON");
+  }
+
+  const { ref, status, client } = payload.data || {};
+  console.log("[paypack-webhook] payload parsed", {
+    ref,
+    refType: typeof ref,
+    status,
+    client,
+    hasData: Boolean(payload.data),
+  });
+
+  if (typeof ref !== "string" || !ref.trim()) {
+    console.error("[paypack-webhook] missing or invalid transaction ref", {
+      refType: typeof ref,
+      hasData: Boolean(payload.data),
+    });
+    throw new Error("Missing transaction ref");
+  }
+
+  console.log("[paypack-webhook] querying transaction", { ref });
   const docs = await firestoreQuery(env, "transactions", "ref", { stringValue: ref });
+  console.log("[paypack-webhook] transaction query completed", {
+    ref,
+    matchCount: docs.length,
+  });
   if (docs.length === 0) {
+    console.error("[paypack-webhook] transaction not found", { ref });
     await logActivity(env, "error", "payment", "Momo webhook: Transaction not found", { ref });
     throw new Error("Transaction not found");
   }
@@ -257,8 +299,15 @@ export async function handlePaypackWebhook(
   const doc = docs[0];
   const docId = extractDocId(doc.name);
   const txData = convertFromFields(doc.fields);
+  console.log("[paypack-webhook] transaction loaded", {
+    ref,
+    docId,
+    currentStatus: txData.status,
+    transactionType: txData.type,
+  });
 
   if (txData.status === "successful") {
+    console.log("[paypack-webhook] transaction already successful", { ref, docId });
     return { received: true };
   }
 
@@ -267,11 +316,13 @@ export async function handlePaypackWebhook(
     const txType = (txData.type as string) || "support";
 
     const updatedTx = { ...txData, status: "successful", successfulAt: new Date().toISOString() };
+    console.log("[paypack-webhook] marking transaction successful", { ref, docId });
     await firestoreSet(env, `transactions/${docId}`, convertToFields(updatedTx));
 
     const callbackUrl = getCallbackUrl(txType, env);
 
     if (callbackUrl) {
+      console.log("[paypack-webhook] forwarding callback", { ref, txType, callbackUrl });
       await forwardToDomainWorker(env, callbackUrl, txData, totalAmount, ref, "momo");
     } else {
       try {
@@ -284,6 +335,7 @@ export async function handlePaypackWebhook(
       }
     }
   } else {
+    console.log("[paypack-webhook] marking transaction failed", { ref, docId, status });
     const updatedTx = { ...txData, status: "failed" };
     await firestoreSet(env, `transactions/${docId}`, convertToFields(updatedTx));
   }

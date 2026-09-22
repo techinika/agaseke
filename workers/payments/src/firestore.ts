@@ -125,7 +125,7 @@ export async function firestoreQuery(
   const token = await getFirestoreToken(env);
   if (!token) return [];
 
-  const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/${collection}:runQuery`;
+  const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents:runQuery`;
   const res = await auditedFetch(env, "POST", `${collection}:runQuery`, url, {
     method: "POST",
     headers: {
@@ -146,7 +146,16 @@ export async function firestoreQuery(
       },
     }),
   });
-  if (!res.ok) return [];
+  if (!res.ok) {
+    const errorBody = await res.text();
+    console.error("[firestore] query failed", {
+      collection,
+      field,
+      status: res.status,
+      error: errorBody.slice(0, 1000),
+    });
+    return [];
+  }
   const data = (await res.json()) as Array<Record<string, unknown>>;
   return data
     .filter((d): d is { document: { name: string; fields: Record<string, unknown>; createTime: string; updateTime: string } } =>

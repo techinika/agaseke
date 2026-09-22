@@ -95,7 +95,7 @@ async function firestoreQueryAdmins(
   const token = await getFirestoreTokenRef(env);
   if (!token) return [];
 
-  const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/profiles:runQuery`;
+  const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents:runQuery`;
   const res = await auditedFetch(env, "POST", "profiles:runQuery", url, {
     method: "POST",
     headers: {

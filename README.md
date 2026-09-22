@@ -76,6 +76,7 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - Configure meeting type (online, in-person, or both)
   - Location or video link settings
   - Paid tiered booking system with tier selection (choose a tier with a price)
+  - **Dual-currency tier pricing**: paid tiers can be priced in RWF or USD (`currency` + `priceUSD` on the tier) with `formatCurrency` display. **USD tiers are paid by card only** — the pay page hides Mobile Money (Paypack is RWF-only) and the MoMo path rejects non-RWF amounts server-side; RWF tiers accept both Mobile Money and Card
   - Calendar integration: Google Calendar, Yahoo Calendar, Apple/Outlook (.ics) buttons in response email and on the Upcoming Meetings cards in the creator dashboard (add a confirmed booking to your own calendar without waiting for the email)
   - Meeting location/link displayed in booking summary and confirmation email
   - Server-side validation: date range, day-of-week, time slot matching, and price verification
@@ -213,7 +214,7 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
 - **Bookings**: Cloudflare Worker (`workers/bookings/`) ΓÇö Booking lifecycle, payment callbacks, Firestore
 - **Store**: Cloudflare Worker (`workers/store/`) ΓÇö Store callbacks, digital download authorization
 - **Support**: Cloudflare Worker (`workers/support/`) ΓÇö Support payment callbacks, status queries
-- **Email**: Cloudflare Worker (`workers/comms/`) ΓÇö Amazon SES (SigV4), 19 email purposes, unified template
+- **Email**: Cloudflare Worker (`workers/comms/`) ΓÇö Amazon SES (SigV4), 23 email purposes, unified template
 - **Community Subscriptions**: Cloudflare Worker (`workers/community/`) ΓÇö Firebase REST auth, tier management, subscription lifecycle, auto-renewals
 - **General Utility**: Cloudflare Worker (`workers/general/`) ΓÇö Encryption/decryption, error logging, notifications, rate-limited endpoints
 
@@ -341,7 +342,7 @@ agaseke/
 Γöé   ΓööΓöÇΓöÇ booking.ts                # Booking types
 Γö£ΓöÇΓöÇ workers/                       # Cloudflare Workers
 Γöé   Γö£ΓöÇΓöÇ upload/                   # File upload Worker (R2 + Firestore)
-Γöé   Γö£ΓöÇΓöÇ comms/                    # Email comms Worker (Amazon SES, 19 purposes, webhook)
+Γöé   Γö£ΓöÇΓöÇ comms/                    # Email comms Worker (Amazon SES, 23 purposes, webhook)
 Γöé   Γö£ΓöÇΓöÇ payments/                 # Payments Worker (Momo + Card with Paypack/PesaPal)
 Γöé   Γö£ΓöÇΓöÇ bookings/                 # Bookings Worker (create, respond, callback, availability)
 Γöé   Γö£ΓöÇΓöÇ store/                    # Store Worker (callbacks, digital downloads, status)
@@ -469,6 +470,8 @@ interface BookingTier {
   id: string;
   name: string;
   price: number;
+  priceUSD?: number;           // USD amount (when currency === "USD")
+  currency?: "RWF" | "USD";    // Tier pricing currency (defaults to RWF)
   duration: string;               // e.g., "30min", "60min"
   description?: string;
 }
@@ -676,6 +679,15 @@ MIT License - see LICENSE file for details.
 For issues or feature requests, please open an issue on GitHub.
 
 ## Recent Updates
+
+### Booking Payment Currency, Notifications & Email Reliability Fixes (September 2026)
+
+- **Currency-aware booking payment methods**: A paid booking tier priced in USD now shows **Card only** on the pay page — Mobile Money is hidden, the method is forced to `card`, with a "priced in USD, so card payment is the only option" note. RWF-priced tiers keep both **Mobile Money** and **Card**. The payments worker also rejects any non-RWF Mobile Money initiation server-side (`Mobile Money only supports RWF...`), so a USD-priced tier can never be charged as an RWF amount through Paypack.
+- **Fractional USD tier amounts**: Booking creation previously wrote amounts as Firestore `integerValue`, which rejects decimals — a `$49.99` tier could abort booking creation before payment. Tier duration, payment amount, and the pre-created transaction amount are now written as `doubleValue` when non-integer.
+- **Booking payment notification fix**: The booking pay page sent `creatorUid: booking.creatorId` (the creator's handle, not an auth UID) when requesting payment, so the "Booking Payment Received" in-app notification was written against the wrong document and never reached the creator. It now sends `booking.creatorUid`.
+- **Notifications no longer require composite indexes**: The notification drawer, unread bell badge, and mark-all-as-read queried with `orderBy("createdAt")` / `where("read" == false)` combinations that each require a Firestore composite index — when missing, the drawer was silently empty for every user. All three now use a single `where("userId")` query with client-side sorting and unread filtering.
+- **Firestore `runQuery` URL fixes**: The community worker fired queries at `documents/{collection}:runQuery` instead of the required `documents:runQuery` (every community query silently returned `[]`); the payments worker's admin-notification lookup used `documents/profiles:runQuery` with the same effect (admin "New Transaction" alerts never fired). Both now hit `documents:runQuery`.
+- **Supporter-email diagnostics surfaced**: The comms worker now logs the `supportedCreators` query result count and the number of resolved supporter emails (`[comms] fetchSupporters query/resolved`) and logs the full request context when it would throw "No recipients resolved". Post and Article forms now surface that failure to the creator as an error toast instead of swallowing it.
 
 ### Supporter Article Read Page (September 2026)
 
@@ -997,7 +1009,7 @@ For issues or feature requests, please open an issue on GitHub.
 
 - **New Cloudflare Worker** (`workers/comms/`): Replaces all Nodemailer/SMTP-based email routes with Cloudflare's native `env.EMAIL.send()` binding. Zero SMTP config, zero API keys, automatic SPF/DKIM/DMARC via Cloudflare DNS.
 - **Single unified template**: `renderEmailHtml()` builds a responsive HTML email from per-service template data (header color, title, body, CTA, footer). Each service only provides data, not markup.
-- **18 email services** covering all transactional email purposes: welcome, profile live, booking request/response, gathering created/RSVP/checkin/declined/undo, message new/digest, store order/status, support received, payout processed, content new, verification request/feedback, broadcast.
+- **23 email services** covering all transactional email purposes: welcome (user/creator), profile live, booking request/response/cancelled, gathering created/RSVP/checkin/declined/undo, message new/digest, store order/status, support received, payout processed, content new, withdrawal request, verification request/feedback, broadcast, booking reminder (cron).
 - **Firebase JWT auth**: Reuses the same `jose` + JWKS pattern as the upload Worker.
 - **Firestore helpers**: `fetchSupporters()` and `fetchCreatorEmail()` fetch recipient emails from Firestore using the service account OAuth flow (cached 1-hour tokens).
 

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import { Timestamp } from "firebase/firestore";
 
 export type BookingAccess = "public" | "supporters";

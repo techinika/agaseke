@@ -51,6 +51,8 @@ Every Firestore read/write (GET/POST/PATCH/DELETE — Firestore REST; no PUT) pe
 
 **SES troubleshooting:** The worker logs `status` + response `body` on every failed SES send. The common failure is HTTP `403` `AccessDenied` — the IAM user behind `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` must be granted `ses:SendEmail` (and `ses:SendRawEmail`) on the verified identity (e.g. `arn:aws:ses:us-east-1:<acct>:identity/comms.agaseke.me`). See `workers/comms/README.md` for the exact inline policy.
 
+**Recipient diagnostics:** For `content_new`, recipient resolution is instrumented — `fetchSupporters` logs `[comms] fetchSupporters query` (creator + result count) and `[comms] fetchSupporters resolved` (email/UID counts), and the endpoint logs the full request context when zero recipients would throw `No recipients resolved` (traceable via `wrangler tail`). The app surfaces that error to the creator with a toast.
+
 ## agaseke-store
 
 | Variable                  | Type   | Secret | Description                          |
@@ -129,6 +131,8 @@ Every Firestore read/write (GET/POST/PATCH/DELETE — Firestore REST; no PUT) pe
 | `BOOKINGS_WORKER_URL`                      | string | no     | Bookings worker URL (e.g.`https://bookings.api.agaseke.me`)    |
 | `SUPPORT_WORKER_URL`                       | string | no     | Support worker URL (e.g.`https://support.api.agaseke.me`)      |
 | `COMMUNITY_WORKER_URL`                     | string | no     | Community worker URL (e.g.`https://community.api.agaseke.me`)  |
+
+**MoMo currency guard:** Paypack (Mobile Money / MomoPay) only supports RWF. `initiateMomoPayment` therefore rejects any transaction whose `currency` is not `RWF` with `Mobile Money only supports RWF (requested <currency>). Use card payment for other currencies.` — USD-priced transactions (support, store, booking tiers, community tiers) must go through card (Pesapal).
 
 ## agaseke-general
 

@@ -61,9 +61,15 @@ export default {
         if (path === "/api/payments/webhooks/paypack" && request.method === "POST") {
           const limited = isRateLimited(request, 20, 60000);
           if (limited) return limited;
+          console.log("[paypack-webhook] received", {
+            method: request.method,
+            path,
+            signaturePresent: Boolean(request.headers.get("x-paypack-signature")),
+          });
           const body = await request.text();
           const signature = request.headers.get("x-paypack-signature");
           const result = await handlePaypackWebhook(env, body, signature);
+          console.log("[paypack-webhook] completed", result);
           return json(result, 200, origin);
         }
 
@@ -101,7 +107,12 @@ export default {
         return json({ error: "Not found" }, 404, origin);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Internal error";
-        console.error("Payments error:", request.method, url.pathname, err);
+        console.error("[payments] request failed", {
+          method: request.method,
+          path: url.pathname,
+          error: message,
+          stack: err instanceof Error ? err.stack : String(err),
+        });
         await logActivity(env, "error", "payment", `Payments error: ${message}`, {
           path: url.pathname,
           method: request.method,

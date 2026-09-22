@@ -1,6 +1,6 @@
 export const revalidate = 300;
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 import CommunityPage from "@/components/pages/public/CommunityPage";
 import { adminDb } from "@/db/firebaseAdmin";
 import { Metadata } from "next";

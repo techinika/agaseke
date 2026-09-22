@@ -57,11 +57,10 @@ const Navbar = () => {
     const q = query(
       collection(db, "notifications"),
       where("userId", "==", auth.user.uid),
-      where("read", "==", false),
     );
 
     const unsub = onSnapshot(q, (snapshot) => {
-      setUnreadCount(snapshot.size);
+      setUnreadCount(snapshot.docs.filter((d) => !d.data().read).length);
     }, (error) => {
       console.error("Failed to load notification count:", error);
       setUnreadCount(0);

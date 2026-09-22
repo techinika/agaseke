@@ -137,7 +137,7 @@ export async function firestoreQuery(
   const token = await getFirestoreToken(env);
   if (!token) return [];
 
-  const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/${collection}:runQuery`;
+  const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents:runQuery`;
   const res = await auditedFetch(env, "POST", `${collection}:runQuery`, url, {
     method: "POST",
     headers: {
@@ -181,7 +181,7 @@ export async function firestoreQueryAll(
     const token = await getFirestoreToken(env);
     if (!token) break;
 
-    const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/${collection}:runQuery`;
+    const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents:runQuery`;
     const body: any = {
       structuredQuery: {
         from: [{ collectionId: collection }],

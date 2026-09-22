@@ -13,6 +13,13 @@ export async function initiateMomoPayment(
     throw new Error("Phone number is required for MoMo payments");
   }
 
+  const paymentCurrency = body.currency || "RWF";
+  if (paymentCurrency !== "RWF") {
+    throw new Error(
+      `Mobile Money only supports RWF (requested ${paymentCurrency}). Use card payment for other currencies.`
+    );
+  }
+
   const {
     amount,
     phone,
@@ -139,7 +146,7 @@ export async function initiateMomoPayment(
     referralUid: referralUid ?? "",
     referralId: referralId ?? "",
     type: txType,
-    currency: currency || "RWF",
+    currency: paymentCurrency,
     paymentMethod: "momo",
     createdAt: now,
     initiatedBy: uid,

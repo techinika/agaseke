@@ -1,32 +1,48 @@
 {
-  "$schema": "../../node_modules/wrangler/config-schema.json",
-  "name": "agaseke-payments",
-  "main": "src/index.ts",
-  "compatibility_date": "2026-07-06",
-  "keep_vars": true,
-  "compatibility_flags": ["nodejs_compat"],
-  "routes": [
-    {
-      "pattern": "payments.api.agaseke.me",
-      "custom_domain": true,
-      "zone_name": "agaseke.me",
-      "enabled": true,
-      "previews_enabled": false
-    },
-  ],
-  "vars": {
-    "FIREBASE_PROJECT_ID": "agaseke4creators"
-  },
-  "observability": {
-    "enabled": true,
-    "head_sampling_rate": 0.1,
-    "logs": {
-      "head_sampling_rate": 0.1
-    },
-    "traces": {
-      "head_sampling_rate": 0.1,
-    },
-  },
-  "workers_dev": true,
-  "preview_urls": true,
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"name": "agaseke-payments",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-07-06",
+	"keep_vars": true,
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"routes": [
+		{
+			"pattern": "payments.api.agaseke.me",
+			"custom_domain": true,
+			"zone_name": "agaseke.me",
+			"enabled": true,
+			"previews_enabled": false
+		},
+	],
+	"vars": {
+		"FIREBASE_PROJECT_ID": "agaseke4creators",
+		"APP_URL": "https://agaseke.me",
+		"BOOKINGS_WORKER_URL": "https://bookings.api.agaseke.me",
+		"COMMS_WORKER_URL": "https://comms.api.agaseke.me",
+		"FIREBASE_CLIENT_EMAIL": "firebase-adminsdk-fbsvc@agaseke4creators.iam.gserviceaccount.com",
+		"NEXT_PUBLIC_CREATOR_SHARE": "0.9",
+		"NEXT_PUBLIC_PLATFORM_SHARE": "0.1",
+		"NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL": "0.09",
+		"NEXT_PUBLIC_REFERRAL_SHARE": "0.01",
+		"PAYMENTS_WORKER_URL": "https://payments.api.agaseke.me",
+		"PAYPACK_CLIENT_ID": "a7862afa-b374-11f1-883e-deadd43720af",
+		"PESAPAL_URL": "https://pay.pesapal.com/v3",
+		"STORE_WORKER_URL": "https://store.api.agaseke.me",
+		"SUPPORT_WORKER_URL": "https://support.api.agaseke.me"
+	},
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1,
+		"logs": {
+			"head_sampling_rate": 1
+		},
+		"traces": {
+			"head_sampling_rate": 1,
+			"enabled": true,
+		},
+	},
+	"workers_dev": true,
+	"preview_urls": true,
 }

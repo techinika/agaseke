@@ -82,6 +82,10 @@ The worker runs a scheduled handler (`processRenewals`) that checks for subscrip
 
 Every Firestore operation in this worker (GET/POST/PATCH/DELETE) is audited to the `activityLogs` collection with `category: "db"` via `src/audit.ts` (`auditedFetch`) — deferred in memory and flushed via `ctx.waitUntil()` inside the fetch handler, and `flushPending()` at the end of the scheduled handler. Recording is non-blocking: it never delays the response and failures are invisible to callers. See `workers/WORKERS.md`.
 
+## Firestore REST conventions
+
+Firestore REST `runQuery` must always target `.../databases/(default)/documents:runQuery` — the target collection goes inside `structuredQuery.from[].collectionId`. Queries against `documents/{collection}:runQuery` are invalid and silently return an empty array (`[]`), which previously broke every community query in this worker. Keep the endpoint suffix `documents:runQuery` exactly.
+
 ## Setup
 
 ### Environment Variables

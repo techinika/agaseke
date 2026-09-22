@@ -111,6 +111,11 @@ export async function fetchSupporters(
       stringValue: creatorId,
     });
     const docs = results.flatMap((result) => result.document ? [result.document] : []);
+    console.log("[comms] fetchSupporters query", {
+      creatorId,
+      results,
+      docCount: docs.length,
+    });
 
     const emails: string[] = [];
     const names: Record<string, string> = {};
@@ -142,6 +147,13 @@ export async function fetchSupporters(
         names[email] = rawName || email.split("@")[0] || "there";
       }
     }
+
+    console.log("[comms] fetchSupporters resolved", {
+      creatorId,
+      emailCount: emails.length,
+      uidCount: uids.size,
+      emails: emails.slice(0, 20),
+    });
 
     return { emails, names };
   } catch (err) {

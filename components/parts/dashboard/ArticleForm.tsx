@@ -163,6 +163,7 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
           }
         } catch (notifyError) {
           console.error("Failed to notify supporters:", notifyError);
+          toast.error(`Could not notify supporters: ${String(notifyError)}`);
         }
         toast.success("Article published!");
         router.push(backHref);
@@ -256,6 +257,7 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
             }
           } catch (notifyError) {
             console.error("Failed to notify supporters:", notifyError);
+            toast.error(`Could not notify supporters: ${String(notifyError)}`);
           }
         }
 
