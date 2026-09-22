@@ -63,8 +63,8 @@ export async function getUserTransactions(env: Env, uid: string): Promise<UserTr
   await Promise.all(
     distinctCreatorUids.map(async (creatorUid) => {
       const profileDoc = await firestoreGet(env, `profiles/${creatorUid}`);
-      if (profileDoc) {
-        const profile = convertFromFields(profileDoc);
+      if (profileDoc && profileDoc.fields) {
+        const profile = convertFromFields(profileDoc.fields as Record<string, unknown>);
         const displayName = toString(profile.displayName);
         if (displayName) nameByUid[creatorUid] = displayName;
       }
