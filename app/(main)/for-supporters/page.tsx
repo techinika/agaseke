@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Metadata } from "next";
+import MarketingPageSchema from "@/components/seo/MarketingPageSchema";
 import {
   Heart,
   Gift,
@@ -11,15 +12,60 @@ import {
   MessageSquare,
 } from "lucide-react";
 
+const PAGE_URL = "/for-supporters";
+const PAGE_NAME = "For Supporters";
+
+const faqs = [
+  {
+    question: "What is a supporter on Agaseke?",
+    answer:
+      "A supporter is anyone who follows and backs creators they like — contributing to them, joining their communities, entering their giveaways, and attending their events.",
+  },
+  {
+    question: "How do I support a creator on Agaseke?",
+    answer:
+      "You can make a one-time contribution with a personal message, subscribe to a creator's paid community membership, buy from their store, or book one-on-one time with them.",
+  },
+  {
+    question: "Can I take part in creator giveaways?",
+    answer:
+      "Yes. Creators run giveaways on their profiles, and supporters can enter and win prizes their favourite creators curate for their audience.",
+  },
+  {
+    question: "Can I attend private gatherings?",
+    answer:
+      "Yes. Creators organise private gatherings and events for their community, and supporters can attend and take part.",
+  },
+  {
+    question: "How do I get started as a supporter?",
+    answer:
+      "Create an account on Agaseke, then explore creators, follow their profiles, and support the work you care about.",
+  },
+];
+
 export const metadata: Metadata = {
   title: "For Supporters | Agaseke for Creators",
   description:
     "What it means to be a supporter on Agaseke for Creators. Back the creators you believe in — through support, memberships, giveaways, private gatherings, bookings and more.",
+  alternates: {
+    canonical: PAGE_URL,
+    languages: { en: PAGE_URL },
+  },
+  keywords: [
+    "Agaseke for supporters",
+    "support creators Africa",
+    "creator fan community",
+    "back your favourite creators",
+    "creator membership",
+    "fan support platform",
+    "creator giveaways",
+    "private creator gatherings",
+  ],
   openGraph: {
     title: "For Supporters | Agaseke for Creators",
     description:
       "Back the creators you love — through support, memberships, giveaways, private gatherings, bookings and more.",
-    url: process.env.NEXT_PUBLIC_BASE_URL || "https://agaseke.me/for-supporters",
+    url: process.env.NEXT_PUBLIC_BASE_URL || `https://agaseke.me${PAGE_URL}`,
     siteName: "Agaseke",
     images: [
       {
@@ -84,7 +130,14 @@ const features = [
 
 export default function ForSupportersPage() {
   return (
-    <div className="max-w-5xl mx-auto px-4 py-16">
+    <>
+      <MarketingPageSchema
+        pageUrl={PAGE_URL}
+        pageName={PAGE_NAME}
+        pageDescription="What it means to be a supporter on Agaseke — back creators through support, memberships, giveaways, private gatherings, bookings and more."
+        faqs={faqs}
+      />
+      <div className="max-w-5xl mx-auto px-4 py-16">
       <section className="text-center mb-16">
         <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-orange-100 text-orange-700 text-xs font-black uppercase tracking-wide rounded-full mb-6">
           <Heart size={14} /> For Supporters
@@ -166,6 +219,23 @@ export default function ForSupportersPage() {
           </Link>
         </div>
       </section>
-    </div>
+
+      <section className="flex flex-wrap items-center justify-center gap-2 text-sm mt-10">
+        <span className="text-muted-foreground font-bold">Also on Agaseke:</span>
+        <Link
+          href="/for-creators"
+          className="px-3 py-1 font-bold text-muted-foreground border border-border rounded-full hover:text-foreground hover:bg-muted transition"
+        >
+          For Creators
+        </Link>
+        <Link
+          href="/for-brands"
+          className="px-3 py-1 font-bold text-muted-foreground border border-border rounded-full hover:text-foreground hover:bg-muted transition"
+        >
+          For Brands
+        </Link>
+      </section>
+      </div>
+    </>
   );
 }

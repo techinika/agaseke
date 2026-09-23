@@ -690,6 +690,13 @@ For issues or feature requests, please open an issue on GitHub.
 
 ## Recent Updates
 
+### Public Marketing Pages SEO (September 2026)
+
+- **Structured data on `/for-creators`, `/for-supporters`, `/for-brands`**: each page now emits `WebPage`, `BreadcrumbList`, and `FAQPage` JSON-LD (via a new shared `MarketingPageSchema` component built on `lib/schemas`), enabling rich results in search engines.
+- **Canonical URLs, keywords & descriptions**: every page declares its own `alternates.canonical` + `en` language URL, page-specific keyword lists, and more detailed titles/descriptions for search and Open Graph/Twitter cards.
+- **Sitemap inclusion + priority**: all three pages are now listed in `/sitemap.xml` (monthly, priority 0.7) — previously `/for-creators` was missing entirely.
+- **Cross-linking**: a persistent "Also on Agaseke" strip on each of the three pages links to the other two (For Creators / For Supporters / For Brands), strengthening internal link flow between the marketing pages.
+
 ### For Supporters & For Brands Pages (September 2026)
 
 - **New public `/for-supporters` page**: a static, SEO-indexed page (under the main layout) about backing the creators you love — one-time support with a message, community memberships and exclusive content, participating in creator giveaways, attending private gatherings, booking creator time, shopping their store, and connecting directly.

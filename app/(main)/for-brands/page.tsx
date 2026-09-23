@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Metadata } from "next";
+import MarketingPageSchema from "@/components/seo/MarketingPageSchema";
 import {
   Megaphone,
   Users,
@@ -11,15 +12,61 @@ import {
   HandCoins,
 } from "lucide-react";
 
+const PAGE_URL = "/for-brands";
+const PAGE_NAME = "For Brands";
+const ENROLL_URL = "https://brands.agaseke.me";
+
+const faqs = [
+  {
+    question: "How do brand campaigns work on Agaseke?",
+    answer:
+      "You set up a campaign, choose your budget, decide how many creators can participate, and creators who fit the campaign join it. They run the campaign to their audiences, and at the end the budget is divided between them by performance.",
+  },
+  {
+    question: "Can brands with small budgets run campaigns?",
+    answer:
+      "Yes. Agaseke is open to brands of any size — you decide what to spend, and there is no minimum bar. Small and growing brands can fund campaigns that fit their budget.",
+  },
+  {
+    question: "How is the budget divided among creators?",
+    answer:
+      "Participating creators divide the campaign budget based on how each one performed, so your money follows actual results rather than a flat fee. Creators earn what they delivered.",
+  },
+  {
+    question: "Who can participate in a brand campaign?",
+    answer:
+      "You set the number of creators who can participate, and creators across niches — musicians, artists, athletes, educators, and more — join with audiences relevant to your campaign.",
+  },
+  {
+    question: "How do I enroll my brand?",
+    answer:
+      "Enroll directly at brands.agaseke.me — it only takes a few minutes to set up your brand, choose a budget, and open your first campaign.",
+  },
+];
+
 export const metadata: Metadata = {
   title: "For Brands | Agaseke for Creators",
   description:
     "Run creator marketing campaigns with Agaseke for Brands. Set your budget, open the campaign to a number of creators, and let creators divide the budget by performance — no matter your budget size.",
+  alternates: {
+    canonical: PAGE_URL,
+    languages: { en: PAGE_URL },
+  },
+  keywords: [
+    "Agaseke for brands",
+    "creator marketing platform",
+    "run campaigns with creators",
+    "creator campaigns Africa",
+    "influencer marketing platform Africa",
+    "performance-based creator payouts",
+    "brand creator collaboration",
+    "marketing budget for creators",
+  ],
   openGraph: {
     title: "For Brands | Agaseke for Creators",
     description:
       "Set your budget, open the campaign to a number of creators, and let them divide the budget by performance. Enroll at brands.agaseke.me.",
-    url: process.env.NEXT_PUBLIC_BASE_URL || "https://agaseke.me/for-brands",
+    url: process.env.NEXT_PUBLIC_BASE_URL || `https://agaseke.me${PAGE_URL}`,
     siteName: "Agaseke",
     images: [
       {
@@ -95,11 +142,16 @@ const features = [
   },
 ];
 
-const ENROLL_URL = "https://brands.agaseke.me";
-
 export default function ForBrandsPage() {
   return (
-    <div className="max-w-5xl mx-auto px-4 py-16">
+    <>
+      <MarketingPageSchema
+        pageUrl={PAGE_URL}
+        pageName={PAGE_NAME}
+        pageDescription="Run marketing campaigns with multiple creators at any budget — set the budget, open it to a number of creators, and let them divide it by performance."
+        faqs={faqs}
+      />
+      <div className="max-w-5xl mx-auto px-4 py-16">
       <section className="text-center mb-16">
         <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-orange-100 text-orange-700 text-xs font-black uppercase tracking-wide rounded-full mb-6">
           <Megaphone size={14} /> For Brands
@@ -201,13 +253,30 @@ export default function ForBrandsPage() {
         >
           Enroll your brand at brands.agaseke.me
         </a>
-        <p className="text-xs text-muted-foreground mt-4">
-          Prefer to look around first?{" "}
-          <Link href="/for-creators" className="font-bold text-orange-600 hover:underline">
-            See what we do for creators
-          </Link>
-        </p>
+<p className="text-xs text-muted-foreground mt-4">
+            Prefer to look around first?{" "}
+            <Link href="/for-creators" className="font-bold text-orange-600 hover:underline">
+              See what we do for creators
+            </Link>
+          </p>
       </section>
-    </div>
+
+      <section className="flex flex-wrap items-center justify-center gap-2 text-sm mt-10">
+        <span className="text-muted-foreground font-bold">Also on Agaseke:</span>
+        <Link
+          href="/for-creators"
+          className="px-3 py-1 font-bold text-muted-foreground border border-border rounded-full hover:text-foreground hover:bg-muted transition"
+        >
+          For Creators
+        </Link>
+        <Link
+          href="/for-supporters"
+          className="px-3 py-1 font-bold text-muted-foreground border border-border rounded-full hover:text-foreground hover:bg-muted transition"
+        >
+          For Supporters
+        </Link>
+      </section>
+      </div>
+    </>
   );
 }

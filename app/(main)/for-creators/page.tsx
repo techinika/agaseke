@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Metadata } from "next";
+import MarketingPageSchema from "@/components/seo/MarketingPageSchema";
 import {
   UserRound,
   Users,
@@ -12,15 +13,60 @@ import {
   Sparkles,
 } from "lucide-react";
 
+const PAGE_URL = "/for-creators";
+const PAGE_NAME = "For Creators";
+
+const faqs = [
+  {
+    question: "What is a creator on Agaseke?",
+    answer:
+      "A creator on Agaseke is anyone whose work people want to follow and support — a musician, artist, photographer, writer, educator, athlete, comedian, journalist, model, entrepreneur, or community leader. You don't need a huge following to get started.",
+  },
+  {
+    question: "How do creators earn money on Agaseke?",
+    answer:
+      "Creators earn through recurring community subscriptions, one-time support and tips, selling physical and digital products in their store, paid one-on-one bookable meetings, and tickets to gatherings and events.",
+  },
+  {
+    question: "Do I need a big following to be a creator?",
+    answer:
+      "No. Agaseke gives every creator a public page of their own where supporters can find and back their work. Small and growing creators can start immediately and grow from there.",
+  },
+  {
+    question: "How do creators get paid?",
+    answer:
+      "Creators earn in RWF or USD depending on what they offer, and can withdraw their earnings to a Mobile Money account or Bank account through secure payouts.",
+  },
+  {
+    question: "How much does it cost to start as a creator?",
+    answer:
+      "Creating a public profile on Agaseke is free. You only earn — there is no cost to set up your page, store, community, meetings, or gatherings.",
+  },
+];
+
 export const metadata: Metadata = {
   title: "For Creators | Agaseke for Creators",
   description:
     "What it means to be a creator on Agaseke for Creators. Get a public profile, earn through subscriptions, support, your store, bookings and gatherings — with secure, reliable payouts.",
+  alternates: {
+    canonical: PAGE_URL,
+    languages: { en: PAGE_URL },
+  },
+  keywords: [
+    "Agaseke for creators",
+    "creator platform Africa",
+    "earn as a creator",
+    "creator monetization platform",
+    "African content creators support",
+    "creator community platform",
+    "sell as a creator",
+    "creator subscriptions",
+  ],
   openGraph: {
     title: "For Creators | Agaseke for Creators",
     description:
       "What it means to be a creator on Agaseke for Creators — earn through subscriptions, support, store, bookings and gatherings.",
-    url: process.env.NEXT_PUBLIC_BASE_URL || "https://agaseke.me/for-creators",
+    url: process.env.NEXT_PUBLIC_BASE_URL || `https://agaseke.me${PAGE_URL}`,
     siteName: "Agaseke",
     images: [
       {
@@ -85,7 +131,14 @@ const features = [
 
 export default function ForCreatorsPage() {
   return (
-    <div className="max-w-5xl mx-auto px-4 py-16">
+    <>
+      <MarketingPageSchema
+        pageUrl={PAGE_URL}
+        pageName={PAGE_NAME}
+        pageDescription="What it means to be a creator on Agaseke — earn through subscriptions, support, store, bookings and gatherings."
+        faqs={faqs}
+      />
+      <div className="max-w-5xl mx-auto px-4 py-16">
       <section className="text-center mb-16">
         <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-orange-100 text-orange-700 text-xs font-black uppercase tracking-wide rounded-full mb-6">
           <Sparkles size={14} /> For Creators
@@ -167,6 +220,23 @@ export default function ForCreatorsPage() {
           </Link>
         </div>
       </section>
-    </div>
+
+      <section className="flex flex-wrap items-center justify-center gap-2 text-sm mt-10">
+        <span className="text-muted-foreground font-bold">Also on Agaseke:</span>
+        <Link
+          href="/for-supporters"
+          className="px-3 py-1 font-bold text-muted-foreground border border-border rounded-full hover:text-foreground hover:bg-muted transition"
+        >
+          For Supporters
+        </Link>
+        <Link
+          href="/for-brands"
+          className="px-3 py-1 font-bold text-muted-foreground border border-border rounded-full hover:text-foreground hover:bg-muted transition"
+        >
+          For Brands
+        </Link>
+      </section>
+      </div>
+    </>
   );
 }
