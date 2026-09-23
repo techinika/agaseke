@@ -251,7 +251,9 @@ export default function LandingPage({
             username === "designers" ||
             username === "transactions" ||
             username === "bookings" ||
-            username === "for-creators"
+            username === "for-creators" ||
+            username === "for-supporters" ||
+            username === "for-brands"
             ? "taken"
             : "available",
         );

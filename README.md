@@ -124,6 +124,7 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
 
 ### For Supporters
 
+- **For Supporters page** (`/for-supporters`): Public SEO page explaining what it means to be a supporter on Agaseke — supporting creators you like, joining their communities, participating in giveaways, attending private gatherings, booking their time and more
 - **Public Profiles**: Browse creator content at `/[username]`
 - **Public Article Pages**: Full article reading experience at `/articles/[slug]` (no login required) with cover, author link, publish date, views/comments, share button, a live comment section (real-time via `onSnapshot`, add/edit/delete), and supporter gating for private articles. Logged-out readers get a "Log in to join the conversation" prompt that passes `referral=<creator handle>` — signing in through the article makes the creator your referral (same as the profile page). A "More from [creator]" section below the comments shows up to 3 other public posts from the same creator (hidden when none exist). Articles also surface in the Explore feed (`/explore/posts`) and creator community pages.
 - **Public Profile Subpages**: Full-page versions of each tab with SEO-friendly URLs:
@@ -146,6 +147,10 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
 - **Support**: Quick one-time support button available on all profile subpages
 - **Winner Notification**: Congratulatory message when winning a giveaway
 - **Progressive Web App**: Install Agaseke as a standalone app on your device
+
+### For Brands
+
+- **For Brands page** (`/for-brands`): Public SEO page for brands — run marketing campaigns that connect to multiple creators at any budget. You set the budget and the number of participating creators; creators divide the budget by their performance. Enroll at brands.agaseke.me.
 
 ### Admin Dashboard (`/admin`)
 
@@ -684,6 +689,12 @@ MIT License - see LICENSE file for details.
 For issues or feature requests, please open an issue on GitHub.
 
 ## Recent Updates
+
+### For Supporters & For Brands Pages (September 2026)
+
+- **New public `/for-supporters` page**: a static, SEO-indexed page (under the main layout) about backing the creators you love — one-time support with a message, community memberships and exclusive content, participating in creator giveaways, attending private gatherings, booking creator time, shopping their store, and connecting directly.
+- **New public `/for-brands` page**: a static, SEO-indexed page for brands — run campaigns with multiple creators no matter your budget. Set the budget, choose how many creators can participate, and creators divide the budget by their performance. Includes an "Enroll your brand" button linking to brands.agaseke.me.
+- **New reserved usernames**: `for-supporters` and `for-brands` are now rejected in both onboarding username checks (Creator Onboarding and the landing "claim your handle" flow), alongside the existing `for-creators`, so these pages can't be shadowed by a creator handle.
 
 ### Bookings Hub, Expanded Creator Payments & For-Creators Page (September 2026)
 
