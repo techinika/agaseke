@@ -690,6 +690,10 @@ For issues or feature requests, please open an issue on GitHub.
 
 ## Recent Updates
 
+### Email Auto-Linking (September 2026)
+
+- **Email addresses are now hyperlinked (`mailto:`)** wherever URLs already are: post descriptions, comments & replies, community posts, gathering descriptions, community chat, supporter feeds, and public profile content. Emails in rich article/post bodies are linkified too, on top of existing URL link detection, without touching text already inside a link.
+
 ### Article Copy-Link (September 2026)
 
 - **Copy public article links** from the article editor sidebar (next to the slug/URL preview) and from each card on the Articles list. Uses the stored slug (or the slugified title as fallback) to build `agaseke.me/articles/{slug}` and copies it to the clipboard with a confirmation.

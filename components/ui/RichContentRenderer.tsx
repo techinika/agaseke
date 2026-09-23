@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { sanitizeArticleHtml } from "@/lib/articleHtml";
+import { sanitizeArticleHtml, linkifyEmailsInHtml } from "@/lib/articleHtml";
 
 interface RichContentRendererProps {
   html: string;
@@ -12,7 +12,10 @@ export default function RichContentRenderer({
   html,
   className = "",
 }: RichContentRendererProps) {
-  const sanitized = useMemo(() => sanitizeArticleHtml(html), [html]);
+  const sanitized = useMemo(() => {
+    const clean = sanitizeArticleHtml(html);
+    return clean ? linkifyEmailsInHtml(clean) : "";
+  }, [html]);
 
   if (!sanitized) return null;
 

@@ -1,37 +1,52 @@
 "use client";
 import React from "react";
 
-const URL_REGEX = /(https?:\/\/[^\s<]+)|(\bwww\.[^\s<]+\b)|(\b[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}(?:\/[^\s<]*)?\b)/g;
+const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+
+const LINK_REGEX = new RegExp(
+  `(${EMAIL_REGEX.source})` +
+    "|(https?:\\/\\/[^\\s<]+)" +
+    "|(\\bwww\\.[^\\s<]+\\b)" +
+    "|(\\b[a-zA-Z0-9][a-zA-Z0-9.-]*\\.[a-zA-Z]{2,}(?:\\/[^\\s<]*)?\\b)",
+  "g",
+);
 
 function splitWithLinks(text: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
-  const regex = new RegExp(URL_REGEX.source, "g");
+  const regex = new RegExp(LINK_REGEX.source, "g");
 
   while ((match = regex.exec(text)) !== null) {
     if (match.index > lastIndex) {
       parts.push(text.slice(lastIndex, match.index));
     }
 
-    const url = match[0];
-    let href = url;
-
-    if (!url.startsWith("http://") && !url.startsWith("https://")) {
-      href = "https://" + url;
-    }
+    const token = match[0];
+    const isEmail = !!match[1];
+    const href = isEmail ? `mailto:${token}` : token.startsWith("http://") || token.startsWith("https://") ? token : `https://${token}`;
 
     parts.push(
-      <a
-        key={match.index}
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-orange-600 hover:text-orange-700 underline underline-offset-2"
-      >
-        {url}
-      </a>,
+      isEmail ? (
+        <a
+          key={match.index}
+          href={href}
+          className="text-orange-600 hover:text-orange-700 underline underline-offset-2"
+        >
+          {token}
+        </a>
+      ) : (
+        <a
+          key={match.index}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-orange-600 hover:text-orange-700 underline underline-offset-2"
+        >
+          {token}
+        </a>
+      ),
     );
 
     lastIndex = match.index + match[0].length;
@@ -47,10 +62,9 @@ function splitWithLinks(text: string): React.ReactNode[] {
 export function LinkifyText({ text, className }: { text: string; className?: string }) {
   if (!text) return null;
 
-  const hasUrl = URL_REGEX.test(text);
-  URL_REGEX.lastIndex = 0;
+  const hasLink = new RegExp(LINK_REGEX.source, "g").test(text);
 
-  if (!hasUrl) {
+  if (!hasLink) {
     return <span className={className}>{text}</span>;
   }
 
