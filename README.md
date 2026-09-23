@@ -690,6 +690,14 @@ For issues or feature requests, please open an issue on GitHub.
 
 ## Recent Updates
 
+### Article Copy-Link (September 2026)
+
+- **Copy public article links** from the article editor sidebar (next to the slug/URL preview) and from each card on the Articles list. Uses the stored slug (or the slugified title as fallback) to build `agaseke.me/articles/{slug}` and copies it to the clipboard with a confirmation.
+
+### Responsive Dashboard Tab Headers (September 2026)
+
+- **Tab bars scroll horizontally on small screens**: creator dashboard tab headers that previously overflowed — Bookings (Booking Requests / Availability / Tiers / Rejected / Cancelled), Community (Tiers / Members / Earnings), and Gatherings (Upcoming / Past) — are now `overflow-x-auto` with `whitespace-nowrap` tabs on mobile, using a new `no-scrollbar` utility so the scrollbar stays hidden. Desktop layout is unchanged.
+
 ### Public Marketing Pages SEO (September 2026)
 
 - **Structured data on `/for-creators`, `/for-supporters`, `/for-brands`**: each page now emits `WebPage`, `BreadcrumbList`, and `FAQPage` JSON-LD (via a new shared `MarketingPageSchema` component built on `lib/schemas`), enabling rich results in search engines.

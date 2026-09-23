@@ -399,17 +399,22 @@ export default function BookingsPage() {
           <p className="text-muted-foreground font-medium">Manage booking requests and set your availability.</p>
         </header>
 
-        <div className="flex gap-4 mb-8">
-          <button onClick={() => setActiveTab("requests")} className={`px-6 py-3 rounded-lg font-black text-sm transition-all ${activeTab === "requests" ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:bg-muted"}`}>
-            Booking Requests
-            {pendingBookings.length > 0 && <span className="ml-2 bg-orange-500 text-white px-2 py-0.5 rounded-full text-xs">{pendingBookings.length}</span>}
+        <div className="flex gap-4 mb-8 overflow-x-auto no-scrollbar">
+          <button onClick={() => setActiveTab("requests")} className={`inline-flex items-center px-2 sm:px-6 py-3 rounded-lg font-black text-sm transition-all whitespace-nowrap shrink-0 ${activeTab === "requests" ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:bg-muted"}`}>
+            <CalendarDays size={16} className="sm:hidden" />
+            <span className="hidden sm:inline">Booking Requests</span>
+            {pendingBookings.length > 0 && <span className="ml-1 sm:ml-2 bg-orange-500 text-white px-2 py-0.5 rounded-full text-xs">{pendingBookings.length}</span>}
             {awaitingPayment.length > 0 && <span className="ml-1 bg-amber-400 text-amber-950 px-2 py-0.5 rounded-full text-xs font-black">{awaitingPayment.length} unpaid</span>}
           </button>
-          <button onClick={() => setActiveTab("availability")} className={`px-6 py-3 rounded-lg font-black text-sm transition-all ${activeTab === "availability" ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:bg-muted"}`}>Availability</button>
-          <button onClick={() => setActiveTab("tiers")} className={`px-6 py-3 rounded-lg font-black text-sm transition-all ${activeTab === "tiers" ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:bg-muted"}`}>Tiers</button>
-          <button onClick={() => setActiveTab("rejected")} className={`px-6 py-3 rounded-lg font-black text-sm transition-all ${activeTab === "rejected" ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:bg-muted"}`}>
-            Rejected / Cancelled
-            {(rejectedBookings.length + cancelledBookings.length) > 0 && <span className="ml-2 bg-red-500 text-white px-2 py-0.5 rounded-full text-xs">{rejectedBookings.length + cancelledBookings.length}</span>}
+          <button onClick={() => setActiveTab("availability")} className={`inline-flex items-center px-2 sm:px-6 py-3 rounded-lg font-black text-sm transition-all whitespace-nowrap shrink-0 ${activeTab === "availability" ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:bg-muted"}`}>
+            <Clock size={16} className="sm:hidden" />
+            <span className="hidden sm:inline">Availability</span>
+          </button>
+          <button onClick={() => setActiveTab("tiers")} className={`px-6 py-3 rounded-lg font-black text-sm transition-all whitespace-nowrap shrink-0 ${activeTab === "tiers" ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:bg-muted"}`}>Tiers</button>
+          <button onClick={() => setActiveTab("rejected")} className={`inline-flex items-center px-2 sm:px-6 py-3 rounded-lg font-black text-sm transition-all whitespace-nowrap shrink-0 ${activeTab === "rejected" ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:bg-muted"}`}>
+            <X size={16} className="sm:hidden" />
+            <span className="hidden sm:inline">Rejected / Cancelled</span>
+            {(rejectedBookings.length + cancelledBookings.length) > 0 && <span className="ml-1 sm:ml-2 bg-red-500 text-white px-2 py-0.5 rounded-full text-xs">{rejectedBookings.length + cancelledBookings.length}</span>}
           </button>
         </div>
 

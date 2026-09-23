@@ -32,10 +32,10 @@ export default function GatheringListPanel({
   return (
     <div className="flex-1 p-8 border-r border-border overflow-y-auto">
       <div className="flex justify-between items-center mb-8">
-        <div className="flex gap-2">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar">
           <button
             onClick={() => onTabChange("upcoming")}
-            className={`px-4 py-2 rounded-lg font-bold text-sm transition ${
+            className={`px-4 py-2 rounded-lg font-bold text-sm transition whitespace-nowrap shrink-0 ${
               activeTab === "upcoming"
                 ? "bg-foreground text-background"
                 : "bg-card text-muted-foreground hover:bg-muted"
@@ -45,7 +45,7 @@ export default function GatheringListPanel({
           </button>
           <button
             onClick={() => onTabChange("past")}
-            className={`px-4 py-2 rounded-lg font-bold text-sm transition ${
+            className={`px-4 py-2 rounded-lg font-bold text-sm transition whitespace-nowrap shrink-0 ${
               activeTab === "past"
                 ? "bg-foreground text-background"
                 : "bg-card text-muted-foreground hover:bg-muted"

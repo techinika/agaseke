@@ -214,12 +214,12 @@ export default function CommunityPage() {
 
       {settings.enabled && (
         <>
-          <div className="flex gap-1 mb-8 bg-muted rounded-lg p-1 w-fit">
+          <div className="flex gap-1 mb-8 bg-muted rounded-lg p-1 w-max md:w-fit overflow-x-auto no-scrollbar">
             {(["settings", "members", "earnings"] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-md text-xs font-bold capitalize transition ${
+                className={`px-4 py-2 rounded-md text-xs font-bold capitalize transition whitespace-nowrap shrink-0 ${
                   activeTab === tab
                     ? "bg-card shadow-sm text-foreground"
                     : "text-muted-foreground hover:text-foreground"
