@@ -13,6 +13,8 @@ import {
   Save,
   Rocket,
   Monitor,
+  Copy,
+  Check,
 } from "lucide-react";
 import { db } from "@/db/firebase";
 import {
@@ -55,6 +57,7 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
   const [status, setStatus] = useState<"draft" | "published">("draft");
   const [saving, setSaving] = useState<"draft" | "publish" | null>(null);
   const [loading, setLoading] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
 
   const backHref = "/creator/content/articles";
@@ -136,12 +139,23 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
     const nextStatus: "draft" | "published" = publish ? "published" : "draft";
     const isExistingDraft = !!articleId && status === "draft";
 
+    let finalSlug = (slugTouched ? slug.trim() : slugify(title)) || "";
+    const hasSlug = !!finalSlug;
+
     setSaving(publish ? "publish" : "draft");
     try {
       let destination = backHref;
 
       if (publish && isExistingDraft) {
         await updateDoc(doc(db, "creatorContent", articleId), {
+          title: title.trim(),
+          ...(hasSlug && { slug: finalSlug }),
+          description: desc,
+          shortDescription: desc,
+          htmlContent: cleanBody,
+          coverUrl: coverUrl || null,
+          contentUrl: coverUrl || null,
+          isPrivate,
           status: "published",
           publishedAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -169,9 +183,6 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
         router.push(backHref);
         return;
       }
-
-      let finalSlug = (slugTouched ? slug.trim() : slugify(title)) || "";
-      const hasSlug = !!finalSlug;
 
       if (hasSlug) {
         const slugSnap = await getDocs(
@@ -279,6 +290,20 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
     slug ||
     slugify(title) ||
     fallbackSlug(slugify(title) || undefined);
+
+  const copyArticleLink = async () => {
+    if (!articleUrlSlug) return;
+    try {
+      await navigator.clipboard?.writeText(
+        `${baseUrl}/articles/${articleUrlSlug}`,
+      );
+      setCopiedLink(true);
+      toast.success("Article link copied!");
+      setTimeout(() => setCopiedLink(false), 2000);
+    } catch {
+      toast.error("Failed to copy link");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -437,12 +462,26 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
                   </button>
                 </div>
                 {articleUrlSlug ? (
-                  <p className="text-xs text-muted-foreground mt-2 break-all">
-                    Article URL:{" "}
-                    <span className="text-orange-600 font-medium">
-                      {baseUrl}/articles/{articleUrlSlug}
-                    </span>
-                  </p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <p className="text-xs text-muted-foreground break-all min-w-0">
+                      Article URL:{" "}
+                      <span className="text-orange-600 font-medium">
+                        {baseUrl}/articles/{articleUrlSlug}
+                      </span>
+                    </p>
+                    <button
+                      onClick={copyArticleLink}
+                      className="shrink-0 inline-flex items-center gap-1 px-2 py-1 bg-muted rounded-md text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-orange-600 hover:bg-muted transition"
+                      title="Copy public link"
+                    >
+                      {copiedLink ? (
+                        <Check size={12} className="text-green-500" />
+                      ) : (
+                        <Copy size={12} />
+                      )}
+                      {copiedLink ? "Copied" : "Copy"}
+                    </button>
+                  </div>
                 ) : (
                   <p className="text-xs text-muted-foreground mt-2">
                     No public URL yet — add a slug to publish at{" "}

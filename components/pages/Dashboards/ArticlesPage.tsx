@@ -16,6 +16,8 @@ import {
   MessageCircle,
   Search,
   FilePlus2,
+  Copy,
+  Check,
 } from "lucide-react";
 import { db } from "@/db/firebase";
 import {
@@ -31,6 +33,8 @@ import { toast } from "sonner";
 import { useAuth } from "@/auth/AuthContext";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useRouter } from "next/navigation";
+import { slugify } from "@/lib/slug";
+import { baseUrl } from "@/lib/baseUrl";
 
 export default function ArticlesPage() {
   const { creator } = useAuth();
@@ -40,6 +44,7 @@ export default function ArticlesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!creator?.handle) return;
@@ -74,6 +79,22 @@ export default function ArticlesPage() {
       toast.error("Failed to delete article");
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const copyArticleLink = async (article: any) => {
+    const linkSlug = article.slug || slugify(article.title || "");
+    if (!linkSlug) {
+      toast.error("No public link yet — open the article and add a slug");
+      return;
+    }
+    try {
+      await navigator.clipboard?.writeText(`${baseUrl}/articles/${linkSlug}`);
+      setCopiedId(article.id);
+      toast.success("Link copied to clipboard");
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      toast.error("Failed to copy link");
     }
   };
 
@@ -235,6 +256,20 @@ export default function ArticlesPage() {
                   </div>
                 </div>
                 <div className="flex sm:flex-col items-center gap-2 p-4 sm:border-l border-border shrink-0">
+                  <button
+                    onClick={() => copyArticleLink(article)}
+                    className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg hover:bg-muted transition text-sm"
+                    title="Copy public link"
+                  >
+                    {copiedId === article.id ? (
+                      <Check size={16} className="text-green-500" />
+                    ) : (
+                      <Copy size={16} className="text-muted-foreground" />
+                    )}
+                    <span className="sm:hidden">
+                      {copiedId === article.id ? "Copied" : "Copy"}
+                    </span>
+                  </button>
                   <button
                     onClick={() =>
                       router.push(`/creator/content/articles/${article.id}`)
