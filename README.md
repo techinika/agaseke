@@ -6,6 +6,7 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
 
 ### For Creators
 
+- **For Creators page** (`/for-creators`): Public SEO page explaining what "creator" means on Agaseke and everything creators get — recurring community subscriptions, support/tips, store, bookable meetings, gatherings, giveaways, content, insights, and reliable payouts
 - **Creator Profiles**: Personalized pages at `/[username]` to showcase content and brand
 - **Content System**:
   - Public and private posts
@@ -138,6 +139,8 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - `/[username]/messaging` - Direct message the creator
 - **Community Interaction**: Like posts and leave comments on creator content
 - **Supporter Feed** (`/supporter`): Personalized content feed with All / Following / For You filter tabs and a creator-name search box (with clear button) — responsive, stacking on mobile and sitting beside the filters on larger screens
+- **Bookings** (`/bookings`): Track every meeting you've booked from the account dropdown — filter by Pending payment / Awaiting response / Upcoming / Ended / Declined, with a "Complete Payment" button for unpaid bookings and the creator's response visible as feedback
+- **Transactions** (`/transactions`): Your complete payment history across support, store, bookings, gatherings, and subscriptions with status filters, pagination, and a "Pay again" retry button for failed payments
 - **Support**: One-time payments via mobile money (MomoPay) or card (credit/debit)
 - **Community Membership**: Subscribe to creator membership tiers with recurring payments (monthly/yearly) via Momo or card
 - **Support**: Quick one-time support button available on all profile subpages
@@ -681,6 +684,13 @@ MIT License - see LICENSE file for details.
 For issues or feature requests, please open an issue on GitHub.
 
 ## Recent Updates
+
+### Bookings Hub, Expanded Creator Payments & For-Creators Page (September 2026)
+
+- **Your bookings in one place**: a new `/bookings` page (also in the account dropdown next to Transactions) lists every meeting request you've made from the `bookingRequests` collection, with filter chips for All / Pending payment / Awaiting response / Upcoming / Ended / Declined. Pending-payment bookings get an amber banner and a "Complete Payment" button straight to `/booking/pay/[bookingId]`; the creator's `responseNote` is shown as "Creator feedback" on accepted/declined bookings, and ended appointments are flagged once the preferred date has passed.
+- **Creators can see which requests are unpaid at a glance**: on the creator Bookings page, pending-payment requests are now pulled to the top, tinted amber with a bold "Payment Pending" chip, an amber "X waiting on payment" banner, and an "N unpaid" mini-count on the Booking Requests tab — so a creator never confirms a meeting before the booker has paid.
+- **New public `/for-creators` page**: a static, SEO-indexed page under the main layout explaining what "creator" means on Agaseke and what creators get (recurring community subscriptions, support/tips, store, bookable meetings, gatherings, giveaways, content, insights and reliable payouts), with CTAs to onboarding.
+- **New reserved usernames**: `transactions`, `bookings`, and `for-creators` are now rejected in both onboarding username checks (Creator Onboarding and the landing "claim your handle" flow) so these pages can't be shadowed by a creator handle.
 
 ### Transactions Hub (September 2026)
 

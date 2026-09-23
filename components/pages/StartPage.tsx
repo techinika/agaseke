@@ -157,7 +157,10 @@ export default function CreatorOnboarding() {
             formData.username === "educators" ||
             formData.username === "interviewers" ||
             formData.username === "bloggers" ||
-            formData.username === "designers"
+            formData.username === "designers" ||
+            formData.username === "transactions" ||
+            formData.username === "bookings" ||
+            formData.username === "for-creators"
             ? "taken"
             : "available",
         );

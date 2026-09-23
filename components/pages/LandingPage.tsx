@@ -248,7 +248,10 @@ export default function LandingPage({
             username === "educators" ||
             username === "interviewers" ||
             username === "bloggers" ||
-            username === "designers"
+            username === "designers" ||
+            username === "transactions" ||
+            username === "bookings" ||
+            username === "for-creators"
             ? "taken"
             : "available",
         );

@@ -22,6 +22,8 @@ import {
   MessageSquare,
   Mail,
   Phone,
+  AlertTriangle,
+  CreditCard,
 } from "lucide-react";
 import { db } from "@/db/firebase";
 import {
@@ -363,7 +365,10 @@ export default function BookingsPage() {
     finally { setSaving(false); }
   };
 
-  const pendingBookings = bookings.filter((b) => b.status === "pending");
+  const pendingBookings = bookings
+    .filter((b) => b.status === "pending")
+    .sort((a, b) => (a.paymentStatus === "pending" ? -1 : 1) - (b.paymentStatus === "pending" ? -1 : 1));
+  const awaitingPayment = pendingBookings.filter((b) => b.paymentStatus === "pending");
   const rejectedBookings = bookings.filter((b) => b.status === "declined");
   const cancelledBookings = bookings.filter((b) => b.status === "cancelled");
   const acceptedBookings = bookings.filter((b) => b.status === "accepted");
@@ -398,6 +403,7 @@ export default function BookingsPage() {
           <button onClick={() => setActiveTab("requests")} className={`px-6 py-3 rounded-lg font-black text-sm transition-all ${activeTab === "requests" ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:bg-muted"}`}>
             Booking Requests
             {pendingBookings.length > 0 && <span className="ml-2 bg-orange-500 text-white px-2 py-0.5 rounded-full text-xs">{pendingBookings.length}</span>}
+            {awaitingPayment.length > 0 && <span className="ml-1 bg-amber-400 text-amber-950 px-2 py-0.5 rounded-full text-xs font-black">{awaitingPayment.length} unpaid</span>}
           </button>
           <button onClick={() => setActiveTab("availability")} className={`px-6 py-3 rounded-lg font-black text-sm transition-all ${activeTab === "availability" ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:bg-muted"}`}>Availability</button>
           <button onClick={() => setActiveTab("tiers")} className={`px-6 py-3 rounded-lg font-black text-sm transition-all ${activeTab === "tiers" ? "bg-foreground text-background" : "bg-card text-muted-foreground hover:bg-muted"}`}>Tiers</button>
@@ -412,9 +418,15 @@ export default function BookingsPage() {
             {pendingBookings.length > 0 && (
               <section className="bg-card border border-border rounded-lg p-6">
                 <h2 className="text-lg font-black uppercase mb-4 flex items-center gap-2"><Clock className="text-orange-500" size={20} /> Pending Requests</h2>
+                {awaitingPayment.length > 0 && (
+                  <div className="flex items-start gap-2 mb-4 p-3 bg-amber-100/70 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-800 rounded-lg text-sm">
+                    <AlertTriangle className="shrink-0 text-amber-600 mt-0.5" size={16} />
+                    <p className="text-foreground"><span className="font-black">{awaitingPayment.length}</span> of these requests are waiting on payment — the booker hasn&apos;t paid yet. Confirm the meeting only once the payment goes through.</p>
+                  </div>
+                )}
                 <div className="space-y-4">
                   {pendingBookings.map((booking) => (
-                    <div key={booking.id} className="p-4 bg-muted rounded-lg border border-border">
+                    <div key={booking.id} className={`p-4 rounded-lg border ${booking.paymentStatus === "pending" ? "bg-amber-50/70 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800" : "bg-muted border-border"}`}>
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <p className="font-black text-lg">{booking.bookerName}</p>
@@ -437,7 +449,7 @@ export default function BookingsPage() {
                         <div className="flex items-center gap-3 mb-4">
                           {booking.tierName && <span className="text-xs font-bold bg-orange-100 text-orange-700 px-2 py-1 rounded">{booking.tierName}</span>}
                           {booking.paymentStatus === "paid" && <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-1 rounded">Paid</span>}
-                          {booking.paymentStatus === "pending" && <span className="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-1 rounded">Payment Pending</span>}
+                          {booking.paymentStatus === "pending" && <span className="inline-flex items-center gap-1 text-xs font-black bg-amber-400 text-amber-950 px-2 py-1 rounded"><CreditCard size={12} /> Payment Pending</span>}
                           {(booking.paymentAmount || 0) > 0 && <span className="text-xs text-muted-foreground">{formatCurrency(booking.paymentAmount || 0, booking.currency || "RWF")}</span>}
                         </div>
                       )}

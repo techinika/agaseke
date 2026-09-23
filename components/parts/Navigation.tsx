@@ -232,6 +232,12 @@ const Navbar = () => {
                           label="Transactions"
                           onClick={() => setIsDropdownOpen(false)}
                         />
+                        <DropdownLink
+                          href="/bookings"
+                          icon={<Calendar size={18} />}
+                          label="Bookings"
+                          onClick={() => setIsDropdownOpen(false)}
+                        />
 
                         <DropdownLink
                           href="/profile"
