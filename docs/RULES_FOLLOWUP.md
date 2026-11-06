@@ -28,6 +28,27 @@ them.
 - `retryPayload` may contain contact details. It should not be exposed to
   creators or other supporters.
 
+## Private creator content
+
+`creatorContent` is read in two places the rules must distinguish:
+
+- Public feed queries filter `isPrivate == false`; these can stay open to any
+  caller (or to authenticated users only, which is the safer default).
+- Private posts (`isPrivate == true`) must require a supporter relationship:
+  `exists(/databases/$(database)/documents/supportedCreators/$(...) )` for the
+  requesting uid and the post's creator, or the creator/admin themselves.
+
+The app now proxies private media, but the document still carries the asset key,
+so a readable document is equivalent to a readable URL. Rules and the media proxy
+must both hold.
+
+## Media bucket
+
+`assets.agaseke.me` is a public R2 custom domain. Until it is removed, the media
+proxy only hides URLs from the app's own UI; it cannot stop direct access. The
+companion infrastructure change is to serve the bucket privately and have
+`app/api/media/stream/route.ts` fetch with an S3-presigned request.
+
 ## Legacy status values
 
 The app now normalises `success`, `completed`, `paid`, `cancelled`, `canceled`

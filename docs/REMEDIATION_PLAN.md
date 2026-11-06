@@ -56,6 +56,17 @@ Rules: Firestore rules are **out of scope**. Any rule dependency is recorded in
 | AGA-RES-001 | 5 | offline shell | `public/sw.js`, offline route | 2d | Low | In scope (decision pending) |
 | AGA-OPS-001 | 6 | brands deployment decision | docs only | N/A | N/A | Deferred (business decision) |
 
+## Phase 2 implementation notes
+
+- **AGA-SEC-003 (partial, app side).** Private media is served through
+  `POST /api/media/sign` (entitlement check) plus `GET /api/media/stream`
+  (HMAC-verified, post-scoped, 10-minute capability) and rendered via
+  `components/parts/public/MediaAsset.tsx`. Remaining: make the R2 bucket
+  private, switch the stream route to a presigned upstream fetch, and backfill
+  stored media values to object keys.
+- **AGA-SEC-005, SEC-006, SEC-010, SEC-011** are implemented app-side; rules
+  still gate the metadata layer for SEC-001/002/003/004 (`docs/RULES_FOLLOWUP.md`).
+
 ## Phase 1 implementation notes
 
 - The payments worker accepts identifiers only. Legacy `creatorId` is accepted as a

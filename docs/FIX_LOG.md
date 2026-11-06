@@ -31,6 +31,18 @@ Findings: AGA-PAY-004 (partial), AGA-PERF-005 (partial), AGA-PERF-001 (partial).
   (`{ref}_platform`, `{ref}_creator`, `{ref}_referral`) so a retry overwrites
   rather than duplicates them (`workers/{support,store,bookings}/src/{firestore,
   services/callback}.ts`).
+- **Private media proxy (AGA-SEC-003, app side).** Private post media no longer
+  appears in the DOM as a bare asset URL. The authenticated
+  `POST /api/media/sign` route checks entitlement (creator, admin, or an existing
+  `supportedCreators` relationship) and returns a post-scoped HMAC signature;
+  `GET /api/media/stream` verifies the signature and expiry, re-checks that the
+  requested key belongs to the post, then streams the bytes with
+  `Cache-Control: private`. Media rendering goes through
+  `components/parts/public/MediaAsset.tsx`, which skips the element entirely when
+  access is unresolved or denied (`lib/mediaAccess.ts`, `lib/mediaSigning.ts`,
+  `lib/usePostMediaSrc.ts`, `app/api/media/**`). Hosts the proxy may fetch from
+  are allowlisted (`MEDIA_ALLOWED_HOSTS`) to prevent post metadata from turning
+  the route into an SSRF pivot.
 - **Creator page hydration/CLS (AGA-PERF-005).** Public post dates render with a
   fixed locale and UTC timezone so server and client HTML match; the support and
   share modals are lazy-loaded and mounted only when opened, reducing initial
@@ -42,6 +54,9 @@ Findings: AGA-PAY-004 (partial), AGA-PERF-005 (partial), AGA-PERF-001 (partial).
 
 ### Verification
 
+- Media signatures: valid signature accepted; wrong post id, tampered signature
+  and expired signature rejected (ad-hoc Node check against the compiled
+  `lib/mediaSigning.ts`).
 - `cd workers/payments && npx tsc --noEmit` - passed.
 - `cd agaseke && npx tsc --noEmit` - passed.
 - `cd workers/payments && npm test` - 55 passed (2 new outbox tests).
@@ -56,6 +71,16 @@ Findings: AGA-PAY-004 (partial), AGA-PERF-005 (partial), AGA-PERF-001 (partial).
   ledger remains the source for reporting, not for recomputing counters.
 - A live Lighthouse/Web Vitals re-measure is still needed before claiming a
   creator-page performance improvement.
+- AGA-SEC-003 is only half closed. The app no longer renders public URLs for
+  private media and will not stream bytes to an unentitled user, but the R2
+  bucket is still served through the public `assets.agaseke.me` custom domain, so
+  anyone who learns a key can still fetch it directly. Closing that needs
+  infrastructure work: disable the public bucket domain, switch
+  `app/api/media/stream/route.ts` to an S3-presigned upstream fetch, and backfill
+  stored `contentUrl` values to bare object keys.
+- `creatorContent` documents are still readable without a supporter check until
+  the rules in `docs/RULES_FOLLOWUP.md` are deployed, so private post metadata
+  (including keys) is not yet protected at the database layer.
 
 
 ## 2026-11-05 - Phase 1 (payments correctness and forgery)
