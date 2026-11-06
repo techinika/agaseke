@@ -29,3 +29,7 @@ export function decrypt(encryptedText: string): string {
   decrypted += decipher.final("utf8");
   return decrypted;
 }
+
+export function isEncrypted(text: string): boolean {
+  return /^[0-9a-f]{32}:[0-9a-f]{32}:/i.test(text);
+}

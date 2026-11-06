@@ -1,5 +1,11 @@
 export type PaymentMethod = "momo" | "card";
-export type TransactionType = "support" | "booking" | "gathering" | "store" | "community";
+export type TransactionType =
+  | "support"
+  | "gift"
+  | "booking"
+  | "gathering"
+  | "store"
+  | "community";
 
 export interface Env {
   FIREBASE_API_KEY: string;
@@ -25,24 +31,32 @@ export interface Env {
   BOOKINGS_WORKER_URL: string;
   COMMUNITY_WORKER_URL: string;
   INTERNAL_AUTH_SECRET: string;
+  /** Percentage (0-100) of the total that the processor keeps. Default 0. */
+  PROCESSOR_FEE_PERCENT?: string;
+  MAX_SUPPORT_AMOUNT_RWF?: string;
+  MAX_SUPPORT_AMOUNT_USD?: string;
 }
 
-export interface MomoInitRequest {
-  amount: number;
+/**
+ * Initiation accepts identifiers and non-authoritative metadata only.
+ * The server derives amount, currency, creator UID, fees and referral.
+ * `creatorId` is a legacy alias for the creator handle and is validated by
+ * loading the creator document; `creatorUid` is never accepted.
+ */
+export interface InitRequest {
+  creatorHandle?: string;
+  /** @deprecated Legacy alias for creatorHandle. Not trusted as an identity. */
+  creatorId?: string;
+  type?: TransactionType;
+  /** Only accepted for free-amount types (support, gift). */
+  amount?: number;
+  currency?: string;
   phone?: string;
-  creatorId: string;
-  creatorUid: string;
-  supporterId?: string;
   message?: string;
-  includeReferral?: boolean;
-  referralUid?: string;
-  referralId?: string;
   productId?: string;
-  productPrice?: number;
-  productName?: string;
   quantity?: number;
   selectedSize?: string;
-  platformFeePayer?: string;
+  couponCode?: string;
   buyerName?: string;
   email?: string;
   buyerEmail?: string;
@@ -54,22 +68,29 @@ export interface MomoInitRequest {
   communityTierId?: string;
   communityInterval?: string;
   communitySubscriptionId?: string;
-  currency?: string;
-}
-
-export interface CardInitRequest extends MomoInitRequest {
   firstName?: string;
   lastName?: string;
-  buyerId?: string;
+  idempotencyKey?: string;
+}
+
+export type MomoInitRequest = InitRequest;
+export type CardInitRequest = InitRequest;
+
+export interface PaymentInitResult {
+  ref: string;
+  status: string;
+  redirect_url?: string;
+  merchant_reference?: string;
 }
 
 export interface PaypackWebhookPayload {
   data: {
     ref: string;
     status: string;
-    client: string;
+    client?: string;
     amount: string;
-    number: string;
+    currency?: string;
+    number?: string;
   };
 }
 

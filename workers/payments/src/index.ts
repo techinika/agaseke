@@ -1,14 +1,20 @@
 import { requireAuth } from "./auth";
 import { corsHeaders } from "./cors";
-import type { Env, MomoInitRequest, CardInitRequest, PesapalIPNPayload } from "./types";
+import type { Env, InitRequest, PesapalIPNPayload } from "./types";
 import { initiateMomoPayment } from "./services/momo";
 import { initiateCardPayment } from "./services/card";
-import { handlePaypackWebhook, handlePesapalIPN } from "./services/webhooks";
+import {
+  drainDispatchOutbox,
+  handlePaypackWebhook,
+  handlePesapalIPN,
+} from "./services/webhooks";
+import { PaymentRequestError } from "./services/pricing";
+import { WebhookError } from "./services/webhookVerify";
 import { getUserTransactions } from "./services/transactions";
 import { retryTransaction, RetryError } from "./services/retry";
 import { logActivity } from "./logger";
 import { checkRateLimit } from "./rateLimit";
-import { drainPending } from "./audit";
+import { drainPending, flushPending } from "./audit";
 import type { ExecutionContext } from "@cloudflare/workers-types";
 
 function json(data: unknown, status = 200, origin?: string | null): Response {
@@ -28,10 +34,15 @@ function getClientIp(request: Request): string {
     "unknown";
 }
 
-function isRateLimited(request: Request, maxRequests = 30, windowMs = 60000): Response | null {
-  const ip = getClientIp(request);
+function isRateLimited(
+  request: Request,
+  maxRequests = 30,
+  windowMs = 60000,
+  identity?: string,
+): Response | null {
+  const key = identity || getClientIp(request);
   const path = new URL(request.url).pathname;
-  const result = checkRateLimit(`${ip}:${path}`, maxRequests, windowMs);
+  const result = checkRateLimit(`${key}:${path}`, maxRequests, windowMs);
   if (!result.allowed) {
     return new Response(JSON.stringify({ error: "Too many requests" }), {
       status: 429,
@@ -84,10 +95,15 @@ export default {
         }
 
         if (path === "/api/payments/transactions" && request.method === "GET") {
-          const limited = isRateLimited(request, 30, 60000);
-          if (limited) return limited;
           const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
           if (auth instanceof Response) return auth;
+          const limited = isRateLimited(
+            request,
+            30,
+            60000,
+            `${auth.uid}:${getClientIp(request)}`,
+          );
+          if (limited) return limited;
           const limit = Number(url.searchParams.get("limit")) || 20;
           const offset = Number(url.searchParams.get("offset")) || 0;
           const result = await getUserTransactions(env, auth.uid, limit, offset);
@@ -102,23 +118,48 @@ export default {
         if (auth instanceof Response) return auth;
 
         if (path === "/api/payments/momo/initiate") {
-          const limited = isRateLimited(request, 10, 60000);
+          const limited = isRateLimited(
+            request,
+            10,
+            60000,
+            `${auth.uid}:${getClientIp(request)}`,
+          );
           if (limited) return limited;
-          const body = (await request.json()) as MomoInitRequest;
-          const result = await initiateMomoPayment(env, body, auth.uid);
+          const body = (await request.json()) as InitRequest;
+          const result = await initiateMomoPayment(
+            env,
+            body,
+            auth.uid,
+            request.headers.get("idempotency-key") ?? undefined,
+          );
           return json(result, 200, origin);
         }
 
         if (path === "/api/payments/card/initiate") {
-          const limited = isRateLimited(request, 10, 60000);
+          const limited = isRateLimited(
+            request,
+            10,
+            60000,
+            `${auth.uid}:${getClientIp(request)}`,
+          );
           if (limited) return limited;
-          const body = (await request.json()) as CardInitRequest;
-          const result = await initiateCardPayment(env, body, auth.uid);
+          const body = (await request.json()) as InitRequest;
+          const result = await initiateCardPayment(
+            env,
+            body,
+            auth.uid,
+            request.headers.get("idempotency-key") ?? undefined,
+          );
           return json(result, 200, origin);
         }
 
         if (path === "/api/payments/transactions/retry") {
-          const limited = isRateLimited(request, 10, 60000);
+          const limited = isRateLimited(
+            request,
+            10,
+            60000,
+            `${auth.uid}:${getClientIp(request)}`,
+          );
           if (limited) return limited;
           const body = (await request.json()) as { ref?: string };
           try {
@@ -134,6 +175,12 @@ export default {
 
         return json({ error: "Not found" }, 404, origin);
       } catch (err: unknown) {
+        if (err instanceof PaymentRequestError) {
+          return json({ error: err.message, code: err.code }, err.statusCode, origin);
+        }
+        if (err instanceof WebhookError) {
+          return json({ error: err.message, code: err.code }, err.statusCode, origin);
+        }
         const message = err instanceof Error ? err.message : "Internal error";
         console.error("[payments] request failed", {
           method: request.method,
@@ -150,6 +197,32 @@ export default {
       }
     } finally {
       drainPending(ctx);
+    }
+  },
+
+  // Retries domain callbacks that failed after a verified payment success
+  // (AGA-PAY-004). Records are written atomically with the credit marker.
+  async scheduled(
+    _event: ScheduledEvent,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<void> {
+    try {
+      const summary = await drainDispatchOutbox(env);
+      console.log("[dispatch-outbox] drained", summary);
+      if (summary.failed > 0 || summary.dead > 0) {
+        await logActivity(
+          env,
+          "error",
+          "payment",
+          "Dispatch outbox has failed deliveries",
+          summary,
+        ).catch(() => {});
+      }
+    } catch (err) {
+      console.error("[dispatch-outbox] drain failed", err);
+    } finally {
+      ctx.waitUntil(flushPending());
     }
   },
 };

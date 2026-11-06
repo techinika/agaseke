@@ -1,5 +1,10 @@
-import type { Env, MomoInitRequest, CardInitRequest } from "../types";
-import { firestoreQuery, firestoreSet, convertFromFields, convertToFields } from "../firestore";
+import type { Env, InitRequest } from "../types";
+import {
+  convertFromFields,
+  convertToFields,
+  firestoreQuery,
+  firestoreSet,
+} from "../firestore";
 import { initiateMomoPayment } from "./momo";
 import { initiateCardPayment } from "./card";
 
@@ -27,63 +32,76 @@ function extractDocId(name: string): string {
   return parts[parts.length - 1];
 }
 
-function buildPayload(tx: Record<string, unknown>, uid: string): MomoInitRequest {
+const COPY_FIELDS = [
+  "phone",
+  "message",
+  "email",
+  "buyerEmail",
+  "buyerName",
+  "firstName",
+  "lastName",
+  "productId",
+  "quantity",
+  "selectedSize",
+  "couponCode",
+  "bookingId",
+  "gatheringId",
+  "attendeeName",
+  "attendeeEmail",
+  "attendeePhoto",
+  "communityTierId",
+  "communityInterval",
+  "communitySubscriptionId",
+] as const;
+
+/**
+ * Rebuild a retry request from identifiers only. Legacy rows may have stored a
+ * full client body in `retryPayload`; monetary and identity fields from it are
+ * deliberately ignored and re-derived by the payments worker.
+ */
+function buildPayload(tx: Record<string, unknown>): InitRequest {
   const stored =
     tx.retryPayload && typeof tx.retryPayload === "object"
-      ? { ...(tx.retryPayload as Record<string, unknown>) }
+      ? (tx.retryPayload as Record<string, unknown>)
       : {};
 
-  const base: Record<string, unknown> = {
-    ...stored,
-    amount: tx.amount ?? stored.amount,
-    creatorId: toString(tx.creatorId) || toString(stored.creatorId),
-    creatorUid: toString(tx.creatorUid) || toString(stored.creatorUid),
-    supporterId: uid,
-    currency: toString(tx.currency) || toString(stored.currency) || "RWF",
+  const type = toString(stored.type) || toString(tx.type) || "support";
+  const payload: Record<string, unknown> = {
+    creatorHandle:
+      toString(stored.creatorHandle) ||
+      toString(tx.creatorHandle) ||
+      toString(tx.creatorId),
+    type,
+    currency: toString(stored.currency) || toString(tx.currency) || "RWF",
   };
 
-  base.message = toString(tx.message) || toString(stored.message) || "";
-  base.includeReferral = Boolean(tx.includeReferral ?? stored.includeReferral);
-  base.referralUid = toString(tx.referralUid) || toString(stored.referralUid);
-  base.referralId = toString(tx.referralId) || toString(stored.referralId);
+  if (type === "support" || type === "gift") {
+    const amount = tx.amount ?? stored.amount;
+    if (amount !== undefined && amount !== null) payload.amount = amount;
+  }
 
-  if (tx.phone) base.phone = toString(tx.phone);
+  for (const field of COPY_FIELDS) {
+    const value = stored[field] ?? tx[field];
+    if (value !== undefined && value !== null && value !== "") {
+      payload[field] = value;
+    }
+  }
 
-  base.productId = base.productId ?? tx.productId;
-  base.productPrice = base.productPrice ?? tx.productPrice;
-  base.productName = toString(base.productName || tx.productName);
-  base.quantity = base.quantity ?? tx.quantity ?? 1;
-  base.selectedSize = toString(base.selectedSize || tx.selectedSize);
-  base.platformFeePayer = toString(base.platformFeePayer || tx.platformFeePayer);
-  base.buyerName = toString(base.buyerName || tx.buyerName);
-  const email =
-    toString(stored.email) ||
-    toString(stored.buyerEmail) ||
-    toString(tx.buyerEmail) ||
-    toString(tx.attendeeEmail);
-  if (email) base.email = email;
-  base.buyerEmail = toString(base.buyerEmail || tx.buyerEmail);
+  if (!payload.phone && tx.phone) payload.phone = toString(tx.phone);
 
-  base.bookingId = base.bookingId ?? tx.bookingId;
-  base.gatheringId = base.gatheringId ?? tx.gatheringId;
-  base.attendeeName = toString(base.attendeeName || tx.attendeeName);
-  base.attendeeEmail = toString(base.attendeeEmail || tx.attendeeEmail);
-  base.attendeePhoto = toString(base.attendeePhoto || tx.attendeePhoto);
-  base.communityTierId = base.communityTierId ?? tx.communityTierId;
-  base.communityInterval = toString(base.communityInterval || tx.communityInterval);
-  base.communitySubscriptionId = base.communitySubscriptionId ?? tx.communitySubscriptionId;
-
-  return base as unknown as MomoInitRequest;
+  return payload as InitRequest;
 }
 
 export async function retryTransaction(
   env: Env,
   uid: string,
-  ref: string
+  ref: string,
 ): Promise<RetryResult> {
   if (!ref) throw new RetryError("Transaction reference is required", 400);
 
-  const docs = await firestoreQuery(env, "transactions", "ref", { stringValue: ref }, 1);
+  const docs = await firestoreQuery(env, "transactions", "ref", {
+    stringValue: ref,
+  }, 1);
   const doc = docs[0];
   if (!doc) throw new RetryError("Transaction not found", 404);
 
@@ -102,27 +120,40 @@ export async function retryTransaction(
   if (status === "pending") {
     throw new RetryError(
       "This transaction is still pending and may still complete. Wait a few minutes before retrying.",
-      409
+      409,
     );
   }
 
-  const method: "momo" | "card" = toString(tx.paymentMethod) === "card" ? "card" : "momo";
+  if (tx.retriedRef) {
+    throw new RetryError(
+      `A retry was already initiated for this transaction. Retry the new reference (${toString(tx.retriedRef)}) instead.`,
+      409,
+    );
+  }
+
+  const method: "momo" | "card" =
+    toString(tx.paymentMethod) === "card" ? "card" : "momo";
   const currency = toString(tx.currency) || "RWF";
   if (method === "momo" && currency !== "RWF") {
     throw new RetryError(
       `Mobile Money only supports RWF (this transaction is ${currency}). Pay by card instead.`,
-      400
+      400,
     );
   }
 
-  const payload = buildPayload(tx, uid);
+  const payload = buildPayload(tx);
+  const idempotencyKey = `retry_${docId}`;
 
-  let result: { ref: string; redirect_url?: string; merchant_reference?: string };
+  let result: {
+    ref: string;
+    redirect_url?: string;
+    merchant_reference?: string;
+  };
   if (method === "momo") {
-    result = await initiateMomoPayment(env, payload as MomoInitRequest, uid);
+    result = await initiateMomoPayment(env, payload, uid, idempotencyKey);
   } else {
     if (!payload.email) payload.email = "supporter@agaseke.me";
-    result = await initiateCardPayment(env, payload as CardInitRequest, uid);
+    result = await initiateCardPayment(env, payload, uid, idempotencyKey);
   }
 
   await firestoreSet(
@@ -133,7 +164,7 @@ export async function retryTransaction(
       retried: true,
       retriedAt: new Date().toISOString(),
       retriedRef: result.ref,
-    })
+    }),
   );
 
   return {

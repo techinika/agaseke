@@ -53,7 +53,7 @@ Initiate a subscription. Creates a subscription document and forwards payment to
 }
 ```
 
-> **Currency rule:** the frontend (`SubscribeModal`) sends `currency` plus the charged amount (`priceUSD` when the tier is USD). USD tiers must use `paymentMethod: "card"` — the Payments Worker's MoMo guard (Paypack is RWF-only) rejects any non-RWF `initiateMomoPayment`, so USD subscriptions can never go through Mobile Money.
+> **Currency rule:** the frontend (`SubscribeModal`) sends `currency` and the tier/subscription identifiers. The Payments Worker derives the charged amount from the creator tier and validates the subscription. USD tiers must use `paymentMethod: "card"` — the Payments Worker's MoMo guard (Paypack is RWF-only) rejects any non-RWF `initiateMomoPayment`, so USD subscriptions can never go through Mobile Money.
 
 ### POST /api/community/callback
 
@@ -91,7 +91,7 @@ Initiate a renewal payment for an existing subscription (does **not** create a n
 
 The endpoint reuses the stored subscription's `amount`/`currency`/`interval` and forwards the payment to the Payments Worker with the same `communitySubscriptionId`, so a successful payment flows back through `POST /api/community/callback` and reactivates the subscription with a fresh period. The server enforces the currency rule (USD → card only) regardless of what the client sends.
 
-> **Currency rule:** the frontend (`SubscribeModal`) sends `currency` plus the charged amount (`priceUSD` when the tier is USD). USD tiers must use `paymentMethod: "card"` — the Payments Worker's MoMo guard (Paypack is RWF-only) rejects any non-RWF `initiateMomoPayment`, so USD subscriptions can never go through Mobile Money.
+> **Currency rule:** the frontend (`SubscribeModal`) sends `currency` and the tier/subscription identifiers. The Payments Worker derives the charged amount from the creator tier and validates the subscription. USD tiers must use `paymentMethod: "card"` — the Payments Worker's MoMo guard (Paypack is RWF-only) rejects any non-RWF `initiateMomoPayment`, so USD subscriptions can never go through Mobile Money.
 
 ### POST /api/community/update
 

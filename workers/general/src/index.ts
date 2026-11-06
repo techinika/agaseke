@@ -89,8 +89,7 @@ export default {
           if (limited) return limited;
 
           if (!isInternalAuth(request, env.INTERNAL_AUTH_SECRET)) {
-            const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
-            if (auth instanceof Response) return auth;
+            return json({ error: "Internal authentication required" }, 401, origin);
           }
 
           const { encrypted } = (await request.json()) as { encrypted: string };
