@@ -61,6 +61,11 @@ export const SendGiftSection = ({
               src={bannerURL}
               className="w-full h-full object-cover"
               alt=""
+              width={1200}
+              height={192}
+              sizes="100vw"
+              decoding="async"
+              fetchPriority="high"
             />
             <div className="absolute inset-0 bg-black/30" />
             <p className="absolute bottom-3 right-4 text-white/15 text-4xl font-black tracking-tighter truncate max-w-[80%] select-none pointer-events-none">
@@ -82,6 +87,11 @@ export const SendGiftSection = ({
                   src={photoURL}
                   alt={name}
                   className="w-full h-full object-cover"
+                  width={128}
+                  height={128}
+                  sizes="128px"
+                  decoding="async"
+                  fetchPriority="high"
                 />
               ) : (
                 <User size={50} className="text-muted-foreground" />

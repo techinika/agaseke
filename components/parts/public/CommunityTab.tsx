@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import {
   FileText,
   Lock,
@@ -22,7 +22,9 @@ import { collection, getCountFromServer, doc, updateDoc, increment } from "fireb
 import { useAuth } from "@/auth/AuthContext";
 import { getMySubscriptions } from "@/lib/communityService";
 import { formatCurrency } from "@/types/currency";
-import { SupportModal } from "@/components/parts/public/SupportModal";
+const LazySupportModal = lazy(() =>
+  import("@/components/parts/public/SupportModal").then((m) => ({ default: m.SupportModal })),
+);
 
 interface CommunityTier {
   id: string;
@@ -394,8 +396,24 @@ export const CommunityTab = ({
 
             <div className="mt-4 pt-3 border-t border-border flex items-center gap-3 text-xs text-muted-foreground">
               <span>
-                {item.createdAt?.toDate?.().toLocaleDateString() ||
-                  "Recently"}
+                {(() => {
+                  const ms =
+                    typeof item.createdAt?.toMillis === "function"
+                      ? item.createdAt.toMillis()
+                      : typeof item.createdAt === "string"
+                        ? Date.parse(item.createdAt)
+                        : item.createdAt instanceof Date
+                          ? item.createdAt.getTime()
+                          : null;
+                  return ms != null && Number.isFinite(ms)
+                    ? new Date(ms).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        timeZone: "UTC",
+                      })
+                    : "Recently";
+                })()}
               </span>
               {item.views && (
                 <span>{item.views} views</span>
@@ -466,18 +484,20 @@ export const CommunityTab = ({
       )}
 
       {supportItem && (
-        <SupportModal
-          isOpen={!!supportItem}
-          onClose={() => setSupportItem(null)}
-          creatorName={name}
-          creatorId={username}
-          uid={uid}
-          defaultMessage={
-            supportItem?.title
-              ? `I love this post! "${supportItem.title}"`
-              : "I love this post!"
-          }
-        />
+        <Suspense fallback={null}>
+          <LazySupportModal
+            isOpen={!!supportItem}
+            onClose={() => setSupportItem(null)}
+            creatorName={name}
+            creatorId={username}
+            uid={uid}
+            defaultMessage={
+              supportItem?.title
+                ? `I love this post! "${supportItem.title}"`
+                : "I love this post!"
+            }
+          />
+        </Suspense>
       )}
     </div>
   );
