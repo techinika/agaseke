@@ -1,5 +1,5 @@
 import type { Env } from "../types";
-import { firestoreGet, firestorePost, firestorePatch, extractFirestoreDocument } from "../firestore";
+import { firestoreGet, firestorePost, extractFirestoreDocument, firestoreApplyPayment } from "../firestore";
 import { logActivity } from "../logger";
 import { createNotification } from "../adminNotifications";
 
@@ -8,15 +8,6 @@ function numberValue(value: unknown): Record<string, unknown> {
   return Number.isInteger(num) ? { integerValue: String(num) } : { doubleValue: num };
 }
 
-async function incrementField(env: Env, path: string, field: string, amount: number): Promise<void> {
-  const doc = await firestoreGet(env, path);
-  if (!doc) return;
-  const data = extractFirestoreDocument(doc.fields as Record<string, unknown>);
-  const current = Number(data[field] || 0);
-  await firestorePatch(env, path, {
-    [field]: { integerValue: String(Math.round(current + amount)) },
-  });
-}
 
 export async function handleStoreCallback(
   env: Env,
@@ -49,6 +40,14 @@ export async function handleStoreCallback(
   }
 
   const now = new Date().toISOString();
+  const safeRef = paymentRef.replace(/[^A-Za-z0-9_-]/g, "_");
+
+  const increments: Array<{ path: string; fields: Record<string, number> }> = [
+    {
+      path: `creators/${txData.creatorId}`,
+      fields: { [earningsField]: creatorShare, [payoutField]: creatorShare },
+    },
+  ];
 
   await firestorePost(env, "platformIncome", {
     fields: {
@@ -58,7 +57,7 @@ export async function handleStoreCallback(
       productId: { stringValue: productId || "" },
       createdAt: { timestampValue: now },
     },
-  });
+  }, `${safeRef}_platform`);
 
   await firestorePost(env, "creatorIncome", {
     fields: {
@@ -69,7 +68,7 @@ export async function handleStoreCallback(
       productId: { stringValue: productId || "" },
       createdAt: { timestampValue: now },
     },
-  });
+  }, `${safeRef}_creator`);
 
   if (referralShare > 0 && txData.referralUid) {
     await firestorePost(env, "creatorIncome", {
@@ -80,10 +79,12 @@ export async function handleStoreCallback(
         reason: { stringValue: "referral_commission" },
         createdAt: { timestampValue: now },
       },
-    });
+    }, `${safeRef}_referral`);
 
-    await incrementField(env, `creators/${txData.referralId}`, earningsField, referralShare);
-    await incrementField(env, `creators/${txData.referralId}`, payoutField, referralShare);
+    increments.push({
+      path: `creators/${txData.referralId}`,
+      fields: { [earningsField]: referralShare, [payoutField]: referralShare },
+    });
   }
 
   const orderResult = await firestorePost(env, "storeOrders", {
@@ -132,23 +133,42 @@ export async function handleStoreCallback(
     },
   });
 
-  await incrementField(env, `creators/${txData.creatorId}`, earningsField, creatorShare);
-  await incrementField(env, `creators/${txData.creatorId}`, payoutField, creatorShare);
-
   if (
     productId &&
     productData?.type === "physical" &&
     productData?.stock !== undefined
   ) {
-    await firestorePatch(env, `storeProducts/${productId}`, {
-      stock: { integerValue: String(Math.max(0, Number(productData.stock) - quantity)) },
+    increments.push({
+      path: `storeProducts/${productId}`,
+      fields: { stock: -quantity },
     });
   }
 
   const buyerId = txData.buyerId as string | undefined;
   if (buyerId) {
-    await incrementField(env, `profiles/${buyerId}`, "totalPurchases", 1);
-    await incrementField(env, `profiles/${buyerId}`, "totalSpent", totalAmount);
+    increments.push({
+      path: `profiles/${buyerId}`,
+      fields: { totalPurchases: 1, totalSpent: totalAmount },
+    });
+  }
+
+  const credit = await firestoreApplyPayment(env, paymentRef, increments, {
+    txRef: { stringValue: paymentRef },
+    worker: { stringValue: "store" },
+    creatorId: { stringValue: txData.creatorId as string },
+    creatorShare: numberValue(creatorShare),
+    totalAmount: numberValue(totalAmount),
+    currency: { stringValue: currency },
+    status: { stringValue: "applied" },
+    appliedAt: { timestampValue: now },
+  });
+
+  if (credit !== "applied") {
+    await logActivity(env, "warn", "store", `Store callback ${credit} for ref=${paymentRef}`, {
+      txRef: paymentRef,
+      productId: productId || "",
+      creatorShare,
+    });
   }
 
   if (txData.creatorUid) {

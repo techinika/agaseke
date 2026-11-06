@@ -1,16 +1,12 @@
 import type { Env } from "../types";
-import { firestoreGet, firestorePost, firestorePatch, extractFirestoreDocument } from "../firestore";
+import { firestorePost, firestorePatch, firestoreApplyPayment } from "../firestore";
 import { logActivity } from "../logger";
 import { createNotification } from "../adminNotifications";
 
-async function incrementField(env: Env, path: string, field: string, amount: number): Promise<void> {
-  const doc = await firestoreGet(env, path);
-  if (!doc) return;
-  const data = extractFirestoreDocument(doc.fields as Record<string, unknown>);
-  const current = Number(data[field] || 0);
-  await firestorePatch(env, path, {
-    [field]: { integerValue: String(Math.round(current + amount)) },
-  });
+function numberField(value: number): Record<string, unknown> {
+  return Number.isInteger(value)
+    ? { integerValue: String(value) }
+    : { doubleValue: value };
 }
 
 export async function handleBookingCallback(
@@ -40,6 +36,14 @@ export async function handleBookingCallback(
   }
 
   const now = new Date().toISOString();
+  const safeRef = paymentRef.replace(/[^A-Za-z0-9_-]/g, "_");
+
+  const increments: Array<{ path: string; fields: Record<string, number> }> = [
+    {
+      path: `creators/${txData.creatorId}`,
+      fields: { [earningsField]: creatorShare, [payoutField]: creatorShare },
+    },
+  ];
 
   await firestorePost(env, "platformIncome", {
     fields: {
@@ -48,7 +52,7 @@ export async function handleBookingCallback(
       reason: { stringValue: "booking_fee" },
       createdAt: { timestampValue: now },
     },
-  });
+  }, `${safeRef}_platform`);
 
   await firestorePost(env, "creatorIncome", {
     fields: {
@@ -58,10 +62,7 @@ export async function handleBookingCallback(
       reason: { stringValue: "booking_payment" },
       createdAt: { timestampValue: now },
     },
-  });
-
-  await incrementField(env, `creators/${txData.creatorId}`, earningsField, creatorShare);
-  await incrementField(env, `creators/${txData.creatorId}`, payoutField, creatorShare);
+  }, `${safeRef}_creator`);
 
   const includeReferral = !!txData.includeReferral;
   if (includeReferral && txData.referralUid && referralShare > 0) {
@@ -73,10 +74,12 @@ export async function handleBookingCallback(
         reason: { stringValue: "referral_commission" },
         createdAt: { timestampValue: now },
       },
-    });
+    }, `${safeRef}_referral`);
 
-    await incrementField(env, `creators/${txData.referralId}`, earningsField, referralShare);
-    await incrementField(env, `creators/${txData.referralId}`, payoutField, referralShare);
+    increments.push({
+      path: `creators/${txData.referralId}`,
+      fields: { [earningsField]: referralShare, [payoutField]: referralShare },
+    });
   }
 
   await firestorePatch(env, `bookingRequests/${bookingId}`, {
@@ -87,8 +90,29 @@ export async function handleBookingCallback(
 
   const buyerId = (txData.buyerId || txData.supporterId || "") as string;
   if (buyerId && buyerId !== "anonymous") {
-    await incrementField(env, `profiles/${buyerId}`, "totalSupport", totalAmount);
-    await incrementField(env, `profiles/${buyerId}`, "totalSupportedCreators", 1);
+    increments.push({
+      path: `profiles/${buyerId}`,
+      fields: { totalSupport: totalAmount, totalSupportedCreators: 1 },
+    });
+  }
+
+  const credit = await firestoreApplyPayment(env, paymentRef, increments, {
+    txRef: { stringValue: paymentRef },
+    worker: { stringValue: "bookings" },
+    creatorId: { stringValue: txData.creatorId as string },
+    creatorShare: numberField(creatorShare),
+    totalAmount: numberField(totalAmount),
+    currency: { stringValue: currency },
+    status: { stringValue: "applied" },
+    appliedAt: { timestampValue: now },
+  });
+
+  if (credit !== "applied") {
+    await logActivity(env, "warn", "booking", `Booking callback ${credit} for ref=${paymentRef}`, {
+      txRef: paymentRef,
+      bookingId,
+      creatorShare,
+    });
   }
 
   if (txData.creatorUid) {
