@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { ArrowLeft, Heart, Loader, FileText, Lock, MessageCircle, Pencil, Trash2, Check, X, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { SupportModal } from "@/components/parts/public/SupportModal";
+import { MediaAsset } from "@/components/parts/public/MediaAsset";
 import RichContentRenderer from "@/components/ui/RichContentRenderer";
 import { db } from "@/db/firebase";
 import { doc, getDoc, getDocs, collection, query, where, orderBy, addDoc, deleteDoc, updateDoc, onSnapshot, serverTimestamp, increment } from "firebase/firestore";
@@ -281,8 +282,10 @@ export default function PostDetailPage({ username, postId }: { username: string;
             {post.type === "article" ? (
               <div className="mb-4">
                 {(post.coverUrl || post.contentUrl) && (
-                  <img
-                    src={post.coverUrl || post.contentUrl}
+                  <MediaAsset
+                    postId={post.id}
+                    isPrivate={!!post.isPrivate}
+                    url={post.coverUrl || post.contentUrl}
                     alt={post.title}
                     className="w-full max-h-[420px] object-cover rounded-xl mb-4"
                   />
@@ -315,13 +318,13 @@ export default function PostDetailPage({ username, postId }: { username: string;
 
             {post.type === "image" && !Array.isArray(post.contentUrl) && post.contentUrl && (
               <div className="rounded-lg overflow-hidden bg-muted mb-4 cursor-zoom-in" onClick={() => setViewingImage({ url: post.contentUrl })}>
-                <img src={post.contentUrl} alt={post.title} className="w-full max-h-[500px] object-contain hover:opacity-90 transition-opacity" />
+                <MediaAsset postId={post.id} isPrivate={!!post.isPrivate} url={post.contentUrl} alt={post.title} className="w-full max-h-[500px] object-contain hover:opacity-90 transition-opacity" />
               </div>
             )}
 
             {post.type === "video" && post.contentUrl && (
               <div className="rounded-lg overflow-hidden bg-black mb-4">
-                <video src={post.contentUrl} controls controlsList="nodownload" className="w-full aspect-video" />
+                <MediaAsset postId={post.id} isPrivate={!!post.isPrivate} url={post.contentUrl} as="video" controls controlsList="nodownload" className="w-full aspect-video" />
               </div>
             )}
 
@@ -420,7 +423,13 @@ export default function PostDetailPage({ username, postId }: { username: string;
           <button className="absolute top-4 right-4 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition" onClick={() => setViewingImage(null)}>
             <X size={28} />
           </button>
-          <img src={viewingImage.url} alt="Full size" className="max-w-full max-h-full object-contain animate-in zoom-in-95 duration-200" />
+          <MediaAsset
+            postId={post.id}
+            isPrivate={!!post.isPrivate}
+            url={viewingImage.url}
+            alt="Full size"
+            className="max-w-full max-h-full object-contain animate-in zoom-in-95 duration-200"
+          />
         </div>
       )}
 
