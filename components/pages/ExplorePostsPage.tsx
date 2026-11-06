@@ -533,7 +533,7 @@ export default function ExplorePostsPage() {
                 <ChevronLeft size={20} />
               </button>
             </div>
-            <iframe src={viewingDocument.url} className="w-full flex-1 min-h-[60vh] rounded-lg border border-border" />
+            <iframe src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocument.url)}&embedded=true`} className="w-full flex-1 min-h-[60vh] rounded-lg border border-border" title={viewingDocument.title} />
           </div>
         </div>
       )}

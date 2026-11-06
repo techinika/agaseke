@@ -6,6 +6,7 @@ import React from "react";
 import { PerkItem } from "./loginpage/index";
 import { handleGoogleLogin } from "../../db/functions/GoogleLogin";
 import { useSearchParams } from "next/navigation";
+import { sanitizeRedirectPath } from "@/lib/safeRedirect";
 
 function getFallbackRedirect(): string | null {
   if (typeof window === "undefined") return null;
@@ -21,7 +22,9 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const reservedUsername = searchParams.get("username") || null;
   const referralCreator = searchParams.get("referral") || null;
-  const redirect = searchParams.get("redirect") || getFallbackRedirect();
+  const redirect = sanitizeRedirectPath(
+    searchParams.get("redirect") || getFallbackRedirect(),
+  );
 
   return (
     <div className="min-h-screen bg-card flex flex-wrap-reverse md:flex-row">

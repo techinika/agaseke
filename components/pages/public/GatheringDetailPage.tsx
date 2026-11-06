@@ -195,34 +195,29 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
     if (!payPhone && payMethod === "momo") { toast.error("Enter your phone number"); return; }
     setPaying(true);
     try {
-      const amount = g.ticketPrice || 0;
       let ref: string;
       if (payMethod === "momo") {
         const data = await initiateMomoPayment({
-          amount,
-          phone: payPhone,
-          creatorId: username,
-          creatorUid: g.creatorId,
-          supporterId: user.uid,
+          type: "gathering",
+          creatorHandle: username,
           gatheringId: g.id,
+          phone: payPhone,
           attendeeName: profile.displayName || user.email || undefined,
           attendeeEmail: user.email || undefined,
-          includeReferral: false,
+          idempotencyKey: crypto.randomUUID(),
         });
         ref = data.ref;
       } else {
         const data = await initiateCardPayment({
-          amount,
+          type: "gathering",
+          creatorHandle: username,
+          gatheringId: g.id,
           email: user.email || undefined,
           firstName: profile.displayName || user.email || "User",
           lastName: "",
-          creatorId: username,
-          creatorUid: g.creatorId,
-          supporterId: user.uid,
-          gatheringId: g.id,
           attendeeName: profile.displayName || user.email || undefined,
           attendeeEmail: user.email || undefined,
-          includeReferral: false,
+          idempotencyKey: crypto.randomUUID(),
         });
         ref = data.merchant_reference || data.ref;
         if (data.redirect_url) { window.open(data.redirect_url, "_blank"); }

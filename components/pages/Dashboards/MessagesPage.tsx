@@ -33,7 +33,11 @@ import {
   startAfter,
 } from "firebase/firestore";
 import { toast } from "sonner";
-import { encrypt, decrypt } from "@/lib/generalWorkerService";
+import {
+  encrypt,
+  decryptChatMessage,
+  decryptChatroomLastMessage,
+} from "@/lib/generalWorkerService";
 
 interface Chatroom {
   id: string;
@@ -79,18 +83,17 @@ export default function MessagesPage() {
   const decryptedCache = useRef<Map<string, string>>(new Map());
   const oldestCursorRef = useRef<{ createdAt: Timestamp; id: string } | null>(null);
 
-  const decryptMessage = async (id: string, encrypted: string): Promise<string> => {
+  const decryptMessage = async (chatroomId: string, id: string): Promise<string> => {
     const cached = decryptedCache.current.get(id);
     if (cached) return cached;
-    if (!encrypted || !encrypted.includes(":")) return encrypted;
     try {
-      const plaintext = await decrypt(encrypted);
+      const plaintext = await decryptChatMessage(chatroomId, id);
       if (plaintext) {
         decryptedCache.current.set(id, plaintext);
         return plaintext;
       }
     } catch { /* ignore */ }
-    return encrypted;
+    return "";
   };
 
   const encryptMessage = encrypt;
@@ -136,7 +139,7 @@ export default function MessagesPage() {
       todo.map(async (chat) => {
         const key = `room_${chat.id}`;
         try {
-          const plaintext = await decrypt(chat.lastMessage!);
+          const plaintext = await decryptChatroomLastMessage(chat.id);
           if (plaintext) decryptedCache.current.set(key, plaintext);
         } catch { /* ignore */ }
       })
@@ -179,7 +182,7 @@ export default function MessagesPage() {
 
         Promise.all(
           uncached.map(async (msg) => {
-            const plaintext = await decryptMessage(msg.id, msg.content);
+            const plaintext = await decryptMessage(selectedChatId, msg.id);
             return { id: msg.id, content: plaintext };
           })
         ).then((results) => {
@@ -282,7 +285,7 @@ export default function MessagesPage() {
         });
         Promise.all(
           uncached.map(async (msg) => {
-            const plaintext = await decryptMessage(msg.id, msg.content);
+            const plaintext = await decryptMessage(selectedChatId, msg.id);
             return { id: msg.id, content: plaintext };
           })
         ).then((results) => {

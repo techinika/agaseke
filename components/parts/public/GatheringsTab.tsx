@@ -328,36 +328,31 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
     }
     setPaying(true);
     try {
-      const amount = currency === "USD" && gathering.priceUSD ? gathering.priceUSD : (gathering.ticketPrice || 0);
       let ref: string;
       if (method === "momo") {
         const data = await initiateMomoPayment({
-          amount,
-          phone: payPhone,
-          creatorId: creatorHandle,
-          creatorUid: creatorId,
-          supporterId: user.uid,
+          type: "gathering",
+          creatorHandle,
           gatheringId: gathering.id,
+          phone: payPhone,
           attendeeName: profile.displayName || user.email || undefined,
           attendeeEmail: user.email || undefined,
-          includeReferral: false,
           currency,
+          idempotencyKey: crypto.randomUUID(),
         });
         ref = data.ref;
       } else {
         const data = await initiateCardPayment({
-          amount,
+          type: "gathering",
+          creatorHandle,
+          gatheringId: gathering.id,
           email: user.email || undefined,
           firstName: profile.displayName || user.email || "User",
           lastName: "",
-          creatorId: creatorHandle,
-          creatorUid: creatorId,
-          supporterId: user.uid,
-          gatheringId: gathering.id,
           attendeeName: profile.displayName || user.email || undefined,
           attendeeEmail: user.email || undefined,
-          includeReferral: false,
           currency,
+          idempotencyKey: crypto.randomUUID(),
         });
         ref = data.merchant_reference || data.ref;
         if (data.redirect_url) {

@@ -391,7 +391,7 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
                 </div>
               )}
               <iframe
-                src={pages[documentIndex]}
+                src={`https://docs.google.com/viewer?url=${encodeURIComponent(pages[documentIndex])}&embedded=true`}
                 className="w-full h-[500px] rounded-lg border border-border"
                 title="Document viewer"
               />

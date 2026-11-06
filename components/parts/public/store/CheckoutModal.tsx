@@ -17,7 +17,7 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService";
-import { CartItem, ShippingAddress, getProductCurrency, getProductPrice } from "./types";
+import { CartItem, ShippingAddress, getProductCurrency } from "./types";
 import { formatCurrency } from "@/types/currency";
 
 const platformSharePercentage =
@@ -163,27 +163,21 @@ export function CheckoutModal({
       const phone = shippingAddress.phone.replace(/\s/g, "");
 
       const firstItem = cart[0];
-      const amountToPay = buyerPaysMore ? totalWithPlatformFee : finalTotal;
-      const productPrice = firstItem ? getProductPrice(firstItem.product) : 0;
       const productData = {
+        type: "store" as const,
+        creatorHandle,
         productId: firstItem?.product.id,
         quantity: cart.reduce((sum, item) => sum + item.quantity, 0),
-        supporterId: currentUser.uid,
-        buyerId: currentUser.uid,
+        selectedSize: firstItem?.selectedSize,
+        couponCode: appliedCoupon || undefined,
         buyerEmail: currentUser.email || "",
         buyerName: currentUser.displayName || "Customer",
-        phone: phone,
-        selectedSize: firstItem?.selectedSize,
-        productPrice,
-        productName: firstItem?.product.name,
-        creatorId: creatorHandle,
-        creatorUid: firstItem?.product.creatorId,
-        platformFeePayer: firstItem?.product.platformFeePayer || "buyer",
-        amount: amountToPay,
+        phone,
         currency,
         email: currentUser.email || "",
         firstName: currentUser.displayName?.split(" ")[0] || "Customer",
         lastName: currentUser.displayName?.split(" ")[1] || "",
+        idempotencyKey: crypto.randomUUID(),
       };
 
       if (method === "momo") {

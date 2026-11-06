@@ -26,9 +26,6 @@ export function SupportModal({
   creatorName,
   creatorId,
   uid,
-  includeReferral,
-  referralUid = "",
-  referralId = "",
   defaultMessage = "",
 }: any) {
   const { user: currentUser } = useAuth();
@@ -145,16 +142,13 @@ export function SupportModal({
 
     try {
       const data = await initiateMomoPayment({
+        type: "support",
+        creatorHandle: creatorId,
         amount: Number(amount),
         phone,
-        creatorId,
-        creatorUid: uid,
         message: message ?? "",
-        referralUid,
-        referralId,
-        supporterId: currentUser?.uid || "anonymous",
-        includeReferral,
         currency: selectedCurrency,
+        idempotencyKey: crypto.randomUUID(),
       });
 
       const q = query(
@@ -238,18 +232,15 @@ export function SupportModal({
 
     try {
       const data = await initiateCardPayment({
+        type: "support",
+        creatorHandle: creatorId,
         amount: Number(amount),
         email: currentUser?.email || "supporter@agaseke.me",
         firstName: currentUser?.displayName?.split(" ")[0] || "Supporter",
         lastName: currentUser?.displayName?.split(" ")[1] || "Agaseke",
-        creatorId,
-        creatorUid: uid,
-        supporterId: currentUser?.uid || "anonymous",
         message: message.trim() || "",
-        includeReferral,
-        referralUid,
-        referralId,
         currency: selectedCurrency,
+        idempotencyKey: crypto.randomUUID(),
       });
 
       setRedirectUrl(data.redirect_url);

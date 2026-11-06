@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { ArrowRight, Loader, MessageSquare, Send } from "lucide-react";
 import { db } from "@/db/firebase";
 import { sendCommsEmail } from "@/lib/commsService";
-import { encrypt, decrypt } from "@/lib/generalWorkerService";
+import { encrypt, decryptChatMessage } from "@/lib/generalWorkerService";
 import {
   collection,
   doc,
@@ -77,18 +77,17 @@ export const MessageTab = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const decryptedCache = useRef<Map<string, string>>(new Map());
 
-  const decryptMessage = async (id: string, encrypted: string): Promise<string> => {
+  const decryptMessage = async (chatroomId: string, id: string): Promise<string> => {
     const cached = decryptedCache.current.get(id);
     if (cached) return cached;
-    if (!encrypted || !encrypted.includes(":")) return encrypted;
     try {
-      const plaintext = await decrypt(encrypted);
+      const plaintext = await decryptChatMessage(chatroomId, id);
       if (plaintext) {
         decryptedCache.current.set(id, plaintext);
         return plaintext;
       }
     } catch { /* ignore */ }
-    return encrypted;
+    return "";
   };
 
   const encryptMessage = encrypt;
@@ -187,7 +186,7 @@ export const MessageTab = ({
 
       Promise.all(
         rawMsgs.map(async (msg) => {
-          const decrypted = await decryptMessage(msg.id, msg.content);
+          const decrypted = await decryptMessage(chatroomId, msg.id);
           return { ...msg, content: decrypted };
         })
       ).then(setMessages);
