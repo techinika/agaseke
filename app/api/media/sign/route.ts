@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/authMiddleware";
-import { checkPostMediaAccess, isAllowedMediaUrl } from "@/lib/mediaAccess";
+import { checkPostMediaAccess, isServableMediaKey } from "@/lib/mediaAccess";
 import { mediaTtlSeconds, signMediaPost } from "@/lib/mediaSigning";
 
 /**
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     const exp = Math.floor(Date.now() / 1000) + mediaTtlSeconds();
     const sig = signMediaPost(postId, exp);
-    const urls = access.urls.filter(isAllowedMediaUrl);
+    const urls = access.urls.filter(isServableMediaKey);
 
     return NextResponse.json(
       { postId, exp, sig, urls, ttl: mediaTtlSeconds() },

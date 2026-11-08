@@ -1,4 +1,5 @@
 import { adminDb } from "@/db/firebaseAdmin";
+import { isBareMediaKey } from "@/lib/mediaKey";
 
 /**
  * Media URLs that belong to a post, in the order they appear in the document.
@@ -110,4 +111,20 @@ export function isAllowedMediaUrl(rawUrl: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * A media value is either a full URL in the public bucket or a bare object key
+ * in the private bucket. Bare keys are served by the upload worker, so they are
+ * accepted; anything else with an unexpected scheme is not.
+ */
+export function isServableMediaKey(value: string): boolean {
+  if (!value) return false;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(value)) return isAllowedMediaUrl(value);
+  return isBareMediaKey(value);
+}
+
+/** True when the media value is a private-bucket object key rather than a URL. */
+export function isPrivateObjectKey(value: string): boolean {
+  return isBareMediaKey(value);
 }

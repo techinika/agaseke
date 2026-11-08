@@ -46,7 +46,14 @@ import { useRouter } from "next/navigation";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { LinkifyText } from "@/components/ui/LinkifyText";
 import RichContentRenderer from "@/components/ui/RichContentRenderer";
-import { uploadFile } from "@/lib/uploadService";
+import {
+  uploadFile,
+  storedAssetValue,
+  storedAssetVisibility,
+  type AssetVisibility,
+} from "@/lib/uploadService";
+import { MediaAsset } from "@/components/parts/public/MediaAsset";
+import { usePostMediaSrc } from "@/lib/usePostMediaSrc";
 
 interface Comment {
   id: string;
@@ -73,9 +80,19 @@ export default function ContentManager() {
 
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [uploadedUrl, setUploadedUrl] = useState("");
+  const [uploadedVisibility, setUploadedVisibility] =
+    useState<AssetVisibility | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [selectedPost, setSelectedPost] = useState<any | null>(null);
+  const { mediaSrc } = usePostMediaSrc(
+    selectedPost?.id,
+    !!selectedPost?.isPrivate,
+  );
+  const selectedDocumentUrl = Array.isArray(selectedPost?.contentUrl)
+    ? selectedPost.contentUrl[0]
+    : selectedPost?.contentUrl;
+  const selectedDocumentSrc = mediaSrc(selectedDocumentUrl);
   const [editingPost, setEditingPost] = useState<any | null>(null);
 
   const [comments, setComments] = useState<Record<string, Comment[]>>({});
@@ -200,9 +217,17 @@ export default function ContentManager() {
 
     try {
       const assetType = newPost.type === "video" ? "post_video" : newPost.type === "document" ? "post_document" : "post_image";
-      const data = await uploadFile(file, assetType, creator?.handle || "");
-      if (data.url) {
-        setUploadedUrl(data.url);
+      const data = await uploadFile(
+        file,
+        assetType,
+        creator?.handle || "",
+        undefined,
+        newPost.isPrivate ? "private" : "public",
+      );
+      const stored = storedAssetValue(data);
+      if (stored) {
+        setUploadedUrl(stored);
+        setUploadedVisibility(data.visibility);
         toast.success("File uploaded successfully!");
       } else {
         throw new Error("Upload failed");
@@ -212,6 +237,7 @@ export default function ContentManager() {
       toast.error(err.message || "Failed to upload file");
       setFilePreview(null);
       setUploadedUrl("");
+      setUploadedVisibility(null);
     } finally {
       setIsUploading(false);
     }
@@ -220,6 +246,14 @@ export default function ContentManager() {
   const handleAddContent = async () => {
     const user = auth.currentUser;
     if (!user || !newPost.title || !creator?.handle) return;
+    if (newPost.isPrivate && uploadedUrl && uploadedVisibility !== "private") {
+      toast.error("Re-upload the file now that the post is supporters-only.");
+      return;
+    }
+    if (!newPost.isPrivate && uploadedVisibility === "private") {
+      toast.error("Re-upload the file now that the post is public.");
+      return;
+    }
 
     setIsUploading(true);
     try {
@@ -285,12 +319,14 @@ export default function ContentManager() {
       isPrivate: post.isPrivate,
     });
     setUploadedUrl(post.contentUrl);
+    setUploadedVisibility(storedAssetVisibility(post.contentUrl));
   };
 
   const resetForm = () => {
     setNewPost({ title: "", description: "", type: "text", isPrivate: true });
     setFilePreview(null);
     setUploadedUrl("");
+    setUploadedVisibility(null);
   };
 
   const deletePost = async () => {
@@ -469,19 +505,39 @@ export default function ContentManager() {
             <div className="flex-1 overflow-y-auto bg-card rounded-lg border border-border">
               {selectedPost.type === "image" && selectedPost.contentUrl && (
                 <div className="aspect-video bg-muted">
-                  <img src={selectedPost.contentUrl} alt={selectedPost.title} className="w-full h-full object-contain" />
+                  <MediaAsset
+                    postId={selectedPost.id}
+                    isPrivate={!!selectedPost.isPrivate}
+                    url={selectedPost.contentUrl}
+                    alt={selectedPost.title}
+                    className="w-full h-full object-contain"
+                  />
                 </div>
               )}
               {selectedPost.type === "video" && selectedPost.contentUrl && (
                 <div className="aspect-video bg-black">
-                  <video src={selectedPost.contentUrl} controls className="w-full h-full" />
+                  <MediaAsset
+                    postId={selectedPost.id}
+                    isPrivate={!!selectedPost.isPrivate}
+                    url={selectedPost.contentUrl}
+                    as="video"
+                    controls
+                    className="w-full h-full"
+                  />
                 </div>
               )}
-              {selectedPost.type === "article" && (selectedPost.coverUrl || selectedPost.contentUrl) && (
-                <div className="aspect-video bg-muted">
-                  <img src={selectedPost.coverUrl || selectedPost.contentUrl} alt={selectedPost.title} className="w-full h-full object-cover" />
-                </div>
-              )}
+              {selectedPost.type === "article" &&
+                (selectedPost.coverUrl || selectedPost.contentUrl) && (
+                  <div className="aspect-video bg-muted">
+                    <MediaAsset
+                      postId={selectedPost.id}
+                      isPrivate={!!selectedPost.isPrivate}
+                      url={selectedPost.coverUrl || selectedPost.contentUrl}
+                      alt={selectedPost.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
 
               <div className="p-4 lg:p-6">
                 {selectedPost.type === "article" ? (
@@ -490,8 +546,8 @@ export default function ContentManager() {
                   <div className="prose max-w-none text-foreground whitespace-pre-wrap text-sm lg:text-base"><LinkifyText text={selectedPost.description} /></div>
                 )}
 
-                {selectedPost.type === "document" && selectedPost.contentUrl && (
-                  <a href={selectedPost.contentUrl} target="_blank" rel="noopener noreferrer" className="mt-4 flex items-center gap-3 p-4 bg-muted rounded-lg border border-border hover:bg-muted transition">
+                {selectedPost.type === "document" && selectedDocumentSrc && (
+                  <a href={selectedDocumentSrc} target="_blank" rel="noopener noreferrer" className="mt-4 flex items-center gap-3 p-4 bg-muted rounded-lg border border-border hover:bg-muted transition">
                     <FileText size={24} className="text-orange-500" />
                     <span className="text-sm font-medium">View Document</span>
                   </a>

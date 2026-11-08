@@ -35,6 +35,7 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useRouter } from "next/navigation";
 import { slugify } from "@/lib/slug";
 import { baseUrl } from "@/lib/baseUrl";
+import { MediaAsset } from "@/components/parts/public/MediaAsset";
 
 export default function ArticlesPage() {
   const { creator } = useAuth();
@@ -193,8 +194,10 @@ export default function ArticlesPage() {
               >
                 <div className="sm:w-40 flex items-center justify-center bg-muted overflow-hidden">
                   {article.coverUrl || article.contentUrl ? (
-                    <img
-                      src={article.coverUrl || article.contentUrl}
+                    <MediaAsset
+                      postId={article.id}
+                      isPrivate={!!article.isPrivate}
+                      url={article.coverUrl || article.contentUrl}
                       alt={article.title}
                       className="w-full h-40 sm:h-full object-cover"
                     />

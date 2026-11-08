@@ -11,13 +11,47 @@ Client (browser + Firebase token)
 Cloudflare Worker (agaseke-upload)
   │  1. Verify Firebase token (jose JWKS → Firebase REST fallback)
   │  2. Validate assetType & size limits
-  │  3. Store file in R2 bucket (agaseke-assets)
+  │  3. Store file in R2 bucket (agaseke-assets, or agaseke-private)
   │  4. Write asset document to Firestore (assets collection)
   ▼
-Response: { url: "https://assets.agaseke.me/...", publicId, assetType, assetId }
+Response: { url, key, visibility, publicId, assetType, assetId }
 
-Client uses the URL directly — assets.agaseke.me serves through Cloudflare CDN.
+Public assets return a URL served by assets.agaseke.me through Cloudflare CDN.
+Private assets return `url: ""` and must be stored by `key`; the app reads them
+through the signed `/private/{key}` route documented below.
 ```
+
+## Private assets
+
+Paid supporters-only media goes to a second bucket, `agaseke-private`, which has
+**no custom domain**. There is no public URL that can leak, and the only read path
+is signature-gated:
+
+```
+POST /            visibility=private   →  copy into agaseke-private, return key
+GET  /private/{key}?exp=..&sig=..      →  stream the object (Range supported)
+HEAD /private/{key}?exp=..&sig=..      →  metadata only, same checks
+```
+
+`exp`/`sig` are produced by the Next app (`lib/mediaSigning.ts`) with
+`MEDIA_SIGNING_SECRET`, which must be identical on both sides. The signature
+covers `media:{key}:{exp}` and is valid for ten minutes. The worker rejects
+malformed, traversal and oversized keys before touching R2, and sets
+`Referrer-Policy: no-referrer` on responses.
+
+Existing private posts are migrated with the repository-level script:
+
+```bash
+# dry run: prints the keys that would move
+node scripts/migrate-private-media.js
+
+# copy objects and rewrite creatorContent values to keys
+node scripts/migrate-private-media.js --apply
+```
+
+The script is idempotent, leaves the public objects in place unless
+`--delete-source` is passed, and warns about media URLs that are not under
+`ASSETS_BASE_URL`.
 
 ## Asset Types
 
@@ -42,6 +76,8 @@ Every upload creates a document in the `assets` collection:
 ```json
 {
   "url": "https://assets.agaseke.me/agaseke/posts/handle/abc.jpg",
+  "key": "agaseke/posts/handle/abc.jpg",
+  "visibility": "public",
   "publicId": "agaseke/posts/handle/abc.jpg",
   "mimeType": "image/jpeg",
   "fileSize": 123456,
@@ -76,6 +112,8 @@ Every Firestore operation in this worker is audited to the `activityLogs` collec
 
 ```bash
 npx wrangler r2 bucket create agaseke-assets --location=weur
+# Private bucket: no custom domain, no `r2 bucket domain add` for this one
+npx wrangler r2 bucket create agaseke-private --location=weur
 ```
 
 ### Step 3: Connect Custom Domain
@@ -101,6 +139,8 @@ All vars are managed in the **Cloudflare Dashboard** → Workers & Pages → `ag
 | `FIREBASE_CLIENT_EMAIL` | string | no | Firebase service account email |
 | `FIREBASE_PRIVATE_KEY` | string | yes | Firebase service account private key |
 | `ASSETS_BASE_URL` | string | no | Public URL prefix (e.g. `https://assets.agaseke.me`) |
+| `MEDIA_SIGNING_SECRET` | string | yes | HMAC secret for `/private/{key}` grants; must match the Next app |
+| `MIGRATION_TOKEN` | string | yes | Enables the admin-only `/migrate-private` copy endpoint |
 | `MAX_IMAGE_SIZE_MB` | number | no | Max image upload size in MB |
 | `MAX_VIDEO_SIZE_MB` | number | no | Max video upload size in MB |
 

@@ -23,6 +23,12 @@
 			"binding": "UPLOADS_BUCKET",
 			"bucket_name": "agaseke-assets",
 		},
+		// Private bucket: no public domain, readable only through /private/{key}
+		// with a signed grant. Create with: wrangler r2 bucket create agaseke-private
+		{
+			"binding": "UPLOADS_PRIVATE_BUCKET",
+			"bucket_name": "agaseke-private",
+		},
 	],
 	"routes": [
 		{

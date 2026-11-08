@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkPostMediaAccess, isAllowedMediaUrl } from "@/lib/mediaAccess";
-import { verifyMediaSignature } from "@/lib/mediaSigning";
+import {
+  checkPostMediaAccess,
+  isAllowedMediaUrl,
+  isPrivateObjectKey,
+  isServableMediaKey,
+} from "@/lib/mediaAccess";
+import { mediaTtlSeconds, signMediaKey, verifyMediaSignature } from "@/lib/mediaSigning";
+
+const UPLOAD_WORKER_URL =
+  process.env.NEXT_PUBLIC_UPLOAD_WORKER_URL || "http://localhost:8787";
 
 /**
  * Stream a post's media through the app so private assets are never requested
@@ -27,6 +35,23 @@ export async function GET(request: NextRequest) {
     const access = await checkPostMediaAccess(postId, null);
     if (!access || !access.urls.includes(key)) {
       return NextResponse.json({ error: "Media not found for this post" }, { status: 404 });
+    }
+
+    if (!isServableMediaKey(key)) {
+      return NextResponse.json({ error: "Media host not allowed" }, { status: 403 });
+    }
+
+    // Object keys live in the private bucket, which has no public domain. Hand
+    // the browser a key-scoped grant and let Cloudflare serve the bytes.
+    if (isPrivateObjectKey(key)) {
+      const exp = Math.floor(Date.now() / 1000) + mediaTtlSeconds();
+      const keySig = signMediaKey(key, exp);
+      const target = `${UPLOAD_WORKER_URL.replace(/\/$/, "")}/private/${encodeURIComponent(key)}?exp=${exp}&sig=${keySig}`;
+
+      return NextResponse.redirect(target, {
+        status: 302,
+        headers: { "Cache-Control": "no-store" },
+      });
     }
 
     if (!isAllowedMediaUrl(key)) {

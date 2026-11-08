@@ -51,11 +51,17 @@ export function forbidden(origin: string | null, reason: string): Response {
   });
 }
 
+interface AuthenticatedUser {
+  uid: string;
+  email: string | null;
+  isAdmin: boolean;
+}
+
 async function verifyWithFirebaseREST(
   idToken: string,
   apiKey: string,
   origin: string | null,
-): Promise<{ uid: string; email: string | null } | Response> {
+): Promise<AuthenticatedUser | Response> {
   try {
     const url = `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`;
     console.log("Calling Firebase REST:", url.replace(apiKey, "***"));
@@ -85,7 +91,7 @@ async function verifyWithFirebaseREST(
     if (!data.users?.[0]) return unauthorized(origin, "No user payload returned");
 
     const user = data.users[0];
-    return { uid: user.localId, email: user.email || null };
+    return { uid: user.localId, email: user.email || null, isAdmin: false };
   } catch (err) {
     return unauthorized(origin, "Firebase REST network error", err);
   }
@@ -95,7 +101,7 @@ async function verifyWithJose(
   idToken: string,
   projectId: string,
   origin: string | null,
-): Promise<{ uid: string; email: string | null } | Response> {
+): Promise<AuthenticatedUser | Response> {
   // Log token header to debug kid/alg
   try {
     const header = decodeProtectedHeader(idToken);
@@ -110,7 +116,11 @@ async function verifyWithJose(
       audience: projectId,
     });
     console.log("Verified with Firebase JWKS");
-    return { uid: payload.sub as string, email: (payload.email as string) || null };
+    return {
+      uid: payload.sub as string,
+      email: (payload.email as string) || null,
+      isAdmin: payload.admin === true || payload.isAdmin === true,
+    };
   } catch (err: any) {
     return unauthorized(origin, `Jose verification failed: ${err.message}`, err);
   }
@@ -120,7 +130,7 @@ export async function requireAuth(
   request: Request,
   apiKey: string,
   projectId: string,
-): Promise<{ uid: string; email: string | null } | Response> {
+): Promise<AuthenticatedUser | Response> {
   const origin = request.headers.get("origin");
 
   const authHeader = request.headers.get("authorization");

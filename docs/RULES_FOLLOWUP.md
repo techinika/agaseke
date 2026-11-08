@@ -44,10 +44,13 @@ must both hold.
 
 ## Media bucket
 
-`assets.agaseke.me` is a public R2 custom domain. Until it is removed, the media
-proxy only hides URLs from the app's own UI; it cannot stop direct access. The
-companion infrastructure change is to serve the bucket privately and have
-`app/api/media/stream/route.ts` fetch with an S3-presigned request.
+Private media now lives in the unexposed `agaseke-private` bucket and is read
+through the upload worker's signature-gated `/private/{key}` route. The remaining
+operational steps are to deploy the bucket binding and worker, run
+`scripts/migrate-private-media.js --apply`, then remove the public
+`assets.agaseke.me` custom domain so old public copies are no longer reachable.
+Any post that still stores a public URL must be migrated before that domain is
+disabled.
 
 ## Legacy status values
 

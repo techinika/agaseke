@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { SupportModal } from "@/components/parts/public/SupportModal";
 import { MediaAsset } from "@/components/parts/public/MediaAsset";
+import { usePostMediaSrc } from "@/lib/usePostMediaSrc";
 import { db } from "@/db/firebase";
 import {
   doc,
@@ -63,6 +64,7 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
   const { user: currentUser, profile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [post, setPost] = useState<any>(null);
+  const { mediaSrc } = usePostMediaSrc(post?.id, !!post?.isPrivate);
   const [creatorData, setCreatorData] = useState<any>({});
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState("");
@@ -396,11 +398,17 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
                   </button>
                 </div>
               )}
-              <iframe
-                src={`https://docs.google.com/viewer?url=${encodeURIComponent(pages[documentIndex])}&embedded=true`}
-                className="w-full h-[500px] rounded-lg border border-border"
-                title="Document viewer"
-              />
+              {mediaSrc(pages[documentIndex]) ? (
+                <iframe
+                  src={`https://docs.google.com/viewer?url=${encodeURIComponent(mediaSrc(pages[documentIndex]) as string)}&embedded=true`}
+                  className="w-full h-[500px] rounded-lg border border-border"
+                  title="Document viewer"
+                />
+              ) : (
+                <div className="w-full h-[500px] rounded-lg border border-border bg-muted flex items-center justify-center text-sm text-muted-foreground">
+                  Preparing document...
+                </div>
+              )}
             </div>
           )}
 

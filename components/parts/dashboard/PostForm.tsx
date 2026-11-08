@@ -18,7 +18,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/auth/AuthContext";
 import { useRouter } from "next/navigation";
-import { uploadFile } from "@/lib/uploadService";
+import { uploadFile, storedAssetValue, type AssetVisibility } from "@/lib/uploadService";
 
 export default function PostForm() {
   const { creator } = useAuth();
@@ -34,6 +34,7 @@ export default function PostForm() {
   const [isUploading, setIsUploading] = useState(false);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [uploadedUrl, setUploadedUrl] = useState("");
+  const [uploadedVisibility, setUploadedVisibility] = useState<AssetVisibility | null>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -48,16 +49,24 @@ export default function PostForm() {
 
     try {
       const assetType = newPost.type === "video" ? "post_video" : newPost.type === "document" ? "post_document" : "post_image";
-      const data = await uploadFile(file, assetType, creator?.handle || "");
-      if (data.url) {
-        setUploadedUrl(data.url);
+      const data = await uploadFile(
+        file,
+        assetType,
+        creator?.handle || "",
+        undefined,
+        newPost.isPrivate ? "private" : "public",
+      );
+      const stored = storedAssetValue(data);
+      if (stored) {
+        setUploadedUrl(stored);
+        setUploadedVisibility(data.visibility);
         toast.success("File uploaded successfully!");
       } else {
         throw new Error("Upload failed");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Upload error:", err);
-      toast.error(err.message || "Failed to upload file");
+      toast.error(err instanceof Error ? err.message : "Failed to upload file");
       setFilePreview(null);
       setUploadedUrl("");
     } finally {
@@ -69,11 +78,23 @@ export default function PostForm() {
     setNewPost({ title: "", description: "", type: "text", isPrivate: true });
     setFilePreview(null);
     setUploadedUrl("");
+    setUploadedVisibility(null);
   };
 
   const handleSubmit = async () => {
     if (!creator?.uid || !newPost.title || !creator?.handle) {
       toast.error("Please fill in required fields");
+      return;
+    }
+
+    // A file uploaded while the post was public lives in the public bucket, so
+    // flipping the post to supporters-only afterwards would not protect it.
+    if (newPost.isPrivate && uploadedUrl && uploadedVisibility !== "private") {
+      toast.error("Re-upload the file now that the post is supporters-only.");
+      return;
+    }
+    if (!newPost.isPrivate && uploadedVisibility === "private") {
+      toast.error("Re-upload the file now that the post is public.");
       return;
     }
 

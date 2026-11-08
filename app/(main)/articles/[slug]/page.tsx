@@ -83,6 +83,32 @@ export async function generateMetadata({
     return { title: "Article Not Found | Agaseke", robots: { index: false } };
   }
 
+  if (article.isPrivate === true) {
+    const defaultImage = `${baseUrl}/agaseke.png`;
+    const title = "Supporters-only article | Agaseke";
+    const description =
+      "This article is available to supporters of its creator on Agaseke.";
+    return {
+      title,
+      description,
+      robots: { index: false, follow: false },
+      openGraph: {
+        title,
+        description,
+        siteName: "Agaseke",
+        locale: "en_RW",
+        type: "article",
+        images: [{ url: defaultImage, width: 1200, height: 630 }],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description,
+        images: [defaultImage],
+      },
+    };
+  }
+
   const creatorHandle = article.creatorId || "";
   const creator = creatorHandle
     ? await getCreatorData(creatorHandle)
@@ -197,16 +223,18 @@ export default async function Page({
 
   return (
     <>
-      <ArticleSchema
-        headline={serialized.title}
+      {!article.isPrivate && (
+        <ArticleSchema
+          headline={serialized.title}
         description={serialized.shortDescription || stripHtml(article.htmlContent as string).slice(0, 160)}
         image={serialized.coverUrl || `${baseUrl}/agaseke.png`}
         url={`/articles/${slug}`}
         authorName={serializedCreator.name}
         authorUrl={`/${creatorHandle}`}
         publishedTime={serialized.createdAt || undefined}
-        modifiedTime={article.updatedAt?.toDate?.()?.toISOString?.() as string | undefined}
-      />
+          modifiedTime={article.updatedAt?.toDate?.()?.toISOString?.() as string | undefined}
+        />
+      )}
       <ArticleReaderPage
         article={serialized}
         creator={serializedCreator}

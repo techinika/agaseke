@@ -33,6 +33,22 @@ export function signMediaPost(postId: string, exp: number): string {
     .digest("base64url");
 }
 
+/**
+ * Sign a single object key for the private bucket. The upload worker verifies
+ * this with the same secret and payload, so an authorised stream can redirect
+ * the browser straight to Cloudflare instead of relaying bytes through Next.
+ */
+export function signMediaKey(key: string, exp: number): string {
+  return crypto
+    .createHmac("sha256", signingSecret())
+    .update(mediaKeyPayload(key, exp))
+    .digest("base64url");
+}
+
+export function mediaKeyPayload(key: string, exp: number): string {
+  return `media:${key}:${exp}`;
+}
+
 export function verifyMediaSignature(
   postId: string,
   exp: number,

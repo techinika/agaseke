@@ -43,6 +43,21 @@ Findings: AGA-PAY-004 (partial), AGA-PERF-005 (partial), AGA-PERF-001 (partial).
   `lib/usePostMediaSrc.ts`, `app/api/media/**`). Hosts the proxy may fetch from
   are allowlisted (`MEDIA_ALLOWED_HOSTS`) to prevent post metadata from turning
   the route into an SSRF pivot.
+- **Private bucket and key migration (AGA-SEC-003, storage side).** Private
+  uploads now go to the unexposed `agaseke-private` R2 bucket and return an
+  object key; the app stores keys instead of public URLs. The upload worker
+  serves them at `GET|HEAD /private/{key}` only with a valid
+  `media:{key}:{exp}` HMAC, rejects malformed/traversal/oversized keys, reports
+  `Accept-Ranges`/`Content-Length`, and marks responses `no-referrer`. The app's
+  stream route redirects signed private keys to that worker. Upload and edit
+  forms block switching a post's privacy without re-uploading, and creator,
+  supporter and public renderers resolve post media through
+  `MediaAsset`/`usePostMediaSrc` (`workers/upload/src/{index,mediaSign}.ts`,
+  `scripts/migrate-private-media.js`,
+  `components/parts/public/MediaAsset.tsx`). The migration script is a dry run
+  by default, copies idempotently, and rewrites
+  `contentUrl`/`coverUrl`/`thumbnailUrl`/`mediaUrls` to keys while warning about
+  external URLs.
 - **Creator page hydration/CLS (AGA-PERF-005).** Public post dates render with a
   fixed locale and UTC timezone so server and client HTML match; the support and
   share modals are lazy-loaded and mounted only when opened, reducing initial
@@ -57,6 +72,9 @@ Findings: AGA-PAY-004 (partial), AGA-PERF-005 (partial), AGA-PERF-001 (partial).
 - Media signatures: valid signature accepted; wrong post id, tampered signature
   and expired signature rejected (ad-hoc Node check against the compiled
   `lib/mediaSigning.ts`).
+- `cd workers/upload && npm test` - 2 files, 11 passed (cross-checks the worker
+  verifier against the app signer and covers key validation).
+- `cd workers/upload && npx tsc --noEmit` - passed.
 - `cd workers/payments && npx tsc --noEmit` - passed.
 - `cd agaseke && npx tsc --noEmit` - passed.
 - `cd workers/payments && npm test` - 55 passed (2 new outbox tests).
@@ -71,13 +89,20 @@ Findings: AGA-PAY-004 (partial), AGA-PERF-005 (partial), AGA-PERF-001 (partial).
   ledger remains the source for reporting, not for recomputing counters.
 - A live Lighthouse/Web Vitals re-measure is still needed before claiming a
   creator-page performance improvement.
-- AGA-SEC-003 is only half closed. The app no longer renders public URLs for
-  private media and will not stream bytes to an unentitled user, but the R2
-  bucket is still served through the public `assets.agaseke.me` custom domain, so
-  anyone who learns a key can still fetch it directly. Closing that needs
-  infrastructure work: disable the public bucket domain, switch
-  `app/api/media/stream/route.ts` to an S3-presigned upstream fetch, and backfill
-  stored `contentUrl` values to bare object keys.
+- AGA-SEC-003 still needs its operational migration: deploy the
+  `UPLOADS_PRIVATE_BUCKET` binding, run
+  `scripts/migrate-private-media.js --apply` for legacy private posts, then
+  remove the `assets.agaseke.me` public custom domain. Until that is done,
+  legacy objects that were already public remain fetchable by anyone who knows
+  the key.
+- Private article HTML is still serialized to every visitor and blurred
+  client-side (`ArticleReaderPage`). Closing that requires an entitlement-checked
+  body endpoint; the media proxy alone does not protect article text.
+- Inline images uploaded through `RichTextEditor` still use the public upload
+  path, including inside private articles.
+- Open Graph metadata for private posts now falls back to a generic
+  title/description/image and `noindex`, but the Firestore document and its media
+  keys remain readable until the rules in `docs/RULES_FOLLOWUP.md` are deployed.
 - `creatorContent` documents are still readable without a supporter check until
   the rules in `docs/RULES_FOLLOWUP.md` are deployed, so private post metadata
   (including keys) is not yet protected at the database layer.
@@ -140,7 +165,7 @@ Finding IDs: AGA-PAY-001, AGA-PAY-002, AGA-PAY-003.
 
 ```
  Test Files  5 passed (5)
-      Tests  53 passed (53)
+      Tests  55 passed (55)   # 53 Phase 1 + 2 outbox
    Duration  837ms
 ```
 

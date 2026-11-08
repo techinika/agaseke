@@ -1,6 +1,6 @@
 "use client";
 
-import type { ImgHTMLAttributes, VideoHTMLAttributes } from "react";
+import type { AnchorHTMLAttributes, ImgHTMLAttributes, ReactNode, VideoHTMLAttributes } from "react";
 import { usePostMediaSrc } from "@/lib/usePostMediaSrc";
 
 type BaseProps = {
@@ -29,5 +29,31 @@ export function MediaAsset(props: ImgProps | VideoProps) {
   }
 
   const { alt, ...imgProps } = rest as ImgHTMLAttributes<HTMLImageElement>;
+  // eslint-disable-next-line @next/next/no-img-element
   return <img src={src} alt={alt ?? ""} {...imgProps} />;
+}
+
+type LinkProps = BaseProps &
+  Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> & {
+    children: ReactNode;
+    fallback?: ReactNode;
+  };
+
+/** Render an anchor only once the media URL has been resolved for this viewer. */
+export function MediaLink({
+  postId,
+  isPrivate,
+  url,
+  children,
+  fallback = null,
+  ...rest
+}: LinkProps) {
+  const { mediaSrc } = usePostMediaSrc(postId, isPrivate);
+  const href = mediaSrc(url);
+  if (!href) return <>{fallback}</>;
+  return (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  );
 }

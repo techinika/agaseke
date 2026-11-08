@@ -9,7 +9,7 @@ Rules: Firestore rules are **out of scope**. Any rule dependency is recorded in
 
 | Phase | Scope | Status |
 |---|---|---|
-| 1 | 5.A Payments correctness and forgery (AGA-PAY-001, AGA-PAY-002, AGA-PAY-003) | **Complete - 53 tests passing; awaiting founder review** |
+| 1 | 5.A Payments correctness and forgery (AGA-PAY-001, AGA-PAY-002, AGA-PAY-003) | **Complete - 53 Phase 1 tests (55 total); awaiting founder review** |
 | 2 | 5.B Security hardening outside rules (SEC-005/006/009/010/011, app-side SEC-001/004/007) | Planned |
 | 3 | 5.C Payment reliability (PAY-004/005, FUNC-002/003/004, PAY-006) | Planned |
 | 4 | 5.D Performance (PERF-001..006) | Planned |
@@ -25,7 +25,7 @@ Rules: Firestore rules are **out of scope**. Any rule dependency is recorded in
 | AGA-PAY-003 | 1 | A3/A4/A5/A6 webhook state, idempotency | `webhooks.ts`, new `stateMachine.ts`, `eventProcessor.ts` | 3d | High | In scope |
 | AGA-SEC-001 | 2 | B6 admin custom claims + server guard | `auth/*`, admin routes, worker endpoints | 2d | High | App side in scope; rules deferred |
 | AGA-SEC-002 | rules | Firestore least-privilege rules | `docs/RULES_FOLLOWUP.md` | 1d | Critical | **Deferred (rules)** |
-| AGA-SEC-003 | 2 | B9 signed private media | upload worker, post storage, migration script | 4d | High | App side in scope; rules deferred |
+| AGA-SEC-003 | 2 | B9 signed private media | upload worker, post storage, migration script | 4d | High | App + private bucket complete; legacy migration and rules pending |
 | AGA-SEC-004 | 2 | B5 payout destination server flow | creator settings, payouts, workers | 3d | High | App side in scope; rules deferred |
 | AGA-SEC-005 | 2 | B2 redirect allowlist | `LoginPage.tsx`, `GoogleLogin.ts` | 2h | Low | In scope |
 | AGA-SEC-006 | 2 | B1 security headers | `next.config.ts`, `vercel.json` | 2d | Medium | In scope |
@@ -58,12 +58,14 @@ Rules: Firestore rules are **out of scope**. Any rule dependency is recorded in
 
 ## Phase 2 implementation notes
 
-- **AGA-SEC-003 (partial, app side).** Private media is served through
-  `POST /api/media/sign` (entitlement check) plus `GET /api/media/stream`
-  (HMAC-verified, post-scoped, 10-minute capability) and rendered via
-  `components/parts/public/MediaAsset.tsx`. Remaining: make the R2 bucket
-  private, switch the stream route to a presigned upstream fetch, and backfill
-  stored media values to object keys.
+- **AGA-SEC-003 (app + private bucket complete).** Private uploads go to the
+  unexposed `agaseke-private` R2 bucket; stored values are object keys served by
+  the upload worker's signed `GET|HEAD /private/{key}` route. The app issues a
+  post-scoped grant through `POST /api/media/sign`, verifies it in
+  `GET /api/media/stream`, and renders via
+  `components/parts/public/MediaAsset.tsx`. Remaining: run
+  `scripts/migrate-private-media.js --apply` for legacy private posts, remove the
+  public `assets.agaseke.me` domain, and add the corresponding rules.
 - **AGA-SEC-005, SEC-006, SEC-010, SEC-011** are implemented app-side; rules
   still gate the metadata layer for SEC-001/002/003/004 (`docs/RULES_FOLLOWUP.md`).
 
