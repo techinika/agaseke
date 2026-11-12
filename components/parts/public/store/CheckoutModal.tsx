@@ -203,13 +203,19 @@ export function CheckoutModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+    <div
+      className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Checkout"
+    >
       <div className="bg-card w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 max-h-[90vh] flex flex-col">
         <div className="p-6 border-b border-border flex justify-between items-center">
           <h2 className="text-xl font-bold">Checkout</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-muted rounded-full transition"
+            aria-label="Close checkout"
+            className="flex size-11 items-center justify-center rounded-full transition hover:bg-muted"
           >
             <X size={20} />
           </button>
@@ -225,9 +231,9 @@ export function CheckoutModal({
               <button
                 key={s}
                 onClick={() => setStep(s as any)}
-                className={`flex-1 py-2 text-xs font-bold rounded-lg transition capitalize ${
+                className={`min-h-11 flex-1 rounded-lg px-2 py-2 text-xs font-bold capitalize transition ${
                   step === s
-                    ? "bg-orange-500 text-white"
+                    ? "bg-orange-700 text-white"
                     : "bg-muted text-muted-foreground"
                 }`}
               >
@@ -481,7 +487,7 @@ export function CheckoutModal({
                 onClick={() =>
                   setStep(step === "info" ? "shipping" : "payment")
                 }
-                className="flex-1 py-4 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition"
+                className="flex-1 py-4 bg-orange-700 text-white rounded-xl font-bold hover:bg-orange-800 transition"
               >
                 Continue
               </button>

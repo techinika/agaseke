@@ -49,7 +49,7 @@ interface CommunityTabProps {
   uid?: string;
   communityEnabled?: boolean;
   communityTiers?: CommunityTier[];
-  onSubscribe?: () => void;
+  onSubscribe?: (tier: CommunityTier) => void;
 }
 
 export const CommunityTab = ({
@@ -238,7 +238,7 @@ export const CommunityTab = ({
                   </Link>
                 ) : (
                   <button
-                    onClick={onSubscribe}
+                    onClick={() => onSubscribe?.(tier)}
                     className="w-full py-2 bg-orange-600 text-white text-xs font-bold hover:bg-orange-700 transition"
                   >
                     Join

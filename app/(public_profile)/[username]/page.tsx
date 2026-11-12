@@ -2,6 +2,9 @@ export const revalidate = 300;
 
 import { cache } from "react";
 import PublicProfile from "@/components/pages/PublicProfile";
+import CreatorPage from "@/features/creator-page/CreatorPage";
+import CreatorSchema from "@/components/seo/CreatorSchma";
+import type { CreatorPageCreator } from "@/features/creator-page/types";
 import { adminDb, admin } from "@/db/firebaseAdmin";
 import { Metadata } from "next";
 import { baseUrl } from "@/lib/baseUrl";
@@ -205,7 +208,7 @@ export async function generateMetadata({
         "max-snippet": -1,
       },
     },
-    other: { "theme-color": "#ea580c" },
+    other: { "theme-color": "#FF0000" },
     category: "Creator Profile",
   };
 }
@@ -213,9 +216,30 @@ export async function generateMetadata({
 async function page({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
   const data = await getPublicProfileData(username);
+  const useCreatorPageV2 = process.env.NEXT_PUBLIC_CREATOR_PAGE_V2 !== "0";
 
   if (!data) {
-    return <PublicProfile username={username} />;
+    return useCreatorPageV2 ? (
+      <CreatorPage username={username} />
+    ) : (
+      <PublicProfile username={username} />
+    );
+  }
+
+  if (useCreatorPageV2) {
+    return (
+      <>
+        <CreatorSchema creator={data.creator} handle={username} />
+        <CreatorPage
+          username={username}
+          creator={data.creator as CreatorPageCreator}
+          profile={data.profile}
+          partners={data.partners}
+          publicPosts={data.publicPosts}
+          referralId={data.referralId}
+        />
+      </>
+    );
   }
 
   return (

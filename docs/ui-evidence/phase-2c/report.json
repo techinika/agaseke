@@ -1,0 +1,129 @@
+{
+  "generatedAt": "2026-11-12T08:07:31.502Z",
+  "baseUrl": "http://localhost:3100",
+  "viewport": {
+    "width": 390,
+    "height": 844
+  },
+  "chromium": "/usr/bin/chromium",
+  "results": [
+    {
+      "name": "01-actions-index",
+      "url": "/dev/actions",
+      "screenshot": "docs/ui-evidence/phase-2c/01-actions-index.png",
+      "axe": {
+        "violations": []
+      },
+      "smallTapTargets": []
+    },
+    {
+      "name": "02-support-sheet",
+      "url": "/dev/actions?open=support",
+      "screenshot": "docs/ui-evidence/phase-2c/02-support-sheet.png",
+      "axe": {
+        "violations": []
+      },
+      "smallTapTargets": []
+    },
+    {
+      "name": "03-community-join",
+      "url": "/dev/actions?open=community",
+      "screenshot": "docs/ui-evidence/phase-2c/03-community-join.png",
+      "axe": {
+        "violations": []
+      },
+      "smallTapTargets": []
+    },
+    {
+      "name": "04-giveaway-entry",
+      "url": "/dev/actions?open=giveaway",
+      "screenshot": "docs/ui-evidence/phase-2c/04-giveaway-entry.png",
+      "axe": {
+        "violations": []
+      },
+      "smallTapTargets": []
+    },
+    {
+      "name": "05-giveaway-success",
+      "url": "/dev/actions?open=giveaway",
+      "screenshot": "docs/ui-evidence/phase-2c/05-giveaway-success.png",
+      "axe": null,
+      "smallTapTargets": []
+    },
+    {
+      "name": "06-free-rsvp",
+      "url": "/dev/actions?open=rsvp",
+      "screenshot": "docs/ui-evidence/phase-2c/06-free-rsvp.png",
+      "axe": {
+        "violations": []
+      },
+      "smallTapTargets": []
+    },
+    {
+      "name": "07-paid-ticket",
+      "url": "/dev/actions?open=ticket",
+      "screenshot": "docs/ui-evidence/phase-2c/07-paid-ticket.png",
+      "axe": {
+        "violations": []
+      },
+      "smallTapTargets": []
+    },
+    {
+      "name": "08-checkout-old-before",
+      "url": "/dev/actions?open=checkout-old",
+      "screenshot": "docs/ui-evidence/phase-2c/08-checkout-old-before.png",
+      "axe": {
+        "violations": []
+      },
+      "smallTapTargets": []
+    },
+    {
+      "name": "09-checkout-new-review",
+      "url": "/dev/actions?open=checkout",
+      "screenshot": "docs/ui-evidence/phase-2c/09-checkout-new-review.png",
+      "axe": {
+        "violations": []
+      },
+      "smallTapTargets": []
+    },
+    {
+      "name": "10-checkout-new-delivery",
+      "url": "/dev/actions?open=checkout",
+      "screenshot": "docs/ui-evidence/phase-2c/10-checkout-new-delivery.png",
+      "axe": null,
+      "smallTapTargets": []
+    },
+    {
+      "name": "11-checkout-new-payment",
+      "url": "/dev/actions?open=checkout",
+      "screenshot": "docs/ui-evidence/phase-2c/11-checkout-new-payment.png",
+      "axe": {
+        "violations": []
+      },
+      "smallTapTargets": []
+    },
+    {
+      "name": "12-creator-page-mobile",
+      "url": "/dev/creator-page",
+      "screenshot": "docs/ui-evidence/phase-2c/12-creator-page-mobile.png",
+      "axe": {
+        "violations": []
+      },
+      "smallTapTargets": []
+    }
+  ],
+  "consoleErrors": [
+    "01-actions-index: The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy.",
+    "02-support-sheet: The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy.",
+    "03-community-join: The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy.",
+    "04-giveaway-entry: The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy.",
+    "05-giveaway-success: The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy.",
+    "06-free-rsvp: The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy.",
+    "07-paid-ticket: The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy.",
+    "08-checkout-old-before: The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy.",
+    "09-checkout-new-review: The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy.",
+    "10-checkout-new-delivery: The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy.",
+    "11-checkout-new-payment: The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy.",
+    "12-creator-page-mobile: The Content Security Policy directive 'upgrade-insecure-requests' is ignored when delivered in a report-only policy."
+  ]
+}

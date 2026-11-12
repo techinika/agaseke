@@ -35,6 +35,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
+
     const unsubscribeAuth = onIdTokenChanged(auth, async (currentUser) => {
       setUser(currentUser);
 
@@ -67,7 +72,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    if (!user) {
+    if (!user || !db) {
       return;
     }
 

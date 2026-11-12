@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Rubik } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/auth/AuthContext";
-import { Toaster } from "sonner";
+import { ToastViewport } from "@/components/ui/Toast";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import PwaRegister from "@/components/parts/PwaRegister";
 import LoginRedirectCapture from "@/auth/LoginRedirectCapture";
@@ -97,7 +97,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#ea580c",
+  themeColor: "#FF0000",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
@@ -123,14 +123,16 @@ export default function RootLayout({
       <body className={`${rubik.variable} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <AuthProvider>
-            <Toaster richColors position="top-center" />
+            <ToastViewport />
             {children}
             <PwaRegister />
             <LoginRedirectCapture />
           </AuthProvider>
         </ThemeProvider>
       </body>
-      <GoogleAnalytics gaId="G-6DP23NWS5P" />
+      {process.env.NODE_ENV === "production" && (
+        <GoogleAnalytics gaId="G-6DP23NWS5P" />
+      )}
     </html>
   );
 }

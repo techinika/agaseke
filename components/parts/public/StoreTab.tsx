@@ -34,9 +34,12 @@ import type { Product, FolderData, CartItem, Order } from "./store";
 import { getProductCurrency, getProductPrice } from "./store/types";
 import { formatCurrency } from "@/types/currency";
 import { TabErrorState } from "@/components/ui/TabErrorState";
+import { CheckoutSheet } from "@/features/store";
 
 const GENERAL_WORKER_URL =
   process.env.NEXT_PUBLIC_GENERAL_WORKER_URL || "http://localhost:8787";
+
+const CHECKOUT_SHEET_V2 = process.env.NEXT_PUBLIC_CHECKOUT_SHEET_V2 !== "0";
 
 function logErrorToServer(message: string, metadata?: Record<string, unknown>) {
   fetch(`${GENERAL_WORKER_URL}/api/general/log-error`, {
@@ -55,6 +58,8 @@ interface StoreTabProps {
   creatorId: string;
   creatorName: string;
   creatorHandle: string;
+  creatorPhotoURL?: string | null;
+  creatorVerified?: boolean;
   storePublic: boolean;
   isLoggedIn: boolean;
   isSupporter: boolean;
@@ -69,6 +74,8 @@ export const StoreTab = ({
   creatorId,
   creatorName,
   creatorHandle,
+  creatorPhotoURL,
+  creatorVerified,
   storePublic,
   isLoggedIn,
   isSupporter,
@@ -424,27 +431,49 @@ export const StoreTab = ({
   }
 
   if (showCheckout) {
+    const currency =
+      cart.length > 0 ? getProductCurrency(cart[0].product) : "RWF";
+    const closeCheckout = () => {
+      setShowCheckout(false);
+      setShowCart(false);
+      setCart([]);
+    };
+
+    if (CHECKOUT_SHEET_V2) {
+      return (
+        <CheckoutSheet
+          open
+          onClose={closeCheckout}
+          cart={cart}
+          creatorId={creatorId}
+          creatorName={creatorName}
+          creatorHandle={creatorHandle}
+          creatorPhotoURL={creatorPhotoURL}
+          creatorVerified={creatorVerified}
+          getItemPrice={getItemPrice}
+          total={getCartTotal()}
+          currentUser={currentUser}
+          currency={currency}
+          onPaid={() => toast.success("Order placed successfully!")}
+        />
+      );
+    }
+
     return (
       <CheckoutModal
         cart={cart}
         creatorId={creatorId}
         creatorName={creatorName}
         creatorHandle={creatorHandle}
-        onClose={() => {
-          setShowCheckout(false);
-          setShowCart(false);
-          setCart([]);
-        }}
+        onClose={closeCheckout}
         onSuccess={() => {
-          setShowCheckout(false);
-          setShowCart(false);
-          setCart([]);
+          closeCheckout();
           toast.success("Order placed successfully!");
         }}
         getItemPrice={getItemPrice}
         total={getCartTotal()}
         currentUser={currentUser}
-        currency={cart.length > 0 ? getProductCurrency(cart[0].product) : "RWF"}
+        currency={currency}
       />
     );
   }

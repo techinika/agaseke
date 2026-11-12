@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "../styles/tokens.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -39,6 +40,51 @@
   --color-border-strong: var(--border-strong);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+
+  --color-brand: var(--ag-brand);
+  --color-brand-strong: var(--ag-brand-strong);
+  --color-brand-hover: var(--ag-brand-hover);
+  --color-on-brand: var(--ag-on-brand);
+  --color-surface: var(--ag-surface);
+  --color-surface-raised: var(--ag-surface-raised);
+  --color-fg: var(--ag-fg);
+  --color-line: var(--ag-line);
+  --color-line-strong: var(--ag-line-strong);
+  --color-muted-fg: var(--ag-muted-fg);
+  --color-success: var(--ag-success);
+  --color-success-bg: var(--ag-success-bg);
+  --color-warning: var(--ag-warning);
+  --color-warning-bg: var(--ag-warning-bg);
+  --color-danger: var(--ag-danger);
+  --color-danger-bg: var(--ag-danger-bg);
+  --color-info: var(--ag-info);
+  --color-info-bg: var(--ag-info-bg);
+  --color-focus: var(--ag-focus);
+
+  --radius-control: var(--ag-radius-control);
+  --radius-card: var(--ag-radius-card);
+  --radius-sheet: var(--ag-radius-sheet);
+  --radius-pill: var(--ag-radius-pill);
+
+  --shadow-sm: var(--ag-shadow-sm);
+  --shadow-card: var(--ag-shadow-card);
+  --shadow-sheet: var(--ag-shadow-sheet);
+
+  --text-caption: var(--ag-text-caption);
+  --text-caption--line-height: var(--ag-text-caption-lh);
+  --text-label: var(--ag-text-label);
+  --text-label--line-height: var(--ag-text-label-lh);
+  --text-body: var(--ag-text-body);
+  --text-body--line-height: var(--ag-text-body-lh);
+  --text-body-lg: var(--ag-text-body-lg);
+  --text-body-lg--line-height: var(--ag-text-body-lg-lh);
+  --text-title: var(--ag-text-title);
+  --text-title--line-height: var(--ag-text-title-lh);
+  --text-heading: var(--ag-text-heading);
+  --text-heading--line-height: var(--ag-text-heading-lh);
+  --text-display: var(--ag-text-display);
+  --text-display--line-height: var(--ag-text-display-lh);
+
   --font-sans: var(--font-rubik);
   --font-mono: var(--font-rubik);
 }
@@ -46,7 +92,26 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-rubik);
+}
+
+@utility pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+}
+
+@utility pt-safe {
+  padding-top: max(env(safe-area-inset-top), 0.5rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ---- Article editor (TipTap) ---- */
@@ -388,4 +453,11 @@ body {
 
 .article-body s {
   text-decoration: line-through;
+}
+
+/* Keep the creator page footer clear of the mobile sticky Support bar. */
+@media (max-width: 767px) {
+  body:has(.creator-page-shell) footer {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  }
 }

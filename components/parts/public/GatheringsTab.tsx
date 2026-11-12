@@ -1,10 +1,9 @@
  
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect } from "react";
 import { sendCommsEmail } from "@/lib/commsService";
-import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService";
-import { Calendar, Loader, ArrowRight, Lock, X, Smartphone, CreditCard } from "lucide-react";
+import { Calendar, Loader, ArrowRight, Lock, X } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/db/firebase";
 import {
@@ -16,9 +15,6 @@ import {
   doc,
   updateDoc,
   serverTimestamp,
-  onSnapshot,
-  orderBy,
-  limit as fsLimit,
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
@@ -27,17 +23,21 @@ import type { Gathering } from "./gatherings";
 import { formatCurrency } from "@/types/currency";
 import { logError, logInfo } from "@/lib/logger";
 import { QRCodeCanvas } from "qrcode.react";
+import { FreeRsvpSheet, PaidRsvpSheet } from "@/features/gatherings";
 import { TabErrorState } from "@/components/ui/TabErrorState";
 
 interface GatheringsTabProps {
   creatorId: string;
   creatorHandle: string;
+  creatorName?: string;
+  creatorPhotoURL?: string | null;
+  creatorVerified?: boolean;
   isSupporter: boolean;
   compact?: boolean;
   username?: string;
 }
 
-export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact = false, username = "" }: GatheringsTabProps) {
+export function GatheringsTab({ creatorId, creatorHandle, creatorName = "the creator", creatorPhotoURL, creatorVerified, isSupporter, compact = false, username = "" }: GatheringsTabProps) {
   const { user, profile } = useAuth();
   const [gatherings, setGatherings] = useState<Gathering[]>([]);
   const [pastGatherings, setPastGatherings] = useState<Gathering[]>([]);
@@ -52,6 +52,7 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
   const [attendanceDocIds, setAttendanceDocIds] = useState<Record<string, string>>({});
   const [ticketModalGathering, setTicketModalGathering] = useState<Gathering | null>(null);
   const [ticketModalDocId, setTicketModalDocId] = useState<string | null>(null);
+  const [freeRsvpGathering, setFreeRsvpGathering] = useState<Gathering | null>(null);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -186,8 +187,15 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
 
     if (gathering.ticketPrice && gathering.ticketPrice > 0) {
       setPayingGathering(gathering);
-      setPayPhone(profile.phoneNumber || "");
       return;
+    }
+
+    setFreeRsvpGathering(gathering);
+  };
+
+  const confirmFreeRsvp = async (gathering: Gathering) => {
+    if (!user || !profile) {
+      throw new Error("Please log in to RSVP");
     }
 
     setRsvping(gathering.id);
@@ -229,8 +237,6 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
         gatheringDate: gathering.date,
         gatheringTime: gathering.time,
       }).catch((err) => { console.error("Failed to send RSVP email", err); });
-
-      toast.success("RSVP confirmed!");
     } catch (error) {
       console.error("RSVP error:", error);
       logError("gathering", "GatheringsTab: RSVP failed", {
@@ -238,137 +244,44 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
         creatorHandle,
         metadata: { gatheringId: gathering.id, errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
       });
-      toast.error("Failed to RSVP. Please try again.");
+      throw error;
     } finally {
       setRsvping(null);
     }
   };
 
   const [payingGathering, setPayingGathering] = useState<Gathering | null>(null);
-  const [payMethod, setPayMethod] = useState<"momo" | "card">("momo");
-  const [payPhone, setPayPhone] = useState("");
-  const [paying, setPaying] = useState(false);
 
-  const payingRef = useRef(false);
-  const userRef = useRef(user);
-  const paymentTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleTicketPaid = async (gathering: Gathering) => {
+    setRsvpedIds((prev) => new Set(prev).add(gathering.id));
+    setMyRsvpStatus((prev) => ({
+      ...prev,
+      [gathering.id]: { checkedIn: false, checkInDeclined: false },
+    }));
 
-  useEffect(() => {
-    payingRef.current = paying;
-  }, [paying]);
-
-  useEffect(() => {
-    userRef.current = user;
-  }, [user]);
-
-  useEffect(() => {
-    return () => {
-      if (paymentTimeoutRef.current) clearTimeout(paymentTimeoutRef.current);
-    };
-  }, []);
-
-  const listenForTransaction = useCallback((ref: string, gathering: Gathering) => {
-    const txRef = collection(db, "transactions");
-    const q = query(txRef, where("ref", "==", ref), orderBy("createdAt", "desc"), fsLimit(1));
-    const unsub = onSnapshot(q, async (snap) => {
-      if (snap.empty) return;
-      const tx = snap.docs[0].data();
-      if (tx.status === "successful") {
-        toast.success("Payment successful! You're now attending!");
-        setPayingGathering(null);
-        setRsvpedIds((prev) => new Set(prev).add(gathering.id));
-        setMyRsvpStatus((prev) => ({ ...prev, [gathering.id]: { checkedIn: false, checkInDeclined: false } }));
-
-        const currentUser = userRef.current;
-        if (currentUser?.uid) {
-          try {
-            const attendanceQuery = query(
-              collection(db, "gatheringsAttendance"),
-              where("supporterId", "==", currentUser.uid),
-            );
-            const attendanceSnap = await getDocs(attendanceQuery);
-            const match = attendanceSnap.docs.find(d => d.data().gatheringId === gathering.id);
-            if (match) {
-              setAttendanceDocIds((prev) => ({ ...prev, [gathering.id]: match.id }));
-            }
-          } catch (e) {
-            console.error("Failed to query attendance doc:", e);
-          }
-        }
-
-        unsub();
-      } else if (tx.status === "failed") {
-        toast.error("Payment failed. Please try again.");
-        setPayingGathering(null);
-        setPaying(false);
-        unsub();
-      }
+    logInfo("gathering", `Ticket confirmed for gathering: "${gathering.title}"`, {
+      userId: user?.uid,
+      userEmail: user?.email || undefined,
+      creatorHandle,
+      metadata: { gatheringId: gathering.id },
     });
-    if (paymentTimeoutRef.current) clearTimeout(paymentTimeoutRef.current);
-    paymentTimeoutRef.current = setTimeout(() => {
-      unsub();
-      if (payingRef.current) {
-        setPaying(false);
-        setPayingGathering(null);
-        toast.error("Payment timed out. Please try again.");
-      }
-    }, 120000);
-  }, []);
 
-  const handlePaidRSVP = async (gathering: Gathering) => {
-    if (!user || !profile) {
-      toast.error("Please log in to RSVP");
-      return;
-    }
-    const currency = gathering.currency || "RWF";
-    const method = currency === "USD" ? "card" : payMethod;
-    if (!payPhone && method === "momo") {
-      toast.error("Please enter your phone number");
-      return;
-    }
-    setPaying(true);
+    if (!user?.uid) return;
+
     try {
-      let ref: string;
-      if (method === "momo") {
-        const data = await initiateMomoPayment({
-          type: "gathering",
-          creatorHandle,
-          gatheringId: gathering.id,
-          phone: payPhone,
-          attendeeName: profile.displayName || user.email || undefined,
-          attendeeEmail: user.email || undefined,
-          currency,
-          idempotencyKey: crypto.randomUUID(),
-        });
-        ref = data.ref;
-      } else {
-        const data = await initiateCardPayment({
-          type: "gathering",
-          creatorHandle,
-          gatheringId: gathering.id,
-          email: user.email || undefined,
-          firstName: profile.displayName || user.email || "User",
-          lastName: "",
-          attendeeName: profile.displayName || user.email || undefined,
-          attendeeEmail: user.email || undefined,
-          currency,
-          idempotencyKey: crypto.randomUUID(),
-        });
-        ref = data.merchant_reference || data.ref;
-        if (data.redirect_url) {
-          window.open(data.redirect_url, "_blank");
-        }
+      const attendanceQuery = query(
+        collection(db, "gatheringsAttendance"),
+        where("supporterId", "==", user.uid),
+      );
+      const attendanceSnap = await getDocs(attendanceQuery);
+      const match = attendanceSnap.docs.find(
+        (item) => item.data().gatheringId === gathering.id,
+      );
+      if (match) {
+        setAttendanceDocIds((prev) => ({ ...prev, [gathering.id]: match.id }));
       }
-      listenForTransaction(ref, gathering);
-      toast.success("Payment initiated. Waiting for confirmation...");
     } catch (error) {
-      console.error("Payment error:", error);
-      logError("gathering", "GatheringsTab: Paid RSVP payment error", {
-        userId: user?.uid,
-        metadata: { gatheringId: gathering.id, error: String(error) },
-      });
-      toast.error("Payment failed. Please try again.");
-      setPaying(false);
+      console.error("Failed to query attendance doc:", error);
     }
   };
 
@@ -520,75 +433,33 @@ export function GatheringsTab({ creatorId, creatorHandle, isSupporter, compact =
         </div>
       )}
 
-      {/* Payment Modal for Paid Gatherings */}
+      {freeRsvpGathering && (
+        <FreeRsvpSheet
+          open
+          onClose={() => setFreeRsvpGathering(null)}
+          creatorName={creatorName}
+          title={freeRsvpGathering.title}
+          date={freeRsvpGathering.date}
+          time={freeRsvpGathering.time}
+          location={freeRsvpGathering.location}
+          onConfirm={() => confirmFreeRsvp(freeRsvpGathering)}
+        />
+      )}
+
       {payingGathering && (
-        <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-          <div className="bg-card w-full max-w-md rounded-2xl overflow-hidden shadow-2xl">
-            <div className="p-6 border-b border-border flex justify-between items-center">
-              <h2 className="text-xl font-bold">Buy Ticket</h2>
-              <button onClick={() => { setPayingGathering(null); setPaying(false); }} className="p-2 hover:bg-muted rounded-full">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="bg-muted p-4 rounded-lg">
-                <p className="text-sm text-muted-foreground">Event</p>
-                <p className="font-bold">{payingGathering.title}</p>
-                <p className="text-2xl font-bold text-orange-600 mt-2">{formatCurrency(payingGathering.currency === "USD" && payingGathering.priceUSD ? payingGathering.priceUSD : (payingGathering.ticketPrice || 0), payingGathering.currency || "RWF")}</p>
-              </div>
-
-              {payingGathering.currency === "USD" ? (
-                <p className="text-sm text-muted-foreground">
-                  This event is priced in USD, so card payment is the only
-                  option.
-                </p>
-              ) : (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setPayMethod("momo")}
-                    className={`flex-1 p-3 rounded-lg border-2 font-bold text-sm flex items-center justify-center gap-2 transition ${
-                      payMethod === "momo" ? "border-orange-500 bg-orange-50 text-orange-600" : "border-border text-muted-foreground"
-                    }`}
-                  >
-                    <Smartphone size={18} /> MoMo
-                  </button>
-                  <button
-                    onClick={() => setPayMethod("card")}
-                    className={`flex-1 p-3 rounded-lg border-2 font-bold text-sm flex items-center justify-center gap-2 transition ${
-                      payMethod === "card" ? "border-orange-500 bg-orange-50 text-orange-600" : "border-border text-muted-foreground"
-                    }`}
-                  >
-                    <CreditCard size={18} /> Card
-                  </button>
-                </div>
-              )}
-
-              {payingGathering.currency !== "USD" && payMethod === "momo" && (
-                <input
-                  type="tel"
-                  placeholder="Phone number (e.g. 078xxxxxxx)"
-                  value={payPhone}
-                  onChange={(e) => setPayPhone(e.target.value)}
-                  className="w-full bg-muted p-4 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-100"
-                />
-              )}
-
-              <button
-                onClick={() => handlePaidRSVP(payingGathering)}
-                disabled={
-                  paying ||
-                  (payingGathering.currency !== "USD" &&
-                    payMethod === "momo" &&
-                    !payPhone)
-                }
-                className="w-full py-4 bg-orange-600 text-white rounded-xl font-bold text-lg hover:bg-orange-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {paying ? <Loader size={20} className="animate-spin" /> : null}
-                {paying ? "Processing..." : `Pay ${formatCurrency(payingGathering.currency === "USD" && payingGathering.priceUSD ? payingGathering.priceUSD : (payingGathering.ticketPrice || 0), payingGathering.currency || "RWF")}`}
-              </button>
-            </div>
-          </div>
-        </div>
+        <PaidRsvpSheet
+          open
+          onClose={() => setPayingGathering(null)}
+          creatorName={creatorName}
+          creatorPhotoURL={creatorPhotoURL}
+          creatorVerified={creatorVerified}
+          creatorHandle={creatorHandle}
+          gathering={payingGathering}
+          user={user}
+          displayName={profile?.displayName || user?.email}
+          defaultPhone={profile?.phoneNumber}
+          onPaid={() => void handleTicketPaid(payingGathering)}
+        />
       )}
 
       {/* Ticket Modal */}

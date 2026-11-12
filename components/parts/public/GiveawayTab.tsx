@@ -21,6 +21,7 @@ import {
   EndedGiveawayCard,
 } from "./giveaway";
 import type { Giveaway } from "./giveaway";
+import { GiveawayEntrySheet } from "@/features/giveaways";
 import { TabErrorState } from "@/components/ui/TabErrorState";
 
 const GENERAL_WORKER_URL =
@@ -38,6 +39,8 @@ interface GiveawayTabProps {
   creatorId: string;
   creatorName: string;
   creatorHandle: string;
+  creatorPhotoURL?: string | null;
+  creatorVerified?: boolean;
   isLoggedIn: boolean;
   isSupporter: boolean;
   userTotalSupport: number;
@@ -51,6 +54,8 @@ export const GiveawayTab = ({
   creatorId,
   creatorName,
   creatorHandle,
+  creatorPhotoURL,
+  creatorVerified,
   isLoggedIn,
   isSupporter,
   userTotalSupport,
@@ -67,6 +72,7 @@ export const GiveawayTab = ({
   const [retryKey, setRetryKey] = useState(0);
   const [participating, setParticipating] = useState<Set<string>>(new Set());
   const [showWinners, setShowWinners] = useState<Giveaway | null>(null);
+  const [entryGiveaway, setEntryGiveaway] = useState<Giveaway | null>(null);
 
   useEffect(() => {
     const fetchGiveaways = async () => {
@@ -152,13 +158,11 @@ export const GiveawayTab = ({
 
   const participate = async (giveaway: Giveaway) => {
     if (!currentUser?.uid || !currentUser?.displayName) {
-      toast.error("Please log in to participate");
-      return;
+      throw new Error("Please log in to participate");
     }
 
     if (!canAccess(giveaway)) {
-      toast.error("You don't meet the requirements to participate");
-      return;
+      throw new Error("You don't meet the requirements to participate");
     }
 
     try {
@@ -173,7 +177,6 @@ export const GiveawayTab = ({
       });
 
       setParticipating((prev) => new Set([...prev, giveaway.id]));
-      toast.success("You're in! Good luck!");
     } catch (error) {
       console.error("Error participating:", error);
       logErrorToServer("Error participating in giveaway", {
@@ -181,7 +184,7 @@ export const GiveawayTab = ({
         userId: currentUser.uid,
         error: String(error),
       });
-      toast.error("Failed to participate");
+      throw error;
     }
   };
 
@@ -283,7 +286,7 @@ export const GiveawayTab = ({
                 accessible={accessible}
                 hasParticipated={hasParticipated}
                 daysLeft={daysLeft}
-                onParticipate={() => participate(giveaway)}
+                onParticipate={() => setEntryGiveaway(giveaway)}
                 onShare={() => shareGiveaway(giveaway)}
                 creatorHandle={creatorHandle}
               />
@@ -331,6 +334,21 @@ export const GiveawayTab = ({
         <WinnersModal
           giveaway={showWinners}
           onClose={() => setShowWinners(null)}
+        />
+      )}
+
+      {entryGiveaway && (
+        <GiveawayEntrySheet
+          open
+          onClose={() => setEntryGiveaway(null)}
+          creatorName={creatorName}
+          creatorPhotoURL={creatorPhotoURL}
+          creatorVerified={creatorVerified}
+          title={entryGiveaway.title}
+          closesAt={entryGiveaway.endDate}
+          maxWinners={entryGiveaway.maxWinners}
+          rewardCount={entryGiveaway.rewards.length}
+          onConfirm={() => participate(entryGiveaway)}
         />
       )}
     </div>
