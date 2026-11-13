@@ -3,15 +3,10 @@
 
 import React, { useState, useEffect } from "react";
 import { sendCommsEmail } from "@/lib/commsService";
-import { db } from "@/db/firebase";
 import {
-  collection,
-  getDocs,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-} from "firebase/firestore";
+  fetchBroadcastRecipients,
+  subscribeToAdminBroadcasts,
+} from "@/lib/adminCommsService";
 import {
   Send,
   Users,
@@ -26,9 +21,9 @@ import {
 import { toast } from "sonner";
 
 export default function AdminComms() {
-  const [target, setTarget] = useState<
-    "all" | "creators" | "verified" | "not-verified"
-  >("all");
+  const [target, setTarget] = useState<"all" | "creators" | "verified" | "not-verified">(
+    "all",
+  );
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
@@ -37,17 +32,7 @@ export default function AdminComms() {
 
   // 1. Fetch Broadcast History via Realtime Listener
   useEffect(() => {
-    const q = query(
-      collection(db, "adminBroadcasts"),
-      orderBy("sentAt", "desc"),
-    );
-    const unsubscribe = onSnapshot(q, (snap) => {
-      const historyData = snap.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setHistory(historyData);
-    });
+    const unsubscribe = subscribeToAdminBroadcasts(setHistory);
     return () => unsubscribe();
   }, []);
 
@@ -57,58 +42,8 @@ export default function AdminComms() {
 
     setSending(true);
     try {
-      let recipients: any[] = [];
-      let recipientIds: string[] = [];
-
-      const profilesSnap = await getDocs(collection(db, "profiles"));
-      const profilesMap = new Map();
-      profilesSnap.forEach((d) => profilesMap.set(d.id, d.data()));
-
-      if (target === "all") {
-        recipients = Array.from(profilesMap.entries())
-          .map(([uid, p]) => ({
-            uid,
-            email: p.email,
-            name: p.displayName,
-            handle: p.username,
-          }))
-          .filter((r) => r.email);
-        recipientIds = recipients.map((r) => r.uid);
-      } else {
-        let creatorQuery;
-        if (target === "verified") {
-          creatorQuery = query(
-            collection(db, "creators"),
-            where("verified", "==", true),
-          );
-        } else if (target === "not-verified") {
-          creatorQuery = query(
-            collection(db, "creators"),
-            where("verified", "==", false),
-          );
-        } else {
-          creatorQuery = collection(db, "creators");
-        }
-
-        const cSnap = await getDocs(creatorQuery);
-        const recipientData = cSnap.docs
-          .map((doc) => {
-            const uid = doc.data().uid;
-            const profile = profilesMap.get(uid);
-            return profile
-              ? {
-                  uid,
-                  email: profile.email,
-                  name: profile.displayName,
-                  handle: profile.username,
-                }
-              : null;
-          })
-          .filter((r): r is NonNullable<typeof r> => r !== null);
-        
-        recipients = recipientData;
-        recipientIds = recipientData.map((r) => r.uid);
-      }
+      const recipients = await fetchBroadcastRecipients(target);
+      const recipientIds = recipients.map((r) => r.uid);
 
       if (recipients.length === 0) {
         setSending(false);
@@ -143,9 +78,7 @@ export default function AdminComms() {
       <main className="max-w-7xl mx-auto px-6 pt-12">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
           <div>
-            <h1 className="text-4xl font-black uppercase tracking-tight">
-              Comms Center
-            </h1>
+            <h1 className="text-4xl font-black uppercase tracking-tight">Comms Center</h1>
             <p className="text-muted-foreground font-medium">
               Draft and dispatch platform-wide announcements.
             </p>
@@ -245,11 +178,7 @@ export default function AdminComms() {
                 disabled={sending}
                 className="w-full bg-foreground text-background py-5 rounded-2xl font-black text-lg shadow-xl hover:bg-orange-600 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
               >
-                {sending ? (
-                  <Loader className="animate-spin" />
-                ) : (
-                  <Send size={20} />
-                )}
+                {sending ? <Loader className="animate-spin" /> : <Send size={20} />}
                 {sending ? "Processing Batch..." : "Launch Broadcast"}
               </button>
             </form>

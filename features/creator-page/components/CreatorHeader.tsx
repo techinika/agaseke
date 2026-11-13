@@ -53,20 +53,22 @@ export function CreatorHeader({
 
   return (
     <header>
-      {bannerURL ? (
-        <MediaImage
-          src={bannerURL}
-          alt={t("creator.bannerAlt", { name: displayName })}
-          aspectRatio="16 / 7"
-          priority
-          sizes="100vw"
-        />
-      ) : (
-        <div
-          className="aspect-[16/7] w-full bg-gradient-to-br from-brand-strong via-brand to-fg"
-          aria-hidden="true"
-        />
-      )}
+      <div className="w-full lg:max-w-[1200px] lg:mx-auto">
+        {bannerURL ? (
+          <MediaImage
+            src={bannerURL}
+            alt={t("creator.bannerAlt", { name: displayName })}
+            aspectRatio="16 / 7"
+            priority
+            sizes="(max-width: 768px) 100vw, 1200px"
+          />
+        ) : (
+          <div
+            className="aspect-[16/7] w-full bg-gradient-to-br from-brand-strong via-brand to-fg"
+            aria-hidden="true"
+          />
+        )}
+      </div>
 
       <div className="mx-auto max-w-2xl px-4">
         <div className="-mt-10 flex items-end justify-between gap-3">

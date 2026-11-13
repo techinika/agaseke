@@ -2,14 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import {
-  TrendingUp,
-  DollarSign,
-  Package,
-  Users,
-  Loader,
-  Search,
-} from "lucide-react";
+import { TrendingUp, DollarSign, Package, Users, Loader, Search } from "lucide-react";
 import { db } from "@/db/firebase";
 import {
   collection,
@@ -76,9 +69,7 @@ export default function SalesPage() {
   const [profiles, setProfiles] = useState<Record<string, ProfileInfo>>({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [timeFilter, setTimeFilter] = useState<
-    "all" | "week" | "month" | "year"
-  >("all");
+  const [timeFilter, setTimeFilter] = useState<"all" | "week" | "month" | "year">("all");
 
   useEffect(() => {
     if (!creator?.uid) return;
@@ -112,10 +103,7 @@ export default function SalesPage() {
 
           for (let i = 0; i < productIds.length; i += batchSize) {
             const batch = productIds.slice(i, i + batchSize);
-            const productsQuery = query(
-              productsRef,
-              where(documentId(), "in", batch),
-            );
+            const productsQuery = query(productsRef, where(documentId(), "in", batch));
             const productsSnap = await getDocs(productsQuery);
             productsSnap.docs.forEach((doc) => {
               productMap[doc.id] = {
@@ -142,10 +130,7 @@ export default function SalesPage() {
               .filter((id) => id !== "anonymous");
             if (batch.length === 0) continue;
 
-            const profilesQuery = query(
-              profilesRef,
-              where(documentId(), "in", batch),
-            );
+            const profilesQuery = query(profilesRef, where(documentId(), "in", batch));
             const profilesSnap = await getDocs(profilesQuery);
             profilesSnap.docs.forEach((doc) => {
               profileMap[doc.id] = {
@@ -185,40 +170,35 @@ export default function SalesPage() {
 
     let matchesTime = true;
     if (timeFilter === "week") {
-      matchesTime =
-        (now.getTime() - saleDate.getTime()) / (1000 * 60 * 60 * 24) <= 7;
+      matchesTime = (now.getTime() - saleDate.getTime()) / (1000 * 60 * 60 * 24) <= 7;
     } else if (timeFilter === "month") {
-      matchesTime =
-        (now.getTime() - saleDate.getTime()) / (1000 * 60 * 60 * 24) <= 30;
+      matchesTime = (now.getTime() - saleDate.getTime()) / (1000 * 60 * 60 * 24) <= 30;
     } else if (timeFilter === "year") {
-      matchesTime =
-        (now.getTime() - saleDate.getTime()) / (1000 * 60 * 60 * 24) <= 365;
+      matchesTime = (now.getTime() - saleDate.getTime()) / (1000 * 60 * 60 * 24) <= 365;
     }
 
     return matchesSearch && matchesTime;
   });
 
-  const salesByCurrency = filteredSales.reduce((groups: Record<string, { total: number; earnings: number }>, sale) => {
-    const cur = sale.currency || "RWF";
-    if (!groups[cur]) groups[cur] = { total: 0, earnings: 0 };
-    groups[cur].total += sale.totalAmount;
-    groups[cur].earnings += sale.creatorEarnings || 0;
-    return groups;
-  }, {});
-
-  const totalSales = filteredSales.reduce(
-    (sum, sale) => sum + sale.totalAmount,
-    0,
+  const salesByCurrency = filteredSales.reduce(
+    (groups: Record<string, { total: number; earnings: number }>, sale) => {
+      const cur = sale.currency || "RWF";
+      if (!groups[cur]) groups[cur] = { total: 0, earnings: 0 };
+      groups[cur].total += sale.totalAmount;
+      groups[cur].earnings += sale.creatorEarnings || 0;
+      return groups;
+    },
+    {},
   );
+
+  const totalSales = filteredSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
   const totalEarnings = filteredSales.reduce(
     (sum, sale) => sum + (sale.creatorEarnings || 0),
     0,
   );
   const totalOrders = filteredSales.length;
   const uniqueBuyers = new Set(
-    filteredSales
-      .map((sale) => sale.buyerId)
-      .filter((id) => id !== "anonymous"),
+    filteredSales.map((sale) => sale.buyerId).filter((id) => id !== "anonymous"),
   ).size;
 
   const productSales: Record<
@@ -250,11 +230,17 @@ export default function SalesPage() {
     productSales[sale.productId].total += sale.totalAmount;
     productSales[sale.productId].quantity += sale.quantity || 1;
     productSales[sale.productId].earnings += sale.creatorEarnings || 0;
-    productSales[sale.productId].currencies[cur] = (productSales[sale.productId].currencies[cur] || 0) + 1;
+    productSales[sale.productId].currencies[cur] =
+      (productSales[sale.productId].currencies[cur] || 0) + 1;
   });
 
   const topProducts = Object.entries(productSales)
-    .map(([id, data]) => ({ id, ...data, primaryCurrency: Object.entries(data.currencies).sort((a, b) => b[1] - a[1])[0]?.[0] || "RWF" }))
+    .map(([id, data]) => ({
+      id,
+      ...data,
+      primaryCurrency:
+        Object.entries(data.currencies).sort((a, b) => b[1] - a[1])[0]?.[0] || "RWF",
+    }))
     .sort((a, b) => b.total - a.total)
     .slice(0, 5);
 
@@ -275,9 +261,7 @@ export default function SalesPage() {
     <div className="p-4 md:p-6 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-black text-foreground">
-            Sales
-          </h1>
+          <h1 className="text-2xl md:text-3xl font-black text-foreground">Sales</h1>
           <p className="text-muted-foreground mt-1">
             Track your product sales and earnings
           </p>
@@ -291,7 +275,9 @@ export default function SalesPage() {
               <p className="text-sm font-medium text-muted-foreground">Total Sales</p>
               <p className="text-2xl md:text-3xl font-black text-foreground mt-1">
                 {Object.entries(salesByCurrency).map(([cur, data]) => (
-                  <span key={cur} className="mr-2">{data.total.toLocaleString()} {getCurrencySymbol(cur)}</span>
+                  <span key={cur} className="mr-2">
+                    {data.total.toLocaleString()} {getCurrencySymbol(cur)}
+                  </span>
                 ))}
                 {Object.keys(salesByCurrency).length === 0 && "0"}
               </p>
@@ -305,12 +291,12 @@ export default function SalesPage() {
         <div className="bg-card rounded-2xl p-5 border border-border shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Your Earnings
-              </p>
+              <p className="text-sm font-medium text-muted-foreground">Your Earnings</p>
               <p className="text-2xl md:text-3xl font-black text-foreground mt-1">
                 {Object.entries(salesByCurrency).map(([cur, data]) => (
-                  <span key={cur} className="mr-2">{data.earnings.toLocaleString()} {getCurrencySymbol(cur)}</span>
+                  <span key={cur} className="mr-2">
+                    {data.earnings.toLocaleString()} {getCurrencySymbol(cur)}
+                  </span>
                 ))}
                 {Object.keys(salesByCurrency).length === 0 && "0"}
               </p>
@@ -338,9 +324,7 @@ export default function SalesPage() {
         <div className="bg-card rounded-2xl p-5 border border-border shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">
-                Unique Buyers
-              </p>
+              <p className="text-sm font-medium text-muted-foreground">Unique Buyers</p>
               <p className="text-2xl md:text-3xl font-black text-foreground mt-1">
                 {uniqueBuyers}
               </p>
@@ -424,15 +408,11 @@ export default function SalesPage() {
                     const profile = profiles[sale.buyerId];
                     const buyerName =
                       profile?.displayName || sale.buyerName || "Anonymous";
-                    const productName =
-                      product?.name || sale.productName || "N/A";
+                    const productName = product?.name || sale.productName || "N/A";
                     const productType = product?.type;
 
                     return (
-                      <tr
-                        key={sale.id}
-                        className="hover:bg-muted transition-colors"
-                      >
+                      <tr key={sale.id} className="hover:bg-muted transition-colors">
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
                             {product?.imageUrl ? (
@@ -490,26 +470,25 @@ export default function SalesPage() {
                         </td>
                         <td className="px-5 py-4">
                           <span className="font-bold text-foreground">
-                            {sale.totalAmount?.toLocaleString() || 0} {getCurrencySymbol(sale.currency || "RWF")}
+                            {sale.totalAmount?.toLocaleString() || 0}{" "}
+                            {getCurrencySymbol(sale.currency || "RWF")}
                           </span>
                         </td>
                         <td className="px-5 py-4">
                           <span className="font-bold text-green-600">
-                            {sale.creatorEarnings?.toLocaleString() || 0} {getCurrencySymbol(sale.currency || "RWF")}
+                            {sale.creatorEarnings?.toLocaleString() || 0}{" "}
+                            {getCurrencySymbol(sale.currency || "RWF")}
                           </span>
                         </td>
                         <td className="px-5 py-4">
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-muted text-foreground">
-                            {paymentMethods[sale.paymentMethod] ||
-                              sale.paymentMethod}
+                            {paymentMethods[sale.paymentMethod] || sale.paymentMethod}
                           </span>
                         </td>
                         <td className="px-5 py-4 text-sm text-muted-foreground">
                           {sale.createdAt
                             ? sale.createdAt.toDate
-                              ? new Date(
-                                  sale.createdAt.toDate(),
-                                ).toLocaleDateString()
+                              ? new Date(sale.createdAt.toDate()).toLocaleDateString()
                               : new Date(sale.createdAt).toLocaleDateString()
                             : "N/A"}
                         </td>
@@ -585,10 +564,12 @@ export default function SalesPage() {
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-foreground">
-                      {product.total.toLocaleString()} {getCurrencySymbol(product.primaryCurrency)}
+                      {product.total.toLocaleString()}{" "}
+                      {getCurrencySymbol(product.primaryCurrency)}
                     </p>
                     <p className="text-xs text-green-600">
-                      Earned: {product.earnings.toLocaleString()} {getCurrencySymbol(product.primaryCurrency)}
+                      Earned: {product.earnings.toLocaleString()}{" "}
+                      {getCurrencySymbol(product.primaryCurrency)}
                     </p>
                   </div>
                 </div>

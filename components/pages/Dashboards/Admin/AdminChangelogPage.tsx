@@ -1,4 +1,3 @@
- 
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -12,21 +11,15 @@ import {
   Tag,
   Package,
   Zap,
-  Search
+  Search,
 } from "lucide-react";
-import { db } from "@/db/firebase";
+import { Timestamp } from "firebase/firestore";
 import {
-  collection,
-  query,
-  orderBy,
-  onSnapshot,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  serverTimestamp,
-  Timestamp,
-} from "firebase/firestore";
+  addChangelogEntry,
+  deleteChangelogEntry,
+  subscribeToChangelog,
+  updateChangelogEntry,
+} from "@/lib/changelogService";
 import { toast } from "sonner";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import Loading from "@/app/loading";
@@ -83,17 +76,10 @@ export default function AdminChangelogPage() {
   });
 
   useEffect(() => {
-    const q = query(collection(db, "changelog"), orderBy("createdAt", "desc"));
-
-    const unsub = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as ChangelogEntry[];
-      setEntries(data);
+    const unsub = subscribeToChangelog((items) => {
+      setEntries(items as unknown as ChangelogEntry[]);
       setLoading(false);
     });
-
     return () => unsub();
   }, []);
 
@@ -120,39 +106,22 @@ export default function AdminChangelogPage() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.title.trim()) {
-      toast.error("Title is required");
+    if (!formData.title.trim() || !formData.description.trim()) {
+      toast.error("Title and description are required");
       return;
     }
 
     try {
       if (editingEntry) {
-        await updateDoc(doc(db, "changelog", editingEntry.id), {
-          title: formData.title,
-          description: formData.description,
-          category: formData.category,
-          tags: formData.tags,
-          releaseDate: formData.releaseDate || null,
-          priority: formData.priority,
-          updatedAt: serverTimestamp(),
-        });
+        await updateChangelogEntry(editingEntry.id, { ...formData });
         toast.success("Entry updated successfully");
       } else {
-        await addDoc(collection(db, "changelog"), {
-          title: formData.title,
-          description: formData.description,
-          category: formData.category,
-          tags: formData.tags,
-          releaseDate: formData.releaseDate || null,
-          priority: formData.priority,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-        toast.success("Entry added successfully");
+        await addChangelogEntry({ ...formData });
+        toast.success("Entry created successfully");
       }
       resetForm();
     } catch (error) {
-      console.error("Failed to save entry:", error);
+      console.error("Error saving changelog entry:", error);
       toast.error("Failed to save entry");
     }
   };
@@ -177,7 +146,7 @@ export default function AdminChangelogPage() {
   const confirmDelete = async () => {
     if (!deleteConfirm) return;
     try {
-      await deleteDoc(doc(db, "changelog", deleteConfirm));
+      await deleteChangelogEntry(deleteConfirm);
       toast.success("Entry deleted successfully");
       setDeleteConfirm(null);
     } catch (error) {
@@ -199,12 +168,8 @@ export default function AdminChangelogPage() {
     return true;
   });
 
-  const currentEntries = filteredEntries.filter(
-    (e) => e.category === "current",
-  );
-  const plannedEntries = filteredEntries.filter(
-    (e) => e.category === "planned",
-  );
+  const currentEntries = filteredEntries.filter((e) => e.category === "current");
+  const plannedEntries = filteredEntries.filter((e) => e.category === "planned");
 
   if (loading) {
     return <Loading />;
@@ -242,11 +207,7 @@ export default function AdminChangelogPage() {
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {f === "all"
-                  ? "All"
-                  : f === "current"
-                    ? "Current Features"
-                    : "Planned"}
+                {f === "all" ? "All" : f === "current" ? "Current Features" : "Planned"}
               </button>
             ))}
           </div>
@@ -302,9 +263,7 @@ export default function AdminChangelogPage() {
                   <input
                     type="text"
                     value={formData.title}
-                    onChange={(e) =>
-                      setFormData({ ...formData, title: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     placeholder="e.g., New Notification System"
                     className="w-full px-4 py-3 rounded-xl border border-border text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
                   />
@@ -416,8 +375,7 @@ export default function AdminChangelogPage() {
                   onClick={handleSubmit}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-orange-600 text-white hover:bg-orange-700 transition shadow-sm"
                 >
-                  <Save size={16} />{" "}
-                  {editingEntry ? "Update Entry" : "Save Entry"}
+                  <Save size={16} /> {editingEntry ? "Update Entry" : "Save Entry"}
                 </button>
               </div>
             </div>
@@ -446,9 +404,7 @@ export default function AdminChangelogPage() {
             {currentEntries.length === 0 ? (
               <div className="bg-card rounded-2xl border border-dashed border-border p-10 text-center">
                 <Package className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground text-sm">
-                  No current features yet
-                </p>
+                <p className="text-muted-foreground text-sm">No current features yet</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -460,9 +416,7 @@ export default function AdminChangelogPage() {
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-bold text-foreground">
-                            {entry.title}
-                          </h3>
+                          <h3 className="font-bold text-foreground">{entry.title}</h3>
                           {entry.priority && (
                             <span
                               className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${priorityColors[entry.priority]}`}
@@ -536,9 +490,7 @@ export default function AdminChangelogPage() {
             {plannedEntries.length === 0 ? (
               <div className="bg-card rounded-2xl border border-dashed border-border p-10 text-center">
                 <Zap className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground text-sm">
-                  No planned features yet
-                </p>
+                <p className="text-muted-foreground text-sm">No planned features yet</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -550,9 +502,7 @@ export default function AdminChangelogPage() {
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-bold text-foreground">
-                            {entry.title}
-                          </h3>
+                          <h3 className="font-bold text-foreground">{entry.title}</h3>
                           {entry.priority && (
                             <span
                               className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${priorityColors[entry.priority]}`}

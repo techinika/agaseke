@@ -18,15 +18,16 @@ import {
   Receipt,
 } from "lucide-react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useAuth } from "@/auth/AuthContext";
-import { handleLogout } from "@/db/functions/LogOut";
 import Loading from "@/app/loading";
 import { usePathname } from "next/navigation";
-import { db } from "@/db/firebase";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
-import NotificationDrawer from "@/components/ui/NotificationDrawer";
 import { NavLink, DropdownLink } from "./navigation/index";
 import ThemeToggle from "./ThemeToggle";
+
+const NotificationDrawer = dynamic(() => import("@/components/ui/NotificationDrawer"), {
+  ssr: false,
+});
 
 const Navbar = () => {
   const auth = useAuth();
@@ -39,10 +40,7 @@ const Navbar = () => {
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node)
-      ) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setIsDropdownOpen(false);
       }
     };
@@ -53,21 +51,25 @@ const Navbar = () => {
   }, [isDropdownOpen]);
 
   useEffect(() => {
-    if (!auth?.user?.uid) return;
+    const uid = auth?.user?.uid;
+    if (!uid) return;
 
-    const q = query(
-      collection(db, "notifications"),
-      where("userId", "==", auth.user.uid),
-    );
+    let cancelled = false;
+    let unsub: (() => void) | undefined;
 
-    const unsub = onSnapshot(q, (snapshot) => {
-      setUnreadCount(snapshot.docs.filter((d) => !d.data().read).length);
-    }, (error) => {
-      console.error("Failed to load notification count:", error);
-      setUnreadCount(0);
-    });
+    (async () => {
+      const { subscribeToUnreadNotificationCount } = await import("@/lib/notifications");
+      if (cancelled) return;
+      unsub = subscribeToUnreadNotificationCount(uid, setUnreadCount, (error) => {
+        console.error("Failed to load notification count:", error);
+        setUnreadCount(0);
+      });
+    })();
 
-    return () => unsub();
+    return () => {
+      cancelled = true;
+      unsub?.();
+    };
   }, [auth?.user?.uid]);
 
   if (loggingOut) return <Loading />;
@@ -81,7 +83,7 @@ const Navbar = () => {
         <div className="flex items-center justify-between px-6 py-3.5 mx-auto container">
           {/* LEFT: Logo & Brand */}
           <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center gap-2 group">
+            <Link href="/" className="flex min-h-11 items-center gap-2 group">
               <div className="text-xl font-bold tracking-tighter text-foreground dark:text-white uppercase">
                 agaseke<span className="text-orange-600">.me</span>
               </div>
@@ -140,6 +142,7 @@ const Navbar = () => {
                   >
                     <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground overflow-hidden font-bold text-xs ring-2 ring-transparent group-hover:ring-orange-100 dark:group-hover:ring-orange-900 transition-all">
                       {auth?.profile?.photoURL || auth?.user?.photoURL ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- existing usage
                         <img
                           src={
                             auth?.profile?.photoURL ||
@@ -253,6 +256,7 @@ const Navbar = () => {
                         onClick={async () => {
                           setIsDropdownOpen(false);
                           setLoggingOut(true);
+                          const { handleLogout } = await import("@/db/functions/LogOut");
                           await handleLogout();
                           setLoggingOut(false);
                         }}
@@ -269,24 +273,27 @@ const Navbar = () => {
                 {/* Explore icon visible on mobile for guests */}
                 <Link
                   href="/explore"
-                  className="md:hidden p-2 text-muted-foreground"
+                  aria-label="Explore creators"
+                  className="md:hidden inline-flex size-11 items-center justify-center text-muted-foreground"
                 >
-                  <Search size={20} />
+                  <Search size={20} aria-hidden="true" />
                 </Link>
                 <Link
                   href="https://agaseke.me/agaseke/booking"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group relative flex items-center gap-2 px-3 md:px-6 py-2.5 bg-orange-600 text-white rounded-lg text-sm font-bold hover:bg-orange-700 transition-all active:scale-95 shadow-lg shadow-orange-200"
+                  aria-label="Book a demo"
+                  className="group relative flex min-h-11 min-w-11 items-center justify-center gap-2 px-3 md:px-6 py-2.5 bg-orange-600 text-white rounded-lg text-sm font-bold hover:bg-orange-700 transition-all active:scale-95 shadow-lg shadow-orange-200"
                 >
-                  <Calendar className="h-4 w-4" />
+                  <Calendar className="h-4 w-4" aria-hidden="true" />
                   <span className="hidden md:inline">Book Demo</span>
                 </Link>
                 <Link
                   href={`/login?redirect=${encodeURIComponent(pathname)}`}
-                  className="group relative flex items-center gap-2 px-3 md:px-6 py-2.5 bg-foreground text-background rounded-lg text-sm font-bold hover:bg-orange-600 transition-all active:scale-95 shadow-lg shadow-border-strong"
+                  aria-label="Sign in"
+                  className="group relative flex min-h-11 min-w-11 items-center justify-center gap-2 px-3 md:px-6 py-2.5 bg-foreground text-background rounded-lg text-sm font-bold hover:bg-orange-600 transition-all active:scale-95 shadow-lg shadow-border-strong"
                 >
-                  <LogIn className="h-4 w-4" />
+                  <LogIn className="h-4 w-4" aria-hidden="true" />
                   <span className="hidden md:inline">Sign In</span>
                 </Link>
               </div>

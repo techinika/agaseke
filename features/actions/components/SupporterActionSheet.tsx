@@ -6,7 +6,13 @@ import { Sheet } from "@/components/ui/Sheet";
 import { StatusScreen } from "@/components/ui/StatusScreen";
 import { t } from "@/lib/i18n";
 
-export type ActionSheetStatus = "idle" | "submitting" | "success" | "failed";
+export type ActionSheetStatus = "idle" | "submitting" | "waiting" | "success" | "failed";
+
+interface ActionSheetAction {
+  label: string;
+  onClick: () => void;
+  loading?: boolean;
+}
 
 export interface SupporterActionSheetProps {
   open: boolean;
@@ -22,6 +28,11 @@ export interface SupporterActionSheetProps {
   failedBody?: string;
   error?: string | null;
   onRetry?: () => void;
+  waitingTitle?: string;
+  waitingBody?: string;
+  waitingReference?: string;
+  waitingPrimaryAction?: ActionSheetAction;
+  waitingSecondaryAction?: ActionSheetAction;
 }
 
 export function SupporterActionSheet({
@@ -38,6 +49,11 @@ export function SupporterActionSheet({
   failedBody,
   error,
   onRetry,
+  waitingTitle,
+  waitingBody,
+  waitingReference,
+  waitingPrimaryAction,
+  waitingSecondaryAction,
 }: SupporterActionSheetProps) {
   const resolvedFooter = (() => {
     if (status === "success") {
@@ -56,8 +72,13 @@ export function SupporterActionSheet({
       ) : null;
     }
 
+    if (status === "waiting") return null;
+
     return footer;
   })();
+
+  const showStatusScreen =
+    status === "success" || status === "failed" || status === "waiting";
 
   return (
     <Sheet
@@ -65,7 +86,7 @@ export function SupporterActionSheet({
       onClose={onClose}
       title={title}
       description={status === "idle" ? description : undefined}
-      footer={resolvedFooter}
+      footer={showStatusScreen ? resolvedFooter : footer}
       contentClassName="pb-4"
     >
       {status === "success" ? (
@@ -75,6 +96,15 @@ export function SupporterActionSheet({
           status="failed"
           title={failedTitle}
           description={error || failedBody || t("actions.trustNote")}
+        />
+      ) : status === "waiting" ? (
+        <StatusScreen
+          status="waiting"
+          title={waitingTitle}
+          description={waitingBody || t("actions.trustNote")}
+          reference={waitingReference ?? undefined}
+          primaryAction={waitingPrimaryAction}
+          secondaryAction={waitingSecondaryAction}
         />
       ) : (
         <div className="space-y-4">

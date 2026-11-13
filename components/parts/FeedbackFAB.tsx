@@ -2,10 +2,9 @@
 
 import React, { useState } from "react";
 import { MessageSquare, X, Send, Heart, Share2, Loader } from "lucide-react";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { db } from "@/db/firebase";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
+import { submitUserFeedback } from "@/lib/feedback";
 
 export default function FeedbackFAB() {
   const { creator } = useAuth();
@@ -27,11 +26,12 @@ export default function FeedbackFAB() {
 
     setLoading(true);
     try {
-      await addDoc(collection(db, "userFeedback"), {
+      await submitUserFeedback({
         creatorId: creator?.uid || "unknown",
         handle: creator?.handle || "unknown",
-        ...feedback,
-        createdAt: serverTimestamp(),
+        referralLikelihood: feedback.referralLikelihood,
+        loveScale: feedback.loveScale,
+        message: feedback.message,
       });
 
       toast.success("Feedback received! Thank you for helping Agaseke grow.");
@@ -59,10 +59,7 @@ export default function FeedbackFAB() {
 
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-4 md:p-0 bg-foreground/20 backdrop-blur-sm animate-in fade-in duration-200">
-          <div
-            className="fixed inset-0"
-            onClick={() => !loading && setIsOpen(false)}
-          />
+          <div className="fixed inset-0" onClick={() => !loading && setIsOpen(false)} />
 
           <div className="bg-card w-full max-w-md rounded-2xl shadow-2xl relative z-10 overflow-hidden animate-in slide-in-from-bottom-8 duration-300">
             <header className="p-6 border-b border-border flex items-center justify-between bg-muted/50">
@@ -116,9 +113,7 @@ export default function FeedbackFAB() {
                     <button
                       key={num}
                       type="button"
-                      onClick={() =>
-                        setFeedback({ ...feedback, loveScale: num })
-                      }
+                      onClick={() => setFeedback({ ...feedback, loveScale: num })}
                       className={`flex-1 py-3 rounded-xl font-bold transition-all ${
                         feedback.loveScale === num
                           ? "bg-orange-600 text-white shadow-md shadow-orange-100 scale-105"
@@ -141,9 +136,7 @@ export default function FeedbackFAB() {
                   placeholder="Tell us what's on your mind... (Feature requests, bugs, or just a hello!)"
                   className="w-full h-32 p-4 bg-muted border border-border rounded-xl text-sm resize-none focus:outline-none focus:border-orange-500 transition-colors"
                   value={feedback.message}
-                  onChange={(e) =>
-                    setFeedback({ ...feedback, message: e.target.value })
-                  }
+                  onChange={(e) => setFeedback({ ...feedback, message: e.target.value })}
                 />
               </div>
 

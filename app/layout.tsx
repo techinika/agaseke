@@ -3,7 +3,7 @@ import { Rubik } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/auth/AuthContext";
 import { ToastViewport } from "@/components/ui/Toast";
-import { GoogleAnalytics } from "@next/third-parties/google";
+import DeferredAnalytics from "@/components/parts/DeferredAnalytics";
 import PwaRegister from "@/components/parts/PwaRegister";
 import LoginRedirectCapture from "@/auth/LoginRedirectCapture";
 import { ThemeProvider } from "next-themes";
@@ -121,7 +121,12 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className={`${rubik.variable} antialiased`}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
           <AuthProvider>
             <ToastViewport />
             {children}
@@ -129,10 +134,8 @@ export default function RootLayout({
             <LoginRedirectCapture />
           </AuthProvider>
         </ThemeProvider>
+        {process.env.NODE_ENV === "production" && <DeferredAnalytics />}
       </body>
-      {process.env.NODE_ENV === "production" && (
-        <GoogleAnalytics gaId="G-6DP23NWS5P" />
-      )}
     </html>
   );
 }

@@ -55,7 +55,6 @@ export function MediaPlayer({
     <button
       type="button"
       onClick={() => setLoaded(true)}
-      aria-label={`${t("media.play")}: ${label}`}
       className={cn(
         "group relative flex w-full items-center justify-center overflow-hidden rounded-card bg-fg text-white outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
         kind === "video" ? "aspect-video" : "min-h-20 px-4 py-3",
@@ -95,6 +94,8 @@ export function MediaPlayer({
           {sizeLabel}
         </span>
       )}
+
+      <span className="sr-only">{label}</span>
     </button>
   );
 }

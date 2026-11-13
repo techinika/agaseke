@@ -2,10 +2,8 @@ import React, { useState } from "react";
 import { X, Loader, Upload, Image as ImageIcon, FileText, Check } from "lucide-react";
 import { toast } from "sonner";
 import { uploadFile } from "@/lib/uploadService";
-import { collection, addDoc, updateDoc, doc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/db/firebase";
-import { Product, getProductCurrency, getProductPrice } from "@/types/store";
-import { formatCurrency } from "@/types/currency";
+import { createStoreProduct, updateStoreProduct } from "@/features/store/api";
+import { Product } from "@/types/store";
 import { useAuth } from "@/auth/AuthContext";
 
 export default function ProductModal({
@@ -27,8 +25,7 @@ export default function ProductModal({
     stock: product?.stock || 0,
     imageUrl: product?.imageUrl || "",
     fileUrl: product?.fileUrl || "",
-    fileType:
-      product?.fileType || ("pdf" as "pdf" | "video" | "audio" | "image"),
+    fileType: product?.fileType || ("pdf" as "pdf" | "video" | "audio" | "image"),
     sizes: product?.sizes || ([] as string[]),
     active: product?.active ?? true,
     discountEnabled: product?.discount?.enabled || false,
@@ -37,8 +34,7 @@ export default function ProductModal({
     bulkPricing:
       product?.bulkPricing ||
       ([] as { minQuantity: number; discountPercentage: number }[]),
-    platformFeePayer:
-      product?.platformFeePayer || ("buyer" as "buyer" | "creator"),
+    platformFeePayer: product?.platformFeePayer || ("buyer" as "buyer" | "creator"),
   });
   const [saving, setSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -57,7 +53,7 @@ export default function ProductModal({
         setFormData((prev) => ({ ...prev, imageUrl: data.url }));
         toast.success("Image uploaded!");
       }
-    } catch (error) {
+    } catch {
       toast.error("Upload failed");
     } finally {
       setIsUploading(false);
@@ -86,7 +82,7 @@ export default function ProductModal({
         }));
         toast.success("File uploaded!");
       }
-    } catch (error) {
+    } catch {
       toast.error("Upload failed");
     } finally {
       setIsUploading(false);
@@ -101,6 +97,7 @@ export default function ProductModal({
 
     setSaving(true);
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const productData: Record<string, any> = {
         creatorId: creator?.uid || "",
         name: formData.name,
@@ -110,7 +107,6 @@ export default function ProductModal({
         currency: formData.currency,
         type: formData.type,
         active: formData.active,
-        updatedAt: serverTimestamp(),
       };
 
       if (formData.imageUrl) productData.imageUrl = formData.imageUrl;
@@ -136,13 +132,10 @@ export default function ProductModal({
       }
 
       if (product) {
-        await updateDoc(doc(db, "storeProducts", product.id), productData);
+        await updateStoreProduct(product.id, productData);
         toast.success("Product updated!");
       } else {
-        const docRef = await addDoc(collection(db, "storeProducts"), {
-          ...productData,
-          createdAt: serverTimestamp(),
-        });
+        await createStoreProduct(productData);
         toast.success("Product created!");
       }
       onClose();
@@ -247,9 +240,7 @@ export default function ProductModal({
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() =>
-                    setFormData((prev) => ({ ...prev, currency: "RWF" }))
-                  }
+                  onClick={() => setFormData((prev) => ({ ...prev, currency: "RWF" }))}
                   className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
                     formData.currency === "RWF"
                       ? "bg-orange-600 text-white"
@@ -260,9 +251,7 @@ export default function ProductModal({
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
-                    setFormData((prev) => ({ ...prev, currency: "USD" }))
-                  }
+                  onClick={() => setFormData((prev) => ({ ...prev, currency: "USD" }))}
                   className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
                     formData.currency === "USD"
                       ? "bg-orange-600 text-white"
@@ -456,15 +445,14 @@ export default function ProductModal({
               <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
                 {formData.imageUrl ? (
                   <div className="relative inline-block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={formData.imageUrl}
                       alt="Preview"
                       className="max-h-40 mx-auto rounded-lg"
                     />
                     <button
-                      onClick={() =>
-                        setFormData((prev) => ({ ...prev, imageUrl: "" }))
-                      }
+                      onClick={() => setFormData((prev) => ({ ...prev, imageUrl: "" }))}
                       className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full"
                     >
                       <X size={14} />
@@ -472,10 +460,7 @@ export default function ProductModal({
                   </div>
                 ) : (
                   <>
-                    <ImageIcon
-                      size={32}
-                      className="mx-auto text-muted-foreground mb-2"
-                    />
+                    <ImageIcon size={32} className="mx-auto text-muted-foreground mb-2" />
                     <p className="text-sm text-muted-foreground mb-3">
                       Upload a product image
                     </p>
@@ -546,9 +531,7 @@ export default function ProductModal({
                   >
                     <span className="text-sm font-medium">
                       Buy {bulk.minQuantity}+:{" "}
-                      <span className="font-bold">
-                        {bulk.discountPercentage}% off
-                      </span>
+                      <span className="font-bold">{bulk.discountPercentage}% off</span>
                     </span>
                     <button
                       onClick={() => removeBulkPricing(idx)}
@@ -570,9 +553,7 @@ export default function ProductModal({
                 <input
                   type="number"
                   value={newBulkDiscount || ""}
-                  onChange={(e) =>
-                    setNewBulkDiscount(parseInt(e.target.value) || 0)
-                  }
+                  onChange={(e) => setNewBulkDiscount(parseInt(e.target.value) || 0)}
                   placeholder="% off"
                   className="w-24 bg-muted p-3 rounded-lg text-sm outline-none"
                 />

@@ -3,8 +3,6 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { db } from "@/db/firebase";
-import { collection, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
 import {
   XCircle,
   Heart,
@@ -13,17 +11,14 @@ import {
   Calendar,
   Clock,
   MapPin,
-  Loader,
 } from "lucide-react";
 import Link from "next/link";
-import { formatCurrency } from "@/types/currency";
+import { fetchGatheringById, subscribeToTransactionByRef } from "@/lib/transactions";
 
 export default function PaymentCallback() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [status, setStatus] = useState<"verifying" | "success" | "error">(
-    "verifying",
-  );
+  const [status, setStatus] = useState<"verifying" | "success" | "error">("verifying");
   const [txData, setTxData] = useState<any>(null);
   const [gatheringData, setGatheringData] = useState<any>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
@@ -41,20 +36,16 @@ export default function PaymentCallback() {
     });
   }, []);
 
-  const listenToTransaction = useCallback((ref: string) => {
-    const q = query(collection(db, "transactions"), where("ref", "==", ref));
-
-    unsubscribeRef.current = onSnapshot(q, async (snapshot) => {
-      if (!snapshot.empty) {
-        const data = snapshot.docs[0].data();
+  const listenToTransaction = useCallback(
+    (ref: string) => {
+      unsubscribeRef.current = subscribeToTransactionByRef(ref, async (data) => {
+        if (!data) return;
         setTxData(data);
 
         if (data.type === "gathering" && data.gatheringId) {
           try {
-            const gSnap = await getDoc(doc(db, "creatorGatherings", data.gatheringId));
-            if (gSnap.exists()) {
-              setGatheringData({ id: gSnap.id, ...gSnap.data() });
-            }
+            const gathering = await fetchGatheringById(String(data.gatheringId));
+            if (gathering) setGatheringData(gathering);
           } catch (e) {
             console.error("Failed to fetch gathering:", e);
           }
@@ -68,9 +59,10 @@ export default function PaymentCallback() {
           setStatus("error");
           if (unsubscribeRef.current) unsubscribeRef.current();
         }
-      }
-    });
-  }, [triggerConfetti]);
+      });
+    },
+    [triggerConfetti],
+  );
 
   useEffect(() => {
     if (merchantRef) {
@@ -103,15 +95,15 @@ export default function PaymentCallback() {
                   {isStore
                     ? "Confirming your order payment..."
                     : isGathering
-                    ? "Confirming your ticket purchase..."
-                    : "Confirming your gift..."}
+                      ? "Confirming your ticket purchase..."
+                      : "Confirming your gift..."}
                 </h1>
                 <p className="text-muted-foreground text-sm">
                   {isStore
                     ? "We're verifying your order payment with the bank. This won't take long."
                     : isGathering
-                    ? "We're verifying your ticket payment with the bank. This won't take long."
-                    : "We're verifying your transaction with the bank. This won't take long."}
+                      ? "We're verifying your ticket payment with the bank. This won't take long."
+                      : "We're verifying your transaction with the bank. This won't take long."}
                 </p>
               </div>
               <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
@@ -180,9 +172,7 @@ export default function PaymentCallback() {
                     <Heart size={40} fill="currentColor" />
                   </div>
                   <div className="space-y-2">
-                    <h1 className="text-3xl font-black text-foreground">
-                      Thank You!
-                    </h1>
+                    <h1 className="text-3xl font-black text-foreground">Thank You!</h1>
                     <p className="text-muted-foreground font-medium">
                       Your payment of{" "}
                       <span className="text-orange-600 font-bold">
@@ -210,9 +200,7 @@ export default function PaymentCallback() {
                     <Heart size={40} fill="currentColor" />
                   </div>
                   <div className="space-y-2">
-                    <h1 className="text-3xl font-black text-foreground">
-                      Thank You!
-                    </h1>
+                    <h1 className="text-3xl font-black text-foreground">Thank You!</h1>
                     <p className="text-muted-foreground font-medium">
                       Your gift of{" "}
                       <span className="text-orange-600 font-bold">
@@ -244,12 +232,10 @@ export default function PaymentCallback() {
                 <XCircle size={40} />
               </div>
               <div className="space-y-2">
-                <h1 className="text-2xl font-bold text-foreground">
-                  Payment Failed
-                </h1>
+                <h1 className="text-2xl font-bold text-foreground">Payment Failed</h1>
                 <p className="text-muted-foreground text-sm">
-                  We couldn&apos;t verify this transaction. It might have been
-                  cancelled or declined.
+                  We couldn&apos;t verify this transaction. It might have been cancelled
+                  or declined.
                 </p>
               </div>
               <button

@@ -1,4 +1,3 @@
- 
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -16,18 +15,9 @@ import {
   Download,
   RefreshCw,
   X,
-  ExternalLink,
 } from "lucide-react";
-import { db } from "@/db/firebase";
-import {
-  collection,
-  query,
-  orderBy,
-  limit,
-  onSnapshot,
-  where,
-  Timestamp,
-} from "firebase/firestore";
+import { Timestamp } from "firebase/firestore";
+import { subscribeToActivityLogs } from "@/lib/adminLogsService";
 import { toast } from "sonner";
 import { LogLevel, LogCategory, getLogLevelColor, getCategoryColor } from "@/lib/logger";
 
@@ -52,7 +42,11 @@ function toDateSafe(value: LogItem["createdAt"]): Date | null {
     const d = new Date(value);
     return isNaN(d.getTime()) ? null : d;
   }
-  if (typeof value === "object" && "toDate" in value && typeof value.toDate === "function") {
+  if (
+    typeof value === "object" &&
+    "toDate" in value &&
+    typeof value.toDate === "function"
+  ) {
     return (value as Timestamp).toDate();
   }
   if (typeof value === "object" && "seconds" in value) {
@@ -66,33 +60,22 @@ export default function AdminLogsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [levelFilter, setLevelFilter] = useState<LogLevel | "all">("all");
-  const [categoryFilter, setCategoryFilter] = useState<LogCategory | "all">(
-    "all",
-  );
+  const [categoryFilter, setCategoryFilter] = useState<LogCategory | "all">("all");
   const [showFilters, setShowFilters] = useState(false);
   const [selectedLog, setSelectedLog] = useState<LogItem | null>(null);
 
   useEffect(() => {
-    const logsRef = collection(db, "activityLogs");
-    const q = query(logsRef, orderBy("createdAt", "desc"), limit(500));
-
-    const unsub = onSnapshot(q, (snapshot) => {
-      const logData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as LogItem[];
-      setLogs(logData);
+    const unsub = subscribeToActivityLogs((items) => {
+      setLogs(items as unknown as LogItem[]);
       setLoading(false);
     });
-
     return () => unsub();
   }, []);
 
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
       if (levelFilter !== "all" && log.level !== levelFilter) return false;
-      if (categoryFilter !== "all" && log.category !== categoryFilter)
-        return false;
+      if (categoryFilter !== "all" && log.category !== categoryFilter) return false;
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
         return (
@@ -117,9 +100,7 @@ export default function AdminLogsPage() {
 
   const exportLogs = () => {
     const csv = [
-      ["Timestamp", "Level", "Category", "Message", "User", "Details"].join(
-        ",",
-      ),
+      ["Timestamp", "Level", "Category", "Message", "User", "Details"].join(","),
       ...filteredLogs.map((log) =>
         [
           toDateSafe(log.createdAt)?.toISOString() || "",
@@ -271,9 +252,7 @@ export default function AdminLogsPage() {
                 </label>
                 <select
                   value={levelFilter}
-                  onChange={(e) =>
-                    setLevelFilter(e.target.value as LogLevel | "all")
-                  }
+                  onChange={(e) => setLevelFilter(e.target.value as LogLevel | "all")}
                   className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-sm outline-none"
                 >
                   <option value="all">All Levels</option>
@@ -327,11 +306,13 @@ export default function AdminLogsPage() {
           ) : (
             <div className="divide-y divide-border">
               {filteredLogs.map((log) => (
-                <div key={log.id} className="p-4 hover:bg-muted transition cursor-pointer" onClick={() => setSelectedLog(log)}>
+                <div
+                  key={log.id}
+                  className="p-4 hover:bg-muted transition cursor-pointer"
+                  onClick={() => setSelectedLog(log)}
+                >
                   <div className="flex items-start gap-4">
-                    <div
-                      className={`p-2 rounded-lg ${getLogLevelColor(log.level)}`}
-                    >
+                    <div className={`p-2 rounded-lg ${getLogLevelColor(log.level)}`}>
                       {getLevelIcon(log.level)}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -342,8 +323,7 @@ export default function AdminLogsPage() {
                           {log.category}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          {toDateSafe(log.createdAt)?.toLocaleString() ||
-                            "Unknown time"}
+                          {toDateSafe(log.createdAt)?.toLocaleString() || "Unknown time"}
                         </span>
                       </div>
                       <p className="text-sm text-foreground">{log.message}</p>
@@ -377,7 +357,9 @@ export default function AdminLogsPage() {
             />
             <div className="fixed top-0 right-0 h-full w-full max-w-lg bg-background border-l border-border z-50 shadow-2xl overflow-y-auto">
               <div className="sticky top-0 bg-background border-b border-border px-6 py-4 flex items-center justify-between">
-                <h2 className="text-lg font-bold text-foreground uppercase">Log Details</h2>
+                <h2 className="text-lg font-bold text-foreground uppercase">
+                  Log Details
+                </h2>
                 <button
                   onClick={() => setSelectedLog(null)}
                   className="p-2 hover:bg-muted rounded-lg transition"
@@ -387,39 +369,57 @@ export default function AdminLogsPage() {
               </div>
               <div className="p-6 space-y-6">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${getLogLevelColor(selectedLog.level)}`}>
+                  <div
+                    className={`p-2 rounded-lg ${getLogLevelColor(selectedLog.level)}`}
+                  >
                     {getLevelIcon(selectedLog.level)}
                   </div>
                   <div>
-                    <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded ${getCategoryColor(selectedLog.category)}`}>
+                    <span
+                      className={`text-xs font-bold uppercase px-2 py-0.5 rounded ${getCategoryColor(selectedLog.category)}`}
+                    >
                       {selectedLog.category}
                     </span>
-                    <p className="text-sm text-muted-foreground mt-1 capitalize">{selectedLog.level}</p>
+                    <p className="text-sm text-muted-foreground mt-1 capitalize">
+                      {selectedLog.level}
+                    </p>
                   </div>
                 </div>
 
                 <div>
-                  <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-1">Message</p>
-                  <p className="text-sm text-foreground bg-muted p-3 rounded-lg">{selectedLog.message}</p>
+                  <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-1">
+                    Message
+                  </p>
+                  <p className="text-sm text-foreground bg-muted p-3 rounded-lg">
+                    {selectedLog.message}
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-1">Timestamp</p>
+                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-1">
+                      Timestamp
+                    </p>
                     <p className="text-sm text-foreground flex items-center gap-1">
                       <Calendar size={14} className="text-muted-foreground" />
                       {toDateSafe(selectedLog.createdAt)?.toLocaleString() || "N/A"}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-1">Log ID</p>
+                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-1">
+                      Log ID
+                    </p>
                     <p className="text-sm text-foreground font-mono">{selectedLog.id}</p>
                   </div>
                 </div>
 
-                {(selectedLog.userEmail || selectedLog.userName || selectedLog.userId) && (
+                {(selectedLog.userEmail ||
+                  selectedLog.userName ||
+                  selectedLog.userId) && (
                   <div>
-                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-2">User</p>
+                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-2">
+                      User
+                    </p>
                     <div className="bg-muted p-3 rounded-lg space-y-1">
                       {selectedLog.userEmail && (
                         <p className="text-sm text-foreground flex items-center gap-1">
@@ -428,10 +428,14 @@ export default function AdminLogsPage() {
                         </p>
                       )}
                       {selectedLog.userName && (
-                        <p className="text-sm text-muted-foreground ml-5">{selectedLog.userName}</p>
+                        <p className="text-sm text-muted-foreground ml-5">
+                          {selectedLog.userName}
+                        </p>
                       )}
                       {selectedLog.userId && (
-                        <p className="text-sm text-muted-foreground ml-5 font-mono">ID: {selectedLog.userId}</p>
+                        <p className="text-sm text-muted-foreground ml-5 font-mono">
+                          ID: {selectedLog.userId}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -439,16 +443,20 @@ export default function AdminLogsPage() {
 
                 {(selectedLog.creatorHandle || selectedLog.creatorId) && (
                   <div>
-                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-2">Creator</p>
+                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-2">
+                      Creator
+                    </p>
                     <div className="bg-muted p-3 rounded-lg space-y-1">
                       {selectedLog.creatorHandle && (
                         <p className="text-sm text-foreground flex items-center gap-1">
-                          <Shield size={14} className="text-muted-foreground" />
-                          @{selectedLog.creatorHandle}
+                          <Shield size={14} className="text-muted-foreground" />@
+                          {selectedLog.creatorHandle}
                         </p>
                       )}
                       {selectedLog.creatorId && (
-                        <p className="text-sm text-muted-foreground ml-5 font-mono">ID: {selectedLog.creatorId}</p>
+                        <p className="text-sm text-muted-foreground ml-5 font-mono">
+                          ID: {selectedLog.creatorId}
+                        </p>
                       )}
                     </div>
                   </div>
@@ -456,7 +464,9 @@ export default function AdminLogsPage() {
 
                 {selectedLog.metadata && Object.keys(selectedLog.metadata).length > 0 && (
                   <div>
-                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-2">Metadata</p>
+                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider mb-2">
+                      Metadata
+                    </p>
                     <pre className="bg-muted p-3 rounded-lg text-xs text-foreground overflow-x-auto whitespace-pre-wrap font-mono">
                       {JSON.stringify(selectedLog.metadata, null, 2)}
                     </pre>

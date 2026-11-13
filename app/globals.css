@@ -61,6 +61,16 @@
   --color-info-bg: var(--ag-info-bg);
   --color-focus: var(--ag-focus);
 
+  /*
+   * Accessibility overrides for the legacy raw accent shades still used across
+   * the marketing/public pages. The Tailwind -600 values fail WCAG AA on white
+   * (e.g. white on orange-600 = 3.59:1). Mapping them to their -700 values keeps
+   * the hue but lifts text-on-white and white-on-colour to >= 4.5:1.
+   */
+  --color-orange-600: #c2410c;
+  --color-red-600: #b91c1c;
+  --color-emerald-600: #047857;
+
   --radius-control: var(--ag-radius-control);
   --radius-card: var(--ag-radius-card);
   --radius-sheet: var(--ag-radius-sheet);

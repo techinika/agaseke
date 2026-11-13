@@ -60,18 +60,23 @@ export default function ExplorePostsPage() {
   const [creatorMap, setCreatorMap] = useState<Map<string, any>>(new Map());
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [lastVisible, setLastVisible] =
+    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"all" | "articles" | "posts">(
-    "all",
-  );
+  const [typeFilter, setTypeFilter] = useState<"all" | "articles" | "posts">("all");
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
   const [documentIndex, setDocumentIndex] = useState<Record<string, number>>({});
   const [viewingImage, setViewingImage] = useState<string | null>(null);
-  const [viewingDocument, setViewingDocument] = useState<{ url: string; title: string } | null>(null);
+  const [viewingDocument, setViewingDocument] = useState<{
+    url: string;
+    title: string;
+  } | null>(null);
 
-  const fetchPosts = async (cmap: Map<string, any>, cursor: QueryDocumentSnapshot<DocumentData> | null) => {
+  const fetchPosts = async (
+    cmap: Map<string, any>,
+    cursor: QueryDocumentSnapshot<DocumentData> | null,
+  ) => {
     try {
       const postsRef = collection(db, "creatorContent");
       let q = query(
@@ -87,22 +92,23 @@ export default function ExplorePostsPage() {
       const fetched = snap.docs
         .filter((d) => d.data().status !== "draft")
         .map((d) => {
-        const data = d.data();
-        const creatorId = data.creatorId || data.creatorUid || "";
-        const creator = cmap.get(creatorId) || cmap.get(data.creatorUid) || cmap.get(data.creatorId);
-        return {
-          id: d.id,
-          ...data,
-          authorName: creator?.name || creatorId.substring(0, 8) || "Unknown",
-          authorHandle: creator?.handle || creatorId,
-          authorPhoto: creator?.photoURL || null,
-        };
-      })
-      .sort(
-        (a: any, b: any) =>
-          (b.publishedAt?.toMillis?.() ?? b.createdAt?.toMillis?.() ?? 0) -
-          (a.publishedAt?.toMillis?.() ?? a.createdAt?.toMillis?.() ?? 0),
-      );
+          const data = d.data();
+          const creatorId = data.creatorId || data.creatorUid || "";
+          const creator =
+            cmap.get(creatorId) || cmap.get(data.creatorUid) || cmap.get(data.creatorId);
+          return {
+            id: d.id,
+            ...data,
+            authorName: creator?.name || creatorId.substring(0, 8) || "Unknown",
+            authorHandle: creator?.handle || creatorId,
+            authorPhoto: creator?.photoURL || null,
+          };
+        })
+        .sort(
+          (a: any, b: any) =>
+            (b.publishedAt?.toMillis?.() ?? b.createdAt?.toMillis?.() ?? 0) -
+            (a.publishedAt?.toMillis?.() ?? a.createdAt?.toMillis?.() ?? 0),
+        );
       if (!cursor) {
         setPosts(fetched);
       } else {
@@ -188,9 +194,7 @@ export default function ExplorePostsPage() {
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-5xl md:text-6xl font-bold tracking-tighter mb-6">
             Discover{" "}
-            <span className="text-orange-600 underline decoration-orange-100">
-              Posts
-            </span>
+            <span className="text-orange-600 underline decoration-orange-100">Posts</span>
           </h1>
           <p className="text-muted-foreground font-medium text-lg max-w-xl mx-auto mb-10">
             Explore stories, videos, and content from creators across Agaseke.
@@ -207,29 +211,29 @@ export default function ExplorePostsPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-card border border-border shadow-xl shadow-border rounded-lg py-6 pl-14 pr-6 text-lg outline-none focus:ring-4 focus:ring-orange-50 transition-all font-medium"
             />
-            </div>
+          </div>
 
-            <div className="mt-6 inline-flex items-center gap-1 bg-card border border-border rounded-full p-1 shadow-sm">
-              {(
-                [
-                  { key: "all", label: "All" },
-                  { key: "posts", label: "Posts" },
-                  { key: "articles", label: "Articles" },
-                ] as const
-              ).map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setTypeFilter(key)}
-                  className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors ${
-                    typeFilter === key
-                      ? "bg-orange-600 text-white"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+          <div className="mt-6 inline-flex items-center gap-1 bg-card border border-border rounded-full p-1 shadow-sm">
+            {(
+              [
+                { key: "all", label: "All" },
+                { key: "posts", label: "Posts" },
+                { key: "articles", label: "Articles" },
+              ] as const
+            ).map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setTypeFilter(key)}
+                className={`inline-flex min-h-11 items-center px-5 py-2 rounded-full text-sm font-semibold transition-colors ${
+                  typeFilter === key
+                    ? "bg-orange-600 text-white"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
@@ -252,7 +256,9 @@ export default function ExplorePostsPage() {
                       ? "Latest Public Posts"
                       : "Latest Public Content"}
               </h3>
-              <span className="text-xs text-muted-foreground">{filteredPosts.length} item{filteredPosts.length !== 1 ? "s" : ""}</span>
+              <span className="text-xs text-muted-foreground">
+                {filteredPosts.length} item{filteredPosts.length !== 1 ? "s" : ""}
+              </span>
             </div>
 
             <div className="grid grid-cols-1 gap-6">
@@ -285,7 +291,9 @@ export default function ExplorePostsPage() {
                       >
                         {item.authorName}
                       </Link>
-                      <p className="text-xs text-muted-foreground">@{item.authorHandle}</p>
+                      <p className="text-xs text-muted-foreground">
+                        @{item.authorHandle}
+                      </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-bold bg-muted px-2 py-1 rounded uppercase tracking-widest text-muted-foreground">
@@ -317,7 +325,10 @@ export default function ExplorePostsPage() {
                   )}
 
                   {item.type === "image" && item.contentUrl && (
-                    <div className="mb-3 rounded-lg overflow-hidden cursor-zoom-in" onClick={() => setViewingImage(item.contentUrl)}>
+                    <div
+                      className="mb-3 rounded-lg overflow-hidden cursor-zoom-in"
+                      onClick={() => setViewingImage(item.contentUrl)}
+                    >
                       <img
                         src={item.contentUrl}
                         alt={item.title}
@@ -328,53 +339,85 @@ export default function ExplorePostsPage() {
 
                   {item.type === "video" && item.contentUrl && (
                     <div className="mb-3 rounded-lg overflow-hidden bg-black">
-                      <video src={item.contentUrl} controls controlsList="nodownload" className="w-full aspect-video" />
+                      <video
+                        src={item.contentUrl}
+                        controls
+                        controlsList="nodownload"
+                        className="w-full aspect-video"
+                      />
                     </div>
                   )}
 
-                  {item.type === "document" && item.contentUrl && (() => {
-                    const pages = Array.isArray(item.contentUrl) ? item.contentUrl : [item.contentUrl];
-                    const currentIndex = documentIndex[item.id] || 0;
-                    const currentUrl = pages[currentIndex] || pages[0];
-                    return (
-                      <div className="mb-3 bg-muted rounded-lg p-4 border border-border">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                            <FileText size={24} className="text-orange-600" />
+                  {item.type === "document" &&
+                    item.contentUrl &&
+                    (() => {
+                      const pages = Array.isArray(item.contentUrl)
+                        ? item.contentUrl
+                        : [item.contentUrl];
+                      const currentIndex = documentIndex[item.id] || 0;
+                      const currentUrl = pages[currentIndex] || pages[0];
+                      return (
+                        <div className="mb-3 bg-muted rounded-lg p-4 border border-border">
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                              <FileText size={24} className="text-orange-600" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-medium text-sm text-foreground">
+                                Document
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {pages.length} page{pages.length > 1 ? "s" : ""}
+                              </p>
+                            </div>
                           </div>
-                          <div className="flex-1">
-                            <p className="font-medium text-sm text-foreground">Document</p>
-                            <p className="text-xs text-muted-foreground">{pages.length} page{pages.length > 1 ? "s" : ""}</p>
-                          </div>
+                          {pages.length > 1 && (
+                            <div className="flex items-center justify-between mb-3">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDocumentIndex((prev) => ({
+                                    ...prev,
+                                    [item.id]: Math.max(0, currentIndex - 1),
+                                  }));
+                                }}
+                                disabled={currentIndex === 0}
+                                className="p-1.5 bg-card border rounded-lg disabled:opacity-50"
+                              >
+                                <ChevronLeft size={16} />
+                              </button>
+                              <span className="text-sm text-muted-foreground">
+                                {currentIndex + 1} of {pages.length}
+                              </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDocumentIndex((prev) => ({
+                                    ...prev,
+                                    [item.id]: Math.min(
+                                      pages.length - 1,
+                                      currentIndex + 1,
+                                    ),
+                                  }));
+                                }}
+                                disabled={currentIndex === pages.length - 1}
+                                className="p-1.5 bg-card border rounded-lg disabled:opacity-50"
+                              >
+                                <ChevronRight size={16} />
+                              </button>
+                            </div>
+                          )}
+                          <button
+                            onClick={() =>
+                              setViewingDocument({ url: currentUrl, title: item.title })
+                            }
+                            className="block w-full text-center py-2.5 bg-orange-500 text-white rounded-lg font-medium text-sm hover:bg-orange-600 transition"
+                          >
+                            Read Document
+                          </button>
                         </div>
-                        {pages.length > 1 && (
-                          <div className="flex items-center justify-between mb-3">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setDocumentIndex((prev) => ({ ...prev, [item.id]: Math.max(0, currentIndex - 1) })); }}
-                              disabled={currentIndex === 0}
-                              className="p-1.5 bg-card border rounded-lg disabled:opacity-50"
-                            >
-                              <ChevronLeft size={16} />
-                            </button>
-                            <span className="text-sm text-muted-foreground">{currentIndex + 1} of {pages.length}</span>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setDocumentIndex((prev) => ({ ...prev, [item.id]: Math.min(pages.length - 1, currentIndex + 1) })); }}
-                              disabled={currentIndex === pages.length - 1}
-                              className="p-1.5 bg-card border rounded-lg disabled:opacity-50"
-                            >
-                              <ChevronRight size={16} />
-                            </button>
-                          </div>
-                        )}
-                        <button
-                          onClick={() => setViewingDocument({ url: currentUrl, title: item.title })}
-                          className="block w-full text-center py-2.5 bg-orange-500 text-white rounded-lg font-medium text-sm hover:bg-orange-600 transition"
-                        >
-                          Read Document
-                        </button>
-                      </div>
-                    );
-                  })()}
+                      );
+                    })()}
 
                   {/* Title */}
                   {item.title && (
@@ -401,7 +444,9 @@ export default function ExplorePostsPage() {
                           {(item.description || item.content).length > 200 &&
                           !expandedPosts.has(item.id) ? (
                             <>
-                              <LinkifyText text={(item.description || item.content).slice(0, 200)} />
+                              <LinkifyText
+                                text={(item.description || item.content).slice(0, 200)}
+                              />
                               <span>...</span>
                               <button
                                 onClick={() => toggleExpand(item.id)}
@@ -518,22 +563,42 @@ export default function ExplorePostsPage() {
 
       {/* Image Lightbox */}
       {viewingImage && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setViewingImage(null)}>
-          <img src={viewingImage} alt="Post image" className="max-w-full max-h-full object-contain rounded-lg" />
+        <div
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          onClick={() => setViewingImage(null)}
+        >
+          <img
+            src={viewingImage}
+            alt="Post image"
+            className="max-w-full max-h-full object-contain rounded-lg"
+          />
         </div>
       )}
 
       {/* Document Viewer */}
       {viewingDocument && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setViewingDocument(null)}>
-          <div className="bg-background rounded-xl p-4 w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          onClick={() => setViewingDocument(null)}
+        >
+          <div
+            className="bg-background rounded-xl p-4 w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-lg truncate">{viewingDocument.title}</h3>
-              <button onClick={() => setViewingDocument(null)} className="p-2 hover:bg-muted rounded-lg">
+              <button
+                onClick={() => setViewingDocument(null)}
+                className="p-2 hover:bg-muted rounded-lg"
+              >
                 <ChevronLeft size={20} />
               </button>
             </div>
-            <iframe src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocument.url)}&embedded=true`} className="w-full flex-1 min-h-[60vh] rounded-lg border border-border" title={viewingDocument.title} />
+            <iframe
+              src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocument.url)}&embedded=true`}
+              className="w-full flex-1 min-h-[60vh] rounded-lg border border-border"
+              title={viewingDocument.title}
+            />
           </div>
         </div>
       )}

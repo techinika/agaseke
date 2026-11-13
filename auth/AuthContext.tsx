@@ -1,11 +1,9 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { onIdTokenChanged, User } from "firebase/auth";
-import { doc, onSnapshot } from "firebase/firestore";
-import { auth, db } from "@/db/firebase";
-import { Creator } from "@/types/creator";
-import { Profile } from "@/types/profile";
+import type { User } from "firebase/auth";
+import type { Creator } from "@/types/creator";
+import type { Profile } from "@/types/profile";
 
 interface AuthContextType {
   user: User | null;
@@ -35,81 +33,108 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!auth) {
-      setLoading(false);
-      return;
-    }
+    let cancelled = false;
+    let unsubscribeAuth: (() => void) | undefined;
 
-    const unsubscribeAuth = onIdTokenChanged(auth, async (currentUser) => {
-      setUser(currentUser);
+    (async () => {
+      const [{ onIdTokenChanged }, { auth }] = await Promise.all([
+        import("firebase/auth"),
+        import("@/db/firebase"),
+      ]);
+      if (cancelled) return;
 
-      if (!currentUser) {
-        setProfile(null);
-        setCreator(null);
-        setIsAdminClaim(false);
+      if (!auth) {
         setLoading(false);
         return;
       }
 
-      setProfile(null);
-      setCreator(null);
-      setLoading(true);
+      unsubscribeAuth = onIdTokenChanged(auth, async (currentUser) => {
+        setUser(currentUser);
 
-      try {
-        const tokenResult = await currentUser.getIdTokenResult();
-        if (auth.currentUser?.uid === currentUser.uid) {
-          setIsAdminClaim(
-            tokenResult.claims.admin === true ||
-              tokenResult.claims.isAdmin === true,
-          );
+        if (!currentUser) {
+          setProfile(null);
+          setCreator(null);
+          setIsAdminClaim(false);
+          setLoading(false);
+          return;
         }
-      } catch {
-        if (auth.currentUser?.uid === currentUser.uid) setIsAdminClaim(false);
-      }
-    });
 
-    return () => unsubscribeAuth();
+        setProfile(null);
+        setCreator(null);
+        setLoading(true);
+
+        try {
+          const tokenResult = await currentUser.getIdTokenResult();
+          if (auth.currentUser?.uid === currentUser.uid) {
+            setIsAdminClaim(
+              tokenResult.claims.admin === true || tokenResult.claims.isAdmin === true,
+            );
+          }
+        } catch {
+          if (auth.currentUser?.uid === currentUser.uid) setIsAdminClaim(false);
+        }
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+      unsubscribeAuth?.();
+    };
   }, []);
 
   useEffect(() => {
-    if (!user || !db) {
+    if (!user) {
       return;
     }
 
-    const userRef = doc(db, "profiles", user.uid);
-    let unsubscribeCreator: (() => void) | null = null;
+    let cancelled = false;
+    let unsubscribeProfile: (() => void) | undefined;
+    let unsubscribeCreator: (() => void) | undefined;
 
-    const unsubscribeProfile = onSnapshot(userRef, (userSnap) => {
-      if (unsubscribeCreator) {
-        unsubscribeCreator();
-        unsubscribeCreator = null;
-      }
-
-      if (!userSnap.exists()) {
-        setProfile(null);
-        setCreator(null);
-        setLoading(false);
+    (async () => {
+      const [{ doc, onSnapshot }, { db }] = await Promise.all([
+        import("firebase/firestore"),
+        import("@/db/firebase"),
+      ]);
+      if (cancelled || !db) {
         return;
       }
 
-      const userData = userSnap.data();
-      setProfile(userData as Profile);
+      const userRef = doc(db, "profiles", user.uid);
 
-      if (userData.type === "creator" && userData.username) {
-        const creatorRef = doc(db, "creators", userData.username);
-        unsubscribeCreator = onSnapshot(creatorRef, (creatorSnap) => {
-          setCreator(creatorSnap.exists() ? (creatorSnap.data() as Creator) : null);
+      unsubscribeProfile = onSnapshot(userRef, (userSnap) => {
+        if (unsubscribeCreator) {
+          unsubscribeCreator();
+          unsubscribeCreator = undefined;
+        }
+
+        if (!userSnap.exists()) {
+          setProfile(null);
+          setCreator(null);
           setLoading(false);
-        });
-      } else {
-        setCreator(null);
-        setLoading(false);
-      }
-    });
+          return;
+        }
+
+        const userData = userSnap.data();
+        setProfile(userData as Profile);
+
+        if (userData.type === "creator" && userData.username) {
+          const creatorRef = doc(db, "creators", userData.username);
+          unsubscribeCreator = onSnapshot(creatorRef, (creatorSnap) => {
+            setCreator(creatorSnap.exists() ? (creatorSnap.data() as Creator) : null);
+            setLoading(false);
+          });
+        } else {
+          setCreator(null);
+          setLoading(false);
+        }
+      });
+    })();
 
     return () => {
-      unsubscribeProfile();
-      if (unsubscribeCreator) unsubscribeCreator();
+      cancelled = true;
+      unsubscribeProfile?.();
+      unsubscribeCreator?.();
     };
   }, [user]);
 

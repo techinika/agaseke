@@ -22,7 +22,7 @@ export default function FooterGroup({
                 href={link.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-orange-500 transition-colors flex items-center gap-2"
+                className="hover:text-orange-500 transition-colors flex min-h-11 min-w-11 items-center gap-2"
               >
                 {link.label}
                 <RiMediumFill className="text-orange-600/50" />
@@ -30,7 +30,7 @@ export default function FooterGroup({
             ) : (
               <Link
                 href={link.href}
-                className="hover:text-orange-500 transition-colors"
+                className="hover:text-orange-500 transition-colors inline-flex min-h-11 min-w-11 items-center"
               >
                 {link.label}
               </Link>

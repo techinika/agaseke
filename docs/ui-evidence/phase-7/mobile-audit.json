@@ -1,0 +1,119 @@
+[
+  {
+    "name": "home",
+    "url": "/",
+    "horizontalOverflow": false,
+    "overflowPx": 0,
+    "smallTapTargets": []
+  },
+  {
+    "name": "explore",
+    "url": "/explore",
+    "horizontalOverflow": false,
+    "overflowPx": 0,
+    "smallTapTargets": []
+  },
+  {
+    "name": "explore-posts",
+    "url": "/explore/posts",
+    "horizontalOverflow": false,
+    "overflowPx": 0,
+    "smallTapTargets": []
+  },
+  {
+    "name": "for-creators",
+    "url": "/for-creators",
+    "horizontalOverflow": false,
+    "overflowPx": 0,
+    "smallTapTargets": []
+  },
+  {
+    "name": "for-supporters",
+    "url": "/for-supporters",
+    "horizontalOverflow": false,
+    "overflowPx": 0,
+    "smallTapTargets": []
+  },
+  {
+    "name": "for-brands",
+    "url": "/for-brands",
+    "horizontalOverflow": false,
+    "overflowPx": 0,
+    "smallTapTargets": [
+      {
+        "label": "See what we do for creators",
+        "width": 157,
+        "height": 30
+      }
+    ]
+  },
+  {
+    "name": "login",
+    "url": "/login",
+    "horizontalOverflow": false,
+    "overflowPx": 0,
+    "smallTapTargets": [
+      {
+        "label": "Terms of Service",
+        "width": 131,
+        "height": 34
+      }
+    ]
+  },
+  {
+    "name": "help-center",
+    "url": "/help-center",
+    "horizontalOverflow": false,
+    "overflowPx": 0,
+    "smallTapTargets": []
+  },
+  {
+    "name": "changelog",
+    "url": "/changelog",
+    "horizontalOverflow": false,
+    "overflowPx": 0,
+    "smallTapTargets": []
+  },
+  {
+    "name": "articles",
+    "url": "/articles",
+    "horizontalOverflow": false,
+    "overflowPx": 0,
+    "smallTapTargets": []
+  },
+  {
+    "name": "terms",
+    "url": "/terms",
+    "horizontalOverflow": false,
+    "overflowPx": 0,
+    "smallTapTargets": []
+  },
+  {
+    "name": "privacy",
+    "url": "/privacy",
+    "horizontalOverflow": false,
+    "overflowPx": 0,
+    "smallTapTargets": []
+  },
+  {
+    "name": "creator-page",
+    "url": "/dev/creator-page",
+    "horizontalOverflow": false,
+    "overflowPx": 0,
+    "smallTapTargets": []
+  },
+  {
+    "name": "components",
+    "url": "/dev/components",
+    "horizontalOverflow": false,
+    "overflowPx": 0,
+    "smallTapTargets": []
+  },
+  {
+    "name": "actions",
+    "url": "/dev/actions",
+    "horizontalOverflow": false,
+    "overflowPx": 0,
+    "smallTapTargets": []
+  }
+]

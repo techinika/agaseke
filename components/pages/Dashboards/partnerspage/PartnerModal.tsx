@@ -1,21 +1,8 @@
 import React, { useState } from "react";
-import {
-  X,
-  Loader,
-  Save,
-  Building2,
-  Upload,
-} from "lucide-react";
+import { X, Loader, Save, Building2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { uploadFile } from "@/lib/uploadService";
-import { db } from "@/db/firebase";
-import {
-  collection,
-  addDoc,
-  updateDoc,
-  doc,
-  serverTimestamp,
-} from "firebase/firestore";
+import { createCreatorPartner, updateCreatorPartner } from "@/lib/partnersService";
 
 interface Partner {
   id: string;
@@ -25,7 +12,7 @@ interface Partner {
   website?: string;
   description?: string;
   featured: boolean;
-  createdAt: any;
+  createdAt?: unknown;
 }
 
 export default function PartnerModal({
@@ -58,7 +45,7 @@ export default function PartnerModal({
         setFormData((prev) => ({ ...prev, logo: data.url }));
         toast.success("Logo uploaded!");
       }
-    } catch (error) {
+    } catch {
       toast.error("Upload failed");
     } finally {
       setUploading(false);
@@ -85,7 +72,6 @@ export default function PartnerModal({
         website: formData.website.trim() || null,
         description: formData.description.trim() || null,
         featured: formData.featured,
-        updatedAt: serverTimestamp(),
       };
 
       if (formData.logo) {
@@ -93,13 +79,10 @@ export default function PartnerModal({
       }
 
       if (partner) {
-        await updateDoc(doc(db, "creatorPartners", partner.id), partnerData);
+        await updateCreatorPartner(partner.id, partnerData);
         toast.success("Partner updated!");
       } else {
-        await addDoc(collection(db, "creatorPartners"), {
-          ...partnerData,
-          createdAt: serverTimestamp(),
-        });
+        await createCreatorPartner(partnerData);
         toast.success("Partner added!");
       }
       onClose();
@@ -118,10 +101,7 @@ export default function PartnerModal({
           <h2 className="text-xl font-bold uppercase tracking-tight">
             {partner ? "Edit Partner" : "Add Partner"}
           </h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-card-hover rounded-full"
-          >
+          <button onClick={onClose} className="p-2 hover:bg-card-hover rounded-full">
             <X size={20} />
           </button>
         </div>
@@ -131,11 +111,14 @@ export default function PartnerModal({
             <div className="relative">
               <div className="w-24 h-24 bg-border rounded-lg overflow-hidden border-2 border-dashed border-border-strong">
                 {formData.logo ? (
-                  <img
-                    src={formData.logo}
-                    alt="Logo"
-                    className="w-full h-full object-cover"
-                  />
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={formData.logo}
+                      alt="Logo"
+                      className="w-full h-full object-cover"
+                    />
+                  </>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <Building2 size={32} className="text-slate-300" />
@@ -162,9 +145,7 @@ export default function PartnerModal({
             <input
               type="text"
               value={formData.name}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, name: e.target.value }))
-              }
+              onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
               className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
               placeholder="e.g., Gym Master"
             />
@@ -227,11 +208,7 @@ export default function PartnerModal({
             disabled={saving}
             className="w-full py-4 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            {saving ? (
-              <Loader size={18} className="animate-spin" />
-            ) : (
-              <Save size={18} />
-            )}
+            {saving ? <Loader size={18} className="animate-spin" /> : <Save size={18} />}
             {partner ? "Update Partner" : "Add Partner"}
           </button>
         </div>

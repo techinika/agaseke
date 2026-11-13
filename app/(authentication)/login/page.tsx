@@ -31,10 +31,23 @@ export const metadata: Metadata = {
   },
 };
 
-function page() {
+async function page({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const sp = await searchParams;
+  const pick = (key: string) => {
+    const value = sp[key];
+    return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+  };
   return (
     <div>
-      <LoginPage />
+      <LoginPage
+        reservedUsername={pick("username")}
+        referralCreator={pick("referral")}
+        redirectParam={pick("redirect")}
+      />
     </div>
   );
 }

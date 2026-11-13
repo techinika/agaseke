@@ -1,29 +1,23 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import {
-  doc,
-  updateDoc,
-  addDoc,
-  collection,
-  serverTimestamp,
-  query,
-  where,
-  getDocs,
-  limit,
-} from "firebase/firestore";
+  hasPendingVerificationRequest,
+  markCreatorPhoneVerified,
+  submitVerificationRequest,
+} from "@/lib/verificationService";
 import {
   RecaptchaVerifier,
   signInWithPhoneNumber,
   ConfirmationResult,
 } from "firebase/auth";
 import { useAuth } from "@/auth/AuthContext";
-import { auth, db } from "@/db/firebase";
+import { auth } from "@/db/firebase";
 import { toast } from "sonner";
 import { uploadFile } from "@/lib/uploadService";
 import { sendCommsEmail } from "@/lib/commsService";
 
 export const VerificationPage = () => {
-  const { creator, profile } = useAuth();
+  const { creator } = useAuth();
 
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -33,24 +27,22 @@ export const VerificationPage = () => {
   const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [phoneVerified, setPhoneVerified] = useState(false);
-  const [confirmationResult, setConfirmationResult] =
-    useState<ConfirmationResult | null>(null);
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(
+    null,
+  );
 
   useEffect(() => {
     if (creator) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync local form state from loaded creator profile
       setPhoneVerified(creator.phoneVerified || false);
-      if (
-        !creator.verificationStatus ||
-        creator.verificationStatus === "rejected"
-      ) {
+      if (!creator.verificationStatus || creator.verificationStatus === "rejected") {
         setIsEditing(true);
       }
     }
   }, [creator]);
 
   const handleSendOTP = async () => {
-    const phone = (document.getElementById("phoneInput") as HTMLInputElement)
-      .value;
+    const phone = (document.getElementById("phoneInput") as HTMLInputElement).value;
     if (!phone) {
       toast.error("Enter phone number");
       return;
@@ -79,9 +71,7 @@ export const VerificationPage = () => {
       await confirmationResult.confirm(otpCode);
       setPhoneVerified(true);
       setOtpSent(false);
-      await updateDoc(doc(db, "creators", String(creator?.handle)), {
-        phoneVerified: true,
-      });
+      await markCreatorPhoneVerified(String(creator?.handle));
       toast.success("Phone verified successfully!");
     } catch (err) {
       console.error(err);
@@ -130,31 +120,19 @@ export const VerificationPage = () => {
         payoutPreference: formData.get("payoutPreference"),
         status: "pending",
         idDocumentUrl,
-        createdAt: serverTimestamp(),
       };
 
-      const existingQ = query(
-        collection(db, "verificationRequests"),
-        where("uid", "==", creator?.uid),
-        where("status", "==", "pending"),
-        limit(1),
-      );
-      const existingSnap = await getDocs(existingQ);
-      if (!existingSnap.empty) {
+      if (creator?.uid && (await hasPendingVerificationRequest(creator.uid))) {
         toast.error("You already have a pending verification request");
         setLoading(false);
         return;
       }
 
-      await addDoc(collection(db, "verificationRequests"), payload);
-      await updateDoc(doc(db, "creators", String(creator?.handle)), {
-        verificationStatus: "pending",
-        verificationSubmitted: true,
-      });
+      await submitVerificationRequest(payload, String(creator?.handle));
 
       toast.success("Submission Successful");
       setIsEditing(false);
-    } catch (err) {
+    } catch {
       toast.error("Error submitting");
     } finally {
       setLoading(false);
@@ -171,9 +149,7 @@ export const VerificationPage = () => {
             <div className="bg-slate-900 text-white p-6 rounded-lg flex justify-between items-center">
               <div>
                 <p className="font-bold text-lg">Verified Account</p>
-                <p className="text-sm opacity-70">
-                  Your identity is confirmed.
-                </p>
+                <p className="text-sm opacity-70">Your identity is confirmed.</p>
               </div>
               <button
                 onClick={() => setIsEditing(true)}
@@ -189,8 +165,8 @@ export const VerificationPage = () => {
               <div>
                 <p className="font-bold text-lg">Pending Verification</p>
                 <p className="text-sm opacity-70">
-                  Your identity verification is pending. We will notify you once
-                  it is verified.
+                  Your identity verification is pending. We will notify you once it is
+                  verified.
                 </p>
               </div>
               <button
@@ -207,8 +183,8 @@ export const VerificationPage = () => {
               <div>
                 <p className="font-bold text-lg">Rejected Verification</p>
                 <p className="text-sm opacity-70">
-                  Your identity verification is rejected. Please update your
-                  information and try again.
+                  Your identity verification is rejected. Please update your information
+                  and try again.
                 </p>
               </div>
               <button
@@ -223,9 +199,7 @@ export const VerificationPage = () => {
           <div
             className={`bg-card p-8 md:p-10 rounded-lg border border-border shadow-sm ${!isEditing ? "opacity-60 grayscale-[0.5]" : ""}`}
           >
-            <h2 className="text-2xl font-bold tracking-tight mb-8">
-              Identity & Payouts
-            </h2>
+            <h2 className="text-2xl font-bold tracking-tight mb-8">Identity & Payouts</h2>
 
             <form onSubmit={handleFinalSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -319,9 +293,7 @@ export const VerificationPage = () => {
                     required={isEditing}
                     disabled={!isEditing}
                     className="hidden"
-                    onChange={(e) =>
-                      setSelectedFileName(e.target.files?.[0]?.name || "")
-                    }
+                    onChange={(e) => setSelectedFileName(e.target.files?.[0]?.name || "")}
                   />
                   <span className="text-sm font-medium text-muted-foreground">
                     {selectedFileName || "Click to upload document"}
@@ -393,8 +365,8 @@ export const VerificationPage = () => {
           <div className="bg-slate-900 p-8 rounded-lg text-white">
             <h3 className="font-bold mb-2">Why Verify?</h3>
             <p className="text-xs text-white/50 leading-relaxed">
-              Verification protects Agaseke from fraud and ensures your revenue
-              is sent to the correct account within 24-48 hours of review.
+              Verification protects Agaseke from fraud and ensures your revenue is sent to
+              the correct account within 24-48 hours of review.
             </p>
           </div>
         </div>

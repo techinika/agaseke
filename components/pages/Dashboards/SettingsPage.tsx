@@ -26,7 +26,15 @@ import {
   Users,
 } from "lucide-react";
 import { db, auth } from "@/db/firebase";
-import { doc, onSnapshot, updateDoc, collection, getDocs, query, orderBy } from "firebase/firestore";
+import {
+  doc,
+  onSnapshot,
+  updateDoc,
+  collection,
+  getDocs,
+  query,
+  orderBy,
+} from "firebase/firestore";
 import { Creator } from "@/types/creator";
 import { useAuth } from "@/auth/AuthContext";
 import { useRouter } from "next/navigation";
@@ -54,15 +62,12 @@ export default function CreatorSettings() {
 
   useEffect(() => {
     if (!creator) return;
-    const unsubscribe = onSnapshot(
-      doc(db, "creators", creator.handle),
-      (doc) => {
-        if (doc.exists()) {
-          setCreatorData(doc.data() as Creator);
-        }
-        setLoading(false);
-      },
-    );
+    const unsubscribe = onSnapshot(doc(db, "creators", creator.handle), (doc) => {
+      if (doc.exists()) {
+        setCreatorData(doc.data() as Creator);
+      }
+      setLoading(false);
+    });
     return () => unsubscribe();
   }, [creator]);
 
@@ -72,7 +77,9 @@ export default function CreatorSettings() {
         const q = query(collection(db, "categories"), orderBy("createdAt", "desc"));
         const snap = await getDocs(q);
         setCategories(snap.docs.map((d) => d.data().name || "").filter(Boolean));
-      } catch (e) { console.error("Failed to fetch categories", e); }
+      } catch (e) {
+        console.error("Failed to fetch categories", e);
+      }
     };
     fetchCategories();
   }, []);
@@ -88,7 +95,9 @@ export default function CreatorSettings() {
         setCountries(countriesSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
         setCurrencies(currenciesSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
         setCountryCurrencies(mappingsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      } catch (e) { console.error("Failed to fetch countries/currencies", e); }
+      } catch (e) {
+        console.error("Failed to fetch countries/currencies", e);
+      }
     };
     fetchData();
   }, []);
@@ -98,8 +107,12 @@ export default function CreatorSettings() {
       setAvailableCurrencies([]);
       return;
     }
-    const mappings = countryCurrencies.filter((m: any) => m.countryCode === creatorData.country);
-    const available = currencies.filter((c: any) => mappings.some((m: any) => m.currencyCode === c.code));
+    const mappings = countryCurrencies.filter(
+      (m: any) => m.countryCode === creatorData.country,
+    );
+    const available = currencies.filter((c: any) =>
+      mappings.some((m: any) => m.currencyCode === c.code),
+    );
     setAvailableCurrencies(available);
   }, [creatorData?.country, countryCurrencies, currencies]);
 
@@ -219,9 +232,7 @@ export default function CreatorSettings() {
       <div className="max-w-5xl mx-auto px-6 pt-10">
         <header className="flex justify-between items-end mb-10">
           <div>
-            <h1 className="text-4xl font-bold tracking-tighter uppercase">
-              Settings
-            </h1>
+            <h1 className="text-4xl font-bold tracking-tighter uppercase">Settings</h1>
             <p className="text-muted-foreground font-medium">
               Customize your creator identity and supporter perks.
             </p>
@@ -231,11 +242,7 @@ export default function CreatorSettings() {
             disabled={saving || uploading}
             className="bg-foreground text-background px-8 py-3 rounded-lg font-black flex items-center gap-2 hover:bg-orange-600 transition-all shadow-xl disabled:opacity-50"
           >
-            {saving ? (
-              <Loader className="animate-spin" size={18} />
-            ) : (
-              <Save size={18} />
-            )}
+            {saving ? <Loader className="animate-spin" size={18} /> : <Save size={18} />}
             Save Changes
           </button>
         </header>
@@ -285,7 +292,10 @@ export default function CreatorSettings() {
                           alt="Cover"
                         />
                       ) : (
-                        <ImageIcon size={40} className="text-orange-300 dark:text-orange-700" />
+                        <ImageIcon
+                          size={40}
+                          className="text-orange-300 dark:text-orange-700"
+                        />
                       )}
                       {creatorData?.bannerURL && (
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
@@ -434,17 +444,11 @@ export default function CreatorSettings() {
                     <div
                       className={`p-3 rounded-lg ${creatorData?.verified ? "bg-green-500" : "bg-card"}`}
                     >
-                      {creatorData?.verified ? (
-                        <Check size={24} />
-                      ) : (
-                        <Phone size={24} />
-                      )}
+                      {creatorData?.verified ? <Check size={24} /> : <Phone size={24} />}
                     </div>
                     <div>
                       <p className="font-black">
-                        {creatorData?.verified
-                          ? "Identity Verified"
-                          : "Verify Identity"}
+                        {creatorData?.verified ? "Identity Verified" : "Verify Identity"}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {creatorData?.payoutNumber || "No number linked"}
@@ -465,9 +469,7 @@ export default function CreatorSettings() {
 
             {activeTab === "socials" && (
               <section className="bg-card border border-border rounded-lg p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                <h3 className="text-lg font-black uppercase">
-                  Connected Networks
-                </h3>
+                <h3 className="text-lg font-black uppercase">Connected Networks</h3>
                 <div className="space-y-4">
                   {[
                     {
@@ -511,9 +513,7 @@ export default function CreatorSettings() {
                       key={social.id}
                       className="flex items-center gap-4 bg-muted p-2 rounded-lg border border-transparent focus-within:border-border focus-within:bg-card transition-all"
                     >
-                      <div
-                        className={`p-3 bg-card rounded-lg shadow-sm ${social.color}`}
-                      >
+                      <div className={`p-3 bg-card rounded-lg shadow-sm ${social.color}`}>
                         <social.icon size={20} />
                       </div>
                       <input
@@ -524,9 +524,7 @@ export default function CreatorSettings() {
                             social.id as keyof typeof creatorData.socials
                           ] || ""
                         }
-                        onChange={(e) =>
-                          handleSocialUpdate(social.id, e.target.value)
-                        }
+                        onChange={(e) => handleSocialUpdate(social.id, e.target.value)}
                         className="flex-1 bg-transparent outline-none text-sm font-bold"
                       />
                     </div>
@@ -539,7 +537,8 @@ export default function CreatorSettings() {
               <section className="bg-card border border-border rounded-lg p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4">
                 <h3 className="text-lg font-black uppercase">Location & Currency</h3>
                 <p className="text-sm text-muted-foreground">
-                  Your country and currency were set during onboarding and cannot be changed.
+                  Your country and currency were set during onboarding and cannot be
+                  changed.
                 </p>
                 <div className="space-y-6">
                   <div className="space-y-2">
@@ -549,9 +548,10 @@ export default function CreatorSettings() {
                     {creatorData?.country ? (
                       <>
                         <div className="w-full bg-muted p-4 rounded-lg text-sm font-bold opacity-60 cursor-not-allowed flex items-center gap-2">
-                          {countries.find((c: any) => c.code === creatorData.country)?.flag || ""}
-                          {" "}
-                          {countries.find((c: any) => c.code === creatorData.country)?.name || creatorData.country}
+                          {countries.find((c: any) => c.code === creatorData.country)
+                            ?.flag || ""}{" "}
+                          {countries.find((c: any) => c.code === creatorData.country)
+                            ?.name || creatorData.country}
                         </div>
                         <p className="text-xs text-amber-600 font-semibold flex items-center gap-1">
                           ⚠ Country cannot be changed once set.
@@ -579,7 +579,13 @@ export default function CreatorSettings() {
                     {creatorData?.currency ? (
                       <>
                         <div className="w-full bg-muted p-4 rounded-lg text-sm font-bold opacity-60 cursor-not-allowed flex items-center gap-2">
-                          {creatorData.currency} - {currencies.find((c: any) => c.code === creatorData.currency)?.name || ""} ({currencies.find((c: any) => c.code === creatorData.currency)?.symbol || ""})
+                          {creatorData.currency} -{" "}
+                          {currencies.find((c: any) => c.code === creatorData.currency)
+                            ?.name || ""}{" "}
+                          (
+                          {currencies.find((c: any) => c.code === creatorData.currency)
+                            ?.symbol || ""}
+                          )
                         </div>
                         <p className="text-xs text-amber-600 font-semibold flex items-center gap-1">
                           ⚠ Currency cannot be changed once set.
@@ -602,7 +608,8 @@ export default function CreatorSettings() {
                     )}
                     {creatorData?.country && availableCurrencies.length === 0 && (
                       <p className="text-xs text-amber-600 bg-amber-50 p-3 rounded-lg mt-2">
-                        No currencies configured for this country yet. Contact an admin to add currencies.
+                        No currencies configured for this country yet. Contact an admin to
+                        add currencies.
                       </p>
                     )}
                   </div>
@@ -612,7 +619,8 @@ export default function CreatorSettings() {
                         All transactions will be processed in {creatorData.currency}
                       </p>
                       <p className="text-xs text-orange-600 mt-1">
-                        Prices shown on your profile will use this currency. Existing transactions keep their original currency.
+                        Prices shown on your profile will use this currency. Existing
+                        transactions keep their original currency.
                       </p>
                     </div>
                   )}
@@ -623,9 +631,7 @@ export default function CreatorSettings() {
             {activeTab === "perks" && (
               <section className="bg-card border border-border rounded-lg p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4">
                 <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-black uppercase">
-                    Supporter Perks
-                  </h3>
+                  <h3 className="text-lg font-black uppercase">Supporter Perks</h3>
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Enable special features for your supporters and visitors.
@@ -641,31 +647,24 @@ export default function CreatorSettings() {
                         <div>
                           <p className="font-black text-lg">Store</p>
                           <p className="text-sm text-muted-foreground">
-                            Sell merchandise, digital products, and physical
-                            goods directly to your audience.
+                            Sell merchandise, digital products, and physical goods
+                            directly to your audience.
                           </p>
                         </div>
                       </div>
                       <button
                         onClick={() =>
-                          handleUpdate(
-                            "storeEnabled",
-                            !creatorData?.storeEnabled,
-                          )
+                          handleUpdate("storeEnabled", !creatorData?.storeEnabled)
                         }
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
-                          creatorData?.storeEnabled
-                            ? "bg-orange-500"
-                            : "bg-border-strong"
+                          creatorData?.storeEnabled ? "bg-orange-500" : "bg-border-strong"
                         }`}
                         role="switch"
                         aria-checked={creatorData?.storeEnabled}
                       >
                         <span
                           className={`inline-block h-4 w-4 transform rounded-full bg-card shadow-sm ring-0 transition-transform ${
-                            creatorData?.storeEnabled
-                              ? "translate-x-6"
-                              : "translate-x-1"
+                            creatorData?.storeEnabled ? "translate-x-6" : "translate-x-1"
                           }`}
                         />
                       </button>
@@ -682,10 +681,7 @@ export default function CreatorSettings() {
                           </div>
                           <button
                             onClick={() =>
-                              handleUpdate(
-                                "storePublic",
-                                !creatorData?.storePublic,
-                              )
+                              handleUpdate("storePublic", !creatorData?.storePublic)
                             }
                             className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
                               creatorData?.storePublic
@@ -706,8 +702,8 @@ export default function CreatorSettings() {
                         </div>
                         {!creatorData?.storePublic && (
                           <p className="text-xs text-orange-600 bg-orange-50 p-3 rounded-lg">
-                            Only supporters will be able to see and purchase
-                            from your store.
+                            Only supporters will be able to see and purchase from your
+                            store.
                           </p>
                         )}
                         <a
@@ -738,10 +734,7 @@ export default function CreatorSettings() {
                     </div>
                     <button
                       onClick={() =>
-                        handleUpdate(
-                          "giveawayEnabled",
-                          !creatorData?.giveawayEnabled,
-                        )
+                        handleUpdate("giveawayEnabled", !creatorData?.giveawayEnabled)
                       }
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
                         creatorData?.giveawayEnabled
@@ -753,9 +746,7 @@ export default function CreatorSettings() {
                     >
                       <span
                         className={`inline-block h-4 w-4 transform rounded-full bg-card shadow-sm ring-0 transition-transform ${
-                          creatorData?.giveawayEnabled
-                            ? "translate-x-6"
-                            : "translate-x-1"
+                          creatorData?.giveawayEnabled ? "translate-x-6" : "translate-x-1"
                         }`}
                       />
                     </button>
@@ -784,31 +775,23 @@ export default function CreatorSettings() {
                       <div>
                         <p className="font-black text-lg">Book a Meeting</p>
                         <p className="text-sm text-muted-foreground">
-                          Allow supporters to book meetings or consultations
-                          with you.
+                          Allow supporters to book meetings or consultations with you.
                         </p>
                       </div>
                     </div>
                     <button
                       onClick={() =>
-                        handleUpdate(
-                          "bookingEnabled",
-                          !creatorData?.bookingEnabled,
-                        )
+                        handleUpdate("bookingEnabled", !creatorData?.bookingEnabled)
                       }
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
-                        creatorData?.bookingEnabled
-                          ? "bg-orange-500"
-                          : "bg-border-strong"
+                        creatorData?.bookingEnabled ? "bg-orange-500" : "bg-border-strong"
                       }`}
                       role="switch"
                       aria-checked={creatorData?.bookingEnabled}
                     >
                       <span
                         className={`inline-block h-4 w-4 transform rounded-full bg-card shadow-sm ring-0 transition-transform ${
-                          creatorData?.bookingEnabled
-                            ? "translate-x-6"
-                            : "translate-x-1"
+                          creatorData?.bookingEnabled ? "translate-x-6" : "translate-x-1"
                         }`}
                       />
                     </button>
@@ -838,9 +821,7 @@ export default function CreatorSettings() {
                               : "bg-border-strong"
                           }`}
                           role="switch"
-                          aria-checked={
-                            creatorData?.bookingAccess === "supporters"
-                          }
+                          aria-checked={creatorData?.bookingAccess === "supporters"}
                         >
                           <span
                             className={`inline-block h-3.5 w-3.5 transform rounded-full bg-card shadow-sm transition-transform ${
@@ -878,10 +859,7 @@ export default function CreatorSettings() {
                     </div>
                     <button
                       onClick={() =>
-                        handleUpdate(
-                          "gatheringsEnabled",
-                          !creatorData?.gatheringsEnabled,
-                        )
+                        handleUpdate("gatheringsEnabled", !creatorData?.gatheringsEnabled)
                       }
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
                         creatorData?.gatheringsEnabled
@@ -929,24 +907,17 @@ export default function CreatorSettings() {
                   </div>
                   <button
                     onClick={() =>
-                      handleUpdate(
-                        "messagingEnabled",
-                        !creatorData?.messagingEnabled,
-                      )
+                      handleUpdate("messagingEnabled", !creatorData?.messagingEnabled)
                     }
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
-                      creatorData?.messagingEnabled
-                        ? "bg-orange-500"
-                        : "bg-border-strong"
+                      creatorData?.messagingEnabled ? "bg-orange-500" : "bg-border-strong"
                     }`}
                     role="switch"
                     aria-checked={creatorData?.messagingEnabled}
                   >
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-card shadow-sm ring-0 transition-transform ${
-                        creatorData?.messagingEnabled
-                          ? "translate-x-6"
-                          : "translate-x-1"
+                        creatorData?.messagingEnabled ? "translate-x-6" : "translate-x-1"
                       }`}
                     />
                   </button>
@@ -957,9 +928,7 @@ export default function CreatorSettings() {
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-bold text-sm">
-                            Allow all supporters
-                          </p>
+                          <p className="font-bold text-sm">Allow all supporters</p>
                           <p className="text-xs text-muted-foreground">
                             Any supporter can message you, regardless of amount
                           </p>
@@ -998,33 +967,27 @@ export default function CreatorSettings() {
                             type="number"
                             value={creatorData?.messagingMinAmount || 0}
                             onChange={(e) =>
-                              handleUpdate(
-                                "messagingMinAmount",
-                                Number(e.target.value),
-                              )
+                              handleUpdate("messagingMinAmount", Number(e.target.value))
                             }
                             placeholder="0"
                             className="w-full md:w-48 bg-muted p-4 rounded-lg text-sm font-bold focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-card transition-all"
                           />
                           <p className="text-xs text-muted-foreground">
-                            Only supporters who have given at least this amount
-                            can message you
+                            Only supporters who have given at least this amount can
+                            message you
                           </p>
                         </div>
                       )}
 
                       <div className="p-4 bg-green-50 rounded-lg border border-green-100 flex items-start gap-3">
-                        <MessageSquare
-                          size={20}
-                          className="text-green-600 mt-0.5"
-                        />
+                        <MessageSquare size={20} className="text-green-600 mt-0.5" />
                         <div>
                           <p className="font-bold text-sm text-green-800">
                             Email notifications enabled
                           </p>
                           <p className="text-xs text-green-600">
-                            You will receive an email when a supporter sends you
-                            a new message
+                            You will receive an email when a supporter sends you a new
+                            message
                           </p>
                         </div>
                       </div>
@@ -1037,8 +1000,8 @@ export default function CreatorSettings() {
                     <div className="flex items-center gap-3 text-muted-foreground">
                       <AlertCircle size={20} />
                       <p className="text-sm">
-                        Messaging is disabled. Your supporters won&apos;t be
-                        able to send you direct messages.
+                        Messaging is disabled. Your supporters won&apos;t be able to send
+                        you direct messages.
                       </p>
                     </div>
                   </div>
@@ -1056,30 +1019,24 @@ export default function CreatorSettings() {
                     <div>
                       <h3 className="text-lg font-black uppercase">Community Tiers</h3>
                       <p className="text-sm text-muted-foreground">
-                        Create subscription tiers so supporters can support you monthly or yearly.
+                        Create subscription tiers so supporters can support you monthly or
+                        yearly.
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={() =>
-                      handleUpdate(
-                        "communityEnabled",
-                        !creatorData?.communityEnabled,
-                      )
+                      handleUpdate("communityEnabled", !creatorData?.communityEnabled)
                     }
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
-                      creatorData?.communityEnabled
-                        ? "bg-orange-500"
-                        : "bg-border-strong"
+                      creatorData?.communityEnabled ? "bg-orange-500" : "bg-border-strong"
                     }`}
                     role="switch"
                     aria-checked={creatorData?.communityEnabled}
                   >
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-card shadow-sm ring-0 transition-transform ${
-                        creatorData?.communityEnabled
-                          ? "translate-x-6"
-                          : "translate-x-1"
+                        creatorData?.communityEnabled ? "translate-x-6" : "translate-x-1"
                       }`}
                     />
                   </button>
@@ -1095,7 +1052,8 @@ export default function CreatorSettings() {
                       Manage community tiers
                     </a>
                     <p className="text-xs text-muted-foreground mt-3">
-                      When enabled, a &ldquo;Tiers&rdquo; link appears in your sidebar so you can manage subscription plans.
+                      When enabled, a &ldquo;Tiers&rdquo; link appears in your sidebar so
+                      you can manage subscription plans.
                     </p>
                   </div>
                 )}
@@ -1105,7 +1063,8 @@ export default function CreatorSettings() {
                     <div className="flex items-center gap-3 text-muted-foreground">
                       <AlertCircle size={20} />
                       <p className="text-sm">
-                        Community tiers are disabled. Your supporters won&apos;t be able to subscribe to recurring support.
+                        Community tiers are disabled. Your supporters won&apos;t be able
+                        to subscribe to recurring support.
                       </p>
                     </div>
                   </div>

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @next/next/no-img-element */
 import React, { useState, useEffect } from "react";
 import {
   X,
@@ -10,20 +12,13 @@ import {
   Building,
 } from "lucide-react";
 import { toast } from "sonner";
-import { db } from "@/db/firebase";
 import {
-  collection,
-  addDoc,
-  updateDoc,
-  doc,
-  getDocs,
-  query,
-  where,
-  serverTimestamp,
-} from "firebase/firestore";
+  createGiveaway,
+  fetchCreatorPartners,
+  updateGiveaway,
+} from "@/lib/giveawayService";
 import {
   Giveaway,
-  GiveawayReward,
   GiveawayPartner,
   GiveawayType,
   GiveawayAccess,
@@ -69,25 +64,20 @@ export default function GiveawayModal({
     description: "",
   });
   const [showPartnerForm, setShowPartnerForm] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
+  const [isUploading] = useState(false);
+  void isUploading;
 
   useEffect(() => {
-    const fetchExistingPartners = async () => {
+    const loadPartners = async () => {
       try {
-        const partnersRef = collection(db, "creatorPartners");
-        const q = query(partnersRef, where("creatorId", "==", creatorId));
-        const snapshot = await getDocs(q);
-        const partnersData = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setExistingPartners(partnersData);
+        const partnersData = await fetchCreatorPartners(creatorId);
+        setExistingPartners(partnersData as any[]);
       } catch (error) {
         console.error("Error fetching partners:", error);
       }
     };
 
-    fetchExistingPartners();
+    loadPartners();
   }, [creatorId]);
 
   const rewardTypes: { value: RewardType; label: string; icon: any }[] = [
@@ -132,19 +122,18 @@ export default function GiveawayModal({
         maxWinners: formData.maxWinners,
         rewards: rewards.map((r, idx) => ({ ...r, id: String(idx + 1) })),
         partners: formData.partners,
-        updatedAt: serverTimestamp(),
       };
 
       if (giveaway) {
-        await updateDoc(doc(db, "giveaways", giveaway.id), giveawayData);
+        await updateGiveaway(giveaway.id, giveawayData);
         toast.success("Giveaway updated!");
       } else {
-        giveawayData.startDate = serverTimestamp();
-        giveawayData.status = "draft";
-        giveawayData.winners = [];
-        giveawayData.participantCount = 0;
-        giveawayData.createdAt = serverTimestamp();
-        await addDoc(collection(db, "giveaways"), giveawayData);
+        await createGiveaway({
+          ...giveawayData,
+          status: "draft",
+          winners: [],
+          participantCount: 0,
+        });
         toast.success("Giveaway created!");
       }
       onClose();
@@ -159,9 +148,7 @@ export default function GiveawayModal({
   const updateReward = (idx: number, field: string, value: any) => {
     setFormData((prev) => ({
       ...prev,
-      rewards: prev.rewards.map((r, i) =>
-        i === idx ? { ...r, [field]: value } : r,
-      ),
+      rewards: prev.rewards.map((r, i) => (i === idx ? { ...r, [field]: value } : r)),
     }));
   };
 
@@ -248,10 +235,7 @@ export default function GiveawayModal({
           <h2 className="text-2xl font-bold uppercase tracking-tighter">
             {giveaway ? "Edit Giveaway" : "New Giveaway"}
           </h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-card-hover rounded-full"
-          >
+          <button onClick={onClose} className="p-2 hover:bg-card-hover rounded-full">
             <X size={20} />
           </button>
         </div>
@@ -421,9 +405,7 @@ export default function GiveawayModal({
                   <div className="grid grid-cols-2 gap-3">
                     <select
                       value={reward.type}
-                      onChange={(e) =>
-                        updateReward(idx, "type", e.target.value)
-                      }
+                      onChange={(e) => updateReward(idx, "type", e.target.value)}
                       className="bg-card p-3 rounded-lg text-sm outline-none"
                     >
                       {rewardTypes.map((t) => (
@@ -436,11 +418,7 @@ export default function GiveawayModal({
                       type="number"
                       value={reward.quantity}
                       onChange={(e) =>
-                        updateReward(
-                          idx,
-                          "quantity",
-                          parseInt(e.target.value) || 1,
-                        )
+                        updateReward(idx, "quantity", parseInt(e.target.value) || 1)
                       }
                       className="bg-card p-3 rounded-lg text-sm outline-none w-20"
                       placeholder="Qty"
@@ -479,9 +457,7 @@ export default function GiveawayModal({
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {existingPartners.map((partner) => {
-                    const isAdded = formData.partners.some(
-                      (p) => p.id === partner.id,
-                    );
+                    const isAdded = formData.partners.some((p) => p.id === partner.id);
                     return (
                       <button
                         key={partner.id}
@@ -536,10 +512,7 @@ export default function GiveawayModal({
             )}
 
             {showPartnerForm && (
-              <form
-                onSubmit={addPartner}
-                className="bg-muted p-4 rounded-lg space-y-3"
-              >
+              <form onSubmit={addPartner} className="bg-muted p-4 rounded-lg space-y-3">
                 <input
                   type="text"
                   value={newPartner.name}
@@ -590,11 +563,7 @@ export default function GiveawayModal({
             disabled={saving}
             className="w-full py-4 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            {saving ? (
-              <Loader size={18} className="animate-spin" />
-            ) : (
-              <Check size={18} />
-            )}
+            {saving ? <Loader size={18} className="animate-spin" /> : <Check size={18} />}
             {giveaway ? "Update Giveaway" : "Create Giveaway"}
           </button>
         </div>
