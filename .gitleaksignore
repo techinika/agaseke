@@ -1,0 +1,24 @@
+# Known false positives.
+# The workers normalize a PEM key supplied through the environment, so the
+# literal "-----BEGIN PRIVATE KEY-----" header appears in source. gitleaks
+# treats those literals as private keys.
+03f1d96f7ebad63491a85e9d275a92f11878dfa3:workers/bookings/src/audit.ts:private-key:33
+03f1d96f7ebad63491a85e9d275a92f11878dfa3:workers/store/src/audit.ts:private-key:33
+03f1d96f7ebad63491a85e9d275a92f11878dfa3:workers/upload/src/audit.ts:private-key:33
+03f1d96f7ebad63491a85e9d275a92f11878dfa3:workers/payments/src/audit.ts:private-key:33
+03f1d96f7ebad63491a85e9d275a92f11878dfa3:workers/community/src/audit.ts:private-key:33
+03f1d96f7ebad63491a85e9d275a92f11878dfa3:workers/support/src/audit.ts:private-key:33
+03f1d96f7ebad63491a85e9d275a92f11878dfa3:workers/comms/src/audit.ts:private-key:33
+03f1d96f7ebad63491a85e9d275a92f11878dfa3:workers/general/src/audit.ts:private-key:33
+2a2ac9f93b8c4558eaa50a5dba0355a6b60d204c:workers/general/src/firestore.ts:private-key:7
+b3bef1ebb972f3f4738eed69b51edc8fff4892f5:workers/community/src/firestore.ts:private-key:6
+a67eded2315909fb0645878924c8725cebd96533:workers/bookings/src/firestore.ts:private-key:6
+a67eded2315909fb0645878924c8725cebd96533:workers/comms/src/firestore.ts:private-key:6
+a67eded2315909fb0645878924c8725cebd96533:workers/payments/src/firestore.ts:private-key:6
+a67eded2315909fb0645878924c8725cebd96533:workers/store/src/firestore.ts:private-key:6
+a67eded2315909fb0645878924c8725cebd96533:workers/support/src/firestore.ts:private-key:6
+cb454672e64827d91edc7356b3ca13815e919471:workers/comms/src/services/helpers.ts:private-key:6
+5a2922fa7b14d904eb3de3fd015245ffe0a76f5a:workers/upload/src/firestore.ts:private-key:6
+# Minified bundle committed under storybook-static; generic-api-key matches
+# object keys in the minified React output, not a credential.
+9bd5f31998e7cb9f2f67dbdd4a8c9db74a975f57:storybook-static/assets/entry-preview-docs-BqE4aTk6.js:generic-api-key:46

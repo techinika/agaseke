@@ -15,17 +15,6 @@ function newKey(): string {
   return `ticket_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 }
 
-function friendlyError(error: unknown): string {
-  const message = error instanceof Error ? error.message : "";
-  if (/auth|sign in|unauthor/i.test(message)) {
-    return t("support.error.signIn");
-  }
-  if (/network|fetch|timeout|abort/i.test(message)) {
-    return t("support.error.network");
-  }
-  return message || t("actions.ticket.failedBody");
-}
-
 export interface UseTicketPaymentOptions {
   open: boolean;
   creatorHandle: string;

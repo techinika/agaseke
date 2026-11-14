@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 import type { User } from "firebase/auth";
 import { CalendarDays, CreditCard, Gift, ReceiptText, Ticket, Users } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -140,32 +140,42 @@ const ACTIONS: {
   },
 ];
 
+const PREVIEW_URL_EVENT = "agaseke:preview-url";
+
+function subscribeToPreviewUrl(onChange: () => void) {
+  window.addEventListener("popstate", onChange);
+  window.addEventListener(PREVIEW_URL_EVENT, onChange);
+  return () => {
+    window.removeEventListener("popstate", onChange);
+    window.removeEventListener(PREVIEW_URL_EVENT, onChange);
+  };
+}
+
+function readActiveFromUrl(): ActionId {
+  const requested = new URLSearchParams(window.location.search).get("open");
+  return ACTIONS.find((action) => action.id === requested)?.id ?? null;
+}
+
 export function ActionsPreview() {
-  const [active, setActive] = useState<ActionId>(null);
+  const active = useSyncExternalStore(
+    subscribeToPreviewUrl,
+    readActiveFromUrl,
+    () => null,
+  );
   const total = useMemo(
     () => CART.reduce((sum, item) => sum + item.product.price * item.quantity, 0),
     [],
   );
 
-  useEffect(() => {
-    const requested = new URLSearchParams(window.location.search).get("open");
-    const match = ACTIONS.find((action) => action.id === requested);
-    if (match) setActive(match.id);
+  const setActive = useCallback((next: ActionId) => {
+    const url = new URL(window.location.href);
+    if (next) url.searchParams.set("open", next);
+    else url.searchParams.delete("open");
+    window.history.replaceState(null, "", url);
+    window.dispatchEvent(new Event(PREVIEW_URL_EVENT));
   }, []);
 
-  useEffect(() => {
-    if (!active) return;
-    const url = new URL(window.location.href);
-    url.searchParams.set("open", active);
-    window.history.replaceState(null, "", url);
-  }, [active]);
-
-  const close = () => {
-    setActive(null);
-    const url = new URL(window.location.href);
-    url.searchParams.delete("open");
-    window.history.replaceState(null, "", url);
-  };
+  const close = () => setActive(null);
 
   return (
     <main className="min-h-dvh bg-background px-4 py-6 text-fg">
