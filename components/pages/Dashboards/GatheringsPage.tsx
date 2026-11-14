@@ -3,22 +3,17 @@
 
 import React, { useState, useEffect } from "react";
 import { sendCommsEmail } from "@/lib/commsService";
+import { ArrowLeft, Plus } from "lucide-react";
 import {
-  ArrowLeft,
-  Plus,
-} from "lucide-react";
-import { db } from "@/db/firebase";
-import {
-  collection,
-  query,
-  where,
-  onSnapshot,
-  deleteDoc,
-  doc,
-  serverTimestamp,
-  orderBy,
-  updateDoc,
-} from "firebase/firestore";
+  checkInGatheringAttendee,
+  declineGatheringAttendee,
+  deleteCreatorGathering,
+  subscribeToCreatorGatherings,
+  subscribeToCreatorTicketSales,
+  subscribeToGatheringAttendance,
+  undoGatheringAttendeeCheckIn,
+  updateCreatorGatheringStatus,
+} from "@/features/gatherings/api";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
@@ -44,76 +39,49 @@ export default function GatheringsPage() {
   const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
   useEffect(() => {
     if (!creator?.uid) return;
-
-    const q = query(
-      collection(db, "creatorGatherings"),
-      where("creatorId", "==", creator?.uid),
-      orderBy("createdAt", "desc"),
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const gatheringData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setEvents(gatheringData);
+    const unsubscribe = subscribeToCreatorGatherings(creator.uid, (items) => {
+      setEvents(items as any[]);
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, [creator?.uid]);
 
   const upcomingEvents = events.filter((e) => e.status === "Upcoming");
-  const displayEvents = activeTab === "upcoming"
-    ? events.filter((e) => e.status === "Upcoming")
-    : events.filter((e) => e.status !== "Upcoming");
+  const displayEvents =
+    activeTab === "upcoming"
+      ? events.filter((e) => e.status === "Upcoming")
+      : events.filter((e) => e.status !== "Upcoming");
   const activeEvent = displayEvents[selectedEventIndex];
   const currentEventId = activeEvent?.id;
+  const displayAttendees = currentEventId ? attendees : [];
 
   useEffect(() => {
-    if (!currentEventId) {
-      setAttendees([]);
-      return;
-    }
-
-    const attendanceRef = collection(db, "gatheringsAttendance");
-    const q = query(
-      attendanceRef,
-      where("gatheringId", "==", currentEventId),
-      orderBy("createdAt", "desc"),
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const attendeeData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setAttendees(attendeeData);
+    if (!currentEventId) return;
+    const unsubscribe = subscribeToGatheringAttendance(currentEventId, (items) => {
+      setAttendees(items as any[]);
     });
-
     return () => unsubscribe();
   }, [currentEventId]);
 
   useEffect(() => {
     if (!creator?.handle) return;
-    const ticketSalesRef = collection(db, "ticketSales");
-    const q = query(ticketSalesRef, where("creatorHandle", "==", creator.handle));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      let revenue = 0;
-      snapshot.docs.forEach((doc) => { revenue += doc.data().ticketAmount || 0; });
-      setTotalTicketRevenue(revenue);
-      setTotalTicketCount(snapshot.docs.length);
-    });
+    const unsubscribe = subscribeToCreatorTicketSales(
+      creator.handle,
+      ({ revenue, count }) => {
+        setTotalTicketRevenue(revenue);
+        setTotalTicketCount(count);
+      },
+    );
     return () => unsubscribe();
   }, [creator?.handle]);
 
   const handleUpdateStatus = async (eventId: string, newStatus: string) => {
     try {
-      await updateDoc(doc(db, "creatorGatherings", eventId), {
-        status: newStatus,
-      });
+      await updateCreatorGatheringStatus(eventId, newStatus);
       toast.success(`Event ${newStatus === "Upcoming" ? "enabled" : "disabled"}`);
-      console.log(`[GATHERING_DASHBOARD] Status updated: "${activeEvent?.title}" -> ${newStatus}`);
+      console.log(
+        `[GATHERING_DASHBOARD] Status updated: "${activeEvent?.title}" -> ${newStatus}`,
+      );
       logActivity({
         level: "info",
         category: "gathering",
@@ -128,7 +96,13 @@ export default function GatheringsPage() {
         category: "gathering",
         message: "Gathering: Failed to update status",
         creatorId: creator?.uid,
-        metadata: { gatheringId: eventId, errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
+        metadata: {
+          gatheringId: eventId,
+          errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(
+            0,
+            5000,
+          ),
+        },
       });
       toast.error("Failed to update status");
     }
@@ -138,7 +112,7 @@ export default function GatheringsPage() {
     if (!isDeleting) return;
     setDeleting(true);
     try {
-      await deleteDoc(doc(db, "creatorGatherings", isDeleting));
+      await deleteCreatorGathering(isDeleting);
       toast.success("Event deleted");
       logActivity({
         level: "warning",
@@ -156,7 +130,13 @@ export default function GatheringsPage() {
         category: "gathering",
         message: "Gathering: Failed to delete event",
         creatorId: creator?.uid,
-        metadata: { gatheringId: isDeleting, errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
+        metadata: {
+          gatheringId: isDeleting,
+          errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(
+            0,
+            5000,
+          ),
+        },
       });
       toast.error("Failed to delete");
     } finally {
@@ -170,12 +150,15 @@ export default function GatheringsPage() {
 
   const handleCheckIn = async (attendee: any) => {
     setCheckingIn(attendee.id);
-    setAttendees((prev) => prev.map((a) => a.id === attendee.id ? { ...a, checkedIn: true, checkedInAt: new Date(), checkInDeclined: false } : a));
+    setAttendees((prev) =>
+      prev.map((a) =>
+        a.id === attendee.id
+          ? { ...a, checkedIn: true, checkedInAt: new Date(), checkInDeclined: false }
+          : a,
+      ),
+    );
     try {
-      await updateDoc(doc(db, "gatheringsAttendance", attendee.id), {
-        checkedIn: true,
-        checkedInAt: serverTimestamp(),
-      });
+      await checkInGatheringAttendee(attendee.id);
 
       sendCommsEmail("gathering_checkin", {
         supporterEmail: attendee.supporterEmail,
@@ -185,7 +168,9 @@ export default function GatheringsPage() {
         eventDate: activeEvent.date,
         eventTime: activeEvent.time,
         eventLocation: activeEvent.location,
-      }).catch((err) => { console.error("Failed to send check-in email", err); });
+      }).catch((err) => {
+        console.error("Failed to send check-in email", err);
+      });
 
       logActivity({
         level: "success",
@@ -197,14 +182,32 @@ export default function GatheringsPage() {
 
       toast.success(`${attendee.supporterName} checked in!`);
     } catch (error) {
-      setAttendees((prev) => prev.map((a) => a.id === attendee.id ? { ...a, checkedIn: attendee.checkedIn, checkedInAt: attendee.checkedInAt, checkInDeclined: attendee.checkInDeclined } : a));
+      setAttendees((prev) =>
+        prev.map((a) =>
+          a.id === attendee.id
+            ? {
+                ...a,
+                checkedIn: attendee.checkedIn,
+                checkedInAt: attendee.checkedInAt,
+                checkInDeclined: attendee.checkInDeclined,
+              }
+            : a,
+        ),
+      );
       console.error("Check-in error:", error);
       logActivity({
         level: "error",
         category: "gathering",
         message: `Gathering: Failed to check in ${attendee.supporterName}`,
         creatorId: creator?.uid,
-        metadata: { gatheringId: currentEventId, attendeeId: attendee.id, errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
+        metadata: {
+          gatheringId: currentEventId,
+          attendeeId: attendee.id,
+          errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(
+            0,
+            5000,
+          ),
+        },
       });
       toast.error("Failed to check in guest");
     } finally {
@@ -214,14 +217,13 @@ export default function GatheringsPage() {
 
   const handleDeclineCheckIn = async (attendee: any) => {
     setCheckingIn(attendee.id);
-    setAttendees((prev) => prev.map((a) => a.id === attendee.id ? { ...a, checkedIn: false, checkInDeclined: true } : a));
+    setAttendees((prev) =>
+      prev.map((a) =>
+        a.id === attendee.id ? { ...a, checkedIn: false, checkInDeclined: true } : a,
+      ),
+    );
     try {
-      await updateDoc(doc(db, "gatheringsAttendance", attendee.id), {
-        checkedIn: false,
-        checkInDeclined: true,
-        checkInDeclinedAt: serverTimestamp(),
-        checkInNote: "",
-      });
+      await declineGatheringAttendee(attendee.id);
 
       sendCommsEmail("gathering_declined", {
         supporterEmail: attendee.supporterEmail,
@@ -229,7 +231,9 @@ export default function GatheringsPage() {
         creatorName: creator?.name,
         eventTitle: activeEvent.title,
         eventDate: activeEvent.date,
-      }).catch((err) => { console.error("Failed to send declined email", err); });
+      }).catch((err) => {
+        console.error("Failed to send declined email", err);
+      });
 
       logActivity({
         level: "warning",
@@ -241,14 +245,31 @@ export default function GatheringsPage() {
 
       toast.success(`${attendee.supporterName} declined`);
     } catch (error) {
-      setAttendees((prev) => prev.map((a) => a.id === attendee.id ? { ...a, checkedIn: attendee.checkedIn, checkInDeclined: attendee.checkInDeclined } : a));
+      setAttendees((prev) =>
+        prev.map((a) =>
+          a.id === attendee.id
+            ? {
+                ...a,
+                checkedIn: attendee.checkedIn,
+                checkInDeclined: attendee.checkInDeclined,
+              }
+            : a,
+        ),
+      );
       console.error("Decline error:", error);
       logActivity({
         level: "error",
         category: "gathering",
         message: `Gathering: Failed to decline check-in for ${attendee.supporterName}`,
         creatorId: creator?.uid,
-        metadata: { gatheringId: currentEventId, attendeeId: attendee.id, errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
+        metadata: {
+          gatheringId: currentEventId,
+          attendeeId: attendee.id,
+          errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(
+            0,
+            5000,
+          ),
+        },
       });
       toast.error("Failed to update");
     } finally {
@@ -258,14 +279,21 @@ export default function GatheringsPage() {
 
   const handleUndoCheckIn = async (attendee: any) => {
     setCheckingIn(attendee.id);
-    setAttendees((prev) => prev.map((a) => a.id === attendee.id ? { ...a, checkedIn: false, checkInDeclined: false, checkedInAt: null, checkInDeclinedAt: null } : a));
+    setAttendees((prev) =>
+      prev.map((a) =>
+        a.id === attendee.id
+          ? {
+              ...a,
+              checkedIn: false,
+              checkInDeclined: false,
+              checkedInAt: null,
+              checkInDeclinedAt: null,
+            }
+          : a,
+      ),
+    );
     try {
-      await updateDoc(doc(db, "gatheringsAttendance", attendee.id), {
-        checkedIn: false,
-        checkInDeclined: false,
-        checkedInAt: null,
-        checkInDeclinedAt: null,
-      });
+      await undoGatheringAttendeeCheckIn(attendee.id);
 
       const previousStatus = attendee.checkedIn ? "check-in" : "decline";
       sendCommsEmail("gathering_undo", {
@@ -275,7 +303,9 @@ export default function GatheringsPage() {
         eventTitle: activeEvent?.title,
         eventDate: activeEvent?.date,
         action: `undo_${previousStatus}`,
-      }).catch((err) => { console.error("Failed to send undo email", err); });
+      }).catch((err) => {
+        console.error("Failed to send undo email", err);
+      });
 
       logActivity({
         level: "info",
@@ -287,14 +317,33 @@ export default function GatheringsPage() {
 
       toast.success(`Undo for ${attendee.supporterName}`);
     } catch (error) {
-      setAttendees((prev) => prev.map((a) => a.id === attendee.id ? { ...a, checkedIn: attendee.checkedIn, checkInDeclined: attendee.checkInDeclined, checkedInAt: attendee.checkedInAt, checkInDeclinedAt: attendee.checkInDeclinedAt } : a));
+      setAttendees((prev) =>
+        prev.map((a) =>
+          a.id === attendee.id
+            ? {
+                ...a,
+                checkedIn: attendee.checkedIn,
+                checkInDeclined: attendee.checkInDeclined,
+                checkedInAt: attendee.checkedInAt,
+                checkInDeclinedAt: attendee.checkInDeclinedAt,
+              }
+            : a,
+        ),
+      );
       console.error("Undo error:", error);
       logActivity({
         level: "error",
         category: "gathering",
         message: `Gathering: Failed to undo check-in for ${attendee.supporterName}`,
         creatorId: creator?.uid,
-        metadata: { gatheringId: currentEventId, attendeeId: attendee.id, errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(0, 5000) },
+        metadata: {
+          gatheringId: currentEventId,
+          attendeeId: attendee.id,
+          errorData: JSON.stringify(error, Object.getOwnPropertyNames(error)).slice(
+            0,
+            5000,
+          ),
+        },
       });
       toast.error("Failed to undo");
     } finally {
@@ -317,9 +366,15 @@ export default function GatheringsPage() {
         <div className="flex items-center gap-4">
           {totalTicketCount > 0 && (
             <div className="text-right">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Ticket Sales</p>
-              <p className="text-lg font-bold text-emerald-600">{totalTicketRevenue.toLocaleString()} RWF</p>
-              <p className="text-[10px] text-muted-foreground">{totalTicketCount} ticket{totalTicketCount !== 1 ? "s" : ""} sold</p>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                Total Ticket Sales
+              </p>
+              <p className="text-lg font-bold text-emerald-600">
+                {totalTicketRevenue.toLocaleString()} RWF
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                {totalTicketCount} ticket{totalTicketCount !== 1 ? "s" : ""} sold
+              </p>
             </div>
           )}
           <Link
@@ -338,14 +393,17 @@ export default function GatheringsPage() {
           upcomingEvents={upcomingEvents}
           activeTab={activeTab}
           selectedEventIndex={selectedEventIndex}
-          onTabChange={(tab) => { setActiveTab(tab); setSelectedEventIndex(0); }}
+          onTabChange={(tab) => {
+            setActiveTab(tab);
+            setSelectedEventIndex(0);
+          }}
           onSelectEvent={setSelectedEventIndex}
           onToggleStatus={handleUpdateStatus}
         />
 
         <GatheringDetailPanel
           activeEvent={activeEvent}
-          attendees={attendees}
+          attendees={displayAttendees}
           totalTicketRevenue={totalTicketRevenue}
           totalTicketCount={totalTicketCount}
           onEdit={startEdit}
@@ -369,10 +427,13 @@ export default function GatheringsPage() {
       <CheckInModal
         isOpen={showCheckIn}
         activeEvent={activeEvent}
-        attendees={attendees}
+        attendees={displayAttendees}
         checkingIn={checkingIn}
         searchQuery={searchQuery}
-        onClose={() => { setShowCheckIn(false); setSearchQuery(""); }}
+        onClose={() => {
+          setShowCheckIn(false);
+          setSearchQuery("");
+        }}
         onSearchChange={setSearchQuery}
         onCheckIn={handleCheckIn}
         onDeclineCheckIn={handleDeclineCheckIn}

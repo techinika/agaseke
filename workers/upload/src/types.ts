@@ -10,8 +10,15 @@ export type AssetType =
   | "verification_document"
   | "message_attachment";
 
+export type AssetVisibility = "public" | "private";
+
 export interface Env {
   UPLOADS_BUCKET: R2Bucket;
+  /** Private bucket. Has no public domain; objects are only readable with a signed grant. */
+  UPLOADS_PRIVATE_BUCKET?: R2Bucket;
+  MEDIA_SIGNING_SECRET?: string;
+  /** Shared secret that lets the migration script call /migrate-private. */
+  MIGRATION_TOKEN?: string;
   FIREBASE_API_KEY: string;
   FIREBASE_PROJECT_ID: string;
   FIREBASE_CLIENT_EMAIL: string;
@@ -23,7 +30,11 @@ export interface Env {
 }
 
 export interface UploadResult {
+  /** Public URL. Empty for private assets, which must be referenced by `key`. */
   url: string;
+  /** Object key; this is what should be stored for private assets. */
+  key: string;
+  visibility: AssetVisibility;
   publicId: string;
   format?: string;
   assetId?: string;
@@ -32,6 +43,7 @@ export interface UploadResult {
 
 export interface AssetDocument {
   url: string;
+  visibility: AssetVisibility;
   publicId: string;
   mimeType: string;
   fileSize: number;

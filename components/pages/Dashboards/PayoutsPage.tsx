@@ -11,25 +11,19 @@ import {
   Clock,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { db } from "@/db/firebase";
-import { sendCommsEmail } from "@/lib/commsService";
 import {
-  collection,
-  query,
-  where,
-  onSnapshot,
-  orderBy,
-  limit,
-  addDoc,
-  serverTimestamp,
-  doc,
-  getDoc,
-  getDocs,
-} from "firebase/firestore";
+  fetchPayoutOverview,
+  submitWithdrawRequest,
+  subscribeToCreatorPayouts,
+  subscribeToCreatorWithdrawRequests,
+  subscribeToLatestVerificationRequest,
+  type CurrencyBalance,
+} from "@/lib/payoutsService";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { EmptyState } from "./payoutspage/index";
 import { getCurrencySymbol } from "@/types/currency";
+import { maskPayoutNumber } from "@/lib/format/payout";
 
 export default function PayoutsPage() {
   const router = useRouter();
@@ -47,91 +41,40 @@ export default function PayoutsPage() {
   const [withdrawType, setWithdrawType] = useState<"all" | "custom">("all");
   const [customAmount, setCustomAmount] = useState<string>("");
   const [verificationRequest, setVerificationRequest] = useState<any>(null);
-  const [perCurrencyBalances, setPerCurrencyBalances] = useState<Array<{ currency: string; pending: number; threshold: number; earnings: number }>>([]);
+  const [perCurrencyBalances, setPerCurrencyBalances] = useState<CurrencyBalance[]>([]);
 
   const pendingAmount = creator?.pendingPayout || 0;
   const isVerified = creator?.verified || false;
-  const payoutPref = String(
-    verificationRequest?.payoutPreference ?? "",
-  ).toLowerCase();
+  const payoutPref = String(verificationRequest?.payoutPreference ?? "").toLowerCase();
 
   const prefLabel = payoutPref === "bank" ? "Bank Account" : "Mobile Money";
   const prefShort = payoutPref === "bank" ? "BANK" : "MOMO";
 
   useEffect(() => {
-    if (!creator) return;
+    if (!creator?.uid) return;
 
-    const fetchCreatorData = async () => {
-      try {
-        const creatorRef = doc(db, "creators", creator.handle);
-        const snap = await getDoc(creatorRef);
-        if (!snap.exists()) return;
-        const data = snap.data();
-        const currency = data.currency || "RWF";
-        setCreatorCurrency(currency);
+    void fetchPayoutOverview(creator as any)
+      .then((overview) => {
+        if (!overview) return;
+        setCreatorCurrency(overview.creatorCurrency);
+        setWithdrawThreshold(overview.withdrawThreshold);
+        setPerCurrencyBalances(overview.perCurrencyBalances);
+      })
+      .catch(() => {});
 
-        const currenciesSnap = await getDocs(collection(db, "currencies"));
-        const currencyCodes = currenciesSnap.docs.map((d) => d.data().code);
-        const hasUSD = currencyCodes.includes("USD");
-
-        const getPending = (code: string) => code === "RWF" ? (creator?.pendingPayout || 0) : (creator as any)?.[`pendingPayout${code}`] || 0;
-        const getEarnings = (code: string) => code === "RWF" ? (creator?.totalEarnings || 0) : (creator as any)?.[`totalEarnings${code}`] || 0;
-        const getThreshold = (code: string) => {
-          const matched = currenciesSnap.docs.find((d) => d.data().code === code);
-          return matched?.data().payoutThreshold || 10000;
-        };
-
-        const displayedCodes = [currency];
-        if (hasUSD && currency !== "USD") displayedCodes.push("USD");
-        if (currency === "USD" && currencyCodes.includes("RWF")) displayedCodes.push("RWF");
-
-        const balances = displayedCodes.map((code) => ({
-          currency: code,
-          pending: getPending(code),
-          threshold: getThreshold(code),
-          earnings: getEarnings(code),
-        }));
-
-        const mainMatched = currenciesSnap.docs.find((d) => d.data().code === currency);
-        setWithdrawThreshold(mainMatched?.data().payoutThreshold || 10000);
-        setPerCurrencyBalances(balances);
-      } catch { /* silently fail */ }
-    };
-    fetchCreatorData();
-
-    const qPayouts = query(
-      collection(db, "payouts"),
-      where("creatorUid", "==", creator.uid),
-      orderBy("createdAt", "desc"),
-    );
-
-    const qRequests = query(
-      collection(db, "withdrawRequests"),
-      where("creatorId", "==", creator.uid),
-      orderBy("createdAt", "desc"),
-    );
-
-    const unsubPayouts = onSnapshot(qPayouts, (snap) => {
-      setPayouts(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    const unsubPayouts = subscribeToCreatorPayouts(creator.uid, (items) => {
+      setPayouts(items as any[]);
       setLoading(false);
     });
-
-    const unsubRequests = onSnapshot(qRequests, (snap) => {
-      setRequests(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    const unsubRequests = subscribeToCreatorWithdrawRequests(creator.uid, (items) => {
+      setRequests(items as any[]);
     });
-
-    const qVerification = query(
-      collection(db, "verificationRequests"),
-      where("uid", "==", creator.uid),
-      orderBy("createdAt", "desc"),
-      limit(1),
+    const unsubVerification = subscribeToLatestVerificationRequest(
+      creator.uid,
+      (item) => {
+        if (item) setVerificationRequest(item as any);
+      },
     );
-
-    const unsubVerification = onSnapshot(qVerification, (snap) => {
-      if (!snap.empty) {
-        setVerificationRequest({ id: snap.docs[0].id, ...snap.docs[0].data() });
-      }
-    });
 
     return () => {
       unsubPayouts();
@@ -148,7 +91,7 @@ export default function PayoutsPage() {
     }
     if (pendingAmount < withdrawThreshold) {
       toast.error(
-         `Minimum withdraw is ${withdrawThreshold.toLocaleString()} ${getCurrencySymbol(creatorCurrency)}`,
+        `Minimum withdraw is ${withdrawThreshold.toLocaleString()} ${getCurrencySymbol(creatorCurrency)}`,
       );
       return;
     }
@@ -157,12 +100,11 @@ export default function PayoutsPage() {
 
   const submitRequest = async () => {
     if (!creator) return;
-    const finalAmount =
-      withdrawType === "all" ? pendingAmount : parseInt(customAmount);
+    const finalAmount = withdrawType === "all" ? pendingAmount : parseInt(customAmount);
 
     if (isNaN(finalAmount) || finalAmount < withdrawThreshold) {
       toast.error(
-         `Amount must be at least ${withdrawThreshold.toLocaleString()} ${getCurrencySymbol(creatorCurrency)}`,
+        `Amount must be at least ${withdrawThreshold.toLocaleString()} ${getCurrencySymbol(creatorCurrency)}`,
       );
       return;
     }
@@ -174,24 +116,10 @@ export default function PayoutsPage() {
 
     setIsSubmitting(true);
     try {
-      const profileSnap = await getDoc(doc(db, "profiles", creator.uid));
-      const creatorEmail = profileSnap.data()?.email || "";
-
-      await addDoc(collection(db, "withdrawRequests"), {
-        creatorId: creator.uid,
+      await submitWithdrawRequest({
+        creatorUid: creator.uid,
         creatorName: creator.name,
         handle: creator.handle,
-        amount: finalAmount,
-        currency: creatorCurrency,
-        status: "pending",
-        method: creator.network || "MTN",
-        accountNumber: creator.payoutNumber || "",
-        createdAt: serverTimestamp(),
-      });
-      await sendCommsEmail("withdrawal_request", {
-        adminEmail: process.env.NEXT_PUBLIC_ADMIN_EMAIL || "agasekeforcreators@gmail.com",
-        creatorName: creator.name,
-        creatorEmail,
         amount: finalAmount,
         currency: creatorCurrency,
         method: creator.network || "MTN",
@@ -220,9 +148,7 @@ export default function PayoutsPage() {
           <div className="animate-in fade-in duration-500">
             <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-4">
               <div>
-                <h1 className="text-4xl font-bold tracking-tight uppercase">
-                  Payouts
-                </h1>
+                <h1 className="text-4xl font-bold tracking-tight uppercase">Payouts</h1>
                 <p className="text-muted-foreground text-sm mt-1">
                   Simplicity and exclusive incentives.
                 </p>
@@ -247,9 +173,7 @@ export default function PayoutsPage() {
                     <AlertCircle size={24} />
                   </div>
                   <div>
-                    <h4 className="font-bold">
-                      Identity Verification Required
-                    </h4>
+                    <h4 className="font-bold">Identity Verification Required</h4>
                     <p className="text-xs text-muted-foreground">
                       Unlock payouts and set your destination.
                     </p>
@@ -343,7 +267,8 @@ export default function PayoutsPage() {
                         {b.currency} ({getCurrencySymbol(b.currency)})
                       </p>
                       <p className="text-sm font-bold text-foreground">
-                        {b.pending.toLocaleString()} / {b.threshold.toLocaleString()} {getCurrencySymbol(b.currency)}
+                        {b.pending.toLocaleString()} / {b.threshold.toLocaleString()}{" "}
+                        {getCurrencySymbol(b.currency)}
                       </p>
                     </div>
                     <div className="w-full bg-muted rounded-full h-3 mb-1">
@@ -396,9 +321,7 @@ export default function PayoutsPage() {
                             <CheckCircle2 size={20} />
                           </div>
                           <div>
-                            <p className="text-sm font-bold">
-                              Transfer to MoMo
-                            </p>
+                            <p className="text-sm font-bold">Transfer to MoMo</p>
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">
                               {tx.createdAt?.toDate().toLocaleDateString()}
                             </p>
@@ -406,7 +329,8 @@ export default function PayoutsPage() {
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-black">
-                            -{tx.amount.toLocaleString()} {getCurrencySymbol(creatorCurrency)}
+                            -{tx.amount.toLocaleString()}{" "}
+                            {getCurrencySymbol(creatorCurrency)}
                           </p>
                           <p className="text-[10px] text-green-500 font-bold uppercase tracking-widest">
                             Completed
@@ -430,9 +354,7 @@ export default function PayoutsPage() {
                           <Clock size={20} />
                         </div>
                         <div>
-                          <p className="text-sm font-bold">
-                            Withdrawal Request
-                          </p>
+                          <p className="text-sm font-bold">Withdrawal Request</p>
                           <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">
                             {req.createdAt?.toDate().toLocaleDateString()}
                           </p>
@@ -440,7 +362,8 @@ export default function PayoutsPage() {
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-black">
-                          {req.amount.toLocaleString()} {getCurrencySymbol(creatorCurrency)}
+                          {req.amount.toLocaleString()}{" "}
+                          {getCurrencySymbol(creatorCurrency)}
                         </p>
                         <p
                           className={`text-[10px] font-bold uppercase tracking-widest ${req.status === "pending" ? "text-orange-600" : req.status === "approved" ? "text-green-500" : "text-red-500"}`}
@@ -473,8 +396,7 @@ export default function PayoutsPage() {
                     Withdraw Funds
                   </h2>
                   <p className="text-muted-foreground text-sm mt-2 leading-relaxed">
-                    Your request will be reviewed and responded to within{" "}
-                    <b>48 hours</b>.
+                    Your request will be reviewed and responded to within <b>48 hours</b>.
                   </p>
                 </header>
 
@@ -512,7 +434,7 @@ export default function PayoutsPage() {
                     Target Account
                   </p>
                   <p className="text-center font-black text-foreground">
-                    {creator?.payoutNumber} ({creator?.network})
+                    {maskPayoutNumber(creator?.payoutNumber || "")} ({creator?.network})
                   </p>
                 </div>
 
@@ -540,8 +462,8 @@ export default function PayoutsPage() {
                     Request Sent!
                   </h2>
                   <p className="text-muted-foreground text-sm mt-4 leading-relaxed">
-                    We have received your request. Our team will verify the data
-                    and process your funds shortly.
+                    We have received your request. Our team will verify the data and
+                    process your funds shortly.
                   </p>
                 </div>
                 <button

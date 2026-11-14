@@ -128,6 +128,81 @@ export async function firestorePatch(
   return res.json() as Promise<Record<string, unknown>>;
 }
 
+function firestoreDocumentName(env: Env, path: string): string {
+  return `projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/${path}`;
+}
+
+function incrementValue(val: number): Record<string, unknown> {
+  return Number.isInteger(val)
+    ? { integerValue: String(val) }
+    : { doubleValue: val };
+}
+
+/**
+ * Apply every balance change for a payment in one atomic commit and claim a
+ * `paymentApplications/{paymentRef}` marker in the same commit. A retried
+ * callback therefore never credits twice and concurrent payments never lose an
+ * update through read-modify-write races.
+ */
+export async function firestoreApplyPayment(
+  env: Env,
+  paymentRef: string,
+  increments: Array<{ path: string; fields: Record<string, number> }>,
+  markerFields: Record<string, unknown>
+): Promise<"applied" | "duplicate" | "failed"> {
+  const token = await getFirestoreToken(env);
+  if (!token) return "failed";
+
+  const safeRef = paymentRef.replace(/[^A-Za-z0-9_-]/g, "_");
+  const writes: Record<string, unknown>[] = [
+    {
+      update: {
+        name: firestoreDocumentName(env, `paymentApplications/${safeRef}`),
+        fields: markerFields,
+      },
+      currentDocument: { exists: false },
+    },
+  ];
+
+  for (const group of increments) {
+    const fieldTransforms = Object.entries(group.fields)
+      .filter(([, val]) => typeof val === "number" && Number.isFinite(val) && val !== 0)
+      .map(([fieldPath, val]) => ({ fieldPath, increment: incrementValue(val) }));
+    if (fieldTransforms.length === 0) continue;
+    writes.push({
+      transform: {
+        document: firestoreDocumentName(env, group.path),
+        fieldTransforms,
+      },
+    });
+  }
+
+  const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents:commit`;
+  const res = await auditedFetch(env, "POST", "paymentApplications:commit", url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ writes }),
+  });
+
+  if (res.ok) return "applied";
+
+  const text = await res.text();
+  if (
+    res.status === 409 ||
+    res.status === 412 ||
+    text.includes("ALREADY_EXISTS") ||
+    text.includes("FAILED_PRECONDITION")
+  ) {
+    return "duplicate";
+  }
+
+  console.error("Firestore payment apply error:", res.status, text);
+  return "failed";
+}
+
 export async function firestoreRunQuery(
   env: Env,
   collectionId: string,

@@ -49,7 +49,7 @@ import {
 } from "@/types/booking";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { logError } from "@/lib/logger";
-import { decrypt, isEncrypted } from "@/lib/generalWorkerService";
+import { decryptBookingReason, isEncrypted } from "@/lib/generalWorkerService";
 import { formatCurrency } from "@/types/currency";
 import {
   buildCalendarEvent,
@@ -146,9 +146,13 @@ export default function BookingsPage() {
         const map: Record<string, string> = {};
         await Promise.all(raw.map(async (b) => {
           if (!b.reason) return;
+          if (!isEncrypted(b.reason)) {
+            map[b.id] = b.reason;
+            return;
+          }
           try {
-            const plaintext = await decrypt(b.reason);
-            if (plaintext && plaintext !== b.reason) map[b.id] = plaintext;
+            const plaintext = await decryptBookingReason(b.id);
+            if (plaintext) map[b.id] = plaintext;
           } catch {
             logError("payment", "BookingsPage: Failed to decrypt booking reason", {
               creatorHandle: creator?.handle,

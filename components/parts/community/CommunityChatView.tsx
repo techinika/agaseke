@@ -1,39 +1,32 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import {
-  collection,
-  query,
-  orderBy,
-  onSnapshot,
-  addDoc,
-  serverTimestamp,
-  doc,
-  getDoc,
-  limit,
-} from "firebase/firestore";
-import { db } from "@/db/firebase";
 import { useAuth } from "@/auth/AuthContext";
 import { uploadFile as uploadFileToWorker } from "@/lib/uploadService";
 import {
   Loader,
   Send,
   Paperclip,
-  Image,
+  Image as ImageIcon,
   Video,
   FileText,
-  X,
   ArrowLeft,
   Crown,
   Users,
-  Camera,
 } from "lucide-react";
 import { LinkifyText } from "@/components/ui/LinkifyText";
 import { MediaPreview } from "./MediaPreview";
-import { getChatId } from "@/lib/communityChatService";
+import {
+  addCommunityChatMessage,
+  getChatId,
+  getCommunityChatAccess,
+  subscribeToCommunityChatMemberCount,
+  subscribeToCommunityChatMessages,
+} from "@/lib/communityChatService";
 
 interface ChatAttachment {
   url: string;
+  publicId?: string;
   mimeType: string;
   originalName: string;
   fileSize: number;
@@ -46,7 +39,7 @@ interface Message {
   senderType: "creator" | "member";
   text?: string;
   attachments?: ChatAttachment[];
-  createdAt: any;
+  createdAt: unknown;
 }
 
 interface CommunityChatViewProps {
@@ -67,20 +60,12 @@ function formatTime(date: Date): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function formatFullTime(date: Date): string {
-  return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-}
-
 function isImageType(mime: string): boolean {
   return mime.startsWith("image/");
 }
 
 function isVideoType(mime: string): boolean {
   return mime.startsWith("video/");
-}
-
-function isDocumentType(mime: string): boolean {
-  return !isImageType(mime) && !isVideoType(mime);
 }
 
 export function CommunityChatView({
@@ -106,58 +91,33 @@ export function CommunityChatView({
   const chatId = getChatId(creatorHandle, tierId);
 
   useEffect(() => {
-    if (!user) return;
-    const init = async () => {
-      const chatRef = doc(db, "communityChats", chatId);
-      const snap = await getDoc(chatRef);
-      if (snap.exists()) {
-        const data = snap.data();
-        if (data.tierName) setChatTierName(data.tierName);
-      }
-      if (isCreator) {
-        setCanAccess(true);
-        return;
-      }
-      const memberRef = doc(db, "communityChats", chatId, "members", user.uid);
-      const memberSnap = await getDoc(memberRef);
-      setCanAccess(memberSnap.exists() && memberSnap.data().status === "active");
-    };
-    init();
+    if (!user && !isCreator) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- no auth context
+      setCanAccess(false);
+      return;
+    }
+    void getCommunityChatAccess(chatId, user?.uid ?? null, isCreator).then((access) => {
+      setCanAccess(access.canAccess);
+      if (access.tierName) setChatTierName(access.tierName);
+    });
   }, [user, chatId, isCreator]);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- subscribe to chat messages */
   useEffect(() => {
     setMessagesLoading(true);
-    const messagesRef = collection(db, "communityChats", chatId, "messages");
-    const q = query(messagesRef, orderBy("createdAt", "asc"), limit(200));
-    const unsub = onSnapshot(q, (snap) => {
-      const list: Message[] = [];
-      snap.forEach((d) => {
-        const data = d.data();
-        list.push({
-          id: d.id,
-          senderId: data.senderId,
-          senderName: data.senderName,
-          senderType: data.senderType,
-          text: data.text,
-          attachments: data.attachments,
-          createdAt: data.createdAt,
-        });
-      });
-      setMessages(list);
-      setMessagesLoading(false);
-    }, () => setMessagesLoading(false));
+    const unsub = subscribeToCommunityChatMessages(
+      chatId,
+      (list) => {
+        setMessages(list as Message[]);
+        setMessagesLoading(false);
+      },
+      () => setMessagesLoading(false),
+    );
     return unsub;
   }, [chatId]);
 
   useEffect(() => {
-    const membersRef = collection(db, "communityChats", chatId, "members");
-    const unsub = onSnapshot(membersRef, (snap) => {
-      let count = 0;
-      snap.forEach((d) => {
-        if (d.data().status === "active") count++;
-      });
-      setMemberCount(count);
-    });
+    const unsub = subscribeToCommunityChatMemberCount(chatId, setMemberCount);
     return unsub;
   }, [chatId]);
 
@@ -165,35 +125,42 @@ export function CommunityChatView({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleFileUpload = useCallback(async (file: File): Promise<ChatAttachment | null> => {
-    setUploading(true);
-    try {
-      const result = await uploadFileToWorker(file, "message_attachment", creatorHandle);
-      return {
-        url: result.url,
-        mimeType: file.type,
-        originalName: file.name,
-        fileSize: file.size,
-      };
-    } catch (err) {
-      console.error("Upload failed:", err);
-      return null;
-    } finally {
-      setUploading(false);
-    }
-  }, [creatorHandle]);
+  const handleFileUpload = useCallback(
+    async (file: File): Promise<ChatAttachment | null> => {
+      setUploading(true);
+      try {
+        const result = await uploadFileToWorker(
+          file,
+          "message_attachment",
+          creatorHandle,
+        );
+        const r = result as { url?: string; publicId?: string; public_id?: string };
+        return {
+          url: r.url || "",
+          publicId: r.publicId || r.public_id || "",
+          mimeType: file.type,
+          originalName: file.name,
+          fileSize: file.size,
+        };
+      } catch (err) {
+        console.error("Upload failed:", err);
+        return null;
+      } finally {
+        setUploading(false);
+      }
+    },
+    [creatorHandle],
+  );
 
   const handleSendText = async () => {
     if (!inputText.trim() || !user || sending) return;
     setSending(true);
     try {
-      const messagesRef = collection(db, "communityChats", chatId, "messages");
-      await addDoc(messagesRef, {
+      await addCommunityChatMessage(chatId, {
         senderId: user.uid,
         senderName: user.displayName || user.email?.split("@")[0] || "Member",
         senderType: isCreator ? "creator" : "member",
         text: inputText.trim(),
-        createdAt: serverTimestamp(),
       });
       setInputText("");
     } catch (err) {
@@ -205,19 +172,17 @@ export function CommunityChatView({
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !user) return;
     setShowAttachMenu(false);
     const attachment = await handleFileUpload(file);
     if (!attachment) return;
     setSending(true);
     try {
-      const messagesRef = collection(db, "communityChats", chatId, "messages");
-      await addDoc(messagesRef, {
-        senderId: user!.uid,
-        senderName: user!.displayName || user!.email?.split("@")[0] || "Member",
+      await addCommunityChatMessage(chatId, {
+        senderId: user.uid,
+        senderName: user.displayName || user.email?.split("@")[0] || "Member",
         senderType: isCreator ? "creator" : "member",
         attachments: [attachment],
-        createdAt: serverTimestamp(),
       });
     } catch (err) {
       console.error("Send failed:", err);
@@ -241,7 +206,10 @@ export function CommunityChatView({
         <p className="text-sm text-muted-foreground mb-6">
           You need an active subscription to access this community chat.
         </p>
-        <button onClick={onBack} className="text-orange-600 font-medium underline text-sm">
+        <button
+          onClick={onBack}
+          className="text-orange-600 font-medium underline text-sm"
+        >
           Go back
         </button>
       </div>
@@ -258,7 +226,9 @@ export function CommunityChatView({
           <ArrowLeft size={20} />
         </button>
         <div className="flex-1 min-w-0">
-          <h2 className="font-bold text-sm truncate">{chatTierName || "Community"} Chat</h2>
+          <h2 className="font-bold text-sm truncate">
+            {chatTierName || "Community"} Chat
+          </h2>
           <p className="text-xs text-muted-foreground flex items-center gap-1">
             <Users size={12} />
             {memberCount} {memberCount === 1 ? "member" : "members"}
@@ -278,9 +248,7 @@ export function CommunityChatView({
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
             <Crown size={40} className="text-muted-foreground mb-3" />
             <p className="text-sm text-muted-foreground">No messages yet</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Start the conversation!
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">Start the conversation!</p>
           </div>
         ) : (
           messages.map((msg) => {
@@ -315,6 +283,7 @@ export function CommunityChatView({
                           onClick={() => setPreviewMedia(att)}
                           className="block w-full rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-orange-500"
                         >
+                          {/* eslint-disable-next-line @next/next/no-img-element -- community chat attachment */}
                           <img
                             src={att.url}
                             alt={att.originalName}
@@ -357,7 +326,7 @@ export function CommunityChatView({
                   ))}
                 </div>
                 <span className="text-[10px] text-muted-foreground mt-1 px-1">
-                  {msg.createdAt?.toDate ? formatTime(msg.createdAt.toDate()) : ""}
+                  {(() => { const c = msg.createdAt as { toDate?: () => Date } | null | undefined; return c?.toDate ? formatTime(c.toDate()) : ""; })()}
                 </span>
               </div>
             );
@@ -387,19 +356,23 @@ export function CommunityChatView({
                 <button
                   onClick={() => {
                     fileInputRef.current!.accept = "image/*";
-                    fileInputRef.current!.capture = "environment" as any;
+                    (
+                      fileInputRef.current as HTMLInputElement & { capture?: string }
+                    ).capture = "environment";
                     fileInputRef.current!.click();
                     setShowAttachMenu(false);
                   }}
                   className="p-3 hover:bg-muted rounded-lg transition flex flex-col items-center gap-1"
                 >
-                  <Image size={20} className="text-blue-500" />
+                  <ImageIcon size={20} className="text-blue-500" />
                   <span className="text-[10px] text-muted-foreground">Photo</span>
                 </button>
                 <button
                   onClick={() => {
                     fileInputRef.current!.accept = "video/*";
-                    fileInputRef.current!.capture = "environment" as any;
+                    (
+                      fileInputRef.current as HTMLInputElement & { capture?: string }
+                    ).capture = "environment";
                     fileInputRef.current!.click();
                     setShowAttachMenu(false);
                   }}
@@ -410,7 +383,8 @@ export function CommunityChatView({
                 </button>
                 <button
                   onClick={() => {
-                    fileInputRef.current!.accept = ".pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx";
+                    fileInputRef.current!.accept =
+                      ".pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx";
                     fileInputRef.current!.removeAttribute("capture");
                     fileInputRef.current!.click();
                     setShowAttachMenu(false);
@@ -449,11 +423,7 @@ export function CommunityChatView({
             disabled={!inputText.trim() || sending || uploading}
             className="p-2.5 bg-orange-600 text-white rounded-full hover:bg-orange-700 transition disabled:opacity-50 shrink-0"
           >
-            {sending ? (
-              <Loader className="animate-spin" size={18} />
-            ) : (
-              <Send size={18} />
-            )}
+            {sending ? <Loader className="animate-spin" size={18} /> : <Send size={18} />}
           </button>
         </div>
       </div>

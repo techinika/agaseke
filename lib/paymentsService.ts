@@ -3,22 +3,31 @@ import { auth } from "@/db/firebase";
 export const PAYMENTS_WORKER_URL =
   process.env.NEXT_PUBLIC_PAYMENTS_WORKER_URL || "http://localhost:8787";
 
-export interface MomoInitRequest {
-  amount: number;
+export type TransactionType =
+  | "support"
+  | "gift"
+  | "booking"
+  | "gathering"
+  | "store"
+  | "community";
+
+/**
+ * Client-supplied identifiers and non-authoritative metadata only. The worker
+ * derives amount, currency, creator UID, fees and referral server-side.
+ */
+export interface PaymentInitRequest {
+  creatorHandle?: string;
+  /** @deprecated Legacy alias for creatorHandle. */
+  creatorId?: string;
+  type?: TransactionType;
+  amount?: number;
+  currency?: string;
   phone?: string;
-  creatorId: string;
-  creatorUid: string;
-  supporterId?: string;
   message?: string;
-  includeReferral?: boolean;
-  referralUid?: string;
-  referralId?: string;
   productId?: string;
-  productPrice?: number;
-  productName?: string;
   quantity?: number;
   selectedSize?: string;
-  platformFeePayer?: string;
+  couponCode?: string;
   buyerName?: string;
   email?: string;
   buyerEmail?: string;
@@ -27,14 +36,16 @@ export interface MomoInitRequest {
   attendeeName?: string;
   attendeeEmail?: string;
   attendeePhoto?: string;
-  currency?: string;
-}
-
-export interface CardInitRequest extends MomoInitRequest {
+  communityTierId?: string;
+  communityInterval?: string;
+  communitySubscriptionId?: string;
   firstName?: string;
   lastName?: string;
-  buyerId?: string;
+  idempotencyKey?: string;
 }
+
+export type MomoInitRequest = PaymentInitRequest;
+export type CardInitRequest = PaymentInitRequest;
 
 export interface MomoInitResponse {
   ref: string;
@@ -98,8 +109,11 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 
 export async function initiateMomoPayment(
   data: MomoInitRequest,
+  idempotencyKey?: string,
 ): Promise<MomoInitResponse> {
   const headers = await getAuthHeaders();
+  const key = idempotencyKey || data.idempotencyKey;
+  if (key) headers["Idempotency-Key"] = key;
 
   const res = await fetch(`${PAYMENTS_WORKER_URL}/api/payments/momo/initiate`, {
     method: "POST",
@@ -121,8 +135,11 @@ export async function initiateMomoPayment(
 
 export async function initiateCardPayment(
   data: CardInitRequest,
+  idempotencyKey?: string,
 ): Promise<CardInitResponse> {
   const headers = await getAuthHeaders();
+  const key = idempotencyKey || data.idempotencyKey;
+  if (key) headers["Idempotency-Key"] = key;
 
   const res = await fetch(`${PAYMENTS_WORKER_URL}/api/payments/card/initiate`, {
     method: "POST",

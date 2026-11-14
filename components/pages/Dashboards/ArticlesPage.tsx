@@ -19,22 +19,14 @@ import {
   Copy,
   Check,
 } from "lucide-react";
-import { db } from "@/db/firebase";
-import {
-  collection,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  deleteDoc,
-  doc,
-} from "firebase/firestore";
+import { deleteCreatorContent, subscribeToCreatorArticles } from "@/features/content";
 import { toast } from "sonner";
 import { useAuth } from "@/auth/AuthContext";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useRouter } from "next/navigation";
 import { slugify } from "@/lib/slug";
 import { baseUrl } from "@/lib/baseUrl";
+import { MediaAsset } from "@/components/parts/public/MediaAsset";
 
 export default function ArticlesPage() {
   const { creator } = useAuth();
@@ -49,19 +41,8 @@ export default function ArticlesPage() {
   useEffect(() => {
     if (!creator?.handle) return;
 
-    const q = query(
-      collection(db, "creatorContent"),
-      where("creatorId", "==", creator.handle),
-      where("type", "==", "article"),
-      orderBy("createdAt", "desc"),
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data(),
-      }));
-      setArticles(data);
+    const unsubscribe = subscribeToCreatorArticles(creator.handle, (items) => {
+      setArticles(items as any[]);
       setLoading(false);
     });
 
@@ -72,7 +53,7 @@ export default function ArticlesPage() {
     if (!deleteId) return;
     setDeleting(true);
     try {
-      await deleteDoc(doc(db, "creatorContent", deleteId));
+      await deleteCreatorContent(deleteId);
       toast.success("Article deleted successfully");
       setDeleteId(null);
     } catch {
@@ -118,9 +99,7 @@ export default function ArticlesPage() {
               <ArrowLeft size={20} />
             </button>
             <div>
-              <h1 className="text-2xl font-bold uppercase tracking-tight">
-                Articles
-              </h1>
+              <h1 className="text-2xl font-bold uppercase tracking-tight">Articles</h1>
               <p className="text-sm text-muted-foreground mt-1">
                 Manage your articles &amp; drafts
               </p>
@@ -193,8 +172,10 @@ export default function ArticlesPage() {
               >
                 <div className="sm:w-40 flex items-center justify-center bg-muted overflow-hidden">
                   {article.coverUrl || article.contentUrl ? (
-                    <img
-                      src={article.coverUrl || article.contentUrl}
+                    <MediaAsset
+                      postId={article.id}
+                      isPrivate={!!article.isPrivate}
+                      url={article.coverUrl || article.contentUrl}
                       alt={article.title}
                       className="w-full h-40 sm:h-full object-cover"
                     />
@@ -233,25 +214,19 @@ export default function ArticlesPage() {
                       )}
                     </span>
                   </div>
-                  <h3 className="font-bold text-foreground truncate">
-                    {article.title}
-                  </h3>
+                  <h3 className="font-bold text-foreground truncate">{article.title}</h3>
                   <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                    {article.shortDescription ||
-                      article.description ||
-                      "No description"}
+                    {article.shortDescription || article.description || "No description"}
                   </p>
                   <div className="flex items-center gap-4 text-xs text-muted-foreground mt-3">
                     <span>
-                      {article.createdAt?.toDate?.().toLocaleDateString() ||
-                        "Recently"}
+                      {article.createdAt?.toDate?.().toLocaleDateString() || "Recently"}
                     </span>
                     <span className="flex items-center gap-1">
                       <Eye size={12} /> {article.views || 0}
                     </span>
                     <span className="flex items-center gap-1">
-                      <MessageCircle size={12} />{" "}
-                      {article.commentCount || 0}
+                      <MessageCircle size={12} /> {article.commentCount || 0}
                     </span>
                   </div>
                 </div>
@@ -271,9 +246,7 @@ export default function ArticlesPage() {
                     </span>
                   </button>
                   <button
-                    onClick={() =>
-                      router.push(`/creator/content/articles/${article.id}`)
-                    }
+                    onClick={() => router.push(`/creator/content/articles/${article.id}`)}
                     className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg hover:bg-muted transition text-sm"
                     title="Edit article"
                   >
@@ -285,7 +258,10 @@ export default function ArticlesPage() {
                     className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg hover:bg-red-50 transition text-sm"
                     title="Delete article"
                   >
-                    <Trash2 size={16} className="text-muted-foreground hover:text-red-500" />
+                    <Trash2
+                      size={16}
+                      className="text-muted-foreground hover:text-red-500"
+                    />
                     <span className="sm:hidden">Delete</span>
                   </button>
                 </div>

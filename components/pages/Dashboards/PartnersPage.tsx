@@ -8,27 +8,15 @@ import {
   Plus,
   ArrowLeft,
   Loader,
-  X,
   Edit,
   Trash2,
   ExternalLink,
-  Upload,
-  Image as ImageIcon,
-  Save,
 } from "lucide-react";
-import { db } from "@/db/firebase";
 import {
-  collection,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  serverTimestamp,
-} from "firebase/firestore";
+  deleteCreatorPartner,
+  setCreatorPartnerFeatured,
+  subscribeToCreatorPartners,
+} from "@/lib/partnersService";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
@@ -50,40 +38,24 @@ export default function PartnersPage() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingPartner, setEditingPartner] = useState<Partner | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [deletingPartnerId, setDeletingPartnerId] = useState<string | null>(
-    null,
-  );
+  const [deletingPartnerId, setDeletingPartnerId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!creator?.uid) return;
-
-    const partnersRef = collection(db, "creatorPartners");
-    const q = query(
-      partnersRef,
-      where("creatorId", "==", creator.uid),
-      orderBy("createdAt", "desc"),
-    );
-
-    const unsub = onSnapshot(q, (snapshot) => {
-      const partnerData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Partner[];
-      setPartners(partnerData);
+    const unsub = subscribeToCreatorPartners(creator.uid, (items) => {
+      setPartners(items as unknown as Partner[]);
       setLoading(false);
     });
-
     return () => unsub();
-  }, [creator?.handle]);
+  }, [creator?.uid]);
 
   const handleDelete = async () => {
     if (!deletingPartnerId) return;
     try {
-      await deleteDoc(doc(db, "creatorPartners", deletingPartnerId));
+      await deleteCreatorPartner(deletingPartnerId);
       toast.success("Partner deleted");
       setDeletingPartnerId(null);
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete partner");
       setDeletingPartnerId(null);
     }
@@ -91,13 +63,9 @@ export default function PartnersPage() {
 
   const toggleFeatured = async (partner: Partner) => {
     try {
-      await updateDoc(doc(db, "creatorPartners", partner.id), {
-        featured: !partner.featured,
-      });
-      toast.success(
-        partner.featured ? "Removed from featured" : "Added to featured",
-      );
-    } catch (error) {
+      await setCreatorPartnerFeatured(partner.id, !partner.featured);
+      toast.success(partner.featured ? "Removed from featured" : "Added to featured");
+    } catch {
       toast.error("Failed to update");
     }
   };
@@ -136,8 +104,8 @@ export default function PartnersPage() {
             Your Partners
           </h3>
           <p className="text-muted-foreground">
-            Manage brands and businesses you work with. Featured partners will
-            be highlighted on your public profile.
+            Manage brands and businesses you work with. Featured partners will be
+            highlighted on your public profile.
           </p>
         </div>
 
@@ -161,9 +129,7 @@ export default function PartnersPage() {
               <div
                 key={partner.id}
                 className={`bg-card rounded-xl border overflow-hidden ${
-                  partner.featured
-                    ? "border-orange-500 shadow-lg"
-                    : "border-border"
+                  partner.featured ? "border-orange-500 shadow-lg" : "border-border"
                 }`}
               >
                 {partner.featured && (
@@ -175,11 +141,14 @@ export default function PartnersPage() {
                   <div className="flex items-start gap-4 mb-4">
                     <div className="w-16 h-16 bg-border rounded-lg overflow-hidden flex-shrink-0">
                       {partner.logo ? (
-                        <img
-                          src={partner.logo}
-                          alt={partner.name}
-                          className="w-full h-full object-cover"
-                        />
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={partner.logo}
+                            alt={partner.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </>
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <Building2 size={24} className="text-muted-foreground" />
@@ -187,9 +156,7 @@ export default function PartnersPage() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-lg truncate">
-                        {partner.name}
-                      </h4>
+                      <h4 className="font-bold text-lg truncate">{partner.name}</h4>
                       {partner.website && (
                         <a
                           href={partner.website}
@@ -260,5 +227,3 @@ export default function PartnersPage() {
     </div>
   );
 }
-
-

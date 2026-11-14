@@ -1,23 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useRef } from "react";
-import { ArrowRight, Loader, MessageSquare, Send } from "lucide-react";
-import { db } from "@/db/firebase";
+import { Loader, MessageSquare, Send } from "lucide-react";
 import { sendCommsEmail } from "@/lib/commsService";
-import { encrypt, decrypt } from "@/lib/generalWorkerService";
+import { encrypt, decryptChatMessage } from "@/lib/generalWorkerService";
 import {
-  collection,
-  doc,
-  addDoc,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  getDoc,
-  updateDoc,
-  serverTimestamp,
-  getDocs,
-  writeBatch,
-} from "firebase/firestore";
+  getOrCreateSupporterChatroom,
+  markChatMessagesAsRead,
+  sendChatMessage as sendChatMessageRecord,
+  subscribeToChatMessages,
+} from "@/lib/chatService";
 import { ProtectedSection } from "./ProtectedSection";
 import { toast } from "sonner";
 import { ChatHeader, MessageBubble, MessageInput } from "./message";
@@ -77,18 +68,17 @@ export const MessageTab = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const decryptedCache = useRef<Map<string, string>>(new Map());
 
-  const decryptMessage = async (id: string, encrypted: string): Promise<string> => {
+  const decryptMessage = async (chatroomId: string, id: string): Promise<string> => {
     const cached = decryptedCache.current.get(id);
     if (cached) return cached;
-    if (!encrypted || !encrypted.includes(":")) return encrypted;
     try {
-      const plaintext = await decrypt(encrypted);
+      const plaintext = await decryptChatMessage(chatroomId, id);
       if (plaintext) {
         decryptedCache.current.set(id, plaintext);
         return plaintext;
       }
     } catch { /* ignore */ }
-    return encrypted;
+    return "";
   };
 
   const encryptMessage = encrypt;
@@ -101,6 +91,7 @@ export const MessageTab = ({
     scrollToBottom();
   }, [messages]);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- determine messaging eligibility before loading chat */
   useEffect(() => {
     if (!isLoggedIn || !isSupporter || !currentUserId || !creatorId) {
       setLoading(false);
@@ -111,47 +102,14 @@ export const MessageTab = ({
 
     const findOrCreateChatroom = async () => {
       try {
-        const chatroomsRef = collection(db, "chatrooms");
-        const q = query(
-          chatroomsRef,
-          where("creatorId", "==", creatorId),
-          where("supporterId", "==", currentUserId)
-        );
-
-        const chatroomSnapshot = await getDocs(q);
-
+        const room = await getOrCreateSupporterChatroom({
+          creatorId,
+          supporterId: currentUserId,
+          supporterName: currentUserName || "Anonymous",
+        });
         if (!isMounted) return;
-
-        if (!chatroomSnapshot.empty) {
-          const existingChatroom = chatroomSnapshot.docs[0];
-          setChatroomId(existingChatroom.id);
-          setChatroomEnabled(existingChatroom.data().enabled !== false);
-        } else {
-          let supporterData = null;
-          try {
-            const profileSnap = await getDoc(doc(db, "profiles", currentUserId));
-            supporterData = profileSnap.data();
-          } catch {
-            // Profile might not exist
-          }
-
-          const newChatroom = await addDoc(chatroomsRef, {
-            creatorId: creatorId,
-            supporterId: currentUserId,
-            supporterName: currentUserName || "Anonymous",
-            supporterPhoto: supporterData?.photoURL || null,
-            lastMessage: "",
-            lastMessageAt: serverTimestamp(),
-            unreadCount: 0,
-            enabled: true,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          });
-          if (isMounted) {
-            setChatroomId(newChatroom.id);
-            setChatroomEnabled(true);
-          }
-        }
+        setChatroomId(room.id);
+        setChatroomEnabled(room.enabled);
       } catch (error) {
         console.error("Error finding/creating chatroom:", error);
         setFetchError(true);
@@ -176,20 +134,12 @@ export const MessageTab = ({
   useEffect(() => {
     if (!chatroomId) return;
 
-    const messagesRef = collection(db, "chatrooms", chatroomId, "messages");
-    const q = query(messagesRef, orderBy("createdAt", "asc"));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const rawMsgs = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Message[];
-
-      Promise.all(
+    const unsubscribe = subscribeToChatMessages(chatroomId, (rawMsgs) => {
+      void Promise.all(
         rawMsgs.map(async (msg) => {
-          const decrypted = await decryptMessage(msg.id, msg.content);
-          return { ...msg, content: decrypted };
-        })
+          const decrypted = await decryptMessage(chatroomId, msg.id);
+          return { ...(msg as unknown as Message), content: decrypted };
+        }),
       ).then(setMessages);
     });
 
@@ -199,19 +149,12 @@ export const MessageTab = ({
   useEffect(() => {
     if (!chatroomId || messages.length === 0) return;
 
-    const unreadMessages = messages.filter(
-      (m) => m.senderId !== currentUserId && !m.read
-    );
+    const unreadIds = messages
+      .filter((m) => m.senderId !== currentUserId && !m.read)
+      .map((m) => m.id);
 
-    if (unreadMessages.length > 0) {
-      const batch = writeBatch(db);
-      for (const msg of unreadMessages) {
-        batch.update(
-          doc(db, "chatrooms", chatroomId, "messages", msg.id),
-          { read: true }
-        );
-      }
-      batch.commit();
+    if (unreadIds.length > 0) {
+      void markChatMessagesAsRead(chatroomId, unreadIds).catch(() => {});
     }
   }, [messages, chatroomId, currentUserId]);
 
@@ -227,24 +170,17 @@ export const MessageTab = ({
 
     setSending(true);
     try {
-      const encryptedContent = await encryptMessage(newMessage.trim());
-      const encryptedLastMessage = await encryptMessage(newMessage.trim());
+      const text = newMessage.trim();
+      const encryptedContent = await encryptMessage(text);
+      const encryptedLastMessage = await encryptMessage(text);
 
-      const messagesRef = collection(db, "chatrooms", chatroomId, "messages");
-      await addDoc(messagesRef, {
+      await sendChatMessageRecord({
+        chatroomId,
         senderId: currentUserId,
         senderName: currentUserName,
         senderType: "supporter",
         content: encryptedContent,
-        createdAt: serverTimestamp(),
-        read: false,
-      });
-
-      await updateDoc(doc(db, "chatrooms", chatroomId), {
         lastMessage: encryptedLastMessage,
-        lastMessageAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        unreadCount: 0,
       });
 
       sendCommsEmail("message_new", {

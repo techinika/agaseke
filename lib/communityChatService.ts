@@ -6,12 +6,17 @@ import {
   addDoc,
   serverTimestamp,
   getDoc,
+  onSnapshot,
+  orderBy,
+  query,
+  limit,
+  type Unsubscribe,
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
 export interface ChatAttachment {
   url: string;
-  publicId: string;
+  publicId?: string;
   mimeType: string;
   originalName: string;
   fileSize: number;
@@ -24,7 +29,7 @@ export interface ChatMessage {
   senderType: "creator" | "member";
   text?: string;
   attachments?: ChatAttachment[];
-  createdAt: any;
+  createdAt: unknown;
 }
 
 export interface ChatMember {
@@ -77,7 +82,9 @@ export async function ensureChatExists(
       lastMessageAt: null,
       lastSenderName: "",
       memberCount: 0,
-    }).catch((err) => { console.error("Failed to ensure chat exists", err); });
+    }).catch((err) => {
+      console.error("Failed to ensure chat exists", err);
+    });
   }
 }
 
@@ -92,7 +99,7 @@ export async function sendChatMessage(
   if (!user) return null;
 
   const messagesRef = getMessagesRef(creatorHandle, tierId);
-  const messageData: Record<string, any> = {
+  const messageData: Record<string, unknown> = {
     senderId: user.uid,
     senderName: user.displayName || "Anonymous",
     senderType: "member",
@@ -103,4 +110,96 @@ export async function sendChatMessage(
 
   const ref = await addDoc(messagesRef, messageData);
   return ref.id;
+}
+
+export interface CommunityChatMessageRecord {
+  id: string;
+  senderId?: string;
+  senderName?: string;
+  senderType?: "creator" | "member";
+  text?: string;
+  attachments?: ChatAttachment[];
+  createdAt?: unknown;
+  [key: string]: unknown;
+}
+
+export interface CommunityChatAccess {
+  canAccess: boolean;
+  tierName?: string;
+}
+
+export async function getCommunityChatAccess(
+  chatId: string,
+  userId: string | null,
+  isCreator: boolean,
+): Promise<CommunityChatAccess> {
+  const chatRef = doc(db, "communityChats", chatId);
+  const snap = await getDoc(chatRef);
+  const tierName = snap.exists()
+    ? (snap.data().tierName as string | undefined)
+    : undefined;
+
+  if (isCreator) return { canAccess: true, tierName };
+  if (!userId) return { canAccess: false, tierName };
+
+  const memberRef = doc(db, "communityChats", chatId, "members", userId);
+  const memberSnap = await getDoc(memberRef);
+  return {
+    canAccess: memberSnap.exists() && memberSnap.data().status === "active",
+    tierName,
+  };
+}
+
+export function subscribeToCommunityChatMessages(
+  chatId: string,
+  onMessages: (messages: CommunityChatMessageRecord[]) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe {
+  const messagesRef = collection(db, "communityChats", chatId, "messages");
+  const q = query(messagesRef, orderBy("createdAt", "asc"), limit(200));
+  return onSnapshot(
+    q,
+    (snap) => {
+      const list: CommunityChatMessageRecord[] = [];
+      snap.forEach((d) => {
+        list.push({
+          id: d.id,
+          ...(d.data() as Record<string, unknown>),
+        } as CommunityChatMessageRecord);
+      });
+      onMessages(list);
+    },
+    (error) => onError?.(error),
+  );
+}
+
+export function subscribeToCommunityChatMemberCount(
+  chatId: string,
+  onCount: (count: number) => void,
+): Unsubscribe {
+  const membersRef = collection(db, "communityChats", chatId, "members");
+  return onSnapshot(membersRef, (snap) => {
+    let count = 0;
+    snap.forEach((d) => {
+      if (d.data().status === "active") count++;
+    });
+    onCount(count);
+  });
+}
+
+export async function addCommunityChatMessage(
+  chatId: string,
+  payload: {
+    senderId: string;
+    senderName: string;
+    senderType: "creator" | "member";
+    text?: string;
+    attachments?: ChatAttachment[];
+  },
+): Promise<void> {
+  const messagesRef = collection(db, "communityChats", chatId, "messages");
+  await addDoc(messagesRef, {
+    ...payload,
+    createdAt: serverTimestamp(),
+  });
 }

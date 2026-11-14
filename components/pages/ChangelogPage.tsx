@@ -1,17 +1,10 @@
- 
 "use client";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Package, Zap, Calendar, Tag, ChevronRight, MessageCircle } from "lucide-react";
 import { db } from "@/db/firebase";
-import {
-  collection,
-  query,
-  orderBy,
-  getDocs,
-  Timestamp,
-} from "firebase/firestore";
+import { collection, query, orderBy, getDocs, Timestamp } from "firebase/firestore";
 import Loading from "@/app/loading";
 
 interface ChangelogEntry {
@@ -42,18 +35,34 @@ export default function ChangelogPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const q = query(collection(db, "changelog"), orderBy("createdAt", "desc"));
+    let active = true;
 
-    getDocs(q)
-      .then((snapshot) => {
-        const data = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as ChangelogEntry[];
-        setEntries(data);
-      })
-      .catch((err) => { console.error("Failed to fetch changelog entries", err); })
-      .finally(() => setLoading(false));
+    try {
+      const q = query(collection(db, "changelog"), orderBy("createdAt", "desc"));
+
+      getDocs(q)
+        .then((snapshot) => {
+          if (!active) return;
+          const data = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          })) as ChangelogEntry[];
+          setEntries(data);
+        })
+        .catch((err) => {
+          console.error("Failed to fetch changelog entries", err);
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    } catch (err) {
+      console.error("Failed to initialize changelog query", err);
+      setLoading(false);
+    }
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const currentEntries = entries.filter((e) => e.category === "current");
@@ -67,9 +76,7 @@ export default function ChangelogPage() {
     <div className="min-h-screen bg-muted text-foreground pb-20">
       <div className="bg-gradient-to-br from-orange-600 to-orange-700 pt-20 pb-32 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Changelog
-          </h1>
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">Changelog</h1>
           <p className="text-orange-100 text-lg max-w-2xl mx-auto">
             Track our progress. See what we've built and what's coming next.
           </p>
@@ -79,7 +86,8 @@ export default function ChangelogPage() {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 bg-white/10 border border-white/30 hover:bg-white/20 transition-all rounded-full px-5 py-2.5 mt-6 text-sm font-bold text-white"
           >
-            <MessageCircle size={16} /> Get announcements & new features on our WhatsApp Channel
+            <MessageCircle size={16} /> Get announcements & new features on our WhatsApp
+            Channel
           </Link>
         </div>
       </div>
@@ -125,9 +133,7 @@ export default function ChangelogPage() {
 
                         <div className="bg-muted rounded-xl p-5 hover:bg-card-hover transition-colors">
                           <div className="flex items-start justify-between gap-3 mb-2">
-                            <h3 className="font-bold text-foreground">
-                              {entry.title}
-                            </h3>
+                            <h3 className="font-bold text-foreground">{entry.title}</h3>
                             {entry.releaseDate && (
                               <span className="flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap">
                                 <Calendar size={12} /> {entry.releaseDate}
@@ -168,9 +174,7 @@ export default function ChangelogPage() {
                     <Zap size={20} className="text-white" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-blue-900">
-                      Coming Soon
-                    </h2>
+                    <h2 className="text-xl font-bold text-blue-900">Coming Soon</h2>
                     <p className="text-sm text-blue-600">
                       {plannedEntries.length} planned features
                     </p>
@@ -231,12 +235,10 @@ export default function ChangelogPage() {
             </div>
 
             <div className="mt-6 bg-card rounded-2xl shadow-sm border border-border-strong p-6">
-              <h3 className="font-bold text-foreground mb-3">
-                Have a feature idea?
-              </h3>
+              <h3 className="font-bold text-foreground mb-3">Have a feature idea?</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                We're always looking for ways to improve Agaseke. If you have a
-                feature suggestion or feedback, we'd love to hear from you.
+                We're always looking for ways to improve Agaseke. If you have a feature
+                suggestion or feedback, we'd love to hear from you.
               </p>
               <div className="flex flex-wrap gap-3">
                 <a

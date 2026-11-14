@@ -59,7 +59,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { LinkifyText } from "@/components/ui/LinkifyText";
-import { uploadFile } from "@/lib/uploadService";
+import {
+  uploadFile,
+  storedAssetValue,
+  type AssetVisibility,
+} from "@/lib/uploadService";
+import { MediaAsset, MediaLink } from "@/components/parts/public/MediaAsset";
+import { usePostMediaSrc } from "@/lib/usePostMediaSrc";
 import { formatCurrency } from "@/types/currency";
 
 interface Comment {
@@ -94,6 +100,171 @@ const hasYouTubeLink = (text: string): string | null => {
 };
 
 const POSTS_PER_PAGE = 10;
+
+function SupporterMediaBlock({
+  item,
+  mode,
+  documentIndex,
+  setDocumentIndex,
+  onViewDocument,
+  onViewImage,
+}: {
+  item: any;
+  mode: "preview" | "full";
+  documentIndex: Record<string, number>;
+  setDocumentIndex: React.Dispatch<
+    React.SetStateAction<Record<string, number>>
+  >;
+  onViewDocument: (value: { url: string; title: string }) => void;
+  onViewImage: (value: { url: string }) => void;
+}) {
+  const contentUrl = item.contentUrl || item.imageUrl || item.docUrl;
+  const isPrivate = !!item.isPrivate;
+  const { mediaSrc } = usePostMediaSrc(item.id, isPrivate);
+
+  if (!contentUrl) return null;
+
+  if (item.type === "video") {
+    return (
+      <div
+        className={
+          mode === "preview"
+            ? "mt-3 rounded-lg overflow-hidden bg-muted"
+            : "relative aspect-video bg-foreground rounded-lg overflow-hidden mt-3"
+        }
+      >
+        <MediaAsset
+          postId={item.id}
+          isPrivate={isPrivate}
+          url={contentUrl}
+          as="video"
+          controls
+          controlsList="nodownload"
+          className="w-full aspect-video"
+        />
+      </div>
+    );
+  }
+
+  if (item.type === "document" || item.contentType === "document") {
+    const pages = Array.isArray(contentUrl) ? contentUrl : [contentUrl];
+    const currentIndex = documentIndex[item.id] || 0;
+    const currentUrl = pages[currentIndex];
+    const src = mediaSrc(currentUrl);
+
+    if (mode === "preview") {
+      return (
+        <div className="p-4">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+              <FileText size={20} className="text-orange-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">Document</p>
+              <p className="text-xs text-muted-foreground">PDF</p>
+            </div>
+          </div>
+          <button
+            onClick={() =>
+              src && onViewDocument({ url: src, title: item.title })
+            }
+            disabled={!src}
+            className="w-full py-2 bg-orange-500 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+          >
+            Read Document
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="mt-3 bg-muted rounded-lg p-4 border border-border">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+            <FileText size={24} className="text-orange-600" />
+          </div>
+          <div className="flex-1">
+            <p className="font-medium text-sm text-foreground">Document</p>
+            <p className="text-xs text-muted-foreground">
+              {pages.length} page{pages.length > 1 ? "s" : ""}
+            </p>
+          </div>
+        </div>
+        {pages.length > 1 && (
+          <div className="flex items-center justify-between mb-3">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setDocumentIndex((prev) => ({
+                  ...prev,
+                  [item.id]: Math.max(0, currentIndex - 1),
+                }));
+              }}
+              disabled={currentIndex === 0}
+              className="p-1.5 bg-card border rounded-lg disabled:opacity-50"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span className="text-sm text-muted-foreground">
+              {currentIndex + 1} of {pages.length}
+            </span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setDocumentIndex((prev) => ({
+                  ...prev,
+                  [item.id]: Math.min(pages.length - 1, currentIndex + 1),
+                }));
+              }}
+              disabled={currentIndex === pages.length - 1}
+              className="p-1.5 bg-card border rounded-lg disabled:opacity-50"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        )}
+        <button
+          onClick={() => src && onViewDocument({ url: src, title: item.title })}
+          disabled={!src}
+          className="block w-full text-center py-2.5 bg-orange-500 text-white rounded-lg font-medium text-sm hover:bg-orange-600 transition disabled:opacity-50"
+        >
+          Read Document
+        </button>
+      </div>
+    );
+  }
+
+  const src = mediaSrc(contentUrl);
+
+  if (mode === "preview") {
+    return (
+      <div
+        onClick={() => src && onViewImage({ url: src })}
+        className="cursor-zoom-in"
+      >
+        <MediaAsset
+          postId={item.id}
+          isPrivate={isPrivate}
+          url={contentUrl}
+          alt={item?.title || "Post image"}
+          className="w-full h-48 object-cover hover:opacity-90 transition-opacity"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 rounded-lg overflow-hidden bg-muted">
+      <MediaAsset
+        postId={item.id}
+        isPrivate={isPrivate}
+        url={contentUrl}
+        alt={item.title}
+        className="w-full h-auto max-h-[500px] object-contain"
+      />
+    </div>
+  );
+}
 
 export default function SupporterSpace() {
   const auth = useAuth();
@@ -149,15 +320,23 @@ export default function SupporterSpace() {
     "image" | "video" | "document" | null
   >(null);
   const [uploadedUrl, setUploadedUrl] = useState("");
+  const [uploadedVisibility, setUploadedVisibility] =
+    useState<AssetVisibility | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [failedFile, setFailedFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (filePreview) URL.revokeObjectURL(filePreview);
+    };
+  }, [filePreview]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !auth.creator?.handle) return;
     const type = mediaType || "image";
-    if (type === "image") {
+    if (type === "image" || type === "video") {
       setFilePreview(URL.createObjectURL(file));
     }
     setIsUploading(true);
@@ -165,9 +344,17 @@ export default function SupporterSpace() {
     setFailedFile(null);
     try {
       const assetType = type === "video" ? "post_video" : type === "document" ? "post_document" : "post_image";
-      const data = await uploadFile(file, assetType, auth.creator.handle);
-      if (data.url) {
-        setUploadedUrl(data.url);
+      const data = await uploadFile(
+        file,
+        assetType,
+        auth.creator.handle,
+        undefined,
+        newPost.isPrivate ? "private" : "public",
+      );
+      const stored = storedAssetValue(data);
+      if (stored) {
+        setUploadedUrl(stored);
+        setUploadedVisibility(data.visibility);
         setNewPost((prev) => ({ ...prev, type }));
         toast.success("File uploaded!");
       } else {
@@ -185,14 +372,25 @@ export default function SupporterSpace() {
   const handleRetryUpload = async () => {
     if (!failedFile || !auth.creator?.handle) return;
     const type = mediaType || "image";
+    if ((type === "image" || type === "video") && !filePreview) {
+      setFilePreview(URL.createObjectURL(failedFile));
+    }
     setIsUploading(true);
     setUploadedUrl("");
     setFailedFile(null);
     try {
       const assetType = type === "video" ? "post_video" : type === "document" ? "post_document" : "post_image";
-      const data = await uploadFile(failedFile, assetType, auth.creator.handle);
-      if (data.url) {
-        setUploadedUrl(data.url);
+      const data = await uploadFile(
+        failedFile,
+        assetType,
+        auth.creator.handle,
+        undefined,
+        newPost.isPrivate ? "private" : "public",
+      );
+      const stored = storedAssetValue(data);
+      if (stored) {
+        setUploadedUrl(stored);
+        setUploadedVisibility(data.visibility);
         setNewPost((prev) => ({ ...prev, type }));
         toast.success("File uploaded!");
       } else {
@@ -213,6 +411,14 @@ export default function SupporterSpace() {
       !newPost.description.trim()
     )
       return;
+    if (newPost.isPrivate && uploadedUrl && uploadedVisibility !== "private") {
+      toast.error("Re-upload the file now that the post is supporters-only.");
+      return;
+    }
+    if (!newPost.isPrivate && uploadedVisibility === "private") {
+      toast.error("Re-upload the file now that the post is public.");
+      return;
+    }
     setPosting(true);
     try {
       const contentData = {
@@ -251,7 +457,9 @@ export default function SupporterSpace() {
         isPrivate: false,
       });
       setUploadedUrl("");
+      setUploadedVisibility(null);
       setFilePreview(null);
+      setFailedFile(null);
       setMediaType(null);
       try {
         await sendCommsEmail("content_new", {
@@ -788,98 +996,16 @@ const searchedContentItems = searchTerm.trim()
     );
   };
 
-  const renderContentMedia = (item: any) => {
-    const contentUrl = item.contentUrl || item.imageUrl || item.docUrl;
-    const isVideo = item.type === "video";
-
-    if (!contentUrl) return null;
-
-    if (isVideo) {
-      return (
-        <div className="relative aspect-video bg-foreground rounded-lg overflow-hidden mt-3">
-          <video
-            src={contentUrl}
-            controls
-            controlsList="nodownload"
-            className="w-full h-full"
-          />
-        </div>
-      );
-    }
-
-    if (item.type === "document" || item.contentType === "document") {
-      const pages = Array.isArray(contentUrl) ? contentUrl : [contentUrl];
-      const currentIndex = documentIndex[item.id] || 0;
-      const currentUrl = pages[currentIndex];
-
-      return (
-        <div className="mt-3 bg-muted rounded-lg p-4 border border-border">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-              <FileText size={24} className="text-orange-600" />
-            </div>
-            <div className="flex-1">
-              <p className="font-medium text-sm text-foreground">Document</p>
-              <p className="text-xs text-muted-foreground">
-                {pages.length} page{pages.length > 1 ? "s" : ""}
-              </p>
-            </div>
-          </div>
-          {pages.length > 1 && (
-            <div className="flex items-center justify-between mb-3">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDocumentIndex((prev) => ({
-                    ...prev,
-                    [item.id]: Math.max(0, currentIndex - 1),
-                  }));
-                }}
-                disabled={currentIndex === 0}
-                className="p-1.5 bg-card border rounded-lg disabled:opacity-50"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <span className="text-sm text-muted-foreground">
-                {currentIndex + 1} of {pages.length}
-              </span>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDocumentIndex((prev) => ({
-                    ...prev,
-                    [item.id]: Math.min(pages.length - 1, currentIndex + 1),
-                  }));
-                }}
-                disabled={currentIndex === pages.length - 1}
-                className="p-1.5 bg-card border rounded-lg disabled:opacity-50"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
-          )}
-          <button
-            onClick={() =>
-              setViewingDocument({ url: currentUrl, title: item.title })
-            }
-            className="block w-full text-center py-2.5 bg-orange-500 text-white rounded-lg font-medium text-sm hover:bg-orange-600 transition"
-          >
-            Read Document
-          </button>
-        </div>
-      );
-    }
-
-    return (
-      <div className="mt-3 rounded-lg overflow-hidden bg-muted">
-        <img
-          src={contentUrl}
-          alt={item.title}
-          className="w-full h-auto max-h-[500px] object-contain"
-        />
-      </div>
-    );
-  };
+  const renderContentMedia = (item: any) => (
+    <SupporterMediaBlock
+      item={item}
+      mode="full"
+      documentIndex={documentIndex}
+      setDocumentIndex={setDocumentIndex}
+      onViewDocument={setViewingDocument}
+      onViewImage={setViewingImage}
+    />
+  );
 
   const renderPostText = (
     text: string,
@@ -1261,7 +1387,7 @@ const searchedContentItems = searchTerm.trim()
                               <button onClick={handleRetryUpload} className="px-3 py-1.5 bg-orange-500 text-white text-xs font-medium rounded-lg hover:bg-orange-600 transition">
                                 Retry
                               </button>
-                              <button onClick={() => { setFailedFile(null); setFilePreview(null); setUploadedUrl(""); setNewPost((prev) => ({ ...prev, type: "text" })); }} className="p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition">
+                              <button onClick={() => { setFailedFile(null); setFilePreview(null); setUploadedUrl(""); setUploadedVisibility(null); setNewPost((prev) => ({ ...prev, type: "text" })); }} className="p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition">
                                 <Trash2 size={14} />
                               </button>
                             </div>
@@ -1282,16 +1408,17 @@ const searchedContentItems = searchTerm.trim()
                         ) : uploadedUrl && (
                           <div className="relative">
                             {newPost.type === "image" ? (
-                              <img src={uploadedUrl} alt="Uploaded" className="w-full max-h-48 object-cover rounded-lg border border-border" />
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={filePreview || uploadedUrl} alt="Uploaded" className="w-full max-h-48 object-cover rounded-lg border border-border" />
                             ) : newPost.type === "video" ? (
-                              <video src={uploadedUrl} controls className="w-full max-h-48 rounded-lg border border-border" />
+                              <video src={filePreview || uploadedUrl} controls className="w-full max-h-48 rounded-lg border border-border" />
                             ) : (
                               <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 px-3 py-2 rounded-lg">
                                 <FileText size={14} />
                                 <span className="font-medium">File attached</span>
                               </div>
                             )}
-                            <button onClick={() => { setUploadedUrl(""); setFilePreview(null); setFailedFile(null); setNewPost((prev) => ({ ...prev, type: "text" })); }} className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition">
+                            <button onClick={() => { setUploadedUrl(""); setUploadedVisibility(null); setFilePreview(null); setFailedFile(null); setNewPost((prev) => ({ ...prev, type: "text" })); }} className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition">
                               <Trash2 size={14} />
                             </button>
                           </div>
@@ -1436,8 +1563,10 @@ const searchedContentItems = searchTerm.trim()
                           {item.type === "article" ? (
                             <>
                               {(item.coverUrl || item.contentUrl) && (
-                                <img
-                                  src={item.coverUrl || item.contentUrl}
+                                <MediaAsset
+                                  postId={item.id}
+                                  isPrivate={!!item.isPrivate}
+                                  url={item.coverUrl || item.contentUrl}
                                   alt={item.title || "Article cover"}
                                   className="w-full h-52 object-cover rounded-lg mb-3"
                                 />
@@ -1482,64 +1611,17 @@ const searchedContentItems = searchTerm.trim()
                         {item.contentUrl &&
                           expandedPostId !== item.id &&
                           item.type !== "article" && (
-                          <div
-                            onClick={(e) => e.stopPropagation()}
-                            className="mt-3 rounded-lg overflow-hidden bg-muted"
-                          >
-                            {item.type === "video" ? (
-                              <video
-                                src={item.contentUrl}
-                                controls
-                                controlsList="nodownload"
-                                className="w-full aspect-video"
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <SupporterMediaBlock
+                                item={item}
+                                mode="preview"
+                                documentIndex={documentIndex}
+                                setDocumentIndex={setDocumentIndex}
+                                onViewDocument={setViewingDocument}
+                                onViewImage={setViewingImage}
                               />
-                            ) : item.type === "document" ? (
-                              <div className="p-4">
-                                <div className="flex items-center gap-3 mb-2">
-                                  <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                                    <FileText
-                                      size={20}
-                                      className="text-orange-600"
-                                    />
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-medium text-foreground">
-                                      Document
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      PDF
-                                    </p>
-                                  </div>
-                                </div>
-                                <button
-                                  onClick={() =>
-                                    setViewingDocument({
-                                      url: item.contentUrl,
-                                      title: item.title,
-                                    })
-                                  }
-                                  className="w-full py-2 bg-orange-500 text-white rounded-lg text-sm font-medium"
-                                >
-                                  Read Document
-                                </button>
-                              </div>
-                            ) : (
-                              <div
-                                onClick={() =>
-                                  item.contentUrl &&
-                                  setViewingImage({ url: item.contentUrl })
-                                }
-                                className="cursor-zoom-in"
-                              >
-                                <img
-                                  src={item.contentUrl}
-                                  alt={item?.title || "Post image"}
-                                  className="w-full h-48 object-cover hover:opacity-90 transition-opacity"
-                                />
-                              </div>
-                            )}
-                          </div>
-                        )}
+                            </div>
+                          )}
 
                         {expandedPostId === item.id && (
                           <div
@@ -1549,14 +1631,16 @@ const searchedContentItems = searchTerm.trim()
                             {renderContentMedia(item)}
 
                             {item.docUrl && !Array.isArray(item.docUrl) && (
-                              <Link
-                                href={item.contentUrl}
+                              <MediaLink
+                                postId={item.id}
+                                isPrivate={!!item.isPrivate}
+                                url={item.contentUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="mt-4 flex items-center gap-2 text-blue-600 text-sm hover:underline"
                               >
                                 <Paperclip size={14} /> View Attached Document
-                              </Link>
+                              </MediaLink>
                             )}
                           </div>
                         )}

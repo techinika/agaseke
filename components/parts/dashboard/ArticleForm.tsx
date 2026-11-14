@@ -31,7 +31,13 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/auth/AuthContext";
 import { useRouter } from "next/navigation";
-import { uploadFile } from "@/lib/uploadService";
+import {
+  uploadFile,
+  storedAssetValue,
+  storedAssetVisibility,
+  type AssetVisibility,
+} from "@/lib/uploadService";
+import { MediaAsset } from "@/components/parts/public/MediaAsset";
 import { slugify, fallbackSlug } from "@/lib/slug";
 import { baseUrl } from "@/lib/baseUrl";
 import RichTextEditor from "@/components/parts/dashboard/RichTextEditor";
@@ -53,12 +59,21 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
   const [bodyHtml, setBodyHtml] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
   const [coverUrl, setCoverUrl] = useState("");
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [uploadedVisibility, setUploadedVisibility] =
+    useState<AssetVisibility | null>(null);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [status, setStatus] = useState<"draft" | "published">("draft");
   const [saving, setSaving] = useState<"draft" | "publish" | null>(null);
   const [loading, setLoading] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (coverPreview) URL.revokeObjectURL(coverPreview);
+    };
+  }, [coverPreview]);
 
   const backHref = "/creator/content/articles";
 
@@ -81,7 +96,10 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
         );
         setBodyHtml(data.htmlContent || "");
         setIsPrivate(!!data.isPrivate);
-        setCoverUrl(data.coverUrl || data.contentUrl || "");
+        const storedCover = data.coverUrl || data.contentUrl || "";
+        setCoverPreview(null);
+        setCoverUrl(storedCover);
+        setUploadedVisibility(storedAssetVisibility(storedCover));
         setStatus(data.status === "draft" ? "draft" : "published");
         if (data.creatorId !== creator?.handle && data.creatorUid !== creator?.uid) {
           toast.error("You don't have permission to edit this article");
@@ -103,9 +121,18 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
     if (!file || !creator?.handle) return;
     setIsUploadingCover(true);
     try {
-      const data = await uploadFile(file, "post_image", creator.handle);
-      if (!data.url) throw new Error("Upload failed");
-      setCoverUrl(data.url);
+      const data = await uploadFile(
+        file,
+        "post_image",
+        creator.handle,
+        undefined,
+        isPrivate ? "private" : "public",
+      );
+      const stored = storedAssetValue(data);
+      if (!stored) throw new Error("Upload failed");
+      setCoverPreview(URL.createObjectURL(file));
+      setCoverUrl(stored);
+      setUploadedVisibility(data.visibility);
       toast.success("Cover image uploaded!");
     } catch (err) {
       console.error("Upload error:", err);
@@ -123,6 +150,16 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
     }
     if (publish && !title.trim()) {
       toast.error("A title is required for articles");
+      return;
+    }
+
+    const storedVisibility = uploadedVisibility ?? storedAssetVisibility(coverUrl);
+    if (isPrivate && coverUrl && storedVisibility !== "private") {
+      toast.error("Re-upload the cover now that the article is supporters-only.");
+      return;
+    }
+    if (!isPrivate && storedVisibility === "private") {
+      toast.error("Re-upload the cover now that the article is public.");
       return;
     }
 
@@ -498,13 +535,40 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
                 </label>
                 {coverUrl ? (
                   <div className="relative rounded-xl overflow-hidden border border-border">
-                    <img
-                      src={coverUrl}
-                      alt="Article cover"
-                      className="w-full max-h-72 object-cover"
-                    />
+                    {coverPreview ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={coverPreview}
+                        alt="Article cover preview"
+                        className="w-full max-h-72 object-cover"
+                      />
+                    ) : isPrivate && articleId ? (
+                      <MediaAsset
+                        postId={articleId}
+                        isPrivate
+                        url={coverUrl}
+                        alt="Article cover"
+                        className="w-full max-h-72 object-cover"
+                      />
+                    ) : storedAssetVisibility(coverUrl) === "private" ? (
+                      <div className="w-full max-h-72 min-h-40 bg-muted flex items-center justify-center text-sm text-muted-foreground">
+                        Private cover uploaded
+                      </div>
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={coverUrl}
+                        alt="Article cover"
+                        className="w-full max-h-72 object-cover"
+                      />
+                    )}
                     <button
-                      onClick={() => setCoverUrl("")}
+                      onClick={() => {
+                        if (coverPreview) URL.revokeObjectURL(coverPreview);
+                        setCoverPreview(null);
+                        setCoverUrl("");
+                        setUploadedVisibility(null);
+                      }}
                       className="absolute top-3 right-3 p-2 bg-black/60 text-white rounded-full hover:bg-black/80 transition"
                       title="Remove cover"
                     >

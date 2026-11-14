@@ -37,6 +37,7 @@ import {
 import { db } from "@/db/firebase";
 import RichContentRenderer from "@/components/ui/RichContentRenderer";
 import { SupportModal } from "@/components/parts/public/SupportModal";
+import { MediaAsset } from "@/components/parts/public/MediaAsset";
 import { useAuth } from "@/auth/AuthContext";
 import { baseUrl } from "@/lib/baseUrl";
 
@@ -293,8 +294,10 @@ export default function ArticleReaderPage({
         <article className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
           {article.coverUrl && (
             <div className="aspect-[16/9] bg-muted w-full">
-              <img
-                src={article.coverUrl}
+              <MediaAsset
+                postId={article.id}
+                isPrivate={article.isPrivate}
+                url={article.coverUrl}
                 alt={article.title}
                 className="w-full h-full object-cover"
               />

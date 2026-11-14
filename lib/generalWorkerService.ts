@@ -28,19 +28,34 @@ export async function encrypt(text: string): Promise<string> {
   }
 }
 
-export async function decrypt(encrypted: string): Promise<string> {
-  try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${GENERAL_WORKER_URL}/api/general/decrypt`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ encrypted }),
-    });
-    const data = await res.json();
-    return data.plaintext || encrypted;
-  } catch {
-    return encrypted;
-  }
+async function scopedDecrypt(body: Record<string, string>): Promise<string> {
+  const headers = await getAuthHeaders();
+  const res = await fetch("/api/decrypt", {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) throw new Error("Decryption failed");
+
+  const data = await res.json();
+  if (typeof data.plaintext !== "string") throw new Error("Invalid decryption response");
+  return data.plaintext;
+}
+
+export async function decryptBookingReason(bookingId: string): Promise<string> {
+  return scopedDecrypt({ kind: "booking_reason", bookingId });
+}
+
+export async function decryptChatMessage(
+  chatroomId: string,
+  messageId: string,
+): Promise<string> {
+  return scopedDecrypt({ kind: "chat_message", chatroomId, messageId });
+}
+
+export async function decryptChatroomLastMessage(chatroomId: string): Promise<string> {
+  return scopedDecrypt({ kind: "chatroom_last_message", chatroomId });
 }
 
 export function isEncrypted(text: string): boolean {

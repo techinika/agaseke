@@ -16,59 +16,51 @@ export default function PrivacyPage() {
             <ShieldCheck size={28} />
           </div>
           <h1 className="text-4xl font-bold mb-4">Privacy Policy</h1>
-          <p className="text-muted-foreground font-medium">
-            Last updated: {lastUpdated}
-          </p>
+          <p className="text-muted-foreground font-medium">Last updated: {lastUpdated}</p>
         </header>
 
         <div className="prose prose-slate max-w-none space-y-12">
           <section>
             <div className="flex items-center gap-3 mb-4">
-              <h2 className="text-2xl font-bold m-0">
-                1. Information We Collect
-              </h2>
+              <h2 className="text-2xl font-bold m-0">1. Information We Collect</h2>
             </div>
             <p className="text-muted-foreground leading-relaxed">
-              To provide a seamless experience for creators and supporters in
-              Africa, we collect:
+              To provide a seamless experience for creators and supporters in Africa, we
+              collect:
             </p>
             <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
               <li>
-                <strong>Account Information:</strong> Your name, email address,
-                and profile photo when you sign up via Google or Email.
+                <strong>Account Information:</strong> Your name, email address, and
+                profile photo when you sign up via Google or Email.
               </li>
               <li>
                 <strong>Supporter Data:</strong> Your phone number (for MoMo
                 identification) and your display name.
               </li>
               <li>
-                <strong>Creator Content:</strong> Any bio, images, or gathering
-                details you post to your public profile.
+                <strong>Creator Content:</strong> Any bio, images, or gathering details
+                you post to your public profile.
               </li>
             </ul>
           </section>
 
           <section>
             <div className="flex items-center gap-3 mb-4">
-              <h2 className="text-2xl font-bold m-0">
-                2. How We Share Your Data
-              </h2>
+              <h2 className="text-2xl font-bold m-0">2. How We Share Your Data</h2>
             </div>
             <p className="text-muted-foreground leading-relaxed">
-              We value your privacy. We do not sell your data. However, data
-              sharing occurs in the following instances:
+              We value your privacy. We do not sell your data. However, data sharing
+              occurs in the following instances:
             </p>
             <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
               <li>
-                <strong>Creator-Supporter Connection:</strong> When you RSVP for
-                a gathering, your name and phone number are shared{" "}
-                <strong>only</strong> with that specific creator so they can
-                contact you regarding the event.
+                <strong>Creator-Supporter Connection:</strong> When you RSVP for a
+                gathering, your name and phone number are shared <strong>only</strong>{" "}
+                with that specific creator so they can contact you regarding the event.
               </li>
               <li>
-                <strong>Public Profiles:</strong> Information on creator
-                profiles is visible to anyone visiting the platform to
-                facilitate discovery.
+                <strong>Public Profiles:</strong> Information on creator profiles is
+                visible to anyone visiting the platform to facilitate discovery.
               </li>
             </ul>
           </section>
@@ -78,19 +70,18 @@ export default function PrivacyPage() {
               <h2 className="text-2xl font-bold m-0">3. Data Security</h2>
             </div>
             <p className="text-muted-foreground leading-relaxed">
-              We use industry-standard encryption and Firebase Security Rules to
-              ensure that your private data (like your total support impact or
-              account settings) is only accessible by you.
+              We use industry-standard encryption and Firebase Security Rules to ensure
+              that your private data (like your total support impact or account settings)
+              is only accessible by you.
             </p>
           </section>
 
           <section>
             <h2 className="text-2xl font-bold mb-4">4. Your Rights</h2>
             <p className="text-muted-foreground leading-relaxed">
-              Under Rwandan data protection laws, you have the right to access
-              your data, request corrections, or ask for the deletion of your
-              account. To exercise these rights, please contact us at the email
-              below.
+              Under Rwandan data protection laws, you have the right to access your data,
+              request corrections, or ask for the deletion of your account. To exercise
+              these rights, please contact us at the email below.
             </p>
           </section>
 
@@ -98,18 +89,18 @@ export default function PrivacyPage() {
             <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
               Contact Privacy Team
             </h2>
-            <p className="text-muted-foreground mb-6">
-              For any questions regarding your data privacy, account deletion,
-              or security concerns:
+            <p className="text-slate-300 mb-6">
+              For any questions regarding your data privacy, account deletion, or security
+              concerns:
             </p>
             <div className="space-y-2">
               <p className="font-bold">hello@agaseke.me</p>
-              <p className="text-sm text-muted-foreground">Subject: Privacy Inquiry</p>
+              <p className="text-sm text-slate-300">Subject: Privacy Inquiry</p>
               <a
                 href="https://whatsapp.com/channel/0029Vb9AemqFy72CiwMyQf06"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-bold flex items-center gap-2 hover:underline"
+                className="font-bold flex min-h-11 items-center gap-2 hover:underline"
               >
                 <MessageCircle size={16} /> Announcements on WhatsApp
               </a>

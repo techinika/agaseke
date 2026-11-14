@@ -1,15 +1,8 @@
- 
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { db } from "@/db/firebase";
-import {
-  collection,
-  query,
-  orderBy,
-  onSnapshot,
-  Timestamp,
-} from "firebase/firestore";
+import { Timestamp } from "firebase/firestore";
+import { subscribeToUserFeedback } from "@/lib/feedback";
 import {
   MessageSquare,
   Star,
@@ -36,13 +29,8 @@ export default function AdminFeedbackPage() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    const q = query(
-      collection(db, "userFeedback"),
-      orderBy("createdAt", "desc"),
-    );
-
-    const unsub = onSnapshot(q, (snap) => {
-      setFeedback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    const unsub = subscribeToUserFeedback((items) => {
+      setFeedback(items as FeedbackItem[]);
       setLoading(false);
     });
 
@@ -57,12 +45,16 @@ export default function AdminFeedbackPage() {
 
   const avgLoveScale =
     feedback.length > 0
-      ? (feedback.reduce((a, f) => a + (f.loveScale || 0), 0) / feedback.length).toFixed(1)
+      ? (feedback.reduce((a, f) => a + (f.loveScale || 0), 0) / feedback.length).toFixed(
+          1,
+        )
       : "0";
 
   const avgReferral =
     feedback.length > 0
-      ? (feedback.reduce((a, f) => a + (f.referralLikelihood || 0), 0) / feedback.length).toFixed(1)
+      ? (
+          feedback.reduce((a, f) => a + (f.referralLikelihood || 0), 0) / feedback.length
+        ).toFixed(1)
       : "0";
 
   return (
@@ -81,28 +73,37 @@ export default function AdminFeedbackPage() {
           <div className="bg-card rounded-xl border border-border p-5">
             <div className="flex items-center gap-2 mb-2">
               <MessageSquare size={16} className="text-blue-600" />
-              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Total Responses</p>
+              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                Total Responses
+              </p>
             </div>
             <p className="text-2xl font-bold">{feedback.length}</p>
           </div>
           <div className="bg-card rounded-xl border border-border p-5">
             <div className="flex items-center gap-2 mb-2">
               <Star size={16} className="text-amber-600" />
-              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Avg Love Scale</p>
+              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                Avg Love Scale
+              </p>
             </div>
             <p className="text-2xl font-bold">{avgLoveScale} / 5</p>
           </div>
           <div className="bg-card rounded-xl border border-border p-5">
             <div className="flex items-center gap-2 mb-2">
               <ThumbsUp size={16} className="text-emerald-600" />
-              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Avg Referral Likelihood</p>
+              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                Avg Referral Likelihood
+              </p>
             </div>
             <p className="text-2xl font-bold">{avgReferral} / 5</p>
           </div>
         </div>
 
         <div className="relative mb-6">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+          <Search
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+            size={18}
+          />
           <input
             type="text"
             placeholder="Search by handle or message..."

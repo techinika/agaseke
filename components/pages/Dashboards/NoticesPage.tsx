@@ -2,20 +2,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { db } from "@/db/firebase";
-import {
-  collection,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  limit,
-} from "firebase/firestore";
-import {
-  Megaphone,
-  Bell,
-  Calendar,
-} from "lucide-react";
+import { subscribeToBroadcastNotices } from "@/lib/notifications";
+import { Megaphone, Bell, Calendar } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import Loading from "@/app/loading";
 
@@ -42,28 +30,15 @@ export default function NoticesPage() {
   useEffect(() => {
     if (!user) return;
 
-    const q = query(
-      collection(db, "notifications"),
-      where("userId", "==", user.uid),
-      where("type", "==", "broadcast_received"),
-      orderBy("createdAt", "desc"),
-      limit(100),
-    );
-
-    const unsubscribe = onSnapshot(q, (snap) => {
-      const noticesData = snap.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Notice[];
-      setNotices(noticesData);
+    const unsubscribe = subscribeToBroadcastNotices(user.uid, (items) => {
+      setNotices(items as unknown as Notice[]);
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, [user]);
 
-  const filteredNotices =
-    filter === "unread" ? notices.filter((n) => !n.read) : notices;
+  const filteredNotices = filter === "unread" ? notices.filter((n) => !n.read) : notices;
 
   const unreadCount = notices.filter((n) => !n.read).length;
 
@@ -96,9 +71,7 @@ export default function NoticesPage() {
           <div>
             <div className="flex items-center gap-3 mb-2">
               <Megaphone className="text-orange-600" size={28} />
-              <h1 className="text-4xl font-black uppercase tracking-tight">
-                Notices
-              </h1>
+              <h1 className="text-4xl font-black uppercase tracking-tight">Notices</h1>
             </div>
             <p className="text-muted-foreground font-medium">
               Important announcements from the admin team.
@@ -139,9 +112,7 @@ export default function NoticesPage() {
         {filteredNotices.length === 0 ? (
           <div className="bg-card border border-dashed border-border rounded-3xl p-16 text-center">
             <Megaphone className="text-muted-foreground mx-auto mb-4" size={48} />
-            <h2 className="text-xl font-bold text-foreground mb-2">
-              No notices yet
-            </h2>
+            <h2 className="text-xl font-bold text-foreground mb-2">No notices yet</h2>
             <p className="text-muted-foreground font-medium">
               When the admin sends announcements, they will appear here.
             </p>
@@ -153,9 +124,7 @@ export default function NoticesPage() {
                 key={notice.id}
                 onClick={() => setSelectedNotice(notice)}
                 className={`bg-card border-2 rounded-2xl p-6 transition-all cursor-pointer hover:border-orange-300 ${
-                  notice.read
-                    ? "border-border"
-                    : "border-orange-200 shadow-md"
+                  notice.read ? "border-border" : "border-orange-200 shadow-md"
                 }`}
               >
                 <div className="flex items-start justify-between gap-4">

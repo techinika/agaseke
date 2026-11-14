@@ -1,4 +1,3 @@
- 
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -31,18 +30,16 @@ import { useAuth } from "@/auth/AuthContext";
 import { handleLogout } from "@/db/functions/LogOut";
 import { toast } from "sonner";
 import SharePageModal from "../SharePage";
-import { auth, db } from "@/db/firebase";
-import { doc, onSnapshot, collection, query, where, addDoc, serverTimestamp } from "firebase/firestore";
 import { Creator } from "@/types/creator";
 import NotificationDrawer from "@/components/ui/NotificationDrawer";
+import { subscribeToUnreadNotificationCount } from "@/lib/notifications";
+import { subscribeToCreatorSettings } from "@/lib/creatorSettings";
+import { submitUserFeedback } from "@/lib/feedback";
 import { NavItem, ExpandableNavItem } from "./layout-parts/index";
 import ThemeToggle from "../ThemeToggle";
+import { CreatorTopBar } from "./CreatorBottomNav";
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { creator, isAdmin, user } = useAuth();
   const [copied, setCopied] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -55,37 +52,32 @@ export default function DashboardLayout({
   const [unreadCount, setUnreadCount] = useState(0);
   const [showFeedback, setShowFeedback] = useState(false);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
-  const [feedback, setFeedback] = useState({ referralLikelihood: 0, loveScale: 0, message: "" });
+  const [feedback, setFeedback] = useState({
+    referralLikelihood: 0,
+    loveScale: 0,
+    message: "",
+  });
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!creator?.handle) return;
-    const unsubscribe = onSnapshot(
-      doc(db, "creators", creator.handle),
-      (doc) => {
-        if (doc.exists()) {
-          setCreatorSettings(doc.data() as Creator);
-        }
-      },
-    );
+    const unsubscribe = subscribeToCreatorSettings(creator.handle, (data) => {
+      if (data) setCreatorSettings(data);
+    });
     return () => unsubscribe();
   }, [creator?.handle]);
 
   useEffect(() => {
     if (!user?.uid) return;
 
-    const q = query(
-      collection(db, "notifications"),
-      where("userId", "==", user.uid),
-      where("read", "==", false)
+    const unsub = subscribeToUnreadNotificationCount(
+      user.uid,
+      setUnreadCount,
+      (error) => {
+        console.error("Failed to load notification count:", error);
+        setUnreadCount(0);
+      },
     );
-
-    const unsub = onSnapshot(q, (snapshot) => {
-      setUnreadCount(snapshot.size);
-    }, (error) => {
-      console.error("Failed to load notification count:", error);
-      setUnreadCount(0);
-    });
 
     return () => unsub();
   }, [user?.uid]);
@@ -99,10 +91,7 @@ export default function DashboardLayout({
   // Handle dropdown click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowDropdown(false);
       }
     };
@@ -124,6 +113,22 @@ export default function DashboardLayout({
     copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleShare = () => {
+    if (!creator?.handle) return;
+    const url = `https://agaseke.me/${creator.handle}`;
+    if (typeof navigator !== "undefined" && navigator.share) {
+      void navigator
+        .share({
+          title: creator.name || "Agaseke Creator",
+          text: `Support ${creator.name} on Agaseke`,
+          url,
+        })
+        .catch(() => void copyLink());
+      return;
+    }
+    void copyLink();
+  };
+
   const handleFeedbackSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (feedback.referralLikelihood === 0 || feedback.loveScale === 0) {
@@ -132,17 +137,21 @@ export default function DashboardLayout({
     }
     setFeedbackLoading(true);
     try {
-      await addDoc(collection(db, "userFeedback"), {
+      await submitUserFeedback({
         creatorId: creator?.uid || "unknown",
         handle: creator?.handle || "unknown",
-        ...feedback,
-        createdAt: serverTimestamp(),
+        referralLikelihood: feedback.referralLikelihood,
+        loveScale: feedback.loveScale,
+        message: feedback.message,
       });
       toast.success("Feedback received! Thank you for helping Agaseke grow.");
       setShowFeedback(false);
       setFeedback({ referralLikelihood: 0, loveScale: 0, message: "" });
-    } catch { toast.error("Could not send feedback. Try again later."); }
-    finally { setFeedbackLoading(false); }
+    } catch {
+      toast.error("Could not send feedback. Try again later.");
+    } finally {
+      setFeedbackLoading(false);
+    }
   };
 
   return (
@@ -170,9 +179,7 @@ export default function DashboardLayout({
               <div className="w-7 h-7 bg-orange-600 rounded-lg flex items-center justify-center text-white font-bold text-xs">
                 A
               </div>
-              <span className="font-bold tracking-tight uppercase">
-                agaseke.me
-              </span>
+              <span className="font-bold tracking-tight uppercase">agaseke.me</span>
             </Link>
             <button
               onClick={() => setIsSidebarOpen(false)}
@@ -302,6 +309,7 @@ export default function DashboardLayout({
 
           <div className="flex items-center gap-3 md:gap-6">
             <ThemeToggle />
+            <CreatorTopBar onShare={handleShare} />
             <button
               onClick={() => setShowFeedback(true)}
               className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-orange-600"
@@ -337,6 +345,7 @@ export default function DashboardLayout({
 
                 <div className="w-8 h-8 bg-muted rounded-full border border-border flex items-center justify-center text-xs font-bold overflow-hidden">
                   {creator?.profilePicture ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- existing usage
                     <img
                       src={creator?.profilePicture}
                       alt={creator?.name || "Creator"}
@@ -355,9 +364,7 @@ export default function DashboardLayout({
               {showDropdown && (
                 <div className="absolute right-0 mt-2 w-56 bg-card border border-border rounded-lg shadow-xl py-2 animate-in fade-in zoom-in-95 duration-100 z-50">
                   <div className="px-4 py-2 border-b border-border mb-1 sm:hidden">
-                    <p className="text-xs font-bold text-foreground">
-                      {creator?.name}
-                    </p>
+                    <p className="text-xs font-bold text-foreground">{creator?.name}</p>
                     <p className="text-[10px] text-muted-foreground">
                       @{creator?.handle}
                     </p>
@@ -397,13 +404,12 @@ export default function DashboardLayout({
           </div>
         </header>
 
-        <main className="flex-1 overflow-x-hidden w-full">{children}</main>
+        <main className="flex-1 overflow-x-hidden w-full pb-[calc(56px+env(safe-area-inset-bottom))] md:pb-0">
+          {children}
+        </main>
       </div>
 
-      <SharePageModal
-        isOpen={showShareModal}
-        onClose={() => setShowShareModal(false)}
-      />
+      <SharePageModal isOpen={showShareModal} onClose={() => setShowShareModal(false)} />
 
       <NotificationDrawer
         isOpen={showNotifications}
@@ -413,41 +419,86 @@ export default function DashboardLayout({
 
       {showFeedback && (
         <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-4 md:p-0 bg-foreground/20 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="fixed inset-0" onClick={() => !feedbackLoading && setShowFeedback(false)} />
+          <div
+            className="fixed inset-0"
+            onClick={() => !feedbackLoading && setShowFeedback(false)}
+          />
           <div className="bg-card w-full max-w-md rounded-2xl shadow-2xl relative z-10 overflow-hidden animate-in slide-in-from-bottom-8 duration-300">
             <header className="p-6 border-b border-border flex items-center justify-between bg-muted/50">
               <div>
                 <h3 className="font-bold text-foreground">Help us improve</h3>
-                <p className="text-xs text-muted-foreground">Your ideas shape the future of Agaseke.</p>
+                <p className="text-xs text-muted-foreground">
+                  Your ideas shape the future of Agaseke.
+                </p>
               </div>
-              <button onClick={() => setShowFeedback(false)} className="text-muted-foreground hover:text-foreground p-1"><X size={20} /></button>
+              <button
+                onClick={() => setShowFeedback(false)}
+                className="text-muted-foreground hover:text-foreground p-1"
+              >
+                <X size={20} />
+              </button>
             </header>
             <form onSubmit={handleFeedbackSubmit} className="p-6 space-y-6">
               <div className="space-y-3">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2"><Share2 size={14} /> Would you recommend Agaseke?</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <Share2 size={14} /> Would you recommend Agaseke?
+                </label>
                 <div className="flex justify-between gap-2">
-                  {[1,2,3,4,5].map((num) => (
-                    <button key={num} type="button" onClick={() => setFeedback({...feedback, referralLikelihood: num})}
-                      className={`flex-1 py-3 rounded-xl font-bold transition-all ${feedback.referralLikelihood === num ? "bg-orange-600 text-white shadow-md shadow-orange-100 scale-105" : "bg-muted text-muted-foreground hover:bg-muted"}`}>{num}</button>
+                  {[1, 2, 3, 4, 5].map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() =>
+                        setFeedback({ ...feedback, referralLikelihood: num })
+                      }
+                      className={`flex-1 py-3 rounded-xl font-bold transition-all ${feedback.referralLikelihood === num ? "bg-orange-600 text-white shadow-md shadow-orange-100 scale-105" : "bg-muted text-muted-foreground hover:bg-muted"}`}
+                    >
+                      {num}
+                    </button>
                   ))}
                 </div>
               </div>
               <div className="space-y-3">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2"><Heart size={14} /> How much do you love Agaseke?</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <Heart size={14} /> How much do you love Agaseke?
+                </label>
                 <div className="flex justify-between gap-2">
-                  {[1,2,3,4,5].map((num) => (
-                    <button key={num} type="button" onClick={() => setFeedback({...feedback, loveScale: num})}
-                      className={`flex-1 py-3 rounded-xl font-bold transition-all ${feedback.loveScale === num ? "bg-orange-600 text-white shadow-md shadow-orange-100 scale-105" : "bg-muted text-muted-foreground hover:bg-muted"}`}>{num}</button>
+                  {[1, 2, 3, 4, 5].map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => setFeedback({ ...feedback, loveScale: num })}
+                      className={`flex-1 py-3 rounded-xl font-bold transition-all ${feedback.loveScale === num ? "bg-orange-600 text-white shadow-md shadow-orange-100 scale-105" : "bg-muted text-muted-foreground hover:bg-muted"}`}
+                    >
+                      {num}
+                    </button>
                   ))}
                 </div>
               </div>
               <div className="space-y-3">
-                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Suggestions & Appreciations</label>
-                <textarea required placeholder="Tell us what's on your mind..." className="w-full h-32 p-4 bg-muted border border-border rounded-xl text-sm resize-none focus:outline-none focus:border-orange-500 transition-colors"
-                  value={feedback.message} onChange={(e) => setFeedback({...feedback, message: e.target.value})} />
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Suggestions & Appreciations
+                </label>
+                <textarea
+                  required
+                  placeholder="Tell us what's on your mind..."
+                  className="w-full h-32 p-4 bg-muted border border-border rounded-xl text-sm resize-none focus:outline-none focus:border-orange-500 transition-colors"
+                  value={feedback.message}
+                  onChange={(e) => setFeedback({ ...feedback, message: e.target.value })}
+                />
               </div>
-              <button type="submit" disabled={feedbackLoading} className="w-full py-4 bg-foreground text-background rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all disabled:opacity-50">
-                {feedbackLoading ? <Loader className="animate-spin" size={20} /> : <><Send size={18} /> Send Feedback</>}
+              <button
+                type="submit"
+                disabled={feedbackLoading}
+                className="w-full py-4 bg-foreground text-background rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all disabled:opacity-50"
+              >
+                {feedbackLoading ? (
+                  <Loader className="animate-spin" size={20} />
+                ) : (
+                  <>
+                    <Send size={18} /> Send Feedback
+                  </>
+                )}
               </button>
             </form>
           </div>
@@ -456,5 +507,3 @@ export default function DashboardLayout({
     </div>
   );
 }
-
-

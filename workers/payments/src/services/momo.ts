@@ -1,218 +1,224 @@
-import type { Env, MomoInitRequest } from "../types";
-import { convertToFields } from "../firestore";
+import type { Env, InitRequest, PaymentInitResult } from "../types";
+import { convertToFields, firestorePost } from "../firestore";
 import { logActivity } from "../logger";
 import { notifyAdmins } from "../adminNotifications";
-import { calculateRevenue, calculateStoreRevenue } from "../revenue";
+import { PaymentRequestError, resolvePayment } from "./pricing";
+import { createPaymentRepository } from "./repository";
+import {
+  abortAttempt,
+  beginIdempotentAttempt,
+  buildRetryPayload,
+  finishAttempt,
+} from "./initiate";
+
+function requirePhone(body: InitRequest): string {
+  const phone = typeof body.phone === "string" ? body.phone.trim() : "";
+  if (!phone) {
+    throw new PaymentRequestError(
+      "MISSING_PHONE",
+      "Phone number is required for MoMo payments",
+    );
+  }
+  return phone;
+}
 
 export async function initiateMomoPayment(
   env: Env,
-  body: MomoInitRequest,
-  uid: string
-): Promise<{ ref: string }> {
-  if (!body.phone) {
-    throw new Error("Phone number is required for MoMo payments");
-  }
+  body: InitRequest,
+  uid: string,
+  idempotencyKey?: string,
+): Promise<PaymentInitResult> {
+  const phone = requirePhone(body);
+  const repo = createPaymentRepository(env);
+  const resolved = await resolvePayment(env, body, uid, repo);
 
-  const paymentCurrency = body.currency || "RWF";
-  if (paymentCurrency !== "RWF") {
-    throw new Error(
-      `Mobile Money only supports RWF (requested ${paymentCurrency}). Use card payment for other currencies.`
+  if (resolved.currency !== "RWF") {
+    throw new PaymentRequestError(
+      "UNSUPPORTED_CURRENCY",
+      `Mobile Money only supports RWF (requested ${resolved.currency}). Use card payment for other currencies.`,
     );
   }
 
-  const {
-    amount,
-    phone,
-    creatorId,
-    creatorUid,
-    supporterId,
-    message,
-    includeReferral,
-    referralUid,
-    referralId,
-    productId,
-    productPrice,
-    productName,
-    quantity,
-    selectedSize,
-    platformFeePayer,
-    buyerName,
-    email,
-    buyerEmail,
-    bookingId,
-    gatheringId,
-    attendeeName,
-    attendeeEmail,
-    attendeePhoto,
-    communityTierId,
-    communityInterval,
-    communitySubscriptionId,
-    currency,
-  } = body;
-
-  const isStoreTransaction = !!productId;
-  const isBookingTransaction = !!bookingId;
-  const isGatheringTransaction = !!gatheringId;
-  const isCommunityTransaction = !!communityTierId;
-  const price = Number(productPrice) || 0;
-  const qty = Number(quantity) || 1;
-  const feePayer = platformFeePayer || "buyer";
-
-  let totalAmount = Number(amount);
-  let platformFee = 0;
-  let creatorEarnings = 0;
-  let referralEarnings = 0;
-
-  if (isStoreTransaction) {
-    const storeRev = calculateStoreRevenue(price * qty, feePayer, env);
-    platformFee = storeRev.platformFee;
-    referralEarnings = storeRev.referralEarnings;
-    totalAmount = storeRev.totalAmount;
-    creatorEarnings = storeRev.creatorEarnings;
-  }
-
-  const authRes = await fetch(
-    "https://payments.paypack.rw/api/auth/agents/authorize",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
-        client_id: env.PAYPACK_CLIENT_ID,
-        client_secret: env.PAYPACK_CLIENT_SECRET,
-      }),
-    }
-  );
-
-  if (!authRes.ok) {
-    const errText = await authRes.text();
-    console.error("Paypack auth error:", authRes.status, errText);
-    await logActivity(env, "error", "payment", "Momo pay: Paypack auth failed", {
-      status: authRes.status,
-      error: errText.slice(0, 500),
-    });
-    throw new Error("Paypack authentication failed");
-  }
-
-  const { access } = (await authRes.json()) as { access: string };
-
-  const payRes = await fetch(
-    "https://payments.paypack.rw/api/transactions/cashin",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${access}`,
-        "X-Webhook-Mode": "production",
-      },
-      body: JSON.stringify({ amount: totalAmount, number: phone }),
-    }
-  );
-
-  const payData = (await payRes.json()) as { ref?: string };
-
-  if (!payData.ref) {
-    await logActivity(env, "error", "payment", "Momo pay: No ref returned", {
-      phone,
-      amount: totalAmount,
-      creatorId,
-    });
-    throw new Error("Payment failed to initiate");
-  }
-
-  const now = new Date().toISOString();
-  const txType = isCommunityTransaction
-    ? "community"
-    : isGatheringTransaction
-      ? "gathering"
-      : isBookingTransaction
-        ? "booking"
-        : isStoreTransaction
-          ? "store"
-          : "support";
-
-  const txFields: Record<string, unknown> = {
-    ref: payData.ref,
-    amount: totalAmount,
-    phone,
-    creatorId,
-    creatorUid,
-    supporterId: supporterId || "anonymous",
-    includeReferral: !!includeReferral,
-    status: "pending",
-    message: message ?? "",
-    referralUid: referralUid ?? "",
-    referralId: referralId ?? "",
-    type: txType,
-    currency: paymentCurrency,
-    paymentMethod: "momo",
-    createdAt: now,
-    initiatedBy: uid,
-    retryPayload: body,
-  };
-
-  if (isStoreTransaction) {
-    txFields.productId = productId;
-    txFields.productPrice = price;
-    txFields.productName = productName || "";
-    txFields.quantity = qty;
-    txFields.selectedSize = selectedSize || "";
-    txFields.platformFee = platformFee;
-    txFields.creatorEarnings = creatorEarnings;
-    txFields.referralEarnings = referralEarnings;
-    txFields.platformFeePayer = feePayer;
-    txFields.buyerId = supporterId || "anonymous";
-    txFields.buyerName = buyerName || "";
-    txFields.buyerEmail = buyerEmail || email || "";
-  }
-
-  if (isBookingTransaction) {
-    txFields.bookingId = bookingId;
-    txFields.buyerId = supporterId || "anonymous";
-    txFields.buyerName = buyerName || "";
-    txFields.buyerEmail = buyerEmail || email || "";
-  }
-
-  if (isGatheringTransaction) {
-    txFields.gatheringId = gatheringId;
-    txFields.attendeeName = attendeeName || "";
-    txFields.attendeeEmail = attendeeEmail || attendeeName || "";
-    txFields.attendeePhoto = attendeePhoto || "";
-  }
-
-  if (isCommunityTransaction) {
-    txFields.communityTierId = communityTierId;
-    txFields.communityInterval = communityInterval || "";
-    txFields.communitySubscriptionId = communitySubscriptionId || "";
-  }
-
-  const { firestorePost } = await import("../firestore");
-  const doc = await firestorePost(env, "transactions", {
-    fields: convertToFields(txFields),
-  });
-
-  if (!doc) {
-    console.error("Failed to store transaction in Firestore");
-  }
-
-  const txTypeLabel = isCommunityTransaction
-    ? "Community subscription"
-    : isGatheringTransaction
-      ? "Gathering ticket"
-      : isBookingTransaction
-        ? "Booking payment"
-        : isStoreTransaction
-          ? "Store purchase"
-          : "Support";
-
-  await notifyAdmins(
+  const attempt = await beginIdempotentAttempt(
     env,
-    "New Transaction",
-    `${txTypeLabel} of ${totalAmount.toLocaleString()} ${currency || "RWF"} initiated`,
-    "/admin/payouts"
+    resolved,
+    body,
+    uid,
+    idempotencyKey,
   );
 
-  return { ref: payData.ref };
+  if (attempt.duplicate && attempt.existing?.ref) {
+    return {
+      ref: attempt.existing.ref,
+      status: "pending",
+      redirect_url: attempt.existing.redirectUrl || undefined,
+      merchant_reference: attempt.existing.merchantReference || undefined,
+    };
+  }
+
+  try {
+    const authRes = await fetch(
+      "https://payments.paypack.rw/api/auth/agents/authorize",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          client_id: env.PAYPACK_CLIENT_ID,
+          client_secret: env.PAYPACK_CLIENT_SECRET,
+        }),
+      },
+    );
+
+    if (!authRes.ok) {
+      const errText = await authRes.text();
+      console.error("Paypack auth error:", authRes.status, errText);
+      await logActivity(env, "error", "payment", "Momo pay: Paypack auth failed", {
+        status: authRes.status,
+        error: errText.slice(0, 500),
+      });
+      throw new PaymentRequestError(
+        "PROVIDER_AUTH_FAILED",
+        "Paypack authentication failed",
+        502,
+      );
+    }
+
+    const { access } = (await authRes.json()) as { access: string };
+
+    const payRes = await fetch(
+      "https://payments.paypack.rw/api/transactions/cashin",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${access}`,
+          "X-Webhook-Mode": "production",
+        },
+        body: JSON.stringify({ amount: resolved.totalAmount, number: phone }),
+      },
+    );
+
+    const payData = (await payRes.json().catch(() => ({}))) as {
+      ref?: string;
+    };
+
+    if (!payRes.ok || !payData.ref) {
+      await logActivity(env, "error", "payment", "Momo pay: No ref returned", {
+        amount: resolved.totalAmount,
+        creatorHandle: resolved.creatorHandle,
+        status: payRes.status,
+      });
+      throw new PaymentRequestError(
+        "PROVIDER_INITIATION_FAILED",
+        "Payment failed to initiate with Paypack",
+        502,
+      );
+    }
+
+    const now = new Date().toISOString();
+    const txFields: Record<string, unknown> = {
+      ref: payData.ref,
+      amount: resolved.totalAmount,
+      currency: resolved.currency,
+      phone,
+      creatorId: resolved.creatorHandle,
+      creatorHandle: resolved.creatorHandle,
+      creatorUid: resolved.creatorUid,
+      supporterId: uid,
+      buyerId: uid,
+      includeReferral: resolved.includeReferral,
+      referralUid: resolved.referralUid,
+      referralId: resolved.referralId,
+      status: "pending",
+      message: typeof body.message === "string" ? body.message : "",
+      type: resolved.type,
+      paymentMethod: "momo",
+      paymentProvider: "paypack",
+      providerRef: payData.ref,
+      idempotencyKey: attempt.key,
+      platformFee: resolved.platformFee,
+      creatorEarnings: resolved.creatorEarnings,
+      referralEarnings: resolved.referralEarnings,
+      processorCost: resolved.processorCost,
+      createdAt: now,
+      initiatedAt: now,
+      updatedAt: now,
+      initiatedBy: uid,
+      retryPayload: buildRetryPayload(resolved, body),
+    };
+
+    if (resolved.type === "store") {
+      txFields.productId = resolved.productId;
+      txFields.productPrice = resolved.productPrice;
+      txFields.productName = resolved.productName || "";
+      txFields.quantity = resolved.quantity;
+      txFields.selectedSize = resolved.selectedSize || "";
+      txFields.platformFeePayer = resolved.platformFeePayer;
+      txFields.couponCode = resolved.couponCode || "";
+      txFields.discount = resolved.discount || 0;
+      txFields.buyerName = resolved.buyerName || "";
+      txFields.buyerEmail = resolved.buyerEmail || "";
+    }
+
+    if (resolved.type === "booking") {
+      txFields.bookingId = resolved.bookingId;
+      txFields.buyerName = resolved.buyerName || "";
+      txFields.buyerEmail = resolved.buyerEmail || "";
+    }
+
+    if (resolved.type === "gathering") {
+      txFields.gatheringId = resolved.gatheringId;
+      txFields.attendeeName = resolved.attendeeName || "";
+      txFields.attendeeEmail = resolved.attendeeEmail || "";
+      txFields.attendeePhoto = resolved.attendeePhoto || "";
+    }
+
+    if (resolved.type === "community") {
+      txFields.communityTierId = resolved.communityTierId;
+      txFields.communityInterval = resolved.communityInterval || "";
+      txFields.communitySubscriptionId =
+        resolved.communitySubscriptionId || "";
+    }
+
+    const doc = await firestorePost(env, "transactions", {
+      fields: convertToFields(txFields),
+    });
+
+    if (!doc) {
+      await finishAttempt(env, attempt.key, { ref: payData.ref });
+      throw new PaymentRequestError(
+        "TRANSACTION_PERSIST_FAILED",
+        `Payment ${payData.ref} was initiated but could not be recorded. Contact support with this reference.`,
+        502,
+      );
+    }
+
+    await finishAttempt(env, attempt.key, { ref: payData.ref });
+
+    const txTypeLabel =
+      resolved.type === "community"
+        ? "Community subscription"
+        : resolved.type === "gathering"
+          ? "Gathering ticket"
+          : resolved.type === "booking"
+            ? "Booking payment"
+            : resolved.type === "store"
+              ? "Store purchase"
+              : "Support";
+
+    await notifyAdmins(
+      env,
+      "New Transaction",
+      `${txTypeLabel} of ${resolved.totalAmount.toLocaleString()} ${resolved.currency} initiated`,
+      "/admin/payouts",
+    );
+
+    return { ref: payData.ref, status: "pending" };
+  } catch (error) {
+    await abortAttempt(env, attempt.key, error);
+    throw error;
+  }
 }

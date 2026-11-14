@@ -4,8 +4,7 @@ import { Zap, Wallet, Star, UserPlus, ArrowLeft, Loader } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 import { PerkItem } from "./loginpage/index";
-import { handleGoogleLogin } from "../../db/functions/GoogleLogin";
-import { useSearchParams } from "next/navigation";
+import { sanitizeRedirectPath } from "@/lib/safeRedirect";
 
 function getFallbackRedirect(): string | null {
   if (typeof window === "undefined") return null;
@@ -16,12 +15,19 @@ function getFallbackRedirect(): string | null {
   }
 }
 
-export default function LoginPage() {
+type LoginPageProps = {
+  reservedUsername?: string | null;
+  referralCreator?: string | null;
+  redirectParam?: string | null;
+};
+
+export default function LoginPage({
+  reservedUsername = null,
+  referralCreator = null,
+  redirectParam = null,
+}: LoginPageProps) {
   const [loading, setLoading] = React.useState(false);
-  const searchParams = useSearchParams();
-  const reservedUsername = searchParams.get("username") || null;
-  const referralCreator = searchParams.get("referral") || null;
-  const redirect = searchParams.get("redirect") || getFallbackRedirect();
+  const redirect = sanitizeRedirectPath(redirectParam || getFallbackRedirect());
 
   return (
     <div className="min-h-screen bg-card flex flex-wrap-reverse md:flex-row">
@@ -31,7 +37,7 @@ export default function LoginPage() {
         <div>
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-orange-500 font-bold text-xl mb-12 hover:opacity-80 transition"
+            className="inline-flex min-h-11 items-center gap-2 text-orange-500 font-bold text-xl mb-12 hover:opacity-80 transition"
           >
             <ArrowLeft size={18} />
             agaseke.me
@@ -63,7 +69,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div className="mt-12 pt-8 border-t border-border text-muted-foreground text-sm">
+        <div className="mt-12 pt-8 border-t border-border text-slate-400 text-sm">
           © 2026 Agaseke. Supporting African Creativity.
         </div>
       </div>
@@ -75,16 +81,19 @@ export default function LoginPage() {
               <Zap size={32} fill="currentColor" />
             </div>
             <h2 className="text-2xl font-bold text-foreground">Welcome Back</h2>
-            <p className="text-muted-foreground mt-2">
-              Sign in to manage your Agaseke
-            </p>
+            <p className="text-muted-foreground mt-2">Sign in to manage your Agaseke</p>
           </div>
 
           <button
             className="w-full flex items-center justify-center gap-3 bg-card border-2 border-border py-4 px-6 rounded-lg font-bold text-foreground hover:bg-muted hover:border-border-strong transition-all active:scale-[0.98]"
             onClick={async () => {
               setLoading(true);
-              await handleGoogleLogin(reservedUsername ?? null, referralCreator ?? null, redirect);
+              const { handleGoogleLogin } = await import("@/db/functions/GoogleLogin");
+              await handleGoogleLogin(
+                reservedUsername ?? null,
+                referralCreator ?? null,
+                redirect,
+              );
               setLoading(false);
             }}
           >
@@ -116,5 +125,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-

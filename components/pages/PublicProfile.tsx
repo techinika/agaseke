@@ -18,15 +18,21 @@ import { db } from "@/db/firebase";
 import { useRouter } from "next/navigation";
 import NotFound from "@/app/not-found";
 import { useAuth } from "@/auth/AuthContext";
-import { SupportModal } from "../parts/public/SupportModal";
 import CreatorSchema from "../seo/CreatorSchma";
-import { ShareModal } from "../parts/public/ShareModal";
 import { LoginNotice } from "../parts/public/LoginNotice";
 import { TabManager } from "../parts/public/TabManager";
 import { SendGiftSection } from "../parts/public/SendGiftSection";
 import { CommunityTab } from "../parts/public/CommunityTab";
 import { Building2, ExternalLink } from "lucide-react";
 import { normalizeSocialUrl } from "@/lib/urlUtils";
+
+
+const LazySupportModal = lazy(() =>
+  import("../parts/public/SupportModal").then((m) => ({ default: m.SupportModal })),
+);
+const LazyShareModal = lazy(() =>
+  import("../parts/public/ShareModal").then((m) => ({ default: m.ShareModal })),
+);
 
 const LazyStoreTab = lazy(() =>
   import("../parts/public/StoreTab").then((m) => ({ default: m.StoreTab })),
@@ -300,7 +306,7 @@ export default function PublicProfile({
     if (sessionStorage.getItem(key)) return;
     sessionStorage.setItem(key, "1");
     viewCounted.current = true;
-    const creatorRef = doc(db, "creators", username);
+        const creatorRef = doc(db, "creators", username);
     updateDoc(creatorRef, { views: increment(1) }).catch((err) => { console.error("Failed to update view count", err); });
   }, [username]);
 
@@ -491,6 +497,11 @@ export default function PublicProfile({
                         src={partner.logo}
                         alt={partner.name}
                         className="w-full h-full object-cover"
+                        width={56}
+                        height={56}
+                        sizes="56px"
+                        loading="lazy"
+                        decoding="async"
                       />
                     ) : (
                       <Building2 size={24} className="text-muted-foreground" />
@@ -518,25 +529,31 @@ export default function PublicProfile({
         </section>
       )}
 
-      <SupportModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        creatorName={creator.name}
-        creatorId={creator.handle}
-        uid={creator.uid}
-        includeReferral={profileData?.referralCreator != null}
-        referralUid={referralId}
-        referralId={profileData?.referralCreator}
-      />
+      {isModalOpen && (
+        <Suspense fallback={null}>
+          <LazySupportModal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            creatorName={creator.name}
+            creatorId={creator.handle}
+            uid={creator.uid}
+            includeReferral={profileData?.referralCreator != null}
+            referralUid={referralId}
+            referralId={profileData?.referralCreator}
+          />
+        </Suspense>
+      )}
 
       {!isCreator && <LoginNotice loggedIn={isLoggedIn} handle={username} />}
 
       {isShareModalOpen && (
-        <ShareModal
-          setIsShareModalOpen={setIsShareModalOpen}
-          name={creator?.name ?? ""}
-          username={username}
-        />
+        <Suspense fallback={null}>
+          <LazyShareModal
+            setIsShareModalOpen={setIsShareModalOpen}
+            name={creator?.name ?? ""}
+            username={username}
+          />
+        </Suspense>
       )}
     </>
   );

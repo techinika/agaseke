@@ -86,13 +86,11 @@ export default function HelpCenter() {
               <Mail size={24} />
             </div>
             <h3 className="font-bold mb-2">Email Support</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Response within 24 hours
-            </p>
+            <p className="text-sm text-muted-foreground mb-4">Response within 24 hours</p>
             <Link
               href="mailto:hello@agaseke.me"
               target="_blank"
-              className="text-orange-600 font-bold hover:underline text-sm"
+              className="inline-flex min-h-11 items-center text-orange-600 font-bold hover:underline text-sm"
             >
               hello@agaseke.me
             </Link>
@@ -107,7 +105,7 @@ export default function HelpCenter() {
             <Link
               href="https://instagram.com/agaseke_support"
               target="_blank"
-              className="text-orange-600 font-bold hover:underline text-sm"
+              className="inline-flex min-h-11 items-center text-orange-600 font-bold hover:underline text-sm"
             >
               @agaseke_support
             </Link>
@@ -122,7 +120,7 @@ export default function HelpCenter() {
             <Link
               href="https://x.com/agaseke_support"
               target="_blank"
-              className="text-orange-600 font-bold hover:underline text-sm"
+              className="inline-flex min-h-11 items-center text-orange-600 font-bold hover:underline text-sm"
             >
               @agaseke_support
             </Link>
@@ -139,7 +137,7 @@ export default function HelpCenter() {
             <Link
               href="https://whatsapp.com/channel/0029Vb9AemqFy72CiwMyQf06"
               target="_blank"
-              className="text-emerald-600 font-bold hover:underline text-sm"
+              className="inline-flex min-h-11 items-center text-emerald-600 font-bold hover:underline text-sm"
             >
               Join the channel
             </Link>
@@ -152,9 +150,7 @@ export default function HelpCenter() {
               <MessageCircle size={32} />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-emerald-900">
-                Join our Community
-              </h3>
+              <h3 className="text-xl font-bold text-emerald-900">Join our Community</h3>
               <p className="text-emerald-700 font-medium text-sm">
                 Get community support and quick assistance via WhatsApp.
               </p>
@@ -172,8 +168,8 @@ export default function HelpCenter() {
 
         <div className="max-w-3xl mx-auto">
           <h2 className="text-3xl font-bold mb-10 flex items-center gap-3">
-            <HelpCircle className="text-orange-600" size={32} /> Frequently
-            Asked Questions
+            <HelpCircle className="text-orange-600" size={32} /> Frequently Asked
+            Questions
           </h2>
 
           <div className="space-y-12">

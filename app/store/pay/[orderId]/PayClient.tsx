@@ -88,7 +88,6 @@ export default function PayClient() {
   }, [orderId]);
 
   const items: any[] = order?.items || [];
-  const firstProduct = products[items[0]?.productId];
 
   let platformFee = 0;
   let buyerPaysMore = false;
@@ -122,23 +121,18 @@ export default function PayClient() {
       const firstItem = items[0];
 
       const payload: Record<string, any> = {
+        type: "store",
+        creatorHandle,
         productId: firstItem?.productId,
         quantity: items.reduce((s: number, i: any) => s + (i.quantity || 0), 0),
-        supporterId: currentUser.uid,
-        buyerId: currentUser.uid,
+        selectedSize: firstItem?.selectedSize,
         buyerEmail: currentUser.email || order.buyerEmail || "",
         buyerName: currentUser.displayName || order.buyerName || "Customer",
         phone: phone.replace(/\s/g, ""),
-        selectedSize: firstItem?.selectedSize,
-        productPrice: firstItem?.price,
-        productName: firstItem?.productName || firstProduct?.name || "Product",
-        creatorId: creatorHandle,
-        creatorUid: firstProduct?.creatorUid || order?.creatorUid || "",
-        platformFeePayer: firstProduct?.platformFeePayer || "buyer",
-        amount: amountToPay,
         email: currentUser.email || "",
         firstName: currentUser.displayName?.split(" ")[0] || "Customer",
         lastName: currentUser.displayName?.split(" ")[1] || "",
+        idempotencyKey: crypto.randomUUID(),
       };
 
       if (paymentMethod === "momo") {

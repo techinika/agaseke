@@ -6,12 +6,12 @@ const ALLOWED_ORIGINS = [
 
 export function corsHeaders(origin: string | null): Record<string, string> {
   const allowed =
-    origin && ALLOWED_ORIGINS.includes(origin) ? origin : (origin || ALLOWED_ORIGINS[0]);
+    origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     "access-control-allow-origin": allowed,
     "access-control-allow-methods": "GET, POST, OPTIONS",
     "access-control-allow-headers":
-      "Content-Type, Authorization, X-Firebase-AppCheck",
+      "Content-Type, Authorization, X-Firebase-AppCheck, Idempotency-Key",
     "access-control-max-age": "86400",
     vary: "Origin",
   };

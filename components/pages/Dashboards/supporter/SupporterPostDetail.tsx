@@ -38,6 +38,8 @@ import { LinkifyText } from "@/components/ui/LinkifyText";
 import RichContentRenderer from "@/components/ui/RichContentRenderer";
 import Navbar from "@/components/parts/Navigation";
 import { SupportModal } from "@/components/parts/public/SupportModal";
+import { MediaAsset } from "@/components/parts/public/MediaAsset";
+import { usePostMediaSrc } from "@/lib/usePostMediaSrc";
 
 interface Comment {
   id: string;
@@ -66,6 +68,7 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
   const [documentIndex, setDocumentIndex] = useState(0);
   const [supportOpen, setSupportOpen] = useState(false);
   const viewCounted = useRef(false);
+  const { mediaSrc } = usePostMediaSrc(post?.id, !!post?.isPrivate);
 
   useEffect(() => {
     if (!postId) return;
@@ -266,6 +269,7 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
       : post.contentUrl
         ? [post.contentUrl]
         : [];
+  const documentSrc = mediaSrc(pages[documentIndex]);
 
   return (
     <div className="min-h-screen bg-muted">
@@ -317,8 +321,10 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
             {post.type === "article" ? (
               <div className="mb-4">
                 {(post.coverUrl || post.contentUrl) && (
-                  <img
-                    src={post.coverUrl || post.contentUrl}
+                  <MediaAsset
+                    postId={post.id}
+                    isPrivate={!!post.isPrivate}
+                    url={post.coverUrl || post.contentUrl}
                     alt={post.title}
                     className="w-full max-h-[420px] object-cover rounded-xl mb-4"
                   />
@@ -340,8 +346,10 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
               !Array.isArray(post.contentUrl) &&
               post.contentUrl && (
                 <div className="rounded-lg overflow-hidden bg-muted mb-4">
-                  <img
-                    src={post.contentUrl}
+                  <MediaAsset
+                    postId={post.id}
+                    isPrivate={!!post.isPrivate}
+                    url={post.contentUrl}
                     alt={post.title}
                     className="w-full max-h-[500px] object-contain"
                   />
@@ -350,8 +358,11 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
 
             {post.type === "video" && post.contentUrl && (
               <div className="rounded-lg overflow-hidden bg-black mb-4">
-                <video
-                  src={post.contentUrl}
+                <MediaAsset
+                  postId={post.id}
+                  isPrivate={!!post.isPrivate}
+                  url={post.contentUrl}
+                  as="video"
                   controls
                   controlsList="nodownload"
                   className="w-full aspect-video"
@@ -401,11 +412,17 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
                     </button>
                   </div>
                 )}
-                <iframe
-                  src={`https://docs.google.com/viewer?url=${encodeURIComponent(pages[documentIndex])}&embedded=true`}
-                  className="w-full h-[500px] rounded-lg bg-card"
-                  title="Document"
-                />
+                {documentSrc ? (
+                  <iframe
+                    src={`https://docs.google.com/viewer?url=${encodeURIComponent(documentSrc)}&embedded=true`}
+                    className="w-full h-[500px] rounded-lg bg-card"
+                    title="Document"
+                  />
+                ) : (
+                  <div className="w-full h-[500px] rounded-lg bg-card flex items-center justify-center text-sm text-muted-foreground">
+                    Preparing document...
+                  </div>
+                )}
               </div>
             )}
 

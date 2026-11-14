@@ -6,10 +6,7 @@ import {
   FaYoutube,
   FaWhatsapp,
 } from "react-icons/fa";
-import {
-  SocialIcon,
-  FooterGroup,
-} from "./footer/index";
+import { SocialIcon, FooterGroup } from "./footer/index";
 
 export default function Footer() {
   return (
@@ -21,7 +18,9 @@ export default function Footer() {
               agaseke<span className="text-orange-600">.me</span>
             </div>
             <p className="text-sm leading-relaxed mb-8">
-              The private community platform for content creators, artists, YouTubers, Bloggers, and Influencers. Your biggest fans support you directly through tips, subscriptions, and exclusive content.
+              The private community platform for content creators, artists, YouTubers,
+              Bloggers, and Influencers. Your biggest fans support you directly through
+              tips, subscriptions, and exclusive content.
             </p>
 
             {/* Social Media Icons */}
@@ -29,18 +28,22 @@ export default function Footer() {
               <SocialIcon
                 href="https://instagram.com/agaseke_support"
                 icon={<FaInstagram size={20} />}
+                title="Agaseke on Instagram"
               />
               <SocialIcon
                 href="https://x.com/agaseke_support"
                 icon={<FaTwitter size={20} />}
+                title="Agaseke on X"
               />
               <SocialIcon
                 href="https://linkedin.com/company/agaseke"
                 icon={<FaLinkedin size={20} />}
+                title="Agaseke on LinkedIn"
               />
               <SocialIcon
                 href="https://www.youtube.com/channel/UCeLwxQrpnxYip5G-jXyTRBQ"
                 icon={<FaYoutube size={20} />}
+                title="Agaseke on YouTube"
               />
               <SocialIcon
                 href="https://whatsapp.com/channel/0029Vb9AemqFy72CiwMyQf06"
@@ -51,19 +54,19 @@ export default function Footer() {
           </div>
 
           <div className="flex flex-wrap gap-12 md:gap-24">
-             <FooterGroup
-               title="Platform"
-               links={[
-                 { label: "Explore", href: "/explore" },
-                 { label: "Changelog", href: "/changelog" },
-                 { label: "Help Center", href: "/help-center" },
-                 {
-                   label: "Blog",
-                   href: "https://medium.com/@agasekeforcreators",
-                   isExternal: true,
-                 },
-               ]}
-             />
+            <FooterGroup
+              title="Platform"
+              links={[
+                { label: "Explore", href: "/explore" },
+                { label: "Changelog", href: "/changelog" },
+                { label: "Help Center", href: "/help-center" },
+                {
+                  label: "Blog",
+                  href: "https://medium.com/@agasekeforcreators",
+                  isExternal: true,
+                },
+              ]}
+            />
 
             <FooterGroup
               title="Legal"
@@ -98,7 +101,11 @@ export default function Footer() {
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-green-500">
               Powered by{" "}
-              <Link href="https://techinika.co.rw" target="_blank">
+              <Link
+                href="https://techinika.co.rw"
+                target="_blank"
+                className="inline-flex min-h-11 items-center"
+              >
                 Techinika
               </Link>
             </div>
@@ -108,5 +115,3 @@ export default function Footer() {
     </footer>
   );
 }
-
-

@@ -1,7 +1,12 @@
-import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
+import {
+  initializeApp,
+  getApp,
+  getApps,
+  type FirebaseApp,
+} from "firebase/app";
+import { getAuth, GoogleAuthProvider, type Auth } from "firebase/auth";
+import { getFirestore, type Firestore } from "firebase/firestore";
+import { getStorage, type FirebaseStorage } from "firebase/storage";
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
 const firebaseConfig = {
@@ -13,15 +18,45 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_APP_ID,
 };
 
-export const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
-export const db = getFirestore(app);
-export const storage = getStorage(app);
+/**
+ * True when every public Firebase key is present. When false the app can still
+ * render (marketing pages, /dev/components, tests) but auth/database calls are
+ * unavailable. Production builds always set these values.
+ */
+export const firebaseConfigured = Object.values(firebaseConfig).every(Boolean);
 
-if (typeof window !== "undefined" && process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) {
-  initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY),
-    isTokenAutoRefreshEnabled: true,
-  });
+export let app: FirebaseApp | null = null;
+export let auth: Auth = null as unknown as Auth;
+export let db: Firestore = null as unknown as Firestore;
+export let storage: FirebaseStorage = null as unknown as FirebaseStorage;
+
+export const googleProvider = new GoogleAuthProvider();
+
+if (firebaseConfigured) {
+  try {
+    app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+    storage = getStorage(app);
+
+    if (
+      typeof window !== "undefined" &&
+      process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
+    ) {
+      initializeAppCheck(app, {
+        provider: new ReCaptchaV3Provider(
+          process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY,
+        ),
+        isTokenAutoRefreshEnabled: true,
+      });
+    }
+  } catch (error) {
+    app = null;
+    auth = null as unknown as Auth;
+    db = null as unknown as Firestore;
+    storage = null as unknown as FirebaseStorage;
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[firebase] client disabled:", error);
+    }
+  }
 }

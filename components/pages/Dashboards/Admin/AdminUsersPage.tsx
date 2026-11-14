@@ -24,7 +24,7 @@ import {
   ChevronRight,
   Download,
 } from "lucide-react";
-import { db } from "@/db/firebase";
+import { auth, db } from "@/db/firebase";
 import {
   doc,
   updateDoc,
@@ -164,18 +164,29 @@ export default function AdminUsersPage() {
     setMakingAdmin(user.id);
     try {
       const newIsAdmin = !user.isAdmin;
-      await updateDoc(doc(db, "profiles", user.id), {
-        isAdmin: newIsAdmin,
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("Authentication required");
+
+      const res = await fetch("/api/admin/users/role", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ uid: user.id, isAdmin: newIsAdmin }),
       });
 
-      await logActivity({
-        level: "info",
-        category: "admin",
-        message: `${newIsAdmin ? "Made admin" : "Removed admin from"}: ${user.displayName || user.email}`,
-        userId: user.id,
-        userEmail: user.email || undefined,
-        userName: user.displayName || undefined,
-      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Failed to update user");
+      }
+
+      setUsers((prev) =>
+        prev.map((u) => (u.id === user.id ? { ...u, isAdmin: newIsAdmin } : u)),
+      );
+      setSelectedUser((prev) =>
+        prev && prev.id === user.id ? { ...prev, isAdmin: newIsAdmin } : prev,
+      );
 
       toast.success(newIsAdmin ? "User is now an admin" : "Admin removed");
     } catch (error) {

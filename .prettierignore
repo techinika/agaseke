@@ -1,0 +1,10 @@
+.next
+node_modules
+out
+build
+storybook-static
+workers
+public
+package-lock.json
+.kilo
+docs

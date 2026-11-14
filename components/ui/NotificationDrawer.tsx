@@ -25,11 +25,14 @@ import {
   UserCheck,
   CreditCard,
 } from "lucide-react";
-import { collection, query, where, onSnapshot, doc, updateDoc, getDocs, writeBatch } from "firebase/firestore";
-import { db } from "@/db/firebase";
 import type { Notification, NotificationType } from "@/lib/notifications";
-import Link from "next/link";
+import {
+  markAllNotificationsAsRead,
+  markNotificationAsRead,
+  subscribeToNotifications,
+} from "@/lib/notifications";
 import { useRouter } from "next/navigation";
+import { t as translate } from "@/lib/i18n";
 
 interface NotificationDrawerProps {
   isOpen: boolean;
@@ -85,6 +88,7 @@ export default function NotificationDrawer({
     return 0;
   };
 
+  /* eslint-disable react-hooks/set-state-in-effect -- realtime notifications subscription */
   useEffect(() => {
     if (!isOpen || !userId) {
       setNotifications([]);
@@ -93,28 +97,21 @@ export default function NotificationDrawer({
     }
 
     setLoading(true);
-
-    const q = query(
-      collection(db, "notifications"),
-      where("userId", "==", userId),
+    const unsub = subscribeToNotifications(
+      userId,
+      (notifs) => {
+        const sorted = [...notifs].sort((a, b) =>
+          t(a.createdAt) < t(b.createdAt) ? 1 : -1,
+        );
+        setNotifications(sorted);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Failed to load notifications:", error);
+        setNotifications([]);
+        setLoading(false);
+      },
     );
-
-    const unsub = onSnapshot(q, (snapshot) => {
-      const notifs = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Notification[];
-      notifs.sort(
-        (a, b) =>
-          (t(a.createdAt) < t(b.createdAt) ? 1 : -1),
-      );
-      setNotifications(notifs);
-      setLoading(false);
-    }, (error) => {
-      console.error("Failed to load notifications:", error);
-      setNotifications([]);
-      setLoading(false);
-    });
 
     return () => unsub();
   }, [isOpen, userId]);
@@ -125,9 +122,7 @@ export default function NotificationDrawer({
       const notif = notifications.find((n) => n.id === notificationId);
       if (notif?.read) return;
 
-      await updateDoc(doc(db, "notifications", notificationId), {
-        read: true,
-      });
+      await markNotificationAsRead(notificationId);
     } catch (error) {
       console.error("Failed to mark as read:", error);
     }
@@ -138,20 +133,7 @@ export default function NotificationDrawer({
     setMarkingAllRead(true);
 
     try {
-      const q = query(
-        collection(db, "notifications"),
-        where("userId", "==", userId),
-      );
-      const snapshot = await getDocs(q);
-      const unreadDocs = snapshot.docs.filter((d) => !d.data().read);
-
-      if (unreadDocs.length > 0) {
-        const batch = writeBatch(db);
-        unreadDocs.forEach((doc) => {
-          batch.update(doc.ref, { read: true });
-        });
-        await batch.commit();
-      }
+      await markAllNotificationsAsRead(userId);
     } catch (error) {
       console.error("Failed to mark all as read:", error);
     } finally {
@@ -161,9 +143,7 @@ export default function NotificationDrawer({
 
   const handleNotificationClick = (notification: Notification) => {
     if (!notification.read) {
-      updateDoc(doc(db, "notifications", notification.id), { read: true }).catch(
-        console.error
-      );
+      markNotificationAsRead(notification.id).catch(console.error);
     }
 
     if (notification.link) {
@@ -183,10 +163,10 @@ export default function NotificationDrawer({
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffMins < 1) return translate("notifications.justNow");
+    if (diffMins < 60) return translate("notifications.agoMinutes", { count: diffMins });
+    if (diffHours < 24) return translate("notifications.agoHours", { count: diffHours });
+    if (diffDays < 7) return translate("notifications.agoDays", { count: diffDays });
     return date.toLocaleDateString();
   };
 
@@ -211,11 +191,11 @@ export default function NotificationDrawer({
               </div>
               <div>
                 <h2 className="text-lg font-bold text-foreground">
-                  Notifications
+                  {translate("notifications.title")}
                 </h2>
                 {unreadCount > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    {unreadCount} unread
+                    {translate("notifications.unreadCount", { count: unreadCount })}
                   </p>
                 )}
               </div>
@@ -233,11 +213,12 @@ export default function NotificationDrawer({
                   ) : (
                     <CheckCheck size={12} />
                   )}
-                  Mark all read
+                  {translate("notifications.markAllRead")}
                 </button>
               )}
               <button
                 onClick={onClose}
+                aria-label={translate("notifications.close")}
                 className="p-2 hover:bg-muted rounded-lg transition-colors"
               >
                 <X size={18} className="text-muted-foreground" />
@@ -256,10 +237,10 @@ export default function NotificationDrawer({
                   <Bell size={28} className="text-muted-foreground" />
                 </div>
                 <h3 className="text-sm font-bold text-foreground mb-1">
-                  No notifications yet
+                  {translate("notifications.emptyTitle")}
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                  We'll notify you when something happens
+                  {translate("notifications.emptyBody")}
                 </p>
               </div>
             ) : (
@@ -282,10 +263,11 @@ export default function NotificationDrawer({
                           }`}
                         >
                           {notification.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element -- notification thumbnails are remote URLs
                             <img
                               src={notification.imageUrl}
-              alt="Notification image"
-              className="w-10 h-10 rounded-xl object-cover"
+                              alt="Notification image"
+                              className="w-10 h-10 rounded-xl object-cover"
                             />
                           ) : (
                             getIcon(notification.type as NotificationType)
@@ -310,6 +292,7 @@ export default function NotificationDrawer({
                           {!notification.read && (
                             <button
                               onClick={(e) => markAsRead(notification.id, e)}
+                              aria-label={translate("notifications.markAsRead")}
                               className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
                             >
                               <CheckCircle size={14} />
@@ -343,4 +326,3 @@ export default function NotificationDrawer({
     </div>
   );
 }
-

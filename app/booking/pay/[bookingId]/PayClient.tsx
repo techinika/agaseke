@@ -103,18 +103,17 @@ export default function BookingPayClient() {
 
     try {
       const payload: Record<string, any> = {
+        type: "booking",
+        creatorHandle: booking.creatorHandle,
         bookingId: booking.id,
-        amount: booking.paymentAmount || 0,
         phone: phone.replace(/\s/g, ""),
         email: currentUser.email || booking.bookerEmail || "",
         firstName: currentUser.displayName?.split(" ")[0] || booking.bookerName || "Customer",
         lastName: currentUser.displayName?.split(" ")[1] || "",
-        supporterId: currentUser.uid,
-        buyerId: currentUser.uid,
         buyerName: currentUser.displayName || booking.bookerName || "Customer",
-        creatorId: booking.creatorHandle,
-        creatorUid: booking.creatorUid || "",
+        buyerEmail: currentUser.email || booking.bookerEmail || "",
         currency: booking.currency || "RWF",
+        idempotencyKey: crypto.randomUUID(),
       };
 
       if (paymentMethod === "momo") {

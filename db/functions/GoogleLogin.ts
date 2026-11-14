@@ -3,6 +3,7 @@ import { signInWithPopup } from "firebase/auth";
 import { auth, db, googleProvider } from "../firebase";
 import { toast } from "sonner";
 import { sendCommsEmail } from "@/lib/commsService";
+import { sanitizeRedirectPath } from "@/lib/safeRedirect";
 import {
   doc,
   getDoc,
@@ -17,6 +18,8 @@ export const handleGoogleLogin = async (
   redirectUrl: string | null = null,
 ) => {
   toast.info("Connecting to Google...");
+
+  const safeRedirectUrl = sanitizeRedirectPath(redirectUrl);
 
   try {
     const result = await signInWithPopup(auth, googleProvider);
@@ -85,8 +88,8 @@ export const handleGoogleLogin = async (
         `Welcome back, ${user?.displayName ? user?.displayName.split(" ")[0] : "User"}!`,
       );
 
-      if (redirectUrl) {
-        window.location.href = redirectUrl;
+      if (safeRedirectUrl) {
+        window.location.href = safeRedirectUrl;
       } else if (userData?.type === "creator") {
         window.location.href = "/creator";
       } else {

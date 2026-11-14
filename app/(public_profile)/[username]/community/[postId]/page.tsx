@@ -39,6 +39,31 @@ export async function generateMetadata({
     return { title: "Post | Not Found | Agaseke", robots: { index: false } };
   }
 
+  if ((post as any).isPrivate === true) {
+    const defaultImage = `${baseUrl}/agaseke.png`;
+    const title = "Supporters-only post | Agaseke";
+    const description =
+      "This post is available to supporters of its creator on Agaseke.";
+    return {
+      title,
+      description,
+      robots: { index: false, follow: false },
+      openGraph: {
+        title,
+        description,
+        siteName: "Agaseke",
+        images: [{ url: defaultImage, width: 800, height: 800 }],
+        type: "article",
+      },
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description,
+        images: [defaultImage],
+      },
+    };
+  }
+
   const displayName = creator.name || username;
   const title = (post as any).title || "Post";
   const description =
@@ -101,13 +126,14 @@ async function page({ params }: { params: Promise<{ username: string; postId: st
   }
 
   const isArticle = (post as any)?.type === "article" && (post as any)?.slug;
+  const isPrivate = (post as any)?.isPrivate === true;
   const publishedTime =
     (post as any)?.createdAt?.toDate?.()?.toISOString?.() as string | undefined;
   const canonical = isArticle
     ? `/articles/${(post as any)?.slug}`
     : `/${username}/community/${postId}`;
 
-  const articleSchema = (
+  const articleSchema = isPrivate ? null : (
     <ArticleSchema
       headline={title}
       description={(post as any)?.shortDescription || `View "${title}" by ${displayName} on Agaseke.`}

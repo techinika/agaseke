@@ -1,13 +1,15 @@
 /* eslint-disable import/no-anonymous-default-export */
-import { requireAuth } from "./auth";
+import { requireAuth, forbidden } from "./auth";
 import { corsHeaders } from "./cors";
 import {
   Env,
   UploadResult,
   AssetType,
+  AssetVisibility,
   getStoragePath,
   extFromMime,
 } from "./types";
+import { timingSafeEqualString, verifyMediaKeySignature } from "./mediaSign";
 import { createAssetDocument } from "./firestore";
 import { checkRateLimit } from "./rateLimit";
 import { drainPending } from "./audit";
@@ -116,10 +118,37 @@ async function handleUpload(request: Request, env: Env): Promise<Response> {
   );
 }
 
+function bucketFor(env: Env, visibility: AssetVisibility): R2Bucket {
+  if (visibility === "private") {
+    if (!env.UPLOADS_PRIVATE_BUCKET) {
+      throw new Error("Private media storage is not configured");
+    }
+    return env.UPLOADS_PRIVATE_BUCKET;
+  }
+  return env.UPLOADS_BUCKET;
+}
+
+function parseVisibility(value: unknown, origin: string | null): AssetVisibility | Response {
+  if (value === undefined || value === null || value === "") return "public";
+  if (value === "public" || value === "private") return value;
+  return json(
+    { error: 'visibility must be "public" or "private"' },
+    400,
+    origin,
+  );
+}
+
+function cacheControlFor(visibility: AssetVisibility): string {
+  return visibility === "private"
+    ? "private, max-age=0, no-store"
+    : "public, max-age=31536000, immutable";
+}
+
 async function writeAssetDoc(
   env: Env,
   params: {
     url: string;
+    visibility: AssetVisibility;
     publicId: string;
     mimeType: string;
     fileSize: number;
@@ -132,6 +161,7 @@ async function writeAssetDoc(
 ): Promise<string | null> {
   return createAssetDocument(env, {
     url: params.url,
+    visibility: params.visibility,
     publicId: params.publicId,
     mimeType: params.mimeType,
     fileSize: params.fileSize,
@@ -157,6 +187,9 @@ async function handleFormDataUpload(
     const creatorHandle = (formData.get("creatorHandle") as string) || uid;
     const subType = (formData.get("subType") as string) || "general";
     const country = (formData.get("country") as string) || "ANY";
+
+    const visibility = parseVisibility(formData.get("visibility"), origin);
+    if (visibility instanceof Response) return visibility;
 
     if (!file) {
       return json({ error: "No file provided" }, 400, origin);
@@ -209,24 +242,32 @@ async function handleFormDataUpload(
     const mimeType = file.type;
     const fileSize = bytes.byteLength;
 
-    await env.UPLOADS_BUCKET.put(storagePath, bytes, {
+    if (visibility === "private" && !env.UPLOADS_PRIVATE_BUCKET) {
+      return json({ error: "Private media storage is not configured" }, 503, origin);
+    }
+
+    await bucketFor(env, visibility).put(storagePath, bytes, {
       httpMetadata: {
         contentType: mimeType,
         contentDisposition: `inline; filename="${fileName}"`,
-        cacheControl: "public, max-age=31536000, immutable",
+        cacheControl: cacheControlFor(visibility),
       },
       customMetadata: {
         uploadedBy: uid,
         originalName: file.name,
         assetType,
+        visibility,
       },
     });
 
     const baseUrl = env.ASSETS_BASE_URL || deriveBaseUrl(request);
-    const url = `${baseUrl}/${storagePath}`;
+    // Private assets have no public URL; callers must store `key` and read it
+    // through the signed /private/{key} route.
+    const url = visibility === "public" ? `${baseUrl}/${storagePath}` : "";
 
     const assetId = await writeAssetDoc(env, {
       url,
+      visibility,
       publicId: storagePath,
       mimeType,
       fileSize,
@@ -237,7 +278,13 @@ async function handleFormDataUpload(
       metadata: { originalSize: String(file.size) },
     });
 
-    const result: UploadResult = { url, publicId: storagePath, assetType };
+    const result: UploadResult = {
+      url,
+      key: storagePath,
+      visibility,
+      publicId: storagePath,
+      assetType,
+    };
     if (assetId) result.assetId = assetId;
 
     return json(result, 200, origin);
@@ -258,9 +305,13 @@ async function handleBase64Upload(
     const body = (await request.json()) as {
       image?: string;
       assetType?: AssetType;
+      visibility?: string;
     };
     const dataUri = body.image;
     const assetType = body.assetType || "creator_profile";
+
+    const visibility = parseVisibility(body.visibility, origin);
+    if (visibility instanceof Response) return visibility;
 
     if (!dataUri || typeof dataUri !== "string") {
       return json({ error: "No image data provided" }, 400, origin);
@@ -301,22 +352,28 @@ async function handleBase64Upload(
       fileName,
     );
 
-    await env.UPLOADS_BUCKET.put(storagePath, bytes, {
+    if (visibility === "private" && !env.UPLOADS_PRIVATE_BUCKET) {
+      return json({ error: "Private media storage is not configured" }, 503, origin);
+    }
+
+    await bucketFor(env, visibility).put(storagePath, bytes, {
       httpMetadata: {
         contentType: detectedType,
-        cacheControl: "public, max-age=31536000, immutable",
+        cacheControl: cacheControlFor(visibility),
       },
       customMetadata: {
         uploadedBy: uid,
         assetType,
+        visibility,
       },
     });
 
     const baseUrl = env.ASSETS_BASE_URL || deriveBaseUrl(request);
-    const url = `${baseUrl}/${storagePath}`;
+    const url = visibility === "public" ? `${baseUrl}/${storagePath}` : "";
 
     const assetId = await writeAssetDoc(env, {
       url,
+      visibility,
       publicId: storagePath,
       mimeType: detectedType,
       fileSize: bytes.byteLength,
@@ -326,7 +383,13 @@ async function handleBase64Upload(
       originalName: fileName,
     });
 
-    const result: UploadResult = { url, publicId: storagePath, assetType };
+    const result: UploadResult = {
+      url,
+      key: storagePath,
+      visibility,
+      publicId: storagePath,
+      assetType,
+    };
     if (assetId) result.assetId = assetId;
 
     return json(result, 200, origin);
@@ -336,6 +399,143 @@ async function handleBase64Upload(
     return json({ error: message }, 500, origin);
   }
 }
+// ── Private media reads ──────────────────────────────────────
+
+/**
+ * Serves an object from the private bucket. The bucket has no public domain, so
+ * this route plus the HMAC grant issued by the app is the only read path.
+ */
+export function isValidPrivateKey(key: string): boolean {
+  if (!key || key.length > 1024) return false;
+  if (key.startsWith("/") || key.includes("..") || key.includes("\\")) return false;
+  for (let i = 0; i < key.length; i++) {
+    const code = key.charCodeAt(i);
+    if (code < 0x20 || code === 0x7f) return false;
+  }
+  return true;
+}
+
+async function handlePrivateAsset(
+  request: Request,
+  env: Env,
+  url: URL,
+): Promise<Response> {
+  if (!env.UPLOADS_PRIVATE_BUCKET) {
+    return json({ error: "Private media storage is not configured" }, 503);
+  }
+  if (!env.MEDIA_SIGNING_SECRET) {
+    return json({ error: "Private media signing is not configured" }, 503);
+  }
+
+  let key: string;
+  try {
+    key = decodeURIComponent(url.pathname.replace(/^\/private\//, ""));
+  } catch {
+    return json({ error: "Invalid media key" }, 400);
+  }
+  if (!isValidPrivateKey(key)) {
+    return json({ error: "Invalid media key" }, 400);
+  }
+
+  const exp = Number(url.searchParams.get("exp") || 0);
+  const sig = url.searchParams.get("sig") || "";
+
+  const valid = await verifyMediaKeySignature(env.MEDIA_SIGNING_SECRET, key, exp, sig);
+  if (!valid) {
+    return json({ error: "Link expired or invalid" }, 403);
+  }
+
+  const object = await env.UPLOADS_PRIVATE_BUCKET.get(key, {
+    range: request.headers,
+  });
+  if (!object) return json({ error: "Not found" }, 404);
+
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set("etag", object.httpEtag);
+  headers.set("Cache-Control", "private, max-age=300");
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("Referrer-Policy", "no-referrer");
+  headers.set("Accept-Ranges", "bytes");
+
+  const isHead = request.method === "HEAD";
+  if (isHead) await object.body.cancel();
+  const range = object.range as { offset: number; length: number } | undefined;
+  if (range && typeof range.length === "number") {
+    headers.set(
+      "content-range",
+      `bytes ${range.offset}-${range.offset + range.length - 1}/${object.size}`,
+    );
+    headers.set("content-length", String(range.length));
+    return new Response(isHead ? null : object.body, { status: 206, headers });
+  }
+
+  headers.set("content-length", String(object.size));
+  return new Response(isHead ? null : object.body, { status: 200, headers });
+}
+
+// ── Private media migration ──────────────────────────────────
+
+/**
+ * Copies objects from the public bucket into the private bucket. Admin only;
+ * idempotent, and leaves the source in place unless `deleteSource` is set so a
+ * rollback stays possible while documents are being rewritten.
+ */
+async function handleMigratePrivate(
+  request: Request,
+  env: Env,
+  auth: { uid: string; isAdmin: boolean },
+  origin: string | null,
+): Promise<Response> {
+  if (!auth.isAdmin) return forbidden(origin, "Admin claim required");
+  if (!env.UPLOADS_PRIVATE_BUCKET) {
+    return json({ error: "Private media storage is not configured" }, 503, origin);
+  }
+
+  const body = (await request.json().catch(() => ({}))) as {
+    keys?: unknown;
+    deleteSource?: unknown;
+  };
+  const keys = Array.isArray(body.keys)
+    ? body.keys.filter(
+        (key): key is string => typeof key === "string" && isValidPrivateKey(key),
+      )
+    : [];
+
+  if (keys.length === 0) return json({ error: "keys[] is required" }, 400, origin);
+  if (keys.length > 200) return json({ error: "At most 200 keys per request" }, 400, origin);
+
+  const deleteSource = body.deleteSource === true;
+  const results: Array<{ key: string; status: string }> = [];
+
+  for (const key of keys) {
+    try {
+      const object = await env.UPLOADS_BUCKET.get(key);
+      if (!object) {
+        results.push({ key, status: "missing" });
+        continue;
+      }
+
+      await env.UPLOADS_PRIVATE_BUCKET.put(key, object.body, {
+        httpMetadata: {
+          contentType: object.httpMetadata?.contentType,
+          contentDisposition: object.httpMetadata?.contentDisposition,
+          cacheControl: cacheControlFor("private"),
+        },
+        customMetadata: { ...object.customMetadata, visibility: "private" },
+      });
+
+      if (deleteSource) await env.UPLOADS_BUCKET.delete(key);
+      results.push({ key, status: "copied" });
+    } catch (err: unknown) {
+      console.error("Migrate error:", key, err);
+      results.push({ key, status: "error" });
+    }
+  }
+
+  return json({ results, deletedSource: deleteSource }, 200, origin);
+}
+
 function deriveBaseUrl(request: Request): string {
   const url = new URL(request.url);
   return `${url.protocol}//${url.hostname}${url.port ? `:${url.port}` : ""}`;
@@ -356,6 +556,36 @@ export default {
       }
 
       try {
+        const url = new URL(request.url);
+
+        if (
+          (request.method === "GET" || request.method === "HEAD") &&
+          url.pathname.startsWith("/private/")
+        ) {
+          return await handlePrivateAsset(request, env, url);
+        }
+
+        if (request.method === "POST" && url.pathname === "/migrate-private") {
+          const migrationToken = request.headers.get("x-migrate-token");
+          const bearer = request.headers.get("authorization");
+
+          // Operators run the migration script with a shared token; humans use
+          // an admin session. Neither path is available unless configured.
+          if (
+            env.MIGRATION_TOKEN &&
+            migrationToken &&
+            timingSafeEqualString(env.MIGRATION_TOKEN, migrationToken)
+          ) {
+            return await handleMigratePrivate(request, env, { uid: "migration", isAdmin: true }, origin);
+          }
+
+          if (!bearer) return json({ error: "Authentication required" }, 401, origin);
+
+          const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
+          if (auth instanceof Response) return auth;
+          return await handleMigratePrivate(request, env, auth, origin);
+        }
+
         if (request.method === "POST") {
           const limited = isRateLimited(request, 10, 60000);
           if (limited) return limited;

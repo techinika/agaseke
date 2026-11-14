@@ -30,8 +30,8 @@ export interface Notification {
   title: string;
   message: string;
   read: boolean;
-  createdAt: any;
-  metadata?: Record<string, any>;
+  createdAt: unknown;
+  metadata?: Record<string, unknown>;
   link?: string;
   imageUrl?: string;
   actorName?: string;
@@ -43,7 +43,7 @@ export interface CreateNotificationParams {
   type: NotificationType;
   title: string;
   message: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   link?: string;
   imageUrl?: string;
   actorName?: string;
@@ -77,4 +77,96 @@ export function getNotificationIconKey(type: NotificationType): string {
     booking_reminder: "calendarClock",
   };
   return iconMap[type] || "bell";
+}
+
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  doc,
+  updateDoc,
+  getDocs,
+  writeBatch,
+  orderBy,
+  limit,
+  type Unsubscribe,
+} from "firebase/firestore";
+import { db } from "@/db/firebase";
+
+export function subscribeToNotifications(
+  userId: string,
+  onData: (notifications: Notification[]) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe {
+  const q = query(collection(db, "notifications"), where("userId", "==", userId));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const notifs = snapshot.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as Record<string, unknown>),
+      })) as Notification[];
+      onData(notifs);
+    },
+    (error) => {
+      onError?.(error);
+    },
+  );
+}
+
+export async function markNotificationAsRead(notificationId: string): Promise<void> {
+  await updateDoc(doc(db, "notifications", notificationId), { read: true });
+}
+
+export async function markAllNotificationsAsRead(userId: string): Promise<void> {
+  const q = query(collection(db, "notifications"), where("userId", "==", userId));
+  const snapshot = await getDocs(q);
+  const unreadDocs = snapshot.docs.filter((d) => !d.data().read);
+  if (unreadDocs.length === 0) return;
+  const batch = writeBatch(db);
+  unreadDocs.forEach((d) => {
+    batch.update(d.ref, { read: true });
+  });
+  await batch.commit();
+}
+
+export function subscribeToUnreadNotificationCount(
+  userId: string,
+  onCount: (count: number) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe {
+  const q = query(collection(db, "notifications"), where("userId", "==", userId));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      onCount(snapshot.docs.filter((d) => !d.data().read).length);
+    },
+    (error) => {
+      onError?.(error);
+    },
+  );
+}
+
+export function subscribeToBroadcastNotices(
+  userId: string,
+  onData: (notices: Array<Record<string, unknown>>) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe {
+  const q = query(
+    collection(db, "notifications"),
+    where("userId", "==", userId),
+    where("type", "==", "broadcast_received"),
+    orderBy("createdAt", "desc"),
+    limit(100),
+  );
+  return onSnapshot(
+    q,
+    (snap) => {
+      onData(
+        snap.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) })),
+      );
+    },
+    (error) => onError?.(error),
+  );
 }

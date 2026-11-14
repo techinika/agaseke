@@ -17,6 +17,8 @@ import {
   Heart,
 } from "lucide-react";
 import { SupportModal } from "@/components/parts/public/SupportModal";
+import { MediaAsset } from "@/components/parts/public/MediaAsset";
+import { usePostMediaSrc } from "@/lib/usePostMediaSrc";
 import { db } from "@/db/firebase";
 import {
   doc,
@@ -62,6 +64,7 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
   const { user: currentUser, profile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [post, setPost] = useState<any>(null);
+  const { mediaSrc } = usePostMediaSrc(post?.id, !!post?.isPrivate);
   const [creatorData, setCreatorData] = useState<any>({});
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState("");
@@ -331,8 +334,10 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
               className="mb-6 rounded-xl overflow-hidden cursor-zoom-in"
               onClick={() => setViewingImage(post.contentUrl)}
             >
-              <img
-                src={post.contentUrl}
+              <MediaAsset
+                postId={post.id}
+                isPrivate={!!post.isPrivate}
+                url={post.contentUrl}
                 alt={post.title}
                 className="w-full max-h-[500px] object-contain bg-muted"
               />
@@ -341,8 +346,11 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
 
           {post.type === "video" && post.contentUrl && (
             <div className="mb-6 rounded-xl overflow-hidden bg-black">
-              <video
-                src={post.contentUrl}
+              <MediaAsset
+                postId={post.id}
+                isPrivate={!!post.isPrivate}
+                url={post.contentUrl}
+                as="video"
                 controls
                 controlsList="nodownload"
                 className="w-full aspect-video"
@@ -390,11 +398,17 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
                   </button>
                 </div>
               )}
-              <iframe
-                src={pages[documentIndex]}
-                className="w-full h-[500px] rounded-lg border border-border"
-                title="Document viewer"
-              />
+              {mediaSrc(pages[documentIndex]) ? (
+                <iframe
+                  src={`https://docs.google.com/viewer?url=${encodeURIComponent(mediaSrc(pages[documentIndex]) as string)}&embedded=true`}
+                  className="w-full h-[500px] rounded-lg border border-border"
+                  title="Document viewer"
+                />
+              ) : (
+                <div className="w-full h-[500px] rounded-lg border border-border bg-muted flex items-center justify-center text-sm text-muted-foreground">
+                  Preparing document...
+                </div>
+              )}
             </div>
           )}
 
@@ -409,8 +423,10 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
           {post.type === "article" ? (
             <div>
               {(post.coverUrl || post.contentUrl) && (
-                <img
-                  src={post.coverUrl || post.contentUrl}
+                <MediaAsset
+                  postId={post.id}
+                  isPrivate={!!post.isPrivate}
+                  url={post.coverUrl || post.contentUrl}
                   alt={post.title}
                   className="w-full max-h-[420px] object-cover rounded-xl mb-4"
                 />
@@ -633,8 +649,10 @@ export default function ExplorePostDetailPage({ postId }: { postId: string }) {
           className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
           onClick={() => setViewingImage(null)}
         >
-          <img
-            src={viewingImage}
+          <MediaAsset
+            postId={post.id}
+            isPrivate={!!post.isPrivate}
+            url={viewingImage}
             alt="Post image"
             className="max-w-full max-h-full object-contain rounded-lg"
           />

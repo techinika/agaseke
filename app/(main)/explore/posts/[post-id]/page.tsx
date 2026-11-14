@@ -45,6 +45,31 @@ export async function generateMetadata({
     return { title: "Post Not Found | Agaseke", robots: { index: false } };
   }
 
+  if ((post as any).isPrivate === true) {
+    const defaultImage = `${baseUrl}/agaseke.png`;
+    const title = "Supporters-only post | Agaseke";
+    const description =
+      "This post is available to supporters of its creator on Agaseke.";
+    return {
+      title,
+      description,
+      robots: { index: false, follow: false },
+      openGraph: {
+        title,
+        description,
+        siteName: "Agaseke",
+        images: [{ url: defaultImage, width: 800, height: 800 }],
+        type: "article",
+      },
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description,
+        images: [defaultImage],
+      },
+    };
+  }
+
   const creatorHandle = (post as any).creatorId || "";
   const creatorUid = (post as any).creatorUid || "";
   const creator = creatorHandle ? await getCreatorByHandle(creatorHandle) : null;
@@ -119,6 +144,7 @@ export default async function Page({
   }
 
   const isArticle = (post as any)?.type === "article" && (post as any)?.slug;
+  const isPrivate = (post as any)?.isPrivate === true;
 
   if (isArticle) {
     const creatorHandle = (post as any)?.creatorId || "";
@@ -130,15 +156,17 @@ export default async function Page({
 
     return (
       <>
-        <ArticleSchema
-          headline={title}
+        {!isPrivate && (
+          <ArticleSchema
+            headline={title}
           description={(post as any)?.shortDescription || `Read "${title}" by ${displayName} on Agaseke.`}
           image={(post as any)?.contentUrl || `${baseUrl}/agaseke.png`}
           url={`/articles/${(post as any)?.slug}`}
           authorName={displayName}
           authorUrl={`/${creatorHandle}`}
-          publishedTime={(post as any)?.createdAt?.toDate?.()?.toISOString?.() as string | undefined}
-        />
+            publishedTime={(post as any)?.createdAt?.toDate?.()?.toISOString?.() as string | undefined}
+          />
+        )}
         <ArticleReaderPage article={article} creator={serializedCreator} />
       </>
     );

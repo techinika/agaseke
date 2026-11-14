@@ -1,35 +1,30 @@
- 
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { db } from "@/db/firebase";
-import {
-  collection,
-  query,
-  orderBy,
-  onSnapshot,
-  addDoc,
-  deleteDoc,
-  updateDoc,
-  doc,
-  serverTimestamp,
-} from "firebase/firestore";
 import { Banknote, Plus, Loader2, Trash2, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
+import {
+  addCurrency,
+  deleteCurrency,
+  setDefaultCurrency,
+  subscribeToCurrencies,
+  subscribeToCurrencyConfig,
+  updateCurrency,
+  type CurrencyRecord,
+} from "@/lib/adminConfigService";
 
-interface CurrencyItem {
-  id: string;
+type CurrencyItem = CurrencyRecord & {
   code: string;
   name: string;
   symbol: string;
   payoutThreshold: number;
   minSupportAmount: number;
-}
+};
 
 export default function AdminCurrenciesPage() {
   const [currencies, setCurrencies] = useState<CurrencyItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [defaultCurrency, setDefaultCurrency] = useState("");
+  const [defaultCurrency, setDefaultCurrencyState] = useState("");
   const [newCode, setNewCode] = useState("");
   const [newName, setNewName] = useState("");
   const [newSymbol, setNewSymbol] = useState("");
@@ -45,27 +40,27 @@ export default function AdminCurrenciesPage() {
   const [editMinSupport, setEditMinSupport] = useState("100");
 
   useEffect(() => {
-    const setupRef = doc(db, "config", "currencies");
-    const unsubSetup = onSnapshot(setupRef, (snap) => {
-      if (snap.exists()) {
-        setDefaultCurrency(snap.data().defaultCurrency || "");
-      }
+    const unsubSetup = subscribeToCurrencyConfig((cfg) => {
+      setDefaultCurrencyState((cfg?.defaultCurrency as string) || "");
     });
-
-    const q = query(collection(db, "currencies"), orderBy("code", "asc"));
-    const unsub = onSnapshot(q, (snap) => {
-      setCurrencies(snap.docs.map((d) => ({ id: d.id, ...d.data() } as CurrencyItem)));
+    const unsub = subscribeToCurrencies((items) => {
+      setCurrencies(items as CurrencyItem[]);
       setLoading(false);
     });
-    return () => { unsub(); unsubSetup(); };
+    return () => {
+      unsub();
+      unsubSetup();
+    };
   }, []);
 
   const handleSetDefault = async (code: string) => {
     try {
-      await updateDoc(doc(db, "config", "currencies"), { defaultCurrency: code });
-      setDefaultCurrency(code);
+      await setDefaultCurrency(code);
+      setDefaultCurrencyState(code);
       toast.success(`Default currency set to ${code}`);
-    } catch { toast.error("Failed to set default currency"); }
+    } catch {
+      toast.error("Failed to set default currency");
+    }
   };
 
   const handleAdd = async () => {
@@ -74,25 +69,44 @@ export default function AdminCurrenciesPage() {
     const symbol = newSymbol.trim();
     const threshold = parseInt(newThreshold) || 10000;
     const minSupport = parseInt(newMinSupport) || 100;
-    if (!code || !name) { toast.error("Currency code and name are required"); return; }
+    if (!code || !name) {
+      toast.error("Currency code and name are required");
+      return;
+    }
     if (currencies.some((c) => c.code === code)) {
-      toast.error("Currency code already exists"); return;
+      toast.error("Currency code already exists");
+      return;
     }
     setAdding(true);
     try {
-      await addDoc(collection(db, "currencies"), { code, name, symbol, payoutThreshold: threshold, minSupportAmount: minSupport, createdAt: serverTimestamp() });
-      setNewCode(""); setNewName(""); setNewSymbol(""); setNewThreshold("10000"); setNewMinSupport("100");
+      await addCurrency({
+        code,
+        name,
+        symbol,
+        payoutThreshold: threshold,
+        minSupportAmount: minSupport,
+      });
+      setNewCode("");
+      setNewName("");
+      setNewSymbol("");
+      setNewThreshold("10000");
+      setNewMinSupport("100");
       toast.success("Currency added");
-    } catch { toast.error("Failed to add currency"); }
-    finally { setAdding(false); }
+    } catch {
+      toast.error("Failed to add currency");
+    } finally {
+      setAdding(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteDoc(doc(db, "currencies", id));
+      await deleteCurrency(id);
       toast.success("Currency deleted");
       setConfirmDelete(null);
-    } catch { toast.error("Failed to delete"); }
+    } catch {
+      toast.error("Failed to delete");
+    }
   };
 
   const startEdit = (cur: CurrencyItem) => {
@@ -110,15 +124,27 @@ export default function AdminCurrenciesPage() {
     const symbol = editSymbol.trim();
     const threshold = parseInt(editThreshold) || 10000;
     const minSupport = parseInt(editMinSupport) || 100;
-    if (!code || !name) { toast.error("Currency code and name are required"); return; }
+    if (!code || !name) {
+      toast.error("Currency code and name are required");
+      return;
+    }
     if (currencies.some((c) => c.code === code && c.id !== editingId)) {
-      toast.error("Currency code already exists"); return;
+      toast.error("Currency code already exists");
+      return;
     }
     try {
-      await updateDoc(doc(db, "currencies", editingId!), { code, name, symbol, payoutThreshold: threshold, minSupportAmount: minSupport });
+      await updateCurrency(editingId!, {
+        code,
+        name,
+        symbol,
+        payoutThreshold: threshold,
+        minSupportAmount: minSupport,
+      });
       toast.success("Currency updated");
       setEditingId(null);
-    } catch { toast.error("Failed to update"); }
+    } catch {
+      toast.error("Failed to update");
+    }
   };
 
   return (
@@ -175,7 +201,11 @@ export default function AdminCurrenciesPage() {
               disabled={adding || !newCode.trim() || !newName.trim()}
               className="bg-orange-600 text-white px-6 py-4 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-orange-700 transition disabled:opacity-50"
             >
-              {adding ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+              {adding ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Plus size={16} />
+              )}
               Add
             </button>
           </div>
@@ -189,28 +219,71 @@ export default function AdminCurrenciesPage() {
           <div className="text-center py-16 bg-card border border-border rounded-lg">
             <Banknote size={40} className="mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground font-medium">No currencies yet</p>
-            <p className="text-sm text-muted-foreground mt-2">Add currencies above to get started.</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Add currencies above to get started.
+            </p>
           </div>
         ) : (
           <div className="space-y-2">
             {currencies.map((cur) => (
-              <div key={cur.id} className="bg-card border border-border rounded-lg p-4 flex items-center justify-between group">
+              <div
+                key={cur.id}
+                className="bg-card border border-border rounded-lg p-4 flex items-center justify-between group"
+              >
                 {editingId === cur.id ? (
                   <div className="flex items-center gap-2 flex-1 mr-3 flex-wrap">
-                    <input type="text" value={editCode} onChange={(e) => setEditCode(e.target.value.toUpperCase())} className="w-24 bg-muted p-2 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100 uppercase" autoFocus />
-                    <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="flex-1 min-w-[120px] bg-muted p-2 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100" />
-                    <input type="text" value={editSymbol} onChange={(e) => setEditSymbol(e.target.value)} className="w-16 bg-muted p-2 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100" />
-                    <input type="number" value={editThreshold} onChange={(e) => setEditThreshold(e.target.value)} className="w-24 bg-muted p-2 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100" />
-                    <input type="number" value={editMinSupport} onChange={(e) => setEditMinSupport(e.target.value)} className="w-20 bg-muted p-2 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100" />
-                    <button onClick={handleEdit} className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition"><Check size={16} /></button>
-                    <button onClick={() => setEditingId(null)} className="p-2 text-muted-foreground hover:bg-muted rounded-lg transition"><X size={16} /></button>
+                    <input
+                      type="text"
+                      value={editCode}
+                      onChange={(e) => setEditCode(e.target.value.toUpperCase())}
+                      className="w-24 bg-muted p-2 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100 uppercase"
+                      autoFocus
+                    />
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      className="flex-1 min-w-[120px] bg-muted p-2 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
+                    />
+                    <input
+                      type="text"
+                      value={editSymbol}
+                      onChange={(e) => setEditSymbol(e.target.value)}
+                      className="w-16 bg-muted p-2 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
+                    />
+                    <input
+                      type="number"
+                      value={editThreshold}
+                      onChange={(e) => setEditThreshold(e.target.value)}
+                      className="w-24 bg-muted p-2 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
+                    />
+                    <input
+                      type="number"
+                      value={editMinSupport}
+                      onChange={(e) => setEditMinSupport(e.target.value)}
+                      className="w-20 bg-muted p-2 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
+                    />
+                    <button
+                      onClick={handleEdit}
+                      className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition"
+                    >
+                      <Check size={16} />
+                    </button>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="p-2 text-muted-foreground hover:bg-muted rounded-lg transition"
+                    >
+                      <X size={16} />
+                    </button>
                   </div>
                 ) : (
                   <div className="flex items-center gap-3 flex-wrap">
                     <Banknote size={16} className="text-orange-500" />
                     <span className="font-bold">{cur.code}</span>
                     <span className="text-sm text-muted-foreground">{cur.name}</span>
-                    <span className="text-sm font-bold text-orange-600">{cur.symbol}</span>
+                    <span className="text-sm font-bold text-orange-600">
+                      {cur.symbol}
+                    </span>
                     <span className="text-xs bg-muted px-2 py-0.5 rounded-full font-bold text-muted-foreground">
                       Threshold: {(cur.payoutThreshold || 10000).toLocaleString()}
                     </span>
@@ -232,17 +305,38 @@ export default function AdminCurrenciesPage() {
                     )}
                   </div>
                 )}
-                {editingId !== cur.id && (confirmDelete === cur.id ? (
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => handleDelete(cur.id)} className="text-xs font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 transition">Confirm</button>
-                    <button onClick={() => setConfirmDelete(null)} className="text-xs font-bold text-muted-foreground bg-muted px-3 py-1.5 rounded-lg hover:bg-muted transition">Cancel</button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                    <button onClick={() => startEdit(cur)} className="p-2 text-muted-foreground hover:text-orange-500 transition"><Pencil size={16} /></button>
-                    <button onClick={() => setConfirmDelete(cur.id)} className="p-2 text-muted-foreground hover:text-red-500 transition"><Trash2 size={16} /></button>
-                  </div>
-                ))}
+                {editingId !== cur.id &&
+                  (confirmDelete === cur.id ? (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleDelete(cur.id)}
+                        className="text-xs font-bold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 transition"
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(null)}
+                        className="text-xs font-bold text-muted-foreground bg-muted px-3 py-1.5 rounded-lg hover:bg-muted transition"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                      <button
+                        onClick={() => startEdit(cur)}
+                        className="p-2 text-muted-foreground hover:text-orange-500 transition"
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(cur.id)}
+                        className="p-2 text-muted-foreground hover:text-red-500 transition"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
               </div>
             ))}
           </div>

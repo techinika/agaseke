@@ -3,12 +3,7 @@
 import React, { useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import {
-  Home,
-  ArrowLeft,
-  AlertTriangle,
-  Loader,
-} from "lucide-react";
+import { Home, ArrowLeft, AlertTriangle, Loader } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface ErrorContentProps {
@@ -53,6 +48,7 @@ const ErrorContent = ({ error, reset }: ErrorContentProps) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
+            aria-hidden="true"
             className="text-[12rem] md:text-[16rem] font-bold leading-none tracking-tighter text-foreground/5 select-none"
           >
             500
@@ -92,8 +88,8 @@ const ErrorContent = ({ error, reset }: ErrorContentProps) => {
             Something went wrong
           </h2>
           <p className="text-muted-foreground font-medium leading-relaxed mb-4">
-            We encountered an unexpected error. This might be a temporary issue
-            with our servers or your connection.
+            We encountered an unexpected error. This might be a temporary issue with our
+            servers or your connection.
           </p>
           {error?.message && (
             <p className="text-xs text-muted-foreground bg-muted p-3 rounded-lg mb-6 font-mono">
@@ -111,24 +107,25 @@ const ErrorContent = ({ error, reset }: ErrorContentProps) => {
 
             <Link
               href="/"
-className="flex items-center justify-center gap-3 bg-card border border-border text-muted-foreground px-8 py-4 rounded-lg font-bold transition-all hover:border-foreground hover:text-foreground active:scale-95"
-              >
-                <Home size={18} /> Go To Home
+              className="flex items-center justify-center gap-3 bg-card border border-border text-muted-foreground px-8 py-4 rounded-lg font-bold transition-all hover:border-foreground hover:text-foreground active:scale-95"
+            >
+              <Home size={18} /> Go To Home
             </Link>
 
             <button
               onClick={() => router.refresh()}
-className="flex items-center justify-center gap-3 bg-card border border-border text-muted-foreground px-8 py-4 rounded-lg font-bold transition-all hover:border-foreground hover:text-foreground active:scale-95"
-              >
-                <ArrowLeft size={18} /> Refresh Page
+              className="flex items-center justify-center gap-3 bg-card border border-border text-muted-foreground px-8 py-4 rounded-lg font-bold transition-all hover:border-foreground hover:text-foreground active:scale-95"
+            >
+              <ArrowLeft size={18} /> Refresh Page
             </button>
           </div>
         </motion.div>
 
         <motion.p
           initial={{ opacity: 0 }}
-          animate={{ opacity: 0.4 }}
+          animate={{ opacity: 1 }}
           transition={{ delay: 0.8 }}
+          aria-hidden="true"
           className="mt-20 text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground"
         >
           Agaseke for Creators

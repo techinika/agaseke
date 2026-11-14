@@ -7,7 +7,7 @@ export default function PublicProfileLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-orange-100">
+    <div className="min-h-screen bg-background text-foreground selection:bg-brand/20">
       <Navbar />
       {children}
       <Footer />

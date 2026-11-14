@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @next/next/no-img-element */
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -30,23 +30,32 @@ import { db, auth } from "@/db/firebase";
 import {
   collection,
   addDoc,
-  query,
-  where,
-  onSnapshot,
-  deleteDoc,
   doc,
-  serverTimestamp,
-  orderBy,
-  updateDoc,
   getDocs,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
 } from "firebase/firestore";
+import {
+  deleteCreatorPost,
+  subscribeToCreatorContent,
+} from "@/lib/contentManagerService";
 import { toast } from "sonner";
 import { useAuth } from "@/auth/AuthContext";
 import { useRouter } from "next/navigation";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { LinkifyText } from "@/components/ui/LinkifyText";
 import RichContentRenderer from "@/components/ui/RichContentRenderer";
-import { uploadFile } from "@/lib/uploadService";
+import {
+  uploadFile,
+  storedAssetValue,
+  storedAssetVisibility,
+  type AssetVisibility,
+} from "@/lib/uploadService";
+import { MediaAsset } from "@/components/parts/public/MediaAsset";
+import { usePostMediaSrc } from "@/lib/usePostMediaSrc";
 
 interface Comment {
   id: string;
@@ -73,9 +82,17 @@ export default function ContentManager() {
 
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [uploadedUrl, setUploadedUrl] = useState("");
+  const [uploadedVisibility, setUploadedVisibility] = useState<AssetVisibility | null>(
+    null,
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [selectedPost, setSelectedPost] = useState<any | null>(null);
+  const { mediaSrc } = usePostMediaSrc(selectedPost?.id, !!selectedPost?.isPrivate);
+  const selectedDocumentUrl = Array.isArray(selectedPost?.contentUrl)
+    ? selectedPost.contentUrl[0]
+    : selectedPost?.contentUrl;
+  const selectedDocumentSrc = mediaSrc(selectedDocumentUrl);
   const [editingPost, setEditingPost] = useState<any | null>(null);
 
   const [comments, setComments] = useState<Record<string, Comment[]>>({});
@@ -93,34 +110,26 @@ export default function ContentManager() {
 
   useEffect(() => {
     if (!creator?.handle) return;
-
-    const q = query(
-      collection(db, "creatorContent"),
-      where("creatorId", "==", creator.handle),
-      orderBy("createdAt", "desc"),
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const contentData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setPosts(contentData);
+    const unsubscribe = subscribeToCreatorContent(creator.handle, (items) => {
+      setPosts(items as any[]);
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, [creator?.handle]);
 
   const fetchComments = async (postId: string) => {
     try {
-      const q = query(collection(db, "postComments"), where("postId", "==", postId), orderBy("createdAt", "desc"));
+      const q = query(
+        collection(db, "postComments"),
+        where("postId", "==", postId),
+        orderBy("createdAt", "desc"),
+      );
       const snap = await getDocs(q);
       const commentList = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Comment[];
-      
+
       const organizedComments: Comment[] = [];
       const replyMap: Record<string, Comment[]> = {};
-      
+
       commentList.forEach((c) => {
         if (c.parentId) {
           if (!replyMap[c.parentId]) replyMap[c.parentId] = [];
@@ -129,11 +138,11 @@ export default function ContentManager() {
           organizedComments.push(c);
         }
       });
-      
+
       organizedComments.forEach((c) => {
         c.replies = replyMap[c.id] || [];
       });
-      
+
       setComments((prev) => ({ ...prev, [postId]: organizedComments }));
     } catch (e) {
       console.error("Failed to load comments", e);
@@ -199,10 +208,23 @@ export default function ContentManager() {
     setUploadedUrl("");
 
     try {
-      const assetType = newPost.type === "video" ? "post_video" : newPost.type === "document" ? "post_document" : "post_image";
-      const data = await uploadFile(file, assetType, creator?.handle || "");
-      if (data.url) {
-        setUploadedUrl(data.url);
+      const assetType =
+        newPost.type === "video"
+          ? "post_video"
+          : newPost.type === "document"
+            ? "post_document"
+            : "post_image";
+      const data = await uploadFile(
+        file,
+        assetType,
+        creator?.handle || "",
+        undefined,
+        newPost.isPrivate ? "private" : "public",
+      );
+      const stored = storedAssetValue(data);
+      if (stored) {
+        setUploadedUrl(stored);
+        setUploadedVisibility(data.visibility);
         toast.success("File uploaded successfully!");
       } else {
         throw new Error("Upload failed");
@@ -212,6 +234,7 @@ export default function ContentManager() {
       toast.error(err.message || "Failed to upload file");
       setFilePreview(null);
       setUploadedUrl("");
+      setUploadedVisibility(null);
     } finally {
       setIsUploading(false);
     }
@@ -220,6 +243,14 @@ export default function ContentManager() {
   const handleAddContent = async () => {
     const user = auth.currentUser;
     if (!user || !newPost.title || !creator?.handle) return;
+    if (newPost.isPrivate && uploadedUrl && uploadedVisibility !== "private") {
+      toast.error("Re-upload the file now that the post is supporters-only.");
+      return;
+    }
+    if (!newPost.isPrivate && uploadedVisibility === "private") {
+      toast.error("Re-upload the file now that the post is public.");
+      return;
+    }
 
     setIsUploading(true);
     try {
@@ -256,7 +287,9 @@ export default function ContentManager() {
             contentId: docRef.id,
           });
           if (response.success && response.recipientCount > 0) {
-            toast.success(`Notified ${response.recipientCount} supporter(s) about your new content!`);
+            toast.success(
+              `Notified ${response.recipientCount} supporter(s) about your new content!`,
+            );
           }
         } catch (notifyError) {
           console.error("Failed to notify supporters:", notifyError);
@@ -285,19 +318,21 @@ export default function ContentManager() {
       isPrivate: post.isPrivate,
     });
     setUploadedUrl(post.contentUrl);
+    setUploadedVisibility(storedAssetVisibility(post.contentUrl));
   };
 
   const resetForm = () => {
     setNewPost({ title: "", description: "", type: "text", isPrivate: true });
     setFilePreview(null);
     setUploadedUrl("");
+    setUploadedVisibility(null);
   };
 
   const deletePost = async () => {
     if (!deletePostId) return;
     setDeleting(true);
     try {
-      await deleteDoc(doc(db, "creatorContent", deletePostId));
+      await deleteCreatorPost(deletePostId);
       toast.success("Post deleted successfully");
       setDeletePostId(null);
       if (selectedPost?.id === deletePostId) {
@@ -311,34 +346,46 @@ export default function ContentManager() {
   };
 
   const filteredPosts = posts.filter((post) => {
-    const matchesTab = activeTab === "All" ||
+    const matchesTab =
+      activeTab === "All" ||
       (activeTab === "Videos" && post.type === "video") ||
       (activeTab === "Images" && post.type === "image") ||
       (activeTab === "Documents" && post.type === "document") ||
       (activeTab === "Articles" && post.type === "article");
-    const matchesSearch = (post.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (post.description || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch =
+      (post.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (post.description || "").toLowerCase().includes(searchQuery.toLowerCase());
     return matchesTab && matchesSearch;
   });
 
   return (
     <div className="min-h-screen bg-muted flex flex-col lg:flex-row">
-      <aside className={`${showSidebar ? 'flex' : 'hidden'} lg:flex w-full lg:w-72 bg-card border-r border-border p-4 flex-col fixed lg:relative inset-0 z-50 lg:z-auto`}>
+      <aside
+        className={`${showSidebar ? "flex" : "hidden"} lg:flex w-full lg:w-72 bg-card border-r border-border p-4 flex-col fixed lg:relative inset-0 z-50 lg:z-auto`}
+      >
         <div className="flex items-center justify-between lg:hidden mb-4">
           <h2 className="text-lg font-bold text-foreground">Your Content</h2>
           <button onClick={() => setShowSidebar(false)} className="p-2">
             <X size={24} />
           </button>
         </div>
-        
-        <button onClick={() => window.history.back()} className="hidden lg:flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 text-sm">
+
+        <button
+          onClick={() => window.history.back()}
+          className="hidden lg:flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 text-sm"
+        >
           <ArrowLeft size={16} /> Back
         </button>
-        
-        <h2 className="text-lg font-bold text-foreground mb-4 hidden lg:block">Your Content</h2>
-        
+
+        <h2 className="text-lg font-bold text-foreground mb-4 hidden lg:block">
+          Your Content
+        </h2>
+
         <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            size={16}
+          />
           <input
             type="text"
             value={searchQuery}
@@ -378,13 +425,20 @@ export default function ContentManager() {
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center shrink-0">
-                    {post.type === "video" ? <Video size={16} className="text-muted-foreground" /> :
-                     post.type === "image" ? <ImageIcon size={16} className="text-muted-foreground" /> :
-                     post.type === "article" ? <BookOpen size={16} className="text-muted-foreground" /> :
-                     <FileText size={16} className="text-muted-foreground" />}
+                    {post.type === "video" ? (
+                      <Video size={16} className="text-muted-foreground" />
+                    ) : post.type === "image" ? (
+                      <ImageIcon size={16} className="text-muted-foreground" />
+                    ) : post.type === "article" ? (
+                      <BookOpen size={16} className="text-muted-foreground" />
+                    ) : (
+                      <FileText size={16} className="text-muted-foreground" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{post.title}</p>
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {post.title}
+                    </p>
                     <p className="text-xs text-muted-foreground flex items-center gap-2">
                       {post.isPrivate ? <Lock size={10} /> : <Globe size={10} />}
                       {post.isPrivate ? "Supporters" : "Public"}
@@ -394,7 +448,9 @@ export default function ContentManager() {
               </div>
             ))
           ) : (
-            <p className="text-sm text-muted-foreground text-center py-8">No content yet</p>
+            <p className="text-sm text-muted-foreground text-center py-8">
+              No content yet
+            </p>
           )}
         </div>
 
@@ -418,38 +474,53 @@ export default function ContentManager() {
       <main className="flex-1 p-4 lg:p-6 overflow-hidden">
         <div className="flex items-center justify-between mb-4 lg:mb-6">
           <div className="flex items-center gap-3">
-            <button onClick={() => setShowSidebar(true)} className="lg:hidden p-2 bg-muted rounded-lg">
+            <button
+              onClick={() => setShowSidebar(true)}
+              className="lg:hidden p-2 bg-muted rounded-lg"
+            >
               <Menu size={20} />
             </button>
             <div>
-              <h1 className="text-lg lg:text-xl font-bold text-foreground">Content Manager</h1>
-              <p className="text-xs lg:text-sm text-muted-foreground mt-1 hidden lg:block">Manage your posts and see comments</p>
+              <h1 className="text-lg lg:text-xl font-bold text-foreground">
+                Content Manager
+              </h1>
+              <p className="text-xs lg:text-sm text-muted-foreground mt-1 hidden lg:block">
+                Manage your posts and see comments
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-          <Link
-            href="/creator/content/articles"
-            className="bg-foreground text-background px-3 lg:px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 hover:bg-orange-600 hover:text-white transition"
-          >
-            <BookOpen size={18} /> <span className="hidden sm:inline">Articles</span>
-          </Link>
-          <Link
-            href="/creator/content/new"
-            className="bg-orange-500 text-white px-3 lg:px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 hover:bg-orange-600 transition"
-          >
-            <Plus size={18} /> <span className="hidden sm:inline">New Post</span>
-          </Link>
-        </div>
+            <Link
+              href="/creator/content/articles"
+              className="bg-foreground text-background px-3 lg:px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 hover:bg-orange-600 hover:text-white transition"
+            >
+              <BookOpen size={18} /> <span className="hidden sm:inline">Articles</span>
+            </Link>
+            <Link
+              href="/creator/content/new"
+              className="bg-orange-500 text-white px-3 lg:px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 hover:bg-orange-600 transition"
+            >
+              <Plus size={18} /> <span className="hidden sm:inline">New Post</span>
+            </Link>
+          </div>
         </div>
 
         {selectedPost ? (
           <div className="h-full flex flex-col">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div className="flex-1 min-w-0">
-                <h1 className="text-lg lg:text-xl font-bold text-foreground truncate">{selectedPost.title}</h1>
+                <h1 className="text-lg lg:text-xl font-bold text-foreground truncate">
+                  {selectedPost.title}
+                </h1>
                 <p className="text-xs lg:text-sm text-muted-foreground flex flex-wrap items-center gap-1 lg:gap-2 mt-1">
-                  {selectedPost.isPrivate ? <Lock size={14} className="text-amber-500" /> : <Globe size={14} className="text-green-500" />}
-                  <span className="hidden sm:inline">{selectedPost.isPrivate ? "Supporters Only" : "Public"}</span>
+                  {selectedPost.isPrivate ? (
+                    <Lock size={14} className="text-amber-500" />
+                  ) : (
+                    <Globe size={14} className="text-green-500" />
+                  )}
+                  <span className="hidden sm:inline">
+                    {selectedPost.isPrivate ? "Supporters Only" : "Public"}
+                  </span>
                   <span className="text-muted-foreground">|</span>
                   {selectedPost.views || 0} views
                   <span className="text-muted-foreground">|</span>
@@ -457,11 +528,20 @@ export default function ContentManager() {
                 </p>
               </div>
               <div className="flex gap-2 shrink-0">
-                <button onClick={() => startEdit(selectedPost)} className="p-2 bg-muted rounded-lg hover:bg-muted transition">
+                <button
+                  onClick={() => startEdit(selectedPost)}
+                  className="p-2 bg-muted rounded-lg hover:bg-muted transition"
+                >
                   <Edit3 size={18} className="text-muted-foreground" />
                 </button>
-                <button onClick={() => setDeletePostId(selectedPost.id)} className="p-2 bg-muted rounded-lg hover:bg-red-50 transition">
-                  <Trash2 size={18} className="text-muted-foreground hover:text-red-500" />
+                <button
+                  onClick={() => setDeletePostId(selectedPost.id)}
+                  className="p-2 bg-muted rounded-lg hover:bg-red-50 transition"
+                >
+                  <Trash2
+                    size={18}
+                    className="text-muted-foreground hover:text-red-500"
+                  />
                 </button>
               </div>
             </div>
@@ -469,29 +549,59 @@ export default function ContentManager() {
             <div className="flex-1 overflow-y-auto bg-card rounded-lg border border-border">
               {selectedPost.type === "image" && selectedPost.contentUrl && (
                 <div className="aspect-video bg-muted">
-                  <img src={selectedPost.contentUrl} alt={selectedPost.title} className="w-full h-full object-contain" />
+                  <MediaAsset
+                    postId={selectedPost.id}
+                    isPrivate={!!selectedPost.isPrivate}
+                    url={selectedPost.contentUrl}
+                    alt={selectedPost.title}
+                    className="w-full h-full object-contain"
+                  />
                 </div>
               )}
               {selectedPost.type === "video" && selectedPost.contentUrl && (
                 <div className="aspect-video bg-black">
-                  <video src={selectedPost.contentUrl} controls className="w-full h-full" />
+                  <MediaAsset
+                    postId={selectedPost.id}
+                    isPrivate={!!selectedPost.isPrivate}
+                    url={selectedPost.contentUrl}
+                    as="video"
+                    controls
+                    className="w-full h-full"
+                  />
                 </div>
               )}
-              {selectedPost.type === "article" && (selectedPost.coverUrl || selectedPost.contentUrl) && (
-                <div className="aspect-video bg-muted">
-                  <img src={selectedPost.coverUrl || selectedPost.contentUrl} alt={selectedPost.title} className="w-full h-full object-cover" />
-                </div>
-              )}
+              {selectedPost.type === "article" &&
+                (selectedPost.coverUrl || selectedPost.contentUrl) && (
+                  <div className="aspect-video bg-muted">
+                    <MediaAsset
+                      postId={selectedPost.id}
+                      isPrivate={!!selectedPost.isPrivate}
+                      url={selectedPost.coverUrl || selectedPost.contentUrl}
+                      alt={selectedPost.title}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
 
               <div className="p-4 lg:p-6">
                 {selectedPost.type === "article" ? (
-                  <RichContentRenderer html={selectedPost.htmlContent || ""} className="text-sm lg:text-base" />
+                  <RichContentRenderer
+                    html={selectedPost.htmlContent || ""}
+                    className="text-sm lg:text-base"
+                  />
                 ) : (
-                  <div className="prose max-w-none text-foreground whitespace-pre-wrap text-sm lg:text-base"><LinkifyText text={selectedPost.description} /></div>
+                  <div className="prose max-w-none text-foreground whitespace-pre-wrap text-sm lg:text-base">
+                    <LinkifyText text={selectedPost.description} />
+                  </div>
                 )}
 
-                {selectedPost.type === "document" && selectedPost.contentUrl && (
-                  <a href={selectedPost.contentUrl} target="_blank" rel="noopener noreferrer" className="mt-4 flex items-center gap-3 p-4 bg-muted rounded-lg border border-border hover:bg-muted transition">
+                {selectedPost.type === "document" && selectedDocumentSrc && (
+                  <a
+                    href={selectedDocumentSrc}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 flex items-center gap-3 p-4 bg-muted rounded-lg border border-border hover:bg-muted transition"
+                  >
                     <FileText size={24} className="text-orange-500" />
                     <span className="text-sm font-medium">View Document</span>
                   </a>
@@ -500,7 +610,8 @@ export default function ContentManager() {
 
               <div className="border-t border-border p-4">
                 <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2 text-sm lg:text-base">
-                  <MessageCircle size={18} /> Comments ({comments[selectedPost.id]?.length || 0})
+                  <MessageCircle size={18} /> Comments (
+                  {comments[selectedPost.id]?.length || 0})
                 </h3>
 
                 <div className="space-y-3 max-h-[250px] lg:max-h-[300px] overflow-y-auto mb-4">
@@ -508,38 +619,102 @@ export default function ContentManager() {
                     <div key={comment.id} className="bg-muted rounded-lg p-3">
                       <div className="flex items-start gap-2">
                         <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden shrink-0">
-                          {comment.userPhoto ? <img src={comment.userPhoto} alt={comment.userName || "Commenter"} className="w-full h-full object-cover" /> : <span className="text-xs flex items-center justify-center h-full text-muted-foreground">{comment.userName?.[0]}</span>}
+                          {comment.userPhoto ? (
+                            <img
+                              src={comment.userPhoto}
+                              alt={comment.userName || "Commenter"}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-xs flex items-center justify-center h-full text-muted-foreground">
+                              {comment.userName?.[0]}
+                            </span>
+                          )}
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium text-sm">{comment.userName}</span>
+                            <span className="font-medium text-sm">
+                              {comment.userName}
+                            </span>
                             {comment.userId === creator?.uid && (
-                              <span className="text-[10px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">Owner</span>
+                              <span className="text-[10px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
+                                Owner
+                              </span>
                             )}
-                            <span className="text-xs text-muted-foreground">{comment.createdAt?.toDate?.()?.toLocaleDateString()}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {comment.createdAt?.toDate?.()?.toLocaleDateString()}
+                            </span>
                           </div>
-                          <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap"><LinkifyText text={comment.text} /></p>
-                          <button onClick={() => setReplyingTo((prev) => ({ ...prev, [comment.id]: comment.id }))} className="text-xs text-blue-500 mt-1">Reply</button>
-                          
+                          <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">
+                            <LinkifyText text={comment.text} />
+                          </p>
+                          <button
+                            onClick={() =>
+                              setReplyingTo((prev) => ({
+                                ...prev,
+                                [comment.id]: comment.id,
+                              }))
+                            }
+                            className="text-xs text-blue-500 mt-1"
+                          >
+                            Reply
+                          </button>
+
                           {replyingTo[comment.id] && (
                             <div className="mt-2 flex gap-2">
-                              <input value={replyText[comment.id] || ""} onChange={(e) => setReplyText((prev) => ({ ...prev, [comment.id]: e.target.value }))} placeholder="Write a reply..." className="flex-1 text-sm px-3 py-2 border rounded-lg" />
-                              <button onClick={() => handleAddReply(selectedPost.id, comment.id)} className="px-3 py-2 bg-orange-500 text-white rounded-lg text-sm">Send</button>
+                              <input
+                                value={replyText[comment.id] || ""}
+                                onChange={(e) =>
+                                  setReplyText((prev) => ({
+                                    ...prev,
+                                    [comment.id]: e.target.value,
+                                  }))
+                                }
+                                placeholder="Write a reply..."
+                                className="flex-1 text-sm px-3 py-2 border rounded-lg"
+                              />
+                              <button
+                                onClick={() =>
+                                  handleAddReply(selectedPost.id, comment.id)
+                                }
+                                className="px-3 py-2 bg-orange-500 text-white rounded-lg text-sm"
+                              >
+                                Send
+                              </button>
                             </div>
                           )}
-                          
+
                           {(comment.replies || []).map((reply) => (
-                            <div key={reply.id} className="mt-2 ml-4 pl-3 border-l-2 border-border">
+                            <div
+                              key={reply.id}
+                              className="mt-2 ml-4 pl-3 border-l-2 border-border"
+                            >
                               <div className="flex items-start gap-2">
                                 <div className="w-6 h-6 rounded-full bg-gray-200 overflow-hidden shrink-0">
-                                  {reply.userPhoto ? <img src={reply.userPhoto} alt={reply.userName || "Commenter"} className="w-full h-full object-cover" /> : <span className="text-[10px] flex items-center justify-center h-full text-muted-foreground">{reply.userName?.[0]}</span>}
+                                  {reply.userPhoto ? (
+                                    <img
+                                      src={reply.userPhoto}
+                                      alt={reply.userName || "Commenter"}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <span className="text-[10px] flex items-center justify-center h-full text-muted-foreground">
+                                      {reply.userName?.[0]}
+                                    </span>
+                                  )}
                                 </div>
                                 <div>
-                                  <span className="font-medium text-xs">{reply.userName}</span>
+                                  <span className="font-medium text-xs">
+                                    {reply.userName}
+                                  </span>
                                   {reply.userId === creator?.uid && (
-                                    <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full ml-1">Owner</span>
+                                    <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full ml-1">
+                                      Owner
+                                    </span>
                                   )}
-                                  <p className="text-sm text-muted-foreground whitespace-pre-wrap"><LinkifyText text={reply.text} /></p>
+                                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                                    <LinkifyText text={reply.text} />
+                                  </p>
                                 </div>
                               </div>
                             </div>
@@ -548,20 +723,33 @@ export default function ContentManager() {
                       </div>
                     </div>
                   ))}
-                  {(!comments[selectedPost.id] || comments[selectedPost.id].length === 0) && (
-                    <p className="text-sm text-muted-foreground text-center py-4">No comments yet</p>
+                  {(!comments[selectedPost.id] ||
+                    comments[selectedPost.id].length === 0) && (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No comments yet
+                    </p>
                   )}
                 </div>
 
                 <div className="flex gap-2">
                   <input
                     value={commentText[selectedPost.id] || ""}
-                    onChange={(e) => setCommentText((prev) => ({ ...prev, [selectedPost.id]: e.target.value }))}
+                    onChange={(e) =>
+                      setCommentText((prev) => ({
+                        ...prev,
+                        [selectedPost.id]: e.target.value,
+                      }))
+                    }
                     placeholder="Write a comment..."
                     className="flex-1 text-sm px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    onKeyDown={(e) => e.key === "Enter" && handleAddComment(selectedPost.id)}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" && handleAddComment(selectedPost.id)
+                    }
                   />
-                  <button onClick={() => handleAddComment(selectedPost.id)} className="p-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition">
+                  <button
+                    onClick={() => handleAddComment(selectedPost.id)}
+                    className="p-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition"
+                  >
                     <Send size={18} />
                   </button>
                 </div>
@@ -574,7 +762,9 @@ export default function ContentManager() {
               <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                 <Eye className="text-muted-foreground" size={24} />
               </div>
-              <p className="text-muted-foreground text-sm lg:text-base">Select content to preview</p>
+              <p className="text-muted-foreground text-sm lg:text-base">
+                Select content to preview
+              </p>
             </div>
           </div>
         )}
@@ -585,30 +775,64 @@ export default function ContentManager() {
           <div className="bg-card w-full max-w-lg rounded-lg p-4 lg:p-6 shadow-xl my-8">
             <div className="flex justify-between items-center mb-4 lg:mb-6">
               <h2 className="text-lg lg:text-xl font-bold">Edit Post</h2>
-              <button onClick={() => { setEditingPost(null); resetForm(); }} className="p-2 hover:bg-muted rounded-full">
+              <button
+                onClick={() => {
+                  setEditingPost(null);
+                  resetForm();
+                }}
+                className="p-2 hover:bg-muted rounded-full"
+              >
                 <X size={20} />
               </button>
             </div>
 
             <div className="space-y-4">
-              <input type="text" placeholder="Post Title" value={newPost.title} onChange={(e) => setNewPost({ ...newPost, title: e.target.value })} className="w-full text-sm lg:text-lg font-medium px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500" />
-              
-              <textarea placeholder="Write your content..." value={newPost.description} onChange={(e) => setNewPost({ ...newPost, description: e.target.value })} className="w-full h-32 px-4 py-3 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none" />
+              <input
+                type="text"
+                placeholder="Post Title"
+                value={newPost.title}
+                onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
+                className="w-full text-sm lg:text-lg font-medium px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+
+              <textarea
+                placeholder="Write your content..."
+                value={newPost.description}
+                onChange={(e) => setNewPost({ ...newPost, description: e.target.value })}
+                className="w-full h-32 px-4 py-3 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+              />
 
               <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${newPost.isPrivate ? "bg-amber-100 text-amber-600" : "bg-green-100 text-green-600"}`}>
+                  <div
+                    className={`p-2 rounded-lg ${newPost.isPrivate ? "bg-amber-100 text-amber-600" : "bg-green-100 text-green-600"}`}
+                  >
                     {newPost.isPrivate ? <Lock size={18} /> : <Globe size={18} />}
                   </div>
-                  <span className="text-sm font-medium">{newPost.isPrivate ? "Supporters Only" : "Public"}</span>
+                  <span className="text-sm font-medium">
+                    {newPost.isPrivate ? "Supporters Only" : "Public"}
+                  </span>
                 </div>
-                <button onClick={() => setNewPost({ ...newPost, isPrivate: !newPost.isPrivate })} className="text-xs text-orange-600 font-medium px-3 py-1.5 bg-card border border-orange-200 rounded-lg hover:bg-orange-50">
+                <button
+                  onClick={() =>
+                    setNewPost({ ...newPost, isPrivate: !newPost.isPrivate })
+                  }
+                  className="text-xs text-orange-600 font-medium px-3 py-1.5 bg-card border border-orange-200 rounded-lg hover:bg-orange-50"
+                >
                   Change
                 </button>
               </div>
 
-              <button onClick={handleAddContent} disabled={!newPost.title || isUploading} className="w-full bg-foreground text-background py-3 rounded-lg font-medium hover:bg-orange-500 transition disabled:opacity-50 flex items-center justify-center gap-2">
-                {isUploading ? <Loader className="animate-spin" size={18} /> : "Save Changes"}
+              <button
+                onClick={handleAddContent}
+                disabled={!newPost.title || isUploading}
+                className="w-full bg-foreground text-background py-3 rounded-lg font-medium hover:bg-orange-500 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isUploading ? (
+                  <Loader className="animate-spin" size={18} />
+                ) : (
+                  "Save Changes"
+                )}
               </button>
             </div>
           </div>

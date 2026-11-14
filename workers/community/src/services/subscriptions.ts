@@ -89,16 +89,15 @@ async function initiateRenewalPayment(
   request?: Request,
 ): Promise<{ ref?: string; redirect_url?: string }> {
   const currency = (sub.currency as string) || "RWF";
+  const periodKey = String(sub.currentPeriodEnd || sub.expiresAt || "renewal");
   const paymentBody: Record<string, unknown> = {
-    amount: Number(sub.amount) || 0,
-    creatorId: sub.creatorHandle as string,
-    creatorUid: sub.creatorId as string,
-    supporterId: sub.userId as string,
     type: "community",
+    creatorHandle: sub.creatorHandle as string,
     communityTierId: sub.tierId as string,
     communityInterval: sub.interval as string,
     communitySubscriptionId: sub.id as string,
     currency,
+    idempotencyKey: `community_${String(sub.id)}_${periodKey}`,
   };
 
   if (method === "momo") {
@@ -172,15 +171,13 @@ export async function initiateSubscription(
 
   const paymentsUrl = `${env.PAYMENTS_WORKER_URL}/api/payments/${data.paymentMethod}/initiate`;
   const paymentBody: Record<string, unknown> = {
-    amount: data.amount,
-    creatorId: data.creatorHandle,
-    creatorUid: data.creatorId,
-    supporterId: data.supporterId || uid,
     type: "community",
+    creatorHandle: data.creatorHandle,
     communityTierId: data.tierId,
     communityInterval: data.interval,
     communitySubscriptionId: subscriptionId,
     currency: data.currency || "RWF",
+    idempotencyKey: `community_${subscriptionId}_${periodEnd.toISOString()}`,
   };
 
   if (data.paymentMethod === "momo") {

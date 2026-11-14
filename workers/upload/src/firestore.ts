@@ -72,6 +72,8 @@ export async function createAssetDocument(
 
     const fields: Record<string, unknown> = {
       url: { stringValue: doc.url },
+      key: { stringValue: doc.publicId },
+      visibility: { stringValue: doc.visibility },
       publicId: { stringValue: doc.publicId },
       mimeType: { stringValue: doc.mimeType },
       fileSize: { integerValue: String(doc.fileSize) },

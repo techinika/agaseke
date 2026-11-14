@@ -1,10 +1,10 @@
 import { Metadata } from "next";
-import PostForm from "@/components/parts/dashboard/PostForm";
+import { StepComposer } from "@/features/content";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
 export default function NewPostPage() {
-  return <PostForm />;
+  return <StepComposer />;
 }

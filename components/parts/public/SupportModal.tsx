@@ -3,16 +3,9 @@
 
 import { useAuth } from "@/auth/AuthContext";
 import { sendCommsEmail } from "@/lib/commsService";
+import { doc, getDoc, getDocs, collection } from "firebase/firestore";
 import { db } from "@/db/firebase";
-import {
-  onSnapshot,
-  collection,
-  query,
-  where,
-  doc,
-  getDoc,
-  getDocs,
-} from "firebase/firestore";
+import { subscribeToTransactionByRef } from "@/lib/transactions";
 import { Heart, Loader, ShieldCheck, Smartphone, X } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
@@ -26,9 +19,6 @@ export function SupportModal({
   creatorName,
   creatorId,
   uid,
-  includeReferral,
-  referralUid = "",
-  referralId = "",
   defaultMessage = "",
 }: any) {
   const { user: currentUser } = useAuth();
@@ -42,7 +32,6 @@ export function SupportModal({
   const [popupBlocked, setPopupBlocked] = useState(false);
   const [redirectUrl, setRedirectUrl] = useState("");
   const [isClosing, setIsClosing] = useState(false);
-  const [creatorCurrency, setCreatorCurrency] = useState("RWF");
   const [selectedCurrency, setSelectedCurrency] = useState("RWF");
   const [minByCurrency, setMinByCurrency] = useState<Record<string, number>>({
     RWF: 100,
@@ -59,7 +48,6 @@ export function SupportModal({
         if (creatorSnap.exists()) {
           const data = creatorSnap.data();
           const currency = data.currency || "RWF";
-          setCreatorCurrency(currency);
           setSelectedCurrency(currency);
 
           const currenciesSnap = await getDocs(collection(db, "currencies"));
@@ -90,16 +78,21 @@ export function SupportModal({
     const merchantRef = params.get("OrderMerchantReference");
 
     if (orderTrackingId && merchantRef && merchantRef.includes("AGS-CARD")) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- restore pending card callback state on mount
       setStep("processing");
       window.history.replaceState({}, document.title, window.location.pathname);
 
+      // eslint-disable-next-line react-hooks/immutability -- function declared below; stable enough for mount callback
       listenToTransaction(merchantRef);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   useEffect(() => {
-    if (selectedCurrency === "USD") setPaymentMethod("card");
+    if (selectedCurrency === "USD") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- enforce card-only for USD
+      setPaymentMethod("card");
+    }
   }, [selectedCurrency]);
 
   useEffect(() => {
@@ -145,39 +138,27 @@ export function SupportModal({
 
     try {
       const data = await initiateMomoPayment({
+        type: "support",
+        creatorHandle: creatorId,
         amount: Number(amount),
         phone,
-        creatorId,
-        creatorUid: uid,
         message: message ?? "",
-        referralUid,
-        referralId,
-        supporterId: currentUser?.uid || "anonymous",
-        includeReferral,
         currency: selectedCurrency,
+        idempotencyKey: crypto.randomUUID(),
       });
 
-      const q = query(
-        collection(db, "transactions"),
-        where("ref", "==", data.ref),
-      );
+      unsubscribeRef.current = subscribeToTransactionByRef(data.ref, (txData) => {
+        if (!txData) return;
 
-      unsubscribeRef.current = onSnapshot(q, (snapshot) => {
-        if (!snapshot.empty) {
-          const txData = snapshot.docs[0].data();
-
-          if (txData.status === "successful") {
-            if (unsubscribeRef.current) unsubscribeRef.current();
-            setStep("success");
-            sendSupportEmail(
-              Number(txData?.amount) * CREATOR_SHARE,
-            );
-            toast.success("Payment received!");
-          } else if (txData.status === "failed") {
-            if (unsubscribeRef.current) unsubscribeRef.current();
-            setStep("error");
-            setErrorMessage("The transaction was declined.");
-          }
+        if (txData.status === "successful") {
+          if (unsubscribeRef.current) unsubscribeRef.current();
+          setStep("success");
+          sendSupportEmail(Number(txData?.amount) * CREATOR_SHARE);
+          toast.success("Payment received!");
+        } else if (txData.status === "failed") {
+          if (unsubscribeRef.current) unsubscribeRef.current();
+          setStep("error");
+          setErrorMessage("The transaction was declined.");
         }
       });
 
@@ -206,24 +187,17 @@ export function SupportModal({
   };
 
   const listenToTransaction = (reference: string) => {
-    const q = query(
-      collection(db, "transactions"),
-      where("ref", "==", reference),
-    );
-
-    unsubscribeRef.current = onSnapshot(q, (snapshot) => {
-      if (!snapshot.empty) {
-        const txData = snapshot.docs[0].data();
-        if (txData.status === "success" || txData.status === "successful") {
-          if (unsubscribeRef.current) unsubscribeRef.current();
-          setStep("success");
-          sendSupportEmail(Number(txData.amount) * CREATOR_SHARE);
-          toast.success("Card payment verified!");
-        } else if (txData.status === "failed") {
-          if (unsubscribeRef.current) unsubscribeRef.current();
-          setStep("error");
-          setErrorMessage("The card transaction was declined.");
-        }
+    unsubscribeRef.current = subscribeToTransactionByRef(reference, (txData) => {
+      if (!txData) return;
+      if (txData.status === "success" || txData.status === "successful") {
+        if (unsubscribeRef.current) unsubscribeRef.current();
+        setStep("success");
+        sendSupportEmail(Number(txData.amount) * CREATOR_SHARE);
+        toast.success("Card payment verified!");
+      } else if (txData.status === "failed") {
+        if (unsubscribeRef.current) unsubscribeRef.current();
+        setStep("error");
+        setErrorMessage("The card transaction was declined.");
       }
     });
   };
@@ -238,18 +212,15 @@ export function SupportModal({
 
     try {
       const data = await initiateCardPayment({
+        type: "support",
+        creatorHandle: creatorId,
         amount: Number(amount),
         email: currentUser?.email || "supporter@agaseke.me",
         firstName: currentUser?.displayName?.split(" ")[0] || "Supporter",
         lastName: currentUser?.displayName?.split(" ")[1] || "Agaseke",
-        creatorId,
-        creatorUid: uid,
-        supporterId: currentUser?.uid || "anonymous",
         message: message.trim() || "",
-        includeReferral,
-        referralUid,
-        referralId,
         currency: selectedCurrency,
+        idempotencyKey: crypto.randomUUID(),
       });
 
       setRedirectUrl(data.redirect_url);

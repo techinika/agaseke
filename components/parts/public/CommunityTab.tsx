@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import {
   FileText,
   Lock,
@@ -17,12 +17,15 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { LinkifyText } from "@/components/ui/LinkifyText";
+import { MediaAsset } from "@/components/parts/public/MediaAsset";
 import { db } from "@/db/firebase";
 import { collection, getCountFromServer, doc, updateDoc, increment } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { getMySubscriptions } from "@/lib/communityService";
 import { formatCurrency } from "@/types/currency";
-import { SupportModal } from "@/components/parts/public/SupportModal";
+const LazySupportModal = lazy(() =>
+  import("@/components/parts/public/SupportModal").then((m) => ({ default: m.SupportModal })),
+);
 
 interface CommunityTier {
   id: string;
@@ -46,7 +49,7 @@ interface CommunityTabProps {
   uid?: string;
   communityEnabled?: boolean;
   communityTiers?: CommunityTier[];
-  onSubscribe?: () => void;
+  onSubscribe?: (tier: CommunityTier) => void;
 }
 
 export const CommunityTab = ({
@@ -62,8 +65,17 @@ export const CommunityTab = ({
   onSubscribe,
 }: CommunityTabProps) => {
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
-  const [viewingImage, setViewingImage] = useState<{ url: string } | null>(null);
-  const [viewingDocument, setViewingDocument] = useState<{ url: string; title: string } | null>(null);
+  const [viewingImage, setViewingImage] = useState<{
+    url: string;
+    postId: string;
+    isPrivate: boolean;
+  } | null>(null);
+  const [viewingDocument, setViewingDocument] = useState<{
+    url: string;
+    title: string;
+    postId: string;
+    isPrivate: boolean;
+  } | null>(null);
   const [documentIndex, setDocumentIndex] = useState<Record<string, number>>({});
   const [supportItem, setSupportItem] = useState<any>(null);
   const { user } = useAuth();
@@ -226,7 +238,7 @@ export const CommunityTab = ({
                   </Link>
                 ) : (
                   <button
-                    onClick={onSubscribe}
+                    onClick={() => onSubscribe?.(tier)}
                     className="w-full py-2 bg-orange-600 text-white text-xs font-bold hover:bg-orange-700 transition"
                   >
                     Join
@@ -288,8 +300,10 @@ export const CommunityTab = ({
 
             {item.type === "article" && (item.coverUrl || item.contentUrl) && (
               <div className="mb-3 rounded-lg overflow-hidden">
-                <img
-                  src={item.coverUrl || item.contentUrl}
+                <MediaAsset
+                  postId={item.id}
+                  isPrivate={!!item.isPrivate}
+                  url={item.coverUrl || item.contentUrl}
                   alt={item.title}
                   className="w-full h-48 object-cover"
                 />
@@ -297,9 +311,11 @@ export const CommunityTab = ({
             )}
 
             {item.type === "image" && item.contentUrl && (
-              <div className="mb-3 rounded-lg overflow-hidden cursor-zoom-in" onClick={() => setViewingImage({ url: item.contentUrl })}>
-                <img
-                  src={item.contentUrl}
+              <div className="mb-3 rounded-lg overflow-hidden cursor-zoom-in" onClick={() => setViewingImage({ url: item.contentUrl, postId: item.id, isPrivate: !!item.isPrivate })}>
+                <MediaAsset
+                  postId={item.id}
+                  isPrivate={!!item.isPrivate}
+                  url={item.contentUrl}
                   alt={item.title}
                   className="w-full h-48 object-cover hover:opacity-90 transition-opacity"
                 />
@@ -308,7 +324,7 @@ export const CommunityTab = ({
 
             {item.type === "video" && item.contentUrl && (
               <div className="mb-3 rounded-lg overflow-hidden bg-black">
-                <video src={item.contentUrl} controls controlsList="nodownload" className="w-full aspect-video" />
+                <MediaAsset postId={item.id} isPrivate={!!item.isPrivate} url={item.contentUrl} as="video" controls controlsList="nodownload" className="w-full aspect-video" />
               </div>
             )}
 
@@ -335,7 +351,7 @@ export const CommunityTab = ({
                     </div>
                   )}
                   <button
-                    onClick={() => setViewingDocument({ url: currentUrl, title: item.title })}
+                    onClick={() => setViewingDocument({ url: currentUrl, title: item.title, postId: item.id, isPrivate: !!item.isPrivate })}
                     className="block w-full text-center py-2.5 bg-orange-500 text-white rounded-lg font-medium text-sm hover:bg-orange-600 transition"
                   >
                     Read Document
@@ -394,8 +410,24 @@ export const CommunityTab = ({
 
             <div className="mt-4 pt-3 border-t border-border flex items-center gap-3 text-xs text-muted-foreground">
               <span>
-                {item.createdAt?.toDate?.().toLocaleDateString() ||
-                  "Recently"}
+                {(() => {
+                  const ms =
+                    typeof item.createdAt?.toMillis === "function"
+                      ? item.createdAt.toMillis()
+                      : typeof item.createdAt === "string"
+                        ? Date.parse(item.createdAt)
+                        : item.createdAt instanceof Date
+                          ? item.createdAt.getTime()
+                          : null;
+                  return ms != null && Number.isFinite(ms)
+                    ? new Date(ms).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                        timeZone: "UTC",
+                      })
+                    : "Recently";
+                })()}
               </span>
               {item.views && (
                 <span>{item.views} views</span>
@@ -446,7 +478,13 @@ export const CommunityTab = ({
           <button className="absolute top-4 right-4 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition" onClick={() => setViewingImage(null)}>
             <X size={28} />
           </button>
-          <img src={viewingImage.url} alt="Full size" className="max-w-full max-h-full object-contain animate-in zoom-in-95 duration-200" />
+          <MediaAsset
+            postId={viewingImage.postId}
+            isPrivate={viewingImage.isPrivate}
+            url={viewingImage.url}
+            alt="Full size"
+            className="max-w-full max-h-full object-contain animate-in zoom-in-95 duration-200"
+          />
         </div>
       )}
 
@@ -456,28 +494,44 @@ export const CommunityTab = ({
             <div className="p-4 border-b border-border flex items-center justify-between">
               <h3 className="font-bold text-foreground truncate">{viewingDocument.title}</h3>
               <div className="flex items-center gap-2">
-                <a href={viewingDocument.url} target="_blank" rel="noopener noreferrer" className="text-xs text-orange-600 font-medium hover:underline">Open original</a>
+                {!viewingDocument.isPrivate && (
+                  <a href={viewingDocument.url} target="_blank" rel="noopener noreferrer" className="text-xs text-orange-600 font-medium hover:underline">Open original</a>
+                )}
                 <button onClick={() => setViewingDocument(null)} className="p-2 hover:bg-muted rounded-full"><X size={20} /></button>
               </div>
             </div>
-            <iframe src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocument.url)}&embedded=true`} className="w-full h-[80vh] bg-card" title="Document Viewer" />
+            {viewingDocument.isPrivate ? (
+              <div className="w-full h-[80vh] bg-muted overflow-auto flex items-start justify-center p-4">
+                <MediaAsset
+                  postId={viewingDocument.postId}
+                  isPrivate
+                  url={viewingDocument.url}
+                  alt={viewingDocument.title}
+                  className="max-w-full object-contain"
+                />
+              </div>
+            ) : (
+              <iframe src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocument.url)}&embedded=true`} className="w-full h-[80vh] bg-card" title="Document Viewer" />
+            )}
           </div>
         </div>
       )}
 
       {supportItem && (
-        <SupportModal
-          isOpen={!!supportItem}
-          onClose={() => setSupportItem(null)}
-          creatorName={name}
-          creatorId={username}
-          uid={uid}
-          defaultMessage={
-            supportItem?.title
-              ? `I love this post! "${supportItem.title}"`
-              : "I love this post!"
-          }
-        />
+        <Suspense fallback={null}>
+          <LazySupportModal
+            isOpen={!!supportItem}
+            onClose={() => setSupportItem(null)}
+            creatorName={name}
+            creatorId={username}
+            uid={uid}
+            defaultMessage={
+              supportItem?.title
+                ? `I love this post! "${supportItem.title}"`
+                : "I love this post!"
+            }
+          />
+        </Suspense>
       )}
     </div>
   );

@@ -25,26 +25,12 @@ import {
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
-import {
-  doc,
-  getDoc,
-  collection,
-  query,
-  orderBy,
-  limit,
-  getDocs,
-} from "firebase/firestore";
-import { db } from "@/db/firebase";
 import { useAuth } from "@/auth/AuthContext";
 import MobileBottomBar from "@/components/parts/MobileBottomBar";
 import { FaCcVisa, FaCcMastercard, FaCcAmex } from "react-icons/fa";
 import { FeatureCard, Step } from "./landingpage/index";
 
-export default function LandingPage({
-  initialCreators,
-}: {
-  initialCreators?: any[];
-}) {
+export default function LandingPage({ initialCreators }: { initialCreators?: any[] }) {
   const { isCreator, user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -53,12 +39,8 @@ export default function LandingPage({
     "idle" | "checking" | "available" | "taken" | "invalid"
   >("idle");
 
-  const [featuredCreators, setFeaturedCreators] = useState<any[]>(
-    initialCreators || [],
-  );
-  const [featuredLoading, setFeaturedLoading] = useState(
-    !initialCreators?.length,
-  );
+  const [featuredCreators, setFeaturedCreators] = useState<any[]>(initialCreators || []);
+  const [featuredLoading, setFeaturedLoading] = useState(!initialCreators?.length);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
 
   const fallbackCreators = [
@@ -106,21 +88,8 @@ export default function LandingPage({
 
   useEffect(() => {
     if (initialCreators?.length) return;
-
-    const fetchFeatured = async () => {
-      try {
-        const creatorsRef = collection(db, "creators");
-        const q = query(creatorsRef, orderBy("createdAt", "desc"), limit(5));
-        const snap = await getDocs(q);
-        const fetched = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setFeaturedCreators(fetched.length > 0 ? fetched : fallbackCreators);
-      } catch {
-        setFeaturedCreators(fallbackCreators);
-      } finally {
-        setFeaturedLoading(false);
-      }
-    };
-    fetchFeatured();
+    setFeaturedCreators(fallbackCreators);
+    setFeaturedLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -177,10 +146,12 @@ export default function LandingPage({
     const checkUsername = async () => {
       setUsernameStatus("checking");
       try {
-        const docRef = doc(db, "creators", username);
-        const docSnap = await getDoc(docRef);
+        const response = await fetch(
+          `/api/creators/check-username?username=${encodeURIComponent(username)}`,
+        );
+        const data = (await response.json()) as { exists?: boolean };
         setUsernameStatus(
-          docSnap.exists() ||
+          Boolean(data?.exists) ||
             username === "admin" ||
             username === "creator" ||
             username === "supporter" ||
@@ -259,6 +230,7 @@ export default function LandingPage({
         );
       } catch (err) {
         console.error(err);
+        setUsernameStatus("idle");
       }
     };
 
@@ -272,9 +244,7 @@ export default function LandingPage({
     } else if (username.length > 19) {
       toast.error("Username must be under 20 characters.");
     } else {
-      router.push(
-        `/login?username=${username}&redirect=${encodeURIComponent(pathname)}`,
-      );
+      router.push(`/login?username=${username}&redirect=${encodeURIComponent(pathname)}`);
     }
   };
 
@@ -335,8 +305,8 @@ export default function LandingPage({
             </h1>
 
             <p className="text-base md:text-lg text-muted-foreground mb-8 max-w-lg leading-relaxed">
-              Get paid directly by your biggest fans through tips,
-              subscriptions, and exclusive content.
+              Get paid directly by your biggest fans through tips, subscriptions, and
+              exclusive content.
             </p>
 
             <div className="flex flex-col items-center md:items-start gap-4 mb-10">
@@ -350,8 +320,7 @@ export default function LandingPage({
                     <ArrowRight className="group-hover:translate-x-2 transition-transform" />
                   </button>
                   <p className="mt-4 text-muted-foreground font-bold text-xs uppercase tracking-widest text-center md:text-left">
-                    Welcome back,{" "}
-                    {user?.displayName?.split(" ")[0] || "Creator"}!
+                    Welcome back, {user?.displayName?.split(" ")[0] || "Creator"}!
                   </p>
                 </div>
               ) : (
@@ -368,9 +337,7 @@ export default function LandingPage({
                         maxLength={19}
                         onChange={(e) =>
                           setUsername(
-                            e.target.value
-                              .toLowerCase()
-                              .replace(/[^a-z0-9_]/g, ""),
+                            e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""),
                           )
                         }
                         placeholder="yourname"
@@ -384,10 +351,7 @@ export default function LandingPage({
                       />
                       <div className="absolute right-4 top-1/2 -translate-y-1/2">
                         {usernameStatus === "checking" && (
-                          <Loader
-                            className="animate-spin text-slate-300"
-                            size={20}
-                          />
+                          <Loader className="animate-spin text-slate-300" size={20} />
                         )}
                         {usernameStatus === "available" && (
                           <Check className="text-green-500" size={20} />
@@ -409,15 +373,15 @@ export default function LandingPage({
                     </button>
                   </div>
                   <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest flex items-center gap-2">
-                    <ShieldCheck size={14} className="text-green-600" /> It
-                    takes 1 minute to set up. No credit card needed.
+                    <ShieldCheck size={14} className="text-green-600" /> It takes 1 minute
+                    to set up. No credit card needed.
                   </p>
                 </>
               )}
             </div>
 
             {/* Payment Methods - Compact */}
-            <div className="flex flex-wrap items-center gap-4 md:gap-6 pt-6 border-t border-border/50 opacity-60">
+            <div className="flex flex-wrap items-center gap-4 md:gap-6 pt-6 border-t border-border/50">
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
                 Get paid via:
               </p>
@@ -531,10 +495,7 @@ export default function LandingPage({
                                 />
                                 {c.verified && (
                                   <div className="absolute -bottom-1 -right-1 bg-green-500 w-5 h-5 border-2 border-white rounded-full flex items-center justify-center">
-                                    <CheckCircle2
-                                      size={10}
-                                      className="text-white"
-                                    />
+                                    <CheckCircle2 size={10} className="text-white" />
                                   </div>
                                 )}
                               </div>
@@ -565,12 +526,10 @@ export default function LandingPage({
                                 ))}
                               </div>
                             )}
-                            {c.socials &&
-                              Object.values(c.socials).some(Boolean) && (
-                                <div className="flex gap-1 mt-2">
-                                  {Object.entries(
-                                    c.socials as Record<string, string>,
-                                  ).map(([platform, url]) =>
+                            {c.socials && Object.values(c.socials).some(Boolean) && (
+                              <div className="flex gap-1 mt-2">
+                                {Object.entries(c.socials as Record<string, string>).map(
+                                  ([platform, url]) =>
                                     url ? (
                                       <a
                                         key={platform}
@@ -594,9 +553,9 @@ export default function LandingPage({
                                         </span>
                                       </a>
                                     ) : null,
-                                  )}
-                                </div>
-                              )}
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </motion.div>
@@ -613,33 +572,25 @@ export default function LandingPage({
       <section className="border-y border-border bg-card">
         <div className="max-w-5xl mx-auto px-6 py-10 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           <div>
-            <p className="text-3xl md:text-4xl font-black text-foreground">
-              300+
-            </p>
+            <p className="text-3xl md:text-4xl font-black text-foreground">300+</p>
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
               Creators Onboarded
             </p>
           </div>
           <div>
-            <p className="text-3xl md:text-4xl font-black text-foreground">
-              USD 2k+
-            </p>
+            <p className="text-3xl md:text-4xl font-black text-foreground">USD 2k+</p>
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
               Paid Out to Creators
             </p>
           </div>
           <div>
-            <p className="text-3xl md:text-4xl font-black text-foreground">
-              30+
-            </p>
+            <p className="text-3xl md:text-4xl font-black text-foreground">30+</p>
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
               Countries Active
             </p>
           </div>
           <div>
-            <p className="text-3xl md:text-4xl font-black text-foreground">
-              10%
-            </p>
+            <p className="text-3xl md:text-4xl font-black text-foreground">10%</p>
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
               Platform Fee Only
             </p>
@@ -650,9 +601,8 @@ export default function LandingPage({
       <section className="bg-card py-24 px-6 overflow-hidden">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
-              <h2 className="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-[1.05]">
-              Why Creators{" "}
-              <span className="text-orange-600">Choose Agaseke</span>
+            <h2 className="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-[1.05]">
+              Why Creators <span className="text-orange-600">Choose Agaseke</span>
             </h2>
           </div>
 
@@ -671,7 +621,7 @@ export default function LandingPage({
                 ].map(([title, desc], i) => (
                   <div key={i}>
                     <p className="font-black text-foreground text-lg">{title}</p>
-                    <p className="text-sm text-muted-foreground mt-0.5">{desc}</p>
+                    <p className="text-sm text-slate-600 mt-0.5">{desc}</p>
                   </div>
                 ))}
               </div>
@@ -694,11 +644,14 @@ export default function LandingPage({
                   ["10% Flat Fee", "You keep 90%. No hidden cuts."],
                   ["MoMo & Card Payments", "Tips, subscriptions, sales — all supported."],
                   ["You Own Your Community", "Private space for your biggest fans."],
-                  ["One Link Does It All", "Content, store, events, messaging — together."],
+                  [
+                    "One Link Does It All",
+                    "Content, store, events, messaging — together.",
+                  ],
                 ].map(([title, desc], i) => (
                   <div key={i}>
                     <p className="font-black text-foreground text-lg">{title}</p>
-                    <p className="text-sm text-muted-foreground mt-0.5">{desc}</p>
+                    <p className="text-sm text-slate-600 mt-0.5">{desc}</p>
                   </div>
                 ))}
               </div>
@@ -716,9 +669,7 @@ export default function LandingPage({
             <p className="text-xl md:text-2xl font-bold text-foreground">
               Global platforms weren't built for African creators.
             </p>
-            <p className="text-orange-600 font-black text-lg mt-1">
-              Agaseke was.
-            </p>
+            <p className="text-orange-600 font-black text-lg mt-1">Agaseke was.</p>
           </div>
         </div>
       </section>
@@ -769,11 +720,11 @@ export default function LandingPage({
             </h2>
             <div className="text-[100px] font-black leading-none mb-4">10%</div>
             <p className="text-xl text-slate-300 max-w-lg mx-auto leading-relaxed mb-10">
-              We only make money when <strong>you</strong> make money. A small
-              10% platform fee — that's it. No hidden charges, no subscription.
+              We only make money when <strong>you</strong> make money. A small 10%
+              platform fee — that's it. No hidden charges, no subscription.
               <span className="block mt-2 text-sm text-orange-400">
-                Perfect for individual creators and management companies
-                onboarding multiple talents.
+                Perfect for individual creators and management companies onboarding
+                multiple talents.
               </span>
             </p>
             <button

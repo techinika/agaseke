@@ -152,130 +152,138 @@ export default function ForBrandsPage() {
         faqs={faqs}
       />
       <div className="max-w-5xl mx-auto px-4 py-16">
-      <section className="text-center mb-16">
-        <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-orange-100 text-orange-700 text-xs font-black uppercase tracking-wide rounded-full mb-6">
-          <Megaphone size={14} /> For Brands
-        </span>
-        <h1 className="text-4xl md:text-5xl font-black text-foreground mb-4">
-          Marketing campaigns with creators
-        </h1>
-        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          Connect to multiple creators for your campaigns, no matter your budget.
-          Set what you want to spend, open it to creators, and let performance
-          decide how the budget is shared.
-        </p>
-        <div className="flex justify-center mt-8">
+        <section className="text-center mb-16">
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-orange-100 text-orange-700 text-xs font-black uppercase tracking-wide rounded-full mb-6">
+            <Megaphone size={14} /> For Brands
+          </span>
+          <h1 className="text-4xl md:text-5xl font-black text-foreground mb-4">
+            Marketing campaigns with creators
+          </h1>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Connect to multiple creators for your campaigns, no matter your budget. Set
+            what you want to spend, open it to creators, and let performance decide how
+            the budget is shared.
+          </p>
+          <div className="flex justify-center mt-8">
+            <a
+              href={ENROLL_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-6 py-3 bg-orange-600 text-white text-sm font-bold rounded-lg hover:bg-orange-700 transition"
+            >
+              Enroll your brand at brands.agaseke.me
+            </a>
+          </div>
+        </section>
+
+        <section className="mb-16">
+          <h2 className="text-3xl font-black text-center mb-3">How campaigns work</h2>
+          <p className="text-muted-foreground text-center max-w-2xl mx-auto mb-10">
+            Four steps between your brand and a room full of creators&apos; audiences.
+          </p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {steps.map((s, i) => (
+              <div
+                key={s.title}
+                className="bg-card border border-border rounded-3xl p-6 relative"
+              >
+                <span className="absolute top-4 right-4 text-xs font-black text-orange-500 bg-orange-100 rounded-full w-6 h-6 flex items-center justify-center">
+                  {i + 1}
+                </span>
+                <s.icon size={24} className="text-orange-500 mb-3" />
+                <h3 className="font-black mb-2">{s.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{s.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="grid md:grid-cols-2 gap-6 mb-16">
+          <div className="bg-card border border-border rounded-3xl p-8">
+            <Target size={32} className="text-orange-500 mb-4" />
+            <h2 className="text-2xl font-black mb-3">Set your budget</h2>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              You decide what a campaign costs before anything starts. There&apos;s no
+              minimum bar — whether you&apos;re a small local brand or a national one, you
+              can fund a campaign that fits your budget.
+            </p>
+            <p className="text-muted-foreground leading-relaxed">
+              You also set how many creators can participate, so the campaign stays
+              exactly as wide as you want it to be.
+            </p>
+          </div>
+          <div className="bg-card border border-border rounded-3xl p-8">
+            <PieChart size={32} className="text-orange-500 mb-4" />
+            <h2 className="text-2xl font-black mb-3">
+              Creators divide it by performance
+            </h2>
+            <p className="text-muted-foreground leading-relaxed mb-4">
+              The creators who join your campaign split the budget based on how each of
+              them performed — so your money follows results instead of guesses.
+            </p>
+            <p className="text-muted-foreground leading-relaxed">
+              Nobody gets paid for showing up; they get paid for what they delivered.
+              That&apos;s fair for you, and fair for creators who actually moved the
+              needle.
+            </p>
+          </div>
+        </section>
+
+        <section className="mb-16">
+          <h2 className="text-3xl font-black text-center mb-10">
+            Why brands choose Agaseke
+          </h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {features.map((f) => (
+              <div key={f.title} className="bg-card border border-border rounded-3xl p-6">
+                <f.icon size={24} className="text-orange-500 mb-3" />
+                <h3 className="font-black mb-2">{f.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{f.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="text-center bg-card border border-border rounded-3xl p-10">
+          <h2 className="text-3xl font-black mb-3">Ready to run your first campaign?</h2>
+          <p className="text-muted-foreground mb-6 max-w-xl mx-auto">
+            Enroll your brand, set a budget, and let the creators do the rest. It only
+            takes a few minutes to get started.
+          </p>
           <a
             href={ENROLL_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-6 py-3 bg-orange-600 text-white text-sm font-bold rounded-lg hover:bg-orange-700 transition"
+            className="inline-block px-6 py-3 bg-orange-600 text-white text-sm font-bold rounded-lg hover:bg-orange-700 transition"
           >
             Enroll your brand at brands.agaseke.me
           </a>
-        </div>
-      </section>
-
-      <section className="mb-16">
-        <h2 className="text-3xl font-black text-center mb-3">How campaigns work</h2>
-        <p className="text-muted-foreground text-center max-w-2xl mx-auto mb-10">
-          Four steps between your brand and a room full of creators&apos;
-          audiences.
-        </p>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {steps.map((s, i) => (
-            <div key={s.title} className="bg-card border border-border rounded-3xl p-6 relative">
-              <span className="absolute top-4 right-4 text-xs font-black text-orange-500 bg-orange-100 rounded-full w-6 h-6 flex items-center justify-center">
-                {i + 1}
-              </span>
-              <s.icon size={24} className="text-orange-500 mb-3" />
-              <h3 className="font-black mb-2">{s.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{s.text}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="grid md:grid-cols-2 gap-6 mb-16">
-        <div className="bg-card border border-border rounded-3xl p-8">
-          <Target size={32} className="text-orange-500 mb-4" />
-          <h2 className="text-2xl font-black mb-3">Set your budget</h2>
-          <p className="text-muted-foreground leading-relaxed mb-4">
-            You decide what a campaign costs before anything starts. There&apos;s
-            no minimum bar — whether you&apos;re a small local brand or a
-            national one, you can fund a campaign that fits your budget.
-          </p>
-          <p className="text-muted-foreground leading-relaxed">
-            You also set how many creators can participate, so the campaign
-            stays exactly as wide as you want it to be.
-          </p>
-        </div>
-        <div className="bg-card border border-border rounded-3xl p-8">
-          <PieChart size={32} className="text-orange-500 mb-4" />
-          <h2 className="text-2xl font-black mb-3">Creators divide it by performance</h2>
-          <p className="text-muted-foreground leading-relaxed mb-4">
-            The creators who join your campaign split the budget based on how
-            each of them performed — so your money follows results instead of
-            guesses.
-          </p>
-          <p className="text-muted-foreground leading-relaxed">
-            Nobody gets paid for showing up; they get paid for what they
-            delivered. That&apos;s fair for you, and fair for creators who
-            actually moved the needle.
-          </p>
-        </div>
-      </section>
-
-      <section className="mb-16">
-        <h2 className="text-3xl font-black text-center mb-10">Why brands choose Agaseke</h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {features.map((f) => (
-            <div key={f.title} className="bg-card border border-border rounded-3xl p-6">
-              <f.icon size={24} className="text-orange-500 mb-3" />
-              <h3 className="font-black mb-2">{f.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{f.text}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="text-center bg-card border border-border rounded-3xl p-10">
-        <h2 className="text-3xl font-black mb-3">Ready to run your first campaign?</h2>
-        <p className="text-muted-foreground mb-6 max-w-xl mx-auto">
-          Enroll your brand, set a budget, and let the creators do the rest.
-          It only takes a few minutes to get started.
-        </p>
-        <a
-          href={ENROLL_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-block px-6 py-3 bg-orange-600 text-white text-sm font-bold rounded-lg hover:bg-orange-700 transition"
-        >
-          Enroll your brand at brands.agaseke.me
-        </a>
-<p className="text-xs text-muted-foreground mt-4">
+          <p className="text-xs text-muted-foreground mt-4">
             Prefer to look around first?{" "}
-            <Link href="/for-creators" className="font-bold text-orange-600 hover:underline">
+            <Link
+              href="/for-creators"
+              className="font-bold text-orange-600 hover:underline"
+            >
               See what we do for creators
             </Link>
           </p>
-      </section>
+        </section>
 
-      <section className="flex flex-wrap items-center justify-center gap-2 text-sm mt-10">
-        <span className="text-muted-foreground font-bold">Also on Agaseke:</span>
-        <Link
-          href="/for-creators"
-          className="px-3 py-1 font-bold text-muted-foreground border border-border rounded-full hover:text-foreground hover:bg-muted transition"
-        >
-          For Creators
-        </Link>
-        <Link
-          href="/for-supporters"
-          className="px-3 py-1 font-bold text-muted-foreground border border-border rounded-full hover:text-foreground hover:bg-muted transition"
-        >
-          For Supporters
-        </Link>
-      </section>
+        <section className="flex flex-wrap items-center justify-center gap-2 text-sm mt-10">
+          <span className="text-muted-foreground font-bold">Also on Agaseke:</span>
+          <Link
+            href="/for-creators"
+            className="inline-flex min-h-11 items-center px-3 py-1 font-bold text-muted-foreground border border-border rounded-full hover:text-foreground hover:bg-muted transition"
+          >
+            For Creators
+          </Link>
+          <Link
+            href="/for-supporters"
+            className="inline-flex min-h-11 items-center px-3 py-1 font-bold text-muted-foreground border border-border rounded-full hover:text-foreground hover:bg-muted transition"
+          >
+            For Supporters
+          </Link>
+        </section>
       </div>
     </>
   );

@@ -4,16 +4,9 @@
 import React, { useState, useEffect } from "react";
 import { sendCommsEmail } from "@/lib/commsService";
 import {
-  collection,
-  query,
-  where,
-  onSnapshot,
-  doc,
-  runTransaction,
-  serverTimestamp,
-  getDoc,
-} from "firebase/firestore";
-import { db } from "@/db/firebase";
+  approveCreatorPayout,
+  subscribeToPendingPayoutCreators,
+} from "@/lib/adminConfigService";
 import {
   Wallet,
   CheckCircle,
@@ -35,27 +28,14 @@ export default function AdminPayouts() {
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
-    const q = query(
-      collection(db, "creators"),
-      where("pendingPayout", ">", 5000),
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const creatorList = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setCreators(creatorList);
+    const unsubscribe = subscribeToPendingPayoutCreators(5000, (items) => {
+      setCreators(items);
       setLoading(false);
     });
-
     return () => unsubscribe();
   }, []);
 
-  const totalPending = creators.reduce(
-    (acc, curr) => acc + (curr.pendingPayout || 0),
-    0,
-  );
+  const totalPending = creators.reduce((acc, curr) => acc + (curr.pendingPayout || 0), 0);
 
   const handleApprovePayout = async () => {
     if (!confirmPayout) return;
@@ -64,28 +44,7 @@ export default function AdminPayouts() {
     setProcessingId(confirmPayout.id);
 
     try {
-      await runTransaction(db, async (transaction) => {
-        const creatorRef = doc(db, "creators", confirmPayout.id);
-        const payoutRef = doc(collection(db, "payouts"));
-
-        transaction.update(creatorRef, {
-          pendingPayout: 0,
-          lastPayoutAt: serverTimestamp(),
-        });
-
-        transaction.set(payoutRef, {
-          creatorId: confirmPayout.id,
-          creatorUid: confirmPayout.uid,
-          amount: amount,
-          status: "completed",
-          approvedAt: serverTimestamp(),
-          method: "MoMo",
-          createdAt: serverTimestamp(),
-        });
-      });
-
-      const profileSnap = await getDoc(doc(db, "profiles", confirmPayout.uid));
-      const creatorEmail = profileSnap.data()?.email;
+      const { email: creatorEmail } = await approveCreatorPayout(confirmPayout, amount);
       if (creatorEmail) {
         await sendCommsEmail("payout_processed", {
           creatorEmail,
@@ -96,9 +55,7 @@ export default function AdminPayouts() {
         });
       }
 
-      toast.success(
-        `Payout of ${amount} RWF for ${confirmPayout.name} recorded!`,
-      );
+      toast.success(`Payout of ${amount} RWF for ${confirmPayout.name} recorded!`);
       setConfirmPayout(null);
     } catch (error) {
       console.error(error);
@@ -205,11 +162,14 @@ export default function AdminPayouts() {
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-muted rounded-lg overflow-hidden border border-border">
                           {creator.profilePicture ? (
-                            <img
-                              src={creator.profilePicture}
-                              alt={creator.name || "Creator"}
-                              className="w-full h-full object-cover"
-                            />
+                            <>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={creator.profilePicture}
+                                alt={creator.name || "Creator"}
+                                className="w-full h-full object-cover"
+                              />
+                            </>
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-muted-foreground font-bold">
                               {creator.name?.[0]}
@@ -217,9 +177,7 @@ export default function AdminPayouts() {
                           )}
                         </div>
                         <div>
-                          <p className="font-bold text-foreground">
-                            {creator.name}
-                          </p>
+                          <p className="font-bold text-foreground">{creator.name}</p>
                           <p className="text-xs text-muted-foreground font-medium tracking-tight">
                             @{creator.id}
                           </p>
@@ -263,9 +221,8 @@ export default function AdminPayouts() {
         <div className="flex items-center gap-3 p-4 bg-muted/50 border border-border rounded-lg text-muted-foreground">
           <AlertCircle size={18} />
           <p className="text-xs font-medium italic">
-            Note: Approving a payout resets the creator&apos;s balance in
-            Agaseke. Ensure you have manually sent the MoMo transfer before
-            confirming.
+            Note: Approving a payout resets the creator&apos;s balance in Agaseke. Ensure
+            you have manually sent the MoMo transfer before confirming.
           </p>
         </div>
       </div>

@@ -21,6 +21,7 @@ const NotFoundContent = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
+            aria-hidden="true"
             className="text-[12rem] md:text-[16rem] font-bold leading-none tracking-tighter text-foreground/5 select-none"
           >
             404
@@ -65,9 +66,8 @@ const NotFoundContent = () => {
             This Agaseke does not exist yet!
           </h2>
           <p className="text-muted-foreground font-medium leading-relaxed mb-10">
-            It looks like this space hasn&lsquo;t been woven yet, or the link
-            has moved. Don&apos;t worry, even the best storytellers get lost
-            sometimes.
+            It looks like this space hasn&lsquo;t been woven yet, or the link has moved.
+            Don&apos;t worry, even the best storytellers get lost sometimes.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -89,8 +89,9 @@ const NotFoundContent = () => {
 
         <motion.p
           initial={{ opacity: 0 }}
-          animate={{ opacity: 0.4 }}
+          animate={{ opacity: 1 }}
           transition={{ delay: 0.8 }}
+          aria-hidden="true"
           className="mt-20 text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground"
         >
           Agaseke for Creators

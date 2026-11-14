@@ -21,33 +21,20 @@ import {
   Ticket,
   ChevronRight,
 } from "lucide-react";
-import { db } from "@/db/firebase";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  limit,
-  orderBy,
-  doc,
-  getDoc,
-} from "firebase/firestore";
+import { fetchCreatorDashboardData } from "@/lib/creatorDashboardService";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
-import {
-  StatTile,
-  ActivityRow,
-  HistoryItem,
-} from "./creatorspace/index";
+import { StatTile, ActivityRow, HistoryItem } from "./creatorspace/index";
 import { getCurrencySymbol } from "@/types/currency";
 
 export default function CreatorDashboard() {
   const { creator } = useAuth();
   const router = useRouter();
-  const [creatorCurrency, setCreatorCurrency] = useState("RWF");
-  const [perCurrencyPayouts, setPerCurrencyPayouts] = useState<Array<{ currency: string; pending: number }>>([]);
+  const [perCurrencyPayouts, setPerCurrencyPayouts] = useState<
+    Array<{ currency: string; pending: number }>
+  >([]);
   const [data, setData] = useState<any>({
     recentSupport: [],
     history: [],
@@ -55,91 +42,18 @@ export default function CreatorDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const load = async () => {
       if (!creator) return;
-
       try {
-        const creatorSnap = await getDocs(
-          query(collection(db, "creators"), where("uid", "==", creator?.uid)),
-        );
-        const creatorDoc = creatorSnap.docs[0];
-        const cid = creatorDoc?.id;
-        const creatorData = creatorDoc?.data();
-        const mainCurrency = creatorData?.currency || "RWF";
-        if (creatorDoc) {
-          setCreatorCurrency(mainCurrency);
-        }
-
-        const supportSnap = await getDocs(query(
-          collection(db, "supportedCreators"),
-          where("creatorId", "==", cid),
-          orderBy("createdAt", "desc"),
-          limit(10),
-        ));
-        const supports = supportSnap.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-
-        const currenciesSnap = await getDocs(collection(db, "currencies"));
-        const currencyCodes = currenciesSnap.docs.map((d) => d.data().code);
-        const hasUSD = currencyCodes.includes("USD");
-
-        const getPending = (code: string) => code === "RWF" ? (creator?.pendingPayout || 0) : (creator as any)?.[`pendingPayout${code}`] || 0;
-
-        const displayedCodes = [mainCurrency];
-        if (hasUSD && mainCurrency !== "USD") displayedCodes.push("USD");
-        if (mainCurrency === "USD" && currencyCodes.includes("RWF")) displayedCodes.push("RWF");
-
-        const balances = displayedCodes.map((code) => ({
-          currency: code,
-          pending: getPending(code),
-        }));
-        setPerCurrencyPayouts(balances);
-
-        const contentQ = query(
-          collection(db, "creatorContent"),
-          where("creatorId", "==", creator?.handle),
-          orderBy("createdAt", "desc"),
-          limit(5),
-        );
-        const gatheringQ = query(
-          collection(db, "creatorGatherings"),
-          where("creatorId", "==", creator?.uid),
-          orderBy("createdAt", "desc"),
-          limit(5),
-        );
-
-        const [contentSnap, gatheringSnap] = await Promise.all([
-          getDocs(contentQ),
-          getDocs(gatheringQ),
-        ]);
-
-        const contentItems = contentSnap.docs.map((doc) => ({
-          id: doc.id,
-          type: "Content",
-          title: doc.data().title,
-          createdAt: doc.data().createdAt?.toDate(),
-          meta: `${doc.data().views || 0} views`,
-          icon: <FileText size={12} />,
-        }));
-
-        const gatheringItems = gatheringSnap.docs.map((doc) => ({
-          id: doc.id,
-          type: "Gathering",
-          title: doc.data().title,
-          createdAt: doc.data().createdAt?.toDate(),
-          meta: `${doc.data().location || "Online"}`,
-          icon: <Calendar size={12} />,
-        }));
-
-        const combinedHistory = [...contentItems, ...gatheringItems].sort(
-          (a: any, b: any) => b.createdAt - a.createdAt,
-        );
-
+        const result = await fetchCreatorDashboardData(creator as any);
+        setPerCurrencyPayouts(result.perCurrencyPayouts);
         setData({
-          recentSupport: supports,
-          history: combinedHistory,
+          recentSupport: result.recentSupport,
+          history: result.history.map((item) => ({
+            ...item,
+            icon:
+              item.type === "Gathering" ? <Calendar size={12} /> : <FileText size={12} />,
+          })),
         });
       } catch (e) {
         console.error("Dashboard Load Error:", e);
@@ -149,8 +63,8 @@ export default function CreatorDashboard() {
       }
     };
 
-    fetchDashboardData();
-  }, [creator?.handle]);
+    load();
+  }, [creator]);
 
   if (loading)
     return (
@@ -195,7 +109,9 @@ export default function CreatorDashboard() {
             {perCurrencyPayouts.map((b) => (
               <h3 key={b.currency} className="text-2xl font-bold">
                 {b.pending.toLocaleString()}
-                <span className="text-sm font-medium text-muted-foreground ml-2">{getCurrencySymbol(b.currency)}</span>
+                <span className="text-sm font-medium text-muted-foreground ml-2">
+                  {getCurrencySymbol(b.currency)}
+                </span>
               </h3>
             ))}
           </div>
@@ -283,9 +199,7 @@ export default function CreatorDashboard() {
                   className="text-muted-foreground group-hover:text-orange-500 group-hover:translate-x-1 transition-all"
                 />
               </div>
-              <p className="font-bold text-sm text-foreground mb-1.5">
-                {card.title}
-              </p>
+              <p className="font-bold text-sm text-foreground mb-1.5">{card.title}</p>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 {card.description}
               </p>
@@ -340,9 +254,7 @@ export default function CreatorDashboard() {
           <h4 className="text-lg font-bold tracking-tight">Your Activity</h4>
           <div className="bg-card p-6 rounded-lg border border-border shadow-sm space-y-6">
             {data.history.length > 0 ? (
-              data.history.map((item: any) => (
-                <HistoryItem key={item.id} {...item} />
-              ))
+              data.history.map((item: any) => <HistoryItem key={item.id} {...item} />)
             ) : (
               <div className="text-center py-10">
                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
@@ -356,5 +268,3 @@ export default function CreatorDashboard() {
     </div>
   );
 }
-
-

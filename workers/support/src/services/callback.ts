@@ -1,16 +1,12 @@
 import type { Env } from "../types";
-import { firestoreGet, firestorePost, firestorePatch, extractFirestoreDocument } from "../firestore";
+import { firestorePost, firestorePatch, firestoreApplyPayment } from "../firestore";
 import { logActivity } from "../logger";
 import { createNotification } from "../adminNotifications";
 
-async function incrementField(env: Env, path: string, field: string, amount: number): Promise<void> {
-  const doc = await firestoreGet(env, path);
-  if (!doc) return;
-  const data = extractFirestoreDocument(doc.fields as Record<string, unknown>);
-  const current = Number(data[field] || 0);
-  await firestorePatch(env, path, {
-    [field]: { integerValue: String(Math.round(current + amount)) },
-  });
+function numberField(value: number): Record<string, unknown> {
+  return Number.isInteger(value)
+    ? { integerValue: String(value) }
+    : { doubleValue: value };
 }
 
 export async function handleSupportCallback(
@@ -33,6 +29,18 @@ export async function handleSupportCallback(
   const earningsField = isUSD ? "totalEarningsUSD" : "totalEarnings";
 
   const now = new Date().toISOString();
+  const safeRef = paymentRef.replace(/[^A-Za-z0-9_-]/g, "_");
+
+  const increments: Array<{ path: string; fields: Record<string, number> }> = [
+    {
+      path: `creators/${txData.creatorId}`,
+      fields: {
+        [earningsField]: creatorShare,
+        totalSupporters: 1,
+        [payoutField]: creatorShare,
+      },
+    },
+  ];
 
   await firestorePost(env, "platformIncome", {
     fields: {
@@ -41,7 +49,7 @@ export async function handleSupportCallback(
       reason: { stringValue: paymentMethod === "momo" ? "flat_fee" : "card_payment_fee" },
       createdAt: { timestampValue: now },
     },
-  });
+  }, `${safeRef}_platform`);
 
   await firestorePost(env, "creatorIncome", {
     fields: {
@@ -51,7 +59,7 @@ export async function handleSupportCallback(
       reason: { stringValue: "support" },
       createdAt: { timestampValue: now },
     },
-  });
+  }, `${safeRef}_creator`);
 
   const supporterId = txData.supporterId as string | undefined;
   const supportedCreatorId = supporterId && supporterId !== "anonymous"
@@ -82,10 +90,6 @@ export async function handleSupportCallback(
     });
   }
 
-  await incrementField(env, `creators/${txData.creatorId}`, earningsField, creatorShare);
-  await incrementField(env, `creators/${txData.creatorId}`, "totalSupporters", 1);
-  await incrementField(env, `creators/${txData.creatorId}`, payoutField, creatorShare);
-
   if (supporterId && supporterId !== "anonymous") {
     await firestorePatch(env, `creators/${txData.creatorId}`, {
       [`supporterUids.${supporterId}`]: { booleanValue: true },
@@ -102,16 +106,40 @@ export async function handleSupportCallback(
         reason: { stringValue: "referral_commission" },
         createdAt: { timestampValue: now },
       },
-    });
+    }, `${safeRef}_referral`);
 
-    await incrementField(env, `creators/${txData.referralId}`, earningsField, referralShare);
-    await incrementField(env, `creators/${txData.referralId}`, payoutField, referralShare);
+    increments.push({
+      path: `creators/${txData.referralId}`,
+      fields: { [earningsField]: referralShare, [payoutField]: referralShare },
+    });
   }
 
   if (supporterId && supporterId !== "anonymous") {
-    await incrementField(env, `profiles/${supporterId}`, "totalSupport", totalAmount);
-    await incrementField(env, `profiles/${supporterId}`, "totalSupportedCreators", 1);
+    increments.push({
+      path: `profiles/${supporterId}`,
+      fields: { totalSupport: totalAmount, totalSupportedCreators: 1 },
+    });
   }
+
+  const credit = await firestoreApplyPayment(env, paymentRef, increments, {
+    txRef: { stringValue: paymentRef },
+    worker: { stringValue: "support" },
+    creatorId: { stringValue: txData.creatorId as string },
+    creatorShare: numberField(creatorShare),
+    totalAmount: numberField(totalAmount),
+    currency: { stringValue: currency },
+    status: { stringValue: "applied" },
+    appliedAt: { timestampValue: now },
+  });
+
+  if (credit !== "applied") {
+    await logActivity(env, "warn", "support", `Support callback ${credit} for ref=${paymentRef}`, {
+      txRef: paymentRef,
+      creatorId: txData.creatorId,
+      creatorShare,
+    });
+  }
+
 
   if (txData.creatorUid) {
     const isAnonymous = !supporterId || supporterId === "anonymous";

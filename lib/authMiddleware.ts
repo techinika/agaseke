@@ -1,9 +1,10 @@
-import { adminAuth, adminDb } from "@/db/firebaseAdmin";
+import { adminAuth } from "@/db/firebaseAdmin";
 import { NextResponse } from "next/server";
 
 export interface AuthUser {
   uid: string;
   email: string | null;
+  isAdmin: boolean;
 }
 
 async function extractToken(request: Request): Promise<string | null> {
@@ -21,6 +22,7 @@ export async function verifyAuthToken(request: Request): Promise<AuthUser | null
     return {
       uid: decoded.uid,
       email: decoded.email || null,
+      isAdmin: decoded.admin === true || decoded.isAdmin === true,
     };
   } catch {
     return null;
@@ -53,15 +55,10 @@ export async function optionalAuth(request: Request): Promise<AuthUser | null | 
   return user;
 }
 
-/** Rejects if not authenticated as admin. */
+/** Rejects if not authenticated as admin via Firebase custom claims. */
 export async function requireAdmin(request: Request): Promise<AuthUser | NextResponse> {
   const user = await verifyAuthToken(request);
   if (!user) return unauthorized();
-
-  const profileSnap = await adminDb.collection("profiles").doc(user.uid).get();
-  if (!profileSnap.exists || !profileSnap.data()?.isAdmin) {
-    return forbidden("Admin access required");
-  }
-
+  if (!user.isAdmin) return forbidden("Admin access required");
   return user;
 }

@@ -59,7 +59,9 @@ export default function CommunityPage() {
   const [members, setMembers] = useState<MemberInfo[]>([]);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"settings" | "members" | "earnings">("settings");
+  const [activeTab, setActiveTab] = useState<"settings" | "members" | "earnings">(
+    "settings",
+  );
   const [newBenefit, setNewBenefit] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -81,7 +83,11 @@ export default function CommunityPage() {
 
   useEffect(() => {
     if (!creator?.handle || !settings.enabled) return;
-    getCommunityMembers(creator.handle).then(setMembers).catch((err) => { console.error("Failed to fetch community members", err); });
+    getCommunityMembers(creator.handle)
+      .then(setMembers)
+      .catch((err) => {
+        console.error("Failed to fetch community members", err);
+      });
   }, [creator?.handle, settings.enabled]);
 
   const updateTier = (index: number, field: string, value: any) => {
@@ -175,9 +181,7 @@ export default function CommunityPage() {
           </p>
         </div>
         <button
-          onClick={() =>
-            setSettings((prev) => ({ ...prev, enabled: !prev.enabled }))
-          }
+          onClick={() => setSettings((prev) => ({ ...prev, enabled: !prev.enabled }))}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-bold transition-colors ${
             settings.enabled
               ? "bg-orange-50 border-orange-200 text-orange-700"
@@ -198,13 +202,11 @@ export default function CommunityPage() {
           <Crown size={48} className="mx-auto text-muted-foreground mb-4" />
           <h2 className="text-lg font-bold mb-2">Community Subscriptions</h2>
           <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-            Enable community subscriptions to offer monthly or yearly membership
-            tiers. Supporters subscribe to get exclusive benefits and access.
+            Enable community subscriptions to offer monthly or yearly membership tiers.
+            Supporters subscribe to get exclusive benefits and access.
           </p>
           <button
-            onClick={() =>
-              setSettings((prev) => ({ ...prev, enabled: true }))
-            }
+            onClick={() => setSettings((prev) => ({ ...prev, enabled: true }))}
             className="px-6 py-3 bg-orange-600 text-white rounded-lg text-sm font-bold hover:bg-orange-700 transition"
           >
             Enable Community
@@ -225,9 +227,21 @@ export default function CommunityPage() {
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {tab === "settings" && <><Shield size={14} className="inline mr-1" /> Tiers</>}
-                {tab === "members" && <><Users size={14} className="inline mr-1" /> Members</>}
-                {tab === "earnings" && <><DollarSign size={14} className="inline mr-1" /> Earnings</>}
+                {tab === "settings" && (
+                  <>
+                    <Shield size={14} className="inline mr-1" /> Tiers
+                  </>
+                )}
+                {tab === "members" && (
+                  <>
+                    <Users size={14} className="inline mr-1" /> Members
+                  </>
+                )}
+                {tab === "earnings" && (
+                  <>
+                    <DollarSign size={14} className="inline mr-1" /> Earnings
+                  </>
+                )}
               </button>
             ))}
           </div>
@@ -314,15 +328,21 @@ export default function CommunityPage() {
                           <input
                             type="number"
                             min={0}
-                            value={(tier.currency || "RWF") === "USD" ? (tier.priceUSD ?? "") : (tier.price || "")}
+                            value={
+                              (tier.currency || "RWF") === "USD"
+                                ? (tier.priceUSD ?? "")
+                                : tier.price || ""
+                            }
                             onChange={(e) =>
                               updateTier(
                                 idx,
                                 (tier.currency || "RWF") === "USD" ? "priceUSD" : "price",
-                                Number(e.target.value)
+                                Number(e.target.value),
                               )
                             }
-                            placeholder={(tier.currency || "RWF") === "USD" ? "10" : "5000"}
+                            placeholder={
+                              (tier.currency || "RWF") === "USD" ? "10" : "5000"
+                            }
                             className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm"
                           />
                         </div>
@@ -348,8 +368,18 @@ export default function CommunityPage() {
                           <input
                             type="number"
                             min={0}
-                            value={tier.currency === "USD" ? (tier.price || "") : (tier.priceUSD ?? "")}
-                            onChange={(e) => updateTier(idx, tier.currency === "USD" ? "price" : "priceUSD", Number(e.target.value))}
+                            value={
+                              tier.currency === "USD"
+                                ? tier.price || ""
+                                : (tier.priceUSD ?? "")
+                            }
+                            onChange={(e) =>
+                              updateTier(
+                                idx,
+                                tier.currency === "USD" ? "price" : "priceUSD",
+                                Number(e.target.value),
+                              )
+                            }
                             placeholder={`${defaultCurrency} equivalent`}
                             className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm"
                           />
@@ -452,16 +482,29 @@ export default function CommunityPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border">
-                        <th className="text-left p-4 text-xs font-bold text-muted-foreground uppercase">Member</th>
-                        <th className="text-left p-4 text-xs font-bold text-muted-foreground uppercase">Tier</th>
-                        <th className="text-left p-4 text-xs font-bold text-muted-foreground uppercase">Status</th>
-                        <th className="text-left p-4 text-xs font-bold text-muted-foreground uppercase">Amount</th>
-                        <th className="text-left p-4 text-xs font-bold text-muted-foreground uppercase">Expires</th>
+                        <th className="text-left p-4 text-xs font-bold text-muted-foreground uppercase">
+                          Member
+                        </th>
+                        <th className="text-left p-4 text-xs font-bold text-muted-foreground uppercase">
+                          Tier
+                        </th>
+                        <th className="text-left p-4 text-xs font-bold text-muted-foreground uppercase">
+                          Status
+                        </th>
+                        <th className="text-left p-4 text-xs font-bold text-muted-foreground uppercase">
+                          Amount
+                        </th>
+                        <th className="text-left p-4 text-xs font-bold text-muted-foreground uppercase">
+                          Expires
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {members.map((m) => (
-                        <tr key={m.subscriptionId} className="border-b border-border last:border-0">
+                        <tr
+                          key={m.subscriptionId}
+                          className="border-b border-border last:border-0"
+                        >
                           <td className="p-4">
                             <p className="font-medium">{m.userName || m.userEmail}</p>
                           </td>

@@ -3,14 +3,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import {
-  collection,
-  doc,
-  onSnapshot,
-  query,
-  where,
-} from "firebase/firestore";
-import { db } from "@/db/firebase";
+import { subscribeToTransactionByRef } from "@/lib/transactions";
 import { useAuth } from "@/auth/AuthContext";
 import {
   X,
@@ -27,7 +20,6 @@ import {
   getCommunityTiers,
   type CommunityTier,
 } from "@/lib/communityService";
-import { PAYMENTS_WORKER_URL } from "@/lib/paymentsService";
 import { formatCurrency } from "@/types/currency";
 
 interface SubscribeModalProps {
@@ -45,7 +37,7 @@ export function SubscribeModal({
   creatorHandle,
   creatorUid,
 }: SubscribeModalProps) {
-  const { user, isLoggedIn } = useAuth();
+  const { user } = useAuth();
   const [tiers, setTiers] = useState<CommunityTier[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTier, setSelectedTier] = useState<CommunityTier | null>(null);
@@ -56,6 +48,7 @@ export function SubscribeModal({
   const processingRef = useRef<string | null>(null);
   const paymentTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- load tiers when modal opens */
   useEffect(() => {
     if (!isOpen || !creatorHandle) return;
     setLoading(true);
@@ -67,6 +60,7 @@ export function SubscribeModal({
       .catch(() => setLoading(false));
   }, [isOpen, creatorHandle]);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- reset modal state on close */
   useEffect(() => {
     if (!isOpen) {
       setStep("browse");
@@ -134,28 +128,21 @@ export function SubscribeModal({
 
       const txRef = result.paymentRef;
 
-      const unsub = onSnapshot(
-        query(
-          collection(db, "transactions"),
-          where("ref", "==", txRef)
-        ),
-        (snap) => {
-          if (processingRef.current !== subId) {
-            unsub();
-            return;
-          }
-          snap.docChanges().forEach((change) => {
-            if (change.doc.data().status === "successful") {
-              setStep("success");
-              unsub();
-            } else if (change.doc.data().status === "failed") {
-              setErrorMessage("Payment failed. Please try again.");
-              setStep("error");
-              unsub();
-            }
-          });
+      const unsub = subscribeToTransactionByRef(txRef, (txData) => {
+        if (processingRef.current !== subId) {
+          unsub();
+          return;
         }
-      );
+        if (!txData) return;
+        if (txData.status === "successful" || txData.status === "success") {
+          setStep("success");
+          unsub();
+        } else if (txData.status === "failed") {
+          setErrorMessage("Payment failed. Please try again.");
+          setStep("error");
+          unsub();
+        }
+      });
 
       if (paymentTimeoutRef.current) clearTimeout(paymentTimeoutRef.current);
       paymentTimeoutRef.current = setTimeout(() => {
