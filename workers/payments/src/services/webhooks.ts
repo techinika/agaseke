@@ -2,12 +2,11 @@ import type { Env, PesapalIPNPayload } from "../types";
 import {
   convertFromFields,
   convertToFields,
+  firestoreCommit,
   firestoreCreateIfAbsent,
   firestoreDeleteIfExists,
   firestoreDocumentName,
   firestoreGet,
-  firestoreIncrement,
-  firestorePost,
   firestoreQuery,
   firestoreSet,
   firestoreUpdateWithPrecondition,
@@ -15,6 +14,8 @@ import {
 } from "../firestore";
 import { logActivity } from "../logger";
 import { createNotification, notifyAdmins } from "../adminNotifications";
+import { roundCurrencyAmount } from "../money/amount";
+import { buildPaymentLedger, isMoneyLedgerEnabled, ledgerMarkerFields } from "../money/ledger";
 import {
   processPaymentEvent,
   type PaymentEventStore,
@@ -194,9 +195,10 @@ async function forwardToDomainWorker(
   const creatorShare = Number(
     txData.creatorEarnings ?? totalAmount * creatorSharePercentage,
   );
-  const referralShare = Number(
-    txData.referralEarnings ?? totalAmount * referralSharePercentage,
-  );
+  const referralShare = includeReferral
+    ? Number(txData.referralEarnings ?? totalAmount * referralSharePercentage)
+    : 0;
+  const currency = (txData.currency as string) || "RWF";
 
   try {
     const res = await fetch(callbackUrl, {
@@ -210,9 +212,9 @@ async function forwardToDomainWorker(
         totalAmount,
         paymentRef,
         paymentMethod,
-        platformShare: Math.round(platformShare),
-        creatorShare: Math.round(creatorShare),
-        referralShare: Math.round(referralShare),
+        platformShare: roundCurrencyAmount(platformShare, currency),
+        creatorShare: roundCurrencyAmount(creatorShare, currency),
+        referralShare: roundCurrencyAmount(referralShare, currency),
       }),
     });
     if (!res.ok) {
@@ -275,83 +277,180 @@ async function handleGatheringPayment(
   const creatorShare = Number(
     txData.creatorEarnings ?? totalAmount * creatorSharePercentage,
   );
-  const referralShare = Number(
-    txData.referralEarnings ?? totalAmount * referralSharePercentage,
-  );
-
+  const referralShare = includeReferral
+    ? Number(txData.referralEarnings ?? totalAmount * referralSharePercentage)
+    : 0;
+  const platformAmount = roundCurrencyAmount(platformShare, currency);
+  const creatorAmount = roundCurrencyAmount(creatorShare, currency);
+  const referralAmount = roundCurrencyAmount(referralShare, currency);
+  const creditedTotal = roundCurrencyAmount(totalAmount, currency);
+  const safeRef = txRef.replace(/[^A-Za-z0-9_-]/g, "_");
   const now = new Date().toISOString();
 
-  await firestorePost(env, "platformIncome", {
-    fields: convertToFields({
-      amount: Math.round(platformShare),
-      txRef,
-      reason: "gathering_ticket",
-      createdAt: now,
-    }),
-  });
+  const documents: Array<{ path: string; fields: Record<string, unknown> }> = [
+    {
+      path: `platformIncome/${safeRef}_platform`,
+      fields: convertToFields({
+        amount: platformAmount,
+        txRef,
+        reason: "gathering_ticket",
+        createdAt: now,
+      }),
+    },
+    {
+      path: `creatorIncome/${safeRef}_creator`,
+      fields: convertToFields({
+        creatorUid: txData.creatorUid,
+        amount: creatorAmount,
+        txRef,
+        reason: "gathering_ticket",
+        createdAt: now,
+      }),
+    },
+    {
+      path: `gatheringsAttendance/${safeRef}_attendance`,
+      fields: convertToFields({
+        gatheringId: txData.gatheringId,
+        supporterId: (txData.supporterId as string) || "anonymous",
+        supporterName: (txData.attendeeName as string) || "Anonymous",
+        supporterEmail: (txData.attendeeEmail as string) || "",
+        supporterPhoto: (txData.attendeePhoto as string) || "",
+        creatorHandle: txData.creatorId,
+        paid: true,
+        amount: creditedTotal,
+        paymentRef: txRef,
+        checkedIn: false,
+        createdAt: now,
+      }),
+    },
+    {
+      path: `ticketSales/${safeRef}_ticket`,
+      fields: convertToFields({
+        creatorHandle: txData.creatorId,
+        buyerId: (txData.supporterId as string) || "anonymous",
+        transactionId: txRef,
+        gatheringId: txData.gatheringId,
+        ticketAmount: creditedTotal,
+        createdAt: now,
+      }),
+    },
+  ];
 
-  await firestorePost(env, "creatorIncome", {
-    fields: convertToFields({
-      creatorUid: txData.creatorUid,
-      amount: Math.round(creatorShare),
-      txRef,
-      reason: "gathering_ticket",
-      createdAt: now,
-    }),
-  });
-
-  await firestoreIncrement(env, `creators/${txData.creatorId}`, {
-    [earningsField]: Math.round(creatorShare),
-    [payoutField]: Math.round(creatorShare),
-  });
+  const increments: Array<{ path: string; fields: Record<string, number> }> = [
+    {
+      path: `creators/${txData.creatorId}`,
+      fields: { [earningsField]: creatorAmount, [payoutField]: creatorAmount },
+    },
+    {
+      path: `creatorGatherings/${txData.gatheringId}`,
+      fields: { attendeesCount: 1 },
+    },
+  ];
 
   if (includeReferral && txData.referralUid) {
-    await firestorePost(env, "creatorIncome", {
+    documents.push({
+      path: `creatorIncome/${safeRef}_referral`,
       fields: convertToFields({
         creatorUid: txData.referralUid,
-        amount: Math.round(referralShare),
+        amount: referralAmount,
         txRef,
         reason: "referral_commission",
         createdAt: now,
       }),
     });
 
-    await firestoreIncrement(env, `creators/${txData.referralId}`, {
-      [earningsField]: Math.round(referralShare),
-      [payoutField]: Math.round(referralShare),
+    increments.push({
+      path: `creators/${txData.referralId}`,
+      fields: { [earningsField]: referralAmount, [payoutField]: referralAmount },
     });
   }
 
-  await firestorePost(env, "gatheringsAttendance", {
-    fields: convertToFields({
-      gatheringId: txData.gatheringId,
-      supporterId: (txData.supporterId as string) || "anonymous",
-      supporterName: (txData.attendeeName as string) || "Anonymous",
-      supporterEmail: (txData.attendeeEmail as string) || "",
-      supporterPhoto: (txData.attendeePhoto as string) || "",
-      creatorHandle: txData.creatorId,
-      paid: true,
-      amount: totalAmount,
-      paymentRef: txRef,
-      checkedIn: false,
-      createdAt: now,
-    }),
+  const ledger = isMoneyLedgerEnabled(env)
+    ? buildPaymentLedger({
+        paymentRef: txRef,
+        source: "gathering",
+        currency,
+        totalAmount: creditedTotal,
+        creatorUid: txData.creatorUid as string | undefined,
+        creatorHandle: txData.creatorId as string,
+        creatorShare: creatorAmount,
+        platformShare: platformAmount,
+        referralShare: referralAmount,
+        referralUid: txData.referralUid as string | undefined,
+        referralHandle: txData.referralId as string | undefined,
+        createdAt: now,
+      })
+    : undefined;
+
+  const markerFields = convertToFields({
+    txRef,
+    worker: "payments",
+    type: "gathering",
+    creatorId: txData.creatorId,
+    creatorShare: creatorAmount,
+    totalAmount: creditedTotal,
+    currency,
+    status: "applied",
+    appliedAt: now,
+  });
+  if (ledger) Object.assign(markerFields, ledgerMarkerFields(ledger));
+
+  const incrementValue = (val: number): Record<string, unknown> =>
+    Number.isInteger(val)
+      ? { integerValue: String(val) }
+      : { doubleValue: val };
+  const incrementWrite = (
+    path: string,
+    fields: Record<string, number>,
+  ): Record<string, unknown> => ({
+    transform: {
+      document: firestoreDocumentName(env, path),
+      fieldTransforms: Object.entries(fields)
+        .filter(([, val]) => Number.isFinite(val) && val !== 0)
+        .map(([fieldPath, val]) => ({ fieldPath, increment: incrementValue(val) })),
+    },
   });
 
-  await firestorePost(env, "ticketSales", {
-    fields: convertToFields({
-      creatorHandle: txData.creatorId,
-      buyerId: (txData.supporterId as string) || "anonymous",
-      transactionId: txRef,
-      gatheringId: txData.gatheringId,
-      ticketAmount: totalAmount,
-      createdAt: now,
-    }),
-  });
+  const writes: unknown[] = [
+    {
+      update: {
+        name: firestoreDocumentName(env, `paymentApplications/${safeRef}`),
+        fields: markerFields,
+      },
+      currentDocument: { exists: false },
+    },
+    ...documents.map((document) => ({
+      update: {
+        name: firestoreDocumentName(env, document.path),
+        fields: document.fields,
+      },
+    })),
+    ...(ledger?.documents ?? []).map((document) => ({
+      update: {
+        name: firestoreDocumentName(env, document.path),
+        fields: document.fields,
+      },
+      currentDocument: { exists: false },
+    })),
+    ...(ledger?.balances ?? []).map((group) => incrementWrite(group.path, group.fields)),
+    ...increments.map((group) => incrementWrite(group.path, group.fields)),
+  ];
 
-  await firestoreIncrement(env, `creatorGatherings/${txData.gatheringId}`, {
-    attendeesCount: 1,
-  });
+  const result = await firestoreCommit(env, writes);
+  if (!result.ok) {
+    if (isConflict(result)) return true;
+    console.error(
+      `Gathering payment commit failed for ${txRef}:`,
+      result.status,
+      result.errorStatus ?? result.error ?? "",
+    );
+    await logActivity(env, "error", "payment", "Gathering payment commit failed", {
+      txRef,
+      status: result.status,
+      error: result.error ?? result.errorStatus ?? "",
+    });
+    return false;
+  }
 
   if (txData.creatorUid) {
     await createNotification(env, {
@@ -362,8 +461,8 @@ async function handleGatheringPayment(
       metadata: {
         txRef,
         gatheringId: txData.gatheringId,
-        amount: totalAmount,
-        creatorShare,
+        amount: creditedTotal,
+        creatorShare: creatorAmount,
       },
       link: "/creator/gatherings",
       actorName: (txData.attendeeName as string) || undefined,
@@ -373,7 +472,7 @@ async function handleGatheringPayment(
   await notifyAdmins(
     env,
     "Ticket Sale",
-    `Ticket sale of ${totalAmount.toLocaleString()} ${(txData.currency as string) || "RWF"} from ${(txData.attendeeName as string) || "someone"}`,
+    `Ticket sale of ${creditedTotal.toLocaleString()} ${currency} from ${(txData.attendeeName as string) || "someone"}`,
     "/admin/transactions",
   );
   return true;

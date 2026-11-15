@@ -1,5 +1,4 @@
 import {
-  addDoc,
   collection,
   doc,
   getDoc,
@@ -8,11 +7,10 @@ import {
   onSnapshot,
   orderBy,
   query,
-  serverTimestamp,
   where,
   type Unsubscribe,
 } from "firebase/firestore";
-import { db } from "@/db/firebase";
+import { auth, db } from "@/db/firebase";
 import { sendCommsEmail } from "@/lib/commsService";
 
 export interface CurrencyBalance {
@@ -49,13 +47,14 @@ export async function fetchPayoutOverview(creator: {
     (d) => (d.data() as { code?: string }).code,
   );
 
+  const held = (data.pendingWithdrawals as Record<string, unknown> | undefined) || {};
   const getPending = (code: string) => {
-    if (code === "RWF") return Number(creator.pendingPayout || 0);
-    return Number((creator as Record<string, unknown>)[`pendingPayout${code}`] || 0);
+    const balance = code === "RWF" ? data.pendingPayout : data[`pendingPayout${code}`];
+    return Math.max(0, Number(balance || 0) - Number(held[code] || 0));
   };
   const getEarnings = (code: string) => {
-    if (code === "RWF") return Number(creator.totalEarnings || 0);
-    return Number((creator as Record<string, unknown>)[`totalEarnings${code}`] || 0);
+    const earnings = code === "RWF" ? data.totalEarnings : data[`totalEarnings${code}`];
+    return Number(earnings || 0);
   };
   const getThreshold = (code: string) => {
     const matched = currenciesSnap.docs.find(
@@ -137,35 +136,49 @@ export function subscribeToLatestVerificationRequest(
 export async function submitWithdrawRequest(params: {
   creatorUid: string;
   creatorName: string;
-  handle?: string | null;
-  amount: number;
+  amount: string | number;
   currency: string;
-  method: string;
-  accountNumber: string;
+  idempotencyKey: string;
 }): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Sign in to request a withdrawal");
+
+  const token = await user.getIdToken();
+  const response = await fetch("/api/payouts/withdraw", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      amount: params.amount,
+      currency: params.currency,
+      idempotencyKey: params.idempotencyKey,
+    }),
+  });
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as {
+      error?: string;
+    } | null;
+    throw new Error(payload?.error || `Withdrawal request failed (${response.status})`);
+  }
+
   const profileSnap = await getDoc(doc(db, "profiles", params.creatorUid));
   const creatorEmail =
     (profileSnap.data() as { email?: string } | undefined)?.email || "";
 
-  await addDoc(collection(db, "withdrawRequests"), {
-    creatorId: params.creatorUid,
-    creatorName: params.creatorName,
-    handle: params.handle || "",
-    amount: params.amount,
-    currency: params.currency,
-    status: "pending",
-    method: params.method,
-    accountNumber: params.accountNumber,
-    createdAt: serverTimestamp(),
-  });
-
-  await sendCommsEmail("withdrawal_request", {
-    adminEmail: process.env.NEXT_PUBLIC_ADMIN_EMAIL || "agasekeforcreators@gmail.com",
-    creatorName: params.creatorName,
-    creatorEmail,
-    amount: params.amount,
-    currency: params.currency,
-    method: params.method,
-    accountNumber: params.accountNumber,
-  });
+  try {
+    await sendCommsEmail("withdrawal_request", {
+      adminEmail: process.env.NEXT_PUBLIC_ADMIN_EMAIL || "agasekeforcreators@gmail.com",
+      creatorName: params.creatorName,
+      creatorEmail,
+      amount: params.amount,
+      currency: params.currency,
+      method: "MoMo",
+      accountNumber: "",
+    });
+  } catch (error) {
+    console.warn("Withdrawal request created but admin email failed:", error);
+  }
 }

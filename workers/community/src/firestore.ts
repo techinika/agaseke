@@ -1,6 +1,7 @@
 import * as jose from "jose";
 import type { Env } from "./types";
 import { auditedFetch } from "./audit";
+import type { PaymentLedgerPlan } from "./money/ledger";
 
 function normalizePrivateKey(key: string): string {
   const cleaned = key.replace(/\\n/g, "\n");
@@ -253,6 +254,125 @@ export async function firestoreIncrement(
     body: JSON.stringify({ writes }),
   });
   return res.ok;
+}
+
+function firestoreDocumentName(env: Env, path: string): string {
+  return `projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/${path}`;
+}
+
+function incrementValue(val: number): Record<string, unknown> {
+  return Number.isInteger(val)
+    ? { integerValue: String(val) }
+    : { doubleValue: val };
+}
+
+export interface PaymentDocumentWrite {
+  path: string;
+  fields: Record<string, unknown>;
+}
+
+export interface PaymentApplyOptions {
+  /** Deterministic domain documents (income records, etc.). */
+  documents?: PaymentDocumentWrite[];
+  /** Ledger entries and projection, written atomically with the marker. */
+  ledger?: PaymentLedgerPlan;
+}
+
+/**
+ * Community's equivalent of the other workers' payment commit. The legacy
+ * counters, deterministic income documents, ledger entries and balance
+ * projection share one commit with the idempotency marker.
+ */
+export async function firestoreApplyPayment(
+  env: Env,
+  paymentRef: string,
+  increments: Array<{ path: string; fields: Record<string, number> }>,
+  markerFields: Record<string, unknown>,
+  options: PaymentApplyOptions = {},
+): Promise<"applied" | "duplicate" | "failed"> {
+  const token = await getFirestoreToken(env);
+  if (!token) return "failed";
+
+  const safeRef = paymentRef.replace(/[^A-Za-z0-9_-]/g, "_");
+  const writes: Record<string, unknown>[] = [
+    {
+      update: {
+        name: firestoreDocumentName(env, `paymentApplications/${safeRef}`),
+        fields: markerFields,
+      },
+      currentDocument: { exists: false },
+    },
+  ];
+
+  for (const document of options.documents ?? []) {
+    writes.push({
+      update: {
+        name: firestoreDocumentName(env, document.path),
+        fields: document.fields,
+      },
+    });
+  }
+
+  for (const document of options.ledger?.documents ?? []) {
+    writes.push({
+      update: {
+        name: firestoreDocumentName(env, document.path),
+        fields: document.fields,
+      },
+      currentDocument: { exists: false },
+    });
+  }
+
+  for (const group of options.ledger?.balances ?? []) {
+    const fieldTransforms = Object.entries(group.fields)
+      .filter(([, val]) => typeof val === "number" && Number.isFinite(val) && val !== 0)
+      .map(([fieldPath, val]) => ({ fieldPath, increment: incrementValue(val) }));
+    if (fieldTransforms.length === 0) continue;
+    writes.push({
+      transform: {
+        document: firestoreDocumentName(env, group.path),
+        fieldTransforms,
+      },
+    });
+  }
+
+  for (const group of increments) {
+    const fieldTransforms = Object.entries(group.fields)
+      .filter(([, val]) => typeof val === "number" && Number.isFinite(val) && val !== 0)
+      .map(([fieldPath, val]) => ({ fieldPath, increment: incrementValue(val) }));
+    if (fieldTransforms.length === 0) continue;
+    writes.push({
+      transform: {
+        document: firestoreDocumentName(env, group.path),
+        fieldTransforms,
+      },
+    });
+  }
+
+  const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents:commit`;
+  const res = await auditedFetch(env, "POST", "paymentApplications:commit", url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ writes }),
+  });
+
+  if (res.ok) return "applied";
+
+  const text = await res.text();
+  if (
+    res.status === 409 ||
+    res.status === 412 ||
+    text.includes("ALREADY_EXISTS") ||
+    text.includes("FAILED_PRECONDITION")
+  ) {
+    return "duplicate";
+  }
+
+  console.error("Firestore payment apply error:", res.status, text);
+  return "failed";
 }
 
 export function convertToFields(obj: Record<string, unknown>): Record<string, unknown> {

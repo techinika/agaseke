@@ -9,6 +9,7 @@
     "enabled": true
   },
   "vars": {
+    "MONEY_LEDGER_ENABLED": "false",
     "FIREBASE_PROJECT_ID": "agaseke4creators"
   },
   "r2_buckets": [

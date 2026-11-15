@@ -17,6 +17,7 @@
 		},
 	],
 	"vars": {
+		"MONEY_LEDGER_ENABLED": "false",
 		"FIREBASE_PROJECT_ID": "agaseke4creators",
 		"APP_URL": "https://agaseke.me",
 		"BOOKINGS_WORKER_URL": "https://bookings.api.agaseke.me",

@@ -363,7 +363,9 @@ export async function firestoreIncrement(
         document: docName,
         fieldTransforms: Object.entries(increments).map(([fieldPath, val]) => ({
           fieldPath,
-          increment: { integerValue: String(Math.round(val)) },
+          increment: Number.isInteger(val)
+            ? { integerValue: String(val) }
+            : { doubleValue: val },
         })),
       },
     },

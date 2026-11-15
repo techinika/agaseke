@@ -135,6 +135,16 @@ function normalizeCurrency(raw: unknown, fallback: unknown): string {
   return currency;
 }
 
+function assertRequestedCurrency(raw: unknown, storedCurrency: string): void {
+  const requested = str(raw).toUpperCase();
+  if (requested && requested !== storedCurrency) {
+    throw new PaymentRequestError(
+      "CURRENCY_MISMATCH",
+      `This item is priced in ${storedCurrency}`,
+    );
+  }
+}
+
 function parsePositiveAmount(raw: unknown, currency: string, field: string): number {
   const amount = typeof raw === "number" ? raw : Number(raw);
   if (!Number.isFinite(amount) || amount <= 0) {
@@ -449,11 +459,10 @@ export async function resolvePayment(
       );
     }
 
-    const currency = normalizeCurrency(body.currency, product.currency);
+    const currency = normalizeCurrency(product.currency, creator.currency);
+    assertRequestedCurrency(body.currency, currency);
     const price =
-      currency === "USD"
-        ? num(product.priceUSD ?? product.price)
-        : num(product.price);
+      currency === "USD" ? num(product.priceUSD) : num(product.price);
     if (price <= 0) {
       throw new PaymentRequestError(
         "INVALID_PRODUCT_PRICE",
@@ -629,11 +638,10 @@ export async function resolvePayment(
       );
     }
 
-    const currency = normalizeCurrency(body.currency, gathering.currency);
+    const currency = normalizeCurrency(gathering.currency, creator.currency);
+    assertRequestedCurrency(body.currency, currency);
     const price =
-      currency === "USD"
-        ? num(gathering.priceUSD ?? gathering.ticketPrice)
-        : num(gathering.ticketPrice);
+      currency === "USD" ? num(gathering.priceUSD) : num(gathering.ticketPrice);
     if (price <= 0) {
       throw new PaymentRequestError(
         "GATHERING_NOT_PAYABLE",
@@ -678,9 +686,9 @@ export async function resolvePayment(
     );
   }
 
-  const currency = normalizeCurrency(body.currency, tier.currency);
-  const price =
-    currency === "USD" ? num(tier.priceUSD ?? tier.price) : num(tier.price);
+  const currency = normalizeCurrency(tier.currency, creator.currency);
+  assertRequestedCurrency(body.currency, currency);
+  const price = currency === "USD" ? num(tier.priceUSD) : num(tier.price);
   if (price <= 0) {
     throw new PaymentRequestError(
       "INVALID_AMOUNT",

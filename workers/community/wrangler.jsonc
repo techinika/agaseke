@@ -14,6 +14,7 @@
     "crons": ["0 8 * * *"],
   },
   "vars": {
+    "MONEY_LEDGER_ENABLED": "false",
     "FIREBASE_PROJECT_ID": "agaseke4creators",
     "COMMS_WORKER_URL": "https://comms.api.agaseke.me",
   },

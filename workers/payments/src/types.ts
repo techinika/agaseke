@@ -8,6 +8,8 @@ export type TransactionType =
   | "community";
 
 export interface Env {
+  /** Set to "true" to dual-write ledger entries during Phase 2 rollout. */
+  MONEY_LEDGER_ENABLED?: string;
   FIREBASE_API_KEY: string;
   FIREBASE_PROJECT_ID: string;
   FIREBASE_CLIENT_EMAIL: string;

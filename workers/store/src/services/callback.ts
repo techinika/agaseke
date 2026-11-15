@@ -1,5 +1,6 @@
 import type { Env } from "../types";
 import { firestoreGet, firestorePost, extractFirestoreDocument, firestoreApplyPayment } from "../firestore";
+import { buildPaymentLedger, isMoneyLedgerEnabled, ledgerMarkerFields } from "../money/ledger";
 import { logActivity } from "../logger";
 import { createNotification } from "../adminNotifications";
 
@@ -41,6 +42,31 @@ export async function handleStoreCallback(
 
   const now = new Date().toISOString();
   const safeRef = paymentRef.replace(/[^A-Za-z0-9_-]/g, "_");
+  const includeReferral = referralShare > 0 && !!txData.referralUid;
+
+  const documents: Array<{ path: string; fields: Record<string, unknown> }> = [
+    {
+      path: `platformIncome/${safeRef}_platform`,
+      fields: {
+        amount: numberValue(platformShare),
+        txRef: { stringValue: paymentRef },
+        reason: { stringValue: "product_sale_platform_fee" },
+        productId: { stringValue: productId || "" },
+        createdAt: { timestampValue: now },
+      },
+    },
+    {
+      path: `creatorIncome/${safeRef}_creator`,
+      fields: {
+        creatorUid: { stringValue: txData.creatorUid as string },
+        amount: numberValue(creatorShare),
+        txRef: { stringValue: paymentRef },
+        reason: { stringValue: "product_sale" },
+        productId: { stringValue: productId || "" },
+        createdAt: { timestampValue: now },
+      },
+    },
+  ];
 
   const increments: Array<{ path: string; fields: Record<string, number> }> = [
     {
@@ -49,29 +75,9 @@ export async function handleStoreCallback(
     },
   ];
 
-  await firestorePost(env, "platformIncome", {
-    fields: {
-      amount: numberValue(platformShare),
-      txRef: { stringValue: paymentRef },
-      reason: { stringValue: "product_sale_platform_fee" },
-      productId: { stringValue: productId || "" },
-      createdAt: { timestampValue: now },
-    },
-  }, `${safeRef}_platform`);
-
-  await firestorePost(env, "creatorIncome", {
-    fields: {
-      creatorUid: { stringValue: txData.creatorUid as string },
-      amount: numberValue(creatorShare),
-      txRef: { stringValue: paymentRef },
-      reason: { stringValue: "product_sale" },
-      productId: { stringValue: productId || "" },
-      createdAt: { timestampValue: now },
-    },
-  }, `${safeRef}_creator`);
-
-  if (referralShare > 0 && txData.referralUid) {
-    await firestorePost(env, "creatorIncome", {
+  if (includeReferral) {
+    documents.push({
+      path: `creatorIncome/${safeRef}_referral`,
       fields: {
         creatorUid: { stringValue: txData.referralUid as string },
         amount: numberValue(referralShare),
@@ -79,7 +85,7 @@ export async function handleStoreCallback(
         reason: { stringValue: "referral_commission" },
         createdAt: { timestampValue: now },
       },
-    }, `${safeRef}_referral`);
+    });
 
     increments.push({
       path: `creators/${txData.referralId}`,
@@ -152,16 +158,44 @@ export async function handleStoreCallback(
     });
   }
 
-  const credit = await firestoreApplyPayment(env, paymentRef, increments, {
-    txRef: { stringValue: paymentRef },
-    worker: { stringValue: "store" },
-    creatorId: { stringValue: txData.creatorId as string },
-    creatorShare: numberValue(creatorShare),
-    totalAmount: numberValue(totalAmount),
-    currency: { stringValue: currency },
-    status: { stringValue: "applied" },
-    appliedAt: { timestampValue: now },
-  });
+  const ledger = isMoneyLedgerEnabled(env)
+    ? buildPaymentLedger({
+        paymentRef,
+        source: "store",
+        currency,
+        totalAmount,
+        creatorUid: txData.creatorUid as string,
+        creatorHandle: txData.creatorId as string,
+        creatorShare,
+        platformShare,
+        referralShare: includeReferral ? referralShare : 0,
+        referralUid: includeReferral
+          ? (txData.referralUid as string)
+          : undefined,
+        referralHandle: includeReferral
+          ? (txData.referralId as string)
+          : undefined,
+        createdAt: now,
+      })
+    : undefined;
+
+  const credit = await firestoreApplyPayment(
+    env,
+    paymentRef,
+    increments,
+    {
+      txRef: { stringValue: paymentRef },
+      worker: { stringValue: "store" },
+      creatorId: { stringValue: txData.creatorId as string },
+      creatorShare: numberValue(creatorShare),
+      totalAmount: numberValue(totalAmount),
+      currency: { stringValue: currency },
+      status: { stringValue: "applied" },
+      appliedAt: { timestampValue: now },
+      ...(ledger ? ledgerMarkerFields(ledger) : {}),
+    },
+    { documents, ledger },
+  );
 
   if (credit !== "applied") {
     await logActivity(env, "warn", "store", `Store callback ${credit} for ref=${paymentRef}`, {

@@ -24,6 +24,8 @@ import { toast } from "sonner";
 import { EmptyState } from "./payoutspage/index";
 import { getCurrencySymbol } from "@/types/currency";
 import { maskPayoutNumber } from "@/lib/format/payout";
+import { fromMajor, toMajor } from "@/lib/money";
+import { parsePayoutCurrency } from "@/lib/payouts/currency";
 
 export default function PayoutsPage() {
   const router = useRouter();
@@ -40,10 +42,14 @@ export default function PayoutsPage() {
 
   const [withdrawType, setWithdrawType] = useState<"all" | "custom">("all");
   const [customAmount, setCustomAmount] = useState<string>("");
+  const [withdrawRequestKey, setWithdrawRequestKey] = useState<string | null>(null);
   const [verificationRequest, setVerificationRequest] = useState<any>(null);
   const [perCurrencyBalances, setPerCurrencyBalances] = useState<CurrencyBalance[]>([]);
 
-  const pendingAmount = creator?.pendingPayout || 0;
+  const activeBalance = perCurrencyBalances.find(
+    (balance) => balance.currency === creatorCurrency,
+  );
+  const pendingAmount = activeBalance?.pending ?? 0;
   const isVerified = creator?.verified || false;
   const payoutPref = String(verificationRequest?.payoutPreference ?? "").toLowerCase();
 
@@ -95,14 +101,25 @@ export default function PayoutsPage() {
       );
       return;
     }
+    setWithdrawRequestKey((current) => current ?? crypto.randomUUID());
     setView("withdraw");
   };
 
   const submitRequest = async () => {
     if (!creator) return;
-    const finalAmount = withdrawType === "all" ? pendingAmount : parseInt(customAmount);
+    const rawAmount =
+      withdrawType === "all" ? String(pendingAmount) : customAmount.trim();
+    let finalAmount: number;
 
-    if (isNaN(finalAmount) || finalAmount < withdrawThreshold) {
+    try {
+      const parsed = fromMajor(parsePayoutCurrency(creatorCurrency), rawAmount);
+      finalAmount = toMajor(parsed);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Enter a valid amount");
+      return;
+    }
+
+    if (finalAmount < withdrawThreshold) {
       toast.error(
         `Amount must be at least ${withdrawThreshold.toLocaleString()} ${getCurrencySymbol(creatorCurrency)}`,
       );
@@ -110,25 +127,33 @@ export default function PayoutsPage() {
     }
 
     if (finalAmount > pendingAmount) {
-      toast.error("Insufficient balance");
+      toast.error("Insufficient available balance");
       return;
     }
+
+    const idempotencyKey = withdrawRequestKey ?? crypto.randomUUID();
+    if (!withdrawRequestKey) setWithdrawRequestKey(idempotencyKey);
 
     setIsSubmitting(true);
     try {
       await submitWithdrawRequest({
         creatorUid: creator.uid,
         creatorName: creator.name,
-        handle: creator.handle,
-        amount: finalAmount,
+        amount: rawAmount,
         currency: creatorCurrency,
-        method: creator.network || "MTN",
-        accountNumber: creator.payoutNumber || "",
+        idempotencyKey,
       });
+      setWithdrawRequestKey(null);
+      const overview = await fetchPayoutOverview(creator as any);
+      if (overview) {
+        setCreatorCurrency(overview.creatorCurrency);
+        setWithdrawThreshold(overview.withdrawThreshold);
+        setPerCurrencyBalances(overview.perCurrencyBalances);
+      }
       setWithdrawStep(2);
     } catch (e) {
       console.error(e);
-      toast.error("Failed to submit request.");
+      toast.error(e instanceof Error ? e.message : "Failed to submit request.");
     } finally {
       setIsSubmitting(false);
     }
@@ -191,7 +216,7 @@ export default function PayoutsPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
               <div className="bg-card p-8 rounded-lg border border-border shadow-sm">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">
-                  Pending Balance
+                  Available Balance
                 </p>
                 {perCurrencyBalances.map((b) => (
                   <h2 key={b.currency} className="text-2xl font-black">
@@ -420,6 +445,8 @@ export default function PayoutsPage() {
                     <div className="relative">
                       <input
                         type="number"
+                        min="0"
+                        step={creatorCurrency === "USD" ? "0.01" : "1"}
                         value={customAmount}
                         onChange={(e) => setCustomAmount(e.target.value)}
                         placeholder={`Enter amount (${creatorCurrency})`}

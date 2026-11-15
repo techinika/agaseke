@@ -261,6 +261,124 @@ describe("server-authoritative payment pricing", () => {
     expect(resolved.totalAmount).toBe(4600);
   });
 
+  it("rejects a client-selected USD charge for an RWF product", async () => {
+    const docs = {
+      ...baseDocs,
+      "storeProducts/p1": {
+        id: "p1",
+        creatorUid: "uid-alice",
+        name: "Mug",
+        price: 10_000,
+        currency: "RWF",
+        active: true,
+      },
+    };
+
+    await expect(
+      resolvePayment(
+        env,
+        body({
+          creatorHandle: "alice",
+          type: "store",
+          productId: "p1",
+          currency: "USD",
+        }),
+        "buyer-1",
+        makeRepo(docs),
+      ),
+    ).rejects.toMatchObject({ code: "CURRENCY_MISMATCH" });
+  });
+
+  it("does not use the RWF price as a USD price", async () => {
+    const docs = {
+      ...baseDocs,
+      "storeProducts/p1": {
+        id: "p1",
+        creatorUid: "uid-alice",
+        name: "Mug",
+        price: 10_000,
+        currency: "USD",
+        active: true,
+      },
+    };
+
+    await expect(
+      resolvePayment(
+        env,
+        body({
+          creatorHandle: "alice",
+          type: "store",
+          productId: "p1",
+          currency: "USD",
+        }),
+        "buyer-1",
+        makeRepo(docs),
+      ),
+    ).rejects.toMatchObject({ code: "INVALID_PRODUCT_PRICE" });
+  });
+
+  it("rejects a client-selected USD charge for an RWF gathering", async () => {
+    const docs = {
+      ...baseDocs,
+      "creatorGatherings/g1": {
+        id: "g1",
+        creatorId: "uid-alice",
+        status: "active",
+        currency: "RWF",
+        ticketPrice: 3_000,
+      },
+    };
+
+    await expect(
+      resolvePayment(
+        env,
+        body({
+          creatorHandle: "alice",
+          type: "gathering",
+          gatheringId: "g1",
+          currency: "USD",
+        }),
+        "buyer-1",
+        makeRepo(docs),
+      ),
+    ).rejects.toMatchObject({ code: "CURRENCY_MISMATCH" });
+  });
+
+  it("rejects a client-selected USD charge for an RWF community tier", async () => {
+    const docs = {
+      ...baseDocs,
+      "creators/alice": {
+        uid: "uid-alice",
+        currency: "RWF",
+        communityTiers: [
+          { id: "t1", price: 5_000, currency: "RWF", interval: "monthly", isActive: true },
+        ],
+      },
+      "communitySubscriptions/s1": {
+        id: "s1",
+        userId: "supporter-1",
+        tierId: "t1",
+        creatorHandle: "alice",
+      },
+    };
+
+    await expect(
+      resolvePayment(
+        env,
+        body({
+          creatorHandle: "alice",
+          type: "community",
+          communityTierId: "t1",
+          communitySubscriptionId: "s1",
+          communityInterval: "monthly",
+          currency: "USD",
+        }),
+        "supporter-1",
+        makeRepo(docs),
+      ),
+    ).rejects.toMatchObject({ code: "CURRENCY_MISMATCH" });
+  });
+
   it("rejects a product owned by another creator", async () => {
     const docs = {
       ...baseDocs,
