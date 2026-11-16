@@ -1,10 +1,14 @@
+import type { PriceMap } from "@/lib/priceMap";
+import type { CurrencyCode } from "@/lib/money/registry.generated";
+
 export interface CommunityTier {
   id: string;
   name: string;
   description: string;
   price: number;
   priceUSD?: number;
-  currency?: "RWF" | "USD";
+  prices?: PriceMap;
+  currency?: CurrencyCode;
   interval: "monthly" | "yearly";
   benefits: string[];
   isActive: boolean;

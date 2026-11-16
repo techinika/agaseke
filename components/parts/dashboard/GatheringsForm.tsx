@@ -12,7 +12,9 @@ import { toast } from "sonner";
 import { logActivity } from "@/lib/logger";
 import type { EventType } from "@/components/parts/public/gatherings/types";
 import { formatCurrency } from "@/types/currency";
-import { buildPriceMap } from "@/lib/priceMap";
+import { buildPriceMap, getPrice, parsePriceCurrency, type PriceMap } from "@/lib/priceMap";
+import PriceEditor from "@/components/money/PriceEditor";
+import type { CurrencyCode } from "@/lib/money/registry.generated";
 
 interface GatheringsFormProps {
   gatheringId?: string;
@@ -22,7 +24,7 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
   const { creator } = useAuth();
   const router = useRouter();
   const isEditing = !!gatheringId;
-  const defaultCurrency = (creator?.currency as "RWF" | "USD") || "RWF";
+  const defaultCurrency: CurrencyCode = parsePriceCurrency(creator?.currency) || "RWF";
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
 
@@ -41,9 +43,8 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
     location: "",
     eventType: "public" as EventType,
     minSupportTier: 0,
-    ticketPrice: 0,
-    priceUSD: 0,
-    currency: defaultCurrency,
+    currency: defaultCurrency as CurrencyCode,
+    prices: {} as PriceMap,
     supporterPrice: 0,
     capacity: 20,
     active: true,
@@ -60,6 +61,12 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
           return;
         }
         const data = snap.data();
+        const loadedCurrency = parsePriceCurrency(data.currency) || "RWF";
+        const loadedPrices = buildPriceMap({
+          prices: (data.prices as PriceMap | null | undefined) || null,
+          price: data.ticketPrice ?? data.price,
+          priceUSD: data.priceUSD,
+        });
         setFormData({
           title: data.title || "",
           description: data.description || "",
@@ -68,9 +75,8 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
           location: data.location || "",
           eventType: data.eventType || guessEventType(data),
           minSupportTier: data.minSupportTier || 0,
-          ticketPrice: data.ticketPrice || 0,
-          priceUSD: data.priceUSD || 0,
-          currency: data.currency || "RWF",
+          currency: loadedCurrency,
+          prices: loadedPrices,
           supporterPrice: data.supporterPrice || 0,
           capacity: data.capacity || 0,
           active: data.status === "Upcoming",
@@ -98,9 +104,10 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
     if (!formData.title) { toast.error("Title is required"); return; }
     if (!formData.date) { toast.error("Date is required"); return; }
     if (!formData.time) { toast.error("Time is required"); return; }
+    const ticketPrices = buildPriceMap({ prices: formData.prices });
+    const ticketAmount = getPrice({ prices: ticketPrices, currency: formData.currency }, formData.currency);
     if (formData.eventType === "ticketed") {
-      const ticketAmount = formData.currency === "USD" ? formData.priceUSD : formData.ticketPrice;
-      if (!(ticketAmount > 0)) { toast.error("Ticket price is required"); return; }
+      if (!(ticketAmount > 0)) { toast.error("Set a valid ticket price"); return; }
     }
 
     setSaving(true);
@@ -113,11 +120,9 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
         location: formData.location,
         eventType: formData.eventType,
         minSupportTier: formData.eventType === "supporters_tiered" ? formData.minSupportTier : 0,
-        ticketPrice: formData.eventType === "ticketed" ? formData.ticketPrice : 0,
-        priceUSD: formData.eventType === "ticketed" ? formData.priceUSD : 0,
-        prices: formData.eventType === "ticketed"
-          ? buildPriceMap({ price: formData.ticketPrice, priceUSD: formData.priceUSD })
-          : null,
+        ticketPrice: formData.eventType === "ticketed" ? (ticketPrices.RWF ?? ticketAmount) : 0,
+        priceUSD: formData.eventType === "ticketed" ? (ticketPrices.USD ?? 0) : 0,
+        prices: formData.eventType === "ticketed" ? ticketPrices : null,
         currency: formData.eventType === "ticketed" ? formData.currency : "RWF",
         supporterPrice: formData.eventType === "ticketed" ? formData.supporterPrice : 0,
         capacity: formData.capacity || 0,
@@ -279,78 +284,20 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
 
           {formData.eventType === "ticketed" && (
             <div className="space-y-4">
-              <div>
-                <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
-                  Currency
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, currency: "RWF" })}
-                    className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
-                      formData.currency === "RWF"
-                        ? "bg-orange-600 text-white"
-                        : "bg-muted text-muted-foreground border border-border"
-                    }`}
-                  >
-                    RWF
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, currency: "USD" })}
-                    className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
-                      formData.currency === "USD"
-                        ? "bg-orange-600 text-white"
-                        : "bg-muted text-muted-foreground border border-border"
-                    }`}
-                  >
-                    USD
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
-                  Ticket Price ({formData.currency === "USD" ? "USD" : "RWF"})
-                </label>
-                <input
-                  type="number"
-                  placeholder={formData.currency === "USD" ? "e.g. 10" : "e.g. 10000"}
-                  value={formData.currency === "USD" ? (formData.priceUSD || "") : (formData.ticketPrice || "")}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    ...(formData.currency === "USD"
-                      ? { priceUSD: parseInt(e.target.value) || 0 }
-                      : { ticketPrice: parseInt(e.target.value) || 0 }
-                    ),
-                  })}
-                  className="w-full bg-muted p-4 rounded-xl text-sm outline-none font-bold focus:ring-2 focus:ring-orange-100"
+              <div className="p-4 bg-muted/40 rounded-xl border border-border">
+                <PriceEditor
+                  currency={formData.currency}
+                  prices={formData.prices}
+                  label="Ticket prices"
+                  preferredCurrencies={[defaultCurrency, "RWF", "USD"]}
+                  onChange={({ currency, prices }) =>
+                    setFormData({ ...formData, currency, prices })
+                  }
                 />
               </div>
-              {formData.currency !== defaultCurrency && (
-                <div>
-                  <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
-                    Ticket Price ({defaultCurrency})
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.currency === "USD" ? (formData.ticketPrice || "") : (formData.priceUSD || "")}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      ...(formData.currency === "USD"
-                        ? { ticketPrice: parseInt(e.target.value) || 0 }
-                        : { priceUSD: parseInt(e.target.value) || 0 }),
-                    })}
-                    placeholder={`${defaultCurrency} equivalent`}
-                    className="w-full bg-muted p-4 rounded-xl text-sm outline-none font-bold focus:ring-2 focus:ring-orange-100"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1.5">
-                    {defaultCurrency} equivalent for local mobile money payments
-                  </p>
-                </div>
-              )}
               <div>
                 <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
-                  Supporter Discount ({formData.currency === "USD" ? "USD" : "RWF"}) <span className="text-orange-500">optional</span>
+                  Supporter Discount ({formData.currency}) <span className="text-orange-500">optional</span>
                 </label>
                 <input
                   type="number"
@@ -360,7 +307,7 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
                   className="w-full bg-muted p-4 rounded-xl text-sm outline-none font-bold focus:ring-2 focus:ring-orange-100"
                 />
                 <p className="text-xs text-muted-foreground mt-1.5">
-                  Supporters pay this discounted price instead of the full ticket price.
+                  Supporters pay this discounted price in the primary currency instead of the full ticket price.
                 </p>
               </div>
             </div>

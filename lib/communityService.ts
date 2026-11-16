@@ -11,7 +11,7 @@ export interface CommunityTier {
   price: number;
   priceUSD?: number;
   prices?: PriceMap;
-  currency?: "RWF" | "USD";
+  currency?: import("@/lib/money/registry.generated").CurrencyCode;
   interval: "monthly" | "yearly";
   benefits: string[];
   isActive: boolean;

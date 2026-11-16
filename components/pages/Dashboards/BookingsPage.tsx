@@ -51,7 +51,9 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { logError } from "@/lib/logger";
 import { decryptBookingReason, isEncrypted } from "@/lib/generalWorkerService";
 import { formatCurrency } from "@/types/currency";
-import { buildPriceMap, getPrice } from "@/lib/priceMap";
+import { buildPriceMap, getPrice, parsePriceCurrency, type PriceMap } from "@/lib/priceMap";
+import PriceEditor from "@/components/money/PriceEditor";
+import type { CurrencyCode } from "@/lib/money/registry.generated";
 import {
   buildCalendarEvent,
   buildIcsDataUrl,
@@ -324,7 +326,7 @@ export default function BookingsPage() {
   };
 
   const addTier = () => {
-    const t: BookingTier = { id: Date.now().toString(), name: "", description: "", purpose: "", price: 0, priceUSD: 0, currency: defaultCurrency, duration: 30, access: "public", offers: [], availability: { daysOfWeek: [1, 2, 3, 4, 5], bookingType: "both", startDate: "", endDate: "", defaultSlots: [{ id: "1", startTime: "09:00", endTime: "10:00" }] }, active: true };
+    const t: BookingTier = { id: Date.now().toString(), name: "", description: "", purpose: "", price: 0, currency: parsePriceCurrency(defaultCurrency) || "RWF", prices: {}, duration: 30, access: "public", offers: [], availability: { daysOfWeek: [1, 2, 3, 4, 5], bookingType: "both", startDate: "", endDate: "", defaultSlots: [{ id: "1", startTime: "09:00", endTime: "10:00" }] }, active: true } as BookingTier;
     setTiers([...tiers, t]);
     setEditingTierId(t.id);
   };
@@ -343,8 +345,9 @@ export default function BookingsPage() {
     if (!creator?.handle) return;
     const invalidTier = tiers.find((t) => {
       if (!t.name.trim()) return false;
-      const amount = (t.currency || "RWF") === "USD" ? t.priceUSD : t.price;
-      return !(Number(amount) > 0);
+      const prices = buildPriceMap({ prices: t.prices as PriceMap, price: t.price, priceUSD: t.priceUSD });
+      const code = parsePriceCurrency(t.currency) || "RWF";
+      return !(getPrice({ prices, currency: code }, code) > 0);
     });
     if (invalidTier) {
       toast.error(`Set a price for ${invalidTier.name}`);
@@ -354,7 +357,18 @@ export default function BookingsPage() {
     try {
       const payload = tiers
         .filter((t) => t.name.trim())
-        .map((t) => ({ ...t, prices: buildPriceMap(t) }));
+        .map((t) => {
+          const prices = buildPriceMap({ prices: t.prices as PriceMap, price: t.price, priceUSD: t.priceUSD });
+          const currency = parsePriceCurrency(t.currency) || "RWF";
+          const primary = getPrice({ prices, currency }, currency);
+          return {
+            ...t,
+            currency,
+            prices,
+            price: prices.RWF ?? primary,
+            priceUSD: prices.USD ?? null,
+          };
+        });
       await updateDoc(doc(db, "creators", creator.handle), { bookingTiers: payload, bookingMode });
       toast.success("Tiers saved!");
     } catch {
@@ -686,32 +700,22 @@ export default function BookingsPage() {
                           <div className="p-6 space-y-5">
                             <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-2"><label className="text-sm font-bold">Tier Name</label><input type="text" value={tier.name} onChange={(e) => updateTier(tier.id, { name: e.target.value })} placeholder="e.g. Basic, Premium, VIP" className="w-full bg-muted p-3 rounded-lg text-sm font-medium outline-none" /></div>
-                              <div className="space-y-2">
-                                <label className="text-sm font-bold">Currency</label>
-                                <div className="flex gap-2">
-                                  <button type="button" onClick={() => updateTier(tier.id, { currency: "RWF" })}
-                                    className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${(tier.currency || defaultCurrency) === "RWF" ? "bg-orange-600 text-white" : "bg-muted text-muted-foreground border border-border"}`}>RWF</button>
-                                  <button type="button" onClick={() => updateTier(tier.id, { currency: "USD" })}
-                                    className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${tier.currency === "USD" ? "bg-orange-600 text-white" : "bg-muted text-muted-foreground border border-border"}`}>USD</button>
-                                </div>
+                              <div className="col-span-2 p-3 bg-muted/40 rounded-lg border border-border">
+                                <PriceEditor
+                                  currency={(parsePriceCurrency(tier.currency) || "RWF") as CurrencyCode}
+                                  prices={buildPriceMap({ prices: tier.prices as PriceMap, price: tier.price, priceUSD: tier.priceUSD })}
+                                  preferredCurrencies={[parsePriceCurrency(defaultCurrency) || "RWF", "RWF", "USD"]}
+                                  onChange={({ currency, prices }) => {
+                                    const primary = getPrice({ prices, currency }, currency);
+                                    updateTier(tier.id, {
+                                      currency,
+                                      prices,
+                                      price: prices.RWF ?? primary,
+                                      priceUSD: prices.USD ?? undefined,
+                                    } as Partial<BookingTier>);
+                                  }}
+                                />
                               </div>
-                              <div className="space-y-2">
-                                <label className="text-sm font-bold">Price ({(tier.currency || "RWF") === "USD" ? "USD" : "RWF"})</label>
-                                <input type="number" min={0} value={(tier.currency || "RWF") === "USD" ? (tier.priceUSD ?? "") : (tier.price || "")}
-                                  onChange={(e) => updateTier(tier.id, (tier.currency || "RWF") === "USD" ? { priceUSD: Number(e.target.value) } : { price: Number(e.target.value) })}
-                                  placeholder={(tier.currency || "RWF") === "USD" ? "10" : "5000"}
-                                  className="w-full bg-muted p-3 rounded-lg text-sm font-medium outline-none" />
-                              </div>
-                              {tier.currency !== defaultCurrency && (
-                                <div className="space-y-2">
-                                  <label className="text-sm font-bold">Price ({defaultCurrency})</label>
-                                  <input type="number" min={0} value={tier.currency === "USD" ? (tier.price || "") : (tier.priceUSD ?? "")}
-                                    onChange={(e) => updateTier(tier.id, tier.currency === "USD" ? { price: Number(e.target.value) } : { priceUSD: Number(e.target.value) })}
-                                    placeholder={`${defaultCurrency} equivalent`}
-                                    className="w-full bg-muted p-3 rounded-lg text-sm font-medium outline-none" />
-                                  <p className="text-[10px] text-muted-foreground mt-1">{defaultCurrency} equivalent for local payments</p>
-                                </div>
-                              )}
                               <div className="space-y-2"><label className="text-sm font-bold">Duration (minutes)</label><input type="number" value={tier.duration} onChange={(e) => updateTier(tier.id, { duration: Number(e.target.value) })} placeholder="30" className="w-full bg-muted p-3 rounded-lg text-sm font-medium outline-none" /></div>
                               <div className="space-y-2"><label className="text-sm font-bold">Access</label><select value={tier.access} onChange={(e) => updateTier(tier.id, { access: e.target.value as "public" | "supporters" })} className="w-full bg-muted p-3 rounded-lg text-sm font-medium outline-none"><option value="public">Anyone</option><option value="supporters">Supporters Only</option></select></div>
                             </div>

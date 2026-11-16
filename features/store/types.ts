@@ -20,7 +20,7 @@ export interface Product {
   price: number;
   priceUSD?: number;
   prices?: PriceMap;
-  currency?: "RWF" | "USD";
+  currency?: import("@/lib/money/registry.generated").CurrencyCode;
   type: ProductType;
   stock: number;
   imageUrl?: string;
