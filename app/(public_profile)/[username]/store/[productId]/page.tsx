@@ -6,6 +6,7 @@ import { Metadata } from "next";
 import { baseUrl } from "@/lib/baseUrl";
 import ProductDetailPage from "@/components/pages/public/ProductDetailPage";
 import ProductSchema from "@/components/seo/ProductSchema";
+import { getProductPrice } from "@/lib/storePrices";
 
 async function getCreatorData(username: string) {
   try {
@@ -37,10 +38,7 @@ export async function generateMetadata({
   const name = (product as any).name || "Product";
   const image = (product as any).imageUrl || `${baseUrl}/agaseke.png`;
   const currency = (product as any).currency === "USD" ? "USD" : "RWF";
-  const price =
-    (product as any).prices?.[currency] ??
-    (currency === "USD" ? (product as any).priceUSD : (product as any).price) ??
-    0;
+  const price = getProductPrice(product as any);
 
   return {
     title: `${name} | ${displayName} Store | Agaseke`,
@@ -71,10 +69,7 @@ async function page({ params }: { params: Promise<{ username: string; productId:
   const displayName = creator?.name || username;
   const name = (product as any)?.name || "Product";
   const currency = (product as any)?.currency === "USD" ? "USD" : "RWF";
-  const price =
-    (product as any)?.prices?.[currency] ??
-    (currency === "USD" ? (product as any)?.priceUSD : (product as any)?.price) ??
-    0;
+  const price = getProductPrice((product as any) ?? {});
 
   return (
     <>

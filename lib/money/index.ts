@@ -9,6 +9,13 @@ export {
 } from "./registry.generated";
 
 export {
+  validateCurrencyConfig,
+  type CurrencyConfig,
+  type CurrencyConfigInput,
+  type CurrencyConfigValidation,
+} from "./currencyConfig";
+
+export {
   MoneyError,
   add,
   allocate,

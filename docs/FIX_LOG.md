@@ -2,6 +2,44 @@
 
 Running record of remediation work. Newest first.
 
+## 2026-11-16 - Admin currency validation + checkout currency enablement
+
+### Changed
+
+- **Admin validation.** Added `lib/money/currencyConfig.ts` with
+  `validateCurrencyConfig`: codes must exist in the static registry, names/symbols fall
+  back to registry values, thresholds and minimum support must be positive amounts with
+  no more decimals than the currency's `minorUnit`, and new currencies default to
+  enabled.
+- **Admin currency controls.** `AdminCurrenciesPage` now validates adds/edits through the
+  helper and exposes an `enabled` toggle for each currency. `lib/adminConfigService.ts`
+  and `types/currency.ts` carry the optional flag. Existing records without the flag
+  remain enabled.
+- **Checkout enforcement.** `workers/payments` resolves the configured currency before
+  pricing and rejects `CURRENCY_DISABLED` when `currencies/{code}.enabled === false`.
+  The check applies to support, store, booking, gathering and community payments.
+- **Store metadata.** Removed the remaining manual cross-currency fallback from the
+  public product metadata/detail page by using `getProductPrice`.
+
+### Verification
+
+- `npx tsc --noEmit`; payments/bookings/community worker `tsc` - passed.
+- `npm test` - 18 files, 113 passed (5 new currency-config tests).
+- `cd workers/payments && npm test` - 7 files, 76 passed (1 new disabled-currency
+  test).
+- `npm run lint:ci`, `npm run format:check`, `npm run money:registry:check`,
+  `git diff --check` - passed.
+- `ENCRYPTION_KEY=build-verification-key npm run build` - passed with expected
+  Firebase-admin sitemap warnings.
+
+### Remaining
+
+- `workers/payments` still normalizes monetary flows to RWF/USD even though the registry
+  recognizes 53 codes. Enabling additional checkout currencies still requires provider
+  capability/settlement decisions, per-currency limits and client currency selection.
+- Withdrawals remain RWF/USD-only; the `enabled` flag does not yet drive payout rails or
+  country defaults.
+
 ## 2026-11-16 - Phase 4 price maps for bookings, gatherings and community
 
 ### Changed

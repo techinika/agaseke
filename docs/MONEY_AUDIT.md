@@ -384,9 +384,10 @@ interface CurrencyDef {
 }
 ```
 
-The registry is a **catalog**, not an enablement switch. Payments and withdrawals remain
-limited to RWF/USD until Phase 4/5 adds per-currency prices, thresholds, FX and provider
-coverage.
+The registry is a **catalog**. Admin config now validates codes against it and can
+disable a currency, but `workers/payments` still normalizes monetary flows to RWF/USD.
+Enabling more checkout currencies requires per-currency prices, thresholds, FX and
+provider coverage; withdrawals remain RWF/USD-only.
 
 Policy values (`enabled`, `minSupportMinor`, `maxSupportMinor`, `payoutThresholdMinor`,
 `countryCurrencies`) live in Firestore `currencies/{code}` and are validated against the

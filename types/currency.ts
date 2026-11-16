@@ -14,6 +14,7 @@ export interface Currency {
   symbol: string;
   payoutThreshold: number;
   minSupportAmount: number;
+  enabled?: boolean;
   createdAt: any;
 }
 

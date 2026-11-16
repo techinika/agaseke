@@ -148,6 +148,22 @@ function normalizeCurrency(raw: unknown, fallback: unknown): string {
   return currency;
 }
 
+async function resolveCurrency(
+  repo: PaymentRepository,
+  raw: unknown,
+  fallback: unknown,
+): Promise<string> {
+  const currency = normalizeCurrency(raw, fallback);
+  const docs = await repo.query("currencies", "code", currency, 1);
+  if (docs[0]?.enabled === false) {
+    throw new PaymentRequestError(
+      "CURRENCY_DISABLED",
+      `${currency} payments are currently disabled`,
+    );
+  }
+  return currency;
+}
+
 function assertRequestedCurrency(raw: unknown, storedCurrency: string): void {
   const requested = str(raw).toUpperCase();
   if (requested && requested !== storedCurrency) {
@@ -410,7 +426,7 @@ export async function resolvePayment(
   const referral = await resolveReferral(repo, creatorUid, creatorHandle);
 
   if (FREE_AMOUNT_TYPES.includes(type)) {
-    const currency = normalizeCurrency(body.currency, creator.currency);
+    const currency = await resolveCurrency(repo, body.currency, creator.currency);
     const amount = parsePositiveAmount(body.amount, currency, "amount");
     const min = await getMinSupportAmount(repo, currency);
     const max = getMaxSupportAmount(env, currency);
@@ -472,7 +488,7 @@ export async function resolvePayment(
       );
     }
 
-    const currency = normalizeCurrency(product.currency, creator.currency);
+    const currency = await resolveCurrency(repo, product.currency, creator.currency);
     assertRequestedCurrency(body.currency, currency);
     const price = resolveStoredPrice(product, currency, "price", "priceUSD");
     if (price <= 0) {
@@ -593,7 +609,7 @@ export async function resolvePayment(
       );
     }
 
-    const currency = normalizeCurrency(booking.currency, creator.currency);
+    const currency = await resolveCurrency(repo, booking.currency, creator.currency);
     const amount = parsePositiveAmount(
       booking.paymentAmount,
       currency,
@@ -650,7 +666,7 @@ export async function resolvePayment(
       );
     }
 
-    const currency = normalizeCurrency(gathering.currency, creator.currency);
+    const currency = await resolveCurrency(repo, gathering.currency, creator.currency);
     assertRequestedCurrency(body.currency, currency);
     const price = resolveStoredPrice(
       gathering,
@@ -702,7 +718,7 @@ export async function resolvePayment(
     );
   }
 
-  const currency = normalizeCurrency(tier.currency, creator.currency);
+  const currency = await resolveCurrency(repo, tier.currency, creator.currency);
   assertRequestedCurrency(body.currency, currency);
   const price = resolveStoredPrice(tier, currency, "price", "priceUSD");
   if (price <= 0) {

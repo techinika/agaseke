@@ -569,6 +569,31 @@ describe("server-authoritative payment pricing", () => {
     expect(resolved.totalAmount).toBe(5000);
   });
 
+  it("rejects payments in a disabled currency", async () => {
+    const docs = {
+      ...baseDocs,
+      "currencies/RWF": {
+        code: "RWF",
+        minSupportAmount: 100,
+        enabled: false,
+      },
+    };
+
+    await expect(
+      resolvePayment(
+        env,
+        body({
+          creatorHandle: "alice",
+          type: "support",
+          amount: 1000,
+          currency: "RWF",
+        }),
+        "supporter-1",
+        makeRepo(docs),
+      ),
+    ).rejects.toMatchObject({ code: "CURRENCY_DISABLED" });
+  });
+
   it("uses an explicit gathering price map over legacy fields", async () => {
     const docs = {
       ...baseDocs,
