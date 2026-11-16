@@ -2,6 +2,42 @@
 
 Running record of remediation work. Newest first.
 
+## 2026-11-16 - Payout currency capability and overview correctness
+
+### Changed
+
+- **Separate payout capability.** Added `PAYOUT_CURRENCIES`/`normalizePayoutCurrency` in
+  `lib/payouts/currency.ts`. Payout support remains intentionally RWF/USD even though the
+  checkout catalog recognises 53 currencies; this list is the seam for future
+  processor-dependent payout expansion.
+- **Configured thresholds only.** Added `buildPayoutOverview` with tests. The payout
+  overview now derives balances and thresholds only from configured RWF/USD policies and
+  no longer invents a `10000` threshold for USD or other currencies. Missing thresholds
+  return `null` and disable withdrawal until configured.
+- **Per-currency payout UI.** `PayoutsPage` can switch between the RWF/USD balances that
+  are available, disables withdrawal when a threshold is missing, and shows each payout
+  or request with its recorded currency and method instead of the creator's main
+  currency and hard-coded MoMo text.
+- **Payout policy.** The public policy page filters thresholds to the supported payout
+  currencies and no longer lists checkout-only currencies as payout options.
+
+### Verification
+
+- `npx tsc --noEmit` - passed.
+- `npm test` - 19 files, 118 passed (4 new payout-overview tests, 1 new payout-currency
+  test).
+- `npm run lint:ci`, `npm run format:check`, `npm run money:registry:check`,
+  `git diff --check` - passed.
+
+### Remaining
+
+- Payout providers/rails are still manual. The next layer should map each payout
+  currency to processor capability without changing balances or request semantics; RWF
+  currently uses mobile-money/manual processing and USD needs manual/bank settlement.
+- Checkout `enabled` and payout availability are deliberately separate; do not use the
+  checkout catalog as the payout allow-list.
+- Withdrawal API/UI still need Firestore-emulator and browser exercise.
+
 ## 2026-11-16 - Admin currency validation + checkout currency enablement
 
 ### Changed

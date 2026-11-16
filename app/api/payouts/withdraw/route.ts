@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/authMiddleware";
 import { MoneyError } from "@/lib/money";
 import {
   parsePayoutCurrency,
+  PAYOUT_CURRENCIES,
   pendingPayoutField,
   pendingWithdrawalsField,
 } from "@/lib/payouts/currency";
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json(
       {
-        error: "Withdrawals support RWF and USD only",
+        error: `Withdrawals support ${PAYOUT_CURRENCIES.join(" and ")} only`,
         code: "UNSUPPORTED_CURRENCY",
       },
       { status: 400 },

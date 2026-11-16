@@ -12,19 +12,13 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "@/db/firebase";
 import { sendCommsEmail } from "@/lib/commsService";
+import {
+  buildPayoutOverview,
+  type CurrencyBalance,
+  type PayoutOverview,
+} from "@/lib/payouts/overview";
 
-export interface CurrencyBalance {
-  currency: string;
-  pending: number;
-  threshold: number;
-  earnings: number;
-}
-
-export interface PayoutOverview {
-  creatorCurrency: string;
-  withdrawThreshold: number;
-  perCurrencyBalances: CurrencyBalance[];
-}
+export type { CurrencyBalance, PayoutOverview };
 
 export async function fetchPayoutOverview(creator: {
   handle?: string | null;
@@ -40,46 +34,13 @@ export async function fetchPayoutOverview(creator: {
   if (!snap.exists()) return null;
 
   const data = snap.data() as Record<string, unknown>;
-  const currency = (data.currency as string) || "RWF";
 
   const currenciesSnap = await getDocs(collection(db, "currencies"));
-  const currencyCodes = currenciesSnap.docs.map(
-    (d) => (d.data() as { code?: string }).code,
+  const policies = currenciesSnap.docs.map(
+    (currencyDoc) => currencyDoc.data() as { code?: unknown; payoutThreshold?: unknown },
   );
 
-  const held = (data.pendingWithdrawals as Record<string, unknown> | undefined) || {};
-  const getPending = (code: string) => {
-    const balance = code === "RWF" ? data.pendingPayout : data[`pendingPayout${code}`];
-    return Math.max(0, Number(balance || 0) - Number(held[code] || 0));
-  };
-  const getEarnings = (code: string) => {
-    const earnings = code === "RWF" ? data.totalEarnings : data[`totalEarnings${code}`];
-    return Number(earnings || 0);
-  };
-  const getThreshold = (code: string) => {
-    const matched = currenciesSnap.docs.find(
-      (d) => (d.data() as { code?: string }).code === code,
-    );
-    const t = matched?.data() as { payoutThreshold?: number } | undefined;
-    return Number(t?.payoutThreshold || 10000);
-  };
-
-  const displayedCodes = [currency];
-  if (currencyCodes.includes("USD") && currency !== "USD") displayedCodes.push("USD");
-  if (currency === "USD" && currencyCodes.includes("RWF")) displayedCodes.push("RWF");
-
-  const perCurrencyBalances = displayedCodes.map((code) => ({
-    currency: code,
-    pending: getPending(code),
-    threshold: getThreshold(code),
-    earnings: getEarnings(code),
-  }));
-
-  return {
-    creatorCurrency: currency,
-    withdrawThreshold: getThreshold(currency),
-    perCurrencyBalances,
-  };
+  return buildPayoutOverview(data, policies);
 }
 
 export function subscribeToCreatorPayouts(

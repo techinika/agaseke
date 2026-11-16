@@ -1,5 +1,5 @@
 import { fromMajor, toMajor, type CurrencyCode, type Money } from "@/lib/money";
-import { parsePayoutCurrency, type PayoutCurrency } from "./currency";
+import { parsePayoutCurrency, PAYOUT_CURRENCIES, type PayoutCurrency } from "./currency";
 
 export type WithdrawalErrorCode =
   | "UNSUPPORTED_CURRENCY"
@@ -63,7 +63,7 @@ export function validateWithdrawalRequest(
   } catch {
     throw new WithdrawalError(
       "UNSUPPORTED_CURRENCY",
-      "Withdrawals support RWF and USD only",
+      `Withdrawals support ${PAYOUT_CURRENCIES.join(" and ")} only`,
     );
   }
 
