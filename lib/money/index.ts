@@ -9,6 +9,47 @@ export {
 } from "./registry.generated";
 
 export {
+  PAYMENT_METHODS,
+  PAYMENT_RAIL_PROVIDERS,
+  PAYMENT_RAIL_PROVIDER_LIST,
+  getPaymentRailProvider,
+  isPaymentMethod,
+  type PaymentMethod,
+  type PaymentRailProvider,
+} from "./rails.generated";
+
+export {
+  PaymentRailError,
+  assertMethodSupportsCurrency,
+  getAvailableMethods,
+  getPaymentProviders,
+  getProviderForMethod,
+  getSupportedCurrenciesForMethod,
+  isCurrencySupportedByMethod,
+  type AvailablePaymentMethod,
+  type PaymentRailErrorCode,
+} from "./rails";
+
+export {
+  FxError,
+  applySpreadMinor,
+  convertMinorUnits,
+  createFxQuote,
+  deriveCrossRate,
+  isQuoteUsable,
+  isSnapshotFresh,
+  minorUnitScale,
+  parseFxSnapshot,
+  snapshotMaxAgeMs,
+  validateSpread,
+  type FxErrorCode,
+  type FxQuote,
+  type FxQuoteInput,
+  type FxQuotePurpose,
+  type FxSnapshot,
+} from "./fx";
+
+export {
   validateCurrencyConfig,
   type CurrencyConfig,
   type CurrencyConfigInput,

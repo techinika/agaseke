@@ -1374,6 +1374,7 @@ export default function AdminDashboard() {
                       </p>
                       <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
                         {req.method} • {req.accountNumber}
+                        {req.rail ? ` • ${String(req.rail).replace("_", " ")}` : ""}
                       </p>
                     </div>
                     <div className="flex gap-2">

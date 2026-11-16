@@ -7,6 +7,7 @@ import {
   pendingPayoutField,
   pendingWithdrawalsField,
 } from "@/lib/payouts/currency";
+import { PayoutRouteError, resolvePayoutRoute } from "@/lib/payouts/rails";
 import {
   buildWithdrawalReleaseLedger,
   buildWithdrawalSettlementLedger,
@@ -36,6 +37,9 @@ function errorResponse(error: unknown) {
     );
   }
   if (error instanceof MoneyError) {
+    return NextResponse.json({ error: error.message, code: error.code }, { status: 400 });
+  }
+  if (error instanceof PayoutRouteError) {
     return NextResponse.json({ error: error.message, code: error.code }, { status: 400 });
   }
 
@@ -108,6 +112,11 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      const route = resolvePayoutRoute(currency, {
+        provider: withdrawal.provider,
+        rail: withdrawal.rail,
+      });
+
       const amount = fromMajor(currency, withdrawal.amount);
       if (amount.amountMinor <= 0) {
         throw new ApiError(
@@ -166,7 +175,8 @@ export async function POST(request: NextRequest) {
       }
 
       const now = new Date();
-      const method = String(body.method || withdrawal.method || "MoMo").trim();
+      const requestedMethod = String(body.method || withdrawal.method || "").trim();
+      const method = route.rail === "bank_transfer" ? "Bank" : requestedMethod || "MoMo";
       const accountNumber = String(
         body.accountNumber || withdrawal.accountNumber || "",
       ).trim();
@@ -192,6 +202,8 @@ export async function POST(request: NextRequest) {
           held: false,
           method,
           accountNumber,
+          provider: route.provider,
+          rail: route.rail,
           reviewedBy: authUser.uid,
           reviewedAt: admin.firestore.FieldValue.serverTimestamp(),
           holdReleasedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -211,6 +223,8 @@ export async function POST(request: NextRequest) {
           amount: amountMajor,
           amountMinor: amount.amountMinor,
           currency,
+          provider: route.provider,
+          rail: route.rail,
           status: "completed",
           approvedBy: authUser.uid,
           approvedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -261,6 +275,8 @@ export async function POST(request: NextRequest) {
           handle: creatorHandle,
           amount: amountMajor,
           currency,
+          provider: route.provider,
+          rail: route.rail,
           method,
           accountNumber,
         };
@@ -284,6 +300,8 @@ export async function POST(request: NextRequest) {
         held: false,
         method,
         accountNumber,
+        provider: route.provider,
+        rail: route.rail,
         reviewedBy: authUser.uid,
         reviewedAt: admin.firestore.FieldValue.serverTimestamp(),
         holdReleasedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -332,6 +350,8 @@ export async function POST(request: NextRequest) {
         handle: creatorHandle,
         amount: amountMajor,
         currency,
+        provider: route.provider,
+        rail: route.rail,
         method,
         accountNumber,
       };

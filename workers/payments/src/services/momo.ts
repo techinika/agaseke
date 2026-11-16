@@ -3,6 +3,8 @@ import { convertToFields, firestorePost } from "../firestore";
 import { logActivity } from "../logger";
 import { notifyAdmins } from "../adminNotifications";
 import { PaymentRequestError, resolvePayment } from "./pricing";
+import { assertMethodSupportsCurrency } from "../money/rails";
+import { consumeCheckoutQuote, loadCheckoutQuote } from "./quotes";
 import { createPaymentRepository } from "./repository";
 import {
   abortAttempt,
@@ -30,12 +32,15 @@ export async function initiateMomoPayment(
 ): Promise<PaymentInitResult> {
   const phone = requirePhone(body);
   const repo = createPaymentRepository(env);
-  const resolved = await resolvePayment(env, body, uid, repo);
+  const quote = await loadCheckoutQuote(repo, body.quoteId, uid, body);
+  const resolved = await resolvePayment(env, body, uid, repo, { quote });
 
-  if (resolved.currency !== "RWF") {
+  try {
+    assertMethodSupportsCurrency("momo", resolved.currency);
+  } catch (error) {
     throw new PaymentRequestError(
-      "UNSUPPORTED_CURRENCY",
-      `Mobile Money only supports RWF (requested ${resolved.currency}). Use card payment for other currencies.`,
+      "UNSUPPORTED_METHOD",
+      `Mobile Money cannot charge ${resolved.currency}. Use card payment instead.`,
     );
   }
 
@@ -139,10 +144,24 @@ export async function initiateMomoPayment(
       paymentProvider: "paypack",
       providerRef: payData.ref,
       idempotencyKey: attempt.key,
+      quoteId: body.quoteId || "",
       platformFee: resolved.platformFee,
       creatorEarnings: resolved.creatorEarnings,
       referralEarnings: resolved.referralEarnings,
       processorCost: resolved.processorCost,
+      ...(resolved.fx
+        ? {
+            fxQuoteId: resolved.fx.id,
+            fxRate: resolved.fx.rate,
+            fxSpreadBps: resolved.fx.spreadBps,
+            sourceCurrency: resolved.fx.fromCurrency,
+            sourceAmountMinor: resolved.fx.sourceAmountMinor,
+            targetAmountMinor: resolved.fx.targetAmountMinor,
+            rateSource: resolved.fx.rateSource,
+            rateTimestamp: resolved.fx.rateTimestamp,
+            quoteExpiresAt: resolved.fx.expiresAt,
+          }
+        : {}),
       createdAt: now,
       initiatedAt: now,
       updatedAt: now,
@@ -189,6 +208,10 @@ export async function initiateMomoPayment(
 
     if (!doc) {
       await finishAttempt(env, attempt.key, { ref: payData.ref });
+
+    if (resolved.fx) {
+      await consumeCheckoutQuote(env, resolved.fx.id, payData.ref);
+    }
       throw new PaymentRequestError(
         "TRANSACTION_PERSIST_FAILED",
         `Payment ${payData.ref} was initiated but could not be recorded. Contact support with this reference.`,

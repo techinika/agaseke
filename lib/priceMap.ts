@@ -1,4 +1,11 @@
-export type PriceCurrency = "RWF" | "USD";
+import {
+  CURRENCY_CODES,
+  getCurrencyDefinition,
+  isCurrencyCode,
+  type CurrencyCode,
+} from "@/lib/money/registry.generated";
+
+export type PriceCurrency = CurrencyCode;
 
 export type PriceMap = Partial<Record<PriceCurrency, number>>;
 
@@ -15,17 +22,36 @@ function positivePrice(value: unknown): number | undefined {
   return Number.isFinite(amount) && amount > 0 ? amount : undefined;
 }
 
+function hasSupportedPrecision(value: number, currency: PriceCurrency): boolean {
+  const factor = 10 ** getCurrencyDefinition(currency).minorUnit;
+  return Math.abs(value * factor - Math.round(value * factor)) < 1e-6;
+}
+
 function sanitizePriceMap(prices: PriceMap): PriceMap {
   const map: PriceMap = {};
-  const rwf = positivePrice(prices.RWF);
-  const usd = positivePrice(prices.USD);
-  if (rwf !== undefined) map.RWF = rwf;
-  if (usd !== undefined) map.USD = usd;
+
+  for (const code of CURRENCY_CODES) {
+    const amount = positivePrice(prices[code]);
+    if (amount !== undefined && hasSupportedPrecision(amount, code)) {
+      map[code] = amount;
+    }
+  }
+
   return map;
 }
 
+/**
+ * Legacy display helper. Money-moving code must use `parsePriceCurrency` and
+ * reject a missing currency instead of treating it as RWF.
+ */
 export function normalizePriceCurrency(currency?: string | null): PriceCurrency {
-  return currency === "USD" ? "USD" : "RWF";
+  const code = typeof currency === "string" ? currency.trim().toUpperCase() : "";
+  return isCurrencyCode(code) ? code : "RWF";
+}
+
+export function parsePriceCurrency(currency?: string | null): PriceCurrency | null {
+  const code = typeof currency === "string" ? currency.trim().toUpperCase() : "";
+  return isCurrencyCode(code) ? code : null;
 }
 
 export function buildPriceMap(fields: {

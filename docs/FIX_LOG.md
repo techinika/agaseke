@@ -2,6 +2,44 @@
 
 Running record of remediation work. Newest first.
 
+## 2026-11-16 - Payout route metadata for processor-dependent currencies
+
+### Changed
+
+- **Route resolver.** Added `lib/payouts/rails.ts` with a small provider registry
+  (`manual` today), rail resolution and `PayoutRouteError`. RWF defaults to mobile money,
+  USD always resolves to bank transfer, and a creator bank preference or per-currency
+  `payoutRail`/`payoutProvider` config can override the default. The provider registry is
+  the extension point for future processors; payout currency support stays separate from
+  the checkout catalog.
+- **Withdrawal requests.** `/api/payouts/withdraw` resolves the route server-side and
+  stores `provider` and `rail` on `withdrawRequests` alongside the existing currency,
+  method and account fields. Invalid provider/rail combinations fail with a 400.
+- **Admin settlement.** The admin withdrawal route re-resolves and validates the route,
+  then copies `provider` and `rail` onto the completed/rejected request and the `payouts`
+  document. Legacy requests without route fields resolve to the RWF/USD defaults.
+- **Admin UI.** Pending withdrawal rows show the rail when present so reviewers can see
+  whether a request is mobile-money or bank.
+
+### Verification
+
+- `npx tsc --noEmit` - passed.
+- `npm test` - 20 files, 122 passed (4 new payout-route tests).
+- `npm run lint:ci`, `npm run format:check`, `npm run money:registry:check`,
+  `git diff --check` - passed.
+- `ENCRYPTION_KEY=build-verification-key npm run build` - passed with expected
+  Firebase-admin sitemap warnings.
+
+### Remaining
+
+- Only the `manual` provider exists; Paypack/Pesapal or another payout rail can be added
+  to the registry without changing withdrawal balance semantics.
+- USD is recorded as a bank-transfer route, but the request destination still comes from
+  `creator.payoutNumber` (phone) until approved verification bank details are persisted
+  onto the creator document.
+- Provider execution, provider refs, webhook settlement and reconciliation remain Phase 5
+  work.
+
 ## 2026-11-16 - Payout currency capability and overview correctness
 
 ### Changed

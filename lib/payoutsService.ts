@@ -118,10 +118,11 @@ export async function submitWithdrawRequest(params: {
     }),
   });
 
+  const payload = (await response.json().catch(() => null)) as {
+    error?: string;
+    rail?: string;
+  } | null;
   if (!response.ok) {
-    const payload = (await response.json().catch(() => null)) as {
-      error?: string;
-    } | null;
     throw new Error(payload?.error || `Withdrawal request failed (${response.status})`);
   }
 
@@ -136,7 +137,7 @@ export async function submitWithdrawRequest(params: {
       creatorEmail,
       amount: params.amount,
       currency: params.currency,
-      method: "MoMo",
+      method: payload?.rail === "bank_transfer" ? "Bank" : "MoMo",
       accountNumber: "",
     });
   } catch (error) {

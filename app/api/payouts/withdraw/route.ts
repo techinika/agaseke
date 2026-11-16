@@ -9,6 +9,7 @@ import {
   pendingWithdrawalsField,
 } from "@/lib/payouts/currency";
 import { validateWithdrawalRequest, WithdrawalError } from "@/lib/payouts/withdrawals";
+import { PayoutRouteError, resolvePayoutRoute } from "@/lib/payouts/rails";
 import {
   buildWithdrawalHoldLedger,
   isMoneyLedgerEnabled,
@@ -41,6 +42,9 @@ function errorResponse(error: unknown) {
     return NextResponse.json({ error: error.message, code: error.code }, { status });
   }
   if (error instanceof MoneyError) {
+    return NextResponse.json({ error: error.message, code: error.code }, { status: 400 });
+  }
+  if (error instanceof PayoutRouteError) {
     return NextResponse.json({ error: error.message, code: error.code }, { status: 400 });
   }
 
@@ -134,7 +138,8 @@ export async function POST(request: NextRequest) {
         `${currency} is not configured for withdrawals`,
       );
     }
-    const threshold = currencyQuery.docs[0].data().payoutThreshold;
+    const currencyPolicy = currencyQuery.docs[0].data();
+    const threshold = currencyPolicy.payoutThreshold;
 
     validateWithdrawalRequest({
       currency,
@@ -142,6 +147,12 @@ export async function POST(request: NextRequest) {
       pending: creator[pendingPayoutField(currency)],
       held: creator.pendingWithdrawals?.[currency],
       threshold,
+    });
+
+    const route = resolvePayoutRoute(currency, {
+      provider: currencyPolicy.payoutProvider,
+      rail: currencyPolicy.payoutRail,
+      payoutPreference: creator.payoutPreference,
     });
 
     const requestRef = adminDb.collection("withdrawRequests").doc(idempotencyKey);
@@ -189,7 +200,6 @@ export async function POST(request: NextRequest) {
         held: fresh.pendingWithdrawals?.[currency],
         threshold,
       });
-
       const now = new Date();
       const balanceRef = adminDb.collection("creatorBalances").doc(creatorDoc.id);
       const ledgerEntries = ledgerEnabled
@@ -232,9 +242,11 @@ export async function POST(request: NextRequest) {
         amount: validated.amountMajor,
         amountMinor: validated.amount.amountMinor,
         currency,
+        provider: route.provider,
+        rail: route.rail,
         status: "pending",
         held: true,
-        method: String(fresh.network || "MoMo"),
+        method: route.rail === "bank_transfer" ? "Bank" : String(fresh.network || "MoMo"),
         accountNumber: String(fresh.payoutNumber || ""),
         idempotencyKey,
         ledgerMode: ledgerEnabled ? "dual_write_v1" : "legacy",
@@ -278,6 +290,8 @@ export async function POST(request: NextRequest) {
         duplicate,
         amount: body.amount,
         currency,
+        provider: route.provider,
+        rail: route.rail,
         ledger: ledgerEnabled,
       },
       { status: duplicate ? 200 : 201 },

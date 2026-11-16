@@ -118,8 +118,8 @@ none use minor units.
 | `platformIncome/{id}` | `amount`, `txRef`, `reason` | All credit paths | **No currency field.** Deterministic IDs for support/store/bookings, auto-ID for gathering/community. |
 | `creatorIncome/{id}` | `creatorUid`, `amount`, `txRef`, `reason` | All credit paths | **No currency field.** Same ID inconsistency. |
 | `supportedCreators/{id}` | `amount`, `currency`, `txRef` | Support callback | Deterministic `{supporterId}_{creatorId}` for signed-in users; anonymous uses auto-ID. The deterministic doc's `amount` is overwritten, not summed. |
-| `withdrawRequests/{id}` | `amount`, `currency`, `status`, `method`, `accountNumber` | Client (`lib/payoutsService.ts:150-160`) | No minor units, no quote, no hold, no provider fields, no idempotency key. |
-| `payouts/{id}` | `amount`, `status`, `method` (no `currency`) | Admin (`AdminPage.tsx:810-821`) | Created on approval; not linked to a provider disbursement. |
+| `withdrawRequests/{id}` | `amount`, `amountMinor`, `currency`, `provider`, `rail`, `status`, `method`, `accountNumber` | Server withdrawal route | Provider/rail resolved from payout config; no FX quote or provider execution yet. |
+| `payouts/{id}` | `amount`, `amountMinor`, `currency`, `provider`, `rail`, `status`, `method` | Admin settlement route | Created on approval; not yet linked to an executed provider disbursement. |
 | `bookingRequests/{id}` | `amount`, `currency`, `paymentStatus` | Booking flow + callback | Also patched by the callback. |
 | `creatorGatherings/{id}` | `ticketPrice`, `priceUSD`, `currency`, `attendeesCount` | Creator UI | Same two-price pattern. |
 | `gatheringsAttendance/{id}` | no currency; attendance only | Payments webhooks | Amount lives on `ticketSales`. |

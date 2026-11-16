@@ -7,6 +7,7 @@ import * as prettier from "prettier";
 
 const ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const SOURCE = join(ROOT, "shared/money/currencies.json");
+const RAILS_SOURCE = join(ROOT, "shared/money/paymentRails.json");
 
 const TARGETS = [
   "lib/money/registry.generated.ts",
@@ -17,6 +18,18 @@ const TARGETS = [
   "workers/community/src/money/registry.generated.ts",
   "workers/comms/src/money/registry.generated.ts",
 ];
+
+const RAILS_TARGETS = [
+  "lib/money/rails.generated.ts",
+  "workers/payments/src/money/rails.generated.ts",
+  "workers/support/src/money/rails.generated.ts",
+  "workers/store/src/money/rails.generated.ts",
+  "workers/bookings/src/money/rails.generated.ts",
+  "workers/community/src/money/rails.generated.ts",
+  "workers/comms/src/money/rails.generated.ts",
+];
+
+const PAYMENT_METHODS = ["momo", "card"];
 
 const ISO_MINOR_UNITS = {
   RWF: 0,
@@ -163,6 +176,79 @@ function validate(data) {
   };
 }
 
+function validateRails(data, currencyData) {
+  if (!data || typeof data !== "object" || !Array.isArray(data.providers)) {
+    fail("shared/money/paymentRails.json must contain a providers array");
+  }
+
+  if (!Number.isInteger(data.version) || data.version < 1) {
+    fail("payment rail version must be a positive integer");
+  }
+
+  if (data.providers.length === 0) {
+    fail("at least one payment provider is required");
+  }
+
+  const currencyCodes = new Set(currencyData.currencies.map((currency) => currency.code));
+  const providerIds = new Set();
+
+  for (const provider of data.providers) {
+    if (!provider || typeof provider !== "object") {
+      fail("each payment provider must be an object");
+    }
+
+    if (typeof provider.id !== "string" || !/^[a-z0-9_]+$/.test(provider.id)) {
+      fail(`invalid payment provider id: ${String(provider.id)}`);
+    }
+
+    if (providerIds.has(provider.id)) {
+      fail(`duplicate payment provider id: ${provider.id}`);
+    }
+    providerIds.add(provider.id);
+
+    if (typeof provider.label !== "string" || provider.label.trim() === "") {
+      fail(`${provider.id} is missing a label`);
+    }
+
+    if (
+      !Array.isArray(provider.methods) ||
+      provider.methods.length === 0 ||
+      provider.methods.some((method) => !PAYMENT_METHODS.includes(method))
+    ) {
+      fail(`${provider.id} must list at least one supported payment method`);
+    }
+
+    if (
+      !Array.isArray(provider.currencies) ||
+      provider.currencies.length === 0 ||
+      provider.currencies.some((code) => !currencyCodes.has(code))
+    ) {
+      fail(`${provider.id} must list registered currency codes`);
+    }
+
+    if (
+      !Array.isArray(provider.countries) ||
+      provider.countries.length === 0 ||
+      provider.countries.some(
+        (country) => typeof country !== "string" || !/^[A-Z]{2}$/.test(country),
+      )
+    ) {
+      fail(`${provider.id} must list at least one ISO 3166-1 alpha-2 country`);
+    }
+  }
+
+  return {
+    version: data.version,
+    providers: data.providers.map((provider) => ({
+      id: provider.id,
+      label: provider.label,
+      methods: [...new Set(provider.methods)],
+      currencies: [...new Set(provider.currencies)],
+      countries: [...new Set(provider.countries)],
+    })),
+  };
+}
+
 function render(data) {
   const codes = data.currencies.map((currency) => currency.code);
   const body = data.currencies
@@ -213,37 +299,97 @@ export function getCurrencyDefinition(code: CurrencyCode): CurrencyDefinition {
 `;
 }
 
+function renderRails(data) {
+  const providerBody = data.providers
+    .map(
+      (provider) => `  ${provider.id}: {
+    id: ${JSON.stringify(provider.id)},
+    label: ${JSON.stringify(provider.label)},
+    methods: ${JSON.stringify(provider.methods)},
+    currencies: ${JSON.stringify(provider.currencies)},
+    countries: ${JSON.stringify(provider.countries)},
+  },`,
+    )
+    .join("\n");
+
+  return `// AUTO-GENERATED FILE. DO NOT EDIT.
+// Source: shared/money/paymentRails.json
+// Regenerate: node scripts/money/generate-registry.mjs
+
+export const PAYMENT_METHODS = ${JSON.stringify(PAYMENT_METHODS)} as const;
+
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+export interface PaymentRailProvider {
+  readonly id: string;
+  readonly label: string;
+  readonly methods: readonly PaymentMethod[];
+  readonly currencies: readonly string[];
+  readonly countries: readonly string[];
+}
+
+export const PAYMENT_RAIL_PROVIDERS: Readonly<Record<string, PaymentRailProvider>> = {
+${providerBody}
+};
+
+export const PAYMENT_RAIL_PROVIDER_LIST: readonly PaymentRailProvider[] =
+  Object.values(PAYMENT_RAIL_PROVIDERS);
+
+export function isPaymentMethod(value: unknown): value is PaymentMethod {
+  return typeof value === "string" && (PAYMENT_METHODS as readonly string[]).includes(value);
+}
+
+export function getPaymentRailProvider(id: string): PaymentRailProvider | undefined {
+  return Object.prototype.hasOwnProperty.call(PAYMENT_RAIL_PROVIDERS, id)
+    ? PAYMENT_RAIL_PROVIDERS[id]
+    : undefined;
+}
+`;
+}
+
+async function writeOrCheck(target, source, check, mismatches) {
+  const absolute = join(ROOT, target);
+
+  if (check) {
+    let existing = "";
+    try {
+      existing = await readFile(absolute, "utf8");
+    } catch {
+      console.error(`money registry: missing ${target}`);
+      return mismatches + 1;
+    }
+
+    if (existing !== source) {
+      console.error(`money registry: stale ${target}`);
+      return mismatches + 1;
+    }
+    return mismatches;
+  }
+
+  await mkdir(dirname(absolute), { recursive: true });
+  await writeFile(absolute, source, "utf8");
+  return mismatches;
+}
+
 async function main() {
   const check = process.argv.includes("--check");
   const raw = JSON.parse(await readFile(SOURCE, "utf8"));
   const data = validate(raw);
+  const railsRaw = JSON.parse(await readFile(RAILS_SOURCE, "utf8"));
+  const railsData = validateRails(railsRaw, data);
   const source = await prettier.format(render(data), PRETTIER_OPTIONS);
+  const railsSource = await prettier.format(renderRails(railsData), PRETTIER_OPTIONS);
 
   let mismatches = 0;
 
   for (const target of TARGETS) {
-    const absolute = join(ROOT, target);
-
-    if (check) {
-      let existing = "";
-      try {
-        existing = await readFile(absolute, "utf8");
-      } catch {
-        console.error(`money registry: missing ${target}`);
-        mismatches += 1;
-        continue;
-      }
-
-      if (existing !== source) {
-        console.error(`money registry: stale ${target}`);
-        mismatches += 1;
-      }
-      continue;
-    }
-
-    await mkdir(dirname(absolute), { recursive: true });
-    await writeFile(absolute, source, "utf8");
+    mismatches = await writeOrCheck(target, source, check, mismatches);
   }
+  for (const target of RAILS_TARGETS) {
+    mismatches = await writeOrCheck(target, railsSource, check, mismatches);
+  }
+
+  const totalFiles = TARGETS.length + RAILS_TARGETS.length;
 
   if (check) {
     if (mismatches > 0) {
@@ -253,11 +399,11 @@ async function main() {
       process.exit(1);
     }
 
-    console.log(`money registry: ${TARGETS.length} generated files are up to date`);
+    console.log(`money registry: ${totalFiles} generated files are up to date`);
     return;
   }
 
-  console.log(`money registry: wrote ${TARGETS.length} generated files`);
+  console.log(`money registry: wrote ${totalFiles} generated files`);
 }
 
 main().catch((error) => {

@@ -47,6 +47,7 @@ describe("generic price maps", () => {
     });
     expect(buildPriceMap({ price: 0, priceUSD: -1 })).toEqual({});
     expect(normalizePriceCurrency("USD")).toBe("USD");
-    expect(normalizePriceCurrency("EUR")).toBe("RWF");
+    expect(normalizePriceCurrency("EUR")).toBe("EUR");
+    expect(normalizePriceCurrency("ZZZ")).toBe("RWF");
   });
 });
