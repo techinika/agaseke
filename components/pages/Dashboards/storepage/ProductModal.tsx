@@ -5,6 +5,7 @@ import { uploadFile } from "@/lib/uploadService";
 import { createStoreProduct, updateStoreProduct } from "@/features/store/api";
 import { Product } from "@/types/store";
 import { useAuth } from "@/auth/AuthContext";
+import { buildProductPriceMap } from "@/lib/storePrices";
 
 export default function ProductModal({
   product,
@@ -41,6 +42,7 @@ export default function ProductModal({
   const [newSize, setNewSize] = useState("");
   const [newBulkMin, setNewBulkMin] = useState(0);
   const [newBulkDiscount, setNewBulkDiscount] = useState(0);
+  const primaryPrice = formData.currency === "USD" ? formData.priceUSD : formData.price;
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -90,7 +92,7 @@ export default function ProductModal({
   };
 
   const handleSubmit = async () => {
-    if (!formData.name || !formData.price) {
+    if (!formData.name || primaryPrice <= 0) {
       toast.error("Please fill in required fields");
       return;
     }
@@ -103,7 +105,8 @@ export default function ProductModal({
         name: formData.name,
         description: formData.description,
         price: formData.price,
-        priceUSD: formData.currency === "USD" ? formData.priceUSD : null,
+        priceUSD: formData.priceUSD || null,
+        prices: buildProductPriceMap(formData),
         currency: formData.currency,
         type: formData.type,
         active: formData.active,
@@ -349,11 +352,11 @@ export default function ProductModal({
                   </button>
                 </div>
               </div>
-              {formData.price > 0 && (
+              {primaryPrice > 0 && (
                 <p className="text-xs text-orange-600 mt-2">
                   {formData.platformFeePayer === "buyer"
-                    ? `Buyer pays ${(formData.price * 1.1).toLocaleString()} RWF (price + 10%)`
-                    : `Creator receives ${(formData.price * 0.9).toLocaleString()} RWF (price - 10%)`}
+                    ? `Buyer pays ${(primaryPrice * 1.1).toLocaleString()} ${formData.currency} (price + 10%)`
+                    : `Creator receives ${(primaryPrice * 0.9).toLocaleString()} ${formData.currency} (price - 10%)`}
                 </p>
               )}
             </div>

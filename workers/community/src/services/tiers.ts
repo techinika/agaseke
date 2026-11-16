@@ -1,6 +1,19 @@
 import type { Env, TierData } from "../types";
 import { firestoreGet, firestoreSet, convertToFields, convertFromFields } from "../firestore";
 
+function normalizePrices(t: TierData): { RWF?: number; USD?: number } {
+  const source =
+    t.prices && typeof t.prices === "object"
+      ? t.prices
+      : { RWF: t.price, USD: t.priceUSD };
+  const prices: { RWF?: number; USD?: number } = {};
+  for (const currency of ["RWF", "USD"] as const) {
+    const value = Number(source[currency]);
+    if (Number.isFinite(value) && value > 0) prices[currency] = value;
+  }
+  return prices;
+}
+
 export async function getTiers(
   env: Env,
   creatorHandle: string
@@ -21,6 +34,7 @@ export async function getTiers(
       description: t.description || "",
       price: Number(t.price) || 0,
       priceUSD: t.priceUSD ? Number(t.priceUSD) : undefined,
+      prices: t.prices && typeof t.prices === "object" ? t.prices : undefined,
       currency: t.currency || "RWF",
       interval: t.interval || "monthly",
       benefits: Array.isArray(t.benefits) ? t.benefits : [],
@@ -51,7 +65,8 @@ export async function saveTiers(
       name: t.name,
       description: t.description,
       price: t.price,
-      priceUSD: t.currency === "USD" ? t.priceUSD : null,
+      priceUSD: t.priceUSD ?? null,
+      prices: normalizePrices(t),
       currency: t.currency || "RWF",
       interval: t.interval,
       benefits: t.benefits,

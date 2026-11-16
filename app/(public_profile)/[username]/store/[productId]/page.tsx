@@ -38,9 +38,9 @@ export async function generateMetadata({
   const image = (product as any).imageUrl || `${baseUrl}/agaseke.png`;
   const currency = (product as any).currency === "USD" ? "USD" : "RWF";
   const price =
-    currency === "USD"
-      ? (product as any).priceUSD ?? (product as any).price ?? 0
-      : (product as any).price ?? 0;
+    (product as any).prices?.[currency] ??
+    (currency === "USD" ? (product as any).priceUSD : (product as any).price) ??
+    0;
 
   return {
     title: `${name} | ${displayName} Store | Agaseke`,
@@ -72,9 +72,9 @@ async function page({ params }: { params: Promise<{ username: string; productId:
   const name = (product as any)?.name || "Product";
   const currency = (product as any)?.currency === "USD" ? "USD" : "RWF";
   const price =
-    currency === "USD"
-      ? (product as any)?.priceUSD ?? (product as any)?.price ?? 0
-      : (product as any)?.price ?? 0;
+    (product as any)?.prices?.[currency] ??
+    (currency === "USD" ? (product as any)?.priceUSD : (product as any)?.price) ??
+    0;
 
   return (
     <>

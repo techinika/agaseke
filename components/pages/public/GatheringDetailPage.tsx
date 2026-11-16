@@ -16,6 +16,8 @@ import type { Gathering } from "@/components/parts/public/gatherings";
 import { logError, logInfo } from "@/lib/logger";
 import { LinkifyText } from "@/components/ui/LinkifyText";
 import { QRCodeCanvas } from "qrcode.react";
+import { getPrice } from "@/lib/priceMap";
+import { formatCurrency } from "@/types/currency";
 
 export default function GatheringDetailPage({ username, gatheringId }: { username: string; gatheringId: string }) {
   const { user, profile } = useAuth();
@@ -33,6 +35,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
   const [attendanceDocId, setAttendanceDocId] = useState<string | null>(null);
   const [showTicket, setShowTicket] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const ticketAmount = gathering ? getPrice(gathering) : 0;
 
   const listenForTransaction = useCallback((ref: string, g: Gathering) => {
     const txRef = collection(db, "transactions");
@@ -136,7 +139,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
   const handleRSVP = async () => {
     if (!user || !profile || !gathering) { toast.error("Please log in to RSVP"); return; }
 
-    if (gathering.ticketPrice && gathering.ticketPrice > 0) {
+    if (getPrice(gathering) > 0) {
       setPayingGathering(gathering);
       setPayPhone(profile.phoneNumber || "");
       return;
@@ -241,7 +244,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
     if (et === "ticketed") return true;
     if (et === "supporters") return !!user && userTotalSupport > 0;
     if (et === "supporters_tiered") return !!user && (g.minSupportTier || 0) <= userTotalSupport;
-    if (g.ticketPrice && g.ticketPrice > 0) return true;
+    if (getPrice(g) > 0) return true;
     if (!g.minSupportTier) return true;
     if (!user) return false;
     return g.minSupportTier <= userTotalSupport;
@@ -354,17 +357,17 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
                     <XCircle size={20} className="text-red-500" />
                     <p className="text-sm font-bold text-red-700">This event is full</p>
                   </div>
-                ) : gathering.ticketPrice && gathering.ticketPrice > 0 && user ? (
+                ) : ticketAmount > 0 && user ? (
                   <button onClick={handleRSVP} disabled={rsvping}
                     className="w-full py-3 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition disabled:opacity-50 flex items-center justify-center gap-2">
                     <CreditCard size={18} />
-                    Buy Ticket ({gathering.ticketPrice.toLocaleString()} RWF)
+                    Buy Ticket ({formatCurrency(ticketAmount, gathering.currency || "RWF")})
                   </button>
                 ) : !meetsTier && user ? (
                   <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center gap-3">
                     <Lock size={20} className="text-amber-500" />
                     <p className="text-sm font-bold text-amber-700">
-                      A minimum contribution of {gathering.minSupportTier} RWF is required to attend
+                      A minimum contribution of {formatCurrency(gathering.minSupportTier || 0, gathering.currency || "RWF")} is required to attend
                     </p>
                   </div>
                 ) : !user ? (
@@ -405,7 +408,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
               <div className="bg-muted p-4 rounded-lg">
                 <p className="text-sm text-muted-foreground">Event</p>
                 <p className="font-bold">{payingGathering.title}</p>
-                <p className="text-2xl font-bold text-orange-600 mt-2">{payingGathering.ticketPrice?.toLocaleString()} RWF</p>
+                <p className="text-2xl font-bold text-orange-600 mt-2">{formatCurrency(getPrice(payingGathering), payingGathering.currency || "RWF")}</p>
               </div>
 
               <div className="flex gap-2">
@@ -443,7 +446,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
                 className="w-full py-4 bg-orange-600 text-white rounded-xl font-bold text-lg hover:bg-orange-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {paying ? <Loader size={20} className="animate-spin" /> : null}
-                {paying ? "Processing..." : `Pay ${payingGathering.ticketPrice?.toLocaleString()} RWF`}
+                {paying ? "Processing..." : `Pay ${formatCurrency(getPrice(payingGathering), payingGathering.currency || "RWF")}`}
               </button>
             </div>
           </div>

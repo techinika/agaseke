@@ -30,6 +30,7 @@ import {
   type MemberInfo,
 } from "@/lib/communityService";
 import { formatCurrency } from "@/types/currency";
+import { buildPriceMap } from "@/lib/priceMap";
 
 interface CommunitySettings {
   enabled: boolean;
@@ -145,7 +146,13 @@ export default function CommunityPage() {
     if (!creator?.handle) return;
     setSaving(true);
     try {
-      const validTiers = settings.tiers.filter((t) => t.name.trim() && t.price > 0);
+      const validTiers = settings.tiers
+        .filter((t) => {
+          const amount =
+            (t.currency || "RWF") === "USD" ? (t.priceUSD ?? 0) : t.price;
+          return t.name.trim() && Number(amount) > 0;
+        })
+        .map((t) => ({ ...t, prices: buildPriceMap(t) }));
       if (validTiers.length === 0 && settings.enabled) {
         toast.error("Add at least one tier with a name and price");
         setSaving(false);

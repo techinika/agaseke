@@ -51,6 +51,7 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { logError } from "@/lib/logger";
 import { decryptBookingReason, isEncrypted } from "@/lib/generalWorkerService";
 import { formatCurrency } from "@/types/currency";
+import { buildPriceMap, getPrice } from "@/lib/priceMap";
 import {
   buildCalendarEvent,
   buildIcsDataUrl,
@@ -59,6 +60,10 @@ import {
 } from "@/lib/bookingCalendar";
 
 const DAYS_OF_WEEK = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+function bookingTierAmount(tier: BookingTier): number {
+  return getPrice(tier);
+}
 
 function CalendarButtons({ cal, bookingId }: { cal: CalendarEvent | null; bookingId: string }) {
   if (!cal) return null;
@@ -336,9 +341,21 @@ export default function BookingsPage() {
 
   const saveTiers = async () => {
     if (!creator?.handle) return;
+    const invalidTier = tiers.find((t) => {
+      if (!t.name.trim()) return false;
+      const amount = (t.currency || "RWF") === "USD" ? t.priceUSD : t.price;
+      return !(Number(amount) > 0);
+    });
+    if (invalidTier) {
+      toast.error(`Set a price for ${invalidTier.name}`);
+      return;
+    }
     setSaving(true);
     try {
-      await updateDoc(doc(db, "creators", creator.handle), { bookingTiers: tiers.filter((t) => t.name.trim()), bookingMode });
+      const payload = tiers
+        .filter((t) => t.name.trim())
+        .map((t) => ({ ...t, prices: buildPriceMap(t) }));
+      await updateDoc(doc(db, "creators", creator.handle), { bookingTiers: payload, bookingMode });
       toast.success("Tiers saved!");
     } catch {
       toast.error("Failed to save");
@@ -660,7 +677,7 @@ export default function BookingsPage() {
                         <div className="flex items-center justify-between p-4 bg-muted cursor-pointer" onClick={() => setEditingTierId(editingTierId === tier.id ? null : tier.id)}>
                           <div className="flex items-center gap-3">
                             <div className={`w-3 h-3 rounded-full ${tier.active ? "bg-green-500" : "bg-gray-300"}`} />
-                            <div><p className="font-bold">{tier.name || "Untitled Tier"}</p><p className="text-xs text-muted-foreground">{tier.price > 0 ? formatCurrency(tier.price, tier.currency || "RWF") : "Free"} &middot; {tier.duration}min &middot; {tier.access}</p></div>
+                            <div><p className="font-bold">{tier.name || "Untitled Tier"}</p><p className="text-xs text-muted-foreground">{bookingTierAmount(tier) > 0 ? formatCurrency(bookingTierAmount(tier), tier.currency || "RWF") : "Free"} &middot; {tier.duration}min &middot; {tier.access}</p></div>
                           </div>
                           <button onClick={(e) => { e.stopPropagation(); removeTier(tier.id); }} className="p-2 text-muted-foreground hover:text-red-500"><X size={16} /></button>
                         </div>

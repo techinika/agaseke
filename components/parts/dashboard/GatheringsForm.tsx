@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { logActivity } from "@/lib/logger";
 import type { EventType } from "@/components/parts/public/gatherings/types";
 import { formatCurrency } from "@/types/currency";
+import { buildPriceMap } from "@/lib/priceMap";
 
 interface GatheringsFormProps {
   gatheringId?: string;
@@ -97,6 +98,10 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
     if (!formData.title) { toast.error("Title is required"); return; }
     if (!formData.date) { toast.error("Date is required"); return; }
     if (!formData.time) { toast.error("Time is required"); return; }
+    if (formData.eventType === "ticketed") {
+      const ticketAmount = formData.currency === "USD" ? formData.priceUSD : formData.ticketPrice;
+      if (!(ticketAmount > 0)) { toast.error("Ticket price is required"); return; }
+    }
 
     setSaving(true);
     try {
@@ -109,7 +114,10 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
         eventType: formData.eventType,
         minSupportTier: formData.eventType === "supporters_tiered" ? formData.minSupportTier : 0,
         ticketPrice: formData.eventType === "ticketed" ? formData.ticketPrice : 0,
-        priceUSD: formData.eventType === "ticketed" && formData.currency === "USD" ? formData.priceUSD : 0,
+        priceUSD: formData.eventType === "ticketed" ? formData.priceUSD : 0,
+        prices: formData.eventType === "ticketed"
+          ? buildPriceMap({ price: formData.ticketPrice, priceUSD: formData.priceUSD })
+          : null,
         currency: formData.eventType === "ticketed" ? formData.currency : "RWF",
         supporterPrice: formData.eventType === "ticketed" ? formData.supporterPrice : 0,
         capacity: formData.capacity || 0,

@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { GatheringCard, PastGatheringCard } from "./gatherings";
 import type { Gathering } from "./gatherings";
 import { formatCurrency } from "@/types/currency";
+import { getPrice } from "@/lib/priceMap";
 import { logError, logInfo } from "@/lib/logger";
 import { QRCodeCanvas } from "qrcode.react";
 import { FreeRsvpSheet, PaidRsvpSheet } from "@/features/gatherings";
@@ -185,7 +186,7 @@ export function GatheringsTab({ creatorId, creatorHandle, creatorName = "the cre
       return;
     }
 
-    if (gathering.ticketPrice && gathering.ticketPrice > 0) {
+    if (getPrice(gathering) > 0) {
       setPayingGathering(gathering);
       return;
     }
@@ -291,7 +292,7 @@ export function GatheringsTab({ creatorId, creatorHandle, creatorName = "the cre
     if (et === "ticketed") return true;
     if (et === "supporters") return !!user && (isSupporter || userTotalSupport > 0);
     if (et === "supporters_tiered") return !!user && (gathering.minSupportTier || 0) <= userTotalSupport;
-    if (gathering.ticketPrice && gathering.ticketPrice > 0) return true;
+    if (getPrice(gathering) > 0) return true;
     if (!gathering.minSupportTier) return true;
     if (!user) return false;
     return gathering.minSupportTier <= userTotalSupport;

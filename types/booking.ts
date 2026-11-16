@@ -1,5 +1,6 @@
  
 import { Timestamp } from "firebase/firestore";
+import type { PriceMap } from "@/lib/priceMap";
 
 export type BookingAccess = "public" | "supporters";
 export type BookingType = "physical" | "online" | "both";
@@ -35,6 +36,7 @@ export interface BookingTier {
   purpose: string;
   price: number;
   priceUSD?: number;
+  prices?: PriceMap;
   currency?: "RWF" | "USD";
   duration: number;
   access: BookingAccess;

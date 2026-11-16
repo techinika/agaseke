@@ -12,9 +12,14 @@ import { BookingAvailability, BookingType, BookingTier } from "@/types/booking";
 import { logError } from "@/lib/logger";
 import { createBooking } from "@/lib/bookingsService";
 import { formatCurrency } from "@/types/currency";
+import { getPrice } from "@/lib/priceMap";
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+function bookingTierAmount(tier: BookingTier): number {
+  return getPrice(tier);
+}
 
 export default function BookingPage({ username, creator }: { username: string; creator: any }) {
   const { user } = useAuth();
@@ -101,7 +106,7 @@ export default function BookingPage({ username, creator }: { username: string; c
         preferredType: selectedType,
         tierId: selectedTier?.id || null,
         tierName: selectedTier?.name || null,
-        paymentAmount: (selectedTier?.currency === "USD" && selectedTier?.priceUSD) ? selectedTier.priceUSD : (selectedTier?.price || 0),
+        paymentAmount: selectedTier ? bookingTierAmount(selectedTier) : 0,
         currency: selectedTier?.currency || "RWF",
       });
 
@@ -163,7 +168,7 @@ export default function BookingPage({ username, creator }: { username: string; c
                           </div>
                           <div className="text-right shrink-0 ml-4">
                             <p className="text-xl font-black text-orange-600">
-                              {tier.price > 0 ? formatCurrency(tier.currency === "USD" && tier.priceUSD ? tier.priceUSD : tier.price, tier.currency || "RWF") : "Free"}
+                              {bookingTierAmount(tier) > 0 ? formatCurrency(bookingTierAmount(tier), tier.currency || "RWF") : "Free"}
                             </p>
                             <p className="text-xs text-muted-foreground">{tier.duration} minutes</p>
                           </div>
@@ -205,7 +210,7 @@ export default function BookingPage({ username, creator }: { username: string; c
                 {isTiered && selectedTier && (
                   <div className="text-right">
                     <p className="text-sm font-bold">{selectedTier.name}</p>
-                    <p className="text-xs text-muted-foreground">{selectedTier.price > 0 ? formatCurrency(selectedTier.currency === "USD" && selectedTier.priceUSD ? selectedTier.priceUSD : selectedTier.price, selectedTier.currency || "RWF") : "Free"} &middot; {selectedTier.duration}min</p>
+                    <p className="text-xs text-muted-foreground">{bookingTierAmount(selectedTier) > 0 ? formatCurrency(bookingTierAmount(selectedTier), selectedTier.currency || "RWF") : "Free"} &middot; {selectedTier.duration}min</p>
                   </div>
                 )}
               </div>
@@ -315,7 +320,7 @@ export default function BookingPage({ username, creator }: { username: string; c
                   <button onClick={handleSubmit} disabled={submitting || !selectedDate || !selectedTime}
                     className="w-full bg-foreground text-background py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all disabled:opacity-50">
                     {submitting ? <Loader className="animate-spin" size={18} /> : <Calendar size={18} />}
-                    {selectedTier?.price && selectedTier.price > 0 ? `Continue to Payment — ${formatCurrency(selectedTier.currency === "USD" && selectedTier.priceUSD ? selectedTier.priceUSD : selectedTier.price, selectedTier.currency || "RWF")}` : "Submit Request"}
+                    {selectedTier && bookingTierAmount(selectedTier) > 0 ? `Continue to Payment — ${formatCurrency(bookingTierAmount(selectedTier), selectedTier.currency || "RWF")}` : "Submit Request"}
                   </button>
                 </>
               )}

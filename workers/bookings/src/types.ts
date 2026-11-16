@@ -3,6 +3,7 @@ export interface BookingTier {
   name: string;
   price: number;
   priceUSD?: number;
+  prices?: Partial<Record<"RWF" | "USD", number>>;
   currency?: string;
   duration: number;
   active: boolean;

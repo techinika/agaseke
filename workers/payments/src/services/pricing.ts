@@ -115,6 +115,19 @@ function num(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function resolveStoredPrice(
+  record: Record<string, unknown>,
+  currency: string,
+  rwfField: string,
+  usdField: string,
+): number {
+  const prices = record.prices;
+  if (prices && typeof prices === "object") {
+    return num((prices as Record<string, unknown>)[currency]);
+  }
+  return currency === "USD" ? num(record[usdField]) : num(record[rwfField]);
+}
+
 function hasField(body: Record<string, unknown>, field: string): boolean {
   return Object.prototype.hasOwnProperty.call(body, field);
 }
@@ -461,8 +474,7 @@ export async function resolvePayment(
 
     const currency = normalizeCurrency(product.currency, creator.currency);
     assertRequestedCurrency(body.currency, currency);
-    const price =
-      currency === "USD" ? num(product.priceUSD) : num(product.price);
+    const price = resolveStoredPrice(product, currency, "price", "priceUSD");
     if (price <= 0) {
       throw new PaymentRequestError(
         "INVALID_PRODUCT_PRICE",
@@ -640,8 +652,12 @@ export async function resolvePayment(
 
     const currency = normalizeCurrency(gathering.currency, creator.currency);
     assertRequestedCurrency(body.currency, currency);
-    const price =
-      currency === "USD" ? num(gathering.priceUSD) : num(gathering.ticketPrice);
+    const price = resolveStoredPrice(
+      gathering,
+      currency,
+      "ticketPrice",
+      "priceUSD",
+    );
     if (price <= 0) {
       throw new PaymentRequestError(
         "GATHERING_NOT_PAYABLE",
@@ -688,7 +704,7 @@ export async function resolvePayment(
 
   const currency = normalizeCurrency(tier.currency, creator.currency);
   assertRequestedCurrency(body.currency, currency);
-  const price = currency === "USD" ? num(tier.priceUSD) : num(tier.price);
+  const price = resolveStoredPrice(tier, currency, "price", "priceUSD");
   if (price <= 0) {
     throw new PaymentRequestError(
       "INVALID_AMOUNT",

@@ -1,4 +1,5 @@
 import { auth } from "@/db/firebase";
+import type { PriceMap } from "@/lib/priceMap";
 
 export const COMMUNITY_WORKER_URL =
   process.env.NEXT_PUBLIC_COMMUNITY_WORKER_URL || "http://localhost:8794";
@@ -9,6 +10,7 @@ export interface CommunityTier {
   description: string;
   price: number;
   priceUSD?: number;
+  prices?: PriceMap;
   currency?: "RWF" | "USD";
   interval: "monthly" | "yearly";
   benefits: string[];

@@ -6,6 +6,7 @@ import { Check, CreditCard, Crown, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { formatMoney } from "@/lib/format/money";
+import { getPrice } from "@/lib/priceMap";
 import { t } from "@/lib/i18n";
 import { isValidRwandaPhone, normalizeRwandaPhone } from "@/lib/format/phone";
 import { initiateSubscription } from "@/lib/communityService";
@@ -30,7 +31,7 @@ export interface CommunityJoinSheetProps {
 }
 
 export function tierAmount(tier: CommunityTierView): number {
-  return tier.currency === "USD" ? (tier.priceUSD ?? tier.price) : tier.price;
+  return getPrice(tier);
 }
 
 export function tierIntervalLabel(tier: CommunityTierView): string {

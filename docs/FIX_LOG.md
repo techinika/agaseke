@@ -2,6 +2,85 @@
 
 Running record of remediation work. Newest first.
 
+## 2026-11-16 - Phase 4 price maps for bookings, gatherings and community
+
+### Changed
+
+- **Shared price-map helper.** Added `lib/priceMap.ts` with one strict resolver for
+  `RWF`/`USD` fields, including the legacy gathering `ticketPrice` field. Store pricing
+  now delegates to it. Explicit `prices` maps are authoritative; missing currencies
+  resolve to zero and are rejected by server checkout.
+- **Booking tiers.** Added `prices` to `BookingTier` and the bookings worker type.
+  `BookingsPage.saveTiers` rebuilds the map from editable fields and rejects a tier with
+  no price in its active currency. Public/dashboard displays and the bookings worker
+  resolve from the map without falling back across currencies.
+- **Gathering tickets.** Added `prices` to public gathering records. `GatheringsForm`
+  now preserves both legacy fields for RWF and USD ticketed events, writes a map and
+  validates the active-currency ticket price. Card/detail/dashboard/supporter displays
+  use active-currency prices; payments-worker gathering checkout reads the map.
+- **Community tiers.** Added `prices` to service, view and worker tier types. The
+  community worker returns/saves maps, and the dashboard rebuilds maps from edited
+  fields while validating the active currency. Join/subscribe displays and
+  payments-worker tier checkout use the strict resolver.
+- **Server pricing.** `workers/payments/src/services/pricing.ts` now uses one stored
+  price resolver for products, gathering tickets and community tiers; a map omitting the
+  requested currency is rejected rather than falling back to another field.
+
+### Verification
+
+- `npx tsc --noEmit`; bookings/payments/community worker `tsc` - passed.
+- `npm test` - 17 files, 108 passed (4 new generic price-map tests).
+- `cd workers/payments && npm test` - 7 files, 75 passed (2 new gathering/community
+  map tests).
+- `npm run lint:ci`, `npm run format:check`, `npm run money:registry:check` - passed.
+- `ENCRYPTION_KEY=build-verification-key npm run build` - passed with expected
+  Firebase-admin sitemap warnings.
+
+### Remaining
+
+- Creator/admin validation across the full currency catalog and checkout currency
+  enablement remain Phase 4/5 work.
+- Booking worker has no automated map regression test yet; its behavior is covered by
+  typecheck and the shared resolver tests.
+
+## 2026-11-16 - Strict store price maps + cross-currency fallback removal
+
+### Changed
+
+- **Strict store price resolver.** Added `lib/storePrices.ts` with
+  `getProductCurrency`, `getProductPrices`, `getProductPrice` and
+  `buildProductPriceMap`. Explicit `prices.{RWF,USD}` maps are authoritative; legacy
+  products fall back only to their own currency's field. A missing USD price no longer
+  resolves to the RWF amount.
+- **Product writers.** `ProductForm` and store `ProductModal` now write
+  `prices: { RWF, USD }`, preserve both legacy fields, validate the active currency
+  amount, and show fee previews in the active currency.
+- **Public store.** Product metadata/detail pages and all store helper callers use the
+  strict resolver. `app/(public_profile)/[username]/store/[productId]/page.tsx` no
+  longer falls back from `priceUSD` to `price`.
+- **Server checkout.** `workers/payments` reads `storeProducts.prices[currency]` when a
+  map is present and rejects the charge if that currency is missing; legacy products
+  still use `price`/`priceUSD`.
+- **Other fallbacks.** Removed cross-currency fallbacks from booking tiers, gathering
+  tickets, and community tiers in public/dashboard displays, client submission and the
+  bookings worker.
+
+### Verification
+
+- `npx tsc --noEmit`; bookings/payments worker `tsc` - passed.
+- `npm test` - 16 files, 104 passed (5 new store-price tests).
+- `cd workers/payments && npm test` - 7 files, 73 passed (2 new price-map tests).
+- `npm run lint:ci`, `npm run format:check`, `npm run money:registry:check`,
+  `git diff --check` - passed.
+- `ENCRYPTION_KEY=build-verification-key npm run build` - passed with expected
+  Firebase-admin sitemap warnings.
+
+### Remaining
+
+- Per-currency maps for booking tiers, gathering tickets and community tiers are still
+  represented by `currency` + `price`/`priceUSD` rather than a map.
+- Creator/admin validation and checkout currency enablement remain Phase 4/5 work.
+
 ## 2026-11-16 - Currency catalog expansion
 
 ### Changed

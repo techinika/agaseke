@@ -317,6 +317,67 @@ describe("server-authoritative payment pricing", () => {
     ).rejects.toMatchObject({ code: "INVALID_PRODUCT_PRICE" });
   });
 
+  it("uses an explicit product price map over legacy fields", async () => {
+    const docs = {
+      ...baseDocs,
+      "storeProducts/p1": {
+        id: "p1",
+        creatorUid: "uid-alice",
+        name: "Mug",
+        price: 10_000,
+        priceUSD: 1,
+        prices: { RWF: 10_000, USD: 2 },
+        currency: "USD",
+        active: true,
+      },
+    };
+
+    const resolved = await resolvePayment(
+      env,
+      body({
+        creatorHandle: "alice",
+        type: "store",
+        productId: "p1",
+        currency: "USD",
+      }),
+      "buyer-1",
+      makeRepo(docs),
+    );
+
+    expect(resolved.productPrice).toBe(2);
+    expect(resolved.currency).toBe("USD");
+  });
+
+  it("does not use the legacy USD price when the explicit map omits it", async () => {
+    const docs = {
+      ...baseDocs,
+      "storeProducts/p1": {
+        id: "p1",
+        creatorUid: "uid-alice",
+        name: "Mug",
+        price: 10_000,
+        priceUSD: 1,
+        prices: { RWF: 10_000 },
+        currency: "USD",
+        active: true,
+      },
+    };
+
+    await expect(
+      resolvePayment(
+        env,
+        body({
+          creatorHandle: "alice",
+          type: "store",
+          productId: "p1",
+          currency: "USD",
+        }),
+        "buyer-1",
+        makeRepo(docs),
+      ),
+    ).rejects.toMatchObject({ code: "INVALID_PRODUCT_PRICE" });
+  });
+
   it("rejects a client-selected USD charge for an RWF gathering", async () => {
     const docs = {
       ...baseDocs,
@@ -506,6 +567,80 @@ describe("server-authoritative payment pricing", () => {
     );
 
     expect(resolved.totalAmount).toBe(5000);
+  });
+
+  it("uses an explicit gathering price map over legacy fields", async () => {
+    const docs = {
+      ...baseDocs,
+      "creatorGatherings/g1": {
+        id: "g1",
+        creatorId: "uid-alice",
+        status: "active",
+        currency: "USD",
+        ticketPrice: 3000,
+        priceUSD: 1,
+        prices: { RWF: 3000, USD: 2 },
+      },
+    };
+
+    const resolved = await resolvePayment(
+      env,
+      body({
+        creatorHandle: "alice",
+        type: "gathering",
+        gatheringId: "g1",
+        currency: "USD",
+      }),
+      "buyer-1",
+      makeRepo(docs),
+    );
+
+    expect(resolved.totalAmount).toBe(2);
+    expect(resolved.currency).toBe("USD");
+  });
+
+  it("uses an explicit community tier price map over legacy fields", async () => {
+    const docs = {
+      ...baseDocs,
+      "creators/alice": {
+        uid: "uid-alice",
+        currency: "USD",
+        communityTiers: [
+          {
+            id: "t1",
+            price: 5000,
+            priceUSD: 1,
+            prices: { RWF: 5000, USD: 2 },
+            currency: "USD",
+            interval: "monthly",
+            isActive: true,
+          },
+        ],
+      },
+      "communitySubscriptions/s1": {
+        id: "s1",
+        userId: "supporter-1",
+        tierId: "t1",
+        creatorHandle: "alice",
+      },
+    };
+
+    const resolved = await resolvePayment(
+      env,
+      body({
+        creatorHandle: "alice",
+        type: "community",
+        communityTierId: "t1",
+        communitySubscriptionId: "s1",
+        communityInterval: "monthly",
+        currency: "USD",
+      }),
+      "supporter-1",
+      makeRepo(docs),
+    );
+
+    expect(resolved.totalAmount).toBe(2);
+    expect(resolved.currency).toBe("USD");
   });
 
   it("exposes typed request errors", () => {

@@ -20,6 +20,7 @@ import {
 import { db } from "@/db/firebase";
 import { useAuth } from "@/auth/AuthContext";
 import { useRouter } from "next/navigation";
+import { buildProductPriceMap } from "@/lib/storePrices";
 
 export default function ProductForm() {
   const { creator } = useAuth();
@@ -49,6 +50,7 @@ export default function ProductForm() {
   const [newSize, setNewSize] = useState("");
   const [newBulkMin, setNewBulkMin] = useState(0);
   const [newBulkDiscount, setNewBulkDiscount] = useState(0);
+  const primaryPrice = formData.currency === "USD" ? formData.priceUSD : formData.price;
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -99,7 +101,7 @@ export default function ProductForm() {
 
   const handleSubmit = async () => {
     if (!creator?.uid) { toast.error("Not authenticated"); return; }
-    if (!formData.name || !formData.price) {
+    if (!formData.name || primaryPrice <= 0) {
       toast.error("Please fill in required fields");
       return;
     }
@@ -111,7 +113,8 @@ export default function ProductForm() {
         name: formData.name,
         description: formData.description,
         price: formData.price,
-        priceUSD: formData.currency === "USD" ? formData.priceUSD : null,
+        priceUSD: formData.priceUSD || null,
+        prices: buildProductPriceMap(formData),
         currency: formData.currency,
         type: formData.type,
         active: formData.active,
@@ -377,11 +380,11 @@ export default function ProductForm() {
                 </button>
               </div>
             </div>
-            {formData.price > 0 && (
+            {primaryPrice > 0 && (
               <p className="text-xs text-orange-600 mt-2">
                 {formData.platformFeePayer === "buyer"
-                  ? `Buyer pays ${(formData.price * 1.1).toLocaleString()} ${formData.currency} (price + 10%)`
-                  : `Creator receives ${(formData.price * 0.9).toLocaleString()} ${formData.currency} (price - 10%)`}
+                  ? `Buyer pays ${(primaryPrice * 1.1).toLocaleString()} ${formData.currency} (price + 10%)`
+                  : `Creator receives ${(primaryPrice * 0.9).toLocaleString()} ${formData.currency} (price - 10%)`}
               </p>
             )}
           </div>
@@ -602,7 +605,7 @@ export default function ProductForm() {
             </button>
             <button
               onClick={handleSubmit}
-              disabled={saving || !formData.name || !formData.price}
+              disabled={saving || !formData.name || primaryPrice <= 0}
               className="flex-[2] bg-foreground text-background py-4 rounded-xl font-bold text-lg hover:bg-orange-500 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {saving ? <Loader className="animate-spin" size={20} /> : null}

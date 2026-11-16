@@ -5,6 +5,7 @@ import { Calendar, CreditCard, MapPin, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { formatMoney } from "@/lib/format/money";
+import { getPrice, type PriceMap } from "@/lib/priceMap";
 import { t } from "@/lib/i18n";
 import { CreatorTrustRow, SupporterActionSheet } from "@/features/actions";
 import { useTicketPayment } from "../hooks/useTicketPayment";
@@ -17,6 +18,7 @@ export interface TicketGathering {
   location: string;
   ticketPrice?: number;
   priceUSD?: number;
+  prices?: PriceMap;
   currency?: string;
 }
 
@@ -35,9 +37,7 @@ export interface PaidRsvpSheetProps {
 }
 
 export function ticketAmount(gathering: TicketGathering): number {
-  return gathering.currency === "USD"
-    ? (gathering.priceUSD ?? gathering.ticketPrice ?? 0)
-    : (gathering.ticketPrice ?? 0);
+  return getPrice(gathering);
 }
 
 export function PaidRsvpSheet({
