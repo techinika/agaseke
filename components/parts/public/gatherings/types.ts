@@ -1,3 +1,5 @@
+import type { PriceMap } from "@/lib/priceMap";
+
 export type EventType = "public" | "supporters" | "supporters_tiered" | "ticketed";
 
 export interface Gathering {
@@ -11,6 +13,7 @@ export interface Gathering {
   minSupportTier?: number;
   ticketPrice?: number;
   priceUSD?: number;
+  prices?: PriceMap;
   currency?: string;
   attendeesCount?: number;
   creatorId: string;

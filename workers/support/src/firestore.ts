@@ -1,6 +1,7 @@
 import * as jose from "jose";
 import type { Env } from "./types";
 import { auditedFetch } from "./audit";
+import type { PaymentLedgerPlan } from "./money/ledger";
 
 function normalizePrivateKey(key: string): string {
   const cleaned = key.replace(/\\n/g, "\n");
@@ -138,6 +139,18 @@ function incrementValue(val: number): Record<string, unknown> {
     : { doubleValue: val };
 }
 
+export interface PaymentDocumentWrite {
+  path: string;
+  fields: Record<string, unknown>;
+}
+
+export interface PaymentApplyOptions {
+  /** Deterministic domain documents (income records, orders, etc.). */
+  documents?: PaymentDocumentWrite[];
+  /** Ledger entries and projection, written atomically with the marker. */
+  ledger?: PaymentLedgerPlan;
+}
+
 /**
  * Apply every balance change for a payment in one atomic commit and claim a
  * `paymentApplications/{paymentRef}` marker in the same commit. A retried
@@ -148,7 +161,8 @@ export async function firestoreApplyPayment(
   env: Env,
   paymentRef: string,
   increments: Array<{ path: string; fields: Record<string, number> }>,
-  markerFields: Record<string, unknown>
+  markerFields: Record<string, unknown>,
+  options: PaymentApplyOptions = {},
 ): Promise<"applied" | "duplicate" | "failed"> {
   const token = await getFirestoreToken(env);
   if (!token) return "failed";
@@ -163,6 +177,38 @@ export async function firestoreApplyPayment(
       currentDocument: { exists: false },
     },
   ];
+
+  for (const document of options.documents ?? []) {
+    writes.push({
+      update: {
+        name: firestoreDocumentName(env, document.path),
+        fields: document.fields,
+      },
+    });
+  }
+
+  for (const document of options.ledger?.documents ?? []) {
+    writes.push({
+      update: {
+        name: firestoreDocumentName(env, document.path),
+        fields: document.fields,
+      },
+      currentDocument: { exists: false },
+    });
+  }
+
+  for (const group of options.ledger?.balances ?? []) {
+    const fieldTransforms = Object.entries(group.fields)
+      .filter(([, val]) => typeof val === "number" && Number.isFinite(val) && val !== 0)
+      .map(([fieldPath, val]) => ({ fieldPath, increment: incrementValue(val) }));
+    if (fieldTransforms.length === 0) continue;
+    writes.push({
+      transform: {
+        document: firestoreDocumentName(env, group.path),
+        fieldTransforms,
+      },
+    });
+  }
 
   for (const group of increments) {
     const fieldTransforms = Object.entries(group.fields)

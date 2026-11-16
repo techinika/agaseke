@@ -1,4 +1,6 @@
 export interface Env {
+  /** Set to "true" to dual-write ledger entries during Phase 2 rollout. */
+  MONEY_LEDGER_ENABLED?: string;
   FIREBASE_API_KEY: string;
   FIREBASE_PROJECT_ID: string;
   FIREBASE_CLIENT_EMAIL: string;
@@ -15,7 +17,8 @@ export interface TierData {
   description: string;
   price: number;
   priceUSD?: number;
-  currency?: "RWF" | "USD";
+  prices?: Partial<Record<"RWF" | "USD", number>>;
+  currency?: string;
   interval: "monthly" | "yearly";
   benefits: string[];
   isActive: boolean;

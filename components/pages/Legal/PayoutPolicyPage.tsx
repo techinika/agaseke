@@ -15,6 +15,7 @@ import Footer from "@/components/parts/Footer";
 import { db } from "@/db/firebase";
 import { collection, getDocs } from "firebase/firestore";
 import { getCurrencySymbol } from "@/types/currency";
+import { isPayoutCurrency } from "@/lib/payouts/currency";
 
 interface CurrencyData {
   code: string;
@@ -42,7 +43,11 @@ export default function PayoutPolicy() {
     fetch();
   }, []);
 
-  const defaultThreshold = currencies.find((c) => c.code === "RWF")?.payoutThreshold || 10000;
+  const payoutCurrencies = currencies.filter(
+    (c) => isPayoutCurrency(c.code) && c.payoutThreshold > 0,
+  );
+  const defaultThreshold =
+    payoutCurrencies.find((c) => c.code === "RWF")?.payoutThreshold ?? null;
 
   return (
     <div className="min-h-screen bg-card text-foreground pb-20">
@@ -82,11 +87,13 @@ export default function PayoutPolicy() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground">
                   <div className="w-2 h-2 bg-green-500 rounded-full" />
-                  Minimum Payout Threshold: {defaultThreshold.toLocaleString()} {getCurrencySymbol("RWF")}
+                  {defaultThreshold === null
+                    ? "Payout thresholds are being configured."
+                    : `Minimum Payout Threshold: ${defaultThreshold.toLocaleString()} ${getCurrencySymbol("RWF")}`}
                 </div>
-                {currencies.length > 0 && (
+                {payoutCurrencies.filter((c) => c.code !== "RWF").length > 0 && (
                   <div className="flex flex-wrap gap-2 pt-2">
-                    {currencies.filter((c) => c.code !== "RWF").map((c) => (
+                    {payoutCurrencies.filter((c) => c.code !== "RWF").map((c) => (
                       <span
                         key={c.code}
                         className="text-[11px] bg-muted px-2.5 py-1 rounded-full font-bold text-muted-foreground"

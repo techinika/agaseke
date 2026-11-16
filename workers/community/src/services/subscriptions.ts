@@ -1,7 +1,9 @@
 import type { Env, SubscribeRequest, CallbackPayload } from "../types";
-import { firestoreSet, firestoreQueryAll, firestorePost, convertToFields, convertFromFields, firestoreGet, firestoreIncrement } from "../firestore";
+import { firestoreSet, firestoreQueryAll, convertToFields, convertFromFields, firestoreGet, firestoreApplyPayment } from "../firestore";
 import { logActivity } from "../logger";
 import { createNotification } from "../adminNotifications";
+import { currencyNumberField, roundCurrencyAmount } from "../money/amount";
+import { buildPaymentLedger, isMoneyLedgerEnabled, ledgerMarkerFields } from "../money/ledger";
 import { addChatMember, updateChatMemberStatus } from "./members";
 
 function generateId(): string {
@@ -301,7 +303,7 @@ export async function handlePaymentCallback(
   paymentMethod: "momo" | "card",
   platformShare = 0,
   creatorShare = 0,
-  referralShare = 0
+  referralShare = 0,
 ): Promise<void> {
   const subscriptionId = txData.communitySubscriptionId as string;
   if (!subscriptionId) {
@@ -315,9 +317,7 @@ export async function handlePaymentCallback(
     return;
   }
 
-  const fields = doc.fields as Record<string, unknown>;
-  const sub = convertFromFields(fields);
-
+  const sub = convertFromFields(doc.fields as Record<string, unknown>);
   if (sub.status === "active") return;
 
   const now = new Date().toISOString();
@@ -328,77 +328,146 @@ export async function handlePaymentCallback(
     periodEnd.setMonth(periodEnd.getMonth() + 1);
   }
 
-  await firestoreSet(env, `communitySubscriptions/${subscriptionId}`, convertToFields({
-    ...sub,
-    status: "active",
-    currentPeriodStart: now,
-    currentPeriodEnd: periodEnd.toISOString(),
-    expiresAt: periodEnd.toISOString(),
-    lastPaymentRef: paymentRef,
-    lastPaymentAt: now,
-    renewedAt: now,
-    updatedAt: now,
-  }));
-
   const currency = (txData.currency as string) || "RWF";
-  const isUSD = currency === "USD";
-  const payoutField = isUSD ? "pendingPayoutUSD" : "pendingPayout";
-  const earningsField = isUSD ? "totalEarningsUSD" : "totalEarnings";
+  const payoutField = currency === "RWF" ? "pendingPayout" : `pendingPayout${currency}`;
+  const earningsField = currency === "RWF" ? "totalEarnings" : `totalEarnings${currency}`;
+  const platformAmount = roundCurrencyAmount(platformShare, currency);
+  const creatorAmount = roundCurrencyAmount(creatorShare, currency);
+  const referralAmount = roundCurrencyAmount(referralShare, currency);
+  const safeRef = paymentRef.replace(/[^A-Za-z0-9_-]/g, "_");
+  const includeReferral = referralShare > 0 && !!txData.referralUid;
 
-  await firestorePost(env, "platformIncome", {
-    fields: convertToFields({
-      amount: Math.round(platformShare),
-      txRef: paymentRef,
-      reason: "community_subscription",
-      createdAt: now,
-    }),
-  });
+  const documents: Array<{ path: string; fields: Record<string, unknown> }> = [
+    {
+      path: `platformIncome/${safeRef}_platform`,
+      fields: convertToFields({
+        amount: platformAmount,
+        txRef: paymentRef,
+        reason: "community_subscription",
+        createdAt: now,
+      }),
+    },
+    {
+      path: `creatorIncome/${safeRef}_creator`,
+      fields: convertToFields({
+        creatorUid: txData.creatorUid as string,
+        amount: creatorAmount,
+        txRef: paymentRef,
+        reason: "community_subscription",
+        createdAt: now,
+      }),
+    },
+  ];
 
-  await firestorePost(env, "creatorIncome", {
-    fields: convertToFields({
-      creatorUid: txData.creatorUid as string,
-      amount: Math.round(creatorShare),
-      txRef: paymentRef,
-      reason: "community_subscription",
-      createdAt: now,
-    }),
-  });
+  const increments: Array<{ path: string; fields: Record<string, number> }> = [
+    {
+      path: `creators/${txData.creatorId}`,
+      fields: { [earningsField]: creatorAmount, [payoutField]: creatorAmount },
+    },
+  ];
 
-  await firestoreIncrement(env, `creators/${txData.creatorId}`, {
-    [earningsField]: Math.round(creatorShare),
-    [payoutField]: Math.round(creatorShare),
-  });
-
-  if (referralShare > 0 && txData.referralUid) {
-    await firestorePost(env, "creatorIncome", {
+  if (includeReferral) {
+    documents.push({
+      path: `creatorIncome/${safeRef}_referral`,
       fields: convertToFields({
         creatorUid: txData.referralUid as string,
-        amount: Math.round(referralShare),
+        amount: referralAmount,
         txRef: paymentRef,
         reason: "referral_commission",
         createdAt: now,
       }),
     });
 
-    await firestoreIncrement(env, `creators/${txData.referralId}`, {
-      [earningsField]: Math.round(referralShare),
-      [payoutField]: Math.round(referralShare),
+    increments.push({
+      path: `creators/${txData.referralId}`,
+      fields: { [earningsField]: referralAmount, [payoutField]: referralAmount },
     });
   }
 
+  const ledger = isMoneyLedgerEnabled(env)
+    ? buildPaymentLedger({
+        paymentRef,
+        source: "community",
+        currency,
+        totalAmount,
+        creatorUid: txData.creatorUid as string,
+        creatorHandle: txData.creatorId as string,
+        creatorShare: creatorAmount,
+        platformShare: platformAmount,
+        referralShare: includeReferral ? referralAmount : 0,
+        referralUid: includeReferral
+          ? (txData.referralUid as string)
+          : undefined,
+        referralHandle: includeReferral
+          ? (txData.referralId as string)
+          : undefined,
+        createdAt: now,
+      })
+    : undefined;
+
+  const credit = await firestoreApplyPayment(
+    env,
+    paymentRef,
+    increments,
+    {
+      txRef: { stringValue: paymentRef },
+      worker: { stringValue: "community" },
+      creatorId: { stringValue: txData.creatorId as string },
+      creatorShare: currencyNumberField(creatorAmount, currency),
+      totalAmount: currencyNumberField(totalAmount, currency),
+      currency: { stringValue: currency },
+      status: { stringValue: "applied" },
+      appliedAt: { timestampValue: now },
+      ...(ledger ? ledgerMarkerFields(ledger) : {}),
+    },
+    { documents, ledger },
+  );
+
+  if (credit === "failed") {
+    throw new Error(`Community payment commit failed for ${paymentRef}`);
+  }
+
+  await firestoreSet(
+    env,
+    `communitySubscriptions/${subscriptionId}`,
+    convertToFields({
+      ...sub,
+      status: "active",
+      currentPeriodStart: now,
+      currentPeriodEnd: periodEnd.toISOString(),
+      expiresAt: periodEnd.toISOString(),
+      lastPaymentRef: paymentRef,
+      lastPaymentAt: now,
+      renewedAt: now,
+      updatedAt: now,
+    }),
+  );
+
   const profileDoc = await firestoreGet(env, `profiles/${sub.userId}`);
   const userName = profileDoc
-    ? ((convertFromFields(profileDoc.fields as Record<string, unknown>).displayName as string) || (sub.userEmail as string) || "")
+    ? (convertFromFields(profileDoc.fields as Record<string, unknown>).displayName as string) ||
+      (sub.userEmail as string) ||
+      ""
     : (sub.userEmail as string) || "";
 
-  await addChatMember(env, sub.creatorHandle as string, sub.tierId as string, sub.userId as string, userName, "active", sub.tierName as string);
+  await addChatMember(
+    env,
+    sub.creatorHandle as string,
+    sub.tierId as string,
+    sub.userId as string,
+    userName,
+    "active",
+    sub.tierName as string,
+  );
 
   await logActivity(env, "info", "community", `Subscription ${subscriptionId} activated`, {
     paymentRef,
     amount: totalAmount,
     tierId: sub.tierId,
-    creatorShare,
-    platformShare,
+    creatorShare: creatorAmount,
+    platformShare: platformAmount,
+    credit,
+    paymentMethod,
   });
 }
 

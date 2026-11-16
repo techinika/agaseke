@@ -1,5 +1,13 @@
 import type { Env, InitRequest, TransactionType } from "../types";
 import { calculateRevenue, calculateStoreRevenue } from "../revenue";
+import {
+  getCurrencyDefinition,
+  isCurrencyCode,
+  type CurrencyCode,
+} from "../money/registry.generated";
+import { hasCurrencyPrecision, toMinorUnits, fromMinorUnits } from "../money/amount";
+import { assertMethodSupportsCurrency } from "../money/rails";
+import { FxError, isQuoteUsable, type FxQuote } from "../money/fx";
 
 /**
  * Server-authoritative payment derivation (AGA-PAY-002 / A1).
@@ -67,11 +75,26 @@ export const FORBIDDEN_REQUEST_FIELDS = [
   "pesapal_tracking_id",
 ] as const;
 
-const DEFAULT_MIN_SUPPORT: Record<string, number> = { RWF: 100, USD: 1 };
-const DEFAULT_MAX_SUPPORT: Record<string, number> = {
-  RWF: 10_000_000,
-  USD: 10_000,
+const DEFAULT_MIN_SUPPORT_MAJOR = 1;
+const DEFAULT_MAX_SUPPORT_MAJOR: Record<number, number> = {
+  0: 10_000_000,
+  2: 100_000,
+  3: 100_000,
 };
+
+export interface ResolvedPaymentQuote {
+  id: string;
+  purpose: "checkout" | "withdrawal";
+  fromCurrency: CurrencyCode;
+  toCurrency: CurrencyCode;
+  sourceAmountMinor: number;
+  targetAmountMinor: number;
+  rate: number;
+  spreadBps: number;
+  rateSource: string;
+  rateTimestamp: string;
+  expiresAt: string;
+}
 
 export interface ResolvedPayment {
   type: TransactionType;
@@ -104,6 +127,12 @@ export interface ResolvedPayment {
   attendeeName?: string;
   attendeeEmail?: string;
   attendeePhoto?: string;
+  fx?: ResolvedPaymentQuote;
+}
+
+export interface ResolvePaymentOptions {
+  /** A locked checkout quote. Without it, cross-currency item charges are rejected. */
+  quote?: ResolvedPaymentQuote | null;
 }
 
 function str(value: unknown): string {
@@ -115,24 +144,94 @@ function num(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function resolveStoredPrice(
+  record: Record<string, unknown>,
+  currency: string,
+  rwfField: string,
+  usdField: string,
+): number {
+  const prices = record.prices;
+  if (prices && typeof prices === "object") {
+    return num((prices as Record<string, unknown>)[currency]);
+  }
+  if (currency === "USD") return num(record[usdField]);
+  if (currency === "RWF") return num(record[rwfField]);
+  return 0;
+}
+
 function hasField(body: Record<string, unknown>, field: string): boolean {
   return Object.prototype.hasOwnProperty.call(body, field);
 }
 
 function roundMoney(value: number, currency: string): number {
-  if (currency === "RWF") return Math.round(value);
-  return Math.round(value * 100) / 100;
-}
-
-function normalizeCurrency(raw: unknown, fallback: unknown): string {
-  const currency = (str(raw) || str(fallback) || "RWF").toUpperCase();
-  if (currency !== "RWF" && currency !== "USD") {
+  if (!isCurrencyCode(currency)) {
     throw new PaymentRequestError(
       "UNSUPPORTED_CURRENCY",
       `Unsupported currency: ${currency}`,
     );
   }
+  const factor = 10 ** getCurrencyDefinition(currency).minorUnit;
+  return Math.round(value * factor) / factor;
+}
+
+/**
+ * Currencies that had no explicit Firestore policy before the registry existed
+ * remain enabled. Every other code needs a `currencies/{code}` document so a
+ * catalog entry alone can never start accepting money.
+ */
+const LEGACY_ENABLED_CURRENCIES: readonly CurrencyCode[] = ["RWF", "USD"];
+
+function normalizeCurrency(raw: unknown, fallback: unknown): CurrencyCode {
+  const value = (str(raw) || str(fallback)).toUpperCase();
+  if (!value) {
+    throw new PaymentRequestError(
+      "MISSING_CURRENCY",
+      "A currency is required; it is never assumed to be RWF",
+    );
+  }
+  if (!isCurrencyCode(value)) {
+    throw new PaymentRequestError(
+      "UNSUPPORTED_CURRENCY",
+      `Unsupported currency: ${value}`,
+    );
+  }
+  return value;
+}
+
+async function resolveCurrency(
+  repo: PaymentRepository,
+  raw: unknown,
+  fallback: unknown,
+): Promise<CurrencyCode> {
+  const currency = normalizeCurrency(raw, fallback);
+  const docs = await repo.query("currencies", "code", currency, 1);
+  const policy = docs[0];
+
+  if (policy?.enabled === false) {
+    throw new PaymentRequestError(
+      "CURRENCY_DISABLED",
+      `${currency} payments are currently disabled`,
+    );
+  }
+
+  if (!policy && !LEGACY_ENABLED_CURRENCIES.includes(currency)) {
+    throw new PaymentRequestError(
+      "CURRENCY_NOT_CONFIGURED",
+      `${currency} is not configured for payments`,
+    );
+  }
+
   return currency;
+}
+
+function assertRequestedCurrency(raw: unknown, storedCurrency: string): void {
+  const requested = str(raw).toUpperCase();
+  if (requested && requested !== storedCurrency) {
+    throw new PaymentRequestError(
+      "CURRENCY_MISMATCH",
+      `This item is priced in ${storedCurrency}`,
+    );
+  }
 }
 
 function parsePositiveAmount(raw: unknown, currency: string, field: string): number {
@@ -143,10 +242,14 @@ function parsePositiveAmount(raw: unknown, currency: string, field: string): num
       `${field} must be a positive number`,
     );
   }
-  if (currency === "RWF" && !Number.isInteger(amount)) {
+  if (!hasCurrencyPrecision(amount, currency)) {
+    const currencyCode = currency as CurrencyCode;
+    const places = getCurrencyDefinition(currencyCode).minorUnit;
     throw new PaymentRequestError(
       "INVALID_AMOUNT",
-      `${field} must be a whole number of RWF`,
+      places === 0
+        ? `${field} must be a whole number of ${currency}`
+        : `${field} supports at most ${places} decimal places`,
     );
   }
   return roundMoney(amount, currency);
@@ -242,15 +345,23 @@ async function getMinSupportAmount(
 ): Promise<number> {
   const docs = await repo.query("currencies", "code", currency, 1);
   const configured = num(docs[0]?.minSupportAmount);
-  return configured > 0 ? configured : DEFAULT_MIN_SUPPORT[currency];
+  return configured > 0 ? configured : DEFAULT_MIN_SUPPORT_MAJOR;
 }
 
 function getMaxSupportAmount(env: Env, currency: string): number {
+  const code = currency as CurrencyCode;
   const configured =
     currency === "USD"
       ? num(env.MAX_SUPPORT_AMOUNT_USD)
-      : num(env.MAX_SUPPORT_AMOUNT_RWF);
-  return configured > 0 ? configured : DEFAULT_MAX_SUPPORT[currency];
+      : currency === "RWF"
+        ? num(env.MAX_SUPPORT_AMOUNT_RWF)
+        : num(
+            (env as unknown as Record<string, unknown>)[
+              `MAX_SUPPORT_AMOUNT_${currency}`
+            ],
+          );
+  if (configured > 0) return configured;
+  return DEFAULT_MAX_SUPPORT_MAJOR[getCurrencyDefinition(code).minorUnit] ?? 100_000;
 }
 
 async function resolveReferral(
@@ -356,12 +467,144 @@ function withRevenue(
   };
 }
 
+
+function allocateMinor(totalMinor: number, weights: readonly number[]): number[] {
+  const weightSum = weights.reduce((sum, weight) => sum + weight, 0);
+  if (weightSum <= 0) {
+    throw new PaymentRequestError(
+      "INVALID_QUOTE",
+      "Quoted payment has no revenue shares",
+    );
+  }
+
+  const totalBig = BigInt(totalMinor);
+  const sumBig = BigInt(weightSum);
+  const shares = weights.map((weight) => (totalBig * BigInt(weight)) / sumBig);
+  const remainders = weights.map((weight) => (totalBig * BigInt(weight)) % sumBig);
+  const unallocated = totalBig - shares.reduce((sum, share) => sum + share, BigInt(0));
+  const order = weights
+    .map((_, index) => index)
+    .sort((left, right) => {
+      const difference = remainders[right] - remainders[left];
+      if (difference > BigInt(0)) return 1;
+      if (difference < BigInt(0)) return -1;
+      return left - right;
+    });
+
+  for (let index = 0; index < Number(unallocated); index += 1) {
+    shares[order[index]] += BigInt(1);
+  }
+
+  return shares.map((share) => Number(share));
+}
+
+function quoteMetadata(quote: ResolvedPaymentQuote): ResolvedPaymentQuote {
+  return {
+    id: quote.id,
+    purpose: quote.purpose,
+    fromCurrency: quote.fromCurrency,
+    toCurrency: quote.toCurrency,
+    sourceAmountMinor: quote.sourceAmountMinor,
+    targetAmountMinor: quote.targetAmountMinor,
+    rate: quote.rate,
+    spreadBps: quote.spreadBps,
+    rateSource: quote.rateSource,
+    rateTimestamp: quote.rateTimestamp,
+    expiresAt: quote.expiresAt,
+  };
+}
+
+/**
+ * Apply a locked checkout quote to a native-currency payment. Fees are
+ * reallocated in integer minor units of the charge currency so the parts sum
+ * exactly to the quoted total.
+ */
+function applyCheckoutQuote(
+  resolved: ResolvedPayment,
+  quote: ResolvedPaymentQuote,
+  requestedCurrency: unknown,
+  env: Env,
+): ResolvedPayment {
+  if (quote.purpose !== "checkout") {
+    throw new PaymentRequestError("INVALID_QUOTE", "Quote is not a checkout quote");
+  }
+  if (!isQuoteUsable(quote as unknown as FxQuote)) {
+    throw new PaymentRequestError("QUOTE_EXPIRED", "This quote has expired");
+  }
+  if (quote.fromCurrency !== resolved.currency) {
+    throw new PaymentRequestError(
+      "QUOTE_MISMATCH",
+      `Quote is for ${quote.fromCurrency}, but this item is priced in ${resolved.currency}`,
+    );
+  }
+  const requested = str(requestedCurrency).toUpperCase();
+  if (requested && requested !== quote.toCurrency) {
+    throw new PaymentRequestError(
+      "QUOTE_MISMATCH",
+      `Quote charges ${quote.toCurrency}, not ${requested}`,
+    );
+  }
+
+  try {
+    const sourceMinor = toMinorUnits(resolved.totalAmount, resolved.currency);
+    if (sourceMinor !== quote.sourceAmountMinor) {
+      throw new PaymentRequestError(
+        "QUOTE_MISMATCH",
+        "The item amount changed after the quote was created",
+      );
+    }
+  } catch (error) {
+    if (error instanceof PaymentRequestError) throw error;
+    throw new PaymentRequestError("INVALID_QUOTE", "Quote amount is invalid");
+  }
+
+  const weights = [
+    toMinorUnits(resolved.platformFee, resolved.currency),
+    toMinorUnits(resolved.creatorEarnings, resolved.currency),
+    quote.fromCurrency === quote.toCurrency
+      ? 0
+      : toMinorUnits(resolved.referralEarnings, resolved.currency),
+  ];
+  const [platformMinor, creatorMinor, referralMinor] = allocateMinor(
+    quote.targetAmountMinor,
+    weights,
+  );
+  const targetCurrency = quote.toCurrency;
+  const totalAmount = fromMinorUnits(quote.targetAmountMinor, targetCurrency);
+
+  return {
+    ...resolved,
+    currency: targetCurrency,
+    totalAmount,
+    platformFee: fromMinorUnits(platformMinor, targetCurrency),
+    creatorEarnings: fromMinorUnits(creatorMinor, targetCurrency),
+    referralEarnings: fromMinorUnits(referralMinor, targetCurrency),
+    processorCost: roundMoney(
+      totalAmount * (num(env.PROCESSOR_FEE_PERCENT) / 100),
+      targetCurrency,
+    ),
+    fx: quoteMetadata(quote),
+  };
+}
+
+function finalizePayment(
+  resolved: ResolvedPayment,
+  quote: ResolvedPaymentQuote | null | undefined,
+  requestedCurrency: unknown,
+  env: Env,
+): ResolvedPayment {
+  if (!quote) return resolved;
+  return applyCheckoutQuote(resolved, quote, requestedCurrency, env);
+}
+
 export async function resolvePayment(
   env: Env,
   body: InitRequest,
   uid: string,
   repo: PaymentRepository,
+  options: ResolvePaymentOptions = {},
 ): Promise<ResolvedPayment> {
+  const quote = options.quote ?? null;
   const raw = body as unknown as Record<string, unknown>;
   const type = resolveRequestedType(raw);
   assertNoTrustedFields(raw, type);
@@ -387,7 +630,13 @@ export async function resolvePayment(
   const referral = await resolveReferral(repo, creatorUid, creatorHandle);
 
   if (FREE_AMOUNT_TYPES.includes(type)) {
-    const currency = normalizeCurrency(body.currency, creator.currency);
+    if (quote) {
+      throw new PaymentRequestError(
+        "QUOTE_NOT_APPLICABLE",
+        "Free-amount support is charged directly in the supporter's currency",
+      );
+    }
+    const currency = await resolveCurrency(repo, body.currency, creator.currency);
     const amount = parsePositiveAmount(body.amount, currency, "amount");
     const min = await getMinSupportAmount(repo, currency);
     const max = getMaxSupportAmount(env, currency);
@@ -449,11 +698,9 @@ export async function resolvePayment(
       );
     }
 
-    const currency = normalizeCurrency(body.currency, product.currency);
-    const price =
-      currency === "USD"
-        ? num(product.priceUSD ?? product.price)
-        : num(product.price);
+    const currency = await resolveCurrency(repo, product.currency, creator.currency);
+    if (!quote) assertRequestedCurrency(body.currency, currency);
+    const price = resolveStoredPrice(product, currency, "price", "priceUSD");
     if (price <= 0) {
       throw new PaymentRequestError(
         "INVALID_PRODUCT_PRICE",
@@ -497,7 +744,7 @@ export async function resolvePayment(
       );
     }
 
-    return {
+    return finalizePayment({
       type,
       creatorHandle,
       creatorUid,
@@ -526,7 +773,7 @@ export async function resolvePayment(
       discount: discount > 0 ? roundMoney(discount, currency) : undefined,
       buyerName: str(body.buyerName),
       buyerEmail: str(body.buyerEmail) || str(body.email),
-    };
+    }, quote, body.currency, env);
   }
 
   if (type === "booking") {
@@ -572,26 +819,31 @@ export async function resolvePayment(
       );
     }
 
-    const currency = normalizeCurrency(booking.currency, creator.currency);
+    const currency = await resolveCurrency(repo, booking.currency, creator.currency);
     const amount = parsePositiveAmount(
       booking.paymentAmount,
       currency,
       "booking.paymentAmount",
     );
 
-    return withRevenue(
-      {
-        type,
-        creatorHandle,
-        creatorUid,
-        currency,
-        totalAmount: amount,
-        ...referral,
-        bookingId,
-        buyerName: str(body.buyerName) || str(booking.bookerName),
-        buyerEmail:
-          str(body.buyerEmail) || str(body.email) || str(booking.bookerEmail),
-      },
+    return finalizePayment(
+      withRevenue(
+        {
+          type,
+          creatorHandle,
+          creatorUid,
+          currency,
+          totalAmount: amount,
+          ...referral,
+          bookingId,
+          buyerName: str(body.buyerName) || str(booking.bookerName),
+          buyerEmail:
+            str(body.buyerEmail) || str(body.email) || str(booking.bookerEmail),
+        },
+        env,
+      ),
+      quote,
+      body.currency,
       env,
     );
   }
@@ -629,11 +881,14 @@ export async function resolvePayment(
       );
     }
 
-    const currency = normalizeCurrency(body.currency, gathering.currency);
-    const price =
-      currency === "USD"
-        ? num(gathering.priceUSD ?? gathering.ticketPrice)
-        : num(gathering.ticketPrice);
+    const currency = await resolveCurrency(repo, gathering.currency, creator.currency);
+    if (!quote) assertRequestedCurrency(body.currency, currency);
+    const price = resolveStoredPrice(
+      gathering,
+      currency,
+      "ticketPrice",
+      "priceUSD",
+    );
     if (price <= 0) {
       throw new PaymentRequestError(
         "GATHERING_NOT_PAYABLE",
@@ -641,19 +896,24 @@ export async function resolvePayment(
       );
     }
 
-    return withRevenue(
-      {
-        type,
-        creatorHandle,
-        creatorUid,
-        currency,
-        totalAmount: roundMoney(price, currency),
-        ...referral,
-        gatheringId,
-        attendeeName: str(body.attendeeName),
-        attendeeEmail: str(body.attendeeEmail) || str(body.email),
-        attendeePhoto: str(body.attendeePhoto),
-      },
+    return finalizePayment(
+      withRevenue(
+        {
+          type,
+          creatorHandle,
+          creatorUid,
+          currency,
+          totalAmount: roundMoney(price, currency),
+          ...referral,
+          gatheringId,
+          attendeeName: str(body.attendeeName),
+          attendeeEmail: str(body.attendeeEmail) || str(body.email),
+          attendeePhoto: str(body.attendeePhoto),
+        },
+        env,
+      ),
+      quote,
+      body.currency,
       env,
     );
   }
@@ -678,9 +938,9 @@ export async function resolvePayment(
     );
   }
 
-  const currency = normalizeCurrency(body.currency, tier.currency);
-  const price =
-    currency === "USD" ? num(tier.priceUSD ?? tier.price) : num(tier.price);
+  const currency = await resolveCurrency(repo, tier.currency, creator.currency);
+  if (!quote) assertRequestedCurrency(body.currency, currency);
+  const price = resolveStoredPrice(tier, currency, "price", "priceUSD");
   if (price <= 0) {
     throw new PaymentRequestError(
       "INVALID_AMOUNT",
@@ -724,19 +984,24 @@ export async function resolvePayment(
     );
   }
 
-  return withRevenue(
-    {
-      type,
-      creatorHandle,
-      creatorUid,
-      currency,
-      totalAmount: roundMoney(price, currency),
-      ...referral,
-      communityTierId: tierId,
-      communityInterval: interval,
-      communitySubscriptionId: subscriptionId,
-      buyerEmail: str(body.buyerEmail) || str(body.email),
-    },
+  return finalizePayment(
+    withRevenue(
+      {
+        type,
+        creatorHandle,
+        creatorUid,
+        currency,
+        totalAmount: roundMoney(price, currency),
+        ...referral,
+        communityTierId: tierId,
+        communityInterval: interval,
+        communitySubscriptionId: subscriptionId,
+        buyerEmail: str(body.buyerEmail) || str(body.email),
+      },
+      env,
+    ),
+    quote,
+    body.currency,
     env,
   );
 }

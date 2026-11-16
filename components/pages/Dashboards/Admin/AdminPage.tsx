@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState, useMemo } from "react";
 import { sendCommsEmail } from "@/lib/commsService";
-import { db } from "@/db/firebase";
+import { auth, db } from "@/db/firebase";
 import {
   collection,
   getDocs,
@@ -17,9 +17,7 @@ import {
   updateDoc,
   addDoc,
   Timestamp,
-  runTransaction,
   serverTimestamp,
-  increment,
 } from "firebase/firestore";
 import {
   TrendingUp,
@@ -43,6 +41,7 @@ import { StatCard } from "@/components/parts/dashboard/StatCard";
 import { RankRow } from "@/components/parts/dashboard/RankRow";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/logger";
+import type { PayoutCurrency } from "@/lib/payouts/currency";
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
@@ -800,45 +799,58 @@ export default function AdminDashboard() {
 
     try {
       if (category === "withdrawal") {
-        if (type === "approve") {
-          await runTransaction(db, async (transaction) => {
-            transaction.update(doc(db, "withdrawRequests", target.id), {
-              status: "completed",
-              updatedAt: new Date(),
-            });
+        if (!auth.currentUser) {
+          throw new Error("You must be signed in to review withdrawals");
+        }
 
-            const payoutRef = doc(collection(db, "payouts"));
-            transaction.set(payoutRef, {
-              withdrawalRequestId: target.id,
-              creatorId: target.handle,
-              creatorUid: target.creatorId,
-              amount: target.amount,
-              status: "completed",
-              approvedAt: serverTimestamp(),
-              method: target.method || "MoMo",
-              accountNumber: target.accountNumber || "",
-              createdAt: serverTimestamp(),
-            });
-
-            const creatorRef = doc(db, "creators", target.handle);
-            transaction.update(creatorRef, {
-              pendingPayout: increment(-target.amount),
-            });
-          });
-
-          await sendCommsEmail("payout_processed", {
-            creatorEmail: userEmail,
-            creatorName: target.creatorName,
-            amount: target.amount,
+        const token = await auth.currentUser.getIdToken();
+        const response = await fetch("/api/admin/payouts/withdrawals", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            requestId: target.id,
+            action: type,
             method: target.method,
             accountNumber: target.accountNumber,
+          }),
+        });
+        const payload = (await response.json().catch(() => ({}))) as {
+          error?: string;
+          amount?: number;
+          currency?: PayoutCurrency;
+          method?: string;
+          accountNumber?: string;
+          creatorName?: string;
+        };
+
+        if (!response.ok) {
+          throw new Error(payload.error || "Withdrawal action failed");
+        }
+
+        const approvedAmount = Number(payload.amount ?? target.amount);
+        const approvedCurrency =
+          payload.currency || (target.currency as PayoutCurrency) || "RWF";
+        const approvedMethod = String(payload.method || target.method || "MoMo");
+        const approvedAccount = String(
+          payload.accountNumber || target.accountNumber || "",
+        );
+        const creatorName = String(
+          payload.creatorName || target.creatorName || "",
+        );
+
+        if (type === "approve") {
+          await sendCommsEmail("payout_processed", {
+            creatorEmail: userEmail,
+            creatorName,
+            amount: approvedAmount,
+            currency: approvedCurrency,
+            method: approvedMethod,
+            accountNumber: approvedAccount,
           });
         } else {
-          await updateDoc(doc(db, "withdrawRequests", target.id), {
-            status: "rejected",
-            updatedAt: new Date(),
-          });
-
           const adminsSnap = await getDocs(
             query(collection(db, "profiles"), where("isAdmin", "==", true)),
           );
@@ -847,7 +859,7 @@ export default function AdminDashboard() {
               userId: adminDoc.id,
               type: category,
               title: "Withdrawal Rejected",
-              message: `Withdrawal of ${target.amount?.toLocaleString()} ${target.currency || "RWF"} for ${target.creatorName} was rejected`,
+              message: `Withdrawal of ${approvedAmount.toLocaleString()} ${approvedCurrency} for ${creatorName} was rejected`,
               read: false,
               createdAt: serverTimestamp(),
             };
@@ -914,7 +926,7 @@ export default function AdminDashboard() {
       fetchData();
     } catch (error) {
       console.error("Action failed:", error);
-      toast.error("Action failed");
+      toast.error(error instanceof Error ? error.message : "Action failed");
     } finally {
       setProcessing(false);
     }
@@ -1362,6 +1374,7 @@ export default function AdminDashboard() {
                       </p>
                       <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
                         {req.method} • {req.accountNumber}
+                        {req.rail ? ` • ${String(req.rail).replace("_", " ")}` : ""}
                       </p>
                     </div>
                     <div className="flex gap-2">

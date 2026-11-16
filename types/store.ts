@@ -1,5 +1,13 @@
- 
 import { Timestamp } from "firebase/firestore";
+import type { PriceMap } from "@/lib/storePrices";
+
+export {
+  getProductCurrency,
+  getProductPrice,
+  getProductPrices,
+  type PriceMap,
+  type StoreCurrency,
+} from "@/lib/storePrices";
 
 export type ProductType = "digital" | "physical";
 
@@ -11,7 +19,8 @@ export interface Product {
   description: string;
   price: number;
   priceUSD?: number;
-  currency?: "RWF" | "USD";
+  prices?: PriceMap;
+  currency?: import("@/lib/money/registry.generated").CurrencyCode;
   type: ProductType;
   stock: number;
   imageUrl?: string;
@@ -72,15 +81,6 @@ export interface ShippingAddress {
   address: string;
   city: string;
   country: string;
-}
-
-export function getProductCurrency(product: { currency?: string }): "RWF" | "USD" {
-  return (product.currency as "RWF" | "USD") || "RWF";
-}
-
-export function getProductPrice(product: { price: number; priceUSD?: number; currency?: string }): number {
-  const c = getProductCurrency(product);
-  return c === "USD" ? (product.priceUSD ?? product.price) : product.price;
 }
 
 export interface Coupon {

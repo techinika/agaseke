@@ -125,3 +125,25 @@ They are recorded here only; no rules were edited.
   they should be readable by that creator and by server code only, and writable
   by admins via a server endpoint. Do not let creators enable paid-flow changes
   for themselves until the flow is signed off.
+
+### Multi-currency money collections (planned, Phase 2)
+
+`rules.txt` exists but does not cover these collections. Add rules before the
+Phase 2 dual-write is deployed; do not enable any new currency before the P0
+price and payout fixes in `docs/MONEY_AUDIT.md` are merged.
+
+- `ledgerEntries`, `fxRates`, `fxRateHistory`, `fxQuotes`,
+  `moneyMigrationRuns`: server-only; deny all client reads and writes.
+- `creatorBalances`: a creator may read their own balance only; never write.
+  Balance documents must not be writable by creators.
+- `withdrawRequests`: server-only; clients must use
+  `POST /api/payouts/withdraw` and must never create, update status or approve.
+- `payouts`: server/admin only; no client writes.
+- `paymentApplications`: deny all client access; also correct any docs that
+  still call this collection `paymentCredits`.
+- `platformIncome`/`creatorIncome`: server-only; clients must not forge income
+  records.
+- `currencies`/`countryCurrencies`: admin-only writes; `minorUnit` must match
+  `shared/money/currencies.json` (enforce in server validation too).
+- Keep legacy fields protected during dual-write. Do not relax rules for the
+  migration, and do not add personal or payment data to public reads.

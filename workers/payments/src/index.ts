@@ -15,6 +15,11 @@ import { retryTransaction, RetryError } from "./services/retry";
 import { logActivity } from "./logger";
 import { checkRateLimit } from "./rateLimit";
 import { drainPending, flushPending } from "./audit";
+import { refreshFxRates } from "./services/fxRates";
+import { getAvailableMethods } from "./money/rails";
+import { createCheckoutQuote } from "./services/quotes";
+import { createPaymentRepository } from "./services/repository";
+import { isCurrencyCode } from "./money/registry.generated";
 import type { ExecutionContext } from "@cloudflare/workers-types";
 
 function json(data: unknown, status = 200, origin?: string | null): Response {
@@ -71,6 +76,29 @@ export default {
           return json({ status: "ok" }, 200, origin);
         }
 
+        if (path === "/api/payments/methods" && request.method === "GET") {
+          const currency = (url.searchParams.get("currency") || "").toUpperCase();
+          const country = url.searchParams.get("country") || undefined;
+          if (!isCurrencyCode(currency)) {
+            return json(
+              { error: "A registered currency is required", methods: [] },
+              400,
+              origin,
+            );
+          }
+          const methods = getAvailableMethods(currency, country);
+          return json(
+            {
+              currency,
+              country: country || null,
+              supported: methods.length > 0,
+              methods,
+            },
+            200,
+            origin,
+          );
+        }
+
         if (path === "/api/payments/webhooks/paypack" && request.method === "POST") {
           const limited = isRateLimited(request, 20, 60000);
           if (limited) return limited;
@@ -116,6 +144,41 @@ export default {
 
         const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
         if (auth instanceof Response) return auth;
+
+        if (path === "/api/payments/quote" && request.method === "POST") {
+          const limited = isRateLimited(
+            request,
+            20,
+            60000,
+            `${auth.uid}:${getClientIp(request)}`,
+          );
+          if (limited) return limited;
+          const body = (await request.json()) as InitRequest;
+          const result = await createCheckoutQuote(
+            env,
+            body,
+            auth.uid,
+            createPaymentRepository(env),
+          );
+          const quote = result.quote;
+          return json(
+            {
+              quoteId: quote?.id ?? null,
+              type: result.native.type,
+              sourceCurrency: result.native.currency,
+              sourceAmount: result.sourceAmount,
+              chargeCurrency: quote?.toCurrency ?? result.native.currency,
+              chargeAmount: result.targetAmount ?? result.sourceAmount,
+              rate: quote?.rate ?? 1,
+              spreadBps: quote?.spreadBps ?? 0,
+              rateSource: quote?.rateSource ?? null,
+              rateTimestamp: quote?.rateTimestamp ?? null,
+              expiresAt: quote?.expiresAt ?? null,
+            },
+            200,
+            origin,
+          );
+        }
 
         if (path === "/api/payments/momo/initiate") {
           const limited = isRateLimited(
@@ -221,6 +284,21 @@ export default {
       }
     } catch (err) {
       console.error("[dispatch-outbox] drain failed", err);
+    }
+
+    try {
+      const fx = await refreshFxRates(env, { fetchImpl: fetch });
+      console.log("[fx-rates] refresh", {
+        skipped: fx.skipped,
+        reason: fx.reason,
+        fetchedAt: fx.snapshot?.fetchedAt,
+        source: fx.snapshot?.source,
+      });
+    } catch (err) {
+      console.error("[fx-rates] refresh failed", err);
+      await logActivity(env, "error", "payment", "FX rate refresh failed", {
+        error: err instanceof Error ? err.message : String(err),
+      }).catch(() => {});
     } finally {
       ctx.waitUntil(flushPending());
     }

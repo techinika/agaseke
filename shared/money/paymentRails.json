@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "providers": [
+    {
+      "id": "paypack",
+      "label": "Mobile Money",
+      "methods": ["momo"],
+      "currencies": ["RWF"],
+      "countries": ["RW"]
+    },
+    {
+      "id": "pesapal",
+      "label": "Bank Card",
+      "methods": ["card"],
+      "currencies": ["RWF", "USD", "KES", "UGX", "TZS"],
+      "countries": ["RW", "KE", "UG", "TZ", "US"]
+    }
+  ]
+}

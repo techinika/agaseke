@@ -18,6 +18,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Money registry check
+        run: npm run money:registry:check
+
       - name: Type check
         run: npm run typecheck
 

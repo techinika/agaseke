@@ -8,6 +8,8 @@ export type TransactionType =
   | "community";
 
 export interface Env {
+  /** Set to "true" to dual-write ledger entries during Phase 2 rollout. */
+  MONEY_LEDGER_ENABLED?: string;
   FIREBASE_API_KEY: string;
   FIREBASE_PROJECT_ID: string;
   FIREBASE_CLIENT_EMAIL: string;
@@ -33,6 +35,14 @@ export interface Env {
   INTERNAL_AUTH_SECRET: string;
   /** Percentage (0-100) of the total that the processor keeps. Default 0. */
   PROCESSOR_FEE_PERCENT?: string;
+  /** Set to "true" to refresh fxRates/latest from the configured provider. */
+  FX_RATES_ENABLED?: string;
+  FX_RATE_BASE?: string;
+  FX_RATE_REFRESH_MINUTES?: string;
+  FX_RATE_MAX_AGE_MINUTES?: string;
+  /** Spread in basis points applied to checkout and withdrawal quotes. */
+  FX_SPREAD_BPS?: string;
+  FX_QUOTE_TTL_SECONDS?: string;
   MAX_SUPPORT_AMOUNT_RWF?: string;
   MAX_SUPPORT_AMOUNT_USD?: string;
 }
@@ -71,6 +81,8 @@ export interface InitRequest {
   firstName?: string;
   lastName?: string;
   idempotencyKey?: string;
+  /** Locked FX quote created by POST /api/payments/quote. */
+  quoteId?: string;
 }
 
 export type MomoInitRequest = InitRequest;

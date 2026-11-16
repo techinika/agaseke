@@ -67,6 +67,7 @@ import {
 import { MediaAsset, MediaLink } from "@/components/parts/public/MediaAsset";
 import { usePostMediaSrc } from "@/lib/usePostMediaSrc";
 import { formatCurrency } from "@/types/currency";
+import { getPrice } from "@/lib/priceMap";
 
 interface Comment {
   id: string;
@@ -1311,9 +1312,9 @@ const searchedContentItems = searchTerm.trim()
                           <span className="text-[10px] font-bold uppercase tracking-wider text-orange-600 bg-orange-50 px-2 py-0.5 rounded">
                             Event
                           </span>
-                          {item.ticketPrice > 0 && (
+                          {getPrice(item) > 0 && (
                             <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
-                              {Number(item.ticketPrice).toLocaleString()} RWF
+                              {formatCurrency(getPrice(item), item.currency || "RWF")}
                             </span>
                           )}
                         </div>

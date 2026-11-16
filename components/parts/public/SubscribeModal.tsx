@@ -21,6 +21,7 @@ import {
   type CommunityTier,
 } from "@/lib/communityService";
 import { formatCurrency } from "@/types/currency";
+import { getPrice } from "@/lib/priceMap";
 
 interface SubscribeModalProps {
   isOpen: boolean;
@@ -85,8 +86,7 @@ export function SubscribeModal({
     };
   }, []);
 
-  const tierAmount = (t: CommunityTier) =>
-    t.currency === "USD" && t.priceUSD ? t.priceUSD : t.price;
+  const tierAmount = (t: CommunityTier) => getPrice(t);
 
   const isUSDTier = selectedTier?.currency === "USD";
 

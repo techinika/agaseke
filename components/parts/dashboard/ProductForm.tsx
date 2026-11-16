@@ -13,24 +13,23 @@ import {
 import { toast } from "sonner";
 import { uploadFile } from "@/lib/uploadService";
 import { serverTimestamp } from "firebase/firestore";
-import {
-  addDoc,
-  collection,
-} from "firebase/firestore";
+import { addDoc, collection } from "firebase/firestore";
 import { db } from "@/db/firebase";
 import { useAuth } from "@/auth/AuthContext";
 import { useRouter } from "next/navigation";
+import PriceEditor from "@/components/money/PriceEditor";
+import { buildPriceMap, getPrice, parsePriceCurrency, type PriceMap } from "@/lib/priceMap";
+import type { CurrencyCode } from "@/lib/money/registry.generated";
 
 export default function ProductForm() {
   const { creator } = useAuth();
   const router = useRouter();
-  const defaultCurrency = (creator?.currency as "RWF" | "USD") || "RWF";
+  const defaultCurrency: CurrencyCode = parsePriceCurrency(creator?.currency) || "RWF";
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    price: 0,
-    priceUSD: 0,
-    currency: defaultCurrency,
+    currency: defaultCurrency as CurrencyCode,
+    prices: {} as PriceMap,
     type: "digital" as "digital" | "physical",
     stock: 0,
     imageUrl: "",
@@ -49,6 +48,10 @@ export default function ProductForm() {
   const [newSize, setNewSize] = useState("");
   const [newBulkMin, setNewBulkMin] = useState(0);
   const [newBulkDiscount, setNewBulkDiscount] = useState(0);
+  const primaryPrice = getPrice(
+    { prices: formData.prices, currency: formData.currency },
+    formData.currency,
+  );
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -99,8 +102,10 @@ export default function ProductForm() {
 
   const handleSubmit = async () => {
     if (!creator?.uid) { toast.error("Not authenticated"); return; }
-    if (!formData.name || !formData.price) {
-      toast.error("Please fill in required fields");
+    const prices = buildPriceMap({ prices: formData.prices });
+    const primaryAmount = getPrice({ prices, currency: formData.currency }, formData.currency);
+    if (!formData.name || primaryAmount <= 0) {
+      toast.error("Set a name and a valid primary price");
       return;
     }
 
@@ -110,8 +115,10 @@ export default function ProductForm() {
         creatorId: creator.uid,
         name: formData.name,
         description: formData.description,
-        price: formData.price,
-        priceUSD: formData.currency === "USD" ? formData.priceUSD : null,
+        // Legacy compatibility fields derived from the canonical price map.
+        price: prices.RWF ?? primaryAmount,
+        priceUSD: prices.USD ?? null,
+        prices,
         currency: formData.currency,
         type: formData.type,
         active: formData.active,
@@ -236,60 +243,7 @@ export default function ProductForm() {
             />
           </div>
 
-          <div>
-            <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
-              Currency
-            </label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() =>
-                  setFormData((prev) => ({ ...prev, currency: "RWF" }))
-                }
-                className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
-                  formData.currency === "RWF"
-                    ? "bg-orange-600 text-white"
-                    : "bg-muted text-muted-foreground border border-border"
-                }`}
-              >
-                RWF
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  setFormData((prev) => ({ ...prev, currency: "USD" }))
-                }
-                className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
-                  formData.currency === "USD"
-                    ? "bg-orange-600 text-white"
-                    : "bg-muted text-muted-foreground border border-border"
-                }`}
-              >
-                USD
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
-                Price ({formData.currency}) *
-              </label>
-              <input
-                type="number"
-                value={formData.currency === "USD" ? formData.priceUSD : formData.price}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    ...(prev.currency === "USD"
-                      ? { priceUSD: parseInt(e.target.value) || 0 }
-                      : { price: parseInt(e.target.value) || 0 }),
-                  }))
-                }
-                className="w-full bg-muted p-4 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
-              />
-            </div>
-
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
                 Product Type
@@ -310,29 +264,16 @@ export default function ProductForm() {
             </div>
           </div>
 
-          {formData.currency !== defaultCurrency && (
-            <div>
-              <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
-                Price ({defaultCurrency})
-              </label>
-              <input
-                type="number"
-                value={formData.currency === "USD" ? formData.price : formData.priceUSD}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    ...(prev.currency === "USD"
-                      ? { price: parseInt(e.target.value) || 0 }
-                      : { priceUSD: parseInt(e.target.value) || 0 }),
-                  }))
-                }
-                className="w-full bg-muted p-4 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
-              />
-              <p className="text-xs text-muted-foreground mt-1.5">
-                {defaultCurrency} equivalent for local mobile money payments
-              </p>
-            </div>
-          )}
+          <div className="p-4 bg-muted/40 rounded-xl border border-border">
+            <PriceEditor
+              currency={formData.currency}
+              prices={formData.prices}
+              preferredCurrencies={[defaultCurrency, "RWF", "USD"]}
+              onChange={({ currency, prices }) =>
+                setFormData((prev) => ({ ...prev, currency, prices }))
+              }
+            />
+          </div>
 
           <div className="p-4 bg-orange-50 rounded-xl">
             <div className="flex items-center justify-between">
@@ -377,11 +318,11 @@ export default function ProductForm() {
                 </button>
               </div>
             </div>
-            {formData.price > 0 && (
+            {primaryPrice > 0 && (
               <p className="text-xs text-orange-600 mt-2">
                 {formData.platformFeePayer === "buyer"
-                  ? `Buyer pays ${(formData.price * 1.1).toLocaleString()} ${formData.currency} (price + 10%)`
-                  : `Creator receives ${(formData.price * 0.9).toLocaleString()} ${formData.currency} (price - 10%)`}
+                  ? `Buyer pays ${(primaryPrice * 1.1).toLocaleString()} ${formData.currency} (price + 10%)`
+                  : `Creator receives ${(primaryPrice * 0.9).toLocaleString()} ${formData.currency} (price - 10%)`}
               </p>
             )}
           </div>
@@ -602,7 +543,7 @@ export default function ProductForm() {
             </button>
             <button
               onClick={handleSubmit}
-              disabled={saving || !formData.name || !formData.price}
+              disabled={saving || !formData.name || primaryPrice <= 0}
               className="flex-[2] bg-foreground text-background py-4 rounded-xl font-bold text-lg hover:bg-orange-500 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {saving ? <Loader className="animate-spin" size={20} /> : null}

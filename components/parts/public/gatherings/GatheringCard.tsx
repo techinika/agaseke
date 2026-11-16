@@ -15,6 +15,7 @@ import {
 import Link from "next/link";
 import { Gathering, type EventType } from "./types";
 import { formatCurrency } from "@/types/currency";
+import { getPrice } from "@/lib/priceMap";
 
 const EVENT_TYPE_CONFIG: Record<
   string,
@@ -65,6 +66,9 @@ export function GatheringCard({
   showTicket?: boolean;
   onViewTicket?: () => void;
 }) {
+  const currency = gathering.currency === "USD" ? "USD" : "RWF";
+  const ticketAmount = getPrice(gathering, currency);
+
   return (
     <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
       <div className="flex items-start gap-4">
@@ -86,7 +90,7 @@ export function GatheringCard({
               const cfg =
                 et && EVENT_TYPE_CONFIG[et]
                   ? EVENT_TYPE_CONFIG[et]
-                  : (gathering.ticketPrice ?? 0) > 0
+                  : ticketAmount > 0
                     ? EVENT_TYPE_CONFIG.ticketed
                     : null;
               if (cfg) {
@@ -100,9 +104,9 @@ export function GatheringCard({
               }
               return null;
             })()}
-            {(gathering.ticketPrice ?? 0) > 0 && (
+            {ticketAmount > 0 && (
               <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
-                {formatCurrency(gathering.currency === "USD" && gathering.priceUSD ? gathering.priceUSD : (gathering.ticketPrice ?? 0), gathering.currency || "RWF")}
+                {formatCurrency(ticketAmount, currency)}
               </span>
             )}
           </div>
@@ -167,9 +171,8 @@ export function GatheringCard({
             <span className="text-sm text-muted-foreground">
               {gathering.capacity
                 ? `${gathering.capacity - (gathering.attendeesCount || 0)} spots left`
-                : gathering.eventType === "ticketed" ||
-                    (gathering.ticketPrice ?? 0) > 0
-                  ? `Buy ticket for ${formatCurrency(gathering.currency === "USD" && gathering.priceUSD ? gathering.priceUSD : (gathering.ticketPrice ?? 0), gathering.currency || "RWF")}`
+                : gathering.eventType === "ticketed" || ticketAmount > 0
+                  ? `Buy ticket for ${formatCurrency(ticketAmount, currency)}`
                   : gathering.eventType === "supporters" ||
                       gathering.eventType === "supporters_tiered" ||
                       (gathering.minSupportTier ?? 0) > 0
@@ -186,7 +189,7 @@ export function GatheringCard({
           >
             {rsvping ? (
               <Loader size={16} className="animate-spin" />
-            ) : (gathering.ticketPrice ?? 0) > 0 ? (
+            ) : ticketAmount > 0 ? (
               "Buy Ticket"
             ) : (
               "RSVP Now"

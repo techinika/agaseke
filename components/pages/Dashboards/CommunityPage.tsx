@@ -30,19 +30,23 @@ import {
   type MemberInfo,
 } from "@/lib/communityService";
 import { formatCurrency } from "@/types/currency";
+import { buildPriceMap, getPrice, parsePriceCurrency, type PriceMap } from "@/lib/priceMap";
+import PriceEditor from "@/components/money/PriceEditor";
+import type { CurrencyCode } from "@/lib/money/registry.generated";
 
 interface CommunitySettings {
   enabled: boolean;
   tiers: CommunityTier[];
 }
 
-function emptyTier(defaultCurrency: "RWF" | "USD"): CommunityTier {
+function emptyTier(defaultCurrency: CurrencyCode): CommunityTier {
   return {
     id: `tier-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     name: "",
     description: "",
     price: 0,
     currency: defaultCurrency,
+    prices: {},
     interval: "monthly",
     benefits: [],
     isActive: true,
@@ -51,7 +55,7 @@ function emptyTier(defaultCurrency: "RWF" | "USD"): CommunityTier {
 
 export default function CommunityPage() {
   const { creator } = useAuth();
-  const defaultCurrency = (creator?.currency as "RWF" | "USD") || "RWF";
+  const defaultCurrency: CurrencyCode = parsePriceCurrency(creator?.currency) || "RWF";
   const [settings, setSettings] = useState<CommunitySettings>({
     enabled: false,
     tiers: [],
@@ -70,7 +74,17 @@ export default function CommunityPage() {
     const unsub = onSnapshot(doc(db, "creators", creator.handle), (docSnap) => {
       if (!docSnap.exists()) return;
       const data = docSnap.data();
-      const communityTiers = (data.communityTiers || []) as CommunityTier[];
+      const communityTiers = ((data.communityTiers || []) as CommunityTier[]).map((t) => {
+        const currency = parsePriceCurrency(t.currency) || defaultCurrency;
+        const prices = buildPriceMap({ prices: t.prices as PriceMap, price: t.price, priceUSD: t.priceUSD });
+        return {
+          ...t,
+          currency,
+          prices,
+          price: prices.RWF ?? getPrice({ prices, currency }, currency),
+          priceUSD: prices.USD,
+        } as CommunityTier;
+      });
       setSettings({
         enabled: !!data.communityEnabled,
         tiers: communityTiers.length > 0 ? communityTiers : [emptyTier(defaultCurrency)],
@@ -145,7 +159,20 @@ export default function CommunityPage() {
     if (!creator?.handle) return;
     setSaving(true);
     try {
-      const validTiers = settings.tiers.filter((t) => t.name.trim() && t.price > 0);
+      const validTiers = settings.tiers
+        .map((t) => {
+          const currency = parsePriceCurrency(t.currency) || defaultCurrency;
+          const prices = buildPriceMap({ prices: t.prices as PriceMap, price: t.price, priceUSD: t.priceUSD });
+          const primary = getPrice({ prices, currency }, currency);
+          return {
+            ...t,
+            currency,
+            prices,
+            price: prices.RWF ?? primary,
+            priceUSD: prices.USD,
+          } as CommunityTier;
+        })
+        .filter((t) => t.name.trim() && getPrice(t, t.currency as CurrencyCode) > 0);
       if (validTiers.length === 0 && settings.enabled) {
         toast.error("Add at least one tier with a name and price");
         setSaving(false);
@@ -291,103 +318,40 @@ export default function CommunityPage() {
                       />
                     </div>
                     <div className="space-y-4">
+                      <div className="p-3 bg-muted/40 rounded-lg border border-border">
+                        <PriceEditor
+                          currency={(parsePriceCurrency(tier.currency) || defaultCurrency) as CurrencyCode}
+                          prices={buildPriceMap({ prices: tier.prices as PriceMap, price: tier.price, priceUSD: tier.priceUSD })}
+                          preferredCurrencies={[defaultCurrency, "RWF", "USD"]}
+                          onChange={({ currency, prices }) => {
+                            const primary = getPrice({ prices, currency }, currency);
+                            setSettings((prev) => {
+                              const tiers = [...prev.tiers];
+                              tiers[idx] = {
+                                ...tiers[idx],
+                                currency,
+                                prices,
+                                price: prices.RWF ?? primary,
+                                priceUSD: prices.USD,
+                              };
+                              return { ...prev, tiers };
+                            });
+                          }}
+                        />
+                      </div>
                       <div>
                         <label className="text-xs font-bold text-muted-foreground mb-1 block">
-                          Currency
+                          Interval
                         </label>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => updateTier(idx, "currency", "RWF")}
-                            className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
-                              (tier.currency || defaultCurrency) === "RWF"
-                                ? "bg-orange-600 text-white"
-                                : "bg-muted text-muted-foreground border border-border"
-                            }`}
-                          >
-                            RWF
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => updateTier(idx, "currency", "USD")}
-                            className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
-                              tier.currency === "USD"
-                                ? "bg-orange-600 text-white"
-                                : "bg-muted text-muted-foreground border border-border"
-                            }`}
-                          >
-                            USD
-                          </button>
-                        </div>
+                        <select
+                          value={tier.interval}
+                          onChange={(e) => updateTier(idx, "interval", e.target.value)}
+                          className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm"
+                        >
+                          <option value="monthly">Monthly</option>
+                          <option value="yearly">Yearly</option>
+                        </select>
                       </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="text-xs font-bold text-muted-foreground mb-1 block">
-                            Price ({(tier.currency || "RWF") === "USD" ? "USD" : "RWF"})
-                          </label>
-                          <input
-                            type="number"
-                            min={0}
-                            value={
-                              (tier.currency || "RWF") === "USD"
-                                ? (tier.priceUSD ?? "")
-                                : tier.price || ""
-                            }
-                            onChange={(e) =>
-                              updateTier(
-                                idx,
-                                (tier.currency || "RWF") === "USD" ? "priceUSD" : "price",
-                                Number(e.target.value),
-                              )
-                            }
-                            placeholder={
-                              (tier.currency || "RWF") === "USD" ? "10" : "5000"
-                            }
-                            className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs font-bold text-muted-foreground mb-1 block">
-                            Interval
-                          </label>
-                          <select
-                            value={tier.interval}
-                            onChange={(e) => updateTier(idx, "interval", e.target.value)}
-                            className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm"
-                          >
-                            <option value="monthly">Monthly</option>
-                            <option value="yearly">Yearly</option>
-                          </select>
-                        </div>
-                      </div>
-                      {tier.currency !== defaultCurrency && (
-                        <div>
-                          <label className="text-xs font-bold text-muted-foreground mb-1 block">
-                            Price ({defaultCurrency})
-                          </label>
-                          <input
-                            type="number"
-                            min={0}
-                            value={
-                              tier.currency === "USD"
-                                ? tier.price || ""
-                                : (tier.priceUSD ?? "")
-                            }
-                            onChange={(e) =>
-                              updateTier(
-                                idx,
-                                tier.currency === "USD" ? "price" : "priceUSD",
-                                Number(e.target.value),
-                              )
-                            }
-                            placeholder={`${defaultCurrency} equivalent`}
-                            className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm"
-                          />
-                          <p className="text-[10px] text-muted-foreground mt-1">
-                            {defaultCurrency} equivalent for local payments
-                          </p>
-                        </div>
-                      )}
                     </div>
                   </div>
 

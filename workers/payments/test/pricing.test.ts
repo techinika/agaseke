@@ -261,6 +261,185 @@ describe("server-authoritative payment pricing", () => {
     expect(resolved.totalAmount).toBe(4600);
   });
 
+  it("rejects a client-selected USD charge for an RWF product", async () => {
+    const docs = {
+      ...baseDocs,
+      "storeProducts/p1": {
+        id: "p1",
+        creatorUid: "uid-alice",
+        name: "Mug",
+        price: 10_000,
+        currency: "RWF",
+        active: true,
+      },
+    };
+
+    await expect(
+      resolvePayment(
+        env,
+        body({
+          creatorHandle: "alice",
+          type: "store",
+          productId: "p1",
+          currency: "USD",
+        }),
+        "buyer-1",
+        makeRepo(docs),
+      ),
+    ).rejects.toMatchObject({ code: "CURRENCY_MISMATCH" });
+  });
+
+  it("does not use the RWF price as a USD price", async () => {
+    const docs = {
+      ...baseDocs,
+      "storeProducts/p1": {
+        id: "p1",
+        creatorUid: "uid-alice",
+        name: "Mug",
+        price: 10_000,
+        currency: "USD",
+        active: true,
+      },
+    };
+
+    await expect(
+      resolvePayment(
+        env,
+        body({
+          creatorHandle: "alice",
+          type: "store",
+          productId: "p1",
+          currency: "USD",
+        }),
+        "buyer-1",
+        makeRepo(docs),
+      ),
+    ).rejects.toMatchObject({ code: "INVALID_PRODUCT_PRICE" });
+  });
+
+  it("uses an explicit product price map over legacy fields", async () => {
+    const docs = {
+      ...baseDocs,
+      "storeProducts/p1": {
+        id: "p1",
+        creatorUid: "uid-alice",
+        name: "Mug",
+        price: 10_000,
+        priceUSD: 1,
+        prices: { RWF: 10_000, USD: 2 },
+        currency: "USD",
+        active: true,
+      },
+    };
+
+    const resolved = await resolvePayment(
+      env,
+      body({
+        creatorHandle: "alice",
+        type: "store",
+        productId: "p1",
+        currency: "USD",
+      }),
+      "buyer-1",
+      makeRepo(docs),
+    );
+
+    expect(resolved.productPrice).toBe(2);
+    expect(resolved.currency).toBe("USD");
+  });
+
+  it("does not use the legacy USD price when the explicit map omits it", async () => {
+    const docs = {
+      ...baseDocs,
+      "storeProducts/p1": {
+        id: "p1",
+        creatorUid: "uid-alice",
+        name: "Mug",
+        price: 10_000,
+        priceUSD: 1,
+        prices: { RWF: 10_000 },
+        currency: "USD",
+        active: true,
+      },
+    };
+
+    await expect(
+      resolvePayment(
+        env,
+        body({
+          creatorHandle: "alice",
+          type: "store",
+          productId: "p1",
+          currency: "USD",
+        }),
+        "buyer-1",
+        makeRepo(docs),
+      ),
+    ).rejects.toMatchObject({ code: "INVALID_PRODUCT_PRICE" });
+  });
+
+  it("rejects a client-selected USD charge for an RWF gathering", async () => {
+    const docs = {
+      ...baseDocs,
+      "creatorGatherings/g1": {
+        id: "g1",
+        creatorId: "uid-alice",
+        status: "active",
+        currency: "RWF",
+        ticketPrice: 3_000,
+      },
+    };
+
+    await expect(
+      resolvePayment(
+        env,
+        body({
+          creatorHandle: "alice",
+          type: "gathering",
+          gatheringId: "g1",
+          currency: "USD",
+        }),
+        "buyer-1",
+        makeRepo(docs),
+      ),
+    ).rejects.toMatchObject({ code: "CURRENCY_MISMATCH" });
+  });
+
+  it("rejects a client-selected USD charge for an RWF community tier", async () => {
+    const docs = {
+      ...baseDocs,
+      "creators/alice": {
+        uid: "uid-alice",
+        currency: "RWF",
+        communityTiers: [
+          { id: "t1", price: 5_000, currency: "RWF", interval: "monthly", isActive: true },
+        ],
+      },
+      "communitySubscriptions/s1": {
+        id: "s1",
+        userId: "supporter-1",
+        tierId: "t1",
+        creatorHandle: "alice",
+      },
+    };
+
+    await expect(
+      resolvePayment(
+        env,
+        body({
+          creatorHandle: "alice",
+          type: "community",
+          communityTierId: "t1",
+          communitySubscriptionId: "s1",
+          communityInterval: "monthly",
+          currency: "USD",
+        }),
+        "supporter-1",
+        makeRepo(docs),
+      ),
+    ).rejects.toMatchObject({ code: "CURRENCY_MISMATCH" });
+  });
+
   it("rejects a product owned by another creator", async () => {
     const docs = {
       ...baseDocs,
@@ -390,9 +569,246 @@ describe("server-authoritative payment pricing", () => {
     expect(resolved.totalAmount).toBe(5000);
   });
 
+  it("rejects payments in a disabled currency", async () => {
+    const docs = {
+      ...baseDocs,
+      "currencies/RWF": {
+        code: "RWF",
+        minSupportAmount: 100,
+        enabled: false,
+      },
+    };
+
+    await expect(
+      resolvePayment(
+        env,
+        body({
+          creatorHandle: "alice",
+          type: "support",
+          amount: 1000,
+          currency: "RWF",
+        }),
+        "supporter-1",
+        makeRepo(docs),
+      ),
+    ).rejects.toMatchObject({ code: "CURRENCY_DISABLED" });
+  });
+
+  it("uses an explicit gathering price map over legacy fields", async () => {
+    const docs = {
+      ...baseDocs,
+      "creatorGatherings/g1": {
+        id: "g1",
+        creatorId: "uid-alice",
+        status: "active",
+        currency: "USD",
+        ticketPrice: 3000,
+        priceUSD: 1,
+        prices: { RWF: 3000, USD: 2 },
+      },
+    };
+
+    const resolved = await resolvePayment(
+      env,
+      body({
+        creatorHandle: "alice",
+        type: "gathering",
+        gatheringId: "g1",
+        currency: "USD",
+      }),
+      "buyer-1",
+      makeRepo(docs),
+    );
+
+    expect(resolved.totalAmount).toBe(2);
+    expect(resolved.currency).toBe("USD");
+  });
+
+  it("uses an explicit community tier price map over legacy fields", async () => {
+    const docs = {
+      ...baseDocs,
+      "creators/alice": {
+        uid: "uid-alice",
+        currency: "USD",
+        communityTiers: [
+          {
+            id: "t1",
+            price: 5000,
+            priceUSD: 1,
+            prices: { RWF: 5000, USD: 2 },
+            currency: "USD",
+            interval: "monthly",
+            isActive: true,
+          },
+        ],
+      },
+      "communitySubscriptions/s1": {
+        id: "s1",
+        userId: "supporter-1",
+        tierId: "t1",
+        creatorHandle: "alice",
+      },
+    };
+
+    const resolved = await resolvePayment(
+      env,
+      body({
+        creatorHandle: "alice",
+        type: "community",
+        communityTierId: "t1",
+        communitySubscriptionId: "s1",
+        communityInterval: "monthly",
+        currency: "USD",
+      }),
+      "supporter-1",
+      makeRepo(docs),
+    );
+
+    expect(resolved.totalAmount).toBe(2);
+    expect(resolved.currency).toBe("USD");
+  });
+
   it("exposes typed request errors", () => {
     const err = new PaymentRequestError("X", "nope", 422);
     expect(err.code).toBe("X");
     expect(err.statusCode).toBe(422);
   });
 });
+
+  it("applies a locked checkout quote and reallocates fees in charge currency", async () => {
+    const docs = {
+      ...baseDocs,
+      "storeProducts/p1": {
+        id: "p1",
+        creatorId: "uid-alice",
+        active: true,
+        currency: "USD",
+        price: 0,
+        priceUSD: 5,
+        prices: { USD: 5 },
+      },
+    };
+
+    // Buyer-pays-fee store total: 5 + (5 * 0.15) = 5.75 USD = 575 minor.
+    const quote = {
+      id: "q1",
+      purpose: "checkout" as const,
+      fromCurrency: "USD" as const,
+      toCurrency: "RWF" as const,
+      sourceAmountMinor: 575,
+      targetAmountMinor: 747500,
+      rate: 1300,
+      spreadBps: 150,
+      rateSource: "test",
+      rateTimestamp: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+    };
+
+    const resolved = await resolvePayment(
+      env,
+      body({
+        creatorHandle: "alice",
+        type: "store",
+        productId: "p1",
+        currency: "RWF",
+      }),
+      "buyer-1",
+      makeRepo(docs),
+      { quote },
+    );
+
+    expect(resolved.currency).toBe("RWF");
+    expect(resolved.totalAmount).toBe(747500);
+    expect(resolved.platformFee + resolved.creatorEarnings + resolved.referralEarnings).toBe(
+      resolved.totalAmount,
+    );
+    expect(resolved.fx?.id).toBe("q1");
+  });
+
+  it("rejects a checkout quote that does not match the native payment", async () => {
+    const docs = {
+      ...baseDocs,
+      "storeProducts/p1": {
+        id: "p1",
+        creatorId: "uid-alice",
+        active: true,
+        currency: "USD",
+        price: 0,
+        priceUSD: 5,
+        prices: { USD: 5 },
+      },
+    };
+
+    await expect(
+      resolvePayment(
+        env,
+        body({
+          creatorHandle: "alice",
+          type: "store",
+          productId: "p1",
+          currency: "RWF",
+        }),
+        "buyer-1",
+        makeRepo(docs),
+        {
+          quote: {
+            id: "q-bad",
+            purpose: "checkout",
+            fromCurrency: "USD",
+            toCurrency: "RWF",
+            sourceAmountMinor: 400,
+            targetAmountMinor: 520000,
+            rate: 1300,
+            spreadBps: 150,
+            rateSource: "test",
+            rateTimestamp: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+          },
+        },
+      ),
+    ).rejects.toMatchObject({ code: "QUOTE_MISMATCH" });
+  });
+
+  it("rejects an expired checkout quote", async () => {
+    const docs = {
+      ...baseDocs,
+      "storeProducts/p1": {
+        id: "p1",
+        creatorId: "uid-alice",
+        active: true,
+        currency: "USD",
+        price: 0,
+        priceUSD: 5,
+        prices: { USD: 5 },
+      },
+    };
+
+    await expect(
+      resolvePayment(
+        env,
+        body({
+          creatorHandle: "alice",
+          type: "store",
+          productId: "p1",
+          currency: "RWF",
+        }),
+        "buyer-1",
+        makeRepo(docs),
+        {
+          quote: {
+            id: "q-exp",
+            purpose: "checkout",
+            fromCurrency: "USD",
+            toCurrency: "RWF",
+            sourceAmountMinor: 575,
+            targetAmountMinor: 747500,
+            rate: 1300,
+            spreadBps: 150,
+            rateSource: "test",
+            rateTimestamp: new Date().toISOString(),
+            expiresAt: new Date(Date.now() - 1000).toISOString(),
+          },
+        },
+      ),
+    ).rejects.toMatchObject({ code: "QUOTE_EXPIRED" });
+  });

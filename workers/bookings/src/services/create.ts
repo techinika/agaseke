@@ -78,8 +78,19 @@ function resolveAvailabilityAndPrice(
 
     if (effectiveTier) {
       effectiveAvail = effectiveTier.availability;
-      const tierCurrency = effectiveTier.currency || "RWF";
-      verifiedPaymentAmount = tierCurrency === "USD" && effectiveTier.priceUSD ? effectiveTier.priceUSD : effectiveTier.price;
+      const tierCurrency = effectiveTier.currency === "USD" ? "USD" : "RWF";
+      const mappedPrice =
+        effectiveTier.prices && typeof effectiveTier.prices === "object"
+          ? Number((effectiveTier.prices as Record<string, unknown>)[tierCurrency])
+          : undefined;
+      verifiedPaymentAmount =
+        effectiveTier.prices && typeof effectiveTier.prices === "object"
+          ? Number.isFinite(mappedPrice) && (mappedPrice ?? 0) > 0
+            ? (mappedPrice as number)
+            : 0
+          : tierCurrency === "USD"
+            ? (effectiveTier.priceUSD ?? 0)
+            : effectiveTier.price;
       duration = effectiveTier.duration;
       currency = tierCurrency;
     }

@@ -33,6 +33,7 @@ export interface CurrencyRecord {
   code: string;
   name: string;
   symbol: string;
+  enabled?: boolean;
   [k: string]: unknown;
 }
 export interface CountryCurrencyRecord {
@@ -171,8 +172,12 @@ export async function addCurrency(data: {
   symbol: string;
   payoutThreshold: number;
   minSupportAmount: number;
+  enabled: boolean;
 }) {
   await addDoc(collection(db, "currencies"), { ...data, createdAt: serverTimestamp() });
+}
+export async function setCurrencyEnabled(id: string, enabled: boolean) {
+  await updateDoc(doc(db, "currencies", id), { enabled });
 }
 export async function updateCurrency(
   id: string,
@@ -182,6 +187,7 @@ export async function updateCurrency(
     symbol: string;
     payoutThreshold: number;
     minSupportAmount: number;
+    enabled: boolean;
   },
 ) {
   await updateDoc(doc(db, "currencies", id), data);

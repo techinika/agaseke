@@ -3,6 +3,8 @@ import { convertToFields, firestoreSet } from "../firestore";
 import { logActivity } from "../logger";
 import { notifyAdmins } from "../adminNotifications";
 import { PaymentRequestError, resolvePayment } from "./pricing";
+import { assertMethodSupportsCurrency } from "../money/rails";
+import { consumeCheckoutQuote, loadCheckoutQuote } from "./quotes";
 import { createPaymentRepository } from "./repository";
 import {
   abortAttempt,
@@ -39,7 +41,17 @@ export async function initiateCardPayment(
   idempotencyKey?: string,
 ): Promise<PaymentInitResult> {
   const repo = createPaymentRepository(env);
-  const resolved = await resolvePayment(env, body, uid, repo);
+  const quote = await loadCheckoutQuote(repo, body.quoteId, uid, body);
+  const resolved = await resolvePayment(env, body, uid, repo, { quote });
+
+  try {
+    assertMethodSupportsCurrency("card", resolved.currency);
+  } catch (error) {
+    throw new PaymentRequestError(
+      "UNSUPPORTED_METHOD",
+      `Bank cards cannot charge ${resolved.currency}.`,
+    );
+  }
 
   const attempt = await beginIdempotentAttempt(
     env,
@@ -226,10 +238,24 @@ export async function initiateCardPayment(
       paymentProvider: "pesapal",
       providerRef: merchantRef,
       idempotencyKey: attempt.key,
+      quoteId: body.quoteId || "",
       platformFee: resolved.platformFee,
       creatorEarnings: resolved.creatorEarnings,
       referralEarnings: resolved.referralEarnings,
       processorCost: resolved.processorCost,
+      ...(resolved.fx
+        ? {
+            fxQuoteId: resolved.fx.id,
+            fxRate: resolved.fx.rate,
+            fxSpreadBps: resolved.fx.spreadBps,
+            sourceCurrency: resolved.fx.fromCurrency,
+            sourceAmountMinor: resolved.fx.sourceAmountMinor,
+            targetAmountMinor: resolved.fx.targetAmountMinor,
+            rateSource: resolved.fx.rateSource,
+            rateTimestamp: resolved.fx.rateTimestamp,
+            quoteExpiresAt: resolved.fx.expiresAt,
+          }
+        : {}),
       createdAt: now,
       initiatedAt: now,
       updatedAt: now,
@@ -295,6 +321,10 @@ export async function initiateCardPayment(
       redirectUrl: payData.redirect_url,
       merchantReference: merchantRef,
     });
+
+    if (resolved.fx) {
+      await consumeCheckoutQuote(env, resolved.fx.id, merchantRef);
+    }
 
     const txTypeLabel =
       resolved.type === "community"

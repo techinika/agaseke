@@ -3,6 +3,7 @@
 import React from "react";
 import { Calendar, MapPin, Loader, ChevronRight, Ticket } from "lucide-react";
 import { EVENT_TYPE_ICONS, EVENT_TYPE_LABELS_SHORT } from "./constants";
+import { getPrice } from "@/lib/priceMap";
 
 interface GatheringListPanelProps {
   loading: boolean;
@@ -84,10 +85,10 @@ export default function GatheringListPanel({
               <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-2">
                   <div className={`p-3 rounded-lg ${event.eventType === "supporters_tiered" || event.minSupportTier > 0 ? "bg-amber-50 text-amber-600" : "bg-muted text-foreground"}`}>
-                    {EVENT_TYPE_ICONS[event.eventType] || (event.ticketPrice > 0 ? <Ticket size={20} /> : <Calendar size={20} />)}
+                    {EVENT_TYPE_ICONS[event.eventType] || (getPrice(event) > 0 ? <Ticket size={20} /> : <Calendar size={20} />)}
                   </div>
                   <span className="text-[10px] font-bold text-muted-foreground uppercase bg-muted px-2 py-1 rounded">
-                    {EVENT_TYPE_LABELS_SHORT[event.eventType] || (event.ticketPrice > 0 ? "Ticketed" : "Public")}
+                    {EVENT_TYPE_LABELS_SHORT[event.eventType] || (getPrice(event) > 0 ? "Ticketed" : "Public")}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">

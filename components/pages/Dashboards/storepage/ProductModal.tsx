@@ -5,6 +5,9 @@ import { uploadFile } from "@/lib/uploadService";
 import { createStoreProduct, updateStoreProduct } from "@/features/store/api";
 import { Product } from "@/types/store";
 import { useAuth } from "@/auth/AuthContext";
+import PriceEditor from "@/components/money/PriceEditor";
+import { buildPriceMap, getPrice, parsePriceCurrency, type PriceMap } from "@/lib/priceMap";
+import type { CurrencyCode } from "@/lib/money/registry.generated";
 
 export default function ProductModal({
   product,
@@ -14,13 +17,18 @@ export default function ProductModal({
   onClose: () => void;
 }) {
   const { creator } = useAuth();
-  const defaultCurrency = (creator?.currency as "RWF" | "USD") || "RWF";
+  const defaultCurrency: CurrencyCode = parsePriceCurrency(creator?.currency) || "RWF";
+  const initialCurrency = parsePriceCurrency(product?.currency) || defaultCurrency;
+  const initialPrices = buildPriceMap({
+    prices: (product?.prices as PriceMap | null | undefined) || null,
+    price: product?.price,
+    priceUSD: product?.priceUSD,
+  });
   const [formData, setFormData] = useState({
     name: product?.name || "",
     description: product?.description || "",
-    price: product?.price || 0,
-    priceUSD: product?.priceUSD || 0,
-    currency: product?.currency || defaultCurrency,
+    currency: initialCurrency as CurrencyCode,
+    prices: initialPrices as PriceMap,
     type: product?.type || ("digital" as "digital" | "physical"),
     stock: product?.stock || 0,
     imageUrl: product?.imageUrl || "",
@@ -41,6 +49,10 @@ export default function ProductModal({
   const [newSize, setNewSize] = useState("");
   const [newBulkMin, setNewBulkMin] = useState(0);
   const [newBulkDiscount, setNewBulkDiscount] = useState(0);
+  const primaryPrice = getPrice(
+    { prices: formData.prices, currency: formData.currency },
+    formData.currency,
+  );
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -90,8 +102,10 @@ export default function ProductModal({
   };
 
   const handleSubmit = async () => {
-    if (!formData.name || !formData.price) {
-      toast.error("Please fill in required fields");
+    const prices = buildPriceMap({ prices: formData.prices });
+    const primaryAmount = getPrice({ prices, currency: formData.currency }, formData.currency);
+    if (!formData.name || primaryAmount <= 0) {
+      toast.error("Set a name and a valid primary price");
       return;
     }
 
@@ -102,8 +116,9 @@ export default function ProductModal({
         creatorId: creator?.uid || "",
         name: formData.name,
         description: formData.description,
-        price: formData.price,
-        priceUSD: formData.currency === "USD" ? formData.priceUSD : null,
+        price: prices.RWF ?? primaryAmount,
+        priceUSD: prices.USD ?? null,
+        prices,
         currency: formData.currency,
         type: formData.type,
         active: formData.active,
@@ -233,78 +248,16 @@ export default function ProductModal({
               />
             </div>
 
-            <div className="col-span-2">
-              <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
-                Currency
-              </label>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, currency: "RWF" }))}
-                  className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
-                    formData.currency === "RWF"
-                      ? "bg-orange-600 text-white"
-                      : "bg-muted text-muted-foreground border border-border"
-                  }`}
-                >
-                  RWF
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, currency: "USD" }))}
-                  className={`flex-1 py-3 rounded-lg text-sm font-bold transition ${
-                    formData.currency === "USD"
-                      ? "bg-orange-600 text-white"
-                      : "bg-muted text-muted-foreground border border-border"
-                  }`}
-                >
-                  USD
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
-                Price ({formData.currency}) *
-              </label>
-              <input
-                type="number"
-                value={formData.currency === "USD" ? formData.priceUSD : formData.price}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    ...(prev.currency === "USD"
-                      ? { priceUSD: parseInt(e.target.value) || 0 }
-                      : { price: parseInt(e.target.value) || 0 }),
-                  }))
+            <div className="col-span-2 p-4 bg-muted/40 rounded-lg border border-border">
+              <PriceEditor
+                currency={formData.currency}
+                prices={formData.prices}
+                preferredCurrencies={[defaultCurrency, "RWF", "USD"]}
+                onChange={({ currency, prices }) =>
+                  setFormData((prev) => ({ ...prev, currency, prices }))
                 }
-                className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
               />
             </div>
-
-            {formData.currency !== defaultCurrency && (
-              <div>
-                <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
-                  Price ({defaultCurrency})
-                </label>
-                <input
-                  type="number"
-                  value={formData.currency === "USD" ? formData.price : formData.priceUSD}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      ...(prev.currency === "USD"
-                        ? { price: parseInt(e.target.value) || 0 }
-                        : { priceUSD: parseInt(e.target.value) || 0 }),
-                    }))
-                  }
-                  className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
-                />
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  {defaultCurrency} equivalent for local payments
-                </p>
-              </div>
-            )}
 
             <div className="col-span-2 p-4 bg-orange-50 rounded-lg">
               <div className="flex items-center justify-between">
@@ -349,11 +302,11 @@ export default function ProductModal({
                   </button>
                 </div>
               </div>
-              {formData.price > 0 && (
+              {primaryPrice > 0 && (
                 <p className="text-xs text-orange-600 mt-2">
                   {formData.platformFeePayer === "buyer"
-                    ? `Buyer pays ${(formData.price * 1.1).toLocaleString()} RWF (price + 10%)`
-                    : `Creator receives ${(formData.price * 0.9).toLocaleString()} RWF (price - 10%)`}
+                    ? `Buyer pays ${(primaryPrice * 1.1).toLocaleString()} ${formData.currency} (price + 10%)`
+                    : `Creator receives ${(primaryPrice * 0.9).toLocaleString()} ${formData.currency} (price - 10%)`}
                 </p>
               )}
             </div>

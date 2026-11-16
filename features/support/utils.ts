@@ -6,6 +6,7 @@ import {
   SUPPORT_LAST_KEY,
   SUPPORT_PENDING_KEY,
 } from "./constants";
+import { getCurrencyDefinition, isCurrencyCode } from "@/lib/money/registry.generated";
 import type {
   PendingSupport,
   SupportBreakdown,
@@ -30,8 +31,11 @@ export function getSupportPresets(): number[] {
 
 export function getMinSupport(currency = "RWF", raw?: unknown): number {
   const parsed = Number(raw);
-  if (Number.isFinite(parsed) && parsed > 0) return Math.round(parsed);
-  return currency === "USD" ? 1 : DEFAULT_MIN_SUPPORT;
+  if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  if (isCurrencyCode(currency)) {
+    return getCurrencyDefinition(currency).minorUnit === 0 ? DEFAULT_MIN_SUPPORT : 1;
+  }
+  return DEFAULT_MIN_SUPPORT;
 }
 
 export function buildSupportConfig(

@@ -346,6 +346,55 @@ export async function firestoreUpdateWithPrecondition(
   return firestoreCommit(env, [write, ...extraWrites]);
 }
 
+/**
+ * Patch only the listed fields, leaving every other field untouched.
+ */
+export async function firestoreUpdateFields(
+  env: Env,
+  path: string,
+  fields: Record<string, unknown>,
+): Promise<FirestoreCommitResult> {
+  const token = await getFirestoreToken(env);
+  if (!token) {
+    return { ok: false, status: 0, error: "No Firestore token" };
+  }
+
+  const name = firestoreDocumentName(env, path);
+  const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents:commit`;
+  const res = await auditedFetch(env, "POST", "documents:commit", url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      writes: [
+        {
+          update: { name, fields },
+          updateMask: { fieldPaths: Object.keys(fields) },
+          currentDocument: { exists: true },
+        },
+      ],
+    }),
+  });
+
+  if (res.ok) return { ok: true, status: res.status };
+
+  let errorStatus: string | undefined;
+  let error: string | undefined;
+  try {
+    const data = (await res.json()) as {
+      error?: { status?: string; message?: string };
+    };
+    errorStatus = data.error?.status;
+    error = data.error?.message;
+  } catch {
+    error = await res.text().catch(() => "");
+  }
+
+  return { ok: false, status: res.status, errorStatus, error };
+}
+
 export async function firestoreIncrement(
   env: Env,
   path: string,
@@ -363,7 +412,9 @@ export async function firestoreIncrement(
         document: docName,
         fieldTransforms: Object.entries(increments).map(([fieldPath, val]) => ({
           fieldPath,
-          increment: { integerValue: String(Math.round(val)) },
+          increment: Number.isInteger(val)
+            ? { integerValue: String(val) }
+            : { doubleValue: val },
         })),
       },
     },

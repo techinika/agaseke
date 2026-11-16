@@ -1,13 +1,9 @@
 import type { Env } from "../types";
-import { firestorePost, firestorePatch, firestoreApplyPayment } from "../firestore";
+import { firestorePatch, firestoreApplyPayment } from "../firestore";
 import { logActivity } from "../logger";
 import { createNotification } from "../adminNotifications";
-
-function numberField(value: number): Record<string, unknown> {
-  return Number.isInteger(value)
-    ? { integerValue: String(value) }
-    : { doubleValue: value };
-}
+import { currencyNumberField, roundCurrencyAmount } from "../money/amount";
+import { buildPaymentLedger, isMoneyLedgerEnabled, ledgerMarkerFields } from "../money/ledger";
 
 export async function handleBookingCallback(
   env: Env,
@@ -24,9 +20,12 @@ export async function handleBookingCallback(
   };
 
   const currency = (txData.currency as string) || "RWF";
-  const isUSD = currency === "USD";
-  const payoutField = isUSD ? "pendingPayoutUSD" : "pendingPayout";
-  const earningsField = isUSD ? "totalEarningsUSD" : "totalEarnings";
+  const payoutField = currency === "RWF" ? "pendingPayout" : `pendingPayout${currency}`;
+  const earningsField = currency === "RWF" ? "totalEarnings" : `totalEarnings${currency}`;
+  const platformAmount = roundCurrencyAmount(platformShare, currency);
+  const creatorAmount = roundCurrencyAmount(creatorShare, currency);
+  const referralAmount = roundCurrencyAmount(referralShare, currency);
+  const creditedTotal = roundCurrencyAmount(totalAmount, currency);
 
   const bookingId = txData.bookingId as string | undefined;
   if (!bookingId) {
@@ -37,48 +36,52 @@ export async function handleBookingCallback(
 
   const now = new Date().toISOString();
   const safeRef = paymentRef.replace(/[^A-Za-z0-9_-]/g, "_");
+  const includeReferral = !!txData.includeReferral;
+
+  const documents: Array<{ path: string; fields: Record<string, unknown> }> = [
+    {
+      path: `platformIncome/${safeRef}_platform`,
+      fields: {
+        amount: currencyNumberField(platformAmount, currency),
+        txRef: { stringValue: paymentRef },
+        reason: { stringValue: "booking_fee" },
+        createdAt: { timestampValue: now },
+      },
+    },
+    {
+      path: `creatorIncome/${safeRef}_creator`,
+      fields: {
+        creatorUid: { stringValue: txData.creatorUid as string },
+        amount: currencyNumberField(creatorAmount, currency),
+        txRef: { stringValue: paymentRef },
+        reason: { stringValue: "booking_payment" },
+        createdAt: { timestampValue: now },
+      },
+    },
+  ];
 
   const increments: Array<{ path: string; fields: Record<string, number> }> = [
     {
       path: `creators/${txData.creatorId}`,
-      fields: { [earningsField]: creatorShare, [payoutField]: creatorShare },
+      fields: { [earningsField]: creatorAmount, [payoutField]: creatorAmount },
     },
   ];
 
-  await firestorePost(env, "platformIncome", {
-    fields: {
-      amount: { integerValue: String(platformShare) },
-      txRef: { stringValue: paymentRef },
-      reason: { stringValue: "booking_fee" },
-      createdAt: { timestampValue: now },
-    },
-  }, `${safeRef}_platform`);
-
-  await firestorePost(env, "creatorIncome", {
-    fields: {
-      creatorUid: { stringValue: txData.creatorUid as string },
-      amount: { integerValue: String(creatorShare) },
-      txRef: { stringValue: paymentRef },
-      reason: { stringValue: "booking_payment" },
-      createdAt: { timestampValue: now },
-    },
-  }, `${safeRef}_creator`);
-
-  const includeReferral = !!txData.includeReferral;
   if (includeReferral && txData.referralUid && referralShare > 0) {
-    await firestorePost(env, "creatorIncome", {
+    documents.push({
+      path: `creatorIncome/${safeRef}_referral`,
       fields: {
         creatorUid: { stringValue: txData.referralUid as string },
-        amount: { integerValue: String(referralShare) },
+        amount: currencyNumberField(referralAmount, currency),
         txRef: { stringValue: paymentRef },
         reason: { stringValue: "referral_commission" },
         createdAt: { timestampValue: now },
       },
-    }, `${safeRef}_referral`);
+    });
 
     increments.push({
       path: `creators/${txData.referralId}`,
-      fields: { [earningsField]: referralShare, [payoutField]: referralShare },
+      fields: { [earningsField]: referralAmount, [payoutField]: referralAmount },
     });
   }
 
@@ -92,20 +95,53 @@ export async function handleBookingCallback(
   if (buyerId && buyerId !== "anonymous") {
     increments.push({
       path: `profiles/${buyerId}`,
-      fields: { totalSupport: totalAmount, totalSupportedCreators: 1 },
+      fields: { totalSupport: creditedTotal, totalSupportedCreators: 1 },
     });
   }
 
-  const credit = await firestoreApplyPayment(env, paymentRef, increments, {
-    txRef: { stringValue: paymentRef },
-    worker: { stringValue: "bookings" },
-    creatorId: { stringValue: txData.creatorId as string },
-    creatorShare: numberField(creatorShare),
-    totalAmount: numberField(totalAmount),
-    currency: { stringValue: currency },
-    status: { stringValue: "applied" },
-    appliedAt: { timestampValue: now },
-  });
+  const ledger = isMoneyLedgerEnabled(env)
+    ? buildPaymentLedger({
+        paymentRef,
+        source: "booking",
+        currency,
+        totalAmount: creditedTotal,
+        creatorUid: txData.creatorUid as string,
+        creatorHandle: txData.creatorId as string,
+        creatorShare: creatorAmount,
+        platformShare: platformAmount,
+        referralShare:
+          includeReferral && txData.referralUid && referralAmount > 0
+            ? referralAmount
+            : 0,
+        referralUid:
+          includeReferral && txData.referralUid
+            ? (txData.referralUid as string)
+            : undefined,
+        referralHandle:
+          includeReferral && txData.referralId
+            ? (txData.referralId as string)
+            : undefined,
+        createdAt: now,
+      })
+    : undefined;
+
+  const credit = await firestoreApplyPayment(
+    env,
+    paymentRef,
+    increments,
+    {
+      txRef: { stringValue: paymentRef },
+      worker: { stringValue: "bookings" },
+      creatorId: { stringValue: txData.creatorId as string },
+      creatorShare: currencyNumberField(creatorAmount, currency),
+      totalAmount: currencyNumberField(creditedTotal, currency),
+      currency: { stringValue: currency },
+      status: { stringValue: "applied" },
+      appliedAt: { timestampValue: now },
+      ...(ledger ? ledgerMarkerFields(ledger) : {}),
+    },
+    { documents, ledger },
+  );
 
   if (credit !== "applied") {
     await logActivity(env, "warn", "booking", `Booking callback ${credit} for ref=${paymentRef}`, {
@@ -120,8 +156,8 @@ export async function handleBookingCallback(
       userId: txData.creatorUid as string,
       type: "booking_paid",
       title: "Booking Payment Received!",
-      message: `Booking payment of ${totalAmount.toLocaleString()} ${currency} received from ${(txData.buyerName as string) || "a client"}`,
-      metadata: { txRef: paymentRef, bookingId, amount: totalAmount, creatorShare },
+      message: `Booking payment of ${creditedTotal.toLocaleString()} ${currency} received from ${(txData.buyerName as string) || "a client"}`,
+      metadata: { txRef: paymentRef, bookingId, amount: creditedTotal, creatorShare: creatorAmount },
       link: "/creator/bookings",
       actorName: (txData.buyerName as string) || undefined,
       actorId: (txData.buyerId as string) || undefined,
@@ -133,8 +169,8 @@ export async function handleBookingCallback(
       userId: buyerId,
       type: "booking_paid",
       title: "Payment Confirmed!",
-      message: `Your payment of ${totalAmount.toLocaleString()} ${currency} for booking with ${(txData.creatorName as string) || "creator"} is confirmed.`,
-      metadata: { txRef: paymentRef, bookingId, amount: totalAmount },
+      message: `Your payment of ${creditedTotal.toLocaleString()} ${currency} for booking with ${(txData.creatorName as string) || "creator"} is confirmed.`,
+      metadata: { txRef: paymentRef, bookingId, amount: creditedTotal },
       link: `/${txData.creatorId as string}/booking`,
       actorName: (txData.creatorName as string) || undefined,
       actorId: (txData.creatorUid as string) || undefined,
@@ -145,8 +181,8 @@ export async function handleBookingCallback(
   await logActivity(env, "info", "booking", `${source}: Booking payment processed for ref=${paymentRef}`, {
     txRef: paymentRef,
     bookingId,
-    amount: totalAmount,
-    creatorShare,
+    amount: creditedTotal,
+    creatorShare: creatorAmount,
     paymentMethod,
   });
 

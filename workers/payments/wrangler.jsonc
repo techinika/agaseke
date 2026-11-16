@@ -17,6 +17,13 @@
 		},
 	],
 	"vars": {
+		"MONEY_LEDGER_ENABLED": "false",
+		"FX_RATES_ENABLED": "false",
+		"FX_RATE_BASE": "USD",
+		"FX_RATE_REFRESH_MINUTES": "360",
+		"FX_RATE_MAX_AGE_MINUTES": "1440",
+		"FX_SPREAD_BPS": "150",
+		"FX_QUOTE_TTL_SECONDS": "600",
 		"FIREBASE_PROJECT_ID": "agaseke4creators",
 		"APP_URL": "https://agaseke.me",
 		"BOOKINGS_WORKER_URL": "https://bookings.api.agaseke.me",

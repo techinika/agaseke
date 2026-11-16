@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { EVENT_TYPE_LABELS_SHORT } from "./constants";
+import { getPrice } from "@/lib/priceMap";
+import { formatCurrency } from "@/types/currency";
 
 interface GatheringDetailPanelProps {
   activeEvent: any;
@@ -51,6 +53,8 @@ export default function GatheringDetailPanel({
   const creatorSharePct = Number(process.env.NEXT_PUBLIC_CREATOR_SHARE) || 0.9;
   const platformFee = selectedEventRevenue * platformSharePct;
   const creatorNet = selectedEventRevenue * creatorSharePct;
+  const ticketAmount = getPrice(activeEvent);
+  const ticketCurrency = activeEvent.currency === "USD" ? "USD" : "RWF";
 
   return (
     <div className="w-full md:w-96 bg-card p-8 overflow-y-auto">
@@ -79,7 +83,7 @@ export default function GatheringDetailPanel({
           <div className="bg-foreground p-6 rounded-lg text-background">
             <div className="flex items-center justify-between mb-4">
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                {EVENT_TYPE_LABELS_SHORT[activeEvent.eventType] || (activeEvent.ticketPrice > 0 ? "Ticketed" : "Public")}
+                {EVENT_TYPE_LABELS_SHORT[activeEvent.eventType] || (ticketAmount > 0 ? "Ticketed" : "Public")}
               </p>
               <span
                 className={`text-[10px] font-bold px-2 py-0.5 rounded ${
@@ -92,10 +96,10 @@ export default function GatheringDetailPanel({
               </span>
             </div>
             <h2 className="text-xl font-bold">
-              {activeEvent.eventType === "ticketed" || activeEvent.ticketPrice > 0
-                ? `${(activeEvent.ticketPrice || 0).toLocaleString()} RWF Ticket`
+              {activeEvent.eventType === "ticketed" || ticketAmount > 0
+                ? `${formatCurrency(ticketAmount, ticketCurrency)} Ticket`
                 : activeEvent.eventType === "supporters_tiered" || activeEvent.minSupportTier > 0
-                  ? `Min. Support: ${(activeEvent.minSupportTier || 0).toLocaleString()} RWF`
+                  ? `Min. Support: ${formatCurrency(activeEvent.minSupportTier || 0, ticketCurrency)}`
                   : activeEvent.eventType === "supporters"
                     ? "Supporters Only"
                     : "Open to Everyone"}
@@ -144,7 +148,7 @@ export default function GatheringDetailPanel({
           )}
 
           <div className="bg-gradient-to-br from-emerald-50 to-green-50 p-4 rounded-lg border border-emerald-200">
-            {activeEvent.ticketPrice > 0 ? (
+            {ticketAmount > 0 ? (
               <>
                 <div className="flex items-center gap-2 mb-3">
                   <Wallet size={18} className="text-emerald-600" />
@@ -154,19 +158,19 @@ export default function GatheringDetailPanel({
                   <div className="flex justify-between">
                     <span className="text-emerald-700">Total collected</span>
                     <span className="font-bold text-emerald-800">
-                      {totalTicketRevenue.toLocaleString()} RWF
+                      {formatCurrency(totalTicketRevenue, ticketCurrency)}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-emerald-700">Platform fee ({(platformSharePct * 100).toFixed(0)}%)</span>
                     <span className="font-bold text-amber-600">
-                      -{platformFee.toLocaleString()} RWF
+                      -{formatCurrency(platformFee, ticketCurrency)}
                     </span>
                   </div>
                   <div className="border-t border-emerald-300 pt-2 flex justify-between">
                     <span className="font-bold text-emerald-800">You receive</span>
                     <span className="font-bold text-emerald-900">
-                      {creatorNet.toLocaleString()} RWF
+                      {formatCurrency(creatorNet, ticketCurrency)}
                     </span>
                   </div>
                 </div>

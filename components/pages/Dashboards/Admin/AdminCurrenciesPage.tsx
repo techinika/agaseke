@@ -6,12 +6,14 @@ import { toast } from "sonner";
 import {
   addCurrency,
   deleteCurrency,
+  setCurrencyEnabled,
   setDefaultCurrency,
   subscribeToCurrencies,
   subscribeToCurrencyConfig,
   updateCurrency,
   type CurrencyRecord,
 } from "@/lib/adminConfigService";
+import { validateCurrencyConfig } from "@/lib/money";
 
 type CurrencyItem = CurrencyRecord & {
   code: string;
@@ -19,6 +21,7 @@ type CurrencyItem = CurrencyRecord & {
   symbol: string;
   payoutThreshold: number;
   minSupportAmount: number;
+  enabled?: boolean;
 };
 
 export default function AdminCurrenciesPage() {
@@ -38,6 +41,7 @@ export default function AdminCurrenciesPage() {
   const [editSymbol, setEditSymbol] = useState("");
   const [editThreshold, setEditThreshold] = useState("10000");
   const [editMinSupport, setEditMinSupport] = useState("100");
+  const [editEnabled, setEditEnabled] = useState(true);
 
   useEffect(() => {
     const unsubSetup = subscribeToCurrencyConfig((cfg) => {
@@ -65,27 +69,24 @@ export default function AdminCurrenciesPage() {
 
   const handleAdd = async () => {
     const code = newCode.trim().toUpperCase();
-    const name = newName.trim();
-    const symbol = newSymbol.trim();
-    const threshold = parseInt(newThreshold) || 10000;
-    const minSupport = parseInt(newMinSupport) || 100;
-    if (!code || !name) {
-      toast.error("Currency code and name are required");
+    const result = validateCurrencyConfig({
+      code,
+      name: newName,
+      symbol: newSymbol,
+      payoutThreshold: newThreshold,
+      minSupportAmount: newMinSupport,
+    });
+    if (!result.ok) {
+      toast.error(result.error);
       return;
     }
-    if (currencies.some((c) => c.code === code)) {
+    if (currencies.some((c) => c.code === result.value.code)) {
       toast.error("Currency code already exists");
       return;
     }
     setAdding(true);
     try {
-      await addCurrency({
-        code,
-        name,
-        symbol,
-        payoutThreshold: threshold,
-        minSupportAmount: minSupport,
-      });
+      await addCurrency(result.value);
       setNewCode("");
       setNewName("");
       setNewSymbol("");
@@ -96,6 +97,19 @@ export default function AdminCurrenciesPage() {
       toast.error("Failed to add currency");
     } finally {
       setAdding(false);
+    }
+  };
+
+  const handleToggleEnabled = async (cur: CurrencyItem) => {
+    try {
+      await setCurrencyEnabled(cur.id, cur.enabled === false);
+      toast.success(
+        cur.enabled === false
+          ? `${cur.code} enabled`
+          : `${cur.code} disabled`,
+      );
+    } catch {
+      toast.error("Failed to update currency");
     }
   };
 
@@ -116,30 +130,32 @@ export default function AdminCurrenciesPage() {
     setEditSymbol(cur.symbol);
     setEditThreshold(String(cur.payoutThreshold || 10000));
     setEditMinSupport(String(cur.minSupportAmount || 100));
+    setEditEnabled(cur.enabled !== false);
   };
 
   const handleEdit = async () => {
-    const code = editCode.trim().toUpperCase();
-    const name = editName.trim();
-    const symbol = editSymbol.trim();
-    const threshold = parseInt(editThreshold) || 10000;
-    const minSupport = parseInt(editMinSupport) || 100;
-    if (!code || !name) {
-      toast.error("Currency code and name are required");
+    const result = validateCurrencyConfig({
+      code: editCode,
+      name: editName,
+      symbol: editSymbol,
+      payoutThreshold: editThreshold,
+      minSupportAmount: editMinSupport,
+      enabled: editEnabled,
+    });
+    if (!result.ok) {
+      toast.error(result.error);
       return;
     }
-    if (currencies.some((c) => c.code === code && c.id !== editingId)) {
+    if (
+      currencies.some(
+        (c) => c.code === result.value.code && c.id !== editingId,
+      )
+    ) {
       toast.error("Currency code already exists");
       return;
     }
     try {
-      await updateCurrency(editingId!, {
-        code,
-        name,
-        symbol,
-        payoutThreshold: threshold,
-        minSupportAmount: minSupport,
-      });
+      await updateCurrency(editingId!, result.value);
       toast.success("Currency updated");
       setEditingId(null);
     } catch {
@@ -198,7 +214,7 @@ export default function AdminCurrenciesPage() {
             />
             <button
               onClick={handleAdd}
-              disabled={adding || !newCode.trim() || !newName.trim()}
+              disabled={adding || !newCode.trim()}
               className="bg-orange-600 text-white px-6 py-4 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-orange-700 transition disabled:opacity-50"
             >
               {adding ? (
@@ -264,6 +280,17 @@ export default function AdminCurrenciesPage() {
                       className="w-20 bg-muted p-2 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
                     />
                     <button
+                      type="button"
+                      onClick={() => setEditEnabled((value) => !value)}
+                      className={`text-xs font-bold px-3 py-2 rounded-lg ${
+                        editEnabled
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-700"
+                      }`}
+                    >
+                      {editEnabled ? "Enabled" : "Disabled"}
+                    </button>
+                    <button
                       onClick={handleEdit}
                       className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition"
                     >
@@ -290,6 +317,17 @@ export default function AdminCurrenciesPage() {
                     <span className="text-xs bg-muted px-2 py-0.5 rounded-full font-bold text-muted-foreground">
                       Min: {(cur.minSupportAmount || 100).toLocaleString()}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleEnabled(cur)}
+                      className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                        cur.enabled === false
+                          ? "bg-red-100 text-red-700"
+                          : "bg-green-100 text-green-700"
+                      }`}
+                    >
+                      {cur.enabled === false ? "Disabled" : "Enabled"}
+                    </button>
                     {defaultCurrency === cur.code && (
                       <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-bold">
                         Default

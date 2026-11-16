@@ -19,6 +19,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService";
+import { isCurrencySupportedByMethod } from "@/lib/money/rails";
 import Link from "next/link";
 import Navbar from "@/components/parts/Navigation";
 import Footer from "@/components/parts/Footer";
@@ -54,7 +55,7 @@ export default function BookingPayClient() {
       }
       const data: any = { id: snap.id, ...snap.data() };
       setBooking(data);
-      if (data.currency === "USD") setPaymentMethod("card");
+      if (data.currency && !isCurrencySupportedByMethod("momo", data.currency)) setPaymentMethod("card");
       if (data.paymentStatus === "paid") { setPaid(true); setConfirmed(true); }
       if (!data.paymentAmount || data.paymentAmount <= 0) {
         router.push(`/${data.creatorHandle || ""}/booking`);
@@ -178,7 +179,8 @@ export default function BookingPayClient() {
 
   const handle = booking.creatorHandle;
   const isPaid = booking.paymentStatus === "paid";
-  const isUSDBooking = booking.currency === "USD";
+  const momoSupported = booking?.currency ? isCurrencySupportedByMethod("momo", booking.currency) : true;
+  const isUSDBooking = !momoSupported;
 
   return (
     <div className="min-h-screen bg-background">

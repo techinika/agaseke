@@ -24,6 +24,8 @@ import { toast } from "sonner";
 import { EmptyState } from "./payoutspage/index";
 import { getCurrencySymbol } from "@/types/currency";
 import { maskPayoutNumber } from "@/lib/format/payout";
+import { fromMajor, toMajor } from "@/lib/money";
+import { parsePayoutCurrency } from "@/lib/payouts/currency";
 
 export default function PayoutsPage() {
   const router = useRouter();
@@ -36,14 +38,19 @@ export default function PayoutsPage() {
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [creatorCurrency, setCreatorCurrency] = useState("RWF");
-  const [withdrawThreshold, setWithdrawThreshold] = useState(10000);
+  const [withdrawThreshold, setWithdrawThreshold] = useState<number | null>(null);
 
   const [withdrawType, setWithdrawType] = useState<"all" | "custom">("all");
   const [customAmount, setCustomAmount] = useState<string>("");
+  const [withdrawRequestKey, setWithdrawRequestKey] = useState<string | null>(null);
   const [verificationRequest, setVerificationRequest] = useState<any>(null);
   const [perCurrencyBalances, setPerCurrencyBalances] = useState<CurrencyBalance[]>([]);
 
-  const pendingAmount = creator?.pendingPayout || 0;
+  const activeBalance = perCurrencyBalances.find(
+    (balance) => balance.currency === creatorCurrency,
+  );
+  const pendingAmount = activeBalance?.pending ?? 0;
+  const canWithdraw = withdrawThreshold !== null && pendingAmount >= withdrawThreshold;
   const isVerified = creator?.verified || false;
   const payoutPref = String(verificationRequest?.payoutPreference ?? "").toLowerCase();
 
@@ -83,10 +90,22 @@ export default function PayoutsPage() {
     };
   }, [creator]);
 
+  const selectPayoutCurrency = (balance: CurrencyBalance) => {
+    setCreatorCurrency(balance.currency);
+    setWithdrawThreshold(balance.threshold);
+    setWithdrawRequestKey(null);
+    setCustomAmount("");
+    setWithdrawType("all");
+  };
+
   const handleWithdrawInit = () => {
     if (!isVerified) {
       toast.error("Please verify your identity first.");
       router.push("/creator/verify");
+      return;
+    }
+    if (withdrawThreshold === null) {
+      toast.error(`Withdrawals are not configured for ${creatorCurrency}`);
       return;
     }
     if (pendingAmount < withdrawThreshold) {
@@ -95,14 +114,30 @@ export default function PayoutsPage() {
       );
       return;
     }
+    setWithdrawRequestKey((current) => current ?? crypto.randomUUID());
     setView("withdraw");
   };
 
   const submitRequest = async () => {
     if (!creator) return;
-    const finalAmount = withdrawType === "all" ? pendingAmount : parseInt(customAmount);
+    const rawAmount =
+      withdrawType === "all" ? String(pendingAmount) : customAmount.trim();
+    let finalAmount: number;
 
-    if (isNaN(finalAmount) || finalAmount < withdrawThreshold) {
+    try {
+      const parsed = fromMajor(parsePayoutCurrency(creatorCurrency), rawAmount);
+      finalAmount = toMajor(parsed);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Enter a valid amount");
+      return;
+    }
+
+    if (withdrawThreshold === null) {
+      toast.error(`Withdrawals are not configured for ${creatorCurrency}`);
+      return;
+    }
+
+    if (finalAmount < withdrawThreshold) {
       toast.error(
         `Amount must be at least ${withdrawThreshold.toLocaleString()} ${getCurrencySymbol(creatorCurrency)}`,
       );
@@ -110,25 +145,33 @@ export default function PayoutsPage() {
     }
 
     if (finalAmount > pendingAmount) {
-      toast.error("Insufficient balance");
+      toast.error("Insufficient available balance");
       return;
     }
+
+    const idempotencyKey = withdrawRequestKey ?? crypto.randomUUID();
+    if (!withdrawRequestKey) setWithdrawRequestKey(idempotencyKey);
 
     setIsSubmitting(true);
     try {
       await submitWithdrawRequest({
         creatorUid: creator.uid,
         creatorName: creator.name,
-        handle: creator.handle,
-        amount: finalAmount,
+        amount: rawAmount,
         currency: creatorCurrency,
-        method: creator.network || "MTN",
-        accountNumber: creator.payoutNumber || "",
+        idempotencyKey,
       });
+      setWithdrawRequestKey(null);
+      const overview = await fetchPayoutOverview(creator as any);
+      if (overview) {
+        setCreatorCurrency(overview.creatorCurrency);
+        setWithdrawThreshold(overview.withdrawThreshold);
+        setPerCurrencyBalances(overview.perCurrencyBalances);
+      }
       setWithdrawStep(2);
     } catch (e) {
       console.error(e);
-      toast.error("Failed to submit request.");
+      toast.error(e instanceof Error ? e.message : "Failed to submit request.");
     } finally {
       setIsSubmitting(false);
     }
@@ -154,10 +197,10 @@ export default function PayoutsPage() {
                 </p>
               </div>
               <button
-                disabled={pendingAmount < withdrawThreshold}
+                disabled={!canWithdraw}
                 onClick={handleWithdrawInit}
                 className={`px-8 py-4 rounded-lg font-black text-sm transition shadow-xl flex items-center gap-2 ${
-                  pendingAmount >= withdrawThreshold
+                  canWithdraw
                     ? "bg-foreground text-background hover:bg-orange-600"
                     : "bg-border-strong text-muted-foreground cursor-not-allowed"
                 }`}
@@ -191,7 +234,7 @@ export default function PayoutsPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
               <div className="bg-card p-8 rounded-lg border border-border shadow-sm">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">
-                  Pending Balance
+                  Available Balance
                 </p>
                 {perCurrencyBalances.map((b) => (
                   <h2 key={b.currency} className="text-2xl font-black">
@@ -201,6 +244,24 @@ export default function PayoutsPage() {
                     </span>
                   </h2>
                 ))}
+                {perCurrencyBalances.length > 1 && (
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {perCurrencyBalances.map((b) => (
+                      <button
+                        key={b.currency}
+                        type="button"
+                        onClick={() => selectPayoutCurrency(b)}
+                        className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border ${
+                          b.currency === creatorCurrency
+                            ? "border-orange-600 bg-orange-50 text-orange-600"
+                            : "border-border text-muted-foreground hover:border-foreground"
+                        }`}
+                      >
+                        {b.currency}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="bg-card p-8 rounded-lg border border-border shadow-sm">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">
@@ -259,7 +320,10 @@ export default function PayoutsPage() {
                 Progress to Payout Threshold
               </p>
               {perCurrencyBalances.map((b) => {
-                const progress = Math.min((b.pending / b.threshold) * 100, 100);
+                const progress =
+                  b.threshold === null
+                    ? 0
+                    : Math.min((b.pending / b.threshold) * 100, 100);
                 return (
                   <div key={b.currency}>
                     <div className="flex items-center justify-between mb-2">
@@ -267,8 +331,10 @@ export default function PayoutsPage() {
                         {b.currency} ({getCurrencySymbol(b.currency)})
                       </p>
                       <p className="text-sm font-bold text-foreground">
-                        {b.pending.toLocaleString()} / {b.threshold.toLocaleString()}{" "}
-                        {getCurrencySymbol(b.currency)}
+                        {b.pending.toLocaleString()}
+                        {b.threshold === null
+                          ? " / Not configured"
+                          : ` / ${b.threshold.toLocaleString()} ${getCurrencySymbol(b.currency)}`}
                       </p>
                     </div>
                     <div className="w-full bg-muted rounded-full h-3 mb-1">
@@ -278,9 +344,11 @@ export default function PayoutsPage() {
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {b.pending >= b.threshold
-                        ? "You've reached the payout threshold! You can now request a withdrawal."
-                        : `You need ${(b.threshold - b.pending).toLocaleString()} ${getCurrencySymbol(b.currency)} more to reach the payout threshold.`}
+                      {b.threshold === null
+                        ? "Withdrawals are not configured for this currency."
+                        : b.pending >= b.threshold
+                          ? "You've reached the payout threshold! You can now request a withdrawal."
+                          : `You need ${(b.threshold - b.pending).toLocaleString()} ${getCurrencySymbol(b.currency)} more to reach the payout threshold.`}
                     </p>
                   </div>
                 );
@@ -321,7 +389,9 @@ export default function PayoutsPage() {
                             <CheckCircle2 size={20} />
                           </div>
                           <div>
-                            <p className="text-sm font-bold">Transfer to MoMo</p>
+                            <p className="text-sm font-bold">
+                              {tx.method ? `${tx.method} payout` : "Payout"}
+                            </p>
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">
                               {tx.createdAt?.toDate().toLocaleDateString()}
                             </p>
@@ -330,7 +400,11 @@ export default function PayoutsPage() {
                         <div className="text-right">
                           <p className="text-sm font-black">
                             -{tx.amount.toLocaleString()}{" "}
-                            {getCurrencySymbol(creatorCurrency)}
+                            {getCurrencySymbol(
+                              typeof tx.currency === "string"
+                                ? tx.currency
+                                : creatorCurrency,
+                            )}
                           </p>
                           <p className="text-[10px] text-green-500 font-bold uppercase tracking-widest">
                             Completed
@@ -363,7 +437,11 @@ export default function PayoutsPage() {
                       <div className="text-right">
                         <p className="text-sm font-black">
                           {req.amount.toLocaleString()}{" "}
-                          {getCurrencySymbol(creatorCurrency)}
+                          {getCurrencySymbol(
+                            typeof req.currency === "string"
+                              ? req.currency
+                              : creatorCurrency,
+                          )}
                         </p>
                         <p
                           className={`text-[10px] font-bold uppercase tracking-widest ${req.status === "pending" ? "text-orange-600" : req.status === "approved" ? "text-green-500" : "text-red-500"}`}
@@ -420,6 +498,8 @@ export default function PayoutsPage() {
                     <div className="relative">
                       <input
                         type="number"
+                        min="0"
+                        step={creatorCurrency === "USD" ? "0.01" : "1"}
                         value={customAmount}
                         onChange={(e) => setCustomAmount(e.target.value)}
                         placeholder={`Enter amount (${creatorCurrency})`}
