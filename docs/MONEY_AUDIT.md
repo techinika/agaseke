@@ -659,7 +659,8 @@ payment/payout currencies. The Phase 3 withdrawal slice is in place: authenticat
 server creation with idempotency keys, optional ledger-backed `withdrawal_hold` entries
 plus `pendingWithdrawals`, per-currency available balances, and an authenticated admin
 settlement route that writes payout/settlement/release entries transactionally.
-Reconciliation now covers pending withdrawals and lifetime withdrawals. Before enabling
-the flag: run reconciliation against a reviewed dataset, confirm the business answers
-above, review the data-quality findings from §7, and deploy rules for the ledger and
-withdrawal collections. Request flows still need emulator/browser exercise.
+Reconciliation now covers pending withdrawals and lifetime withdrawals.
+
+**Phase 4 (partial, this branch):** server-side payment rails matrix (`shared/money/paymentRails.json`, generated rails, `GET /api/payments/methods`, `assertMethodSupportsCurrency` in initiation) and FX/quote plumbing in the payments worker (FX snapshot primitives + scheduled refresh to `fxRates/latest`/history, disabled by default; `POST /api/payments/quote` persisting locked `fxQuotes/*` bound to request/uid/TTL; quote-aware pricing/allocation and FX metadata on transactions; `quoteId` in initiation/idempotency). Canonical item pricing is a per-currency `prices` map + primary `currency` (no per-currency fields), with a dynamic `PriceEditor` and updated product/gathering/booking/community authoring paths; legacy `price`/`priceUSD` remain derived for compatibility. See `docs/MONEY.md` and `docs/FIX_LOG.md`.
+
+**Still pending:** remaining currency-typed surface/flow generalization, full quote/rails/FX-refresh and pricing-quote test coverage, rules for `fxRates`/`fxRateHistory`/`fxQuotes`, FX provider/spread/TTL/rounding-residual decisions, broader currency enablement, and emulator/browser exercise. Before enabling FX/ledger flags: run reconciliation against a reviewed dataset, confirm the business answers above, review data-quality findings, and deploy rules.

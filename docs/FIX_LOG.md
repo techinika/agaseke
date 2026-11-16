@@ -587,3 +587,22 @@ Finding IDs: AGA-PAY-001, AGA-PAY-002, AGA-PAY-003.
   product plus total quantity.
 - Firestore rule changes (transaction reads, tracking-ID exposure, private media)
   are out of scope and recorded in `docs/RULES_FOLLOWUP.md`.
+
+## 2026-11-16 - Phase 4 FX rates, payment rails, locked quotes, and canonical price maps (partial)
+
+Finding/phase: multi-currency Phase 4 (payments/pricing).
+
+### Changed
+
+- **Payment rails matrix:** added `shared/money/paymentRails.json` (Paypack momo RWF/RW, Pesapal card RWF+USD+KES+UGX+TZS) and extended `scripts/money/generate-registry.mjs` to generate `rails.generated.ts` for `lib/money` and all workers (`money:registry`/`money:registry:check` now track 14 files). Added `lib/money/rails.ts` and `workers/payments/src/money/rails.ts` (`getAvailableMethods`, `assertMethodSupportsCurrency`, etc.) and `GET /api/payments/methods` in the payments worker.
+- **FX core + refresh:** added `lib/money/fx.ts` / `workers/payments/src/money/fx.ts` (snapshot/quote primitives, spread, minor-unit conversion, freshness/expiry, no floats) and `workers/payments/src/services/fxRates.ts` (scheduled refresh to `fxRates/latest` + `fxRateHistory/*`, `fawazahmed0-currency-api` primary with `open.er-api` fallback, gated/staleness/env controls; default `FX_RATES_ENABLED=false`).
+- **Locked checkout quotes:** added `workers/payments/src/services/quotes.ts` and `POST /api/payments/quote` (reads cached `fxRates/latest` only). Quotes are persisted to `fxQuotes/*`, bound to uid + request key, TTL/expiry-checked, loaded/applied during initiation (`quoteId`), and best-effort consumed after successful initiation; FX metadata (`fxQuoteId`, rate/spread/source/timestamp, source/target amounts) is written on transactions. Added `firestoreUpdateFields` helper.
+- **Pricing/method enforcement:** `workers/payments/src/services/pricing.ts` refactored to use registry/rails/fx helpers (no silent RWF fallback, legacy-enabled currencies allowed, others require enabled `currencies/{code}` config), quote-aware `resolvePayment` with largest-remainder charge-currency allocation (`allocateMinor`) and checkout quote application. MoMo/card initiation enforce `assertMethodSupportsCurrency` and include `quoteId` in idempotency hashing; added `InitRequest.quoteId` and FX env config.
+- **Canonical multi-currency price maps (decision):** do **not** add a DB/UI field per currency. Canonical source is a `prices` map keyed by `CurrencyCode` plus a primary `currency`; money-moving reads explicit `prices`/quotes, never inferred currency. Legacy `price`/`priceUSD` kept as derived/compat fields for now. Generalized `lib/priceMap.ts` (`buildPriceMap` merges explicit maps, `parsePriceCurrency`, precision-aware sanitize, registry-wide codes) and added `components/money/PriceEditor.tsx` (dynamic per-currency rows). Updated store/gathering/booking/community authoring UIs and key types/services to write canonical `prices` with legacy fields derived.
+- **Tests run:** `workers/payments` 76/76; payments `tsc --noEmit` clean; root `tsc --noEmit` clean; root `tests/unit/{price-map,store-prices,fx,payment-rails}.test.ts` 27/27 pass.
+
+### Remaining (Phase 4/5)
+
+- Broaden remaining currency-typed surfaces/flows (e.g. `workers/community/src/types.ts`, public store/gathering/community view types, any RWF/USD-only assumptions in charge/display paths) and complete end-to-end enablement per currency.
+- Add worker/root tests for `POST /api/payments/quote`, quote load/consume/mismatch/expiry, rails enforcement, FX refresh/snapshot-staleness paths, and pricing quote application.
+- Decide/document FX provider final choice, spread, quote TTL, fee rounding/residual owner, and historical USD handling; deploy rules for `fxRates`, `fxRateHistory`, `fxQuotes`; keep `FX_RATES_ENABLED` off until reviewed.
