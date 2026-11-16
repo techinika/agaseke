@@ -488,7 +488,7 @@ export function useSupportFlow({
     amountValid,
     phoneValid,
     canPay,
-    presets: config.currency === "USD" ? [1, 5, 10, 20] : undefined,
+    presets: ["USD","EUR","GBP"].includes(config.currency) ? [1, 5, 10, 20] : undefined,
     perks: perksForCreator(creator),
     guestCheckoutEnabled: GUEST_CHECKOUT_ENABLED,
     setMessage,

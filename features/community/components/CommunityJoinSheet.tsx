@@ -13,6 +13,7 @@ import { initiateSubscription } from "@/lib/communityService";
 import { CreatorTrustRow, SupporterActionSheet } from "@/features/actions";
 import { useTransactionPayment } from "@/features/payments";
 import type { CommunityTierView } from "../types";
+import { isCurrencySupportedByMethod } from "@/lib/money/rails";
 
 export interface CommunityJoinSheetProps {
   open: boolean;
@@ -61,7 +62,8 @@ export function CommunityJoinSheet({
   const [error, setError] = useState<string | null>(null);
 
   const selectedTier = tiers.find((tier) => tier.id === selectedId) || tiers[0] || null;
-  const requiresCard = selectedTier?.currency === "USD";
+  const momoSupported = selectedTier ? isCurrencySupportedByMethod("momo", selectedTier.currency || "RWF") : true;
+  const requiresCard = !momoSupported;
   const activeMethod = requiresCard ? "card" : method;
   const phoneValid = isValidRwandaPhone(phone);
   const canJoin =
@@ -84,7 +86,7 @@ export function CommunityJoinSheet({
   const chooseTier = (tier: CommunityTierView) => {
     setSelectedId(tier.id);
     setError(null);
-    if (tier.currency === "USD") setMethod("card");
+    if (!isCurrencySupportedByMethod("momo", tier.currency || "RWF")) setMethod("card");
   };
 
   const join = async () => {

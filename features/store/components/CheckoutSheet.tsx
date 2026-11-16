@@ -12,6 +12,7 @@ import { initiateCardPayment, initiateMomoPayment } from "@/lib/paymentsService"
 import { CreatorTrustRow, SupporterActionSheet } from "@/features/actions";
 import { useTransactionPayment } from "@/features/payments";
 import type { CartItem, ShippingAddress } from "../types";
+import { isCurrencySupportedByMethod } from "@/lib/money/rails";
 
 const platformSharePercentage = Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
 
@@ -79,11 +80,12 @@ export function CheckoutSheet({
   currentUser,
   onPaid,
 }: CheckoutSheetProps) {
+  const momoSupported = isCurrencySupportedByMethod("momo", currency);
   const isUSD = currency === "USD";
   const [step, setStep] = useState<CheckoutStep>("info");
   const [couponCode, setCouponCode] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"momo" | "card">(
-    isUSD ? "card" : "momo",
+    momoSupported ? "momo" : "card",
   );
   const [error, setError] = useState<string | null>(null);
   const keyRef = useRef(newKey());
@@ -108,7 +110,7 @@ export function CheckoutSheet({
   const finalTotal = Math.max(0, total - couponDiscount);
   const totalWithPlatformFee = finalTotal + platformFee;
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const method = isUSD ? "card" : paymentMethod;
+  const method = momoSupported ? paymentMethod : "card";
   const phoneValid = isValidRwandaPhone(shippingAddress.phone);
 
   const payment = useTransactionPayment({

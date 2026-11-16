@@ -329,9 +329,8 @@ export async function handlePaymentCallback(
   }
 
   const currency = (txData.currency as string) || "RWF";
-  const isUSD = currency === "USD";
-  const payoutField = isUSD ? "pendingPayoutUSD" : "pendingPayout";
-  const earningsField = isUSD ? "totalEarningsUSD" : "totalEarnings";
+  const payoutField = currency === "RWF" ? "pendingPayout" : `pendingPayout${currency}`;
+  const earningsField = currency === "RWF" ? "totalEarnings" : `totalEarnings${currency}`;
   const platformAmount = roundCurrencyAmount(platformShare, currency);
   const creatorAmount = roundCurrencyAmount(creatorShare, currency);
   const referralAmount = roundCurrencyAmount(referralShare, currency);

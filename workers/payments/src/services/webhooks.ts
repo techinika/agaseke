@@ -261,9 +261,8 @@ async function handleGatheringPayment(
   txRef: string,
 ): Promise<boolean> {
   const currency = (txData.currency as string) || "RWF";
-  const isUSD = currency === "USD";
-  const payoutField = isUSD ? "pendingPayoutUSD" : "pendingPayout";
-  const earningsField = isUSD ? "totalEarningsUSD" : "totalEarnings";
+  const payoutField = currency === "RWF" ? "pendingPayout" : `pendingPayout${currency}`;
+  const earningsField = currency === "RWF" ? "totalEarnings" : `totalEarnings${currency}`;
   const includeReferral = !!txData.includeReferral;
   const platformSharePercentage = includeReferral
     ? Number(env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL || 0.15)
