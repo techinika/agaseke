@@ -674,3 +674,141 @@ describe("server-authoritative payment pricing", () => {
     expect(err.statusCode).toBe(422);
   });
 });
+
+  it("applies a locked checkout quote and reallocates fees in charge currency", async () => {
+    const docs = {
+      ...baseDocs,
+      "storeProducts/p1": {
+        id: "p1",
+        creatorId: "uid-alice",
+        active: true,
+        currency: "USD",
+        price: 0,
+        priceUSD: 5,
+        prices: { USD: 5 },
+      },
+    };
+
+    // Buyer-pays-fee store total: 5 + (5 * 0.15) = 5.75 USD = 575 minor.
+    const quote = {
+      id: "q1",
+      purpose: "checkout" as const,
+      fromCurrency: "USD" as const,
+      toCurrency: "RWF" as const,
+      sourceAmountMinor: 575,
+      targetAmountMinor: 747500,
+      rate: 1300,
+      spreadBps: 150,
+      rateSource: "test",
+      rateTimestamp: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+    };
+
+    const resolved = await resolvePayment(
+      env,
+      body({
+        creatorHandle: "alice",
+        type: "store",
+        productId: "p1",
+        currency: "RWF",
+      }),
+      "buyer-1",
+      makeRepo(docs),
+      { quote },
+    );
+
+    expect(resolved.currency).toBe("RWF");
+    expect(resolved.totalAmount).toBe(747500);
+    expect(resolved.platformFee + resolved.creatorEarnings + resolved.referralEarnings).toBe(
+      resolved.totalAmount,
+    );
+    expect(resolved.fx?.id).toBe("q1");
+  });
+
+  it("rejects a checkout quote that does not match the native payment", async () => {
+    const docs = {
+      ...baseDocs,
+      "storeProducts/p1": {
+        id: "p1",
+        creatorId: "uid-alice",
+        active: true,
+        currency: "USD",
+        price: 0,
+        priceUSD: 5,
+        prices: { USD: 5 },
+      },
+    };
+
+    await expect(
+      resolvePayment(
+        env,
+        body({
+          creatorHandle: "alice",
+          type: "store",
+          productId: "p1",
+          currency: "RWF",
+        }),
+        "buyer-1",
+        makeRepo(docs),
+        {
+          quote: {
+            id: "q-bad",
+            purpose: "checkout",
+            fromCurrency: "USD",
+            toCurrency: "RWF",
+            sourceAmountMinor: 400,
+            targetAmountMinor: 520000,
+            rate: 1300,
+            spreadBps: 150,
+            rateSource: "test",
+            rateTimestamp: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+          },
+        },
+      ),
+    ).rejects.toMatchObject({ code: "QUOTE_MISMATCH" });
+  });
+
+  it("rejects an expired checkout quote", async () => {
+    const docs = {
+      ...baseDocs,
+      "storeProducts/p1": {
+        id: "p1",
+        creatorId: "uid-alice",
+        active: true,
+        currency: "USD",
+        price: 0,
+        priceUSD: 5,
+        prices: { USD: 5 },
+      },
+    };
+
+    await expect(
+      resolvePayment(
+        env,
+        body({
+          creatorHandle: "alice",
+          type: "store",
+          productId: "p1",
+          currency: "RWF",
+        }),
+        "buyer-1",
+        makeRepo(docs),
+        {
+          quote: {
+            id: "q-exp",
+            purpose: "checkout",
+            fromCurrency: "USD",
+            toCurrency: "RWF",
+            sourceAmountMinor: 575,
+            targetAmountMinor: 747500,
+            rate: 1300,
+            spreadBps: 150,
+            rateSource: "test",
+            rateTimestamp: new Date().toISOString(),
+            expiresAt: new Date(Date.now() - 1000).toISOString(),
+          },
+        },
+      ),
+    ).rejects.toMatchObject({ code: "QUOTE_EXPIRED" });
+  });

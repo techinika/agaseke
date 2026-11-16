@@ -18,7 +18,7 @@ export interface TierData {
   price: number;
   priceUSD?: number;
   prices?: Partial<Record<"RWF" | "USD", number>>;
-  currency?: "RWF" | "USD";
+  currency?: string;
   interval: "monthly" | "yearly";
   benefits: string[];
   isActive: boolean;
