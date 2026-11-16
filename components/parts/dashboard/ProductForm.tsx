@@ -24,7 +24,7 @@ import type { CurrencyCode } from "@/lib/money/registry.generated";
 export default function ProductForm() {
   const { creator } = useAuth();
   const router = useRouter();
-  const defaultCurrency: CurrencyCode = parsePriceCurrency(creator?.currency) || "RWF";
+  const defaultCurrency: CurrencyCode = (parsePriceCurrency(creator?.currency) ?? ("RWF" as CurrencyCode));
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -117,7 +117,7 @@ export default function ProductForm() {
         description: formData.description,
         // Legacy compatibility fields derived from the canonical price map.
         price: prices.RWF ?? primaryAmount,
-        priceUSD: prices.USD ?? null,
+
         prices,
         currency: formData.currency,
         type: formData.type,

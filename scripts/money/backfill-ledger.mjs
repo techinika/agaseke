@@ -85,10 +85,16 @@ async function main() {
     }
 
     const data = doc.data() || {};
-    const balances = [
-      ["RWF", finiteAmount(data.pendingPayout)],
-      ["USD", finiteAmount(data.pendingPayoutUSD)],
-    ].filter(([, amount]) => amount > 0);
+    const balanceByCurrency = new Map();
+    const rwf = finiteAmount(data.pendingPayout);
+    if (rwf > 0) balanceByCurrency.set("RWF", rwf);
+    for (const [key, value] of Object.entries(data)) {
+      const match = key.match(/^pendingPayout([A-Z]{3})$/);
+      if (!match) continue;
+      const amount = finiteAmount(value);
+      if (amount > 0) balanceByCurrency.set(match[1], amount);
+    }
+    const balances = [...balanceByCurrency.entries()];
 
     if (balances.length === 0) {
       skippedNoBalance += 1;

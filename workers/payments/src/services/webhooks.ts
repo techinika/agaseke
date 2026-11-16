@@ -198,7 +198,10 @@ async function forwardToDomainWorker(
   const referralShare = includeReferral
     ? Number(txData.referralEarnings ?? totalAmount * referralSharePercentage)
     : 0;
-  const currency = (txData.currency as string) || "RWF";
+  const currency = txData.currency as string;
+  if (!currency) {
+    throw new Error("Payment callback missing currency");
+  }
 
   try {
     const res = await fetch(callbackUrl, {
@@ -260,7 +263,10 @@ async function handleGatheringPayment(
   totalAmount: number,
   txRef: string,
 ): Promise<boolean> {
-  const currency = (txData.currency as string) || "RWF";
+  const currency = txData.currency as string;
+  if (!currency) {
+    throw new Error("Gathering payment missing currency");
+  }
   const payoutField = currency === "RWF" ? "pendingPayout" : `pendingPayout${currency}`;
   const earningsField = currency === "RWF" ? "totalEarnings" : `totalEarnings${currency}`;
   const includeReferral = !!txData.includeReferral;

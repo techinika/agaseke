@@ -19,6 +19,8 @@ export interface Creator {
   totalSupporters: number;
   pendingPayout: number;
   pendingPayoutUSD?: number;
+  [key: `pendingPayout${string}`]: number | undefined;
+  [key: `totalEarnings${string}`]: number | undefined;
   socials: {
     instagram: string | null;
     linkedin: string | null;

@@ -53,8 +53,9 @@ function money(value: unknown): number {
 }
 
 function currenciesMatch(a: unknown, b: unknown): boolean {
-  const left = (str(a) || "RWF").toUpperCase();
-  const right = (str(b) || "RWF").toUpperCase();
+  const left = str(a).toUpperCase();
+  const right = str(b).toUpperCase();
+  if (!left || !right) return false;
   return left === right;
 }
 
@@ -211,7 +212,7 @@ export function verifyPaypackEvent(
   return {
     state: mapPaypackStatus(event.status),
     amount: expectedAmount,
-    currency: (str(stored.currency) || "RWF").toUpperCase(),
+    currency: str(stored.currency).toUpperCase(),
   };
 }
 
@@ -298,6 +299,6 @@ export function verifyPesapalStatus(args: {
     ),
     bindTrackingId: !storedTrackingId,
     amount: expectedAmount,
-    currency: (str(stored.currency) || "RWF").toUpperCase(),
+    currency: str(stored.currency).toUpperCase(),
   };
 }

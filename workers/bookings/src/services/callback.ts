@@ -19,7 +19,10 @@ export async function handleBookingCallback(
     referralShare: number;
   };
 
-  const currency = (txData.currency as string) || "RWF";
+  const currency = txData.currency as string;
+  if (!currency) {
+    throw new Error("Booking callback missing currency");
+  }
   const payoutField = currency === "RWF" ? "pendingPayout" : `pendingPayout${currency}`;
   const earningsField = currency === "RWF" ? "totalEarnings" : `totalEarnings${currency}`;
   const platformAmount = roundCurrencyAmount(platformShare, currency);

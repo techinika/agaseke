@@ -1,3 +1,4 @@
+import { DEFAULT_CURRENCY } from "@/types/currency";
 "use client";
 
 import { useState } from "react";
@@ -173,7 +174,7 @@ export function CreatorPagePreview() {
             name: "Aline Uwase",
             photoURL: null,
             verified: true,
-            currency: "RWF",
+            currency: DEFAULT_CURRENCY,
             storeEnabled: CREATOR.storeEnabled,
             giveawayEnabled: CREATOR.giveawayEnabled,
             gatheringsEnabled: CREATOR.gatheringsEnabled,

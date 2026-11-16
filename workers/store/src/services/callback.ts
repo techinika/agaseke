@@ -24,7 +24,10 @@ export async function handleStoreCallback(
     referralShare: number;
   };
 
-  const currency = (txData.currency as string) || "RWF";
+  const currency = txData.currency as string;
+  if (!currency) {
+    throw new Error("Store callback missing currency");
+  }
   const payoutField = currency === "RWF" ? "pendingPayout" : `pendingPayout${currency}`;
   const earningsField = currency === "RWF" ? "totalEarnings" : `totalEarnings${currency}`;
 
@@ -109,7 +112,7 @@ export async function handleStoreCallback(
       platformFeePayer: { stringValue: (txData.platformFeePayer as string) || "buyer" },
       status: { stringValue: "paid" },
       paymentMethod: { stringValue: paymentMethod },
-      currency: { stringValue: (txData.currency as string) || "RWF" },
+      currency: { stringValue: currency },
       createdAt: { timestampValue: now },
     },
   });
@@ -133,7 +136,7 @@ export async function handleStoreCallback(
       referralUid: { stringValue: (txData.referralUid as string) || "" },
       status: { stringValue: "completed" },
       paymentMethod: { stringValue: paymentMethod },
-      currency: { stringValue: (txData.currency as string) || "RWF" },
+      currency: { stringValue: currency },
       createdAt: { timestampValue: now },
     },
   });

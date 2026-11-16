@@ -13,7 +13,6 @@ export interface PriceFields {
   readonly prices?: PriceMap | null;
   readonly currency?: string | null;
   readonly price?: number | null;
-  readonly priceUSD?: number | null;
   readonly ticketPrice?: number | null;
 }
 
@@ -55,32 +54,35 @@ export function parsePriceCurrency(currency?: string | null): PriceCurrency | nu
 }
 
 /**
- * Build a canonical price map. Accepts legacy `price`/`priceUSD` fields for
- * compatibility and/or an explicit `prices` map. Explicit entries win.
+ * Build a canonical price map from an explicit `prices` map.
+ * Legacy `price` is only applied to the declared `currency` (or RWF for
+ * legacy records without currency) for backward compatibility.
  */
 export function buildPriceMap(fields: {
   price?: number | null;
-  priceUSD?: number | null;
+  ticketPrice?: number | null;
+  currency?: string | null;
   prices?: PriceMap | Record<string, number | null | undefined> | null;
 }): PriceMap {
   const map: PriceMap = {};
 
-  const rwf = positivePrice(fields.price);
-  const usd = positivePrice(fields.priceUSD);
-  if (rwf !== undefined) map.RWF = rwf;
-  if (usd !== undefined) map.USD = usd;
-
   if (fields.prices && typeof fields.prices === "object") {
     for (const [code, value] of Object.entries(fields.prices)) {
-      if (!isCurrencyCode(code)) continue;
+      const upper = code.toUpperCase();
+      if (!isCurrencyCode(upper)) continue;
       const amount = positivePrice(value);
-      if (amount === undefined) {
-        delete map[code];
-        continue;
+      if (amount !== undefined && hasSupportedPrecision(amount, upper)) {
+        map[upper] = amount;
       }
-      if (hasSupportedPrecision(amount, code)) {
-        map[code] = amount;
-      }
+    }
+  }
+
+  if (Object.keys(map).length === 0) {
+    const legacy = positivePrice(fields.price) ?? positivePrice(fields.ticketPrice);
+    // Legacy compatibility: records without an explicit currency were RWF-only.
+    const currency = parsePriceCurrency(fields.currency) ?? "RWF";
+    if (legacy !== undefined && hasSupportedPrecision(legacy, currency)) {
+      map[currency] = legacy;
     }
   }
 
@@ -88,27 +90,17 @@ export function buildPriceMap(fields: {
 }
 
 export function getPriceMap(fields: PriceFields): PriceMap {
-  if (fields.prices && typeof fields.prices === "object") {
-    return sanitizePriceMap(fields.prices);
+  if (fields.prices && typeof fields.prices === "object" && Object.keys(fields.prices).length > 0) {
+    return sanitizePriceMap(fields.prices as PriceMap);
   }
-
-  const map: PriceMap = {};
-  const primary = positivePrice(fields.price) ?? positivePrice(fields.ticketPrice);
-  const usd = positivePrice(fields.priceUSD);
-
-  if (normalizePriceCurrency(fields.currency) === "USD") {
-    if (usd !== undefined) map.USD = usd;
-  } else {
-    if (primary !== undefined) map.RWF = primary;
-    if (usd !== undefined) map.USD = usd;
-  }
-
-  return map;
+  return buildPriceMap(fields);
 }
 
 export function getPrice(
   fields: PriceFields,
-  currency: PriceCurrency = normalizePriceCurrency(fields.currency),
+  currency?: PriceCurrency,
 ): number {
-  return getPriceMap(fields)[currency] ?? 0;
+  const map = getPriceMap(fields);
+  const code = currency ?? parsePriceCurrency(fields.currency) ?? (Object.keys(map)[0] as PriceCurrency | undefined);
+  return code ? map[code] ?? 0 : 0;
 }

@@ -56,7 +56,7 @@ async function sendRenewalEmail(
           subscriptionId: sub.id || subDocId(sub.id as string),
           tierName: sub.tierName,
           amount: sub.amount,
-          currency: sub.currency || "RWF",
+          currency: sub.currency,
           interval: sub.interval,
           expiresAt: sub.expiresAt,
           creatorHandle: sub.creatorHandle,
@@ -90,7 +90,11 @@ async function initiateRenewalPayment(
   phone: string,
   request?: Request,
 ): Promise<{ ref?: string; redirect_url?: string }> {
-  const currency = (sub.currency as string) || "RWF";
+  const currency = (sub.currency as string) || "";
+  if (!currency) throw new Error("Subscription missing currency");
+  if (data.paymentMethod === "momo" && currency !== "RWF") {
+    throw new Error("Mobile Money is not available for this currency. Use card payment.");
+  }
   const periodKey = String(sub.currentPeriodEnd || sub.expiresAt || "renewal");
   const paymentBody: Record<string, unknown> = {
     type: "community",
@@ -161,7 +165,7 @@ export async function initiateSubscription(
     paymentMethod: data.paymentMethod,
     autoRenew: true,
     amount: data.amount,
-    currency: data.currency || "RWF",
+    currency: data.currency,
     interval: data.interval,
     currentPeriodStart: now,
     currentPeriodEnd: periodEnd.toISOString(),
@@ -178,7 +182,7 @@ export async function initiateSubscription(
     communityTierId: data.tierId,
     communityInterval: data.interval,
     communitySubscriptionId: subscriptionId,
-    currency: data.currency || "RWF",
+    currency: data.currency,
     idempotencyKey: `community_${subscriptionId}_${periodEnd.toISOString()}`,
   };
 
@@ -238,13 +242,11 @@ export async function renewSubscription(
 
   if ((sub.userId as string) !== uid) throw new Error("Forbidden");
 
-  const currency = (sub.currency as string) || "RWF";
-  const method: "momo" | "card" =
-    currency === "USD" ? "card" : data.paymentMethod;
-  if (currency !== "RWF" && data.paymentMethod === "momo") {
-    throw new Error(
-      "Mobile Money only supports RWF. Use card payment for other currencies.",
-    );
+  const currency = (sub.currency as string) || "";
+  const momoSupported = currency === "RWF";
+  const method: "momo" | "card" = momoSupported ? data.paymentMethod : "card";
+  if (!momoSupported && data.paymentMethod === "momo") {
+    throw new Error("Mobile Money is not available for this currency. Use card payment.");
   }
 
   const phone = data.phone || (sub.phone as string) || "";
@@ -328,7 +330,10 @@ export async function handlePaymentCallback(
     periodEnd.setMonth(periodEnd.getMonth() + 1);
   }
 
-  const currency = (txData.currency as string) || "RWF";
+  const currency = txData.currency as string;
+  if (!currency) {
+    throw new Error("Community callback missing currency");
+  }
   const payoutField = currency === "RWF" ? "pendingPayout" : `pendingPayout${currency}`;
   const earningsField = currency === "RWF" ? "totalEarnings" : `totalEarnings${currency}`;
   const platformAmount = roundCurrencyAmount(platformShare, currency);
@@ -508,7 +513,7 @@ export async function processRenewals(env: Env): Promise<void> {
     const tierId = sub.tierId as string;
     const subId = subDocId(doc.name);
     const autoRenew = !!sub.autoRenew;
-    const currency = (sub.currency as string) || "RWF";
+  const currency = (sub.currency as string) || "";
     const canAutocharge = currency === "RWF" && !!sub.phone;
 
     // Case 1: Already expired — mark as expired, revoke access, notify, email

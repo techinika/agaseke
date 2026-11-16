@@ -11,7 +11,7 @@ Authoritative constraints: integer **minor units** for money movement; **never f
 
 - **Do not** add a DB or form field per currency. Listed prices are stored as a canonical `prices` map keyed by `CurrencyCode` plus a primary `currency` (e.g. `{ currency: "USD", prices: { USD: 4, RWF: 5000 } }`).
 - Money-moving/checkout uses the explicit price for the **charge currency** (or a locked FX quote), never by inferring or falling back across currencies. A missing price/currency is rejected.
-- Legacy `price`/`priceUSD` are derived compatibility fields during migration (kept read/dual-written where applicable) and are **not** the source of truth. Remove only after the staged rollout/cutover.
+- Canonical pricing is the per-currency `prices` map + primary `currency`. Legacy single-price fields may exist only for backward compatibility with historical records and are not the source of truth for money-moving paths.
 - Authoring UI: `components/money/PriceEditor.tsx` (dynamic per-currency rows, explicit amounts only). Helpers in `lib/priceMap.ts` (`buildPriceMap`, `getPrice`, `parsePriceCurrency`, precision-aware sanitize).
 
 ## FX rates and locked quotes

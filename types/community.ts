@@ -6,7 +6,7 @@ export interface CommunityTier {
   name: string;
   description: string;
   price: number;
-  priceUSD?: number;
+
   prices?: PriceMap;
   currency?: CurrencyCode;
   interval: "monthly" | "yearly";

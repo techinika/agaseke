@@ -24,7 +24,7 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
   const { creator } = useAuth();
   const router = useRouter();
   const isEditing = !!gatheringId;
-  const defaultCurrency: CurrencyCode = parsePriceCurrency(creator?.currency) || "RWF";
+  const defaultCurrency: CurrencyCode = (parsePriceCurrency(creator?.currency) ?? ("RWF" as CurrencyCode));
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
 
@@ -61,11 +61,11 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
           return;
         }
         const data = snap.data();
-        const loadedCurrency = parsePriceCurrency(data.currency) || "RWF";
+        const loadedCurrency = (parsePriceCurrency(data.currency) || defaultCurrency) as CurrencyCode;
         const loadedPrices = buildPriceMap({
           prices: (data.prices as PriceMap | null | undefined) || null,
           price: data.ticketPrice ?? data.price,
-          priceUSD: data.priceUSD,
+
         });
         setFormData({
           title: data.title || "",
@@ -121,7 +121,7 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
         eventType: formData.eventType,
         minSupportTier: formData.eventType === "supporters_tiered" ? formData.minSupportTier : 0,
         ticketPrice: formData.eventType === "ticketed" ? (ticketPrices.RWF ?? ticketAmount) : 0,
-        priceUSD: formData.eventType === "ticketed" ? (ticketPrices.USD ?? 0) : 0,
+
         prices: formData.eventType === "ticketed" ? ticketPrices : null,
         currency: formData.eventType === "ticketed" ? formData.currency : "RWF",
         supporterPrice: formData.eventType === "ticketed" ? formData.supporterPrice : 0,

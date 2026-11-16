@@ -41,7 +41,7 @@ export async function fetchCreatorDashboardData(creator: {
   const creatorDoc = creatorSnap.docs[0];
   const cid = creatorDoc?.id;
   const creatorData = creatorDoc?.data() as Record<string, unknown> | undefined;
-  const mainCurrency = (creatorData?.currency as string) || "RWF";
+  const mainCurrency = (creatorData?.currency as string) || "";
 
   let supports: Array<Record<string, unknown>> = [];
   if (cid) {
@@ -59,22 +59,18 @@ export async function fetchCreatorDashboardData(creator: {
     }));
   }
 
-  const currenciesSnap = await getDocs(collection(db, "currencies"));
-  const currencyCodes = currenciesSnap.docs.map(
-    (d) => (d.data() as { code?: string }).code,
-  );
-  const hasUSD = currencyCodes.includes("USD");
-
   const getPending = (code: string) =>
     code === "RWF"
       ? Number(creator?.pendingPayout || 0)
       : Number((creator as Record<string, unknown>)?.[`pendingPayout${code}`] || 0);
 
-  const displayedCodes = [mainCurrency];
-  if (hasUSD && mainCurrency !== "USD") displayedCodes.push("USD");
-  if (mainCurrency === "USD" && currencyCodes.includes("RWF")) displayedCodes.push("RWF");
+  const displayedCodes = new Set<string>([mainCurrency]);
+  for (const key of Object.keys((creator || {}) as Record<string, unknown>)) {
+    const match = key.match(/^pendingPayout([A-Z]{3})$/);
+    if (match) displayedCodes.add(match[1]);
+  }
 
-  const perCurrencyPayouts = displayedCodes.map((code) => ({
+  const perCurrencyPayouts = Array.from(displayedCodes).map((code) => ({
     currency: code,
     pending: getPending(code),
   }));

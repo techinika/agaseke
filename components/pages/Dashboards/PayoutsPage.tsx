@@ -23,6 +23,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { EmptyState } from "./payoutspage/index";
 import { getCurrencySymbol } from "@/types/currency";
+import { getCurrencyDefinition, type CurrencyCode } from "@/lib/money";
 import { maskPayoutNumber } from "@/lib/format/payout";
 import { fromMajor, toMajor } from "@/lib/money";
 import { parsePayoutCurrency } from "@/lib/payouts/currency";
@@ -499,7 +500,7 @@ export default function PayoutsPage() {
                       <input
                         type="number"
                         min="0"
-                        step={creatorCurrency === "USD" ? "0.01" : "1"}
+                        step={1 / 10 ** getCurrencyDefinition(creatorCurrency as CurrencyCode).minorUnit}
                         value={customAmount}
                         onChange={(e) => setCustomAmount(e.target.value)}
                         placeholder={`Enter amount (${creatorCurrency})`}

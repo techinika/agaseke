@@ -286,10 +286,8 @@ export default function CreatorOnboarding() {
         currency: selectedCurrency,
         verified: false,
         totalEarnings: 0,
-        totalEarningsUSD: 0,
         totalSupporters: 0,
         pendingPayout: 0,
-        pendingPayoutUSD: 0,
         socials: {
           instagram: formData.socials.instagram || null,
           linkedin: formData.socials.linkedin || null,

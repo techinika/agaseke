@@ -15,6 +15,9 @@ import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService";
 import Link from "next/link";
+import { formatCurrency } from "@/types/currency";
+import { getCurrencySymbol } from "@/types/currency";
+import { isCurrencySupportedByMethod } from "@/lib/money/rails";
 
 const platformSharePercentage =
   Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
@@ -81,6 +84,8 @@ export default function PayClient() {
         }
       }
 
+      const derivedCurrency = (data.currency || (data.items||[])[0]?.currency || "") as string;
+      if (derivedCurrency && !isCurrencySupportedByMethod("momo", derivedCurrency as any)) setPaymentMethod("card");
       setLoading(false);
     };
 
@@ -122,6 +127,7 @@ export default function PayClient() {
 
       const payload: Record<string, any> = {
         type: "store",
+        ...(currency ? { currency } : {}),
         creatorHandle,
         productId: firstItem?.productId,
         quantity: items.reduce((s: number, i: any) => s + (i.quantity || 0), 0),
@@ -155,6 +161,9 @@ export default function PayClient() {
       setPaying(false);
     }
   };
+
+  const currency = (order?.currency || items[0]?.currency || items[0]?.productCurrency || "") as string;
+  const momoSupported = currency ? isCurrencySupportedByMethod("momo", currency as any) : false;
 
   if (loading) {
     return (
@@ -224,7 +233,7 @@ export default function PayClient() {
                     {item.selectedSize && ` (${item.selectedSize})`}
                   </span>
                   <span className="font-medium">
-                    {(item.price * item.quantity).toLocaleString()} RWF
+                    {currency ? formatCurrency(item.price * item.quantity, currency) : (item.price * item.quantity).toLocaleString()}
                   </span>
                 </div>
               ))
@@ -232,14 +241,13 @@ export default function PayClient() {
               <div className="flex justify-between text-sm">
                 <span>{order.productName || "Product"}</span>
                 <span className="font-medium">
-                  {(order.productPrice || order.total || 0).toLocaleString()}{" "}
-                  RWF
+                  {currency ? formatCurrency(order.productPrice || order.total || 0, currency) : (order.productPrice || order.total || 0).toLocaleString()}
                 </span>
               </div>
             )}
             <div className="border-t border-border pt-2 flex justify-between font-bold">
               <span>Total</span>
-              <span>{(order.total || 0).toLocaleString()} RWF</span>
+              <span>{currency ? formatCurrency(order.total || 0, currency) : (order.total || 0).toLocaleString()}</span>
             </div>
           </div>
 
@@ -295,6 +303,9 @@ export default function PayClient() {
               {/* Payment Method */}
               <div className="space-y-3">
                 <p className="font-bold text-sm">Payment Method</p>
+                {!momoSupported ? (
+                  <p className="text-sm text-muted-foreground">Mobile money is not available for {currency || "this currency"}. Card payment is required.</p>
+                ) : (
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => setPaymentMethod("momo")}
@@ -317,6 +328,7 @@ export default function PayClient() {
                     Card Payment
                   </button>
                 </div>
+                )}
               </div>
 
               {paymentMethod === "momo" && (
@@ -373,7 +385,7 @@ export default function PayClient() {
                 ) : (
                   <>
                     <Check size={20} />
-                    Pay {amountToPay.toLocaleString()} RWF
+                    Pay {currency ? formatCurrency(amountToPay, currency) : amountToPay.toLocaleString()}
                   </>
                 )}
               </button>

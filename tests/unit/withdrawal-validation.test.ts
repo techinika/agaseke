@@ -72,7 +72,7 @@ describe("withdrawal validation", () => {
     expectCode(
       () =>
         validateWithdrawalRequest({
-          currency: "EUR",
+          currency: "ZZZ",
           amount: "10",
           pending: 10000,
           threshold: 1,

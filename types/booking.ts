@@ -35,7 +35,7 @@ export interface BookingTier {
   description: string;
   purpose: string;
   price: number;
-  priceUSD?: number;
+
   prices?: PriceMap;
   currency?: import("@/lib/money/registry.generated").CurrencyCode;
   duration: number;

@@ -23,7 +23,7 @@ export async function fetchCreatorHomeData(creator: Creator): Promise<CreatorHom
   );
   const creatorDoc = creatorSnap.docs[0];
   const creatorData = creatorDoc?.data() as Record<string, unknown> | undefined;
-  const currency = (creatorData?.currency as string) || "RWF";
+  const currency = (creatorData?.currency as string) || "";
   const creatorDocId = creatorDoc?.id || creator.uid;
 
   const supportsSnap = await getDocs(

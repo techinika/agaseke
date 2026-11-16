@@ -36,7 +36,7 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - Platform fee payer option (buyer pays 10% extra or creator absorbs 10%)
   - Reopen cancelled orders
   - Create manual orders from dashboard
-  - **Dual-currency pricing**: Products can be priced in RWF or USD via currency toggle; `priceUSD` field for USD prices, `formatCurrency` for locale-aware display throughout the store. **USD orders are paid by card only** — checkout hides Mobile Money and forces `card` (Paypack is RWF-only); RWF orders accept both Mobile Money and Card
+  - **Multi-currency pricing**: Products use a canonical `prices` map keyed by currency code plus a primary `currency`; `formatCurrency`/`PriceEditor` handle locale-aware display and authoring. Available payment methods are server/config-driven per currency and rail (`GET /api/payments/methods`); unsupported methods are never offered.
 - **Sales** (`/creator/sales`):
   - Real-time sales statistics (Total Sales, Your Earnings, Total Orders, Unique Buyers)
   - Recent Sales table with product images, buyer profile photos/emails, product type badges
@@ -77,7 +77,7 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - Configure meeting type (online, in-person, or both)
   - Location or video link settings
   - Paid tiered booking system with tier selection (choose a tier with a price)
-  - **Dual-currency tier pricing**: paid tiers can be priced in RWF or USD (`currency` + `priceUSD` on the tier) with `formatCurrency` display. **USD tiers are paid by card only** — the pay page hides Mobile Money (Paypack is RWF-only) and the MoMo path rejects non-RWF amounts server-side; RWF tiers accept both Mobile Money and Card
+  - **Multi-currency tier pricing**: paid tiers store canonical `prices` and primary `currency`; display and checkout use server-validated, rail-compatible methods per currency (no client-side currency/rail assumptions).
   - Calendar integration: Google Calendar, Yahoo Calendar, Apple/Outlook (.ics) buttons in response email and on the Upcoming Meetings cards in the creator dashboard (add a confirmed booking to your own calendar without waiting for the email)
   - Meeting location/link displayed in booking summary and confirmation email
   - Server-side validation: date range, day-of-week, time slot matching, and price verification
@@ -105,7 +105,7 @@ Agaseke is a comprehensive content monetization platform built with Next.js 16, 
   - Up to 2 membership tiers (monthly/yearly)
   - Custom benefits per tier
   - Public membership display on community page
-  - **Dual-currency tier pricing**: tiers can be priced in RWF or USD (`currency` + `priceUSD`). USD tiers are charged the `priceUSD` amount and are paid by **card only** (MoMo hidden); RWF tiers accept both Mobile Money and Card
+  - **Multi-currency tier pricing**: tiers store canonical `prices` and primary `currency`; charges and available payment methods are resolved server-side per currency/rail (no hardcoded currency-method rules in clients).
   - **Subscription renewal** (via `/community/manage`): RWF subscriptions with a saved phone auto-renew via Mobile Money on the daily cron; all other cases email the subscriber a renewal reminder and provide a manage page to renew manually (MoMo/Card for RWF, card-only for USD), toggle auto-renew, update the saved phone, or cancel
 - **Supporters Perks**:
   - Configurable minimum support tiers
@@ -480,7 +480,7 @@ interface BookingTier {
   id: string;
   name: string;
   price: number;
-  priceUSD?: number;           // USD amount (when currency === "USD")
+  prices?: Record<string, number>; // canonical per-currency amounts
   currency?: "RWF" | "USD";    // Tier pricing currency (defaults to RWF)
   duration: string;               // e.g., "30min", "60min"
   description?: string;
@@ -508,7 +508,7 @@ interface Product {
   name: string;
   description: string;
   price: number;                   // RWF amount (always set)
-  priceUSD?: number;               // USD amount (when currency === "USD")
+  prices?: Record<string, number>; // canonical per-currency amounts
   currency?: "RWF" | "USD";        // Pricing currency (defaults to RWF)
   type: "digital" | "physical";
   stock?: number;                  // For physical products
@@ -741,7 +741,7 @@ For issues or feature requests, please open an issue on GitHub.
 
 - **Store checkouts priced in USD are now card-only**: `CheckoutModal` derives the order currency from the first product and, when USD, hides Mobile Money and forces `card` with a "priced in USD, so card payment is the only option" note (matching the bookings pay page). RWF orders keep both.
 - **USD gatherings are card-only**: the gatherings ticket modal hides Mobile Money for USD-priced events and forces `card`; `handlePaidRSVP` resolves the method from the gathering currency before charging.
-- **Community USD tiers are card-only with correct price display**: `SubscribeModal` hides Mobile Money for USD tiers, resolves the method from the tier currency, and now displays the charged `priceUSD` amount instead of the RWF `price` (both in the tier list and the "Selected Plan" summary).
+- **Community payments are rail/currency-driven**: `SubscribeModal` and payment flows resolve available methods from server/config per selected currency and tier `prices`, displaying the charged amount in the selected currency.
 - **Store sale records no longer break on fractional prices**: the store payment callback wrote `productPrice`, `totalAmount`, and share fields as Firestore `integerValue` (`String(49.99)` is an invalid integer → the `storeOrders`/`sales` write could 400, leaving a paid purchase with no sale/earnings). These now use `doubleValue` when non-integer, and the rounding of `totalAmount` was removed. The "New Sale!" notification message also now uses the actual transaction currency instead of a hardcoded "RWF".
 - **Query-filter number encoding hardened**: `toFirestoreFilterValue` in the bookings, store, and support workers encoded any numeric filter as `integerValue: String(val)` (a fractional query value would 400); non-integers now use `doubleValue`, matching the payments and community workers.
 
@@ -832,8 +832,8 @@ For issues or feature requests, please open an issue on GitHub.
 
 ### Dual-Currency Store Pricing (July 2026)
 
-- **Product interface extended**: Added `currency?: "RWF" | "USD"` and `priceUSD?: number` to both `types/store.ts` and `components/parts/public/store/types.ts`.
-- **Currency selector in ProductModal**: New RWF/USD toggle on create/edit form; when USD is selected, shows both `priceUSD` (primary) and `price` (RWF equivalent) inputs.
+- **Product pricing model**: products use canonical `prices` map and primary `currency` across `types/store.ts` and public/store types (no per-currency legacy fields).
+- **Currency/price editor**: `PriceEditor` supports dynamic per-currency `prices` entries with a primary currency; product/gathering/booking/community authoring write canonical `prices`.
 - **Helper functions**: `getProductCurrency(product)` returns the product's currency (defaulting to RWF), `getProductPrice(product)` returns the correct price field based on currency.
 - **Format all price displays**: Replaced every hardcoded `"RWF"` string with `formatCurrency(getProductPrice(p), getProductCurrency(p))` across 17 display components — ProductCard, ProductDetailModal, ProductDetailPage, CartModal, CheckoutModal, FolderCard, FolderExplorer, OrderTrackingModal, MyPurchasesModal, ProductsList, OrdersList, CreateOrderModal, FolderModal, FoldersList, CouponModal.
 - **Cart/checkout currency-aware**: `getItemPrice`/`getCartTotal` use `getProductPrice`; payment data sent to workers includes `currency` field; `CartModal`, `CheckoutModal`, and `FolderExplorer` accept a `currency` prop for formatted display.
@@ -1129,8 +1129,8 @@ For issues or feature requests, please open an issue on GitHub.
 - **Community Worker deps**: Added missing `jose` and `@cloudflare/workers-types` to `workers/community/package.json`.
 - **ContentPage title crash fix**: `post.title.toLowerCase()` threw when posts had no title. Added optional fallback `(post.title || '')` before calling `.toLowerCase()`.
 - **Community button on public profile**: Added "Join {name}'s Community" button below the support button on `SendGiftSection.tsx`, matching the booking button in size (`w-full mt-3 py-3 px-4`) with a distinct emerald color scheme (`bg-emerald-600 text-white`). Passes `communityEnabled` from the `PublicProfile` page to conditionally render when tiered community subscriptions are enabled. Links to `/{handle}/community` for subscription management.
-- **Dual-currency community tier pricing**: Added `currency` and `priceUSD` fields to the `CommunityTier` interface across all type definitions (`types/community.ts`, `lib/communityService.ts`, `workers/community/src/types.ts`). Dashboard tier editor now has an RWF/USD currency toggle with conditional `priceUSD` input (and RWF equivalent field when USD is selected). Worker tiers service (`tiers.ts`) passes currency to Firestore on save and maps it on read. Worker subscriptions service (`subscriptions.ts`) uses tier currency in payment body instead of hardcoded `"RWF"`, and the subscription document stores the currency for renewal use. Public display uses `formatCurrency()` in `CommunityTab.tsx` and `SubscribeModal.tsx`. Members table in dashboard shows formatted currency via `formatCurrency()`.
-- **Dual-currency booking tier pricing**: Added `currency` and `priceUSD` fields to `BookingTier` and `currency` to `BookingRequest`/`CreateBookingRequest`/`BookingDocument`. Dashboard tier editor (`BookingsPage.tsx`) has RWF/USD currency toggle with conditional `priceUSD` input and RWF equivalent field. Booking worker `create.ts` reads tier currency and passes it through to Firestore booking doc and SQS payment body. Public booking page (`BookingPage.tsx`) displays prices with `formatCurrency()` and sends currency in `createBooking` payload. PayClient displays amounts with `formatCurrency()` and passes `currency` in payment initiation payload.
+- **Canonical community tier pricing**: `CommunityTier` uses `prices` + primary `currency` across types/services/workers. Tier editor uses `PriceEditor`; workers validate/sanitize tier prices and currencies, store currency on subscriptions/renewals, and callbacks credit per-currency earnings/payout fields. Public/dashboard displays use `formatCurrency()` with tier currency/amount.
+- **Canonical booking tier pricing**: `BookingTier`/requests use `prices` + primary `currency`. Dashboard tier editor uses `PriceEditor`; booking worker resolves/validates tier price for declared currency and stores it on booking/transaction records. Public/pay flows display and initiate with the server-validated amount/currency.
 
 ### API Route Migration & General Worker (July 2026)
 
@@ -1157,7 +1157,7 @@ For issues or feature requests, please open an issue on GitHub.
 - **Community subscription income tracking**: On successful payment, the community worker now writes `platformIncome` and `creatorIncome` records with proper platform/creator/referral splits, using the correct earnings field (`totalEarningsUSD` vs `totalEarnings`) based on the subscription's currency.
 - **Admin leaderboard dual-currency**: Top earners now merge both RWF (`totalEarnings`) and USD (`totalEarningsUSD`) earnings with a combined sort, showing both amounts in the display.
 - **Dynamic currency in notifications**: All backend worker notifications (`payments`, `bookings`, `support`) now use the transaction's actual currency in admin alert messages instead of hardcoded `"RWF"`.
-- **Booking priceUSD verification**: Server-side booking validation uses `priceUSD` when the tier currency is USD, matching the frontend display.
+- **Booking price verification**: server-side booking validation resolves the payable amount from canonical tier pricing for the declared currency and rejects mismatches/invalid pricing.
 - **Notification messages include currency**: Booking payment notifications for both creator and buyer now include the transaction currency. Email booking request templates show the amount with its currency suffix.
 
 ### Verification Email & Activity Logs Fix (July 2026)

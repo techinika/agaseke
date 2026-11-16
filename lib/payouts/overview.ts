@@ -40,9 +40,17 @@ export function buildPayoutOverview(
 
   const configuredCodes = PAYOUT_CURRENCIES.filter((code) => configured.has(code));
   const displayedCodes: PayoutCurrency[] =
-    configuredCodes.length > 0 ? [...configuredCodes] : [creatorCurrency ?? "RWF"];
+    configuredCodes.length > 0
+      ? [...configuredCodes]
+      : creatorCurrency
+        ? [creatorCurrency]
+        : [...PAYOUT_CURRENCIES];
   if (creatorCurrency && !displayedCodes.includes(creatorCurrency)) {
     displayedCodes.unshift(creatorCurrency);
+  }
+  for (const key of Object.keys(creator || {})) {
+    const m = key.match(/^pendingPayout([A-Z]{3})$/) || key.match(/^totalEarnings([A-Z]{3})$/);
+    if (m && !displayedCodes.includes(m[1] as PayoutCurrency)) displayedCodes.push(m[1] as PayoutCurrency);
   }
 
   const held =

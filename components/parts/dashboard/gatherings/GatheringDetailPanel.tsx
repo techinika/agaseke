@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { EVENT_TYPE_LABELS_SHORT } from "./constants";
-import { getPrice } from "@/lib/priceMap";
+import { getPrice, parsePriceCurrency } from "@/lib/priceMap";
 import { formatCurrency } from "@/types/currency";
 
 interface GatheringDetailPanelProps {
@@ -54,7 +54,7 @@ export default function GatheringDetailPanel({
   const platformFee = selectedEventRevenue * platformSharePct;
   const creatorNet = selectedEventRevenue * creatorSharePct;
   const ticketAmount = getPrice(activeEvent);
-  const ticketCurrency = activeEvent.currency === "USD" ? "USD" : "RWF";
+  const ticketCurrency = (parsePriceCurrency(activeEvent.currency) || undefined) as any;
 
   return (
     <div className="w-full md:w-96 bg-card p-8 overflow-y-auto">

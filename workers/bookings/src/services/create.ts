@@ -2,6 +2,7 @@ import type { Env, CreateBookingRequest, BookingAvailability, BookingTier } from
 import { firestoreGet, firestorePost, firestoreRunQuery, extractFirestoreDocument, getDocumentId } from "../firestore";
 import { logActivity } from "../logger";
 import { createNotification } from "../adminNotifications";
+import { getCurrencyDefinition, isCurrencyCode } from "../money/registry.generated";
 import {
   getAvailabilityForDate,
   isSlotValid,
@@ -25,6 +26,38 @@ function amountField(value: number): Record<string, unknown> {
   return Number.isInteger(value)
     ? { integerValue: String(value) }
     : { doubleValue: value };
+}
+
+function num(value: unknown): number {
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function hasSupportedPrecision(value: number, currency: string): boolean {
+  if (!isCurrencyCode(currency)) return false;
+  const factor = 10 ** getCurrencyDefinition(currency).minorUnit;
+  return Math.abs(value * factor - Math.round(value * factor)) < 1e-6;
+}
+
+function resolveTierPrice(tier: BookingTier): { currency: string; amount: number } | null {
+  const currency = typeof tier.currency === "string" ? tier.currency.toUpperCase() : "";
+  if (!currency || !isCurrencyCode(currency)) return null;
+
+  const prices = tier.prices && typeof tier.prices === "object" ? tier.prices : null;
+  if (prices) {
+    const amount = num((prices as Record<string, unknown>)[currency]);
+    if (amount > 0 && hasSupportedPrecision(amount, currency)) {
+      return { currency, amount };
+    }
+    return null;
+  }
+
+  // Legacy compatibility: primary price belongs to declared tier currency only.
+  const legacy = num((tier as any).price);
+  if (legacy > 0 && hasSupportedPrecision(legacy, currency)) {
+    return { currency, amount: legacy };
+  }
+  return null;
 }
 
 async function resolveCreator(
@@ -57,7 +90,7 @@ async function resolveCreator(
 function resolveAvailabilityAndPrice(
   creatorData: Record<string, unknown>,
   tierId: string | undefined,
-  paymentAmount: number | undefined,
+  _paymentAmount: number | undefined,
   preferredTime: string
 ): {
   effectiveAvail: BookingAvailability | null;
@@ -70,7 +103,7 @@ function resolveAvailabilityAndPrice(
   let effectiveTier: BookingTier | null = null;
   let verifiedPaymentAmount = 0;
   let duration = 0;
-  let currency = "RWF";
+  let currency = "";
 
   if (tierId && creatorData.bookingTiers) {
     const tiers = creatorData.bookingTiers as BookingTier[];
@@ -78,21 +111,12 @@ function resolveAvailabilityAndPrice(
 
     if (effectiveTier) {
       effectiveAvail = effectiveTier.availability;
-      const tierCurrency = effectiveTier.currency === "USD" ? "USD" : "RWF";
-      const mappedPrice =
-        effectiveTier.prices && typeof effectiveTier.prices === "object"
-          ? Number((effectiveTier.prices as Record<string, unknown>)[tierCurrency])
-          : undefined;
-      verifiedPaymentAmount =
-        effectiveTier.prices && typeof effectiveTier.prices === "object"
-          ? Number.isFinite(mappedPrice) && (mappedPrice ?? 0) > 0
-            ? (mappedPrice as number)
-            : 0
-          : tierCurrency === "USD"
-            ? (effectiveTier.priceUSD ?? 0)
-            : effectiveTier.price;
-      duration = effectiveTier.duration;
-      currency = tierCurrency;
+      const resolved = resolveTierPrice(effectiveTier);
+      if (resolved) {
+        verifiedPaymentAmount = resolved.amount;
+        currency = resolved.currency;
+      }
+      duration = Number(effectiveTier.duration) || 0;
     }
   } else if (creatorData.bookingAvailability) {
     effectiveAvail = creatorData.bookingAvailability as BookingAvailability;
@@ -158,6 +182,10 @@ export async function createBooking(
       bookerEmail: body.bookerEmail,
     });
     return { error: "Invalid or inactive tier" };
+  }
+
+  if (body.tierId && effectiveTier && verifiedPaymentAmount > 0 && !currency) {
+    return { error: "This tier has no valid currency or price" };
   }
 
   if (body.tierId && effectiveTier && body.paymentAmount !== undefined) {
@@ -254,6 +282,9 @@ export async function createBooking(
   }
 
   const isPaidTier = verifiedPaymentAmount > 0;
+  if (isPaidTier && !currency) {
+    return { error: "A currency is required for paid bookings" };
+  }
   const txRef = isPaidTier
     ? `AGS-BOOK-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     : "";
@@ -281,7 +312,7 @@ export async function createBooking(
     tierName: { stringValue: body.tierName || "" },
     tierDuration: amountField(duration),
     paymentAmount: amountField(isPaidTier ? verifiedPaymentAmount : 0),
-    currency: { stringValue: currency },
+    ...(currency ? { currency: { stringValue: currency } } : {}),
     paymentStatus: { stringValue: isPaidTier ? "pending" : "none" },
     txRef: { stringValue: txRef || "" },
     createdAt: { timestampValue: now },
@@ -296,59 +327,45 @@ export async function createBooking(
   const bookingId = getDocumentId(bookingResult) || "";
 
   if (isPaidTier && txRef) {
-    const transactionFields: Record<string, unknown> = {
-      ref: { stringValue: txRef },
-      amount: amountField(verifiedPaymentAmount),
-      bookingId: { stringValue: bookingId },
-      creatorId: { stringValue: creatorId },
-      creatorUid: { stringValue: String(creatorData.uid || "") },
-      creatorName: { stringValue: String(creatorData.name || "") },
-      bookerName: { stringValue: body.bookerName },
-      bookerEmail: { stringValue: body.bookerEmail },
-      bookerId: { stringValue: body.bookerId || auth.uid || "anonymous" },
-      status: { stringValue: "pending" },
+    const txFields: Record<string, unknown> = {
       type: { stringValue: "booking" },
+      status: { stringValue: "pending" },
+      amount: amountField(verifiedPaymentAmount),
       currency: { stringValue: currency },
+      creatorId: { stringValue: body.creatorHandle },
+      creatorUid: { stringValue: String(creatorData.uid || "") },
+      supporterId: { stringValue: body.bookerId || auth.uid },
+      ref: { stringValue: txRef },
+      bookingId: { stringValue: bookingId },
+      tierName: { stringValue: body.tierName || "" },
+      initiatedAt: { timestampValue: now },
       createdAt: { timestampValue: now },
     };
 
-    await firestorePost(env, "transactions", { fields: transactionFields }, txRef);
+    await firestorePost(env, "transactions", { fields: txFields });
   }
 
-  const bookerId = body.bookerId || auth.uid || "";
+  await createNotification(env, {
+    userId: String(creatorData.uid || ""),
+    type: "booking",
+    title: "New Booking Request",
+    message: `${body.bookerName} requested a meeting on ${body.preferredDate} at ${body.preferredTime}`,
+    metadata: {
+      bookingId,
+      bookerName: body.bookerName,
+      bookerEmail: body.bookerEmail,
+      preferredDate: body.preferredDate,
+      preferredTime: body.preferredTime,
+    },
+  });
 
-  if (creatorData.uid) {
-    await createNotification(env, {
-      userId: String(creatorData.uid),
-      type: "booking_request",
-      title: "New Booking Request",
-      message: `${body.bookerName} wants to book a meeting on ${body.preferredDate} at ${body.preferredTime}`,
-      link: "/creator/bookings",
-      actorName: body.bookerName,
-      metadata: { bookingId },
-    });
-  }
-
-  if (bookerId) {
-    await createNotification(env, {
-      userId: bookerId,
-      type: "booking_request",
-      title: "Booking Request Sent",
-      message: `Your booking request with ${creatorData.name} on ${body.preferredDate} at ${body.preferredTime} has been sent.`,
-      link: `/${body.creatorHandle}`,
-      actorName: String(creatorData.name || ""),
-      metadata: { bookingId },
-    });
-  }
-
-  await logActivity(env, "info", "booking", "Booking created successfully", {
+  await logActivity(env, "info", "payment", "Booking request created", {
     bookingId,
     creatorHandle: body.creatorHandle,
     creatorName: creatorData.name,
     bookerName: body.bookerName,
-    bookerEmail: body.bookerEmail,
-    isPaidTier,
-    amount: verifiedPaymentAmount,
+    tierId: body.tierId,
+    paymentAmount: isPaidTier ? verifiedPaymentAmount : 0,
   });
 
   return {
@@ -356,6 +373,6 @@ export async function createBooking(
     bookingId,
     paymentRequired: isPaidTier,
     amount: isPaidTier ? verifiedPaymentAmount : 0,
-    txRef: isPaidTier ? txRef : null,
+    txRef: txRef || null,
   };
 }

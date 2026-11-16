@@ -18,7 +18,7 @@ export interface TicketGathering {
   time: string;
   location: string;
   ticketPrice?: number;
-  priceUSD?: number;
+
   prices?: PriceMap;
   currency?: string;
 }
@@ -54,7 +54,7 @@ export function PaidRsvpSheet({
   defaultPhone,
   onPaid,
 }: PaidRsvpSheetProps) {
-  const currency = gathering.currency || "RWF";
+  const currency = gathering.currency || "";
   const requiresCard = !isCurrencySupportedByMethod("momo", currency);
   const amount = ticketAmount(gathering);
   const price = formatMoney(amount, currency);

@@ -32,7 +32,7 @@ export async function fetchSupportConfig(handle: string): Promise<SupportConfig>
     if (!creatorSnap.exists()) return fallback;
 
     const creator = creatorSnap.data();
-    const currency = (creator.currency as string) || "RWF";
+    const currency = (creator.currency as string) || "";
     let minAmount: unknown;
 
     try {

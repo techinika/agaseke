@@ -361,13 +361,13 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
                   <button onClick={handleRSVP} disabled={rsvping}
                     className="w-full py-3 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition disabled:opacity-50 flex items-center justify-center gap-2">
                     <CreditCard size={18} />
-                    Buy Ticket ({formatCurrency(ticketAmount, gathering.currency || "RWF")})
+                    Buy Ticket ({gathering?.currency ? formatCurrency(ticketAmount, gathering.currency as any) : `${ticketAmount}`})
                   </button>
                 ) : !meetsTier && user ? (
                   <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center gap-3">
                     <Lock size={20} className="text-amber-500" />
                     <p className="text-sm font-bold text-amber-700">
-                      A minimum contribution of {formatCurrency(gathering.minSupportTier || 0, gathering.currency || "RWF")} is required to attend
+                      A minimum contribution of {gathering?.currency ? formatCurrency(gathering.minSupportTier || 0, gathering.currency as any) : `${gathering.minSupportTier || 0}`} is required to attend
                     </p>
                   </div>
                 ) : !user ? (
@@ -408,7 +408,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
               <div className="bg-muted p-4 rounded-lg">
                 <p className="text-sm text-muted-foreground">Event</p>
                 <p className="font-bold">{payingGathering.title}</p>
-                <p className="text-2xl font-bold text-orange-600 mt-2">{formatCurrency(getPrice(payingGathering), payingGathering.currency || "RWF")}</p>
+                <p className="text-2xl font-bold text-orange-600 mt-2">{payingGathering?.currency ? formatCurrency(getPrice(payingGathering), payingGathering.currency as any) : `${getPrice(payingGathering)}`}</p>
               </div>
 
               <div className="flex gap-2">
@@ -446,7 +446,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
                 className="w-full py-4 bg-orange-600 text-white rounded-xl font-bold text-lg hover:bg-orange-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {paying ? <Loader size={20} className="animate-spin" /> : null}
-                {paying ? "Processing..." : `Pay ${formatCurrency(getPrice(payingGathering), payingGathering.currency || "RWF")}`}
+                {paying ? "Processing..." : `Pay ${payingGathering?.currency ? formatCurrency(getPrice(payingGathering), payingGathering.currency as any) : `${getPrice(payingGathering)}`}`}
               </button>
             </div>
           </div>

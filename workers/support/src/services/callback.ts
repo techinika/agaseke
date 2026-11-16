@@ -19,7 +19,10 @@ export async function handleSupportCallback(
     referralShare: number;
   };
 
-  const currency = (txData.currency as string) || "RWF";
+  const currency = txData.currency as string;
+  if (!currency) {
+    throw new Error("Support callback missing currency");
+  }
   const payoutField = currency === "RWF" ? "pendingPayout" : `pendingPayout${currency}`;
   const earningsField = currency === "RWF" ? "totalEarnings" : `totalEarnings${currency}`;
   const platformAmount = roundCurrencyAmount(platformShare, currency);
@@ -76,7 +79,7 @@ export async function handleSupportCallback(
       supporterId: { stringValue: supporterId },
       supporterPhoneNumber: { stringValue: (txData.phone as string) || "" },
       txRef: { stringValue: paymentRef },
-      currency: { stringValue: (txData.currency as string) || "RWF" },
+      currency: { stringValue: currency },
       createdAt: { timestampValue: now },
     });
   } else {
@@ -87,7 +90,7 @@ export async function handleSupportCallback(
         supporterId: { nullValue: null },
         supporterPhoneNumber: { stringValue: (txData.phone as string) || "" },
         txRef: { stringValue: paymentRef },
-        currency: { stringValue: (txData.currency as string) || "RWF" },
+        currency: { stringValue: currency },
         createdAt: { timestampValue: now },
       },
     });

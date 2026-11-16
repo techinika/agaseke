@@ -55,7 +55,7 @@ function emptyTier(defaultCurrency: CurrencyCode): CommunityTier {
 
 export default function CommunityPage() {
   const { creator } = useAuth();
-  const defaultCurrency: CurrencyCode = parsePriceCurrency(creator?.currency) || "RWF";
+  const defaultCurrency: CurrencyCode = (parsePriceCurrency(creator?.currency) ?? ("RWF" as CurrencyCode));
   const [settings, setSettings] = useState<CommunitySettings>({
     enabled: false,
     tiers: [],
@@ -76,13 +76,13 @@ export default function CommunityPage() {
       const data = docSnap.data();
       const communityTiers = ((data.communityTiers || []) as CommunityTier[]).map((t) => {
         const currency = parsePriceCurrency(t.currency) || defaultCurrency;
-        const prices = buildPriceMap({ prices: t.prices as PriceMap, price: t.price, priceUSD: t.priceUSD });
+        const prices = buildPriceMap({ prices: t.prices as PriceMap, price: t.price });
         return {
           ...t,
           currency,
           prices,
           price: prices.RWF ?? getPrice({ prices, currency }, currency),
-          priceUSD: prices.USD,
+
         } as CommunityTier;
       });
       setSettings({
@@ -162,14 +162,14 @@ export default function CommunityPage() {
       const validTiers = settings.tiers
         .map((t) => {
           const currency = parsePriceCurrency(t.currency) || defaultCurrency;
-          const prices = buildPriceMap({ prices: t.prices as PriceMap, price: t.price, priceUSD: t.priceUSD });
+          const prices = buildPriceMap({ prices: t.prices as PriceMap, price: t.price });
           const primary = getPrice({ prices, currency }, currency);
           return {
             ...t,
             currency,
             prices,
             price: prices.RWF ?? primary,
-            priceUSD: prices.USD,
+  
           } as CommunityTier;
         })
         .filter((t) => t.name.trim() && getPrice(t, t.currency as CurrencyCode) > 0);
@@ -321,7 +321,7 @@ export default function CommunityPage() {
                       <div className="p-3 bg-muted/40 rounded-lg border border-border">
                         <PriceEditor
                           currency={(parsePriceCurrency(tier.currency) || defaultCurrency) as CurrencyCode}
-                          prices={buildPriceMap({ prices: tier.prices as PriceMap, price: tier.price, priceUSD: tier.priceUSD })}
+                          prices={buildPriceMap({ prices: tier.prices as PriceMap, price: tier.price })}
                           preferredCurrencies={[defaultCurrency, "RWF", "USD"]}
                           onChange={({ currency, prices }) => {
                             const primary = getPrice({ prices, currency }, currency);
@@ -332,7 +332,7 @@ export default function CommunityPage() {
                                 currency,
                                 prices,
                                 price: prices.RWF ?? primary,
-                                priceUSD: prices.USD,
+                      
                               };
                               return { ...prev, tiers };
                             });
@@ -487,7 +487,7 @@ export default function CommunityPage() {
                             </span>
                           </td>
                           <td className="p-4 font-medium">
-                            {formatCurrency(m.amount, m.currency || "RWF")}
+                            {m.currency ? formatCurrency(m.amount, m.currency as any) : m.amount}
                             <span className="text-muted-foreground text-xs ml-1">
                               /{m.interval === "yearly" ? "yr" : "mo"}
                             </span>

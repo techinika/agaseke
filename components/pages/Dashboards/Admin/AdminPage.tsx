@@ -416,12 +416,14 @@ export default function AdminDashboard() {
       );
       const earnersSnap = await getDocs(earnersQuery);
 
-      const earnersUSDQuery = query(
-        collection(db, "creators"),
-        orderBy("totalEarningsUSD", "desc"),
-        limit(5),
-      );
-      const earnersUSDSnap = await getDocs(earnersUSDQuery);
+      let earnersUSDSnap: any = { docs: [] as any[] };
+      try {
+        earnersUSDSnap = await getDocs(
+          query(collection(db, "creators"), orderBy("totalEarningsUSD", "desc"), limit(5)),
+        );
+      } catch {
+        // legacy field/index may not exist
+      }
 
       // Top viewed
       const viewsQuery = query(
@@ -496,15 +498,19 @@ export default function AdminDashboard() {
         pendingTransactionCount: pendingCount,
         pendingTransactionAmount: pendingAmount,
       });
-      const rwfEarners = earnersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      const usdEarners = earnersUSDSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      const mergedEarners = [...rwfEarners];
-      for (const usdEarner of usdEarners) {
-        if (!mergedEarners.some((e) => e.id === usdEarner.id)) {
-          mergedEarners.push(usdEarner);
+      const rwfEarners = earnersSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      const usdEarners = earnersUSDSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
+      const mergedMap = new Map<string, any>();
+      for (const e of [...rwfEarners, ...usdEarners]) mergedMap.set(e.id, e);
+      const mergedEarners = Array.from(mergedMap.values());
+      const earningsScore = (c: any) => {
+        let best = Number(c.totalEarnings || 0);
+        for (const [k, v] of Object.entries(c)) {
+          if (/^totalEarnings[A-Z]{3}$/.test(k)) best = Math.max(best, Number(v || 0) * 1000);
         }
-      }
-      setTopEarners(mergedEarners.sort((a: any, b: any) => Math.max(b.totalEarnings || 0, (b.totalEarningsUSD || 0) * 1000) - Math.max(a.totalEarnings || 0, (a.totalEarningsUSD || 0) * 1000)).slice(0, 5));
+        return best;
+      };
+      setTopEarners(mergedEarners.sort((a: any, b: any) => earningsScore(b) - earningsScore(a)).slice(0, 5));
       setTopViewed(viewsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
       setWithdrawals(
         withdrawalSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
@@ -832,7 +838,7 @@ export default function AdminDashboard() {
 
         const approvedAmount = Number(payload.amount ?? target.amount);
         const approvedCurrency =
-          payload.currency || (target.currency as PayoutCurrency) || "RWF";
+          (payload.currency || target.currency) as PayoutCurrency;
         const approvedMethod = String(payload.method || target.method || "MoMo");
         const approvedAccount = String(
           payload.accountNumber || target.accountNumber || "",
@@ -870,7 +876,7 @@ export default function AdminDashboard() {
         await logActivity({
           level: type === "approve" ? "success" : "warning",
           category: "payout",
-          message: `Withdrawal ${type === "approve" ? "approved" : "rejected"}: ${target.amount?.toLocaleString()} ${target.currency || "RWF"} for ${target.creatorName}`,
+          message: `Withdrawal ${type === "approve" ? "approved" : "rejected"}: ${target.amount?.toLocaleString()} ${target.currency ?? ""} for ${target.creatorName}`,
           creatorId: target.creatorId,
           creatorHandle: target.creatorHandle,
         });
@@ -1370,7 +1376,7 @@ export default function AdminDashboard() {
                         {req.creatorName || "Creator"}
                       </p>
                       <p className="text-lg font-black text-foreground">
-                        {req.amount?.toLocaleString()} {req.currency || "RWF"}
+                        {req.amount?.toLocaleString()} {req.currency ?? ""}
                       </p>
                       <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
                         {req.method} • {req.accountNumber}
@@ -1501,7 +1507,15 @@ export default function AdminDashboard() {
                   key={creator.id}
                   rank={i + 1}
                   name={creator.name || creator.id}
-                  subText={`${(creator.totalEarnings || 0).toLocaleString()} RWF${creator.totalEarningsUSD ? ` / ${creator.totalEarningsUSD.toLocaleString()} USD` : ""}`}
+                  subText={(() => {
+                    const parts: string[] = [];
+                    if (creator.totalEarnings) parts.push(`${Number(creator.totalEarnings).toLocaleString()} RWF`);
+                    for (const [k, v] of Object.entries(creator)) {
+                      const m = k.match(/^totalEarnings([A-Z]{3})$/);
+                      if (m && Number(v)) parts.push(`${Number(v).toLocaleString()} ${m[1]}`);
+                    }
+                    return parts.length ? parts.join(" / ") : "0 RWF";
+                  })()}
                 />
               ))}
               {topEarners.length === 0 && (

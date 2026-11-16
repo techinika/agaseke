@@ -15,7 +15,7 @@ import {
 import Link from "next/link";
 import { Gathering, type EventType } from "./types";
 import { formatCurrency } from "@/types/currency";
-import { getPrice } from "@/lib/priceMap";
+import { getPrice, parsePriceCurrency } from "@/lib/priceMap";
 
 const EVENT_TYPE_CONFIG: Record<
   string,
@@ -66,8 +66,8 @@ export function GatheringCard({
   showTicket?: boolean;
   onViewTicket?: () => void;
 }) {
-  const currency = gathering.currency === "USD" ? "USD" : "RWF";
-  const ticketAmount = getPrice(gathering, currency);
+  const currency = parsePriceCurrency(gathering.currency);
+  const ticketAmount = getPrice(gathering, (currency || undefined) as any);
 
   return (
     <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
@@ -106,7 +106,7 @@ export function GatheringCard({
             })()}
             {ticketAmount > 0 && (
               <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
-                {formatCurrency(ticketAmount, currency)}
+                {currency ? formatCurrency(ticketAmount, currency) : ticketAmount}
               </span>
             )}
           </div>
@@ -172,7 +172,9 @@ export function GatheringCard({
               {gathering.capacity
                 ? `${gathering.capacity - (gathering.attendeesCount || 0)} spots left`
                 : gathering.eventType === "ticketed" || ticketAmount > 0
-                  ? `Buy ticket for ${formatCurrency(ticketAmount, currency)}`
+                  ? currency
+                    ? `Buy ticket for ${formatCurrency(ticketAmount, currency)}`
+                    : "Buy ticket"
                   : gathering.eventType === "supporters" ||
                       gathering.eventType === "supporters_tiered" ||
                       (gathering.minSupportTier ?? 0) > 0

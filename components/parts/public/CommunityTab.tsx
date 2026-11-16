@@ -24,7 +24,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { getMySubscriptions } from "@/lib/communityService";
 import { formatCurrency } from "@/types/currency";
 import { getPrice, type PriceMap } from "@/lib/priceMap";
-function tierAmount(tier: Pick<CommunityTier, "price" | "priceUSD" | "prices" | "currency">): number {
+function tierAmount(tier: Pick<CommunityTier, "price" | "prices" | "currency">): number {
   return getPrice(tier);
 }
 
@@ -37,7 +37,7 @@ interface CommunityTier {
   name: string;
   description: string;
   price: number;
-  priceUSD?: number;
+
   prices?: PriceMap;
   currency?: string;
   interval: "monthly" | "yearly";
@@ -216,7 +216,7 @@ export const CommunityTab = ({
               >
                 <h4 className="font-bold text-sm mb-1">{tier.name}</h4>
                 <p className="text-2xl font-bold text-orange-600 mb-2">
-                  {formatCurrency(tierAmount(tier), tier.currency || "RWF")}
+                  {tier.currency ? formatCurrency(tierAmount(tier), tier.currency as any) : tierAmount(tier)}
                   <span className="text-xs font-normal text-muted-foreground ml-1">
                     /{tier.interval === "yearly" ? "year" : "month"}
                   </span>

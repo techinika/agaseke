@@ -22,6 +22,7 @@ import {
 } from "@/lib/communityService";
 import { formatCurrency } from "@/types/currency";
 import { getPrice } from "@/lib/priceMap";
+import { isCurrencySupportedByMethod } from "@/lib/money/rails";
 
 interface SubscribeModalProps {
   isOpen: boolean;
@@ -88,11 +89,12 @@ export function SubscribeModal({
 
   const tierAmount = (t: CommunityTier) => getPrice(t);
 
-  const isUSDTier = selectedTier?.currency === "USD";
+  const tierCurrency = selectedTier?.currency ? String(selectedTier.currency).toUpperCase() : "";
+  const momoSupported = tierCurrency ? isCurrencySupportedByMethod("momo", tierCurrency as any) : false;
 
   const handleSubscribe = async () => {
-    if (!selectedTier || !user) return;
-    const method = isUSDTier ? "card" : paymentMethod;
+    if (!selectedTier || !user || !tierCurrency) return;
+    const method = momoSupported ? paymentMethod : "card";
     if (!method) return;
     if (method === "momo" && !phone.trim()) {
       toast.error("Enter your phone number");
@@ -111,7 +113,7 @@ export function SubscribeModal({
         creatorHandle,
         amount: tierAmount(selectedTier),
         interval: selectedTier.interval,
-        currency: selectedTier.currency || "RWF",
+        ...(tierCurrency ? { currency: tierCurrency } : {}),
         paymentMethod: method,
         supporterId: user.uid,
       };
@@ -227,7 +229,7 @@ export function SubscribeModal({
                         />
                       </div>
                       <p className="text-2xl font-bold text-orange-600 mb-2">
-                        {formatCurrency(tierAmount(tier), tier.currency || "RWF")}
+                        {tier.currency ? formatCurrency(tierAmount(tier), tier.currency as any) : tierAmount(tier)}
                         <span className="text-xs font-normal text-muted-foreground ml-1">
                           /{tier.interval === "yearly" ? "year" : "month"}
                         </span>
@@ -263,7 +265,7 @@ export function SubscribeModal({
                 <p className="text-xs text-muted-foreground mb-1">Selected Plan</p>
                 <p className="font-bold">{selectedTier.name}</p>
                   <p className="text-lg font-bold text-orange-600">
-                    {formatCurrency(tierAmount(selectedTier), selectedTier.currency || "RWF")}
+                    {tierCurrency ? formatCurrency(tierAmount(selectedTier), tierCurrency as any) : tierAmount(selectedTier)}
                     <span className="text-xs font-normal text-muted-foreground ml-1">
                       /{selectedTier.interval === "yearly" ? "year" : "month"}
                     </span>
@@ -274,10 +276,9 @@ export function SubscribeModal({
                 <p className="text-xs font-bold text-muted-foreground mb-3">
                   Payment Method
                 </p>
-                {isUSDTier ? (
+                {!momoSupported ? (
                   <p className="text-sm text-muted-foreground">
-                    This tier is priced in USD, so card payment is the only
-                    option.
+                    Mobile money is not available for {tierCurrency || "this currency"}. Card payment is required.
                   </p>
                 ) : (
                   <div className="grid grid-cols-2 gap-3">
@@ -337,7 +338,7 @@ export function SubscribeModal({
                 )}
               </div>
 
-              {!isUSDTier && paymentMethod === "momo" && (
+              {momoSupported && paymentMethod === "momo" && (
                 <div>
                   <label className="text-xs font-bold text-muted-foreground mb-1 block">
                     Phone Number
@@ -353,7 +354,7 @@ export function SubscribeModal({
 
               <button
                 onClick={handleSubscribe}
-                disabled={!isUSDTier && !paymentMethod}
+                disabled={!tierCurrency || (momoSupported && !paymentMethod) || (paymentMethod === "momo" && !phone.trim())}
                 className="w-full py-3 bg-orange-600 text-white text-sm font-bold rounded-lg hover:bg-orange-700 transition disabled:opacity-50"
               >
                 Subscribe Now

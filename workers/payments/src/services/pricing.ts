@@ -147,15 +147,23 @@ function num(value: unknown): number {
 function resolveStoredPrice(
   record: Record<string, unknown>,
   currency: string,
-  rwfField: string,
-  usdField: string,
+  legacyPrimaryField: string,
 ): number {
   const prices = record.prices;
   if (prices && typeof prices === "object") {
-    return num((prices as Record<string, unknown>)[currency]);
+    const v = (prices as Record<string, unknown>)[currency];
+    return v != null && v !== "" ? num(v) : 0;
   }
-  if (currency === "USD") return num(record[usdField]);
-  if (currency === "RWF") return num(record[rwfField]);
+  // Legacy compatibility: primary field belongs to record.currency (or RWF-era records)
+  const recordCurrency = str(record.currency).toUpperCase();
+  if (recordCurrency && recordCurrency === currency) {
+    const legacy = num(record[legacyPrimaryField]);
+    if (legacy > 0) return legacy;
+  }
+  if (!recordCurrency && currency === "RWF") {
+    const legacy = num(record[legacyPrimaryField]);
+    if (legacy > 0) return legacy;
+  }
   return 0;
 }
 
@@ -350,16 +358,9 @@ async function getMinSupportAmount(
 
 function getMaxSupportAmount(env: Env, currency: string): number {
   const code = currency as CurrencyCode;
-  const configured =
-    currency === "USD"
-      ? num(env.MAX_SUPPORT_AMOUNT_USD)
-      : currency === "RWF"
-        ? num(env.MAX_SUPPORT_AMOUNT_RWF)
-        : num(
-            (env as unknown as Record<string, unknown>)[
-              `MAX_SUPPORT_AMOUNT_${currency}`
-            ],
-          );
+  const configured = num(
+    (env as unknown as Record<string, unknown>)[`MAX_SUPPORT_AMOUNT_${currency}`],
+  );
   if (configured > 0) return configured;
   return DEFAULT_MAX_SUPPORT_MAJOR[getCurrencyDefinition(code).minorUnit] ?? 100_000;
 }
@@ -700,7 +701,7 @@ export async function resolvePayment(
 
     const currency = await resolveCurrency(repo, product.currency, creator.currency);
     if (!quote) assertRequestedCurrency(body.currency, currency);
-    const price = resolveStoredPrice(product, currency, "price", "priceUSD");
+    const price = resolveStoredPrice(product, currency, "price");
     if (price <= 0) {
       throw new PaymentRequestError(
         "INVALID_PRODUCT_PRICE",
@@ -820,6 +821,7 @@ export async function resolvePayment(
     }
 
     const currency = await resolveCurrency(repo, booking.currency, creator.currency);
+    if (!quote) assertRequestedCurrency(body.currency, currency);
     const amount = parsePositiveAmount(
       booking.paymentAmount,
       currency,
@@ -883,12 +885,7 @@ export async function resolvePayment(
 
     const currency = await resolveCurrency(repo, gathering.currency, creator.currency);
     if (!quote) assertRequestedCurrency(body.currency, currency);
-    const price = resolveStoredPrice(
-      gathering,
-      currency,
-      "ticketPrice",
-      "priceUSD",
-    );
+    const price = resolveStoredPrice(gathering, currency, "ticketPrice");
     if (price <= 0) {
       throw new PaymentRequestError(
         "GATHERING_NOT_PAYABLE",
@@ -940,7 +937,7 @@ export async function resolvePayment(
 
   const currency = await resolveCurrency(repo, tier.currency, creator.currency);
   if (!quote) assertRequestedCurrency(body.currency, currency);
-  const price = resolveStoredPrice(tier, currency, "price", "priceUSD");
+  const price = resolveStoredPrice(tier, currency, "price");
   if (price <= 0) {
     throw new PaymentRequestError(
       "INVALID_AMOUNT",

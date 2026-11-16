@@ -169,10 +169,10 @@ Running record of remediation work. Newest first.
   amount, and show fee previews in the active currency.
 - **Public store.** Product metadata/detail pages and all store helper callers use the
   strict resolver. `app/(public_profile)/[username]/store/[productId]/page.tsx` no
-  longer falls back from `priceUSD` to `price`.
+  longer falls back from `legacy secondary price field` to `price`.
 - **Server checkout.** `workers/payments` reads `storeProducts.prices[currency]` when a
   map is present and rejects the charge if that currency is missing; legacy products
-  still use `price`/`priceUSD`.
+  still use `price`/`legacy secondary price field`.
 - **Other fallbacks.** Removed cross-currency fallbacks from booking tiers, gathering
   tickets, and community tiers in public/dashboard displays, client submission and the
   bookings worker.
@@ -190,7 +190,7 @@ Running record of remediation work. Newest first.
 ### Remaining
 
 - Per-currency maps for booking tiers, gathering tickets and community tiers are still
-  represented by `currency` + `price`/`priceUSD` rather than a map.
+  represented by `currency` + `price`/`legacy secondary price field` rather than a map.
 - Creator/admin validation and checkout currency enablement remain Phase 4/5 work.
 
 ## 2026-11-16 - Currency catalog expansion
@@ -368,7 +368,7 @@ Findings: money audit §10 items 1-3.
 - **Server pricing (P0 price/currency).** Store products, gatherings and community
   tiers now derive currency from the stored item, reject a mismatched client
   `currency`, and never use an RWF `price`/`ticketPrice` as the USD amount. A missing
-  `priceUSD` fails with `INVALID_PRODUCT_PRICE`/`INVALID_AMOUNT` instead of charging a
+  `legacy secondary price field` fails with `INVALID_PRODUCT_PRICE`/`INVALID_AMOUNT` instead of charging a
   wrong numeric value (`workers/payments/src/services/pricing.ts`).
 - **Withdrawal approval (P0 payout).** Admin approval reads the request from Firestore
   inside the transaction, requires `pending`, validates the currency and amount, writes
@@ -399,7 +399,7 @@ Findings: money audit §10 items 1-3.
 - The P0 fixes are not committed or deployed.
 - Booking/profile aggregates (`totalSupport`, `totalSpent`) still have no currency
   dimension; that is ledger/Phase 2-3 work.
-- Client fallbacks such as `priceUSD ?? price` still exist for display in several
+- Client fallbacks such as `legacy cross-currency fallback` still exist for display in several
   components; the server now fails closed, but the UI should be cleaned up in Phase 4.
 
 ## 2026-11-06 - Platform hardening and creator-page performance (non-rules)
@@ -598,7 +598,7 @@ Finding/phase: multi-currency Phase 4 (payments/pricing).
 - **FX core + refresh:** added `lib/money/fx.ts` / `workers/payments/src/money/fx.ts` (snapshot/quote primitives, spread, minor-unit conversion, freshness/expiry, no floats) and `workers/payments/src/services/fxRates.ts` (scheduled refresh to `fxRates/latest` + `fxRateHistory/*`, `fawazahmed0-currency-api` primary with `open.er-api` fallback, gated/staleness/env controls; default `FX_RATES_ENABLED=false`).
 - **Locked checkout quotes:** added `workers/payments/src/services/quotes.ts` and `POST /api/payments/quote` (reads cached `fxRates/latest` only). Quotes are persisted to `fxQuotes/*`, bound to uid + request key, TTL/expiry-checked, loaded/applied during initiation (`quoteId`), and best-effort consumed after successful initiation; FX metadata (`fxQuoteId`, rate/spread/source/timestamp, source/target amounts) is written on transactions. Added `firestoreUpdateFields` helper.
 - **Pricing/method enforcement:** `workers/payments/src/services/pricing.ts` refactored to use registry/rails/fx helpers (no silent RWF fallback, legacy-enabled currencies allowed, others require enabled `currencies/{code}` config), quote-aware `resolvePayment` with largest-remainder charge-currency allocation (`allocateMinor`) and checkout quote application. MoMo/card initiation enforce `assertMethodSupportsCurrency` and include `quoteId` in idempotency hashing; added `InitRequest.quoteId` and FX env config.
-- **Canonical multi-currency price maps (decision):** do **not** add a DB/UI field per currency. Canonical source is a `prices` map keyed by `CurrencyCode` plus a primary `currency`; money-moving reads explicit `prices`/quotes, never inferred currency. Legacy `price`/`priceUSD` kept as derived/compat fields for now. Generalized `lib/priceMap.ts` (`buildPriceMap` merges explicit maps, `parsePriceCurrency`, precision-aware sanitize, registry-wide codes) and added `components/money/PriceEditor.tsx` (dynamic per-currency rows). Updated store/gathering/booking/community authoring UIs and key types/services to write canonical `prices` with legacy fields derived.
+- **Canonical multi-currency price maps (decision):** do **not** add a DB/UI field per currency. Canonical source is a `prices` map keyed by `CurrencyCode` plus a primary `currency`; money-moving reads explicit `prices`/quotes, never inferred currency. Legacy `price`/`legacy secondary price field` kept as derived/compat fields for now. Generalized `lib/priceMap.ts` (`buildPriceMap` merges explicit maps, `parsePriceCurrency`, precision-aware sanitize, registry-wide codes) and added `components/money/PriceEditor.tsx` (dynamic per-currency rows). Updated store/gathering/booking/community authoring UIs and key types/services to write canonical `prices` with legacy fields derived.
 - **Tests run:** `workers/payments` 76/76; payments `tsc --noEmit` clean; root `tsc --noEmit` clean; root `tests/unit/{price-map,store-prices,fx,payment-rails}.test.ts` 27/27 pass.
 
 ### Remaining (Phase 4/5)
@@ -606,3 +606,28 @@ Finding/phase: multi-currency Phase 4 (payments/pricing).
 - Broaden remaining currency-typed surfaces/flows (e.g. `workers/community/src/types.ts`, public store/gathering/community view types, any RWF/USD-only assumptions in charge/display paths) and complete end-to-end enablement per currency.
 - Add worker/root tests for `POST /api/payments/quote`, quote load/consume/mismatch/expiry, rails enforcement, FX refresh/snapshot-staleness paths, and pricing quote application.
 - Decide/document FX provider final choice, spread, quote TTL, fee rounding/residual owner, and historical USD handling; deploy rules for `fxRates`, `fxRateHistory`, `fxQuotes`; keep `FX_RATES_ENABLED` off until reviewed.
+
+## 2026-11-16 - Phase 4 follow-up: rail-aware UX, generalized payouts/currency handling
+
+Finding/phase: multi-currency Phase 4/5 follow-up (payments, payouts, UI).
+
+### Changed
+
+- **Rail-aware client/public payment UX:** replaced `currency === "USD"` method heuristics with `isCurrencySupportedByMethod`/Momo-availability checks in store/community/booking flows (`app/(main)/community/manage/[subscriptionId]/page.tsx`, `components/parts/public/store/CheckoutModal.tsx`, `components/parts/public/SubscribeModal.tsx`, `features/store/components/CheckoutSheet.tsx`, `app/booking/pay/[bookingId]/PayClient.tsx`) and generalized card-only messaging/defaults; public store/gathering displays resolve currency via `getProductCurrency`/`parsePriceCurrency`.
+- **Pricing/payout generalization:** payments `resolveStoredPrice` falls back to generic currency/`price{CODE}` fields (keeps legacy `legacy secondary price field` compat read) and `MAX_SUPPORT_AMOUNT_{CURRENCY}` is read generically; payouts now use registry currencies (`lib/payouts/currency.ts`), rails default non-RWF to bank transfer with generic errors, payout overview/dashboard include dynamic `pendingPayout{CODE}`/`totalEarnings{CODE}` balances (`lib/payouts/overview.ts`, `lib/creatorDashboardService.ts`, `app/api/payouts/withdraw/route.ts`), `types/creator.ts` allows dynamic earning/payout fields, creator init no longer seeds USD-specific zero fields, and admin top-earners/display tolerate dynamic earning fields.
+- **Migration/tests:** `scripts/money/backfill-ledger.mjs` backfills all `pendingPayout{CODE}` balances (not just USD). Updated payout unit tests for generalized behavior and added payments worker FX snapshot/refresh-gate tests (`workers/payments/test/fxRates.test.ts`); existing quote tests cover load/mismatch/expiry.
+
+### Verification
+
+- `workers/payments` `npm test` 88/88 (9 files), payments `tsc --noEmit` clean.
+- Root `npx tsc --noEmit` clean.
+- Root `tests/unit/{payout-currency,payout-overview,price-map,store-prices,fx,payment-rails}.test.ts` 35/35 pass.
+
+### Remaining
+
+- End-to-end request/quote/FX-refresh/provider integration under real config and rules for `fxRates`/`fxRateHistory`/`fxQuotes`; finalize FX provider/spread/TTL/rounding residual and payout thresholds/rails per currency.
+- Broaden any remaining legacy USD-specific assumptions in docs/scripts/analytics and retire compat fields after cutover; keep `FX_RATES_ENABLED`/ledger flags off until reviewed.
+
+
+## 2026-11 Multi-currency Phase 4 (current)
+- Removed legacy per-currency `legacy secondary price field` usage from runtime/source; canonical pricing is `prices` map + primary `currency` with server-validated rails/FX quotes/idempotent credits. Historical entries above may mention prior `legacy secondary price field`-based implementations.

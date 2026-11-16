@@ -28,7 +28,7 @@ const LOADING_COUNT = 4;
 export function CreatorHome() {
   const { creator, stats, supports, loading, error, refetch } = useCreatorHome();
   const unverified = creator && !creator.verified;
-  const currency = stats?.currency || "RWF";
+  const currency = stats?.currency || "";
 
   if (loading) {
     return (

@@ -11,7 +11,12 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { getCurrencySymbol } from "@/types/currency";
-import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService";
+import {
+  initiateMomoPayment,
+  initiateCardPayment,
+  getPaymentMethods,
+  type PaymentMethodOption,
+} from "@/lib/paymentsService";
 
 export function SupportModal({
   isOpen,
@@ -27,17 +32,16 @@ export function SupportModal({
   const [phone, setPhone] = useState("");
   const [step, setStep] = useState("input");
   const [errorMessage, setErrorMessage] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("momo");
+  const [paymentMethod, setPaymentMethod] = useState<"momo" | "card" | "">("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [popupBlocked, setPopupBlocked] = useState(false);
   const [redirectUrl, setRedirectUrl] = useState("");
   const [isClosing, setIsClosing] = useState(false);
-  const [selectedCurrency, setSelectedCurrency] = useState("RWF");
-  const [minByCurrency, setMinByCurrency] = useState<Record<string, number>>({
-    RWF: 100,
-    USD: 1,
-  });
-  const [availableCurrencies, setAvailableCurrencies] = useState<string[]>(["RWF"]);
+  const [selectedCurrency, setSelectedCurrency] = useState("");
+  const [minByCurrency, setMinByCurrency] = useState<Record<string, number>>({});
+  const [availableCurrencies, setAvailableCurrencies] = useState<string[]>([]);
+  const [methods, setMethods] = useState<PaymentMethodOption[]>([]);
+  const [loadingMethods, setLoadingMethods] = useState(false);
 
   useEffect(() => {
     if (!creatorId) return;
@@ -47,53 +51,85 @@ export function SupportModal({
         const creatorSnap = await getDoc(creatorRef);
         if (creatorSnap.exists()) {
           const data = creatorSnap.data();
-          const currency = data.currency || "RWF";
-          setSelectedCurrency(currency);
+          const currency = data.currency ? String(data.currency).toUpperCase() : "";
+          if (currency) setSelectedCurrency(currency);
 
           const currenciesSnap = await getDocs(collection(db, "currencies"));
-          const codes = currenciesSnap.docs.map((d) => d.data().code);
-          const hasUSD = codes.includes("USD");
-          setAvailableCurrencies(hasUSD ? ["RWF", "USD"] : ["RWF"]);
-
-          const mins: Record<string, number> = { RWF: 100, USD: 1 };
+          const enabled: string[] = [];
+          const mins: Record<string, number> = {};
           currenciesSnap.docs.forEach((d) => {
-            const code = d.data().code as string;
-            mins[code] =
-              Number(d.data().minSupportAmount) || (code === "USD" ? 1 : 100);
+            const c = d.data() as any;
+            const code = String(c.code || d.id || "").toUpperCase();
+            if (!code) return;
+            if (c.enabled === false) return;
+            enabled.push(code);
+            if (c.minSupportAmount != null) mins[code] = Number(c.minSupportAmount);
           });
+          if (currency && !enabled.includes(currency)) enabled.unshift(currency);
+          setAvailableCurrencies(Array.from(new Set(enabled)).sort());
           setMinByCurrency(mins);
         }
-      } catch { /* silently fail */ }
+      } catch {
+        /* silently fail */
+      }
     };
     fetchCreatorCurrency();
   }, [creatorId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!selectedCurrency) return;
+    setLoadingMethods(true);
+    getPaymentMethods(selectedCurrency)
+      .then((m) => {
+        if (cancelled) return;
+        setMethods(m);
+        setPaymentMethod((prev) =>
+          m.some((x) => x.method === prev) ? prev : (m[0]?.method ?? ""),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setMethods([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingMethods(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCurrency]);
 
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const supportTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const listenToTransaction = (reference: string) => {
+    unsubscribeRef.current = subscribeToTransactionByRef(reference, (txData) => {
+      if (!txData) return;
+      if (txData.status === "success" || txData.status === "successful") {
+        if (unsubscribeRef.current) unsubscribeRef.current();
+        setStep("success");
+        sendSupportEmail(Number(txData.amount) * CREATOR_SHARE);
+        toast.success("Payment verified!");
+      } else if (txData.status === "failed") {
+        if (unsubscribeRef.current) unsubscribeRef.current();
+        setStep("error");
+        setErrorMessage("The transaction was declined.");
+      }
+    });
+  };
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const orderTrackingId = params.get("OrderTrackingId");
     const merchantRef = params.get("OrderMerchantReference");
-
     if (orderTrackingId && merchantRef && merchantRef.includes("AGS-CARD")) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- restore pending card callback state on mount
       setStep("processing");
       window.history.replaceState({}, document.title, window.location.pathname);
-
-      // eslint-disable-next-line react-hooks/immutability -- function declared below; stable enough for mount callback
       listenToTransaction(merchantRef);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
-
-  useEffect(() => {
-    if (selectedCurrency === "USD") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- enforce card-only for USD
-      setPaymentMethod("card");
-    }
-  }, [selectedCurrency]);
 
   useEffect(() => {
     return () => {
@@ -105,23 +141,22 @@ export function SupportModal({
 
   if (!isOpen) return null;
 
-  const minSupportAmount =
-    minByCurrency[selectedCurrency] ??
-    (selectedCurrency === "USD" ? 1 : 100);
-
+  const minSupportAmount = minByCurrency[selectedCurrency] ?? 1;
   const CREATOR_SHARE = Number(process.env.NEXT_PUBLIC_CREATOR_SHARE) || 0.9;
+  const numericAmount = Number(amount);
+  const amountValid = Number.isFinite(numericAmount) && numericAmount >= minSupportAmount;
+  const hasMomo = methods.some((m) => m.method === "momo");
+  const hasCard = methods.some((m) => m.method === "card");
 
   const sendSupportEmail = async (txAmount: number) => {
     try {
       const creatorRef = doc(db, "profiles", uid);
       const creatorSnap = await getDoc(creatorRef);
-
       if (creatorSnap.exists()) {
         const profileData = creatorSnap.data();
-
         await sendCommsEmail("support_received", {
           creatorEmail: profileData.email || "",
-          creatorName: creatorName,
+          creatorName,
           supporterName: currentUser?.displayName || "A generous supporter",
           amount: txAmount,
           message: message.trim() || null,
@@ -133,35 +168,20 @@ export function SupportModal({
   };
 
   const handleSupport = async () => {
+    if (!selectedCurrency || paymentMethod !== "momo") return;
     setStep("processing");
     setErrorMessage("");
-
     try {
       const data = await initiateMomoPayment({
         type: "support",
         creatorHandle: creatorId,
-        amount: Number(amount),
+        amount: numericAmount,
         phone,
         message: message ?? "",
         currency: selectedCurrency,
         idempotencyKey: crypto.randomUUID(),
       });
-
-      unsubscribeRef.current = subscribeToTransactionByRef(data.ref, (txData) => {
-        if (!txData) return;
-
-        if (txData.status === "successful") {
-          if (unsubscribeRef.current) unsubscribeRef.current();
-          setStep("success");
-          sendSupportEmail(Number(txData?.amount) * CREATOR_SHARE);
-          toast.success("Payment received!");
-        } else if (txData.status === "failed") {
-          if (unsubscribeRef.current) unsubscribeRef.current();
-          setStep("error");
-          setErrorMessage("The transaction was declined.");
-        }
-      });
-
+      listenToTransaction(data.ref);
       supportTimeoutRef.current = setTimeout(() => {
         if (unsubscribeRef.current) {
           unsubscribeRef.current();
@@ -186,35 +206,18 @@ export function SupportModal({
     }, 250);
   };
 
-  const listenToTransaction = (reference: string) => {
-    unsubscribeRef.current = subscribeToTransactionByRef(reference, (txData) => {
-      if (!txData) return;
-      if (txData.status === "success" || txData.status === "successful") {
-        if (unsubscribeRef.current) unsubscribeRef.current();
-        setStep("success");
-        sendSupportEmail(Number(txData.amount) * CREATOR_SHARE);
-        toast.success("Card payment verified!");
-      } else if (txData.status === "failed") {
-        if (unsubscribeRef.current) unsubscribeRef.current();
-        setStep("error");
-        setErrorMessage("The card transaction was declined.");
-      }
-    });
-  };
-
   const handlePesapalSupport = async () => {
-    if (!amount || parseInt(amount) < minSupportAmount) {
+    if (!selectedCurrency || paymentMethod !== "card") return;
+    if (!amountValid) {
       return toast.error(`Minimum support amount is ${minSupportAmount} ${selectedCurrency}`);
     }
-
     setIsSubmitting(true);
     setStep("processing");
-
     try {
       const data = await initiateCardPayment({
         type: "support",
         creatorHandle: creatorId,
-        amount: Number(amount),
+        amount: numericAmount,
         email: currentUser?.email || "supporter@agaseke.me",
         firstName: currentUser?.displayName?.split(" ")[0] || "Supporter",
         lastName: currentUser?.displayName?.split(" ")[1] || "Agaseke",
@@ -222,15 +225,9 @@ export function SupportModal({
         currency: selectedCurrency,
         idempotencyKey: crypto.randomUUID(),
       });
-
       setRedirectUrl(data.redirect_url);
       const newWindow = window.open(data.redirect_url, "_blank");
-
-      if (
-        !newWindow ||
-        newWindow.closed ||
-        typeof newWindow.closed === "undefined"
-      ) {
+      if (!newWindow || newWindow.closed || typeof newWindow.closed === "undefined") {
         setPopupBlocked(true);
         setStep("error");
         setErrorMessage(
@@ -252,29 +249,23 @@ export function SupportModal({
     <div className={`fixed inset-0 z-[100] flex items-end sm:items-center justify-center ${isClosing ? "animate-out fade-out duration-200" : "animate-in fade-in duration-200"} bg-foreground/60 backdrop-blur-md`}>
       <div className={`bg-card w-full max-w-lg rounded-t-2xl sm:rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto ${isClosing ? "animate-out slide-out-to-bottom-full sm:zoom-out-95 duration-200" : "animate-in slide-in-from-bottom-full sm:zoom-in-95 duration-200"}`}>
         <div className="sticky top-0 bg-card z-10 p-4 sm:p-6 pb-0 flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <h3 className="text-xl sm:text-2xl font-bold tracking-tight">
-                Support {creatorName.split(" ")[0]}
-              </h3>
-              {availableCurrencies.length > 1 && (
-                <select
-                  value={selectedCurrency}
-                  onChange={(e) => {
-                    setSelectedCurrency(e.target.value);
-                    setPaymentMethod(e.target.value === "USD" ? "card" : "momo");
-                  }}
-                  className="text-xs font-bold bg-orange-100 text-orange-700 px-2 py-1 rounded-lg border border-orange-200 outline-none"
-                >
-                  {availableCurrencies.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              )}
-            </div>
-          <button
-            onClick={handleClose}
-            className="p-2 sm:p-3 bg-muted rounded-full text-muted-foreground hover:text-foreground transition-colors"
-          >
+          <div className="flex items-center gap-3">
+            <h3 className="text-xl sm:text-2xl font-bold tracking-tight">
+              Support {creatorName.split(" ")[0]}
+            </h3>
+            {availableCurrencies.length > 1 && (
+              <select
+                value={selectedCurrency}
+                onChange={(e) => setSelectedCurrency(e.target.value)}
+                className="text-xs font-bold bg-orange-100 text-orange-700 px-2 py-1 rounded-lg border border-orange-200 outline-none"
+              >
+                {availableCurrencies.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            )}
+          </div>
+          <button onClick={handleClose} className="p-2 sm:p-3 bg-muted rounded-full text-muted-foreground hover:text-foreground transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -289,111 +280,93 @@ export function SupportModal({
                 <div className="relative">
                   <input
                     type="number"
-                    placeholder="1000"
+                    inputMode="decimal"
+                    step="any"
+                    min={minSupportAmount}
+                    placeholder={String(minSupportAmount)}
                     className="w-full text-center text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground outline-none placeholder:text-muted-foreground"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                   />
                   <span className="block text-[10px] font-bold text-muted-foreground mt-2 uppercase tracking-[0.3em]">
-                    {selectedCurrency} ({getCurrencySymbol(selectedCurrency)})
+                    {selectedCurrency ? `${selectedCurrency} (${getCurrencySymbol(selectedCurrency as any)})` : "Select currency"}
                   </span>
                 </div>
               </div>
 
-              {/* Payment Method Selector */}
-              {selectedCurrency === "RWF" ? (
-                <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
-                  <button
-                    onClick={() => setPaymentMethod("momo")}
-                    className={`flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-xl border-2 transition-all ${
-                      paymentMethod === "momo"
-                        ? "border-orange-500 bg-orange-50"
-                        : "border-border hover:border-border"
-                    }`}
-                  >
-                    <Smartphone size={20} className={paymentMethod === "momo" ? "text-orange-600" : "text-muted-foreground"} />
-                    <span className={`text-[10px] font-bold uppercase tracking-widest ${paymentMethod === "momo" ? "text-orange-900" : "text-muted-foreground"}`}>MoMo</span>
-                  </button>
-                  <button
-                    onClick={() => setPaymentMethod("card")}
-                    className={`flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-xl border-2 transition-all ${
-                      paymentMethod === "card"
-                        ? "border-orange-500 bg-orange-50"
-                        : "border-border hover:border-border"
-                    }`}
-                  >
-                    <ShieldCheck size={20} className={paymentMethod === "card" ? "text-orange-600" : "text-muted-foreground"} />
-                    <span className={`text-[10px] font-bold uppercase tracking-widest ${paymentMethod === "card" ? "text-orange-900" : "text-muted-foreground"}`}>Bank Cards</span>
-                  </button>
+              {loadingMethods ? (
+                <div className="flex justify-center py-4"><Loader className="w-5 h-5 animate-spin text-orange-600" /></div>
+              ) : methods.length === 0 ? (
+                <div className="rounded-xl bg-muted p-4 text-center text-sm text-muted-foreground">
+                  No payment methods available for {selectedCurrency}.
                 </div>
               ) : (
-                <div className="mb-4 sm:mb-6">
-                  <div className="bg-muted rounded-xl p-4 flex items-center justify-center gap-3">
-                    <ShieldCheck size={20} className="text-orange-600" />
-                    <span className="text-sm font-bold">Pay with Bank Card</span>
+                <>
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-2">
+                    {hasMomo && (
+                      <button
+                        onClick={() => setPaymentMethod("momo")}
+                        className={`flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-xl border-2 transition-all ${paymentMethod === "momo" ? "border-orange-500 bg-orange-50" : "border-border hover:border-border"}`}
+                      >
+                        <Smartphone size={20} className={paymentMethod === "momo" ? "text-orange-600" : "text-muted-foreground"} />
+                        <span className={`text-[10px] font-bold uppercase tracking-widest ${paymentMethod === "momo" ? "text-orange-900" : "text-muted-foreground"}`}>MoMo</span>
+                      </button>
+                    )}
+                    {hasCard && (
+                      <button
+                        onClick={() => setPaymentMethod("card")}
+                        className={`flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-xl border-2 transition-all ${paymentMethod === "card" ? "border-orange-500 bg-orange-50" : "border-border hover:border-border"}`}
+                      >
+                        <ShieldCheck size={20} className={paymentMethod === "card" ? "text-orange-600" : "text-muted-foreground"} />
+                        <span className={`text-[10px] font-bold uppercase tracking-widest ${paymentMethod === "card" ? "text-orange-900" : "text-muted-foreground"}`}>Card</span>
+                      </button>
+                    )}
                   </div>
-                </div>
+
+                  <div className="space-y-3 sm:space-y-4">
+                    {paymentMethod === "momo" && (
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">MoMo Phone Number</label>
+                        <div className="relative mt-1">
+                          <Smartphone className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                          <input
+                            type="tel"
+                            placeholder="078 000 0000"
+                            className="w-full bg-muted border-2 border-border p-3 sm:p-4 pl-10 sm:pl-12 rounded-lg font-bold focus:border-orange-500 outline-none transition-all text-sm sm:text-base"
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                        Heartfelt Message <Heart size={10} className="text-pink-500" />
+                      </label>
+                      <textarea
+                        placeholder="Write a nice note to the creator..."
+                        className="w-full mt-1 bg-muted border-2 border-border p-3 sm:p-4 rounded-lg font-medium text-sm focus:border-orange-500 outline-none transition-all resize-none h-20 sm:h-24"
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-muted-foreground">
+                    You pay {amountValid ? numericAmount : minSupportAmount} {selectedCurrency}. The creator receives the amount in {selectedCurrency} after platform fees.
+                  </p>
+
+                  <button
+                    onClick={paymentMethod === "momo" ? handleSupport : handlePesapalSupport}
+                    disabled={!selectedCurrency || !amountValid || !paymentMethod || (paymentMethod === "momo" && !phone) || isSubmitting || methods.length === 0}
+                    className="w-full bg-orange-600 text-white py-4 sm:py-6 rounded-lg font-bold text-base sm:text-xl shadow-xl shadow-orange-100 hover:bg-orange-700 transition-all flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
+                  >
+                    {isSubmitting ? <Loader className="w-5 h-5 sm:w-6 sm:h-6 rounded-full animate-spin" /> : (
+                      paymentMethod === "momo" ? "Support with MoMo" : "Support with Card"
+                    )}
+                  </button>
+                </>
               )}
-
-          <div className="space-y-3 sm:space-y-4">
-            {paymentMethod === "momo" && (
-              <>
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  MoMo Phone Number
-                </label>
-                <div className="relative">
-                  <Smartphone
-                    className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
-                    size={16}
-                  />
-                  <input
-                    type="tel"
-                    placeholder="078 000 0000"
-                    className="w-full bg-muted border-2 border-border p-3 sm:p-4 pl-10 sm:pl-12 rounded-lg font-bold focus:border-orange-500 outline-none transition-all text-sm sm:text-base"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                  />
-                </div>
-              </>
-            )}
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                Heartfelt Message{" "}
-                <Heart size={10} className="text-pink-500" />
-              </label>
-              <textarea
-                placeholder="Write a nice note to the creator..."
-                className="w-full mt-1 bg-muted border-2 border-border p-3 sm:p-4 rounded-lg font-medium text-sm focus:border-orange-500 outline-none transition-all resize-none h-20 sm:h-24"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <button
-            onClick={
-              paymentMethod === "momo"
-                ? handleSupport
-                : handlePesapalSupport
-            }
-            disabled={
-              !amount ||
-              parseInt(amount) < minSupportAmount ||
-              (paymentMethod === "momo" && !phone) ||
-              isSubmitting
-            }
-            className="w-full bg-orange-600 text-white py-4 sm:py-6 rounded-lg font-bold text-base sm:text-xl shadow-xl shadow-orange-100 hover:bg-orange-700 transition-all flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
-          >
-            {isSubmitting ? (
-              <Loader className="w-5 h-5 sm:w-6 sm:h-6 rounded-full animate-spin" />
-            ) : (
-              <>
-                {paymentMethod === "momo"
-                  ? "Support with MoMo"
-                  : "Support with Card"}
-              </>
-            )}
-          </button>
             </div>
           )}
 
@@ -406,15 +379,9 @@ export function SupportModal({
               <h4 className="text-lg sm:text-xl font-bold">Verifying Payment...</h4>
               <p className="text-muted-foreground font-medium leading-relaxed text-sm sm:text-base">
                 {paymentMethod === "momo" ? (
-                  <>
-                    We sent a MoMo prompt to <b>{phone}</b>.<br />
-                    Enter your PIN on your phone to finish.
-                  </>
+                  <>We sent a MoMo prompt to <b>{phone}</b>.<br />Enter your PIN on your phone to finish.</>
                 ) : (
-                  <>
-                    We are confirming your transaction through Pesapal. This
-                    usually takes a few seconds.
-                  </>
+                  <>We are confirming your transaction. This usually takes a few seconds.</>
                 )}
               </p>
             </div>
@@ -425,16 +392,11 @@ export function SupportModal({
               <div className="w-20 h-20 sm:w-24 sm:h-24 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
                 <ShieldCheck size={40} />
               </div>
-              <h4 className="text-2xl sm:text-3xl font-bold text-foreground">
-                Payment Verified!
-              </h4>
+              <h4 className="text-2xl sm:text-3xl font-bold text-foreground">Payment Verified!</h4>
               <p className="text-muted-foreground font-medium leading-relaxed text-sm sm:text-base">
-                  Your support of <b>{amount} {selectedCurrency}</b> was delivered.
+                Your support of <b>{amount} {selectedCurrency}</b> was delivered.
               </p>
-              <button
-                onClick={handleClose}
-                className="w-full bg-foreground text-background py-3 sm:py-4 rounded-lg font-bold text-sm sm:text-base hover:bg-orange-600 transition-colors"
-              >
+              <button onClick={handleClose} className="w-full bg-foreground text-background py-3 sm:py-4 rounded-lg font-bold text-sm sm:text-base hover:bg-orange-600 transition-colors">
                 Back to Profile
               </button>
             </div>
@@ -445,23 +407,14 @@ export function SupportModal({
               <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
                 <X size={32} />
               </div>
-              <h4 className="text-xl sm:text-2xl font-bold text-foreground">
-                Payment Failed
-              </h4>
+              <h4 className="text-xl sm:text-2xl font-bold text-foreground">Payment Failed</h4>
               <p className="text-muted-foreground font-medium text-sm sm:text-base">{errorMessage}</p>
               {popupBlocked && (
-                <Link
-                  href={redirectUrl}
-                  target="_blank"
-                  className="w-full bg-orange-600 text-center text-white py-3 sm:py-4 rounded-lg font-bold text-sm sm:text-base block"
-                >
+                <Link href={redirectUrl} target="_blank" className="w-full bg-orange-600 text-center text-white py-3 sm:py-4 rounded-lg font-bold text-sm sm:text-base block">
                   Open Payment Window
                 </Link>
               )}
-              <button
-                onClick={() => setStep("input")}
-                className="w-full bg-muted text-foreground py-3 sm:py-4 rounded-lg font-bold text-sm sm:text-base hover:bg-muted transition-colors"
-              >
+              <button onClick={() => setStep("input")} className="w-full bg-muted text-foreground py-3 sm:py-4 rounded-lg font-bold text-sm sm:text-base hover:bg-muted transition-colors">
                 Try Again
               </button>
             </div>

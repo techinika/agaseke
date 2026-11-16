@@ -9,7 +9,7 @@ export interface CommunityTier {
   name: string;
   description: string;
   price: number;
-  priceUSD?: number;
+
   prices?: PriceMap;
   currency?: import("@/lib/money/registry.generated").CurrencyCode;
   interval: "monthly" | "yearly";

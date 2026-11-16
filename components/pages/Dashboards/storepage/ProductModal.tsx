@@ -17,12 +17,12 @@ export default function ProductModal({
   onClose: () => void;
 }) {
   const { creator } = useAuth();
-  const defaultCurrency: CurrencyCode = parsePriceCurrency(creator?.currency) || "RWF";
+  const defaultCurrency: CurrencyCode = (parsePriceCurrency(creator?.currency) ?? ("RWF" as CurrencyCode));
   const initialCurrency = parsePriceCurrency(product?.currency) || defaultCurrency;
   const initialPrices = buildPriceMap({
     prices: (product?.prices as PriceMap | null | undefined) || null,
     price: product?.price,
-    priceUSD: product?.priceUSD,
+
   });
   const [formData, setFormData] = useState({
     name: product?.name || "",
@@ -117,7 +117,7 @@ export default function ProductModal({
         name: formData.name,
         description: formData.description,
         price: prices.RWF ?? primaryAmount,
-        priceUSD: prices.USD ?? null,
+
         prices,
         currency: formData.currency,
         type: formData.type,
