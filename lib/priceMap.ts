@@ -54,15 +54,36 @@ export function parsePriceCurrency(currency?: string | null): PriceCurrency | nu
   return isCurrencyCode(code) ? code : null;
 }
 
+/**
+ * Build a canonical price map. Accepts legacy `price`/`priceUSD` fields for
+ * compatibility and/or an explicit `prices` map. Explicit entries win.
+ */
 export function buildPriceMap(fields: {
   price?: number | null;
   priceUSD?: number | null;
+  prices?: PriceMap | Record<string, number | null | undefined> | null;
 }): PriceMap {
   const map: PriceMap = {};
+
   const rwf = positivePrice(fields.price);
   const usd = positivePrice(fields.priceUSD);
   if (rwf !== undefined) map.RWF = rwf;
   if (usd !== undefined) map.USD = usd;
+
+  if (fields.prices && typeof fields.prices === "object") {
+    for (const [code, value] of Object.entries(fields.prices)) {
+      if (!isCurrencyCode(code)) continue;
+      const amount = positivePrice(value);
+      if (amount === undefined) {
+        delete map[code];
+        continue;
+      }
+      if (hasSupportedPrecision(amount, code)) {
+        map[code] = amount;
+      }
+    }
+  }
+
   return map;
 }
 
