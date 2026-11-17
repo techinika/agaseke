@@ -94,12 +94,65 @@ export function subscribeToLatestVerificationRequest(
   });
 }
 
+export interface WithdrawalQuoteSource {
+  currency: string;
+  amountMinor: number;
+  amountMajor: number;
+  payoutAmountMinor: number;
+  payoutAmountMajor: number;
+  effectiveRate: number;
+  fxRateId?: string;
+  rateSource?: string;
+  rateTimestamp?: string;
+}
+
+export interface WithdrawalQuote {
+  id: string;
+  payoutCurrency: string;
+  requestedPayoutAmountMinor: number;
+  requestedPayoutAmountMajor: number;
+  sources: WithdrawalQuoteSource[];
+  expiresAt: string;
+  createdAt: string;
+}
+
+export async function requestWithdrawalQuote(params: {
+  amount: string | number;
+  payoutCurrency: string;
+}): Promise<WithdrawalQuote> {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Sign in to request a withdrawal");
+
+  const token = await user.getIdToken();
+  const response = await fetch("/api/payouts/withdraw/quote", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      amount: params.amount,
+      payoutCurrency: params.payoutCurrency,
+    }),
+  });
+
+  const payload = (await response.json().catch(() => null)) as {
+    error?: string;
+    quote?: WithdrawalQuote;
+  } | null;
+  if (!response.ok || !payload?.quote) {
+    throw new Error(payload?.error || `Withdrawal quote failed (${response.status})`);
+  }
+  return payload.quote;
+}
+
 export async function submitWithdrawRequest(params: {
   creatorUid: string;
   creatorName: string;
   amount: string | number;
   currency: string;
   idempotencyKey: string;
+  quoteId?: string;
 }): Promise<void> {
   const user = auth.currentUser;
   if (!user) throw new Error("Sign in to request a withdrawal");
@@ -114,7 +167,9 @@ export async function submitWithdrawRequest(params: {
     body: JSON.stringify({
       amount: params.amount,
       currency: params.currency,
+      payoutCurrency: params.currency,
       idempotencyKey: params.idempotencyKey,
+      ...(params.quoteId ? { quoteId: params.quoteId } : {}),
     }),
   });
 

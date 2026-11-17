@@ -106,6 +106,8 @@ export {
   createWithdrawalHold,
   createWithdrawalRelease,
   createWithdrawalSettlement,
+  createFxDebit,
+  createFxCredit,
   ledgerAccountBalances,
   ledgerBalance,
   netLedgerBalance,
