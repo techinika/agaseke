@@ -64,7 +64,7 @@ export default function ProductForm() {
         setFormData((prev) => ({ ...prev, imageUrl: data.url }));
         toast.success("Image uploaded!");
       }
-    } catch (error) {
+    } catch {
       toast.error("Upload failed");
     } finally {
       setIsUploading(false);
@@ -93,7 +93,7 @@ export default function ProductForm() {
         }));
         toast.success("File uploaded!");
       }
-    } catch (error) {
+    } catch {
       toast.error("Upload failed");
     } finally {
       setIsUploading(false);
@@ -111,7 +111,7 @@ export default function ProductForm() {
 
     setSaving(true);
     try {
-      const productData: Record<string, any> = {
+      const productData: Record<string, unknown> = {
         creatorId: creator.uid,
         name: formData.name,
         description: formData.description,
@@ -137,13 +137,14 @@ export default function ProductForm() {
         productData.fileType = formData.fileType;
       }
       if (formData.discountEnabled && formData.discountPercentage) {
-        productData.discount = {
+        const discount: { enabled: boolean; percentage: number; code?: string } = {
           enabled: true,
           percentage: formData.discountPercentage,
         };
         if (formData.discountCode) {
-          productData.discount.code = formData.discountCode;
+          discount.code = formData.discountCode;
         }
+        productData.discount = discount;
       }
       if (formData.bulkPricing?.length > 0) {
         productData.bulkPricing = formData.bulkPricing;

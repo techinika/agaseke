@@ -86,6 +86,7 @@ export default function StorePage() {
         ...doc.data(),
       })) as Product[];
       setProducts(productData);
+      setLoading(false);
     });
 
     const ordersRef = collection(db, "storeOrders");
@@ -133,8 +134,6 @@ export default function StorePage() {
       setFolders(folderData);
     });
 
-    setLoading(false);
-
     return () => {
       unsubProducts();
       unsubOrders();
@@ -154,7 +153,7 @@ export default function StorePage() {
       await deleteDoc(doc(db, "storeProducts", deleteProductId));
       toast.success("Product deleted");
       setDeleteProductId(null);
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete product");
     } finally {
       setDeleting(false);
@@ -196,7 +195,7 @@ export default function StorePage() {
       await deleteDoc(doc(db, "storeCoupons", deleteCouponId));
       toast.success("Coupon deleted");
       setDeleteCouponId(null);
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete coupon");
     } finally {
       setDeleting(false);
@@ -267,7 +266,7 @@ export default function StorePage() {
       await deleteDoc(doc(db, "storeFolders", deleteFolderId));
       toast.success("Folder deleted");
       setDeleteFolderId(null);
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete folder");
     } finally {
       setDeleting(false);
@@ -299,7 +298,7 @@ export default function StorePage() {
           trackingNumber: order.trackingNumber,
         }).catch((err) => { console.error("Failed to send store status email", err); });
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to update order");
     }
   };

@@ -70,10 +70,12 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
 
   useEffect(() => {
     if (!isOpen) {
-      setHeadline("Support My Creative Journey");
-      setAccentColor("#f97316");
-      setTextColor("#ffffff");
-      setCustomColor("");
+      queueMicrotask(() => {
+        setHeadline("Support My Creative Journey");
+        setAccentColor("#f97316");
+        setTextColor("#ffffff");
+        setCustomColor("");
+      });
     }
   }, [isOpen]);
 

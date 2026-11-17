@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { sendCommsEmail } from "@/lib/commsService";
 import { auth, db } from "@/db/firebase";
 import {
@@ -16,11 +16,9 @@ import {
   doc,
   updateDoc,
   addDoc,
-  Timestamp,
   serverTimestamp,
 } from "firebase/firestore";
 import {
-  TrendingUp,
   Users,
   Eye,
   DollarSign,
@@ -85,7 +83,6 @@ export default function AdminDashboard() {
     pendingTransactionAmount: 0,
   });
   const [rejectionReason, setRejectionReason] = useState("");
-  const [timeFilter, setTimeFilter] = useState<"all" | "7d" | "30d">("all");
   const [transactionFilter, setTransactionFilter] = useState<"day" | "week" | "month" | "annual">("month"); // New state for transaction amount filter
 
   const [topEarners, setTopEarners] = useState<any[]>([]);
@@ -94,14 +91,6 @@ export default function AdminDashboard() {
   const [verifications, setVerifications] = useState<any[]>([]);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [fxHealth, setFxHealth] = useState<any>(null);
-  const [visitorStats, setVisitorStats] = useState<{
-    today: number;
-    week: number;
-    month: number;
-  }>({ today: 0, week: 0, month: 0 });
-  const [monthlyData, setMonthlyData] = useState<
-    { month: string; income: number; payouts: number }[]
-  >([]);
 
   const [growthFilter, setGrowthFilter] = useState<"7d" | "weekly" | "monthly" | "annual" | "yoy">("7d");
   const [userGrowthData, setUserGrowthData] = useState<{
@@ -114,21 +103,12 @@ export default function AdminDashboard() {
   const [rawIncome, setRawIncome] = useState<any[]>([]);
   const [rawPayouts, setRawPayouts] = useState<any[]>([]);
   const [rawTransactions, setRawTransactions] = useState<any[]>([]);
-  const [txBreakdown, setTxBreakdown] = useState<{
-    support: { successful: number; failed: number; pending: number };
-    store: { successful: number; failed: number; pending: number };
-    booking: { successful: number; failed: number; pending: number };
-    gathering: { successful: number; failed: number; pending: number };
-  }>({
-    support: { successful: 0, failed: 0, pending: 0 },
-    store: { successful: 0, failed: 0, pending: 0 },
-    booking: { successful: 0, failed: 0, pending: 0 },
-    gathering: { successful: 0, failed: 0, pending: 0 },
-  });
 
   // Process transaction chart data based on filter
-  useEffect(() => {
-    if (rawIncome.length === 0 && rawPayouts.length === 0) return;
+  const monthlyData = useMemo<
+    { month: string; income: number; payouts: number }[]
+  >(() => {
+    if (rawIncome.length === 0 && rawPayouts.length === 0) return [];
 
     const now = new Date();
     const newData: { month: string; income: number; payouts: number }[] = [];
@@ -222,12 +202,23 @@ export default function AdminDashboard() {
       }
     }
 
-    setMonthlyData(newData);
+    return newData;
   }, [transactionFilter, rawIncome, rawPayouts]);
 
   // Process transaction breakdown by type, status, and time period
-  useEffect(() => {
-    if (rawTransactions.length === 0) return;
+  const txBreakdown = useMemo<{
+    support: { successful: number; failed: number; pending: number };
+    store: { successful: number; failed: number; pending: number };
+    booking: { successful: number; failed: number; pending: number };
+    gathering: { successful: number; failed: number; pending: number };
+  }>(() => {
+    if (rawTransactions.length === 0)
+      return {
+        support: { successful: 0, failed: 0, pending: 0 },
+        store: { successful: 0, failed: 0, pending: 0 },
+        booking: { successful: 0, failed: 0, pending: 0 },
+        gathering: { successful: 0, failed: 0, pending: 0 },
+      };
     const now = new Date();
     const breakdown = {
       support: { successful: 0, failed: 0, pending: 0 },
@@ -270,7 +261,7 @@ export default function AdminDashboard() {
       else if (isPending) breakdown[txType as keyof typeof breakdown].pending += amt;
     });
 
-    setTxBreakdown(breakdown);
+    return breakdown;
   }, [transactionFilter, rawTransactions]);
 
   const [modal, setModal] = useState<{
@@ -356,72 +347,8 @@ export default function AdminDashboard() {
       const platformIncomeSnap = await getDocs(
         collection(db, "platformIncome"),
       );
-      const months = [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ];
-      const currentMonth = new Date().getMonth();
-      const currentYear = new Date().getFullYear();
-      const monthlyStats: { month: string; income: number; payouts: number }[] =
-        [];
       const allPlatformIncome = platformIncomeSnap.docs.map((d) => d.data());
       const allPayouts = payoutsSnap.docs.map((d) => d.data());
-
-      // Initialize last 6 months with 0
-      for (let i = 5; i >= 0; i--) {
-        const monthIndex = (currentMonth - i + 12) % 12;
-        const yearOffset = currentMonth - i < 0 ? -1 : 0;
-        const year = currentYear + yearOffset;
-        const monthName = months[monthIndex];
-
-        let monthIncome = 0;
-        let monthPayouts = 0;
-
-        // Get platform income for this month
-        allPlatformIncome.forEach((income) => {
-          const createdAt = income.createdAt;
-          if (createdAt && typeof createdAt.toDate === "function") {
-            const docDate = createdAt.toDate();
-            if (
-              docDate.getMonth() === monthIndex &&
-              docDate.getFullYear() === year
-            ) {
-              monthIncome += income.amount || 0;
-            }
-          }
-        });
-
-        // Get payouts for this month
-        allPayouts.forEach((payout) => {
-          const createdAt = payout.createdAt;
-          if (createdAt && typeof createdAt.toDate === "function") {
-            const docDate = createdAt.toDate();
-            if (
-              docDate.getMonth() === monthIndex &&
-              docDate.getFullYear() === year
-            ) {
-              monthPayouts += payout.amount || 0;
-            }
-          }
-        });
-
-        monthlyStats.push({
-          month: monthName,
-          income: monthIncome,
-          payouts: monthPayouts,
-        });
-      }
-      setMonthlyData(monthlyStats);
 
       // Store raw data for transaction filtering
       setRawIncome(allPlatformIncome);
@@ -518,12 +445,6 @@ export default function AdminDashboard() {
           return { id: d.id, ...data, ...creatorData };
         }),
       );
-
-      // Visitor stats (based on profile views in last 24h/week/month - simulated)
-      const today = Math.floor(Math.random() * 500) + 100;
-      const week = Math.floor(today * 7 * (0.8 + Math.random() * 0.4));
-      const month = Math.floor(today * 30 * (0.8 + Math.random() * 0.4));
-      setVisitorStats({ today, week, month });
 
       setStats({
         totalPlatformIncome: totalIncome,
@@ -660,7 +581,9 @@ export default function AdminDashboard() {
       setRecentActivities(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
 
-    fetchData();
+    queueMicrotask(() => {
+      void fetchData();
+    });
 
     return () => {
       unsubWithdrawals();
@@ -856,7 +779,8 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    calculateUserGrowth();
+    queueMicrotask(calculateUserGrowth);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [growthFilter]);
 
   const handleAction = async () => {

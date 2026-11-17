@@ -1,4 +1,4 @@
-import type { Env, SubscribeRequest, CallbackPayload } from "../types";
+import type { Env, SubscribeRequest } from "../types";
 import { firestoreSet, firestoreQueryAll, convertToFields, convertFromFields, firestoreGet, firestoreApplyPayment } from "../firestore";
 import { logActivity } from "../logger";
 import { createNotification } from "../adminNotifications";
@@ -92,7 +92,7 @@ async function initiateRenewalPayment(
 ): Promise<{ ref?: string; redirect_url?: string }> {
   const currency = (sub.currency as string) || "";
   if (!currency) throw new Error("Subscription missing currency");
-  if (data.paymentMethod === "momo" && currency !== "RWF") {
+  if (method === "momo" && currency !== "RWF") {
     throw new Error("Mobile Money is not available for this currency. Use card payment.");
   }
   const periodKey = String(sub.currentPeriodEnd || sub.expiresAt || "renewal");

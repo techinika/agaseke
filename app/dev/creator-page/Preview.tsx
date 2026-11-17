@@ -1,5 +1,6 @@
-import { DEFAULT_CURRENCY } from "@/types/currency";
 "use client";
+
+import { DEFAULT_CURRENCY } from "@/types/currency";
 
 import { useState } from "react";
 import { Calendar, Gift, Heart, MessageCircle, Store, Users } from "lucide-react";

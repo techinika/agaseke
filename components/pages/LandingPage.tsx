@@ -88,8 +88,10 @@ export default function LandingPage({ initialCreators }: { initialCreators?: any
 
   useEffect(() => {
     if (initialCreators?.length) return;
-    setFeaturedCreators(fallbackCreators);
-    setFeaturedLoading(false);
+    queueMicrotask(() => {
+      setFeaturedCreators(fallbackCreators);
+      setFeaturedLoading(false);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -667,7 +669,7 @@ export default function LandingPage({ initialCreators }: { initialCreators?: any
 
           <div className="text-center mt-12">
             <p className="text-xl md:text-2xl font-bold text-foreground">
-              Global platforms weren't built for African creators.
+              Global platforms weren&apos;t built for African creators.
             </p>
             <p className="text-orange-600 font-black text-lg mt-1">Agaseke was.</p>
           </div>
@@ -721,7 +723,7 @@ export default function LandingPage({ initialCreators }: { initialCreators?: any
             <div className="text-[100px] font-black leading-none mb-4">10%</div>
             <p className="text-xl text-slate-300 max-w-lg mx-auto leading-relaxed mb-10">
               We only make money when <strong>you</strong> make money. A small 10%
-              platform fee — that's it. No hidden charges, no subscription.
+              platform fee — that&apos;s it. No hidden charges, no subscription.
               <span className="block mt-2 text-sm text-orange-400">
                 Perfect for individual creators and management companies onboarding
                 multiple talents.

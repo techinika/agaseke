@@ -11,23 +11,23 @@ export default function CreatorChatPage() {
   const params = useParams();
   const router = useRouter();
   const { creator } = useAuth();
-  const [handle, setHandle] = useState("");
+  const [fetchedHandle, setFetchedHandle] = useState("");
   const tierId = params.tierId as string;
 
   useEffect(() => {
-    if (creator?.handle) {
-      setHandle(creator.handle);
-    } else if (creator?.uid) {
+    if (creator?.handle) return;
+    if (creator?.uid) {
       const lookup = async () => {
         const snap = await getDoc(doc(db, "profiles", creator.uid));
         if (snap.exists() && snap.data().creatorHandle) {
-          setHandle(snap.data().creatorHandle);
+          setFetchedHandle(snap.data().creatorHandle);
         }
       };
       lookup();
     }
   }, [creator]);
 
+  const handle = creator?.handle || fetchedHandle;
   if (!handle) return null;
 
   return (

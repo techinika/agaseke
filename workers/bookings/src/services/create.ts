@@ -171,7 +171,7 @@ export async function createBooking(
   }
 
   const { effectiveAvail, effectiveTier, verifiedPaymentAmount, duration, currency } =
-    resolveAvailabilityAndPrice(creatorData, body.tierId, body.paymentAmount, body.preferredTime);
+    resolveAvailabilityAndPrice(creatorData, body.tierId ?? undefined, body.paymentAmount, body.preferredTime);
 
   if (body.tierId && !effectiveTier) {
     await logActivity(env, "warning", "payment", "Booking: Invalid or inactive tier", {

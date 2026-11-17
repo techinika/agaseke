@@ -75,7 +75,7 @@ export default function FolderForm() {
 
     setSaving(true);
     try {
-      const data: Record<string, any> = {
+      const data: Record<string, unknown> = {
         creatorId: creator.uid,
         name: formData.name,
         description: formData.description,

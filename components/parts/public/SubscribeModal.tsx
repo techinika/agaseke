@@ -102,6 +102,7 @@ export function SubscribeModal({
     }
 
     setStep("processing");
+    // eslint-disable-next-line react-hooks/purity
     const subId = `sub-${Date.now()}`;
     processingRef.current = subId;
 

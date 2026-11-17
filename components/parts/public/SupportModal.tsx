@@ -43,6 +43,27 @@ export function SupportModal({
   const [methods, setMethods] = useState<PaymentMethodOption[]>([]);
   const [loadingMethods, setLoadingMethods] = useState(false);
 
+  const CREATOR_SHARE = Number(process.env.NEXT_PUBLIC_CREATOR_SHARE) || 0.9;
+
+  const sendSupportEmail = async (txAmount: number) => {
+    try {
+      const creatorRef = doc(db, "profiles", uid);
+      const creatorSnap = await getDoc(creatorRef);
+      if (creatorSnap.exists()) {
+        const profileData = creatorSnap.data();
+        await sendCommsEmail("support_received", {
+          creatorEmail: profileData.email || "",
+          creatorName,
+          supporterName: currentUser?.displayName || "A generous supporter",
+          amount: txAmount,
+          message: message.trim() || null,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to trigger support email:", error);
+    }
+  };
+
   useEffect(() => {
     if (!creatorId) return;
     const fetchCreatorCurrency = async () => {
@@ -79,21 +100,25 @@ export function SupportModal({
   useEffect(() => {
     let cancelled = false;
     if (!selectedCurrency) return;
-    setLoadingMethods(true);
-    getPaymentMethods(selectedCurrency)
-      .then((m) => {
-        if (cancelled) return;
-        setMethods(m);
-        setPaymentMethod((prev) =>
-          m.some((x) => x.method === prev) ? prev : (m[0]?.method ?? ""),
-        );
-      })
-      .catch(() => {
-        if (!cancelled) setMethods([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingMethods(false);
-      });
+    const loadMethods = () => {
+      if (cancelled) return;
+      setLoadingMethods(true);
+      getPaymentMethods(selectedCurrency)
+        .then((m) => {
+          if (cancelled) return;
+          setMethods(m);
+          setPaymentMethod((prev) =>
+            m.some((x) => x.method === prev) ? prev : (m[0]?.method ?? ""),
+          );
+        })
+        .catch(() => {
+          if (!cancelled) setMethods([]);
+        })
+        .finally(() => {
+          if (!cancelled) setLoadingMethods(false);
+        });
+    };
+    queueMicrotask(loadMethods);
     return () => {
       cancelled = true;
     };
@@ -124,9 +149,11 @@ export function SupportModal({
     const orderTrackingId = params.get("OrderTrackingId");
     const merchantRef = params.get("OrderMerchantReference");
     if (orderTrackingId && merchantRef && merchantRef.includes("AGS-CARD")) {
-      setStep("processing");
-      window.history.replaceState({}, document.title, window.location.pathname);
-      listenToTransaction(merchantRef);
+      queueMicrotask(() => {
+        setStep("processing");
+        window.history.replaceState({}, document.title, window.location.pathname);
+        listenToTransaction(merchantRef);
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -142,30 +169,10 @@ export function SupportModal({
   if (!isOpen) return null;
 
   const minSupportAmount = minByCurrency[selectedCurrency] ?? 1;
-  const CREATOR_SHARE = Number(process.env.NEXT_PUBLIC_CREATOR_SHARE) || 0.9;
   const numericAmount = Number(amount);
   const amountValid = Number.isFinite(numericAmount) && numericAmount >= minSupportAmount;
   const hasMomo = methods.some((m) => m.method === "momo");
   const hasCard = methods.some((m) => m.method === "card");
-
-  const sendSupportEmail = async (txAmount: number) => {
-    try {
-      const creatorRef = doc(db, "profiles", uid);
-      const creatorSnap = await getDoc(creatorRef);
-      if (creatorSnap.exists()) {
-        const profileData = creatorSnap.data();
-        await sendCommsEmail("support_received", {
-          creatorEmail: profileData.email || "",
-          creatorName,
-          supporterName: currentUser?.displayName || "A generous supporter",
-          amount: txAmount,
-          message: message.trim() || null,
-        });
-      }
-    } catch (error) {
-      console.error("Failed to trigger support email:", error);
-    }
-  };
 
   const handleSupport = async () => {
     if (!selectedCurrency || paymentMethod !== "momo") return;

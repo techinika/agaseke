@@ -37,7 +37,7 @@ describe("generic price maps", () => {
       RWF: 1000,
     });
     expect(buildPriceMap({ price: 0 })).toEqual({});
-    expect(buildPriceMap({ prices: { RWF: 1.5 } as any })).toEqual({});
+    expect(buildPriceMap({ prices: { RWF: 1.5 } })).toEqual({});
   });
 
   it("normalizes/parses currency codes", () => {

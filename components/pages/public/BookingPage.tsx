@@ -46,31 +46,7 @@ export default function BookingPage({ username, creator }: { username: string; c
   const isTiered = creator?.bookingMode === "tiered";
   const activeTiers: BookingTier[] = (creator?.bookingTiers || []).filter((t: BookingTier) => t.active);
 
-  useEffect(() => {
-    if (!isTiered && creator?.bookingAvailability) {
-      setAvailability(creator.bookingAvailability);
-      generateCalendarDates(creator.bookingAvailability);
-    }
-  }, [creator, isTiered]);
-
-  useEffect(() => {
-    if (selectedTier) {
-      setAvailability(selectedTier.availability);
-      generateCalendarDates(selectedTier.availability);
-      setSelectedDate("");
-      setSelectedTime("");
-      setSelectedType(selectedTier.availability.bookingType === "both" ? "both" : selectedTier.availability.bookingType);
-    }
-  }, [selectedTier]);
-
-  useEffect(() => {
-    if (user) {
-      setName(user.displayName || "");
-      setEmail(user.email || "");
-    }
-  }, [user]);
-
-  const generateCalendarDates = (avail: BookingAvailability) => {
+  function generateCalendarDates(avail: BookingAvailability) {
     if (!avail.daysOfWeek || avail.daysOfWeek.length === 0 || !avail.defaultSlots || avail.defaultSlots.length === 0) {
       setCalendarDates([]);
       return;
@@ -87,7 +63,38 @@ export default function BookingPage({ username, creator }: { username: string; c
       if (avail.daysOfWeek.includes(d.getDay())) dates.push(d.toISOString().split("T")[0]);
     }
     setCalendarDates(dates);
-  };
+  }
+
+  useEffect(() => {
+    if (!isTiered && creator?.bookingAvailability) {
+      queueMicrotask(() => {
+        setAvailability(creator.bookingAvailability);
+        generateCalendarDates(creator.bookingAvailability);
+      });
+    }
+  }, [creator, isTiered]);
+
+  useEffect(() => {
+    if (selectedTier) {
+      queueMicrotask(() => {
+        setAvailability(selectedTier.availability);
+        generateCalendarDates(selectedTier.availability);
+        setSelectedDate("");
+        setSelectedTime("");
+        setSelectedType(selectedTier.availability.bookingType === "both" ? "both" : selectedTier.availability.bookingType);
+      });
+    }
+  }, [selectedTier]);
+
+  useEffect(() => {
+    if (user) {
+      queueMicrotask(() => {
+        setName(user.displayName || "");
+        setEmail(user.email || "");
+      });
+    }
+  }, [user]);
+
 
   const handleSubmit = async () => {
     if (!selectedDate || !selectedTime) { toast.error("Please select a date and time"); return; }
@@ -354,7 +361,7 @@ export default function BookingPage({ username, creator }: { username: string; c
               <AlertCircle className="text-red-500" size={32} />
             </div>
             <h2 className="text-2xl font-bold text-foreground mb-2">Something went wrong</h2>
-            <p className="text-muted-foreground mb-6">We couldn't submit your booking request. Please try again.</p>
+            <p className="text-muted-foreground mb-6">We couldn&apos;t submit your booking request. Please try again.</p>
             <button onClick={() => setStep("form")}
               className="bg-foreground text-background px-8 py-3 rounded-lg font-bold hover:bg-orange-600 transition-all">
               Try Again

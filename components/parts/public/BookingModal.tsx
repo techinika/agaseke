@@ -36,24 +36,7 @@ export function BookingModal({
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [calendarDates, setCalendarDates] = useState<string[]>([]);
 
-  useEffect(() => {
-    if (user) {
-      setName(user.displayName || "");
-      setEmail(user.email || "");
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (creator.bookingAvailability) {
-      setAvailability(creator.bookingAvailability);
-      generateCalendarDates(creator.bookingAvailability);
-    } else {
-      setAvailability(null);
-      setCalendarDates([]);
-    }
-  }, [creator]);
-
-  const generateCalendarDates = (avail: BookingAvailability) => {
+  function generateCalendarDates(avail: BookingAvailability) {
     if (!avail.daysOfWeek || avail.daysOfWeek.length === 0 || !avail.defaultSlots || avail.defaultSlots.length === 0) {
       setCalendarDates([]);
       return;
@@ -75,7 +58,29 @@ export function BookingModal({
       }
     }
     setCalendarDates(dates);
-  };
+  }
+
+  useEffect(() => {
+    if (user) {
+      queueMicrotask(() => {
+        setName(user.displayName || "");
+        setEmail(user.email || "");
+      });
+    }
+  }, [user]);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      if (creator.bookingAvailability) {
+        setAvailability(creator.bookingAvailability);
+        generateCalendarDates(creator.bookingAvailability);
+      } else {
+        setAvailability(null);
+        setCalendarDates([]);
+      }
+    });
+  }, [creator]);
+
 
   const getMonthDates = () => {
     if (!calendarDates.length) return [];
@@ -353,7 +358,7 @@ export function BookingModal({
             </div>
             <h2 className="text-xl font-bold text-foreground mb-2">Request Sent!</h2>
             <p className="text-muted-foreground text-sm mb-6">
-              Your booking request has been sent to {creator.name}. You'll receive an email once they respond.
+              Your booking request has been sent to {creator.name}. You&apos;ll receive an email once they respond.
             </p>
             <button
               onClick={onClose}
@@ -371,7 +376,7 @@ export function BookingModal({
             </div>
             <h2 className="text-xl font-bold text-foreground mb-2">Something went wrong</h2>
             <p className="text-muted-foreground text-sm mb-6">
-              We couldn't submit your booking request. Please try again.
+              We couldn&apos;t submit your booking request. Please try again.
             </p>
             <button
               onClick={() => setStep("form")}

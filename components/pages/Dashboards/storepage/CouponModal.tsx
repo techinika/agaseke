@@ -1,8 +1,18 @@
 import React, { useState } from "react";
 import { X, Loader } from "lucide-react";
 import { toast } from "sonner";
-import { Product, getProductCurrency, getProductPrice } from "@/types/store";
+import { Coupon, Product, getProductCurrency, getProductPrice } from "@/types/store";
 import { formatCurrency } from "@/types/currency";
+
+export type CouponFormValues = {
+  code: string;
+  discountType: "percentage" | "fixed";
+  discountValue: number;
+  minPurchase: number;
+  maxUses: number;
+  productIds: string[];
+  active: boolean;
+};
 
 export default function CouponModal({
   coupon,
@@ -11,10 +21,10 @@ export default function CouponModal({
   onSave,
   currency = "RWF",
 }: {
-  coupon: any | null;
+  coupon: Coupon | null;
   products: Product[];
   onClose: () => void;
-  onSave: (data: any) => void;
+  onSave: (data: CouponFormValues) => void;
   currency?: string;
 }) {
   const [formData, setFormData] = useState({
@@ -89,7 +99,7 @@ export default function CouponModal({
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    discountType: e.target.value as any,
+                    discountType: e.target.value as "percentage" | "fixed",
                   })
                 }
                 className="w-full bg-muted border border-border-strong rounded-lg px-4 py-3"

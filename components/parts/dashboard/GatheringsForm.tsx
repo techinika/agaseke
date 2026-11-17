@@ -4,14 +4,13 @@
 import { useState, useEffect } from "react";
 import { sendCommsEmail } from "@/lib/commsService";
 import { useRouter } from "next/navigation";
-import { Loader, ArrowLeft, Globe, Users, ShieldCheck, Ticket, X } from "lucide-react";
+import { Loader, ArrowLeft, Globe, Users, ShieldCheck, Ticket } from "lucide-react";
 import { db } from "@/db/firebase";
 import { collection, addDoc, doc, updateDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/logger";
 import type { EventType } from "@/components/parts/public/gatherings/types";
-import { formatCurrency } from "@/types/currency";
 import { buildPriceMap, getPrice, parsePriceCurrency, type PriceMap } from "@/lib/priceMap";
 import PriceEditor from "@/components/money/PriceEditor";
 import type { CurrencyCode } from "@/lib/money/registry.generated";
@@ -49,6 +48,13 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
     capacity: 20,
     active: true,
   });
+
+  const guessEventType = (data: any): EventType => {
+    if (data.eventType) return data.eventType;
+    if (data.ticketPrice > 0) return "ticketed";
+    if (data.minSupportTier > 0) return "supporters_tiered";
+    return "public";
+  };
 
   useEffect(() => {
     if (!gatheringId || !creator?.uid) return;
@@ -90,14 +96,7 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
       }
     };
     fetchEvent();
-  }, [gatheringId, creator, router]);
-
-  const guessEventType = (data: any): EventType => {
-    if (data.eventType) return data.eventType;
-    if (data.ticketPrice > 0) return "ticketed";
-    if (data.minSupportTier > 0) return "supporters_tiered";
-    return "public";
-  };
+  }, [gatheringId, creator, router, defaultCurrency]);
 
   const handleSubmit = async () => {
     if (!creator?.uid) { toast.error("Not authenticated"); return; }

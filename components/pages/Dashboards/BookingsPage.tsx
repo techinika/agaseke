@@ -135,11 +135,12 @@ export default function BookingsPage() {
   const [newSlot, setNewSlot] = useState({ startTime: "09:00", endTime: "10:00" });
 
   useEffect(() => {
-    if (creator) {
+    queueMicrotask(() => {
+      if (!creator) return;
       if (creator.bookingMode) setBookingMode(creator.bookingMode);
       if (creator.bookingTiers) setTiers(creator.bookingTiers);
       if (creator.bookingAvailability) setAvailability(creator.bookingAvailability);
-    }
+    });
   }, [creator]);
 
   useEffect(() => {

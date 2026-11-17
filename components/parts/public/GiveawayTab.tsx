@@ -278,6 +278,7 @@ export const GiveawayTab = ({
                 ? giveaway.endDate.toDate()
                 : new Date(giveaway.endDate as any);
             const daysLeft = Math.ceil(
+              // eslint-disable-next-line react-hooks/purity
               (endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
             );
 

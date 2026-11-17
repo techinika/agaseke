@@ -111,6 +111,7 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
 
   const endDate = giveaway.endDate instanceof Timestamp ? giveaway.endDate.toDate() : new Date(giveaway.endDate as any);
   const isActive = endDate > new Date() && (giveaway.winners?.length || 0) === 0;
+  // eslint-disable-next-line react-hooks/purity
   const daysLeft = Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
   const accessible = canAccess(giveaway);
 
@@ -197,7 +198,7 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
                 ) : !accessible ? (
                   <p className="text-center text-sm text-muted-foreground bg-muted py-3 rounded-xl">This giveaway requires supporter access.</p>
                 ) : participating ? (
-                  <p className="text-center text-sm text-emerald-600 bg-emerald-50 py-3 rounded-xl font-bold">You've entered! Good luck!</p>
+                  <p className="text-center text-sm text-emerald-600 bg-emerald-50 py-3 rounded-xl font-bold">You&apos;ve entered! Good luck!</p>
                 ) : (
                   <button onClick={participate}
                     className="w-full py-3 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition flex items-center justify-center gap-2">

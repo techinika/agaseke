@@ -98,7 +98,7 @@ export async function handleStoreCallback(
     });
   }
 
-  const orderResult = await firestorePost(env, "storeOrders", {
+  await firestorePost(env, "storeOrders", {
     fields: {
       txRef: { stringValue: paymentRef },
       buyerId: { stringValue: txData.buyerId as string },

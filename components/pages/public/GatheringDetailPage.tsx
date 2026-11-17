@@ -340,7 +340,7 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <CheckCircle size={20} className="text-emerald-500" />
-                        <p className="text-sm font-bold text-emerald-700">You're attending! {isFull && " (Limited spots remaining)"}</p>
+                        <p className="text-sm font-bold text-emerald-700">You&apos;re attending! {isFull && " (Limited spots remaining)"}</p>
                       </div>
                       {attendanceDocId && (
                         <button

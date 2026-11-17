@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
+import Link from "next/link";
 import React, { useState, useEffect, useRef } from "react";
 import {
   User,
@@ -104,7 +105,7 @@ export default function CreatorSettings() {
 
   useEffect(() => {
     if (!creatorData?.country) {
-      setAvailableCurrencies([]);
+      queueMicrotask(() => setAvailableCurrencies([]));
       return;
     }
     const mappings = countryCurrencies.filter(
@@ -113,7 +114,7 @@ export default function CreatorSettings() {
     const available = currencies.filter((c: any) =>
       mappings.some((m: any) => m.currencyCode === c.code),
     );
-    setAvailableCurrencies(available);
+    queueMicrotask(() => setAvailableCurrencies(available));
   }, [creatorData?.country, countryCurrencies, currencies]);
 
   const handleUpdate = (field: string, value: any) => {
@@ -706,13 +707,13 @@ export default function CreatorSettings() {
                             store.
                           </p>
                         )}
-                        <a
+                        <Link
                           href="/creator/store"
                           className="inline-flex items-center gap-2 text-sm font-bold text-orange-600 hover:text-orange-700"
                         >
                           <ShoppingBag size={16} />
                           Manage your store
-                        </a>
+                        </Link>
                       </div>
                     )}
                   </div>
@@ -754,13 +755,13 @@ export default function CreatorSettings() {
 
                   {creatorData?.giveawayEnabled && (
                     <div className="mt-6 pt-6 border-t border-border">
-                      <a
+                      <Link
                         href="/creator/giveaways"
                         className="inline-flex items-center gap-2 text-sm font-bold text-orange-600 hover:text-orange-700"
                       >
                         <Gift size={16} />
                         Manage giveaways
-                      </a>
+                      </Link>
                     </div>
                   )}
                 </div>
@@ -832,13 +833,13 @@ export default function CreatorSettings() {
                           />
                         </button>
                       </div>
-                      <a
+                      <Link
                         href="/creator/bookings"
                         className="inline-flex items-center gap-2 text-sm font-bold text-orange-600 hover:text-orange-700"
                       >
                         <Calendar size={16} />
                         Manage bookings
-                      </a>
+                      </Link>
                     </div>
                   )}
                 </div>
@@ -881,13 +882,13 @@ export default function CreatorSettings() {
 
                   {creatorData?.gatheringsEnabled && (
                     <div className="mt-6 pt-6 border-t border-border">
-                      <a
+                      <Link
                         href="/creator/gatherings"
                         className="inline-flex items-center gap-2 text-sm font-bold text-orange-600 hover:text-orange-700"
                       >
                         <Calendar size={16} />
                         Manage gatherings
-                      </a>
+                      </Link>
                     </div>
                   )}
                 </div>
@@ -1044,13 +1045,13 @@ export default function CreatorSettings() {
 
                 {creatorData?.communityEnabled && (
                   <div className="mt-2 pt-6 border-t border-border">
-                    <a
+                    <Link
                       href="/creator/community"
                       className="inline-flex items-center gap-2 text-sm font-bold text-orange-600 hover:text-orange-700"
                     >
                       <Users size={16} />
                       Manage community tiers
-                    </a>
+                    </Link>
                     <p className="text-xs text-muted-foreground mt-3">
                       When enabled, a &ldquo;Tiers&rdquo; link appears in your sidebar so
                       you can manage subscription plans.

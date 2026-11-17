@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { ShoppingCart, Search, Truck } from "lucide-react";
-import { Order, getProductCurrency, getProductPrice } from "@/types/store";
+import { Order } from "@/types/store";
 import { formatCurrency } from "@/types/currency";
 
 export default function OrdersList({

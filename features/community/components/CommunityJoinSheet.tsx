@@ -63,7 +63,7 @@ export function CommunityJoinSheet({
 
   const selectedTier = tiers.find((tier) => tier.id === selectedId) || tiers[0] || null;
   const tierCurrency = selectedTier?.currency ? String(selectedTier.currency).toUpperCase() : "";
-  const momoSupported = tierCurrency ? isCurrencySupportedByMethod("momo", tierCurrency as any) : false;
+  const momoSupported = tierCurrency ? isCurrencySupportedByMethod("momo", tierCurrency) : false;
   const requiresCard = !momoSupported;
   const activeMethod = requiresCard ? "card" : method;
   const phoneValid = isValidRwandaPhone(phone);
@@ -87,7 +87,7 @@ export function CommunityJoinSheet({
   const chooseTier = (tier: CommunityTierView) => {
     setSelectedId(tier.id);
     setError(null);
-    if (tier.currency && !isCurrencySupportedByMethod("momo", tier.currency as any)) setMethod("card");
+    if (tier.currency && !isCurrencySupportedByMethod("momo", tier.currency)) setMethod("card");
   };
 
   const join = async () => {
@@ -148,7 +148,7 @@ export function CommunityJoinSheet({
           ? t("actions.community.join", {
               amount: formatMoney(
                 tierAmount(selectedTier),
-                (tierCurrency || undefined) as any,
+                tierCurrency || undefined,
               ),
             })
           : t("actions.community.joinFallback")}
@@ -236,7 +236,7 @@ export function CommunityJoinSheet({
                     </div>
                     <div className="shrink-0 text-right">
                       <p className="text-body font-bold text-brand-strong">
-                        {tier.currency ? formatMoney(tierAmount(tier), tier.currency as any) : tierAmount(tier)}
+                        {tier.currency ? formatMoney(tierAmount(tier), tier.currency) : tierAmount(tier)}
                       </p>
                       <p className="text-caption text-muted-fg">
                         {tierIntervalLabel(tier)}

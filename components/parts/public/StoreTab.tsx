@@ -32,7 +32,6 @@ import {
 } from "./store";
 import type { Product, FolderData, CartItem, Order } from "./store";
 import { getProductCurrency, getProductPrice } from "./store/types";
-import { formatCurrency } from "@/types/currency";
 import { TabErrorState } from "@/components/ui/TabErrorState";
 import { CheckoutSheet } from "@/features/store";
 
@@ -83,9 +82,10 @@ export const StoreTab = ({
   compact = false,
 }: StoreTabProps) => {
   const { user: currentUser } = useAuth();
+  const canAccess = storePublic || isSupporter;
   const [products, setProducts] = useState<Product[]>([]);
   const [folders, setFolders] = useState<FolderData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(canAccess);
   const [fetchError, setFetchError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -101,13 +101,8 @@ export const StoreTab = ({
   );
   const [showMyPurchases, setShowMyPurchases] = useState(false);
 
-  const canAccess = storePublic || isSupporter;
-
   useEffect(() => {
-    if (!canAccess) {
-      setLoading(false);
-      return;
-    }
+    if (!canAccess) return;
 
     const fetchData = async () => {
       try {
@@ -375,7 +370,7 @@ export const StoreTab = ({
       fee = fee - (fee * folder.discountPercentage) / 100;
     }
     return fee;
-  }, [products, purchasedProductIds, platformSharePercentage]);
+  }, [products, purchasedProductIds]);
 
   if (!canAccess) {
     return (

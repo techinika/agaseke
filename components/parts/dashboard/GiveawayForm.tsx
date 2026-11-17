@@ -4,13 +4,13 @@ import { useState, useEffect } from "react";
 import {
   X,
   Loader,
-  Check,
   Gift,
   DollarSign,
   Package,
   Percent,
   Building,
   ArrowLeft,
+  type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { db } from "@/db/firebase";
@@ -23,8 +23,6 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import {
-  Giveaway,
-  GiveawayReward,
   GiveawayPartner,
   GiveawayType,
   GiveawayAccess,
@@ -36,7 +34,7 @@ import { useRouter } from "next/navigation";
 export default function GiveawayForm() {
   const { creator } = useAuth();
   const router = useRouter();
-  const [existingPartners, setExistingPartners] = useState<any[]>([]);
+  const [existingPartners, setExistingPartners] = useState<GiveawayPartner[]>([]);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -75,7 +73,7 @@ export default function GiveawayForm() {
         const partnersData = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
-        }));
+        })) as GiveawayPartner[];
         setExistingPartners(partnersData);
       } catch (error) {
         console.error("Error fetching partners:", error);
@@ -84,7 +82,7 @@ export default function GiveawayForm() {
     fetchExistingPartners();
   }, [creator?.uid]);
 
-  const rewardTypes: { value: RewardType; label: string; icon: any }[] = [
+  const rewardTypes: { value: RewardType; label: string; icon: LucideIcon }[] = [
     { value: "cash", label: "Cash", icon: DollarSign },
     { value: "merchandise", label: "Merchandise", icon: Package },
     { value: "discount", label: "Discount", icon: Percent },
@@ -110,7 +108,7 @@ export default function GiveawayForm() {
       const endDate = new Date();
       endDate.setDate(endDate.getDate() + formData.daysUntilEnd);
 
-      const giveawayData: Record<string, any> = {
+      const giveawayData: Record<string, unknown> = {
         creatorId: creator.uid,
         creatorName: creator.name,
         title: formData.title,
@@ -141,7 +139,11 @@ export default function GiveawayForm() {
     }
   };
 
-  const updateReward = (idx: number, field: string, value: any) => {
+  const updateReward = (
+    idx: number,
+    field: "type" | "title" | "quantity",
+    value: string | number,
+  ) => {
     setFormData((prev) => ({
       ...prev,
       rewards: prev.rewards.map((r, i) =>
@@ -204,7 +206,7 @@ export default function GiveawayForm() {
     }));
   };
 
-  const addExistingPartner = (partner: any) => {
+  const addExistingPartner = (partner: GiveawayPartner) => {
     const alreadyAdded = formData.partners.some((p) => p.id === partner.id);
     if (alreadyAdded) {
       toast.error("Partner already added");

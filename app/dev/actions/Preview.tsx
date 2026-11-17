@@ -1,5 +1,6 @@
-import { DEFAULT_CURRENCY } from "@/types/currency";
 "use client";
+
+import { DEFAULT_CURRENCY } from "@/types/currency";
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import type { User } from "firebase/auth";

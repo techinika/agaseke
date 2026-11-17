@@ -13,7 +13,7 @@ type GtagWindow = Window & {
 export default function DeferredAnalytics() {
   useEffect(() => {
     let loaded = false;
-    let timer: number | undefined;
+    const timer = { current: undefined as number | undefined };
 
     const load = () => {
       if (loaded) return;
@@ -40,12 +40,12 @@ export default function DeferredAnalytics() {
     };
 
     const onInteract = () => {
-      if (timer !== undefined) window.clearTimeout(timer);
+      if (timer.current !== undefined) window.clearTimeout(timer.current);
       removeListeners();
       load();
     };
 
-    timer = window.setTimeout(() => {
+    timer.current = window.setTimeout(() => {
       removeListeners();
       if (typeof window.requestIdleCallback === "function") {
         window.requestIdleCallback(load, { timeout: 2000 });
@@ -59,7 +59,7 @@ export default function DeferredAnalytics() {
     window.addEventListener("scroll", onInteract, { once: true, passive: true });
 
     return () => {
-      if (timer !== undefined) window.clearTimeout(timer);
+      if (timer.current !== undefined) window.clearTimeout(timer.current);
       removeListeners();
     };
   }, []);

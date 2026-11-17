@@ -108,12 +108,14 @@ export default function AdminUsersPage() {
   }, []);
 
   useEffect(() => {
-    fetchUsers(page);
+    queueMicrotask(() => {
+      void fetchUsers(page);
+    });
   }, [page, fetchUsers]);
 
   useEffect(() => {
     if (!selectedUser) {
-      setCreatorProfile(null);
+      queueMicrotask(() => setCreatorProfile(null));
       return;
     }
     const fetchCreator = async () => {
@@ -133,7 +135,9 @@ export default function AdminUsersPage() {
         setCreatorLoading(false);
       }
     };
-    fetchCreator();
+    queueMicrotask(() => {
+      void fetchCreator();
+    });
   }, [selectedUser]);
 
   const filteredUsers = useMemo(() => {

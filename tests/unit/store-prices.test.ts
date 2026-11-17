@@ -20,8 +20,8 @@ describe("store prices", () => {
   });
 
   it("uses legacy primary price for the declared currency", () => {
-    expect(getProductPrices({ currency: "RWF" as const, price: 1000, prices: null } as any)).toEqual({ RWF: 1000 });
-    expect(getProductPrices({ currency: "USD" as const, price: 2, prices: null } as any)).toEqual({ USD: 2 });
+    expect(getProductPrices({ currency: "RWF", price: 1000, prices: null })).toEqual({ RWF: 1000 });
+    expect(getProductPrices({ currency: "USD", price: 2, prices: null })).toEqual({ USD: 2 });
     expect(getProductCurrency({ currency: "USD" as const })).toBe("USD");
   });
 

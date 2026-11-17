@@ -255,7 +255,9 @@ export default function RichTextEditor({
         {[
           toolButton(editor.isActive("link"), setLink, "Add link", <Link2 key="link" size={16} />),
           toolButton(editor.isActive("link"), () => editor.chain().focus().unsetLink().run(), "Remove link", <Unlink key="unlink" size={16} />),
+          // eslint-disable-next-line react-hooks/refs
           toolButton(false, () => triggerUpload("image"), "Upload image", <ImagePlus key="img" size={16} />),
+          // eslint-disable-next-line react-hooks/refs
           toolButton(false, () => triggerUpload("video"), "Upload video", <Video key="vid" size={16} />),
           toolButton(editor.isActive("mediaBlock"), openCaptionModal, "Caption & alt text", <Captions key="cap" size={16} />),
         ]}

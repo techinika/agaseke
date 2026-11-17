@@ -1,4 +1,5 @@
 export interface Env {
+  FIREBASE_API_KEY: string;
   FIREBASE_PROJECT_ID: string;
   FIREBASE_CLIENT_EMAIL: string;
   FIREBASE_PRIVATE_KEY: string;
@@ -60,6 +61,19 @@ export interface CreateBookingRequest {
   tierName?: string | null;
   paymentAmount?: number;
   currency?: string;
+}
+
+export interface RespondBookingRequest {
+  bookingId: string;
+  action: "accepted" | "declined";
+  rescheduleDate?: string;
+  rescheduleTime?: string;
+  message?: string;
+}
+
+export interface AvailabilityRequest {
+  creatorHandle: string;
+  date?: string;
 }
 
 export interface CallbackPayload {
