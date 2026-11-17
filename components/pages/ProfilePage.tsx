@@ -25,6 +25,7 @@ import { toast } from "sonner";
 import Loading from "@/app/loading";
 import Link from "next/link";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { formatCurrency } from "@/types/currency";
 
 export default function ProfileEditPage() {
   const auth = useAuth();
@@ -35,6 +36,7 @@ export default function ProfileEditPage() {
   const [isCreator, setIsCreator] = useState(false);
   const [hasPendingPayout, setHasPendingPayout] = useState(false);
   const [pendingAmount, setPendingAmount] = useState(0);
+  const [pendingCurrency, setPendingCurrency] = useState("RWF");
   const [confirmEmail, setConfirmEmail] = useState("");
   const [deleting, setDeleting] = useState(false);
 
@@ -65,6 +67,7 @@ export default function ProfileEditPage() {
             const creatorData = creatorSnap.data();
             const pending = creatorData.pendingPayout || 0;
             setPendingAmount(pending);
+            setPendingCurrency(String(creatorData.currency || "RWF").toUpperCase());
             setHasPendingPayout(pending > 0);
           }
         }
@@ -263,7 +266,7 @@ export default function ProfileEditPage() {
             <p className="text-sm text-red-700 font-medium">
               {hasPendingPayout ? (
                 <>
-                  You have <span className="font-bold">{pendingAmount.toLocaleString()} RWF</span> pending payout. 
+                  You have <span className="font-bold">{formatCurrency(pendingAmount, pendingCurrency)}</span> pending payout. 
                   You must withdraw your funds before deleting your account.
                 </>
               ) : (
@@ -273,7 +276,7 @@ export default function ProfileEditPage() {
             <button
               onClick={() => {
                 if (hasPendingPayout) {
-                  toast.error(`Please withdraw your ${pendingAmount.toLocaleString()} RWF first`);
+                  toast.error(`Please withdraw your ${formatCurrency(pendingAmount, pendingCurrency)} first`);
                 } else {
                   setIsDeleteModalOpen(true);
                 }

@@ -62,6 +62,9 @@ export interface UserTransaction {
   type: string;
   status: string;
   currency: string;
+  sourceCurrency: string;
+  sourceAmountMinor: number;
+  fxRate: number;
   paymentMethod: string;
   amount: number;
   createdAt: string;

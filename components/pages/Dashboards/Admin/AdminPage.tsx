@@ -42,6 +42,7 @@ import { RankRow } from "@/components/parts/dashboard/RankRow";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/logger";
 import type { PayoutCurrency } from "@/lib/payouts/currency";
+import { formatCurrency } from "@/types/currency";
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
@@ -990,10 +991,10 @@ export default function AdminDashboard() {
             </p>
           </div>
           <p className="text-5xl font-black tracking-tight">
-            {stats.totalTransactionAmount.toLocaleString()} RWF
+            {stats.totalTransactionAmount.toLocaleString()}
           </p>
           <p className="text-xs font-medium opacity-75 mt-2">
-            {stats.successfulTransactionCount} successful transactions
+            Across currencies · {stats.successfulTransactionCount} successful transactions
           </p>
         </div>
 
@@ -1001,7 +1002,8 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard
             label="Platform Income"
-            value={`${stats.totalPlatformIncome.toLocaleString()} RWF`}
+            value={stats.totalPlatformIncome.toLocaleString()}
+            detail="Across currencies"
             icon={<DollarSign className="text-emerald-600" />}
             color="bg-emerald-50"
             trend={
@@ -1012,13 +1014,15 @@ export default function AdminDashboard() {
           />
           <StatCard
             label="Payouts Processed"
-            value={`${stats.totalPayoutsProcessed.toLocaleString()} RWF`}
+            value={stats.totalPayoutsProcessed.toLocaleString()}
+            detail="Across currencies"
             icon={<CheckCircle2 className="text-green-600" />}
             color="bg-green-50"
           />
           <StatCard
             label="Pending Payouts"
-            value={`${stats.totalPendingPayouts.toLocaleString()} RWF`}
+            value={stats.totalPendingPayouts.toLocaleString()}
+            detail="Across currencies"
             icon={<Clock className="text-amber-600" />}
             color="bg-amber-50"
           />
@@ -1030,7 +1034,8 @@ export default function AdminDashboard() {
           />
           <StatCard
             label="Avg Transaction"
-            value={`${stats.averageTransactionAmount.toLocaleString()} RWF`}
+            value={stats.averageTransactionAmount.toLocaleString()}
+            detail="Across currencies"
             icon={<BarChart3 className="text-sky-600" />}
             color="bg-sky-50"
           />
@@ -1039,7 +1044,7 @@ export default function AdminDashboard() {
             value={`${(stats.failedTransactionCount + stats.pendingTransactionCount).toLocaleString()} txs`}
             icon={<XCircle className="text-red-600" />}
             color="bg-red-50"
-            detail={`${(stats.failedTransactionAmount + stats.pendingTransactionAmount).toLocaleString()} RWF`}
+            detail={`${(stats.failedTransactionAmount + stats.pendingTransactionAmount).toLocaleString()} across currencies`}
           />
         </div>
 
@@ -1221,12 +1226,12 @@ export default function AdminDashboard() {
                         <div
                           className="w-4 sm:w-5 md:w-6 lg:w-8 bg-emerald-500 rounded-t"
                           style={{ height: `${Math.max(incomeHeight, 2)}%` }}
-                          title={`Income: ${data.income.toLocaleString()} RWF`}
+                          title={`Income: ${data.income.toLocaleString()} (across currencies)`}
                         />
                         <div
                           className="w-4 sm:w-5 md:w-6 lg:w-8 bg-orange-500 rounded-t"
                           style={{ height: `${Math.max(payoutHeight, 2)}%` }}
-                          title={`Payouts: ${data.payouts.toLocaleString()} RWF`}
+                          title={`Payouts: ${data.payouts.toLocaleString()} (across currencies)`}
                         />
                       </div>
                       <span className="text-[10px] sm:text-xs font-bold text-muted-foreground">
@@ -1291,6 +1296,9 @@ export default function AdminDashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
               Transaction Breakdown
+              <span className="ml-2 text-[10px] font-medium normal-case tracking-normal text-muted-foreground">
+                amounts mixed across currencies
+              </span>
             </h3>
             <div className="flex gap-2">
               {[
@@ -1337,10 +1345,10 @@ export default function AdminDashboard() {
                   return (
                     <tr key={type.key} className="border-b border-border/50 last:border-0">
                       <td className="py-3 pr-4 font-medium text-foreground">{type.label}</td>
-                      <td className="py-3 px-4 text-right font-bold text-emerald-600">{data.successful.toLocaleString()} RWF</td>
-                      <td className="py-3 px-4 text-right font-bold text-red-500">{data.failed.toLocaleString()} RWF</td>
-                      <td className="py-3 px-4 text-right font-bold text-amber-500">{data.pending.toLocaleString()} RWF</td>
-                      <td className="py-3 pl-4 text-right font-bold text-foreground">{total.toLocaleString()} RWF</td>
+                      <td className="py-3 px-4 text-right font-bold text-emerald-600">{data.successful.toLocaleString()}</td>
+                      <td className="py-3 px-4 text-right font-bold text-red-500">{data.failed.toLocaleString()}</td>
+                      <td className="py-3 px-4 text-right font-bold text-amber-500">{data.pending.toLocaleString()}</td>
+                      <td className="py-3 pl-4 text-right font-bold text-foreground">{total.toLocaleString()}</td>
                     </tr>
                   );
                 })}
@@ -1349,16 +1357,16 @@ export default function AdminDashboard() {
                 <tr className="border-t-2 border-border">
                   <td className="py-3 pr-4 font-bold text-foreground">All Types</td>
                   <td className="py-3 px-4 text-right font-black text-emerald-600">
-                    {Object.values(txBreakdown).reduce((s, t) => s + t.successful, 0).toLocaleString()} RWF
+                    {Object.values(txBreakdown).reduce((s, t) => s + t.successful, 0).toLocaleString()}
                   </td>
                   <td className="py-3 px-4 text-right font-black text-red-500">
-                    {Object.values(txBreakdown).reduce((s, t) => s + t.failed, 0).toLocaleString()} RWF
+                    {Object.values(txBreakdown).reduce((s, t) => s + t.failed, 0).toLocaleString()}
                   </td>
                   <td className="py-3 px-4 text-right font-black text-amber-500">
-                    {Object.values(txBreakdown).reduce((s, t) => s + t.pending, 0).toLocaleString()} RWF
+                    {Object.values(txBreakdown).reduce((s, t) => s + t.pending, 0).toLocaleString()}
                   </td>
                   <td className="py-3 pl-4 text-right font-black text-foreground">
-                    {Object.values(txBreakdown).reduce((s, t) => s + t.successful + t.failed + t.pending, 0).toLocaleString()} RWF
+                    {Object.values(txBreakdown).reduce((s, t) => s + t.successful + t.failed + t.pending, 0).toLocaleString()}
                   </td>
                 </tr>
               </tfoot>
@@ -1590,12 +1598,19 @@ export default function AdminDashboard() {
                   name={creator.name || creator.id}
                   subText={(() => {
                     const parts: string[] = [];
-                    if (creator.totalEarnings) parts.push(`${Number(creator.totalEarnings).toLocaleString()} RWF`);
+                    if (creator.totalEarnings) {
+                      parts.push(
+                        formatCurrency(
+                          Number(creator.totalEarnings),
+                          String(creator.currency || "RWF").toUpperCase(),
+                        ),
+                      );
+                    }
                     for (const [k, v] of Object.entries(creator)) {
                       const m = k.match(/^totalEarnings([A-Z]{3})$/);
                       if (m && Number(v)) parts.push(`${Number(v).toLocaleString()} ${m[1]}`);
                     }
-                    return parts.length ? parts.join(" / ") : "0 RWF";
+                    return parts.length ? parts.join(" / ") : "0";
                   })()}
                 />
               ))}

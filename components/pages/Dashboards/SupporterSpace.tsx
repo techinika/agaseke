@@ -1777,7 +1777,10 @@ const searchedContentItems = searchTerm.trim()
                       Total Supported
                     </span>
                     <span className="font-semibold text-orange-600">
-                      {(auth?.profile?.totalSupport || 0).toLocaleString()} RWF
+                      {(auth?.profile?.totalSupport || 0).toLocaleString()}
+                      <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+                        across currencies
+                      </span>
                     </span>
                   </div>
                   <div className="flex items-center justify-between">

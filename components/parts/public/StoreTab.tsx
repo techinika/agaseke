@@ -216,6 +216,16 @@ export const StoreTab = ({
       quantity: number = 1,
       selectedSize?: string,
     ) => {
+      const productCurrency = getProductCurrency(product);
+      if (cart.length > 0) {
+        const cartCurrency = getProductCurrency(cart[0].product);
+        if (cartCurrency && productCurrency && cartCurrency !== productCurrency) {
+          toast.error(
+            `Your cart is in ${cartCurrency}. Remove those items before adding ${productCurrency} products.`,
+          );
+          return;
+        }
+      }
       setCart((prev) => {
         const existing = prev.find(
           (item) =>
@@ -232,7 +242,7 @@ export const StoreTab = ({
       });
       toast.success("Added to cart!");
     },
-    [],
+    [cart],
   );
 
   const addFolderToCart = (folder: FolderData) => {
@@ -242,6 +252,22 @@ export const StoreTab = ({
     if (folderProducts.length === 0) {
       toast.error("No products available in this folder");
       return;
+    }
+    const currencies = [
+      ...new Set(folderProducts.map((p) => getProductCurrency(p)).filter(Boolean)),
+    ];
+    if (currencies.length > 1) {
+      toast.error("This bundle mixes currencies and cannot be added to one cart.");
+      return;
+    }
+    if (cart.length > 0 && currencies[0]) {
+      const cartCurrency = getProductCurrency(cart[0].product);
+      if (cartCurrency && cartCurrency !== currencies[0]) {
+        toast.error(
+          `Your cart is in ${cartCurrency}. Remove those items before adding ${currencies[0]} products.`,
+        );
+        return;
+      }
     }
     for (const product of folderProducts) {
       if (!purchasedProductIds.has(product.id)) {

@@ -6,6 +6,9 @@ export interface UserTransaction {
   type: string;
   status: string;
   currency: string;
+  sourceCurrency: string;
+  sourceAmountMinor: number;
+  fxRate: number;
   paymentMethod: string;
   amount: number;
   createdAt: string;
@@ -107,6 +110,9 @@ export async function getUserTransactions(
       type: toString(t.type) || "support",
       status: toString(t.status) || "pending",
       currency: toString(t.currency),
+      sourceCurrency: toString(t.sourceCurrency),
+      sourceAmountMinor: toNumber(t.sourceAmountMinor),
+      fxRate: toNumber(t.fxRate),
       paymentMethod: toString(t.paymentMethod) || (toString(t.type) === "gathering" ? "momo" : ""),
       amount: toNumber(t.amount),
       createdAt: toString(t.createdAt),

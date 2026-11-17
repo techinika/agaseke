@@ -15,6 +15,7 @@ import {
 import Link from "next/link";
 import { Timestamp } from "firebase/firestore";
 import { Giveaway } from "./types";
+import { formatCurrency } from "@/types/currency";
 
 export function ActiveGiveawayCard({
   giveaway,
@@ -24,6 +25,7 @@ export function ActiveGiveawayCard({
   onParticipate,
   onShare,
   creatorHandle,
+  currency,
 }: {
   giveaway: Giveaway;
   accessible: boolean;
@@ -32,6 +34,7 @@ export function ActiveGiveawayCard({
   onParticipate: () => void;
   onShare: () => void;
   creatorHandle?: string;
+  currency?: string;
 }) {
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
@@ -146,7 +149,11 @@ export function ActiveGiveawayCard({
               <p className="text-xs text-amber-700 mt-1">
                 {giveaway.access === "supporters"
                   ? "This giveaway is only for supporters."
-                  : `You need to support with at least ${giveaway.minSupportAmount?.toLocaleString()} RWF to participate.`}
+                  : `You need to support with at least ${
+                      currency
+                        ? formatCurrency(giveaway.minSupportAmount || 0, currency)
+                        : (giveaway.minSupportAmount || 0).toLocaleString()
+                    } to participate.`}
               </p>
             </div>
           </div>

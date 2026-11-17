@@ -48,6 +48,7 @@ interface GiveawayTabProps {
   currentUserId?: string;
   compact?: boolean;
   username?: string;
+  creatorCurrency?: string;
 }
 
 export const GiveawayTab = ({
@@ -63,6 +64,7 @@ export const GiveawayTab = ({
   currentUserId,
   compact = false,
   username = "",
+  creatorCurrency,
 }: GiveawayTabProps) => {
   const { user: currentUser } = useAuth();
   const [activeGiveaways, setActiveGiveaways] = useState<Giveaway[]>([]);
@@ -289,6 +291,7 @@ export const GiveawayTab = ({
                 onParticipate={() => setEntryGiveaway(giveaway)}
                 onShare={() => shareGiveaway(giveaway)}
                 creatorHandle={creatorHandle}
+                currency={creatorCurrency}
               />
             );
           })}

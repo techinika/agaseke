@@ -11,6 +11,7 @@ import {
 import { db } from "@/db/firebase";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { formatCurrency } from "@/types/currency";
+import { getCurrencyDefinition } from "@/lib/money/registry.generated";
 import { toast } from "sonner";
 import {
   Loader,
@@ -89,6 +90,26 @@ function transactionTitle(tx: UserTransaction): string {
   if (tx.type === "gathering") return "Gathering ticket";
   if (tx.type === "booking") return "Booking";
   return "Support contribution";
+}
+
+function formatMinorUnits(minor: number, currency: string): string {
+  if (!Number.isFinite(minor) || minor <= 0 || !currency) return "";
+  let factor = 1;
+  try {
+    factor = 10 ** getCurrencyDefinition(currency as never).minorUnit;
+  } catch {
+    factor = 1;
+  }
+  return formatCurrency(minor / factor, currency);
+}
+
+function hasOriginalCharge(tx: UserTransaction): boolean {
+  return (
+    Boolean(tx.sourceCurrency) &&
+    Boolean(tx.currency) &&
+    tx.sourceCurrency !== tx.currency &&
+    tx.sourceAmountMinor > 0
+  );
 }
 
 interface ActiveRetry {
@@ -463,6 +484,11 @@ export default function TransactionsPage() {
                         <p className="text-lg font-black text-foreground">
                           {formatCurrency(tx.amount, tx.currency)}
                         </p>
+                        {hasOriginalCharge(tx) && (
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            Original {formatMinorUnits(tx.sourceAmountMinor, tx.sourceCurrency)} · charged in {tx.currency}
+                          </p>
+                        )}
                         <p className="text-[11px] text-muted-foreground mt-0.5">
                           {formatDate(tx.createdAt)} · {tx.ref}
                         </p>

@@ -23,6 +23,13 @@ export function MyPurchasesModal({
     null,
   );
 
+  const currencyByProduct = new Map(
+    products.map((product) => [product.id, getProductCurrency(product)]),
+  );
+  const fallbackCurrency = products[0] ? getProductCurrency(products[0]) : "RWF";
+  const itemCurrency = (productId?: string) =>
+    (productId && currencyByProduct.get(productId)) || fallbackCurrency;
+
   const purchasedItems = orders
     .filter(
       (o) =>
@@ -105,7 +112,7 @@ export function MyPurchasesModal({
                       {item.productName}
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      {item.quantity}x {formatCurrency(item.price, "RWF")}
+                      {item.quantity}x {formatCurrency(item.price, itemCurrency(item.productId))}
                       {item.selectedSize && ` - Size: ${item.selectedSize}`}
                     </p>
                   </div>

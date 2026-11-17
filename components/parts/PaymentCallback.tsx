@@ -14,6 +14,30 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { fetchGatheringById, subscribeToTransactionByRef } from "@/lib/transactions";
+import { formatCurrency } from "@/types/currency";
+import { getCurrencyDefinition } from "@/lib/money/registry.generated";
+
+function formatMinorUnits(minor: unknown, currency: unknown): string | null {
+  const amount = Number(minor);
+  const code = typeof currency === "string" ? currency : "";
+  if (!Number.isFinite(amount) || amount <= 0 || !code) return null;
+  let factor = 1;
+  try {
+    factor = 10 ** getCurrencyDefinition(code as never).minorUnit;
+  } catch {
+    factor = 1;
+  }
+  return formatCurrency(amount / factor, code);
+}
+
+function originalChargeLabel(data: any): string | null {
+  if (!data?.sourceCurrency || !data?.currency || data.sourceCurrency === data.currency) {
+    return null;
+  }
+  const original = formatMinorUnits(data.sourceAmountMinor, data.sourceCurrency);
+  if (!original) return null;
+  return `Original ${original} · charged in ${data.currency}`;
+}
 
 export default function PaymentCallback() {
   const searchParams = useSearchParams();
@@ -126,10 +150,15 @@ export default function PaymentCallback() {
                     <p className="text-muted-foreground font-medium">
                       Your ticket for{" "}
                       <span className="text-orange-600 font-bold">
-                        {txData?.amount} {txData?.currency ?? ""}
+                        {formatCurrency(Number(txData?.amount || 0), txData?.currency || "")}
                       </span>{" "}
                       has been confirmed.
                     </p>
+                    {originalChargeLabel(txData) && (
+                      <p className="text-xs text-muted-foreground">
+                        {originalChargeLabel(txData)}
+                      </p>
+                    )}
                     <p className="text-sm text-muted-foreground">
                       Your ticket details will be sent to your email.
                     </p>
@@ -176,10 +205,15 @@ export default function PaymentCallback() {
                     <p className="text-muted-foreground font-medium">
                       Your payment of{" "}
                       <span className="text-orange-600 font-bold">
-                        {txData?.amount} {txData?.currency ?? ""}
+                        {formatCurrency(Number(txData?.amount || 0), txData?.currency || "")}
                       </span>{" "}
                       has been processed successfully.
                     </p>
+                    {originalChargeLabel(txData) && (
+                      <p className="text-xs text-muted-foreground">
+                        {originalChargeLabel(txData)}
+                      </p>
+                    )}
                   </div>
                   <div className="pt-4">
                     <Link
@@ -204,10 +238,15 @@ export default function PaymentCallback() {
                     <p className="text-muted-foreground font-medium">
                       Your gift of{" "}
                       <span className="text-orange-600 font-bold">
-                        {txData?.amount} {txData?.currency ?? ""}
+                        {formatCurrency(Number(txData?.amount || 0), txData?.currency || "")}
                       </span>{" "}
                       has been sent successfully.
                     </p>
+                    {originalChargeLabel(txData) && (
+                      <p className="text-xs text-muted-foreground">
+                        {originalChargeLabel(txData)}
+                      </p>
+                    )}
                   </div>
                   <div className="pt-4">
                     <Link

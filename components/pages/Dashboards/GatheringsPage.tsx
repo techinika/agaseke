@@ -22,6 +22,7 @@ import Link from "next/link";
 import GatheringListPanel from "@/components/parts/dashboard/gatherings/GatheringListPanel";
 import GatheringDetailPanel from "@/components/parts/dashboard/gatherings/GatheringDetailPanel";
 import CheckInModal from "@/components/parts/dashboard/gatherings/CheckInModal";
+import { formatCurrency } from "@/types/currency";
 
 export default function GatheringsPage() {
   const { creator } = useAuth();
@@ -370,7 +371,7 @@ export default function GatheringsPage() {
                 Total Ticket Sales
               </p>
               <p className="text-lg font-bold text-emerald-600">
-                {totalTicketRevenue.toLocaleString()} RWF
+                {formatCurrency(totalTicketRevenue, creator?.currency || "RWF")}
               </p>
               <p className="text-[10px] text-muted-foreground">
                 {totalTicketCount} ticket{totalTicketCount !== 1 ? "s" : ""} sold
