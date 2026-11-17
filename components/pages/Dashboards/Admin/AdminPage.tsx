@@ -75,6 +75,7 @@ export default function AdminDashboard() {
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [verifications, setVerifications] = useState<any[]>([]);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [fxHealth, setFxHealth] = useState<any>(null);
   const [visitorStats, setVisitorStats] = useState<{
     today: number;
     week: number;
@@ -524,6 +525,22 @@ export default function AdminDashboard() {
         seenUids.add(item.uid);
         return true;
       }));
+
+      try {
+        if (auth.currentUser) {
+          const token = await auth.currentUser.getIdToken();
+          const res = await fetch("/api/admin/fx/health", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            setFxHealth(await res.json());
+          } else {
+            setFxHealth({ ok: false, status: "error", message: `HTTP ${res.status}` });
+          }
+        }
+      } catch {
+        setFxHealth({ ok: false, status: "error", message: "Failed to load FX health" });
+      }
     } catch (error) {
       console.error("Error fetching admin stats:", error);
     } finally {
@@ -1347,6 +1364,62 @@ export default function AdminDashboard() {
               </tfoot>
             </table>
           </div>
+        </div>
+
+        {/* FX HEALTH & RECONCILIATION */}
+        <div className="bg-card rounded-xl border border-border p-6 mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
+            <div>
+              <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                FX Health & Reconciliation
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Cached snapshot status and pending withdrawal exposure by payout currency.
+              </p>
+            </div>
+            <span
+              className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider w-fit ${
+                fxHealth?.ok
+                  ? "bg-emerald-50 text-emerald-700"
+                  : fxHealth
+                    ? "bg-red-50 text-red-600"
+                    : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {fxHealth ? String(fxHealth.status || "unknown") : "loading"}
+            </span>
+          </div>
+          {!fxHealth ? (
+            <p className="text-sm text-muted-foreground">Loading FX health...</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2 text-sm">
+                <p><span className="font-semibold">Source:</span> {fxHealth.source || "—"}</p>
+                <p><span className="font-semibold">Base:</span> {fxHealth.base || "—"}</p>
+                <p><span className="font-semibold">Fetched:</span> {fxHealth.fetchedAt ? new Date(fxHealth.fetchedAt).toLocaleString() : "—"}{fxHealth.ageMinutes != null ? ` (${fxHealth.ageMinutes}m ago)` : ""}</p>
+                <p><span className="font-semibold">Expires:</span> {fxHealth.expiresAt ? new Date(fxHealth.expiresAt).toLocaleString() : "—"}{fxHealth.expiresInMinutes != null ? ` (in ${fxHealth.expiresInMinutes}m)` : ""}</p>
+                <p><span className="font-semibold">Rates:</span> {fxHealth.rateCount ?? "—"} {Array.isArray(fxHealth.currencies) && fxHealth.currencies.length > 0 ? `(${fxHealth.currencies.join(", ")})` : ""}</p>
+                {fxHealth.message && (
+                  <p className={fxHealth.ok ? "text-muted-foreground" : "text-red-600 font-medium"}>{fxHealth.message}</p>
+                )}
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Pending withdrawals (by payout currency)</p>
+                {fxHealth.pendingWithdrawals?.byCurrency && Object.keys(fxHealth.pendingWithdrawals.byCurrency).length > 0 ? (
+                  <div className="space-y-1 text-sm">
+                    {Object.entries(fxHealth.pendingWithdrawals.byCurrency as Record<string, {count:number; amount:number}>).map(([currency, v]) => (
+                      <p key={currency}>
+                        <span className="font-semibold">{currency}:</span> {Number(v.amount || 0).toLocaleString()} ({v.count} request{v.count === 1 ? "" : "s"})
+                      </p>
+                    ))}
+                    <p className="text-xs text-muted-foreground pt-1">Total pending requests: {fxHealth.pendingWithdrawals.total ?? 0}</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No pending withdrawal requests.</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* PENDING REQUESTS SECTION */}

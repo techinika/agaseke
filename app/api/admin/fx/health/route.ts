@@ -8,16 +8,31 @@ export async function GET(request: NextRequest) {
   if (authUser instanceof NextResponse) return authUser;
 
   try {
-    const snap = await adminDb.collection("fxRates").doc("latest").get();
-    if (!snap.exists) {
+    const [fxSnap, pendingSnap] = await Promise.all([
+      adminDb.collection("fxRates").doc("latest").get(),
+      adminDb.collection("withdrawRequests").where("status", "==", "pending").get(),
+    ]);
+
+    const pendingByCurrency: Record<string, { count: number; amount: number }> = {};
+    for (const doc of pendingSnap.docs) {
+      const data = doc.data() as Record<string, unknown>;
+      const currency = String(data.payoutCurrency || data.currency || "UNKNOWN");
+      const amount = Number(data.amount || 0);
+      if (!pendingByCurrency[currency]) pendingByCurrency[currency] = { count: 0, amount: 0 };
+      pendingByCurrency[currency].count += 1;
+      if (Number.isFinite(amount)) pendingByCurrency[currency].amount += amount;
+    }
+
+    if (!fxSnap.exists) {
       return NextResponse.json({
         ok: false,
         status: "missing",
         message: "No cached FX snapshot found (fxRates/latest).",
+        pendingWithdrawals: { total: pendingSnap.size, byCurrency: pendingByCurrency },
       });
     }
 
-    const raw = snap.data() as Record<string, unknown>;
+    const raw = fxSnap.data() as Record<string, unknown>;
     let parsed;
     try {
       parsed = parseFxSnapshot(raw);
@@ -35,6 +50,7 @@ export async function GET(request: NextRequest) {
               ? Object.keys(raw.rates as object).length
               : 0,
         },
+        pendingWithdrawals: { total: pendingSnap.size, byCurrency: pendingByCurrency },
       });
     }
 
@@ -63,6 +79,7 @@ export async function GET(request: NextRequest) {
       maxAgeMinutes,
       rateCount: Object.keys(parsed.rates).length,
       currencies: Object.keys(parsed.rates).sort(),
+      pendingWithdrawals: { total: pendingSnap.size, byCurrency: pendingByCurrency },
     });
   } catch (error) {
     console.error("FX health check failed:", error);
