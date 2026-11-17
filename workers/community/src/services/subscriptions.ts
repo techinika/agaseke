@@ -347,6 +347,7 @@ export async function handlePaymentCallback(
       path: `platformIncome/${safeRef}_platform`,
       fields: convertToFields({
         amount: platformAmount,
+        currency,
         txRef: paymentRef,
         reason: "community_subscription",
         createdAt: now,
@@ -357,6 +358,7 @@ export async function handlePaymentCallback(
       fields: convertToFields({
         creatorUid: txData.creatorUid as string,
         amount: creatorAmount,
+        currency,
         txRef: paymentRef,
         reason: "community_subscription",
         createdAt: now,
@@ -377,6 +379,7 @@ export async function handlePaymentCallback(
       fields: convertToFields({
         creatorUid: txData.referralUid as string,
         amount: referralAmount,
+        currency,
         txRef: paymentRef,
         reason: "referral_commission",
         createdAt: now,

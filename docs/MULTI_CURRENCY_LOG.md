@@ -68,3 +68,9 @@
 - **Legacy price field correctness:** product save now writes the legacy `price` field in the declared currency (`primaryAmount`) instead of preferring `prices.RWF`, keeping `price`/`currency` consistent (`ProductForm`, storepage `ProductModal`).
 - **Gathering currency correctness:** gathering create/update now stores the selected/creator currency for tiered/supporters events (not forced `RWF`), legacy `ticketPrice` uses the selected currency, and the minimum-support label reflects the currency (`GatheringsForm`).
 - **Verification:** `npx tsc -p tsconfig.json --noEmit` clean; `npx vitest run tests/unit` 23 files/144 passed.
+
+## 2026-11-17 (session, per-currency platform income + admin aggregates)
+- **Income docs now carry currency:** support/store/bookings/community/payments callbacks write `currency` on `platformIncome` and `creatorIncome` documents (additive; legacy docs without the field are treated as `RWF` when aggregating).
+- **Admin dashboard is per-currency:** platform income, payouts processed, pending payouts (`pendingPayout` + `pendingPayout{CODE}`) and successful transactions are grouped by currency. Cards show the single-currency total or “Multi-currency”, with a per-currency breakdown detail instead of summing unlike currencies (`components/pages/Dashboards/Admin/AdminPage.tsx`).
+- **Notes:** legacy `platformIncome`/`payouts` docs without `currency` fall back to `RWF`; monthly chart remains cross-currency. `community`/`bookings` worker `tsc` still report pre-existing type errors unrelated to this change.
+- **Verification:** root `tsc` clean; payments/support/store worker `tsc` clean; payments worker tests 88 passed; root `tests/unit` 144 passed.

@@ -51,6 +51,7 @@ export async function handleStoreCallback(
       path: `platformIncome/${safeRef}_platform`,
       fields: {
         amount: numberValue(platformShare),
+        currency: { stringValue: currency },
         txRef: { stringValue: paymentRef },
         reason: { stringValue: "product_sale_platform_fee" },
         productId: { stringValue: productId || "" },
@@ -62,6 +63,7 @@ export async function handleStoreCallback(
       fields: {
         creatorUid: { stringValue: txData.creatorUid as string },
         amount: numberValue(creatorShare),
+        currency: { stringValue: currency },
         txRef: { stringValue: paymentRef },
         reason: { stringValue: "product_sale" },
         productId: { stringValue: productId || "" },
@@ -83,6 +85,7 @@ export async function handleStoreCallback(
       fields: {
         creatorUid: { stringValue: txData.referralUid as string },
         amount: numberValue(referralShare),
+        currency: { stringValue: currency },
         txRef: { stringValue: paymentRef },
         reason: { stringValue: "referral_commission" },
         createdAt: { timestampValue: now },

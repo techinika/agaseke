@@ -39,6 +39,7 @@ export async function handleSupportCallback(
       path: `platformIncome/${safeRef}_platform`,
       fields: {
         amount: currencyNumberField(platformAmount, currency),
+        currency: { stringValue: currency },
         txRef: { stringValue: paymentRef },
         reason: { stringValue: paymentMethod === "momo" ? "flat_fee" : "card_payment_fee" },
         createdAt: { timestampValue: now },
@@ -49,6 +50,7 @@ export async function handleSupportCallback(
       fields: {
         creatorUid: { stringValue: txData.creatorUid as string },
         amount: currencyNumberField(creatorAmount, currency),
+        currency: { stringValue: currency },
         txRef: { stringValue: paymentRef },
         reason: { stringValue: "support" },
         createdAt: { timestampValue: now },
@@ -108,6 +110,7 @@ export async function handleSupportCallback(
       fields: {
         creatorUid: { stringValue: txData.referralUid as string },
         amount: currencyNumberField(referralAmount, currency),
+        currency: { stringValue: currency },
         txRef: { stringValue: paymentRef },
         reason: { stringValue: "referral_commission" },
         createdAt: { timestampValue: now },

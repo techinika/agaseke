@@ -46,6 +46,7 @@ export async function handleBookingCallback(
       path: `platformIncome/${safeRef}_platform`,
       fields: {
         amount: currencyNumberField(platformAmount, currency),
+        currency: { stringValue: currency },
         txRef: { stringValue: paymentRef },
         reason: { stringValue: "booking_fee" },
         createdAt: { timestampValue: now },
@@ -56,6 +57,7 @@ export async function handleBookingCallback(
       fields: {
         creatorUid: { stringValue: txData.creatorUid as string },
         amount: currencyNumberField(creatorAmount, currency),
+        currency: { stringValue: currency },
         txRef: { stringValue: paymentRef },
         reason: { stringValue: "booking_payment" },
         createdAt: { timestampValue: now },
@@ -76,6 +78,7 @@ export async function handleBookingCallback(
       fields: {
         creatorUid: { stringValue: txData.referralUid as string },
         amount: currencyNumberField(referralAmount, currency),
+        currency: { stringValue: currency },
         txRef: { stringValue: paymentRef },
         reason: { stringValue: "referral_commission" },
         createdAt: { timestampValue: now },

@@ -297,6 +297,7 @@ async function handleGatheringPayment(
       path: `platformIncome/${safeRef}_platform`,
       fields: convertToFields({
         amount: platformAmount,
+        currency,
         txRef,
         reason: "gathering_ticket",
         createdAt: now,
@@ -307,6 +308,7 @@ async function handleGatheringPayment(
       fields: convertToFields({
         creatorUid: txData.creatorUid,
         amount: creatorAmount,
+        currency,
         txRef,
         reason: "gathering_ticket",
         createdAt: now,
@@ -358,6 +360,7 @@ async function handleGatheringPayment(
       fields: convertToFields({
         creatorUid: txData.referralUid,
         amount: referralAmount,
+        currency,
         txRef,
         reason: "referral_commission",
         createdAt: now,

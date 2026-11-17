@@ -44,6 +44,19 @@ import { logActivity } from "@/lib/logger";
 import type { PayoutCurrency } from "@/lib/payouts/currency";
 import { formatCurrency } from "@/types/currency";
 
+function totalsValue(totals: Record<string, number>): string {
+  const entries = Object.entries(totals);
+  if (entries.length === 0) return "0";
+  if (entries.length === 1) return formatCurrency(entries[0][1], entries[0][0]);
+  return "Multi-currency";
+}
+
+function totalsDetail(totals: Record<string, number>, empty = "No activity yet"): string {
+  const entries = Object.entries(totals).sort(([left], [right]) => left.localeCompare(right));
+  if (entries.length === 0) return empty;
+  return entries.map(([code, amount]) => formatCurrency(amount, code)).join(" · ");
+}
+
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
@@ -51,6 +64,10 @@ export default function AdminDashboard() {
     totalPlatformIncome: 0,
     totalPayoutsProcessed: 0,
     totalPendingPayouts: 0,
+    incomeByCurrency: {} as Record<string, number>,
+    payoutsByCurrency: {} as Record<string, number>,
+    pendingByCurrency: {} as Record<string, number>,
+    transactionsByCurrency: {} as Record<string, number>,
     profileCount: 0,
     creatorCount: 0,
     totalViews: 0,
@@ -268,8 +285,13 @@ export default function AdminDashboard() {
       // Get platform income
       const incomeSnap = await getDocs(collection(db, "platformIncome"));
       let totalIncome = 0;
+      const incomeByCurrency: Record<string, number> = {};
       incomeSnap.forEach((doc) => {
-        totalIncome += doc.data().amount || 0;
+        const data = doc.data();
+        const amount = Number(data.amount) || 0;
+        const code = typeof data.currency === "string" && data.currency ? data.currency : "RWF";
+        totalIncome += amount;
+        incomeByCurrency[code] = (incomeByCurrency[code] || 0) + amount;
       });
 
       // Get profiles count
@@ -301,14 +323,33 @@ export default function AdminDashboard() {
       // Get total payouts processed (from payouts collection)
       const payoutsSnap = await getDocs(collection(db, "payouts"));
       let totalPayoutsProcessed = 0;
+      const payoutsByCurrency: Record<string, number> = {};
       payoutsSnap.forEach((doc) => {
-        totalPayoutsProcessed += doc.data().amount || 0;
+        const data = doc.data();
+        const amount = Number(data.amount) || 0;
+        const code = typeof data.currency === "string" && data.currency ? data.currency : "RWF";
+        totalPayoutsProcessed += amount;
+        payoutsByCurrency[code] = (payoutsByCurrency[code] || 0) + amount;
       });
 
-      // Get total pending payouts (sum of pendingPayout from all creators + pending withdrawal requests)
+      // Get total pending payouts (sum of pendingPayout* fields from all creators)
       let totalPendingPayouts = 0;
+      const pendingByCurrency: Record<string, number> = {};
       creatorsSnap.forEach((doc) => {
-        totalPendingPayouts += doc.data().pendingPayout || 0;
+        const data = doc.data();
+        const rwfPending = Number(data.pendingPayout) || 0;
+        if (rwfPending) {
+          totalPendingPayouts += rwfPending;
+          pendingByCurrency.RWF = (pendingByCurrency.RWF || 0) + rwfPending;
+        }
+        for (const [key, value] of Object.entries(data)) {
+          const match = key.match(/^pendingPayout([A-Z]{3})$/);
+          if (!match) continue;
+          const amount = Number(value) || 0;
+          if (!amount) continue;
+          totalPendingPayouts += amount;
+          pendingByCurrency[match[1]] = (pendingByCurrency[match[1]] || 0) + amount;
+        }
       });
 
       // Get monthly data for charts from platformIncome and payouts collections
@@ -391,14 +432,18 @@ export default function AdminDashboard() {
       const allTransactions = transactionsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       let totalSuccessfulAmount = 0;
       let successfulCount = 0;
+      const transactionsByCurrency: Record<string, number> = {};
       let failedCount = 0;
       let failedAmount = 0;
       let pendingCount = 0;
       let pendingAmount = 0;
       allTransactions.forEach((tx: any) => {
         if (tx.status === "successful" || tx.status === "success") {
-          totalSuccessfulAmount += Number(tx.amount) || 0;
+          const amount = Number(tx.amount) || 0;
+          const code = typeof tx.currency === "string" && tx.currency ? tx.currency : "RWF";
+          totalSuccessfulAmount += amount;
           successfulCount += 1;
+          transactionsByCurrency[code] = (transactionsByCurrency[code] || 0) + amount;
         } else if (tx.status === "failed") {
           failedCount += 1;
           failedAmount += Number(tx.amount) || 0;
@@ -484,6 +529,10 @@ export default function AdminDashboard() {
         totalPlatformIncome: totalIncome,
         totalPayoutsProcessed,
         totalPendingPayouts,
+        incomeByCurrency,
+        payoutsByCurrency,
+        pendingByCurrency,
+        transactionsByCurrency,
         profileCount: profilesSnap.size,
         creatorCount: creatorsSnap.size,
         totalViews,
@@ -991,10 +1040,10 @@ export default function AdminDashboard() {
             </p>
           </div>
           <p className="text-5xl font-black tracking-tight">
-            {stats.totalTransactionAmount.toLocaleString()}
+            {totalsValue(stats.transactionsByCurrency)}
           </p>
           <p className="text-xs font-medium opacity-75 mt-2">
-            Across currencies · {stats.successfulTransactionCount} successful transactions
+            {totalsDetail(stats.transactionsByCurrency)} · {stats.successfulTransactionCount} successful transactions
           </p>
         </div>
 
@@ -1002,8 +1051,8 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard
             label="Platform Income"
-            value={stats.totalPlatformIncome.toLocaleString()}
-            detail="Across currencies"
+            value={totalsValue(stats.incomeByCurrency)}
+            detail={totalsDetail(stats.incomeByCurrency, "No platform income yet")}
             icon={<DollarSign className="text-emerald-600" />}
             color="bg-emerald-50"
             trend={
@@ -1014,15 +1063,15 @@ export default function AdminDashboard() {
           />
           <StatCard
             label="Payouts Processed"
-            value={stats.totalPayoutsProcessed.toLocaleString()}
-            detail="Across currencies"
+            value={totalsValue(stats.payoutsByCurrency)}
+            detail={totalsDetail(stats.payoutsByCurrency, "No payouts yet")}
             icon={<CheckCircle2 className="text-green-600" />}
             color="bg-green-50"
           />
           <StatCard
             label="Pending Payouts"
-            value={stats.totalPendingPayouts.toLocaleString()}
-            detail="Across currencies"
+            value={totalsValue(stats.pendingByCurrency)}
+            detail={totalsDetail(stats.pendingByCurrency, "No pending payouts")}
             icon={<Clock className="text-amber-600" />}
             color="bg-amber-50"
           />
