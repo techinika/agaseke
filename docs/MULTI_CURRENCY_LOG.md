@@ -80,3 +80,9 @@
 - Added `tests/unit/currency-enablement.test.ts` proving the focus currencies are config-complete and that the report passes, including generated-file sync.
 - Documented the enablement runbook in `docs/MONEY.md`: config edit → `money:registry` → Firestore currency policy/thresholds, with rail sandbox/reconciliation still required before production.
 - **Verification:** new test 4/4 passed; root `tests/unit` to be rerun before commit.
+
+## 2026-11-17 (session, Phase 7 income-currency migration)
+- Added `scripts/money/backfill-income-currency.mjs` + `npm run money:backfill:income-currency`: idempotent dry-run/`--apply` backfill that stamps missing `currency` on legacy `platformIncome`/`creatorIncome` docs by resolving `txRef` via the transaction doc id or `ref` field. Unresolved docs are reported, never defaulted to RWF.
+- Extracted pure planning logic to `scripts/money/incomeCurrencyPlan.mjs` and covered it with `tests/unit/income-currency-plan.test.ts` (stamping, idempotency, malformed currency rejection).
+- Documented the operational step in `docs/MONEY.md`.
+- **Verification:** new tests 2/2 passed; root `tsc` clean; scripts pass `node --check`.

@@ -28,3 +28,4 @@ Authoritative constraints: integer **minor units** for money movement; **never f
 ## Operations & safety
 
 - New collections `fxRates`, `fxRateHistory`, `fxQuotes` (and ledger/withdrawal collections) are server-only; rules must deny client reads/writes (see `docs/RULES_FOLLOWUP.md`). Do not enable FX or new currencies without reviewed config, provider sandbox confirmation, reconciliation, and rules deployment.
+- Legacy income docs written before currency stamping: run `npm run money:backfill:income-currency` (dry run by default; `--apply` writes only a missing `currency` field). It resolves `txRef` through the transaction `ref`/doc id and reports unresolved docs instead of assuming RWF.
