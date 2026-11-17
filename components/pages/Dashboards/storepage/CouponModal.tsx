@@ -9,11 +9,13 @@ export default function CouponModal({
   products,
   onClose,
   onSave,
+  currency = "RWF",
 }: {
   coupon: any | null;
   products: Product[];
   onClose: () => void;
   onSave: (data: any) => void;
+  currency?: string;
 }) {
   const [formData, setFormData] = useState({
     code: coupon?.code || "",
@@ -117,7 +119,7 @@ export default function CouponModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-bold text-foreground mb-2">
-                Min. Purchase (RWF)
+                Min. Purchase ({currency})
               </label>
               <input
                 type="number"

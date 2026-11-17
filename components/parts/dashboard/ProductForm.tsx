@@ -115,8 +115,8 @@ export default function ProductForm() {
         creatorId: creator.uid,
         name: formData.name,
         description: formData.description,
-        // Legacy compatibility fields derived from the canonical price map.
-        price: prices.RWF ?? primaryAmount,
+        // Legacy compatibility field: the amount in the declared currency.
+        price: primaryAmount,
 
         prices,
         currency: formData.currency,

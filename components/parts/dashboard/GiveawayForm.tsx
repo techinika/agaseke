@@ -318,7 +318,7 @@ export default function GiveawayForm() {
           {formData.access === "tier" && (
             <div>
               <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
-                Minimum Support (RWF)
+                Minimum Support ({String(creator?.currency || "RWF").toUpperCase()})
               </label>
               <input
                 type="number"

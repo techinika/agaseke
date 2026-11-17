@@ -120,10 +120,10 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
         location: formData.location,
         eventType: formData.eventType,
         minSupportTier: formData.eventType === "supporters_tiered" ? formData.minSupportTier : 0,
-        ticketPrice: formData.eventType === "ticketed" ? (ticketPrices.RWF ?? ticketAmount) : 0,
+        ticketPrice: formData.eventType === "ticketed" ? (ticketPrices[formData.currency] ?? ticketAmount) : 0,
 
         prices: formData.eventType === "ticketed" ? ticketPrices : null,
-        currency: formData.eventType === "ticketed" ? formData.currency : "RWF",
+        currency: formData.currency,
         supporterPrice: formData.eventType === "ticketed" ? formData.supporterPrice : 0,
         capacity: formData.capacity || 0,
         creatorId: creator.uid,
@@ -267,7 +267,7 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
           {formData.eventType === "supporters_tiered" && (
             <div>
               <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
-                Minimum Support Amount (RWF)
+                Minimum Support Amount ({formData.currency})
               </label>
               <input
                 type="number"

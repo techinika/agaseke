@@ -116,7 +116,7 @@ export default function ProductModal({
         creatorId: creator?.uid || "",
         name: formData.name,
         description: formData.description,
-        price: prices.RWF ?? primaryAmount,
+        price: primaryAmount,
 
         prices,
         currency: formData.currency,

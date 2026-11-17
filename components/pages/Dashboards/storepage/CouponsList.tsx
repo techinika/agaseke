@@ -7,10 +7,12 @@ export default function CouponsList({
   coupons,
   onEdit,
   onDelete,
+  currency = "RWF",
 }: {
   coupons: Coupon[];
   onEdit: (c: Coupon) => void;
   onDelete: (id: string) => void;
+  currency?: string;
 }) {
   if (coupons.length === 0) {
     return (
@@ -48,11 +50,11 @@ export default function CouponsList({
           <p className="text-2xl font-bold text-foreground mb-2">
             {coupon.discountType === "percentage"
               ? `${coupon.discountValue}% OFF`
-              : `${formatCurrency(coupon.discountValue, "RWF")} OFF`}
+              : `${formatCurrency(coupon.discountValue, currency)} OFF`}
           </p>
           {coupon.minPurchase && (
             <p className="text-xs text-muted-foreground mb-2">
-              Min. purchase: {formatCurrency(coupon.minPurchase, "RWF")}
+              Min. purchase: {formatCurrency(coupon.minPurchase, currency)}
             </p>
           )}
           <p className="text-xs text-muted-foreground mb-4">

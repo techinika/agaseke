@@ -411,6 +411,7 @@ export default function StorePage() {
           <OrdersList
             orders={orders}
             onUpdateStatus={handleUpdateOrderStatus}
+            currency={String(creator?.currency || "RWF").toUpperCase()}
           />
         )}
 
@@ -421,6 +422,7 @@ export default function StorePage() {
               setEditingCoupon(coupon);
             }}
             onDelete={handleDeleteCoupon}
+            currency={String(creator?.currency || "RWF").toUpperCase()}
           />
         )}
 
@@ -492,6 +494,7 @@ export default function StorePage() {
           products={products}
           onClose={() => setEditingCoupon(null)}
           onSave={handleCreateCoupon}
+          currency={String(creator?.currency || "RWF").toUpperCase()}
         />
       )}
 
