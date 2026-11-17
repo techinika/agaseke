@@ -1,5 +1,5 @@
-import Footer from "@/components/parts/Footer";
-import Navbar from "@/components/parts/Navigation";
+import { PublicFooter } from "@/components/shell/PublicFooter";
+import { PublicHeader } from "@/components/shell/PublicHeader";
 
 export default function RootLayout({
   children,
@@ -7,10 +7,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div>
-      <Navbar />
+    <div className="min-h-dvh bg-canvas text-fg">
+      <PublicHeader />
       {children}
-      <Footer />
+      <PublicFooter />
     </div>
   );
 }

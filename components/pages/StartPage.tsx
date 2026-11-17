@@ -192,24 +192,14 @@ export default function CreatorOnboarding() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [countriesSnap, currenciesSnap, mappingsSnap] = await Promise.all(
-          [
-            getDocs(query(collection(db, "countries"), orderBy("name", "asc"))),
-            getDocs(
-              query(collection(db, "currencies"), orderBy("code", "asc")),
-            ),
-            getDocs(query(collection(db, "countryCurrencies"))),
-          ],
-        );
-        setCountries(
-          countriesSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
-        );
-        setCurrencies(
-          currenciesSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
-        );
-        setCountryCurrencies(
-          mappingsSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
-        );
+        const [countriesSnap, currenciesSnap, mappingsSnap] = await Promise.all([
+          getDocs(query(collection(db, "countries"), orderBy("name", "asc"))),
+          getDocs(query(collection(db, "currencies"), orderBy("code", "asc"))),
+          getDocs(query(collection(db, "countryCurrencies"))),
+        ]);
+        setCountries(countriesSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setCurrencies(currenciesSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        setCountryCurrencies(mappingsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
         setLocationDataError(false);
       } catch (e) {
         console.error("Failed to load countries/currencies:", e);
@@ -355,88 +345,81 @@ export default function CreatorOnboarding() {
   const prevStep = () => setStep(step - 1);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-canvas flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-sm mb-12 flex justify-between relative">
-        <div className="absolute top-1/2 left-0 w-full h-0.5 bg-muted -translate-y-1/2 -z-10" />
+        <div className="absolute top-1/2 left-0 w-full h-0.5 bg-surface-sunken -translate-y-1/2 -z-10" />
         {[1, 2, 3, 4, 5, 6].map((i) => (
           <div
             key={i}
-            className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all duration-500 ${step >= i ? "bg-orange-600 text-white shadow-lg shadow-orange-100" : "bg-card border-2 border-border text-muted-foreground"}`}
+            className={`size-8 rounded-control flex items-center justify-center text-caption font-bold transition-all duration-500 ${step >= i ? "bg-brand-strong text-on-brand shadow-lg shadow-sm" : "bg-surface border-2 border-line text-muted-fg"}`}
           >
             {step > i ? <Check size={14} strokeWidth={3} /> : i}
           </div>
         ))}
       </div>
 
-      <div className="w-full max-w-md bg-card p-8 md:p-10 rounded-lg shadow-sm border border-border">
+      <div className="w-full max-w-md rounded-card border border-line bg-surface p-8 shadow-card md:p-10">
         {step === 1 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
             <div className="text-center space-y-2">
-              <h1 className="text-3xl font-bold tracking-tighter">
-                Claim your link
-              </h1>
-              <p className="text-muted-foreground text-sm">
+              <h1 className="text-heading font-bold tracking-tighter">Claim your link</h1>
+              <p className="text-muted-fg text-label">
                 This is your permanent address on Agaseke.
               </p>
             </div>
             <div className="relative group">
-              <div className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground font-bold tracking-tighter">
+              <div className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-fg font-bold tracking-tighter">
                 agaseke.me/
               </div>
               <input
                 autoFocus
                 type="text"
                 maxLength={19}
-                className={`w-full p-5 pl-28 bg-muted border-2 rounded-lg text-xl font-bold outline-none transition-all ${
+                className={`w-full p-5 pl-28 bg-surface-sunken border-2 rounded-control text-title font-bold outline-none transition-all ${
                   usernameStatus === "taken"
-                    ? "border-red-400"
+                    ? "border-danger"
                     : usernameStatus === "available"
-                      ? "border-green-400"
-                      : "border-transparent focus:border-orange-500"
+                      ? "border-success"
+                      : "border-transparent focus:border-focus"
                 }`}
                 value={formData.username}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    username: e.target.value
-                      .toLowerCase()
-                      .replace(/[^a-z0-9_]/g, ""),
+                    username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""),
                   })
                 }
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2">
                 {usernameStatus === "checking" && (
-                  <Loader
-                    className="animate-spin text-muted-foreground"
-                    size={20}
-                  />
+                  <Loader className="animate-spin text-muted-fg" size={20} />
                 )}
                 {usernameStatus === "available" && (
-                  <Check className="text-green-500" size={20} />
+                  <Check className="text-success" size={20} />
                 )}
                 {usernameStatus === "taken" && (
-                  <XCircle className="text-red-500" size={20} />
+                  <XCircle className="text-danger" size={20} />
                 )}
                 {usernameStatus === "invalid" && (
-                  <XCircle className="text-red-500" size={20} />
+                  <XCircle className="text-danger" size={20} />
                 )}
               </div>
             </div>
             {usernameStatus === "taken" && (
-              <p className="text-red-500 text-xs font-bold text-center">
+              <p className="text-danger text-caption font-bold text-center">
                 Sorry, this username is already taken.
               </p>
             )}
             {usernameStatus === "invalid" && (
-              <p className="text-red-500 text-xs font-bold text-center">
-                Sorry, that username is too long or invalid. Keep it between 3
-                and 19 characters using only letters, numbers, and underscores.
+              <p className="text-danger text-caption font-bold text-center">
+                Sorry, that username is too long or invalid. Keep it between 3 and 19
+                characters using only letters, numbers, and underscores.
               </p>
             )}
             <button
               onClick={nextStep}
               disabled={!formData.username || usernameStatus !== "available"}
-              className="w-full bg-foreground text-background py-5 rounded-lg font-bold text-lg flex items-center justify-center gap-2 hover:bg-orange-600 transition-all active:scale-95 disabled:opacity-50 disabled:hover:bg-foreground"
+              className="w-full bg-brand-strong text-on-brand py-5 rounded-control font-bold text-body-lg flex items-center justify-center gap-2 hover:bg-brand-hover transition-all active:scale-95 disabled:opacity-50 disabled:hover:bg-brand-strong"
             >
               Continue <ArrowRight size={20} />
             </button>
@@ -447,21 +430,20 @@ export default function CreatorOnboarding() {
         {step === 2 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
             <div className="text-center space-y-2">
-              <h1 className="text-3xl font-bold tracking-tighter">
+              <h1 className="text-heading font-bold tracking-tighter">
                 Location & Currency
               </h1>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-muted-fg text-label">
                 Where are you based and how should we show prices?
               </p>
-              <p className="text-xs text-muted-foreground bg-muted p-3 rounded-lg">
-                This is optional. You can set your country and currency later in
-                Creator Settings, but each one cannot be changed after it has
-                been set.
+              <p className="text-caption text-muted-fg bg-surface-sunken p-3 rounded-control">
+                This is optional. You can set your country and currency later in Creator
+                Settings, but each one cannot be changed after it has been set.
               </p>
             </div>
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
+                <label className="text-caption font-black uppercase text-muted-fg tracking-widest ml-1">
                   Your Country
                 </label>
                 <select
@@ -473,7 +455,7 @@ export default function CreatorOnboarding() {
                       currency: "",
                     })
                   }
-                  className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
+                  className="w-full bg-surface-sunken p-4 rounded-control text-label font-bold outline-none focus:ring-2 focus:ring-focus/20"
                 >
                   <option value="">Select your country...</option>
                   {countries.map((c: any) => (
@@ -483,15 +465,14 @@ export default function CreatorOnboarding() {
                   ))}
                 </select>
                 {formData.country && (
-                  <p className="text-xs text-amber-600 font-semibold flex items-center gap-1">
-                    ⚠ Once set, your country cannot be changed. Choose
-                    carefully.
+                  <p className="text-caption text-warning font-semibold flex items-center gap-1">
+                    ⚠ Once set, your country cannot be changed. Choose carefully.
                   </p>
                 )}
               </div>
               {formData.country && (
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
+                  <label className="text-caption font-black uppercase text-muted-fg tracking-widest ml-1">
                     Preferred Currency
                   </label>
                   <select
@@ -499,7 +480,7 @@ export default function CreatorOnboarding() {
                     onChange={(e) =>
                       setFormData({ ...formData, currency: e.target.value })
                     }
-                    className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
+                    className="w-full bg-surface-sunken p-4 rounded-control text-label font-bold outline-none focus:ring-2 focus:ring-focus/20"
                   >
                     <option value="">Select currency...</option>
                     {availableCurrencies.map((c: any) => (
@@ -509,13 +490,12 @@ export default function CreatorOnboarding() {
                     ))}
                   </select>
                   {formData.currency && (
-                    <p className="text-xs text-amber-600 font-semibold flex items-center gap-1">
-                      ⚠ Once set, your currency cannot be changed. Choose
-                      carefully.
+                    <p className="text-caption text-warning font-semibold flex items-center gap-1">
+                      ⚠ Once set, your currency cannot be changed. Choose carefully.
                     </p>
                   )}
                   {availableCurrencies.length === 0 && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-caption text-muted-fg">
                       {locationDataError
                         ? "Unable to load location settings. Please refresh and try again."
                         : "No currencies configured for this country yet."}
@@ -527,13 +507,13 @@ export default function CreatorOnboarding() {
             <div className="flex gap-3">
               <button
                 onClick={prevStep}
-                className="p-5 bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                className="p-5 bg-surface-sunken rounded-control text-muted-fg hover:text-fg transition-colors"
               >
                 <ChevronLeft size={24} />
               </button>
               <button
                 onClick={nextStep}
-                className="flex-1 bg-foreground text-background py-5 rounded-lg font-bold text-lg hover:bg-orange-600 transition-all disabled:opacity-50"
+                className="flex-1 bg-brand-strong text-on-brand py-5 rounded-control font-bold text-body-lg hover:bg-brand-hover transition-all disabled:opacity-50"
               >
                 Continue
               </button>
@@ -545,43 +525,35 @@ export default function CreatorOnboarding() {
         {step === 3 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
             <div className="text-center space-y-2">
-              <h1 className="text-3xl font-bold tracking-tighter">
-                The Creator
-              </h1>
-              <p className="text-muted-foreground text-sm">
-                How should we introduce you?
-              </p>
+              <h1 className="text-heading font-bold tracking-tighter">The Creator</h1>
+              <p className="text-muted-fg text-label">How should we introduce you?</p>
             </div>
             <div className="space-y-4">
               <input
                 type="text"
                 placeholder="Display Name (e.g. Gisa Patrick)"
-                className="w-full p-4 bg-muted border border-border rounded-lg font-bold outline-none focus:border-orange-500"
+                className="w-full p-4 bg-surface-sunken border border-line rounded-control font-bold outline-none focus:border-focus"
                 value={formData.fullName}
-                onChange={(e) =>
-                  setFormData({ ...formData, fullName: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
               />
               <textarea
                 placeholder="Tell your fans what you're creating..."
-                className="w-full p-4 bg-muted border border-border rounded-lg h-32 resize-none font-medium outline-none focus:border-orange-500"
+                className="w-full p-4 bg-surface-sunken border border-line rounded-control h-32 resize-none font-medium outline-none focus:border-focus"
                 value={formData.bio}
-                onChange={(e) =>
-                  setFormData({ ...formData, bio: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
               />
             </div>
             <div className="flex gap-3">
               <button
                 onClick={prevStep}
-                className="p-5 bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                className="p-5 bg-surface-sunken rounded-control text-muted-fg hover:text-fg transition-colors"
               >
                 <ChevronLeft size={24} />
               </button>
               <button
                 onClick={nextStep}
                 disabled={!formData.fullName}
-                className="flex-1 bg-foreground text-background py-5 rounded-lg font-bold text-lg hover:bg-orange-600 transition-all"
+                className="flex-1 bg-brand-strong text-on-brand py-5 rounded-control font-bold text-body-lg hover:bg-brand-hover transition-all"
               >
                 Continue
               </button>
@@ -593,22 +565,18 @@ export default function CreatorOnboarding() {
         {step === 4 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
             <div className="text-center space-y-2">
-              <h1 className="text-3xl font-bold tracking-tighter">
-                Social Media
-              </h1>
-              <p className="text-muted-foreground text-sm">
-                Where else can fans find you?
-              </p>
+              <h1 className="text-heading font-bold tracking-tighter">Social Media</h1>
+              <p className="text-muted-fg text-label">Where else can fans find you?</p>
             </div>
             <div className="space-y-3">
               <div className="relative">
                 <Instagram
                   size={18}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-fg"
                 />
                 <input
                   placeholder="Instagram Username"
-                  className="w-full p-4 pl-12 bg-muted border border-border rounded-lg text-sm outline-none focus:border-orange-500"
+                  className="w-full p-4 pl-12 bg-surface-sunken border border-line rounded-control text-label outline-none focus:border-focus"
                   value={formData.socials.instagram}
                   onChange={(e) =>
                     setFormData({
@@ -624,11 +592,11 @@ export default function CreatorOnboarding() {
               <div className="relative">
                 <Linkedin
                   size={18}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-fg"
                 />
                 <input
                   placeholder="LinkedIn Profile Link"
-                  className="w-full p-4 pl-12 bg-muted border border-border rounded-lg text-sm outline-none focus:border-blue-500"
+                  className="w-full p-4 pl-12 bg-surface-sunken border border-line rounded-control text-label outline-none focus:border-focus"
                   value={formData.socials.linkedin}
                   onChange={(e) =>
                     setFormData({
@@ -644,11 +612,11 @@ export default function CreatorOnboarding() {
               <div className="relative">
                 <Twitter
                   size={18}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-fg"
                 />
                 <input
                   placeholder="Twitter Username"
-                  className="w-full p-4 pl-12 bg-muted border border-border rounded-lg text-sm outline-none focus:border-orange-500"
+                  className="w-full p-4 pl-12 bg-surface-sunken border border-line rounded-control text-label outline-none focus:border-focus"
                   value={formData.socials.twitter}
                   onChange={(e) =>
                     setFormData({
@@ -661,11 +629,11 @@ export default function CreatorOnboarding() {
               <div className="relative">
                 <Youtube
                   size={18}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-fg"
                 />
                 <input
                   placeholder="YouTube Channel Link"
-                  className="w-full p-4 pl-12 bg-muted border border-border rounded-lg text-sm outline-none focus:border-orange-500"
+                  className="w-full p-4 pl-12 bg-surface-sunken border border-line rounded-control text-label outline-none focus:border-focus"
                   value={formData.socials.youtube}
                   onChange={(e) =>
                     setFormData({
@@ -678,11 +646,11 @@ export default function CreatorOnboarding() {
               <div className="relative">
                 <Video
                   size={18}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-fg"
                 />
                 <input
                   placeholder="TikTok Profile Link"
-                  className="w-full p-4 pl-12 bg-muted border border-border rounded-lg text-sm outline-none focus:border-orange-500"
+                  className="w-full p-4 pl-12 bg-surface-sunken border border-line rounded-control text-label outline-none focus:border-focus"
                   value={formData.socials.tiktok}
                   onChange={(e) =>
                     setFormData({
@@ -695,11 +663,11 @@ export default function CreatorOnboarding() {
               <div className="relative">
                 <Globe
                   size={18}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-fg"
                 />
                 <input
                   placeholder="External Website / Link"
-                  className="w-full p-4 pl-12 bg-muted border border-border rounded-lg text-sm outline-none focus:border-orange-500"
+                  className="w-full p-4 pl-12 bg-surface-sunken border border-line rounded-control text-label outline-none focus:border-focus"
                   value={formData.socials.web}
                   onChange={(e) =>
                     setFormData({
@@ -713,13 +681,13 @@ export default function CreatorOnboarding() {
             <div className="flex gap-3">
               <button
                 onClick={prevStep}
-                className="p-5 bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                className="p-5 bg-surface-sunken rounded-control text-muted-fg hover:text-fg transition-colors"
               >
                 <ChevronLeft size={24} />
               </button>
               <button
                 onClick={nextStep}
-                className="flex-1 bg-foreground text-background py-5 rounded-lg font-bold text-lg hover:bg-orange-600 transition-all"
+                className="flex-1 bg-brand-strong text-on-brand py-5 rounded-control font-bold text-body-lg hover:bg-brand-hover transition-all"
               >
                 Continue
               </button>
@@ -731,10 +699,8 @@ export default function CreatorOnboarding() {
         {step === 5 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
             <div className="text-center space-y-2">
-              <h1 className="text-3xl font-bold tracking-tighter">
-                Payout Method
-              </h1>
-              <p className="text-muted-foreground text-sm">
+              <h1 className="text-heading font-bold tracking-tighter">Payout Method</h1>
+              <p className="text-muted-fg text-label">
                 Include your country code (e.g. +250...)
               </p>
             </div>
@@ -743,10 +709,8 @@ export default function CreatorOnboarding() {
                 {["MTN", "Airtel"].map((net) => (
                   <button
                     key={net}
-                    onClick={() =>
-                      setFormData({ ...formData, momoNetwork: net })
-                    }
-                    className={`flex-1 py-4 rounded-lg border-2 font-bold text-sm transition-all ${formData.momoNetwork === net ? "border-orange-600 bg-orange-50 text-orange-600" : "border-border text-muted-foreground"}`}
+                    onClick={() => setFormData({ ...formData, momoNetwork: net })}
+                    className={`flex-1 py-4 rounded-control border-2 font-bold text-label transition-all ${formData.momoNetwork === net ? "border-brand-strong bg-brand-soft text-brand-strong" : "border-line text-muted-fg"}`}
                   >
                     {net} Money
                   </button>
@@ -754,13 +718,13 @@ export default function CreatorOnboarding() {
               </div>
               <div className="relative">
                 <Smartphone
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-fg"
                   size={20}
                 />
                 <input
                   type="tel"
                   placeholder="+250 78..."
-                  className="w-full p-5 pl-12 bg-muted border border-border rounded-lg text-center text-xl font-bold tracking-tight focus:border-orange-500 outline-none"
+                  className="w-full p-5 pl-12 bg-surface-sunken border border-line rounded-control text-center text-title font-bold tracking-tight focus:border-focus outline-none"
                   value={formData.momoNumber}
                   onChange={(e) =>
                     setFormData({ ...formData, momoNumber: e.target.value })
@@ -771,14 +735,15 @@ export default function CreatorOnboarding() {
             <div className="flex gap-3">
               <button
                 onClick={prevStep}
-                className="p-5 bg-muted rounded-lg text-muted-foreground transition-colors"
+                className="flex min-h-12 items-center justify-center rounded-control bg-surface-sunken px-4 text-muted-fg transition-colors hover:bg-surface-raised hover:text-fg"
+                aria-label="Go back"
               >
                 <ChevronLeft size={24} />
               </button>
               <button
                 onClick={nextStep}
                 disabled={!formData.momoNumber}
-                className="flex-1 bg-foreground text-background py-5 rounded-lg font-bold text-lg hover:bg-orange-600 transition-all"
+                className="flex-1 bg-brand-strong text-on-brand py-5 rounded-control font-bold text-body-lg hover:bg-brand-hover transition-all"
               >
                 Save Number
               </button>
@@ -790,64 +755,57 @@ export default function CreatorOnboarding() {
         {step === 6 && (
           <div className="space-y-6 animate-in zoom-in-95">
             <div className="text-center space-y-2">
-              <div className="w-16 h-16 bg-green-50 text-green-600 rounded-lg flex items-center justify-center mx-auto mb-2">
+              <div className="w-16 h-16 bg-success-bg text-success rounded-control flex items-center justify-center mx-auto mb-2">
                 <ShieldCheck size={32} />
               </div>
-              <h1 className="text-3xl font-bold tracking-tighter">
-                You are Ready!
-              </h1>
-              <p className="text-muted-foreground text-sm">
-                Confirm your details to launch.
-              </p>
+              <h1 className="text-heading font-bold tracking-tighter">You are Ready!</h1>
+              <p className="text-muted-fg text-label">Confirm your details to launch.</p>
             </div>
-            <div className="bg-muted p-6 rounded-lg space-y-3 border border-border">
+            <div className="bg-surface-sunken p-6 rounded-control space-y-3 border border-line">
               <div className="flex justify-between items-center">
-                <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
+                <span className="text-caption font-bold uppercase text-muted-fg tracking-widest">
                   Public Link
                 </span>
-                <span className="font-bold text-orange-600 tracking-tighter">
+                <span className="font-bold text-brand-strong tracking-tighter">
                   agaseke.me/{formData.username}
                 </span>
               </div>
               {formData.country && (
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
+                  <span className="text-caption font-bold uppercase text-muted-fg tracking-widest">
                     Location
                   </span>
-                  <span className="font-bold text-foreground">
-                    {countries.find((c: any) => c.code === formData.country)
-                      ?.flag || ""}{" "}
-                    {countries.find((c: any) => c.code === formData.country)
-                      ?.name || formData.country}
+                  <span className="font-bold text-fg">
+                    {countries.find((c: any) => c.code === formData.country)?.flag || ""}{" "}
+                    {countries.find((c: any) => c.code === formData.country)?.name ||
+                      formData.country}
                   </span>
                 </div>
               )}
               {formData.currency && (
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
+                  <span className="text-caption font-bold uppercase text-muted-fg tracking-widest">
                     Currency
                   </span>
-                  <span className="font-bold text-orange-600">
+                  <span className="font-bold text-brand-strong">
                     {formData.currency} (
-                    {currencies.find((c: any) => c.code === formData.currency)
-                      ?.symbol || ""}
+                    {currencies.find((c: any) => c.code === formData.currency)?.symbol ||
+                      ""}
                     )
                   </span>
                 </div>
               )}
               <div className="flex justify-between items-center">
-                <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
+                <span className="text-caption font-bold uppercase text-muted-fg tracking-widest">
                   Payout
                 </span>
-                <span className="font-bold text-foreground">
-                  {formData.momoNumber}
-                </span>
+                <span className="font-bold text-fg">{formData.momoNumber}</span>
               </div>
             </div>
             <button
               onClick={handleFinish}
               disabled={loading}
-              className="w-full bg-orange-600 text-white py-5 rounded-lg font-bold text-xl shadow-xl shadow-orange-100 hover:bg-orange-700 transition-all flex items-center justify-center gap-3"
+              className="w-full bg-brand-strong text-on-brand py-5 rounded-control font-bold text-title shadow-card hover:bg-brand-hover transition-all flex items-center justify-center gap-3"
             >
               {loading ? "Creating Agaseke..." : "Launch My Agaseke"}
             </button>
@@ -857,7 +815,7 @@ export default function CreatorOnboarding() {
         <div className="mt-8 text-center">
           <button
             onClick={skipOnboarding}
-            className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-orange-600 transition-colors"
+            className="inline-flex min-h-11 items-center text-caption font-bold uppercase tracking-widest text-muted-fg transition-colors hover:text-brand-strong"
           >
             I&apos;ll set this up later — Skip
           </button>

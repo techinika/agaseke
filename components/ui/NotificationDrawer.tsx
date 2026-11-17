@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  X,
   Bell,
   Heart,
   ShoppingBag,
@@ -33,6 +32,9 @@ import {
 } from "@/lib/notifications";
 import { useRouter } from "next/navigation";
 import { t as translate } from "@/lib/i18n";
+import { Avatar } from "./Avatar";
+import { Button } from "./Button";
+import { Drawer } from "./Drawer";
 
 interface NotificationDrawerProps {
   isOpen: boolean;
@@ -41,33 +43,33 @@ interface NotificationDrawerProps {
 }
 
 const iconMap: Record<NotificationType, React.ReactNode> = {
-  support_received: <Heart size={18} className="text-red-500" />,
-  new_sale: <ShoppingBag size={18} className="text-orange-500" />,
-  new_order: <Package size={18} className="text-blue-500" />,
-  verification_approved: <CheckCircle size={18} className="text-green-500" />,
-  verification_rejected: <XCircle size={18} className="text-red-500" />,
-  new_message: <MessageSquare size={18} className="text-blue-500" />,
-  new_content: <FileText size={18} className="text-purple-500" />,
-  new_product: <Store size={18} className="text-amber-500" />,
-  new_gathering: <Calendar size={18} className="text-teal-500" />,
-  new_giveaway: <Gift size={18} className="text-pink-500" />,
-  booking_request: <CalendarClock size={18} className="text-indigo-500" />,
-  booking_accepted: <CheckCircle size={18} className="text-green-500" />,
-  booking_declined: <XCircle size={18} className="text-red-500" />,
-  booking_paid: <CreditCard size={18} className="text-green-500" />,
-  payout_processed: <Wallet size={18} className="text-emerald-500" />,
-  broadcast_received: <Megaphone size={18} className="text-orange-500" />,
-  new_user: <UserPlus size={18} className="text-blue-500" />,
-  new_creator: <UserCheck size={18} className="text-green-500" />,
-  new_transaction: <CreditCard size={18} className="text-purple-500" />,
-  withdrawal: <Wallet size={18} className="text-orange-500" />,
-  new_like: <Heart size={18} className="text-red-500" />,
-  new_comment: <MessageSquare size={18} className="text-blue-500" />,
-  booking_reminder: <CalendarClock size={18} className="text-indigo-500" />,
+  support_received: <Heart size={18} className="text-danger" />,
+  new_sale: <ShoppingBag size={18} className="text-brand-strong" />,
+  new_order: <Package size={18} className="text-info" />,
+  verification_approved: <CheckCircle size={18} className="text-success" />,
+  verification_rejected: <XCircle size={18} className="text-danger" />,
+  new_message: <MessageSquare size={18} className="text-info" />,
+  new_content: <FileText size={18} className="text-chart-5" />,
+  new_product: <Store size={18} className="text-warning" />,
+  new_gathering: <Calendar size={18} className="text-chart-6" />,
+  new_giveaway: <Gift size={18} className="text-chart-4" />,
+  booking_request: <CalendarClock size={18} className="text-chart-2" />,
+  booking_accepted: <CheckCircle size={18} className="text-success" />,
+  booking_declined: <XCircle size={18} className="text-danger" />,
+  booking_paid: <CreditCard size={18} className="text-success" />,
+  payout_processed: <Wallet size={18} className="text-success" />,
+  broadcast_received: <Megaphone size={18} className="text-brand-strong" />,
+  new_user: <UserPlus size={18} className="text-info" />,
+  new_creator: <UserCheck size={18} className="text-success" />,
+  new_transaction: <CreditCard size={18} className="text-chart-5" />,
+  withdrawal: <Wallet size={18} className="text-brand-strong" />,
+  new_like: <Heart size={18} className="text-danger" />,
+  new_comment: <MessageSquare size={18} className="text-info" />,
+  booking_reminder: <CalendarClock size={18} className="text-chart-2" />,
 };
 
 const getIcon = (type: NotificationType): React.ReactNode => {
-  return iconMap[type] || <Bell size={18} className="text-muted-foreground" />;
+  return iconMap[type] || <Bell size={18} className="text-muted-fg" />;
 };
 
 export default function NotificationDrawer({
@@ -77,7 +79,6 @@ export default function NotificationDrawer({
 }: NotificationDrawerProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
-  const drawerRef = useRef<HTMLDivElement>(null);
   const [markingAllRead, setMarkingAllRead] = useState(false);
   const router = useRouter();
 
@@ -173,156 +174,121 @@ export default function NotificationDrawer({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[200]">
-      <div
-        className="fixed inset-0 bg-foreground/40 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-      />
-
-      <div
-        ref={drawerRef}
-        className="fixed right-0 top-0 h-full w-full max-w-md bg-card shadow-2xl transform transition-transform duration-300 ease-in-out translate-x-0"
-      >
-        <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between px-6 py-5 border-b border-border">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-50 dark:bg-orange-950 rounded-xl flex items-center justify-center">
-                <Bell size={20} className="text-orange-600 dark:text-orange-400" />
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-foreground">
-                  {translate("notifications.title")}
-                </h2>
-                {unreadCount > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    {translate("notifications.unreadCount", { count: unreadCount })}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {unreadCount > 0 && (
-                <button
-                  onClick={markAllAsRead}
-                  disabled={markingAllRead}
-                  className="text-xs font-medium text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 transition-colors disabled:opacity-50 flex items-center gap-1"
-                >
-                  {markingAllRead ? (
-                    <Loader size={12} className="animate-spin" />
-                  ) : (
-                    <CheckCheck size={12} />
-                  )}
-                  {translate("notifications.markAllRead")}
-                </button>
-              )}
-              <button
-                onClick={onClose}
-                aria-label={translate("notifications.close")}
-                className="p-2 hover:bg-muted rounded-lg transition-colors"
-              >
-                <X size={18} className="text-muted-foreground" />
-              </button>
-            </div>
+    <Drawer
+      open={isOpen}
+      onClose={onClose}
+      title={translate("notifications.title")}
+      description={
+        unreadCount > 0
+          ? translate("notifications.unreadCount", { count: unreadCount })
+          : undefined
+      }
+      contentClassName="p-0"
+      headerActions={
+        unreadCount > 0 ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={markAllAsRead}
+            loading={markingAllRead}
+            leadingIcon={<CheckCheck className="size-4" aria-hidden="true" />}
+          >
+            {translate("notifications.markAllRead")}
+          </Button>
+        ) : undefined
+      }
+    >
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader className="size-6 animate-spin text-brand-strong" aria-hidden="true" />
+        </div>
+      ) : notifications.length === 0 ? (
+        <div className="flex flex-col items-center justify-center px-8 py-20 text-center">
+          <div className="mb-4 flex size-16 items-center justify-center rounded-card bg-surface-raised">
+            <Bell size={28} className="text-muted-fg" aria-hidden="true" />
           </div>
-
-          <div className="flex-1 overflow-y-auto">
-            {loading ? (
-              <div className="flex items-center justify-center py-20">
-                <Loader className="w-6 h-6 text-orange-600 animate-spin" />
-              </div>
-            ) : notifications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 px-8 text-center">
-                <div className="w-16 h-16 bg-muted rounded-2xl flex items-center justify-center mb-4">
-                  <Bell size={28} className="text-muted-foreground" />
-                </div>
-                <h3 className="text-sm font-bold text-foreground mb-1">
-                  {translate("notifications.emptyTitle")}
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  {translate("notifications.emptyBody")}
-                </p>
-              </div>
-            ) : (
-              <div className="divide-y divide-border">
-                {notifications.map((notification) => (
+          <h3 className="text-body font-bold text-fg">
+            {translate("notifications.emptyTitle")}
+          </h3>
+          <p className="mt-1 text-caption text-muted-fg">
+            {translate("notifications.emptyBody")}
+          </p>
+        </div>
+      ) : (
+        <div className="divide-y divide-line">
+          {notifications.map((notification) => (
+            <div
+              key={notification.id}
+              onClick={() => handleNotificationClick(notification)}
+              className={`group flex cursor-pointer gap-4 px-5 py-4 transition-colors ${
+                !notification.read
+                  ? "bg-brand-strong/5 hover:bg-brand-strong/10"
+                  : "hover:bg-surface-raised"
+              }`}
+            >
+              <div className="relative shrink-0">
+                {notification.imageUrl ? (
+                  <Avatar
+                    src={notification.imageUrl}
+                    name={notification.title}
+                    size="md"
+                    className="shadow-sm"
+                  />
+                ) : (
                   <div
-                    key={notification.id}
-                    onClick={() => handleNotificationClick(notification)}
-                    className={`px-6 py-4 transition-colors cursor-pointer group ${
-                      !notification.read
-                        ? "bg-orange-50/50 dark:bg-orange-950/30 hover:bg-orange-50 dark:hover:bg-orange-950/50"
-                        : "hover:bg-muted"
+                    className={`flex size-12 items-center justify-center rounded-card ${
+                      !notification.read ? "bg-surface shadow-sm" : "bg-surface-raised"
                     }`}
                   >
-                    <div className="flex gap-4">
-                      <div className="relative flex-shrink-0">
-                        <div
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                            !notification.read ? "bg-card shadow-sm" : "bg-muted"
-                          }`}
-                        >
-                          {notification.imageUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element -- notification thumbnails are remote URLs
-                            <img
-                              src={notification.imageUrl}
-                              alt="Notification image"
-                              className="w-10 h-10 rounded-xl object-cover"
-                            />
-                          ) : (
-                            getIcon(notification.type as NotificationType)
-                          )}
-                        </div>
-                        {!notification.read && (
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full border-2 border-white dark:border-foreground" />
-                        )}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <p
-                            className={`text-sm ${
-                              !notification.read
-                                ? "font-bold text-foreground"
-                                : "font-medium text-foreground"
-                            }`}
-                          >
-                            {notification.title}
-                          </p>
-                          {!notification.read && (
-                            <button
-                              onClick={(e) => markAsRead(notification.id, e)}
-                              aria-label={translate("notifications.markAsRead")}
-                              className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                              <CheckCircle size={14} />
-                            </button>
-                          )}
-                        </div>
-
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                          {notification.message}
-                        </p>
-
-                        <div className="flex items-center justify-between mt-2">
-                          <span className="text-[10px] text-muted-foreground font-medium">
-                            {formatTime(notification.createdAt)}
-                          </span>
-                          {notification.link && (
-                            <span className="text-[10px] text-orange-600 dark:text-orange-400 font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              View <ArrowRight size={10} />
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                    {getIcon(notification.type as NotificationType)}
                   </div>
-                ))}
+                )}
+                {!notification.read && (
+                  <span className="absolute -right-1 -top-1 size-3 rounded-full border-2 border-surface bg-brand-strong" />
+                )}
               </div>
-            )}
-          </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <p
+                    className={`text-body ${
+                      !notification.read ? "font-bold text-fg" : "font-medium text-fg"
+                    }`}
+                  >
+                    {notification.title}
+                  </p>
+                  {!notification.read && (
+                    <button
+                      type="button"
+                      onClick={(e) => markAsRead(notification.id, e)}
+                      aria-label={translate("notifications.markAsRead")}
+                      className="flex size-11 shrink-0 items-center justify-center rounded-control text-muted-fg outline-none transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-focus"
+                    >
+                      <CheckCircle size={16} aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
+
+                <p className="mt-1 line-clamp-2 text-caption text-muted-fg">
+                  {notification.message}
+                </p>
+
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="text-caption font-medium text-muted-fg">
+                    {formatTime(notification.createdAt)}
+                  </span>
+                  {notification.link && (
+                    <span className="flex items-center gap-1 text-caption font-medium text-brand-strong opacity-0 transition-opacity group-hover:opacity-100">
+                      {translate("notifications.view")}
+                      <ArrowRight size={12} aria-hidden="true" />
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
-    </div>
+      )}
+    </Drawer>
   );
 }

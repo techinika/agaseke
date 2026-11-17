@@ -11,10 +11,12 @@ export default function PerkItem({
 }) {
   return (
     <div className="flex gap-4">
-      <div className="mt-1">{icon}</div>
+      <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-control bg-brand-soft text-brand-strong">
+        {icon}
+      </span>
       <div>
-        <h3 className="font-bold text-lg">{title}</h3>
-        <p className="text-slate-400 text-sm leading-relaxed">{desc}</p>
+        <h3 className="text-body font-bold text-fg">{title}</h3>
+        <p className="mt-1 text-label leading-relaxed text-muted-fg">{desc}</p>
       </div>
     </div>
   );

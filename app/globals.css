@@ -47,10 +47,18 @@
   --color-on-brand: var(--ag-on-brand);
   --color-surface: var(--ag-surface);
   --color-surface-raised: var(--ag-surface-raised);
+  --color-surface-sunken: var(--ag-surface-sunken);
   --color-fg: var(--ag-fg);
   --color-line: var(--ag-line);
   --color-line-strong: var(--ag-line-strong);
   --color-muted-fg: var(--ag-muted-fg);
+  --color-overlay: var(--ag-overlay);
+  --color-chart-1: var(--ag-chart-1);
+  --color-chart-2: var(--ag-chart-2);
+  --color-chart-3: var(--ag-chart-3);
+  --color-chart-4: var(--ag-chart-4);
+  --color-chart-5: var(--ag-chart-5);
+  --color-chart-6: var(--ag-chart-6);
   --color-success: var(--ag-success);
   --color-success-bg: var(--ag-success-bg);
   --color-warning: var(--ag-warning);
@@ -94,6 +102,11 @@
   --text-heading--line-height: var(--ag-text-heading-lh);
   --text-display: var(--ag-text-display);
   --text-display--line-height: var(--ag-text-display-lh);
+  --text-hero: var(--ag-text-hero);
+  --text-hero--line-height: var(--ag-text-hero-lh);
+
+  --spacing-sidebar: var(--ag-sidebar-width);
+  --container-app: var(--ag-content-max);
 
   --font-sans: var(--font-rubik);
   --font-mono: var(--font-rubik);

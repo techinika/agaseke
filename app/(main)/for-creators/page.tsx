@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Metadata } from "next";
 import MarketingPageSchema from "@/components/seo/MarketingPageSchema";
+import { Badge } from "@/components/ui/Badge";
+import { buttonClasses } from "@/components/ui/Button";
 import {
   UserRound,
   Users,
@@ -140,45 +142,45 @@ export default function ForCreatorsPage() {
       />
       <div className="max-w-5xl mx-auto px-4 py-16">
         <section className="text-center mb-16">
-          <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-orange-100 text-orange-700 text-xs font-black uppercase tracking-wide rounded-full mb-6">
-            <Sparkles size={14} /> For Creators
-          </span>
-          <h1 className="text-4xl md:text-5xl font-black text-foreground mb-4">
+          <Badge tone="brand" className="mb-6 px-3 py-1">
+            <Sparkles size={14} aria-hidden="true" /> For Creators
+          </Badge>
+          <h1 className="text-display font-black sm:text-hero text-fg mb-4">
             Agaseke is made for creators
           </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-body-lg text-muted-fg max-w-2xl mx-auto">
             A place where your audience can support your work, follow what you create, and
             connect with you — and where you get paid for it.
           </p>
         </section>
 
         <section className="grid md:grid-cols-2 gap-6 mb-16">
-          <div className="bg-card border border-border rounded-3xl p-8">
-            <UserRound size={32} className="text-orange-500 mb-4" />
-            <h2 className="text-2xl font-black mb-3">What is a creator on Agaseke?</h2>
-            <p className="text-muted-foreground leading-relaxed mb-4">
+          <div className="bg-surface border border-line rounded-card p-8">
+            <UserRound size={32} className="text-brand-strong mb-4" />
+            <h2 className="text-heading font-bold mb-3">What is a creator on Agaseke?</h2>
+            <p className="text-muted-fg leading-relaxed mb-4">
               A creator is anyone whose work people want to follow and support — a
               musician, artist, photographer, writer, educator, athlete, comedian,
               journalist, model, entrepreneur, or community leader.
             </p>
-            <p className="text-muted-foreground leading-relaxed">
+            <p className="text-muted-fg leading-relaxed">
               You don&apos;t need a huge following. If you have a talent, a skill, a
               story, or a community, Agaseke gives you a public home to share it and a way
               for people to back it.
             </p>
           </div>
-          <div className="bg-card border border-border rounded-3xl p-8">
-            <Sparkles size={32} className="text-orange-500 mb-4" />
-            <h2 className="text-2xl font-black mb-3">
+          <div className="bg-surface border border-line rounded-card p-8">
+            <Sparkles size={32} className="text-brand-strong mb-4" />
+            <h2 className="text-heading font-bold mb-3">
               What we mean by &quot;creator&quot;
             </h2>
-            <p className="text-muted-foreground leading-relaxed mb-4">
+            <p className="text-muted-fg leading-relaxed mb-4">
               On Agaseke, a creator is someone who chooses a public handle on the platform
               and uses it to share their work and build an audience. Supporters join their
               community, buy from their store, book their time, and attend their
               gatherings.
             </p>
-            <p className="text-muted-foreground leading-relaxed">
+            <p className="text-muted-fg leading-relaxed">
               Being a creator here means owning your page: you pick your username, set up
               your profile, choose what to offer, and decide what matters to you.
             </p>
@@ -186,53 +188,58 @@ export default function ForCreatorsPage() {
         </section>
 
         <section className="mb-16">
-          <h2 className="text-3xl font-black text-center mb-10">
+          <h2 className="text-heading font-black sm:text-display text-center mb-10">
             Everything a creator needs
           </h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {features.map((f) => (
-              <div key={f.title} className="bg-card border border-border rounded-3xl p-6">
-                <f.icon size={24} className="text-orange-500 mb-3" />
+              <div
+                key={f.title}
+                className="bg-surface border border-line rounded-card p-6"
+              >
+                <f.icon size={24} className="text-brand-strong mb-3" />
                 <h3 className="font-black mb-2">{f.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{f.text}</p>
+                <p className="text-label text-muted-fg leading-relaxed">{f.text}</p>
               </div>
             ))}
           </div>
         </section>
 
-        <section className="text-center bg-card border border-border rounded-3xl p-10">
-          <h2 className="text-3xl font-black mb-3">Claim your handle</h2>
-          <p className="text-muted-foreground mb-6 max-w-xl mx-auto">
+        <section className="text-center bg-surface border border-line rounded-card p-10">
+          <h2 className="text-heading font-black sm:text-display mb-3">
+            Claim your handle
+          </h2>
+          <p className="text-muted-fg mb-6 max-w-xl mx-auto">
             Create your public page in minutes, set what you offer, and start building a
             community that supports you. It&apos;s free to start.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link
               href="/onboarding"
-              className="px-6 py-3 bg-orange-600 text-white text-sm font-bold rounded-lg hover:bg-orange-700 transition"
+              className={buttonClasses({ variant: "primary", size: "md" })}
             >
               Become a creator
             </Link>
             <Link
               href="/login"
-              className="px-6 py-3 text-sm font-bold text-foreground border border-border rounded-lg hover:bg-muted transition"
+              className={buttonClasses({ variant: "secondary", size: "md" })}
             >
               Create an account
             </Link>
           </div>
         </section>
 
-        <section className="flex flex-wrap items-center justify-center gap-2 text-sm mt-10">
-          <span className="text-muted-foreground font-bold">Also on Agaseke:</span>
+        <section className="flex flex-wrap items-center justify-center gap-2 text-label mt-10">
+          <span className="text-muted-fg font-bold">Also on Agaseke:</span>
           <Link
             href="/for-supporters"
-            className="inline-flex min-h-11 items-center px-3 py-1 font-bold text-muted-foreground border border-border rounded-full hover:text-foreground hover:bg-muted transition"
+            className="inline-flex min-h-11 items-center px-3 py-1 font-bold text-muted-fg border border-line rounded-pill hover:text-fg hover:bg-surface-raised transition"
           >
             For Supporters
           </Link>
           <Link
             href="/for-brands"
-            className="inline-flex min-h-11 items-center px-3 py-1 font-bold text-muted-foreground border border-border rounded-full hover:text-foreground hover:bg-muted transition"
+            className="inline-flex min-h-11 items-center px-3 py-1 font-bold text-muted-fg border border-line rounded-pill hover:text-fg hover:bg-surface-raised transition"
           >
             For Brands
           </Link>

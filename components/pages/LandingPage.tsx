@@ -1,243 +1,260 @@
-/* eslint-disable @next/next/no-img-element */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import {
-  Lock,
-  BanknoteArrowDown,
-  CheckCircle2,
-  HandCoins,
-  MessageSquare,
-  ShoppingBag,
-  ShieldCheck,
-  Star,
-  Users,
-  ArrowRight,
-  Loader,
-  Check,
-  XCircle,
-  Globe,
-  Heart,
-  TrendingUp,
-  Smartphone,
-} from "lucide-react";
-import { useRouter, usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
+import {
+  ArrowRight,
+  Banknote,
+  CalendarCheck,
+  CalendarDays,
+  Check,
+  CheckCircle2,
+  CreditCard,
+  HandCoins,
+  Heart,
+  Loader,
+  Lock,
+  ShieldCheck,
+  Smartphone,
+  Sparkles,
+  Store,
+  TrendingUp,
+  Users,
+  Wallet,
+  XCircle,
+} from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
-import MobileBottomBar from "@/components/parts/MobileBottomBar";
-import { FaCcVisa, FaCcMastercard, FaCcAmex } from "react-icons/fa";
-import { FeatureCard, Step } from "./landingpage/index";
+import { Avatar } from "@/components/ui/Avatar";
+import { Badge } from "@/components/ui/Badge";
+import { Button, buttonClasses } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+
+const FALLBACK_CREATORS = [
+  {
+    id: "kellys",
+    name: "Kelly S.",
+    profilePicture: "https://i.pravatar.cc/150?u=kellys",
+    country: "RW",
+    focus: ["Musician", "Songwriter"],
+    bio: "Afrobeat artist from Kigali. New EP out now.",
+    verified: true,
+  },
+  {
+    id: "achille_songa",
+    name: "Achille S.",
+    profilePicture: "https://i.pravatar.cc/150?u=achille",
+    country: "RW",
+    focus: ["Producer", "Artist"],
+    bio: "Beats that cross borders. Open for collabs.",
+    verified: false,
+  },
+  {
+    id: "hollboi",
+    name: "Hollboi",
+    profilePicture: "https://i.pravatar.cc/150?u=hollboi",
+    country: "KE",
+    focus: ["Comedian", "Creator"],
+    bio: "Laughing across East Africa. Tour dates below.",
+    verified: true,
+  },
+];
+
+const FEATURES = [
+  {
+    icon: Users,
+    title: "A community you own",
+    text: "Invite your biggest fans into a private space that belongs to you, not an algorithm.",
+  },
+  {
+    icon: Lock,
+    title: "Exclusive content",
+    text: "Publish posts and articles for everyone, your supporters, or a specific tier.",
+  },
+  {
+    icon: Store,
+    title: "A store that fits your work",
+    text: "Sell physical or digital products from your page with secure checkout.",
+  },
+  {
+    icon: CalendarCheck,
+    title: "Paid bookings",
+    text: "Offer one-on-one sessions and get paid for your time.",
+  },
+  {
+    icon: CalendarDays,
+    title: "Gatherings and giveaways",
+    text: "Sell tickets to events and run giveaways that bring your audience closer.",
+  },
+  {
+    icon: Wallet,
+    title: "Payouts that make sense",
+    text: "Withdraw to Mobile Money or bank in the currency you earn in.",
+  },
+];
+
+const PAINS = [
+  "Platform fees take a large cut of your work.",
+  "Tools are built for cards, not Mobile Money.",
+  "Your audience belongs to an algorithm.",
+  "Content, store, and messages live in different places.",
+];
+
+const WINS = [
+  "A flat 10% platform fee. You keep 90%.",
+  "Mobile Money and card payments in one place.",
+  "Your supporters, your community, your rules.",
+  "Content, store, bookings, and messages together.",
+];
+
+function getFlagEmoji(countryCode?: string): string {
+  if (!countryCode) return "🌍";
+  const map: Record<string, string> = {
+    RW: "🇷🇼",
+    KE: "🇰🇪",
+    NG: "🇳🇬",
+    ZA: "🇿🇦",
+    TZ: "🇹🇿",
+    UG: "🇺🇬",
+    GH: "🇬🇭",
+    CM: "🇨🇲",
+    SN: "🇸🇳",
+    CI: "🇨🇮",
+    ET: "🇪🇹",
+    CD: "🇨🇩",
+    ZM: "🇿🇲",
+    ZW: "🇿🇼",
+    MW: "🇲🇼",
+    MZ: "🇲🇿",
+    AO: "🇦🇴",
+    BJ: "🇧🇯",
+    ML: "🇲🇱",
+    BF: "🇧🇫",
+  };
+  return map[countryCode.toUpperCase()] || "🌍";
+}
 
 export default function LandingPage({ initialCreators }: { initialCreators?: any[] }) {
   const { isCreator, user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [username, setUsername] = useState("");
-  const [usernameStatus, setUsernameStatus] = useState<
-    "idle" | "checking" | "available" | "taken" | "invalid"
+  const [usernameCheck, setUsernameCheck] = useState<
+    "idle" | "checking" | "available" | "taken"
   >("idle");
+  const featuredCreators = initialCreators?.length ? initialCreators : FALLBACK_CREATORS;
 
-  const [featuredCreators, setFeaturedCreators] = useState<any[]>(initialCreators || []);
-  const [featuredLoading, setFeaturedLoading] = useState(!initialCreators?.length);
-  const [expandedCard, setExpandedCard] = useState<string | null>(null);
-
-  const fallbackCreators = [
-    {
-      id: "kellys",
-      name: "Kelly S.",
-      profilePicture: "https://i.pravatar.cc/150?u=kellys",
-      country: "RW",
-      focus: ["Musician", "Songwriter"],
-      bio: "Afrobeat artist from Kigali. New EP out now.",
-      verified: true,
-      socials: {
-        instagram: "https://instagram.com/kellys",
-        twitter: "https://twitter.com/kellys",
-      },
-    },
-    {
-      id: "achille_songa",
-      name: "Achille S.",
-      profilePicture: "https://i.pravatar.cc/150?u=achille",
-      country: "RW",
-      focus: ["Producer", "Artist"],
-      bio: "Beats that cross borders. DM for collabs.",
-      verified: false,
-      socials: {
-        instagram: "https://instagram.com/achille",
-        youtube: "https://youtube.com/@achille",
-      },
-    },
-    {
-      id: "hollboi",
-      name: "Hollboi",
-      profilePicture: "https://i.pravatar.cc/150?u=hollboi",
-      country: "KE",
-      focus: ["Comedian", "Content Creator"],
-      bio: "Laughing across East Africa. Tour dates below.",
-      verified: true,
-      socials: {
-        tiktok: "https://tiktok.com/@hollboi",
-        instagram: "https://instagram.com/hollboi",
-        twitter: "https://twitter.com/hollboi",
-      },
-    },
-  ];
+  const usernameValidation: "idle" | "invalid" | null =
+    username.length < 3
+      ? "idle"
+      : username.length > 19 || !/^[a-z0-9_]+$/.test(username)
+        ? "invalid"
+        : null;
+  const usernameStatus = usernameValidation ?? usernameCheck;
 
   useEffect(() => {
-    if (initialCreators?.length) return;
-    queueMicrotask(() => {
-      setFeaturedCreators(fallbackCreators);
-      setFeaturedLoading(false);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function getFlagEmoji(countryCode: string): string {
-    if (!countryCode) return "🌍";
-    const map: Record<string, string> = {
-      RW: "🇷🇼",
-      KE: "🇰🇪",
-      NG: "🇳🇬",
-      ZA: "🇿🇦",
-      TZ: "🇹🇿",
-      UG: "🇺🇬",
-      GH: "🇬🇭",
-      CM: "🇨🇲",
-      SN: "🇸🇳",
-      CI: "🇨🇮",
-      ET: "🇪🇹",
-      CD: "🇨🇩",
-      ZM: "🇿🇲",
-      ZW: "🇿🇼",
-      MW: "🇲🇼",
-      MZ: "🇲🇿",
-      AO: "🇦🇴",
-      BJ: "🇧🇯",
-      ML: "🇲🇱",
-      BF: "🇧🇫",
-    };
-    return map[countryCode.toUpperCase()] || "🌍";
-  }
-
-  const displayCreators = featuredCreators.slice(0, 5);
-
-  const handleCardClick = (id: string) => {
-    setExpandedCard((prev) => (prev === id ? null : id));
-  };
-
-  useEffect(() => {
-    if (username.length < 3) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setUsernameStatus("idle");
-      return;
-    }
-    if (username.length > 19) {
-      setUsernameStatus("invalid");
+    if (username.length < 3 || username.length > 19 || !/^[a-z0-9_]+$/.test(username)) {
       return;
     }
 
-    const validUsernameRegex = /^[a-z0-9_]+$/;
-    if (!validUsernameRegex.test(username)) {
-      setUsernameStatus("invalid");
-      return;
-    }
-
+    let cancelled = false;
     const checkUsername = async () => {
-      setUsernameStatus("checking");
+      if (cancelled) return;
+      setUsernameCheck("checking");
       try {
         const response = await fetch(
           `/api/creators/check-username?username=${encodeURIComponent(username)}`,
         );
         const data = (await response.json()) as { exists?: boolean };
-        setUsernameStatus(
-          Boolean(data?.exists) ||
-            username === "admin" ||
-            username === "creator" ||
-            username === "supporter" ||
-            username === "explore" ||
-            username === "login" ||
-            username === "signup" ||
-            username === "terms" ||
-            username === "privacy" ||
-            username === "auth" ||
-            username === "help-center" ||
-            username === "api" ||
-            username === "test" ||
-            username === "offline" ||
-            username === "sitemap" ||
-            username === "sitemap.xml" ||
-            username === "robots" ||
-            username === "robots.txt" ||
-            username === "robot" ||
-            username === "profile" ||
-            username === "payout" ||
-            username === "payout-policy" ||
-            username === "content-guidelines" ||
-            username === "onboarding" ||
-            username === "payment" ||
-            username === "dashboard" ||
-            username === "checkout" ||
-            username === "verify" ||
-            username === "payments" ||
-            username === "help" ||
-            username === "api" ||
-            username === "search" ||
-            username === "about" ||
-            username === "contact" ||
-            username === "faq" ||
-            username === "privacy" ||
-            username === "terms" ||
-            username === "support" ||
-            username === "feedback" ||
-            username === "blog" ||
-            username === "contact-us" ||
-            username === "help-us-improve" ||
-            username === "login-demo" ||
-            username === "payout" ||
-            username === "settings" ||
-            username === "notification" ||
-            username === "support-us" ||
-            username === "store" ||
-            username === "messages" ||
-            username === "explore" ||
-            username === "artist" ||
-            username === "podcasts" ||
-            username === "photographers" ||
-            username === "vloggers" ||
-            username === "dancers" ||
-            username === "comedians" ||
-            username === "musicians" ||
-            username === "public" ||
-            username === "business" ||
-            username === "entrepreneurs" ||
-            username === "athletes" ||
-            username === "reviewers" ||
-            username === "content-creators" ||
-            username === "journalists" ||
-            username === "models" ||
-            username === "educators" ||
-            username === "interviewers" ||
-            username === "bloggers" ||
-            username === "designers" ||
-            username === "transactions" ||
-            username === "bookings" ||
-            username === "for-creators" ||
-            username === "for-supporters" ||
-            username === "for-brands"
-            ? "taken"
-            : "available",
-        );
-      } catch (err) {
-        console.error(err);
-        setUsernameStatus("idle");
+        const reserved = new Set([
+          "admin",
+          "creator",
+          "supporter",
+          "explore",
+          "login",
+          "signup",
+          "terms",
+          "privacy",
+          "auth",
+          "help-center",
+          "api",
+          "test",
+          "offline",
+          "sitemap",
+          "sitemap.xml",
+          "robots",
+          "robots.txt",
+          "robot",
+          "profile",
+          "payout",
+          "payout-policy",
+          "content-guidelines",
+          "onboarding",
+          "payment",
+          "dashboard",
+          "checkout",
+          "verify",
+          "payments",
+          "help",
+          "search",
+          "about",
+          "contact",
+          "faq",
+          "support",
+          "feedback",
+          "blog",
+          "contact-us",
+          "help-us-improve",
+          "login-demo",
+          "settings",
+          "notification",
+          "support-us",
+          "store",
+          "messages",
+          "artist",
+          "podcasts",
+          "photographers",
+          "vloggers",
+          "dancers",
+          "comedians",
+          "musicians",
+          "public",
+          "business",
+          "entrepreneurs",
+          "athletes",
+          "reviewers",
+          "content-creators",
+          "journalists",
+          "models",
+          "educators",
+          "interviewers",
+          "bloggers",
+          "designers",
+          "transactions",
+          "bookings",
+          "for-creators",
+          "for-supporters",
+          "for-brands",
+        ]);
+        if (!cancelled) {
+          setUsernameCheck(
+            Boolean(data?.exists) || reserved.has(username) ? "taken" : "available",
+          );
+        }
+      } catch (error) {
+        console.error(error);
+        if (!cancelled) setUsernameCheck("idle");
       }
     };
 
     const timeoutId = setTimeout(checkUsername, 500);
-    return () => clearTimeout(timeoutId);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
   }, [username]);
 
   const handleClaim = () => {
@@ -249,6 +266,27 @@ export default function LandingPage({ initialCreators }: { initialCreators?: any
       router.push(`/login?username=${username}&redirect=${encodeURIComponent(pathname)}`);
     }
   };
+
+  const usernameError =
+    usernameStatus === "taken"
+      ? "That link is already taken. Try another one."
+      : usernameStatus === "invalid"
+        ? "Use 3–19 lowercase letters, numbers, or underscores."
+        : undefined;
+  const usernameHint =
+    usernameStatus === "available"
+      ? "This link is available."
+      : usernameStatus === "idle"
+        ? "This will be your public Agaseke link."
+        : undefined;
+  const usernameTrailing =
+    usernameStatus === "checking" ? (
+      <Loader className="size-5 animate-spin text-muted-fg" aria-hidden="true" />
+    ) : usernameStatus === "available" ? (
+      <Check className="size-5 text-success" aria-hidden="true" />
+    ) : usernameStatus === "taken" || usernameStatus === "invalid" ? (
+      <XCircle className="size-5 text-danger" aria-hidden="true" />
+    ) : undefined;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -281,464 +319,363 @@ export default function LandingPage({ initialCreators }: { initialCreators?: any
   };
 
   return (
-    <div className="min-h-screen bg-card text-foreground selection:bg-orange-100 font-sans pb-14">
+    <div className="bg-canvas pb-20 text-fg">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <header className="px-6 py-16 md:py-20 max-w-6xl mx-auto">
-        <div className="md:grid md:grid-cols-5 md:gap-12 items-center">
-          {/* Left Column - Main Content */}
-          <div className="md:col-span-3 text-center md:text-left">
-            <div className="mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <div className="bg-orange-50 text-orange-700 px-4 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest inline-block mb-4">
-                Audience Monetization Platform
-              </div>
-              <p className="text-sm font-medium text-muted-foreground">
-                For <strong>Influencers, Podcasters, Artists, </strong>
-                and <strong>Content Creators</strong>, YouTubers, Bloggers, etc.
-              </p>
-            </div>
-
-            <h1 className="text-4xl md:text-6xl font-black tracking-tighter mb-6 leading-[1.05] uppercase">
-              Build Your <br />
-              <span className="text-orange-600">Private Community</span>
+      <section className="px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
+        <div className="mx-auto grid w-full max-w-6xl items-center gap-12 lg:grid-cols-[1.15fr_0.85fr]">
+          <div>
+            <Badge tone="brand" className="mb-5 gap-1.5 px-3 py-1">
+              <Sparkles className="size-3.5" aria-hidden="true" />
+              Built for African creators
+            </Badge>
+            <h1 className="max-w-2xl text-display font-black tracking-tight text-fg sm:text-hero">
+              Build your private community.
+              <span className="block text-brand-strong">Get paid directly.</span>
             </h1>
-
-            <p className="text-base md:text-lg text-muted-foreground mb-8 max-w-lg leading-relaxed">
-              Get paid directly by your biggest fans through tips, subscriptions, and
-              exclusive content.
+            <p className="mt-5 max-w-xl text-body-lg leading-relaxed text-muted-fg">
+              Agaseke gives creators one home for content, community, store, bookings, and
+              events — with Mobile Money and card payments from your biggest fans.
             </p>
 
-            <div className="flex flex-col items-center md:items-start gap-4 mb-10">
+            <div className="mt-8 max-w-xl">
               {isCreator ? (
-                <div className="animate-in zoom-in duration-500">
-                  <button
-                    onClick={() => router.push("/creator")}
-                    className="group flex items-center gap-4 bg-slate-900 text-white px-10 py-5 rounded-2xl font-black text-lg uppercase tracking-widest hover:bg-orange-600 transition-all shadow-2xl"
+                <div className="flex flex-col gap-3">
+                  <Link
+                    href="/creator"
+                    className={buttonClasses({ variant: "primary", size: "lg" })}
                   >
-                    <span>Go to my Creator Space</span>
-                    <ArrowRight className="group-hover:translate-x-2 transition-transform" />
-                  </button>
-                  <p className="mt-4 text-muted-foreground font-bold text-xs uppercase tracking-widest text-center md:text-left">
-                    Welcome back, {user?.displayName?.split(" ")[0] || "Creator"}!
+                    Go to my creator space
+                    <ArrowRight className="size-5" aria-hidden="true" />
+                  </Link>
+                  <p className="text-label font-medium text-muted-fg">
+                    Welcome back, {user?.displayName?.split(" ")[0] || "creator"}.
                   </p>
                 </div>
               ) : (
                 <>
-                  <div className="flex flex-col sm:flex-row items-center bg-card p-2 rounded-lg border-2 border-border focus-within:border-orange-500 focus-within:ring-8 focus-within:ring-orange-50 transition-all w-full max-w-lg shadow-2xl shadow-border-strong">
-                    <div className="relative flex items-center flex-1 w-full px-4">
-                      <span className="text-muted-foreground font-bold select-none text-lg">
-                        agaseke.me/
-                      </span>
-                      <input
-                        autoFocus
-                        type="text"
-                        value={username}
-                        maxLength={19}
-                        onChange={(e) =>
-                          setUsername(
-                            e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""),
-                          )
-                        }
-                        placeholder="yourname"
-                        className={`bg-transparent outline-none font-bold text-slate-800 flex-1 py-5 text-xl placeholder:text-slate-200 w-full tracking-tighter ${
-                          usernameStatus === "taken"
-                            ? "border-red-400"
-                            : usernameStatus === "available"
-                              ? "border-green-400"
-                              : "border-transparent focus:border-orange-500"
-                        }`}
-                      />
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                        {usernameStatus === "checking" && (
-                          <Loader className="animate-spin text-slate-300" size={20} />
-                        )}
-                        {usernameStatus === "available" && (
-                          <Check className="text-green-500" size={20} />
-                        )}
-                        {usernameStatus === "taken" && (
-                          <XCircle className="text-red-500" size={20} />
-                        )}
-                        {usernameStatus === "invalid" && (
-                          <XCircle className="text-red-500" size={20} />
-                        )}
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={handleClaim}
-                      className="w-full sm:w-auto bg-slate-900 text-white px-10 py-5 rounded-lg font-bold text-sm uppercase tracking-widest hover:bg-orange-600 transition-all active:scale-95 whitespace-nowrap shadow-lg"
-                    >
-                      Start for Free
-                    </button>
+                  <label
+                    htmlFor="claim-username"
+                    className="mb-1.5 block text-label font-semibold text-fg"
+                  >
+                    Claim your agaseke.me link
+                  </label>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Input
+                      id="claim-username"
+                      value={username}
+                      maxLength={19}
+                      onChange={(event) => {
+                        setUsernameCheck("idle");
+                        setUsername(
+                          event.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""),
+                        );
+                      }}
+                      placeholder="yourname"
+                      autoComplete="username"
+                      error={usernameError}
+                      hint={usernameHint}
+                      trailing={usernameTrailing}
+                      containerClassName="flex-1"
+                    />
+                    <Button size="lg" onClick={handleClaim} className="sm:shrink-0">
+                      Start for free
+                    </Button>
                   </div>
-                  <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest flex items-center gap-2">
-                    <ShieldCheck size={14} className="text-green-600" /> It takes 1 minute
-                    to set up. No credit card needed.
+                  <p className="mt-2 flex items-center gap-2 text-caption text-muted-fg">
+                    <ShieldCheck className="size-4 text-success" aria-hidden="true" />
+                    Takes a minute. No credit card needed.
                   </p>
                 </>
               )}
             </div>
 
-            {/* Payment Methods - Compact */}
-            <div className="flex flex-wrap items-center gap-4 md:gap-6 pt-6 border-t border-border/50">
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
-                Get paid via:
-              </p>
-              <div className="flex items-center gap-2">
-                <div className="bg-yellow-400 p-1 rounded-md">
-                  <Smartphone size={14} className="text-foreground" />
-                </div>
-                <span className="font-bold text-xs uppercase tracking-tighter">
-                  Mobile Money
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <FaCcVisa size={22} className="text-blue-600" />
-                <FaCcMastercard size={22} className="text-orange-500" />
-                <FaCcAmex size={22} className="text-blue-400" />
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column - Fanned Creator Cards (desktop only) */}
-          <div className="hidden md:block md:col-span-2 mt-12 md:mt-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground mb-5 text-center">
-              Creators on Agaseke
-            </p>
-            <div className="relative min-h-[250px]">
-              {featuredLoading ? (
-                <div className="w-full flex items-center justify-center py-16">
-                  <div className="w-8 h-8 border-2 border-orange-600 border-t-transparent rounded-full animate-spin" />
-                </div>
-              ) : displayCreators.length === 0 ? (
-                <div className="flex items-center justify-center gap-0">
-                  {[...Array(3)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="w-[260px] bg-card border border-border rounded-xl p-4 shadow-lg"
-                      style={{
-                        transform: `rotate(${(i - 1) * 6}deg)`,
-                        transformOrigin: "bottom center",
-                        marginLeft: i === 0 ? "0" : "-60px",
-                      }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-muted animate-pulse" />
-                        <div className="flex-1 space-y-2">
-                          <div className="h-3 w-24 bg-muted rounded animate-pulse" />
-                          <div className="h-2 w-16 bg-muted rounded animate-pulse" />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="relative h-[300px]">
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <div className="w-[500px] h-[500px] bg-orange-500/[0.07] rotate-45 rounded-3xl" />
-                  </div>
-                  {displayCreators.map((c, i) => {
-                    const angleDeg = (i - 1) * 7;
-                    const isExpanded = expandedCard === c.id;
-                    return (
-                      <motion.div
-                        key={c.id}
-                        initial={{ opacity: 0, y: 40 }}
-                        animate={{
-                          opacity: 1,
-                          rotate: isExpanded ? 0 : angleDeg,
-                          y: isExpanded ? -25 : 0,
-                          scale: isExpanded ? 1.05 : 1,
-                        }}
-                        transition={{
-                          delay: 0.2 + i * 0.15,
-                          duration: 0.5,
-                          rotate: {
-                            type: "spring",
-                            stiffness: 300,
-                            damping: 30,
-                          },
-                          y: { type: "spring", stiffness: 300, damping: 30 },
-                          scale: {
-                            type: "spring",
-                            stiffness: 300,
-                            damping: 30,
-                          },
-                        }}
-                        onClick={() => handleCardClick(c.id)}
-                        whileHover={!isExpanded ? { y: -15, scale: 1.02 } : {}}
-                        className="absolute left-1/2 cursor-pointer select-none"
-                        style={{
-                          width: 260,
-                          marginLeft: -130,
-                          bottom: 0,
-                          transformOrigin: "bottom center",
-                          zIndex: isExpanded ? 10 : displayCreators.length - i,
-                        }}
-                      >
-                        <div className="bg-card border border-border rounded-xl overflow-hidden shadow-xl">
-                          <div
-                            className={`h-24 bg-gradient-to-r ${i === 0 ? "from-violet-500 to-pink-500" : i === 1 ? "from-blue-500 to-cyan-400" : "from-amber-500 to-orange-500"}`}
-                          />
-                          <div className="px-4 pb-4">
-                            <div className="-mt-12 mb-2 flex items-end justify-between">
-                              <div className="relative">
-                                <img
-                                  src={
-                                    c.profilePicture ||
-                                    c.photoURL ||
-                                    `https://i.pravatar.cc/150?u=${c.id}`
-                                  }
-                                  className="w-16 h-16 rounded-lg border-[3px] border-white shadow-md object-cover"
-                                  alt={c.name}
-                                />
-                                {c.verified && (
-                                  <div className="absolute -bottom-1 -right-1 bg-green-500 w-5 h-5 border-2 border-white rounded-full flex items-center justify-center">
-                                    <CheckCircle2 size={10} className="text-white" />
-                                  </div>
-                                )}
-                              </div>
-                              <span className="text-lg">
-                                {getFlagEmoji(c.country || c.location)}
-                              </span>
-                            </div>
-                            <h3 className="font-bold text-base text-foreground leading-tight">
-                              {c.name}
-                            </h3>
-                            <p className="text-[10px] text-orange-600 font-bold tracking-tight">
-                              agaseke.me/{c.id}
-                            </p>
-                            {c.bio && (
-                              <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed line-clamp-2">
-                                {c.bio}
-                              </p>
-                            )}
-                            {c.focus && c.focus.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1.5">
-                                {c.focus.slice(0, 2).map((f: string) => (
-                                  <span
-                                    key={f}
-                                    className="text-[8px] bg-muted px-1.5 py-0.5 rounded font-bold text-muted-foreground uppercase tracking-wider"
-                                  >
-                                    {f}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                            {c.socials && Object.values(c.socials).some(Boolean) && (
-                              <div className="flex gap-1 mt-2">
-                                {Object.entries(c.socials as Record<string, string>).map(
-                                  ([platform, url]) =>
-                                    url ? (
-                                      <a
-                                        key={platform}
-                                        href={url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="w-5 h-5 rounded-full bg-muted flex items-center justify-center hover:bg-orange-100 transition-colors group"
-                                        title={platform}
-                                      >
-                                        <span className="text-[7px] font-black text-muted-foreground group-hover:text-orange-600 uppercase">
-                                          {platform === "instagram"
-                                            ? "IG"
-                                            : platform === "twitter"
-                                              ? "𝕏"
-                                              : platform === "youtube"
-                                                ? "YT"
-                                                : platform === "tiktok"
-                                                  ? "TK"
-                                                  : platform.slice(0, 2)}
-                                        </span>
-                                      </a>
-                                    ) : null,
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Stats Bar */}
-      <section className="border-y border-border bg-card">
-        <div className="max-w-5xl mx-auto px-6 py-10 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          <div>
-            <p className="text-3xl md:text-4xl font-black text-foreground">300+</p>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
-              Creators Onboarded
-            </p>
-          </div>
-          <div>
-            <p className="text-3xl md:text-4xl font-black text-foreground">USD 2k+</p>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
-              Paid Out to Creators
-            </p>
-          </div>
-          <div>
-            <p className="text-3xl md:text-4xl font-black text-foreground">30+</p>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
-              Countries Active
-            </p>
-          </div>
-          <div>
-            <p className="text-3xl md:text-4xl font-black text-foreground">10%</p>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
-              Platform Fee Only
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-card py-24 px-6 overflow-hidden">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-[1.05]">
-              Why Creators <span className="text-orange-600">Choose Agaseke</span>
-            </h2>
-          </div>
-
-          <div className="relative grid md:grid-cols-2 gap-0 md:gap-0">
-            {/* Left side — The broken system */}
-            <div className="relative bg-red-50/80 p-8 md:p-10 rounded-2xl md:rounded-r-none border border-red-100/50 md:border-r-0 z-10">
-              <div className="text-[10px] font-black uppercase tracking-[0.3em] text-red-600 mb-6">
-                What Platforms Built
-              </div>
-              <div className="space-y-6">
-                {[
-                  ["30% Fees", "They take nearly a third of what you earn."],
-                  ["No Mobile Money", "Built for card users. Africa uses MoMo."],
-                  ["You Don't Own Your Audience", "Followers are rented, not yours."],
-                  ["Scattered Tools", "WhatsApp + Forms + Store = chaos."],
-                ].map(([title, desc], i) => (
-                  <div key={i}>
-                    <p className="font-black text-foreground text-lg">{title}</p>
-                    <p className="text-sm text-slate-600 mt-0.5">{desc}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Center divider — visible on md+ */}
-            <div className="hidden md:flex absolute left-1/2 top-0 bottom-0 -translate-x-1/2 items-center justify-center z-20">
-              <div className="w-10 h-10 rounded-full bg-orange-600 text-white flex items-center justify-center font-black text-lg shadow-lg shadow-orange-200">
-                →
-              </div>
-            </div>
-
-            {/* Right side — Agaseke solution */}
-            <div className="relative bg-orange-50/80 p-8 md:p-10 rounded-2xl md:rounded-l-none border border-orange-100/50 md:border-l-0 mt-4 md:mt-0">
-              <div className="text-[10px] font-black uppercase tracking-[0.3em] text-orange-600 mb-6">
-                What Agaseke Built
-              </div>
-              <div className="space-y-6">
-                {[
-                  ["10% Flat Fee", "You keep 90%. No hidden cuts."],
-                  ["MoMo & Card Payments", "Tips, subscriptions, sales — all supported."],
-                  ["You Own Your Community", "Private space for your biggest fans."],
-                  [
-                    "One Link Does It All",
-                    "Content, store, events, messaging — together.",
-                  ],
-                ].map(([title, desc], i) => (
-                  <div key={i}>
-                    <p className="font-black text-foreground text-lg">{title}</p>
-                    <p className="text-sm text-slate-600 mt-0.5">{desc}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Mobile arrow */}
-          <div className="flex md:hidden justify-center my-4">
-            <div className="w-10 h-10 rounded-full bg-orange-600 text-white flex items-center justify-center font-black text-lg shadow-lg shadow-orange-200">
-              ↓
-            </div>
-          </div>
-
-          <div className="text-center mt-12">
-            <p className="text-xl md:text-2xl font-bold text-foreground">
-              Global platforms weren&apos;t built for African creators.
-            </p>
-            <p className="text-orange-600 font-black text-lg mt-1">Agaseke was.</p>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section className="py-24 px-6 bg-card border-y border-border">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter mb-4">
-              How It Works in <br />
-              <span className="text-orange-600">3 Simple Steps</span>
-            </h2>
-            <p className="text-muted-foreground">
-              From zero to earning — faster than posting your next reel.
-            </p>
-          </div>
-          <div className="relative grid md:grid-cols-3 gap-8">
-            {/* Connector line */}
-            {/* <div className="hidden md:block absolute top-16 left-[16.66%] right-[16.66%] h-0.5 bg-gradient-to-r from-orange-200 via-orange-400 to-orange-200" /> */}
-            <Step
-              icon={<Star className="text-orange-600" />}
-              title="Claim Your Space"
-              desc="Set up your creator page in under a minute. No credit card needed — just your name and what you create."
-              step={1}
-            />
-            <Step
-              icon={<Globe className="text-orange-600" />}
-              title="Move Your Fans Here"
-              desc="Share your Agaseke link on Instagram, TikTok, Twitter, or WhatsApp. The fans who value you most will follow."
-              step={2}
-            />
-            <Step
-              icon={<Users className="text-orange-600" />}
-              title="Start Earning"
-              desc="Post exclusive content, connect with your community, and get paid directly through tips, subscriptions, and sales."
-              step={3}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section className="py-24 px-6">
-        <div className="max-w-4xl mx-auto bg-slate-900 rounded-lg p-12 md:p-20 text-center text-white relative overflow-hidden shadow-2xl">
-          <div className="relative z-10">
-            <h2 className="text-orange-500 font-bold uppercase tracking-[0.2em] text-sm mb-8">
-              No Monthly Fees
-            </h2>
-            <div className="text-[100px] font-black leading-none mb-4">10%</div>
-            <p className="text-xl text-slate-300 max-w-lg mx-auto leading-relaxed mb-10">
-              We only make money when <strong>you</strong> make money. A small 10%
-              platform fee — that&apos;s it. No hidden charges, no subscription.
-              <span className="block mt-2 text-sm text-orange-400">
-                Perfect for individual creators and management companies onboarding
-                multiple talents.
+            <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-line pt-6 text-caption font-semibold text-muted-fg">
+              <span className="uppercase tracking-wide">Get paid via</span>
+              <span className="inline-flex items-center gap-1.5">
+                <Smartphone className="size-4 text-brand-strong" aria-hidden="true" />
+                Mobile Money
               </span>
-            </p>
-            <button
-              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-              className="bg-orange-600 hover:bg-white hover:text-orange-600 text-white px-10 py-5 rounded-lg font-black uppercase tracking-widest transition-all"
-            >
-              Start Your Community
-            </button>
+              <span className="inline-flex items-center gap-1.5">
+                <CreditCard className="size-4 text-brand-strong" aria-hidden="true" />
+                Visa & Mastercard
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Banknote className="size-4 text-brand-strong" aria-hidden="true" />
+                Bank payout
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-label font-bold uppercase tracking-wide text-muted-fg">
+                Creators on Agaseke
+              </p>
+              <Link
+                href="/explore"
+                className="inline-flex min-h-11 items-center gap-1 text-label font-semibold text-brand-strong"
+              >
+                Explore
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </Link>
+            </div>
+
+            <div className="space-y-3">
+              {featuredCreators.slice(0, 3).map((creator) => (
+                <Card
+                  key={creator.id}
+                  className="flex items-start gap-3 p-4 transition-colors hover:bg-surface-raised"
+                >
+                  <Avatar
+                    src={creator.profilePicture || creator.photoURL}
+                    name={creator.name}
+                    size="md"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="truncate text-body font-bold text-fg">
+                        {creator.name}
+                      </p>
+                      {creator.verified && (
+                        <CheckCircle2
+                          className="size-4 shrink-0 text-success"
+                          aria-label="Verified creator"
+                        />
+                      )}
+                      <span className="ml-auto text-body">
+                        {getFlagEmoji(creator.country || creator.location)}
+                      </span>
+                    </div>
+                    <p className="truncate text-caption font-semibold text-brand-strong">
+                      agaseke.me/{creator.id}
+                    </p>
+                    {creator.bio && (
+                      <p className="mt-1 line-clamp-2 text-caption leading-relaxed text-muted-fg">
+                        {creator.bio}
+                      </p>
+                    )}
+                    {creator.focus?.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {creator.focus.slice(0, 2).map((focus: string) => (
+                          <Badge key={focus} tone="neutral">
+                            {focus}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              ))}
+            </div>
           </div>
         </div>
       </section>
-      <MobileBottomBar />
+
+      <section className="border-y border-line bg-surface">
+        <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-6 px-4 py-10 sm:px-6 lg:grid-cols-4 lg:px-8">
+          {[
+            ["300+", "Creators onboarded"],
+            ["USD 2k+", "Paid to creators"],
+            ["30+", "Countries active"],
+            ["10%", "Platform fee only"],
+          ].map(([value, label]) => (
+            <div key={label} className="text-center">
+              <p className="text-heading font-black text-fg sm:text-display">{value}</p>
+              <p className="mt-1 text-caption font-semibold uppercase tracking-wide text-muted-fg">
+                {label}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-heading font-black text-fg sm:text-display">
+              Everything your audience needs, in one place
+            </h2>
+            <p className="mt-3 text-body text-muted-fg">
+              No patchwork of links, forms, and payment apps. Your page connects the whole
+              relationship with your supporters.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {FEATURES.map(({ icon: Icon, title, text }) => (
+              <Card key={title} className="p-5">
+                <span className="flex size-11 items-center justify-center rounded-control bg-brand-soft text-brand-strong">
+                  <Icon className="size-5" aria-hidden="true" />
+                </span>
+                <h3 className="mt-4 text-body-lg font-bold text-fg">{title}</h3>
+                <p className="mt-1.5 text-label leading-relaxed text-muted-fg">{text}</p>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-line bg-surface-sunken px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+        <div className="mx-auto w-full max-w-5xl">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-heading font-black text-fg sm:text-display">
+              Global platforms were not built for African creators
+            </h2>
+            <p className="mt-3 text-body text-muted-fg">
+              Agaseke starts with how creators here actually get paid and how fans
+              actually support them.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-4 md:grid-cols-2">
+            <Card className="p-6">
+              <p className="text-label font-bold uppercase tracking-wide text-muted-fg">
+                The usual stack
+              </p>
+              <ul className="mt-4 space-y-3">
+                {PAINS.map((item) => (
+                  <li key={item} className="flex gap-3 text-label text-muted-fg">
+                    <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-danger-bg text-danger">
+                      <XCircle className="size-3.5" aria-hidden="true" />
+                    </span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+
+            <Card className="border-brand-strong/30 bg-brand-soft p-6">
+              <p className="text-label font-bold uppercase tracking-wide text-brand-strong">
+                With Agaseke
+              </p>
+              <ul className="mt-4 space-y-3">
+                {WINS.map((item) => (
+                  <li key={item} className="flex gap-3 text-label text-fg">
+                    <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-surface text-success">
+                      <Check className="size-3.5" aria-hidden="true" />
+                    </span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      <section className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+        <div className="mx-auto w-full max-w-6xl">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-heading font-black text-fg sm:text-display">
+              From claim to first supporter in three steps
+            </h2>
+          </div>
+
+          <ol className="mt-10 grid gap-4 md:grid-cols-3">
+            {[
+              {
+                icon: Sparkles,
+                title: "Claim your space",
+                text: "Choose your link, add what you create, and publish your page. No credit card needed.",
+              },
+              {
+                icon: TrendingUp,
+                title: "Move your fans",
+                text: "Share your Agaseke link on Instagram, TikTok, X, or WhatsApp and bring your audience home.",
+              },
+              {
+                icon: HandCoins,
+                title: "Start earning",
+                text: "Post exclusive content, open your store, take bookings, and get paid directly.",
+              },
+            ].map(({ icon: Icon, title, text }, index) => (
+              <li key={title}>
+                <Card className="h-full p-6">
+                  <div className="flex items-center justify-between">
+                    <span className="flex size-11 items-center justify-center rounded-control bg-brand-soft text-brand-strong">
+                      <Icon className="size-5" aria-hidden="true" />
+                    </span>
+                    <span className="text-display font-black text-line-strong">
+                      {index + 1}
+                    </span>
+                  </div>
+                  <h3 className="mt-4 text-body-lg font-bold text-fg">{title}</h3>
+                  <p className="mt-1.5 text-label leading-relaxed text-muted-fg">
+                    {text}
+                  </p>
+                </Card>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section className="px-4 pb-8 sm:px-6 lg:px-8">
+        <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-sheet bg-brand-strong px-6 py-12 text-center text-on-brand sm:px-10 sm:py-16">
+          <p className="text-label font-bold uppercase tracking-[0.2em] text-on-brand/90">
+            No monthly fees
+          </p>
+          <p className="mt-3 text-hero font-black leading-none">10%</p>
+          <h2 className="mt-4 text-heading font-black sm:text-display">
+            We only earn when you earn
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-body leading-relaxed text-on-brand/90">
+            A flat 10% platform fee on what you earn. No subscriptions, no hidden charges,
+            no surprise cuts.
+          </p>
+          <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+            <Link
+              href="/onboarding"
+              className={buttonClasses({
+                variant: "secondary",
+                size: "lg",
+                className:
+                  "border-transparent bg-surface text-brand-strong hover:bg-surface-raised",
+              })}
+            >
+              Start your community
+            </Link>
+            <Link
+              href="/for-creators"
+              className={buttonClasses({
+                variant: "ghost",
+                size: "lg",
+                className: "text-on-brand hover:bg-on-brand/10",
+              })}
+            >
+              See how it works
+              <ArrowRight className="size-5" aria-hidden="true" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="px-4 py-12 sm:px-6 lg:px-8">
+        <div className="mx-auto flex w-full max-w-5xl flex-col items-center justify-between gap-4 rounded-card border border-line bg-surface p-6 sm:flex-row">
+          <div className="flex items-center gap-3">
+            <span className="flex size-11 items-center justify-center rounded-full bg-brand-soft text-brand-strong">
+              <Heart className="size-5" aria-hidden="true" />
+            </span>
+            <div>
+              <p className="text-body font-bold text-fg">Here to support creators?</p>
+              <p className="text-label text-muted-fg">
+                Explore pages, join communities, and back the work you love.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/explore"
+            className={buttonClasses({ variant: "secondary", size: "md" })}
+          >
+            Explore creators
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }

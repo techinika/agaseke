@@ -44,8 +44,8 @@ export function QRCode({
           value={value}
           size={size}
           level="M"
-          bgColor="#ffffff"
-          fgColor="#171717"
+          bgColor="var(--ag-surface)"
+          fgColor="var(--ag-fg)"
           title={title}
         />
       </div>
