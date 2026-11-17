@@ -8,6 +8,7 @@ import { formatCurrency } from "@/types/currency";
 export default function FolderModal({
   folder,
   products,
+  currency,
   formData,
   setFormData,
   onClose,
@@ -15,6 +16,7 @@ export default function FolderModal({
 }: {
   folder: any | null;
   products: Product[];
+  currency?: string;
   formData: any;
   setFormData: (data: any) => void;
   onClose: () => void;
@@ -86,7 +88,7 @@ export default function FolderModal({
   );
   const folderCurrency = firstFolderProduct
     ? getProductCurrency(firstFolderProduct)
-    : "RWF";
+    : currency || "RWF";
 
   const effectivePrice = formData.bundlePrice > 0 ? formData.bundlePrice : totalPrice;
 

@@ -86,3 +86,11 @@
 - Extracted pure planning logic to `scripts/money/incomeCurrencyPlan.mjs` and covered it with `tests/unit/income-currency-plan.test.ts` (stamping, idempotency, malformed currency rejection).
 - Documented the operational step in `docs/MONEY.md`.
 - **Verification:** new tests 2/2 passed; root `tsc` clean; scripts pass `node --check`.
+
+## 2026-11-17 (session, residual legacy path cleanup)
+- **Creator balances use currency-specific fields:** creator home stats now read `pendingPayout{CODE}`/`totalEarnings{CODE}` based on the creator's normalized currency (RWF keeps the legacy `pendingPayout`/`totalEarnings` fields); profile account-deletion guard now sums every currency-specific pending balance instead of labeling the legacy RWF field with the creator's primary currency (`features/creator-home/api.ts`, `components/pages/ProfilePage.tsx`, `lib/creatorDashboardService.ts`).
+- **Admin Top Earners is per-currency:** replaced the cross-currency `totalEarnings`/`totalEarningsUSD` merge and max-value ranking with query groups built from the payment-rail currencies, each sorted/limited by its own `totalEarnings{CODE}` field and rendered under an explicit currency heading (`components/pages/Dashboards/Admin/AdminPage.tsx`). No FX-normalized ranking is implied.
+- **Store folder bundles persist currency:** folder create paths now store the selected product/creator currency, and dashboard folder cards render that stored currency instead of hardcoded RWF; FolderModal falls back to the creator currency when no product is selected yet (`StorePage`, `FolderForm`, `FolderModal`, `FoldersList`).
+- **Dead legacy payout helpers removed:** deleted unused `subscribeToPendingPayoutCreators`/`approveCreatorPayout` RWF-only helpers from `lib/adminConfigService.ts`.
+- **Verification:** root `tsc` clean; worker `tsc` clean; `npm run lint:ci` clean; `npm test` 25 files/150 passed.
+- **Residual:** repo-wide lint still has 127 pre-existing `no-explicit-any` errors plus 243 warnings; production income backfill `--apply` and KES/UGX/TZS enablement still require owner approval/credentials.

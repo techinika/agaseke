@@ -88,6 +88,10 @@ export default function FolderForm() {
       };
       if (formData.imageUrl) data.imageUrl = formData.imageUrl;
       if (formData.bundlePrice > 0) data.bundlePrice = formData.bundlePrice;
+      const firstProduct = products.find((p) => p.id === formData.productIds[0]);
+      data.currency = firstProduct
+        ? getProductCurrency(firstProduct)
+        : String(creator?.currency || "RWF").toUpperCase();
 
       await addDoc(collection(db, "storeFolders"), data);
       toast.success("Folder created!");

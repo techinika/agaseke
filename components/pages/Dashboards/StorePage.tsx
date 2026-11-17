@@ -28,9 +28,12 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
-import { Product } from "@/types/store";
-import { Order } from "@/types/store";
-import { Coupon } from "@/types/store";
+import {
+  Product,
+  Order,
+  Coupon,
+  getProductCurrency,
+} from "@/types/store";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import {
   ProductsList,
@@ -223,6 +226,10 @@ export default function StorePage() {
       };
       if (folderData.imageUrl) data.imageUrl = folderData.imageUrl;
       if (folderData.bundlePrice > 0) data.bundlePrice = folderData.bundlePrice;
+      const firstProduct = products.find((p) => p.id === folderData.productIds[0]);
+      data.currency = firstProduct
+        ? getProductCurrency(firstProduct)
+        : String(creator?.currency || "RWF").toUpperCase();
 
       if (editingFolder) {
         await updateDoc(doc(db, "storeFolders", editingFolder.id), {
@@ -501,6 +508,7 @@ export default function StorePage() {
         <FolderModal
           folder={editingFolder}
           products={products}
+          currency={String(creator?.currency || "RWF").toUpperCase()}
           formData={folderFormData}
           setFormData={setFolderFormData}
           onClose={() => setEditingFolder(null)}

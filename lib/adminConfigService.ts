@@ -3,14 +3,11 @@ import {
   collection,
   deleteDoc,
   doc,
-  getDoc,
   onSnapshot,
   orderBy,
   query,
-  runTransaction,
   serverTimestamp,
   updateDoc,
-  where,
   type Unsubscribe,
 } from "firebase/firestore";
 import { db } from "@/db/firebase";
@@ -194,45 +191,4 @@ export async function updateCurrency(
 }
 export async function deleteCurrency(id: string) {
   await deleteDoc(doc(db, "currencies", id));
-}
-
-export function subscribeToPendingPayoutCreators(
-  minAmount: number,
-  onData: (items: Record<string, unknown>[]) => void,
-): Unsubscribe {
-  const q = query(collection(db, "creators"), where("pendingPayout", ">", minAmount));
-  return onSnapshot(q, (snapshot) => {
-    onData(
-      snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) })),
-    );
-  });
-}
-
-export async function approveCreatorPayout(
-  creator: { id: string; uid?: string; name?: string; payoutNumber?: string },
-  amount: number,
-) {
-  await runTransaction(db, async (transaction) => {
-    const creatorRef = doc(db, "creators", creator.id);
-    const payoutRef = doc(collection(db, "payouts"));
-    transaction.update(creatorRef, {
-      pendingPayout: 0,
-      lastPayoutAt: serverTimestamp(),
-    });
-    transaction.set(payoutRef, {
-      creatorId: creator.id,
-      creatorUid: creator.uid,
-      amount,
-      status: "completed",
-      approvedAt: serverTimestamp(),
-      method: "MoMo",
-      createdAt: serverTimestamp(),
-    });
-  });
-  let email: string | undefined;
-  if (creator.uid) {
-    const profileSnap = await getDoc(doc(db, "profiles", creator.uid));
-    email = profileSnap.data()?.email as string | undefined;
-  }
-  return { email };
 }

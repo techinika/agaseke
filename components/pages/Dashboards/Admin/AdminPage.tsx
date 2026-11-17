@@ -39,8 +39,21 @@ import { StatCard } from "@/components/parts/dashboard/StatCard";
 import { RankRow } from "@/components/parts/dashboard/RankRow";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/logger";
-import type { PayoutCurrency } from "@/lib/payouts/currency";
+import {
+  normalizePayoutCurrency,
+  totalEarningsField,
+  type PayoutCurrency,
+} from "@/lib/payouts/currency";
+import { PAYMENT_RAIL_PROVIDER_LIST } from "@/lib/money";
 import { formatCurrency } from "@/types/currency";
+
+const TOP_EARNER_CURRENCIES = Array.from(
+  new Set(
+    PAYMENT_RAIL_PROVIDER_LIST.flatMap((provider) => provider.currencies)
+      .map((code) => normalizePayoutCurrency(code))
+      .filter((code): code is PayoutCurrency => code !== null),
+  ),
+);
 
 function totalsValue(totals: Record<string, number>): string {
   const entries = Object.entries(totals);
@@ -85,7 +98,9 @@ export default function AdminDashboard() {
   const [rejectionReason, setRejectionReason] = useState("");
   const [transactionFilter, setTransactionFilter] = useState<"day" | "week" | "month" | "annual">("month"); // New state for transaction amount filter
 
-  const [topEarners, setTopEarners] = useState<any[]>([]);
+  const [topEarnerGroups, setTopEarnerGroups] = useState<
+    Array<{ currency: PayoutCurrency; earners: any[] }>
+  >([]);
   const [topViewed, setTopViewed] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [verifications, setVerifications] = useState<any[]>([]);
@@ -382,22 +397,30 @@ export default function AdminDashboard() {
       const avgAmount = successfulCount > 0 ? Math.round(totalSuccessfulAmount / successfulCount) : 0;
       setRawTransactions(allTransactions);
 
-      // Top earners
-      const earnersQuery = query(
-        collection(db, "creators"),
-        orderBy("totalEarnings", "desc"),
-        limit(5),
-      );
-      const earnersSnap = await getDocs(earnersQuery);
-
-      let earnersUSDSnap: any = { docs: [] as any[] };
-      try {
-        earnersUSDSnap = await getDocs(
-          query(collection(db, "creators"), orderBy("totalEarningsUSD", "desc"), limit(5)),
-        );
-      } catch {
-        // legacy field/index may not exist
-      }
+      const earnerGroups = (
+        await Promise.all(
+          TOP_EARNER_CURRENCIES.map(async (currency) => {
+            const field = totalEarningsField(currency);
+            try {
+              const snap = await getDocs(
+                query(
+                  collection(db, "creators"),
+                  orderBy(field, "desc"),
+                  limit(5),
+                ),
+              );
+              return {
+                currency,
+                earners: snap.docs
+                  .map((d: any) => ({ id: d.id, ...d.data() }))
+                  .filter((earner: any) => Number(earner[field] ?? 0) > 0),
+              };
+            } catch {
+              return { currency, earners: [] as any[] };
+            }
+          }),
+        )
+      ).filter((group) => group.earners.length > 0);
 
       // Top viewed
       const viewsQuery = query(
@@ -470,22 +493,7 @@ export default function AdminDashboard() {
         pendingTransactionCount: pendingCount,
         pendingTransactionAmount: pendingAmount,
       });
-      const rwfEarners = earnersSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
-      const usdEarners = earnersUSDSnap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
-      const mergedMap = new Map<string, any>();
-      for (const e of [...rwfEarners, ...usdEarners]) mergedMap.set(e.id, e);
-      const mergedEarners = Array.from(mergedMap.values());
-      const earningsScore = (c: any) => {
-        let best = Number(c.totalEarnings || 0);
-        for (const [k, v] of Object.entries(c)) {
-          if (/^totalEarnings[A-Z]{3}$/.test(k)) {
-            const n = Number(v || 0);
-            if (Number.isFinite(n)) best = Math.max(best, n);
-          }
-        }
-        return best;
-      };
-      setTopEarners(mergedEarners.sort((a: any, b: any) => earningsScore(b) - earningsScore(a)).slice(0, 5));
+      setTopEarnerGroups(earnerGroups);
       setTopViewed(viewsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
       setWithdrawals(
         withdrawalSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
@@ -1563,31 +1571,29 @@ export default function AdminDashboard() {
               </div>
               <h2 className="text-xl font-bold uppercase">Top Earners</h2>
             </div>
-            <div className="space-y-4">
-              {topEarners.map((creator, i) => (
-                <RankRow
-                  key={creator.id}
-                  rank={i + 1}
-                  name={creator.name || creator.id}
-                  subText={(() => {
-                    const parts: string[] = [];
-                    if (creator.totalEarnings) {
-                      parts.push(
-                        formatCurrency(
-                          Number(creator.totalEarnings),
-                          String(creator.currency || "RWF").toUpperCase(),
-                        ),
-                      );
-                    }
-                    for (const [k, v] of Object.entries(creator)) {
-                      const m = k.match(/^totalEarnings([A-Z]{3})$/);
-                      if (m && Number(v)) parts.push(`${Number(v).toLocaleString()} ${m[1]}`);
-                    }
-                    return parts.length ? parts.join(" / ") : "0";
-                  })()}
-                />
+            <div className="space-y-6">
+              {topEarnerGroups.map((group) => (
+                <div key={group.currency} className="space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                    {group.currency}
+                  </p>
+                  {group.earners.map((creator, i) => {
+                    const field = totalEarningsField(group.currency);
+                    return (
+                      <RankRow
+                        key={`${group.currency}-${creator.id}`}
+                        rank={i + 1}
+                        name={creator.name || creator.id}
+                        subText={formatCurrency(
+                          Number(creator[field] ?? 0),
+                          group.currency,
+                        )}
+                      />
+                    );
+                  })}
+                </div>
               ))}
-              {topEarners.length === 0 && (
+              {topEarnerGroups.length === 0 && (
                 <p className="text-muted-foreground text-sm text-center py-4">
                   No data yet
                 </p>

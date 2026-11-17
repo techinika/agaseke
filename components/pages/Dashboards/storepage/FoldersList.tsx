@@ -13,6 +13,7 @@ export interface StoreFolder {
   discountEnabled?: boolean;
   discountPercentage?: number;
   bundlePrice?: number;
+  currency?: string;
 }
 
 export default function FoldersList({
@@ -90,7 +91,7 @@ export default function FoldersList({
               )}
               {(folder.bundlePrice ?? 0) > 0 && (
                 <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
-                  {formatCurrency(folder.bundlePrice ?? 0, "RWF")}
+                  {formatCurrency(folder.bundlePrice ?? 0, folder.currency || "RWF")}
                 </span>
               )}
             </div>
