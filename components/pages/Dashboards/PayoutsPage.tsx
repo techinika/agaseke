@@ -304,6 +304,11 @@ export default function PayoutsPage() {
                     ))}
                   </div>
                 )}
+                {hasOtherCurrencyBalances && (
+                  <p className="text-[10px] text-muted-foreground mt-3">
+                    You can convert other currency balances at withdrawal (locked quote, rates shown at request time).
+                  </p>
+                )}
               </div>
               <div className="bg-card p-8 rounded-lg border border-border shadow-sm">
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">

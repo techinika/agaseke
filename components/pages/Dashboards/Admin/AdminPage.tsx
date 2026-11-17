@@ -506,7 +506,10 @@ export default function AdminDashboard() {
       const earningsScore = (c: any) => {
         let best = Number(c.totalEarnings || 0);
         for (const [k, v] of Object.entries(c)) {
-          if (/^totalEarnings[A-Z]{3}$/.test(k)) best = Math.max(best, Number(v || 0) * 1000);
+          if (/^totalEarnings[A-Z]{3}$/.test(k)) {
+            const n = Number(v || 0);
+            if (Number.isFinite(n)) best = Math.max(best, n);
+          }
         }
         return best;
       };
@@ -1376,12 +1379,17 @@ export default function AdminDashboard() {
                         {req.creatorName || "Creator"}
                       </p>
                       <p className="text-lg font-black text-foreground">
-                        {req.amount?.toLocaleString()} {req.currency ?? ""}
+                        {Number(req.amount || 0).toLocaleString()} {req.payoutCurrency || req.currency || ""}
                       </p>
                       <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
                         {req.method} • {req.accountNumber}
                         {req.rail ? ` • ${String(req.rail).replace("_", " ")}` : ""}
                       </p>
+                      {Array.isArray(req.sourceDebits) && req.sourceDebits.length > 0 && (
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          Sources: {req.sourceDebits.map((s: any) => `${Number(s.amountMajor || 0).toLocaleString()} ${s.currency}${s.currency !== (req.payoutCurrency || req.currency) ? `→${Number(s.payoutAmountMajor || 0).toLocaleString()} ${req.payoutCurrency || req.currency}` : ""}`).join(", ")}
+                        </p>
+                      )}
                     </div>
                     <div className="flex gap-2">
                       <button
