@@ -93,7 +93,7 @@ export default function SupportersPage() {
     const grouped = new Map<string, AggregatedSupporter>();
 
     supports.forEach((support) => {
-      const cur = support.currency || "RWF";
+      const cur = support.currency || "";
       const origId = support.supporterId || "anonymous";
       const id = `${origId}_${cur}`;
       const existing = grouped.get(id);
@@ -123,7 +123,7 @@ export default function SupportersPage() {
   }, [supports]);
 
   const uniqueCurrencies = useMemo(() => {
-    return [...new Set(supports.map((s) => s.currency || "RWF"))];
+    return [...new Set(supports.map((s) => s.currency).filter(Boolean))] as string[];
   }, [supports]);
 
   const [resolvedSupporters, setResolvedSupporters] = useState<AggregatedSupporter[]>([]);

@@ -46,6 +46,20 @@ export default function OrderForm() {
     const product = products.find((p) => p.id === productId);
     if (!product) return;
 
+    if (formData.productIds.length > 0) {
+      const firstProduct = products.find(
+        (p) => p.id === formData.productIds[0].productId,
+      );
+      const firstCurrency = firstProduct ? getProductCurrency(firstProduct) : "";
+      const nextCurrency = getProductCurrency(product);
+      if (firstCurrency && nextCurrency && firstCurrency !== nextCurrency) {
+        toast.error(
+          `This order is in ${firstCurrency}. Remove those items before adding ${nextCurrency} products.`,
+        );
+        return;
+      }
+    }
+
     setFormData((prev) => ({
       ...prev,
       productIds: [
@@ -80,6 +94,13 @@ export default function OrderForm() {
     0,
   );
 
+  const firstOrderProduct = products.find(
+    (p) => p.id === formData.productIds[0]?.productId,
+  );
+  const orderCurrency = firstOrderProduct
+    ? getProductCurrency(firstOrderProduct)
+    : String(creator?.currency || "RWF").toUpperCase();
+
   const handleSubmit = async () => {
     if (!creator?.uid) { toast.error("Not authenticated"); return; }
     if (!formData.customerName || !formData.customerEmail || formData.productIds.length === 0) {
@@ -100,6 +121,7 @@ export default function OrderForm() {
         customerId: "",
         status: "pending" as const,
         totalAmount,
+        currency: orderCurrency,
         paymentStatus: "unpaid" as const,
         paymentMethod: "",
         createdAt: serverTimestamp(),
@@ -209,7 +231,10 @@ export default function OrderForm() {
                       className="w-16 bg-card border border-border-strong rounded-lg px-2 py-1 text-center"
                     />
                     <p className="font-bold w-24 text-right">
-                      {formatCurrency(item.price * item.quantity, "RWF")}
+                      {formatCurrency(
+                        item.price * item.quantity,
+                        product ? getProductCurrency(product) : orderCurrency,
+                      )}
                     </p>
                     <button
                       onClick={() => removeProduct(item.productId)}
@@ -227,7 +252,7 @@ export default function OrderForm() {
             <div className="p-4 bg-orange-50 rounded-xl flex justify-between items-center">
               <p className="font-bold">Total Amount</p>
               <p className="text-xl font-bold text-orange-600">
-                {formatCurrency(totalAmount, "RWF")}
+                {formatCurrency(totalAmount, orderCurrency)}
               </p>
             </div>
           )}

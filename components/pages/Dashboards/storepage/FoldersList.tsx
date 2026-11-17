@@ -1,7 +1,20 @@
 import React from "react";
 import { FileText, Edit, Trash2 } from "lucide-react";
-import { Product, getProductCurrency, getProductPrice } from "@/types/store";
+import { Product } from "@/types/store";
 import { formatCurrency } from "@/types/currency";
+
+export interface StoreFolder {
+  id: string;
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  active?: boolean;
+  productIds?: string[];
+  discountEnabled?: boolean;
+  discountPercentage?: number;
+  bundlePrice?: number;
+  currency?: string;
+}
 
 export default function FoldersList({
   folders,
@@ -9,9 +22,9 @@ export default function FoldersList({
   onEdit,
   onDelete,
 }: {
-  folders: any[];
+  folders: StoreFolder[];
   products: Product[];
-  onEdit: (folder: any) => void;
+  onEdit: (folder: StoreFolder) => void;
   onDelete: (id: string) => void;
 }) {
   if (folders.length === 0) {
@@ -28,7 +41,7 @@ export default function FoldersList({
 
   const getProductNames = (productIds: string[]) => {
     return productIds
-      .map((id) => products.find((p) => p.id)?.name)
+      .map((id) => products.find((p) => p.id === id)?.name)
       .filter(Boolean)
       .join(", ");
   };
@@ -76,9 +89,9 @@ export default function FoldersList({
                   {folder.discountPercentage}% OFF
                 </span>
               )}
-              {folder.bundlePrice > 0 && (
+              {(folder.bundlePrice ?? 0) > 0 && (
                 <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
-                  {formatCurrency(folder.bundlePrice, "RWF")}
+                  {formatCurrency(folder.bundlePrice ?? 0, folder.currency || "RWF")}
                 </span>
               )}
             </div>

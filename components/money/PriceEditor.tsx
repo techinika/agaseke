@@ -104,7 +104,7 @@ export default function PriceEditor({
     setExtraCodes((prev) => prev.filter((c) => c !== code));
     let nextPrimary = currency;
     if (code === currency) {
-      nextPrimary = rows.find((c) => c !== code) || "RWF";
+      nextPrimary = (rows.find((c) => c !== code) || currency) as CurrencyCode;
     }
     emit(nextPrimary, next);
   };

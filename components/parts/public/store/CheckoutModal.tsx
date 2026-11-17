@@ -19,6 +19,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService";
 import { CartItem, ShippingAddress, getProductCurrency } from "./types";
 import { formatCurrency } from "@/types/currency";
+import { isCurrencySupportedByMethod } from "@/lib/money/rails";
 
 const platformSharePercentage =
   Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
@@ -46,7 +47,7 @@ export function CheckoutModal({
   currentUser: any;
   currency?: string;
 }) {
-  const isUSD = currency === "USD";
+  const momoSupported = isCurrencySupportedByMethod("momo", currency);
   const [step, setStep] = useState<"info" | "shipping" | "payment">("info");
   const [couponCode, setCouponCode] = useState("");
   const [couponDiscount, setCouponDiscount] = useState(0);
@@ -61,7 +62,7 @@ export function CheckoutModal({
   const [processing, setProcessing] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"momo" | "card">(
-    currency === "USD" ? "card" : "momo",
+    momoSupported ? "momo" : "card",
   );
 
   const hasPhysicalProducts = cart.some(
@@ -151,7 +152,7 @@ export function CheckoutModal({
       return;
     }
 
-    const method = isUSD ? "card" : paymentMethod;
+    const method = momoSupported ? paymentMethod : "card";
 
     if (method === "momo" && !shippingAddress.phone) {
       toast.error("Please enter your phone number");
@@ -394,10 +395,9 @@ export function CheckoutModal({
 
               <div className="space-y-3">
                 <label className="text-sm font-bold">Payment Method</label>
-                {isUSD ? (
+                {!momoSupported ? (
                   <p className="text-sm text-muted-foreground">
-                    This order is priced in USD, so card payment is the only
-                    option.
+                    Mobile Money is not available for this currency, so card payment is the only option.
                   </p>
                 ) : (
                   <div className="grid grid-cols-2 gap-3">
@@ -427,7 +427,7 @@ export function CheckoutModal({
                 )}
               </div>
 
-              {!isUSD && paymentMethod === "momo" && (
+              {momoSupported && paymentMethod === "momo" && (
                 <div className="bg-amber-50 rounded-xl p-4 flex items-start gap-3">
                   <AlertCircle size={20} className="text-amber-600 mt-0.5" />
                   <p className="text-sm text-amber-800">
@@ -437,7 +437,7 @@ export function CheckoutModal({
                 </div>
               )}
 
-              {!isUSD && paymentMethod === "momo" && (
+              {momoSupported && paymentMethod === "momo" && (
                 <div className="space-y-3">
                   <label className="text-sm font-bold">
                     MTN Mobile Money Number

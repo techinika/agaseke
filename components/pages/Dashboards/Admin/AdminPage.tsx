@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { sendCommsEmail } from "@/lib/commsService";
 import { auth, db } from "@/db/firebase";
 import {
@@ -16,11 +16,9 @@ import {
   doc,
   updateDoc,
   addDoc,
-  Timestamp,
   serverTimestamp,
 } from "firebase/firestore";
 import {
-  TrendingUp,
   Users,
   Eye,
   DollarSign,
@@ -41,7 +39,34 @@ import { StatCard } from "@/components/parts/dashboard/StatCard";
 import { RankRow } from "@/components/parts/dashboard/RankRow";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/logger";
-import type { PayoutCurrency } from "@/lib/payouts/currency";
+import {
+  normalizePayoutCurrency,
+  totalEarningsField,
+  type PayoutCurrency,
+} from "@/lib/payouts/currency";
+import { PAYMENT_RAIL_PROVIDER_LIST } from "@/lib/money";
+import { formatCurrency } from "@/types/currency";
+
+const TOP_EARNER_CURRENCIES = Array.from(
+  new Set(
+    PAYMENT_RAIL_PROVIDER_LIST.flatMap((provider) => provider.currencies)
+      .map((code) => normalizePayoutCurrency(code))
+      .filter((code): code is PayoutCurrency => code !== null),
+  ),
+);
+
+function totalsValue(totals: Record<string, number>): string {
+  const entries = Object.entries(totals);
+  if (entries.length === 0) return "0";
+  if (entries.length === 1) return formatCurrency(entries[0][1], entries[0][0]);
+  return "Multi-currency";
+}
+
+function totalsDetail(totals: Record<string, number>, empty = "No activity yet"): string {
+  const entries = Object.entries(totals).sort(([left], [right]) => left.localeCompare(right));
+  if (entries.length === 0) return empty;
+  return entries.map(([code, amount]) => formatCurrency(amount, code)).join(" · ");
+}
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
@@ -50,6 +75,10 @@ export default function AdminDashboard() {
     totalPlatformIncome: 0,
     totalPayoutsProcessed: 0,
     totalPendingPayouts: 0,
+    incomeByCurrency: {} as Record<string, number>,
+    payoutsByCurrency: {} as Record<string, number>,
+    pendingByCurrency: {} as Record<string, number>,
+    transactionsByCurrency: {} as Record<string, number>,
     profileCount: 0,
     creatorCount: 0,
     totalViews: 0,
@@ -67,22 +96,16 @@ export default function AdminDashboard() {
     pendingTransactionAmount: 0,
   });
   const [rejectionReason, setRejectionReason] = useState("");
-  const [timeFilter, setTimeFilter] = useState<"all" | "7d" | "30d">("all");
   const [transactionFilter, setTransactionFilter] = useState<"day" | "week" | "month" | "annual">("month"); // New state for transaction amount filter
 
-  const [topEarners, setTopEarners] = useState<any[]>([]);
+  const [topEarnerGroups, setTopEarnerGroups] = useState<
+    Array<{ currency: PayoutCurrency; earners: any[] }>
+  >([]);
   const [topViewed, setTopViewed] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [verifications, setVerifications] = useState<any[]>([]);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
-  const [visitorStats, setVisitorStats] = useState<{
-    today: number;
-    week: number;
-    month: number;
-  }>({ today: 0, week: 0, month: 0 });
-  const [monthlyData, setMonthlyData] = useState<
-    { month: string; income: number; payouts: number }[]
-  >([]);
+  const [fxHealth, setFxHealth] = useState<any>(null);
 
   const [growthFilter, setGrowthFilter] = useState<"7d" | "weekly" | "monthly" | "annual" | "yoy">("7d");
   const [userGrowthData, setUserGrowthData] = useState<{
@@ -95,21 +118,12 @@ export default function AdminDashboard() {
   const [rawIncome, setRawIncome] = useState<any[]>([]);
   const [rawPayouts, setRawPayouts] = useState<any[]>([]);
   const [rawTransactions, setRawTransactions] = useState<any[]>([]);
-  const [txBreakdown, setTxBreakdown] = useState<{
-    support: { successful: number; failed: number; pending: number };
-    store: { successful: number; failed: number; pending: number };
-    booking: { successful: number; failed: number; pending: number };
-    gathering: { successful: number; failed: number; pending: number };
-  }>({
-    support: { successful: 0, failed: 0, pending: 0 },
-    store: { successful: 0, failed: 0, pending: 0 },
-    booking: { successful: 0, failed: 0, pending: 0 },
-    gathering: { successful: 0, failed: 0, pending: 0 },
-  });
 
   // Process transaction chart data based on filter
-  useEffect(() => {
-    if (rawIncome.length === 0 && rawPayouts.length === 0) return;
+  const monthlyData = useMemo<
+    { month: string; income: number; payouts: number }[]
+  >(() => {
+    if (rawIncome.length === 0 && rawPayouts.length === 0) return [];
 
     const now = new Date();
     const newData: { month: string; income: number; payouts: number }[] = [];
@@ -203,12 +217,23 @@ export default function AdminDashboard() {
       }
     }
 
-    setMonthlyData(newData);
+    return newData;
   }, [transactionFilter, rawIncome, rawPayouts]);
 
   // Process transaction breakdown by type, status, and time period
-  useEffect(() => {
-    if (rawTransactions.length === 0) return;
+  const txBreakdown = useMemo<{
+    support: { successful: number; failed: number; pending: number };
+    store: { successful: number; failed: number; pending: number };
+    booking: { successful: number; failed: number; pending: number };
+    gathering: { successful: number; failed: number; pending: number };
+  }>(() => {
+    if (rawTransactions.length === 0)
+      return {
+        support: { successful: 0, failed: 0, pending: 0 },
+        store: { successful: 0, failed: 0, pending: 0 },
+        booking: { successful: 0, failed: 0, pending: 0 },
+        gathering: { successful: 0, failed: 0, pending: 0 },
+      };
     const now = new Date();
     const breakdown = {
       support: { successful: 0, failed: 0, pending: 0 },
@@ -251,7 +276,7 @@ export default function AdminDashboard() {
       else if (isPending) breakdown[txType as keyof typeof breakdown].pending += amt;
     });
 
-    setTxBreakdown(breakdown);
+    return breakdown;
   }, [transactionFilter, rawTransactions]);
 
   const [modal, setModal] = useState<{
@@ -266,8 +291,13 @@ export default function AdminDashboard() {
       // Get platform income
       const incomeSnap = await getDocs(collection(db, "platformIncome"));
       let totalIncome = 0;
+      const incomeByCurrency: Record<string, number> = {};
       incomeSnap.forEach((doc) => {
-        totalIncome += doc.data().amount || 0;
+        const data = doc.data();
+        const amount = Number(data.amount) || 0;
+        const code = typeof data.currency === "string" && data.currency ? data.currency : "RWF";
+        totalIncome += amount;
+        incomeByCurrency[code] = (incomeByCurrency[code] || 0) + amount;
       });
 
       // Get profiles count
@@ -299,86 +329,41 @@ export default function AdminDashboard() {
       // Get total payouts processed (from payouts collection)
       const payoutsSnap = await getDocs(collection(db, "payouts"));
       let totalPayoutsProcessed = 0;
+      const payoutsByCurrency: Record<string, number> = {};
       payoutsSnap.forEach((doc) => {
-        totalPayoutsProcessed += doc.data().amount || 0;
+        const data = doc.data();
+        const amount = Number(data.amount) || 0;
+        const code = typeof data.currency === "string" && data.currency ? data.currency : "RWF";
+        totalPayoutsProcessed += amount;
+        payoutsByCurrency[code] = (payoutsByCurrency[code] || 0) + amount;
       });
 
-      // Get total pending payouts (sum of pendingPayout from all creators + pending withdrawal requests)
+      // Get total pending payouts (sum of pendingPayout* fields from all creators)
       let totalPendingPayouts = 0;
+      const pendingByCurrency: Record<string, number> = {};
       creatorsSnap.forEach((doc) => {
-        totalPendingPayouts += doc.data().pendingPayout || 0;
+        const data = doc.data();
+        const rwfPending = Number(data.pendingPayout) || 0;
+        if (rwfPending) {
+          totalPendingPayouts += rwfPending;
+          pendingByCurrency.RWF = (pendingByCurrency.RWF || 0) + rwfPending;
+        }
+        for (const [key, value] of Object.entries(data)) {
+          const match = key.match(/^pendingPayout([A-Z]{3})$/);
+          if (!match) continue;
+          const amount = Number(value) || 0;
+          if (!amount) continue;
+          totalPendingPayouts += amount;
+          pendingByCurrency[match[1]] = (pendingByCurrency[match[1]] || 0) + amount;
+        }
       });
 
       // Get monthly data for charts from platformIncome and payouts collections
       const platformIncomeSnap = await getDocs(
         collection(db, "platformIncome"),
       );
-      const months = [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ];
-      const currentMonth = new Date().getMonth();
-      const currentYear = new Date().getFullYear();
-      const monthlyStats: { month: string; income: number; payouts: number }[] =
-        [];
       const allPlatformIncome = platformIncomeSnap.docs.map((d) => d.data());
       const allPayouts = payoutsSnap.docs.map((d) => d.data());
-
-      // Initialize last 6 months with 0
-      for (let i = 5; i >= 0; i--) {
-        const monthIndex = (currentMonth - i + 12) % 12;
-        const yearOffset = currentMonth - i < 0 ? -1 : 0;
-        const year = currentYear + yearOffset;
-        const monthName = months[monthIndex];
-
-        let monthIncome = 0;
-        let monthPayouts = 0;
-
-        // Get platform income for this month
-        allPlatformIncome.forEach((income) => {
-          const createdAt = income.createdAt;
-          if (createdAt && typeof createdAt.toDate === "function") {
-            const docDate = createdAt.toDate();
-            if (
-              docDate.getMonth() === monthIndex &&
-              docDate.getFullYear() === year
-            ) {
-              monthIncome += income.amount || 0;
-            }
-          }
-        });
-
-        // Get payouts for this month
-        allPayouts.forEach((payout) => {
-          const createdAt = payout.createdAt;
-          if (createdAt && typeof createdAt.toDate === "function") {
-            const docDate = createdAt.toDate();
-            if (
-              docDate.getMonth() === monthIndex &&
-              docDate.getFullYear() === year
-            ) {
-              monthPayouts += payout.amount || 0;
-            }
-          }
-        });
-
-        monthlyStats.push({
-          month: monthName,
-          income: monthIncome,
-          payouts: monthPayouts,
-        });
-      }
-      setMonthlyData(monthlyStats);
 
       // Store raw data for transaction filtering
       setRawIncome(allPlatformIncome);
@@ -389,14 +374,18 @@ export default function AdminDashboard() {
       const allTransactions = transactionsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       let totalSuccessfulAmount = 0;
       let successfulCount = 0;
+      const transactionsByCurrency: Record<string, number> = {};
       let failedCount = 0;
       let failedAmount = 0;
       let pendingCount = 0;
       let pendingAmount = 0;
       allTransactions.forEach((tx: any) => {
         if (tx.status === "successful" || tx.status === "success") {
-          totalSuccessfulAmount += Number(tx.amount) || 0;
+          const amount = Number(tx.amount) || 0;
+          const code = typeof tx.currency === "string" && tx.currency ? tx.currency : "RWF";
+          totalSuccessfulAmount += amount;
           successfulCount += 1;
+          transactionsByCurrency[code] = (transactionsByCurrency[code] || 0) + amount;
         } else if (tx.status === "failed") {
           failedCount += 1;
           failedAmount += Number(tx.amount) || 0;
@@ -408,20 +397,30 @@ export default function AdminDashboard() {
       const avgAmount = successfulCount > 0 ? Math.round(totalSuccessfulAmount / successfulCount) : 0;
       setRawTransactions(allTransactions);
 
-      // Top earners
-      const earnersQuery = query(
-        collection(db, "creators"),
-        orderBy("totalEarnings", "desc"),
-        limit(5),
-      );
-      const earnersSnap = await getDocs(earnersQuery);
-
-      const earnersUSDQuery = query(
-        collection(db, "creators"),
-        orderBy("totalEarningsUSD", "desc"),
-        limit(5),
-      );
-      const earnersUSDSnap = await getDocs(earnersUSDQuery);
+      const earnerGroups = (
+        await Promise.all(
+          TOP_EARNER_CURRENCIES.map(async (currency) => {
+            const field = totalEarningsField(currency);
+            try {
+              const snap = await getDocs(
+                query(
+                  collection(db, "creators"),
+                  orderBy(field, "desc"),
+                  limit(5),
+                ),
+              );
+              return {
+                currency,
+                earners: snap.docs
+                  .map((d: any) => ({ id: d.id, ...d.data() }))
+                  .filter((earner: any) => Number(earner[field] ?? 0) > 0),
+              };
+            } catch {
+              return { currency, earners: [] as any[] };
+            }
+          }),
+        )
+      ).filter((group) => group.earners.length > 0);
 
       // Top viewed
       const viewsQuery = query(
@@ -470,16 +469,14 @@ export default function AdminDashboard() {
         }),
       );
 
-      // Visitor stats (based on profile views in last 24h/week/month - simulated)
-      const today = Math.floor(Math.random() * 500) + 100;
-      const week = Math.floor(today * 7 * (0.8 + Math.random() * 0.4));
-      const month = Math.floor(today * 30 * (0.8 + Math.random() * 0.4));
-      setVisitorStats({ today, week, month });
-
       setStats({
         totalPlatformIncome: totalIncome,
         totalPayoutsProcessed,
         totalPendingPayouts,
+        incomeByCurrency,
+        payoutsByCurrency,
+        pendingByCurrency,
+        transactionsByCurrency,
         profileCount: profilesSnap.size,
         creatorCount: creatorsSnap.size,
         totalViews,
@@ -496,15 +493,7 @@ export default function AdminDashboard() {
         pendingTransactionCount: pendingCount,
         pendingTransactionAmount: pendingAmount,
       });
-      const rwfEarners = earnersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      const usdEarners = earnersUSDSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      const mergedEarners = [...rwfEarners];
-      for (const usdEarner of usdEarners) {
-        if (!mergedEarners.some((e) => e.id === usdEarner.id)) {
-          mergedEarners.push(usdEarner);
-        }
-      }
-      setTopEarners(mergedEarners.sort((a: any, b: any) => Math.max(b.totalEarnings || 0, (b.totalEarningsUSD || 0) * 1000) - Math.max(a.totalEarnings || 0, (a.totalEarningsUSD || 0) * 1000)).slice(0, 5));
+      setTopEarnerGroups(earnerGroups);
       setTopViewed(viewsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
       setWithdrawals(
         withdrawalSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
@@ -515,6 +504,22 @@ export default function AdminDashboard() {
         seenUids.add(item.uid);
         return true;
       }));
+
+      try {
+        if (auth.currentUser) {
+          const token = await auth.currentUser.getIdToken();
+          const res = await fetch("/api/admin/fx/health", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            setFxHealth(await res.json());
+          } else {
+            setFxHealth({ ok: false, status: "error", message: `HTTP ${res.status}` });
+          }
+        }
+      } catch {
+        setFxHealth({ ok: false, status: "error", message: "Failed to load FX health" });
+      }
     } catch (error) {
       console.error("Error fetching admin stats:", error);
     } finally {
@@ -584,7 +589,9 @@ export default function AdminDashboard() {
       setRecentActivities(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
 
-    fetchData();
+    queueMicrotask(() => {
+      void fetchData();
+    });
 
     return () => {
       unsubWithdrawals();
@@ -780,7 +787,8 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    calculateUserGrowth();
+    queueMicrotask(calculateUserGrowth);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [growthFilter]);
 
   const handleAction = async () => {
@@ -832,7 +840,7 @@ export default function AdminDashboard() {
 
         const approvedAmount = Number(payload.amount ?? target.amount);
         const approvedCurrency =
-          payload.currency || (target.currency as PayoutCurrency) || "RWF";
+          (payload.currency || target.currency) as PayoutCurrency;
         const approvedMethod = String(payload.method || target.method || "MoMo");
         const approvedAccount = String(
           payload.accountNumber || target.accountNumber || "",
@@ -870,7 +878,7 @@ export default function AdminDashboard() {
         await logActivity({
           level: type === "approve" ? "success" : "warning",
           category: "payout",
-          message: `Withdrawal ${type === "approve" ? "approved" : "rejected"}: ${target.amount?.toLocaleString()} ${target.currency || "RWF"} for ${target.creatorName}`,
+          message: `Withdrawal ${type === "approve" ? "approved" : "rejected"}: ${target.amount?.toLocaleString()} ${target.currency ?? ""} for ${target.creatorName}`,
           creatorId: target.creatorId,
           creatorHandle: target.creatorHandle,
         });
@@ -964,10 +972,10 @@ export default function AdminDashboard() {
             </p>
           </div>
           <p className="text-5xl font-black tracking-tight">
-            {stats.totalTransactionAmount.toLocaleString()} RWF
+            {totalsValue(stats.transactionsByCurrency)}
           </p>
           <p className="text-xs font-medium opacity-75 mt-2">
-            {stats.successfulTransactionCount} successful transactions
+            {totalsDetail(stats.transactionsByCurrency)} · {stats.successfulTransactionCount} successful transactions
           </p>
         </div>
 
@@ -975,7 +983,8 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard
             label="Platform Income"
-            value={`${stats.totalPlatformIncome.toLocaleString()} RWF`}
+            value={totalsValue(stats.incomeByCurrency)}
+            detail={totalsDetail(stats.incomeByCurrency, "No platform income yet")}
             icon={<DollarSign className="text-emerald-600" />}
             color="bg-emerald-50"
             trend={
@@ -986,13 +995,15 @@ export default function AdminDashboard() {
           />
           <StatCard
             label="Payouts Processed"
-            value={`${stats.totalPayoutsProcessed.toLocaleString()} RWF`}
+            value={totalsValue(stats.payoutsByCurrency)}
+            detail={totalsDetail(stats.payoutsByCurrency, "No payouts yet")}
             icon={<CheckCircle2 className="text-green-600" />}
             color="bg-green-50"
           />
           <StatCard
             label="Pending Payouts"
-            value={`${stats.totalPendingPayouts.toLocaleString()} RWF`}
+            value={totalsValue(stats.pendingByCurrency)}
+            detail={totalsDetail(stats.pendingByCurrency, "No pending payouts")}
             icon={<Clock className="text-amber-600" />}
             color="bg-amber-50"
           />
@@ -1004,7 +1015,8 @@ export default function AdminDashboard() {
           />
           <StatCard
             label="Avg Transaction"
-            value={`${stats.averageTransactionAmount.toLocaleString()} RWF`}
+            value={stats.averageTransactionAmount.toLocaleString()}
+            detail="Across currencies"
             icon={<BarChart3 className="text-sky-600" />}
             color="bg-sky-50"
           />
@@ -1013,7 +1025,7 @@ export default function AdminDashboard() {
             value={`${(stats.failedTransactionCount + stats.pendingTransactionCount).toLocaleString()} txs`}
             icon={<XCircle className="text-red-600" />}
             color="bg-red-50"
-            detail={`${(stats.failedTransactionAmount + stats.pendingTransactionAmount).toLocaleString()} RWF`}
+            detail={`${(stats.failedTransactionAmount + stats.pendingTransactionAmount).toLocaleString()} across currencies`}
           />
         </div>
 
@@ -1195,12 +1207,12 @@ export default function AdminDashboard() {
                         <div
                           className="w-4 sm:w-5 md:w-6 lg:w-8 bg-emerald-500 rounded-t"
                           style={{ height: `${Math.max(incomeHeight, 2)}%` }}
-                          title={`Income: ${data.income.toLocaleString()} RWF`}
+                          title={`Income: ${data.income.toLocaleString()} (across currencies)`}
                         />
                         <div
                           className="w-4 sm:w-5 md:w-6 lg:w-8 bg-orange-500 rounded-t"
                           style={{ height: `${Math.max(payoutHeight, 2)}%` }}
-                          title={`Payouts: ${data.payouts.toLocaleString()} RWF`}
+                          title={`Payouts: ${data.payouts.toLocaleString()} (across currencies)`}
                         />
                       </div>
                       <span className="text-[10px] sm:text-xs font-bold text-muted-foreground">
@@ -1265,6 +1277,9 @@ export default function AdminDashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
               Transaction Breakdown
+              <span className="ml-2 text-[10px] font-medium normal-case tracking-normal text-muted-foreground">
+                amounts mixed across currencies
+              </span>
             </h3>
             <div className="flex gap-2">
               {[
@@ -1311,10 +1326,10 @@ export default function AdminDashboard() {
                   return (
                     <tr key={type.key} className="border-b border-border/50 last:border-0">
                       <td className="py-3 pr-4 font-medium text-foreground">{type.label}</td>
-                      <td className="py-3 px-4 text-right font-bold text-emerald-600">{data.successful.toLocaleString()} RWF</td>
-                      <td className="py-3 px-4 text-right font-bold text-red-500">{data.failed.toLocaleString()} RWF</td>
-                      <td className="py-3 px-4 text-right font-bold text-amber-500">{data.pending.toLocaleString()} RWF</td>
-                      <td className="py-3 pl-4 text-right font-bold text-foreground">{total.toLocaleString()} RWF</td>
+                      <td className="py-3 px-4 text-right font-bold text-emerald-600">{data.successful.toLocaleString()}</td>
+                      <td className="py-3 px-4 text-right font-bold text-red-500">{data.failed.toLocaleString()}</td>
+                      <td className="py-3 px-4 text-right font-bold text-amber-500">{data.pending.toLocaleString()}</td>
+                      <td className="py-3 pl-4 text-right font-bold text-foreground">{total.toLocaleString()}</td>
                     </tr>
                   );
                 })}
@@ -1323,21 +1338,77 @@ export default function AdminDashboard() {
                 <tr className="border-t-2 border-border">
                   <td className="py-3 pr-4 font-bold text-foreground">All Types</td>
                   <td className="py-3 px-4 text-right font-black text-emerald-600">
-                    {Object.values(txBreakdown).reduce((s, t) => s + t.successful, 0).toLocaleString()} RWF
+                    {Object.values(txBreakdown).reduce((s, t) => s + t.successful, 0).toLocaleString()}
                   </td>
                   <td className="py-3 px-4 text-right font-black text-red-500">
-                    {Object.values(txBreakdown).reduce((s, t) => s + t.failed, 0).toLocaleString()} RWF
+                    {Object.values(txBreakdown).reduce((s, t) => s + t.failed, 0).toLocaleString()}
                   </td>
                   <td className="py-3 px-4 text-right font-black text-amber-500">
-                    {Object.values(txBreakdown).reduce((s, t) => s + t.pending, 0).toLocaleString()} RWF
+                    {Object.values(txBreakdown).reduce((s, t) => s + t.pending, 0).toLocaleString()}
                   </td>
                   <td className="py-3 pl-4 text-right font-black text-foreground">
-                    {Object.values(txBreakdown).reduce((s, t) => s + t.successful + t.failed + t.pending, 0).toLocaleString()} RWF
+                    {Object.values(txBreakdown).reduce((s, t) => s + t.successful + t.failed + t.pending, 0).toLocaleString()}
                   </td>
                 </tr>
               </tfoot>
             </table>
           </div>
+        </div>
+
+        {/* FX HEALTH & RECONCILIATION */}
+        <div className="bg-card rounded-xl border border-border p-6 mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
+            <div>
+              <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                FX Health & Reconciliation
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1">
+                Cached snapshot status and pending withdrawal exposure by payout currency.
+              </p>
+            </div>
+            <span
+              className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider w-fit ${
+                fxHealth?.ok
+                  ? "bg-emerald-50 text-emerald-700"
+                  : fxHealth
+                    ? "bg-red-50 text-red-600"
+                    : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {fxHealth ? String(fxHealth.status || "unknown") : "loading"}
+            </span>
+          </div>
+          {!fxHealth ? (
+            <p className="text-sm text-muted-foreground">Loading FX health...</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2 text-sm">
+                <p><span className="font-semibold">Source:</span> {fxHealth.source || "—"}</p>
+                <p><span className="font-semibold">Base:</span> {fxHealth.base || "—"}</p>
+                <p><span className="font-semibold">Fetched:</span> {fxHealth.fetchedAt ? new Date(fxHealth.fetchedAt).toLocaleString() : "—"}{fxHealth.ageMinutes != null ? ` (${fxHealth.ageMinutes}m ago)` : ""}</p>
+                <p><span className="font-semibold">Expires:</span> {fxHealth.expiresAt ? new Date(fxHealth.expiresAt).toLocaleString() : "—"}{fxHealth.expiresInMinutes != null ? ` (in ${fxHealth.expiresInMinutes}m)` : ""}</p>
+                <p><span className="font-semibold">Rates:</span> {fxHealth.rateCount ?? "—"} {Array.isArray(fxHealth.currencies) && fxHealth.currencies.length > 0 ? `(${fxHealth.currencies.join(", ")})` : ""}</p>
+                {fxHealth.message && (
+                  <p className={fxHealth.ok ? "text-muted-foreground" : "text-red-600 font-medium"}>{fxHealth.message}</p>
+                )}
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Pending withdrawals (by payout currency)</p>
+                {fxHealth.pendingWithdrawals?.byCurrency && Object.keys(fxHealth.pendingWithdrawals.byCurrency).length > 0 ? (
+                  <div className="space-y-1 text-sm">
+                    {Object.entries(fxHealth.pendingWithdrawals.byCurrency as Record<string, {count:number; amount:number}>).map(([currency, v]) => (
+                      <p key={currency}>
+                        <span className="font-semibold">{currency}:</span> {Number(v.amount || 0).toLocaleString()} ({v.count} request{v.count === 1 ? "" : "s"})
+                      </p>
+                    ))}
+                    <p className="text-xs text-muted-foreground pt-1">Total pending requests: {fxHealth.pendingWithdrawals.total ?? 0}</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No pending withdrawal requests.</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* PENDING REQUESTS SECTION */}
@@ -1370,12 +1441,17 @@ export default function AdminDashboard() {
                         {req.creatorName || "Creator"}
                       </p>
                       <p className="text-lg font-black text-foreground">
-                        {req.amount?.toLocaleString()} {req.currency || "RWF"}
+                        {Number(req.amount || 0).toLocaleString()} {req.payoutCurrency || req.currency || ""}
                       </p>
                       <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
                         {req.method} • {req.accountNumber}
                         {req.rail ? ` • ${String(req.rail).replace("_", " ")}` : ""}
                       </p>
+                      {Array.isArray(req.sourceDebits) && req.sourceDebits.length > 0 && (
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          Sources: {req.sourceDebits.map((s: any) => `${Number(s.amountMajor || 0).toLocaleString()} ${s.currency}${s.currency !== (req.payoutCurrency || req.currency) ? `→${Number(s.payoutAmountMajor || 0).toLocaleString()} ${req.payoutCurrency || req.currency}` : ""}`).join(", ")}
+                        </p>
+                      )}
                     </div>
                     <div className="flex gap-2">
                       <button
@@ -1495,16 +1571,29 @@ export default function AdminDashboard() {
               </div>
               <h2 className="text-xl font-bold uppercase">Top Earners</h2>
             </div>
-            <div className="space-y-4">
-              {topEarners.map((creator, i) => (
-                <RankRow
-                  key={creator.id}
-                  rank={i + 1}
-                  name={creator.name || creator.id}
-                  subText={`${(creator.totalEarnings || 0).toLocaleString()} RWF${creator.totalEarningsUSD ? ` / ${creator.totalEarningsUSD.toLocaleString()} USD` : ""}`}
-                />
+            <div className="space-y-6">
+              {topEarnerGroups.map((group) => (
+                <div key={group.currency} className="space-y-2">
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                    {group.currency}
+                  </p>
+                  {group.earners.map((creator, i) => {
+                    const field = totalEarningsField(group.currency);
+                    return (
+                      <RankRow
+                        key={`${group.currency}-${creator.id}`}
+                        rank={i + 1}
+                        name={creator.name || creator.id}
+                        subText={formatCurrency(
+                          Number(creator[field] ?? 0),
+                          group.currency,
+                        )}
+                      />
+                    );
+                  })}
+                </div>
               ))}
-              {topEarners.length === 0 && (
+              {topEarnerGroups.length === 0 && (
                 <p className="text-muted-foreground text-sm text-center py-4">
                   No data yet
                 </p>

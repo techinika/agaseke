@@ -1,12 +1,12 @@
-export const PAYOUT_CURRENCIES = ["RWF", "USD"] as const;
+import { CURRENCY_CODES, isCurrencyCode, type CurrencyCode } from "@/lib/money";
 
-export type PayoutCurrency = (typeof PAYOUT_CURRENCIES)[number];
+export const PAYOUT_CURRENCIES = CURRENCY_CODES;
+
+export type PayoutCurrency = CurrencyCode;
 
 export function normalizePayoutCurrency(raw: unknown): PayoutCurrency | null {
   const currency = typeof raw === "string" ? raw.trim().toUpperCase() : "";
-  return PAYOUT_CURRENCIES.includes(currency as PayoutCurrency)
-    ? (currency as PayoutCurrency)
-    : null;
+  return isCurrencyCode(currency) ? currency : null;
 }
 
 export function isPayoutCurrency(raw: unknown): raw is PayoutCurrency {
@@ -21,12 +21,14 @@ export function parsePayoutCurrency(raw: unknown): PayoutCurrency {
   return currency;
 }
 
-export function pendingPayoutField(
-  currency: PayoutCurrency,
-): "pendingPayout" | "pendingPayoutUSD" {
-  return currency === "USD" ? "pendingPayoutUSD" : "pendingPayout";
+export function pendingPayoutField(currency: PayoutCurrency): string {
+  return currency === "RWF" ? "pendingPayout" : `pendingPayout${currency}`;
 }
 
 export function pendingWithdrawalsField(currency: PayoutCurrency): string {
   return `pendingWithdrawals.${currency}`;
+}
+
+export function totalEarningsField(currency: PayoutCurrency): string {
+  return currency === "RWF" ? "totalEarnings" : `totalEarnings${currency}`;
 }

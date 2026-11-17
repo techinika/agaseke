@@ -7,36 +7,10 @@ import {
 } from "@/lib/storePrices";
 
 describe("store prices", () => {
-  it("reads legacy RWF and USD prices without mixing currencies", () => {
-    const product = { currency: "RWF" as const, price: 1000, priceUSD: 1 };
-
-    expect(getProductPrices(product)).toEqual({ RWF: 1000, USD: 1 });
-    expect(getProductPrice(product)).toBe(1000);
-    expect(getProductPrice(product, "USD")).toBe(1);
-  });
-
-  it("does not fall back from a missing USD price to the RWF price", () => {
-    const product = { currency: "USD" as const, price: 1000 };
-
-    expect(getProductCurrency(product)).toBe("USD");
-    expect(getProductPrices(product)).toEqual({});
-    expect(getProductPrice(product)).toBe(0);
-    expect(getProductPrice(product, "RWF")).toBe(0);
-  });
-
-  it("does not treat the legacy primary price as an RWF price on USD products", () => {
-    const product = { currency: "USD" as const, price: 1000, priceUSD: 1 };
-
-    expect(getProductPrices(product)).toEqual({ USD: 1 });
-    expect(getProductPrice(product)).toBe(1);
-    expect(getProductPrice(product, "RWF")).toBe(0);
-  });
-
-  it("treats an explicit price map as authoritative", () => {
+  it("reads canonical prices map authoritatively", () => {
     const product = {
       currency: "RWF" as const,
       price: 1000,
-      priceUSD: 1,
       prices: { USD: 2 },
     };
 
@@ -45,14 +19,22 @@ describe("store prices", () => {
     expect(getProductPrice(product, "USD")).toBe(2);
   });
 
-  it("builds maps only from positive finite amounts", () => {
-    expect(buildProductPriceMap({ price: 1000, priceUSD: 1 })).toEqual({
+  it("uses legacy primary price for the declared currency", () => {
+    expect(getProductPrices({ currency: "RWF", price: 1000, prices: null })).toEqual({ RWF: 1000 });
+    expect(getProductPrices({ currency: "USD", price: 2, prices: null })).toEqual({ USD: 2 });
+    expect(getProductCurrency({ currency: "USD" as const })).toBe("USD");
+  });
+
+  it("defaults legacy records without currency to RWF", () => {
+    expect(getProductPrices({ price: 1000 })).toEqual({ RWF: 1000 });
+    expect(getProductPrice({ price: 1000 })).toBe(1000);
+  });
+
+  it("builds maps only from valid positive amounts", () => {
+    expect(buildProductPriceMap({ prices: { RWF: 1000, USD: 1 } })).toEqual({
       RWF: 1000,
       USD: 1,
     });
-    expect(buildProductPriceMap({ price: 0, priceUSD: -1 })).toEqual({});
-    expect(buildProductPriceMap({ price: 1000, priceUSD: 0 })).toEqual({
-      RWF: 1000,
-    });
+    expect(buildProductPriceMap({ price: 0 })).toEqual({});
   });
 });

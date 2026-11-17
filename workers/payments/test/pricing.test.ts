@@ -289,7 +289,7 @@ describe("server-authoritative payment pricing", () => {
     ).rejects.toMatchObject({ code: "CURRENCY_MISMATCH" });
   });
 
-  it("does not use the RWF price as a USD price", async () => {
+  it("treats legacy primary price as belonging to the declared currency", async () => {
     const docs = {
       ...baseDocs,
       "storeProducts/p1": {
@@ -302,19 +302,19 @@ describe("server-authoritative payment pricing", () => {
       },
     };
 
-    await expect(
-      resolvePayment(
-        env,
-        body({
-          creatorHandle: "alice",
-          type: "store",
-          productId: "p1",
-          currency: "USD",
-        }),
-        "buyer-1",
-        makeRepo(docs),
-      ),
-    ).rejects.toMatchObject({ code: "INVALID_PRODUCT_PRICE" });
+    const resolved = await resolvePayment(
+      env,
+      body({
+        creatorHandle: "alice",
+        type: "store",
+        productId: "p1",
+        currency: "USD",
+      }),
+      "buyer-1",
+      makeRepo(docs),
+    );
+    expect(resolved.productPrice).toBe(10000);
+    expect(resolved.currency).toBe("USD");
   });
 
   it("uses an explicit product price map over legacy fields", async () => {
@@ -325,7 +325,6 @@ describe("server-authoritative payment pricing", () => {
         creatorUid: "uid-alice",
         name: "Mug",
         price: 10_000,
-        priceUSD: 1,
         prices: { RWF: 10_000, USD: 2 },
         currency: "USD",
         active: true,
@@ -348,7 +347,7 @@ describe("server-authoritative payment pricing", () => {
     expect(resolved.currency).toBe("USD");
   });
 
-  it("does not use the legacy USD price when the explicit map omits it", async () => {
+  it("treats an explicit price map as authoritative", async () => {
     const docs = {
       ...baseDocs,
       "storeProducts/p1": {
@@ -356,7 +355,6 @@ describe("server-authoritative payment pricing", () => {
         creatorUid: "uid-alice",
         name: "Mug",
         price: 10_000,
-        priceUSD: 1,
         prices: { RWF: 10_000 },
         currency: "USD",
         active: true,
@@ -603,7 +601,6 @@ describe("server-authoritative payment pricing", () => {
         status: "active",
         currency: "USD",
         ticketPrice: 3000,
-        priceUSD: 1,
         prices: { RWF: 3000, USD: 2 },
       },
     };
@@ -634,7 +631,6 @@ describe("server-authoritative payment pricing", () => {
           {
             id: "t1",
             price: 5000,
-            priceUSD: 1,
             prices: { RWF: 5000, USD: 2 },
             currency: "USD",
             interval: "monthly",
@@ -683,8 +679,7 @@ describe("server-authoritative payment pricing", () => {
         creatorId: "uid-alice",
         active: true,
         currency: "USD",
-        price: 0,
-        priceUSD: 5,
+        price: 5,
         prices: { USD: 5 },
       },
     };
@@ -733,8 +728,7 @@ describe("server-authoritative payment pricing", () => {
         creatorId: "uid-alice",
         active: true,
         currency: "USD",
-        price: 0,
-        priceUSD: 5,
+        price: 5,
         prices: { USD: 5 },
       },
     };
@@ -777,8 +771,7 @@ describe("server-authoritative payment pricing", () => {
         creatorId: "uid-alice",
         active: true,
         currency: "USD",
-        price: 0,
-        priceUSD: 5,
+        price: 5,
         prices: { USD: 5 },
       },
     };

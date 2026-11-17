@@ -1314,7 +1314,7 @@ const searchedContentItems = searchTerm.trim()
                           </span>
                           {getPrice(item) > 0 && (
                             <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
-                              {formatCurrency(getPrice(item), item.currency || "RWF")}
+                              {item.currency ? formatCurrency(getPrice(item), item.currency as any) : getPrice(item)}
                             </span>
                           )}
                         </div>
@@ -1777,7 +1777,10 @@ const searchedContentItems = searchTerm.trim()
                       Total Supported
                     </span>
                     <span className="font-semibold text-orange-600">
-                      {(auth?.profile?.totalSupport || 0).toLocaleString()} RWF
+                      {(auth?.profile?.totalSupport || 0).toLocaleString()}
+                      <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+                        across currencies
+                      </span>
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -1868,7 +1871,7 @@ const searchedContentItems = searchTerm.trim()
                           </p>
                         </div>
                         <span className="text-xs font-medium text-emerald-600">
-                          {formatCurrency(Number(purchase.totalAmount || 0), purchase.currency || "RWF")}
+                          {purchase.currency ? formatCurrency(Number(purchase.totalAmount || 0), purchase.currency as any) : Number(purchase.totalAmount || 0)}
                         </span>
                       </div>
                     ))}

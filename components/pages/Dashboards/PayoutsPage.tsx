@@ -13,16 +13,19 @@ import {
 import { useRouter } from "next/navigation";
 import {
   fetchPayoutOverview,
+  requestWithdrawalQuote,
   submitWithdrawRequest,
   subscribeToCreatorPayouts,
   subscribeToCreatorWithdrawRequests,
   subscribeToLatestVerificationRequest,
   type CurrencyBalance,
+  type WithdrawalQuote,
 } from "@/lib/payoutsService";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { EmptyState } from "./payoutspage/index";
 import { getCurrencySymbol } from "@/types/currency";
+import { getCurrencyDefinition, type CurrencyCode } from "@/lib/money";
 import { maskPayoutNumber } from "@/lib/format/payout";
 import { fromMajor, toMajor } from "@/lib/money";
 import { parsePayoutCurrency } from "@/lib/payouts/currency";
@@ -43,6 +46,8 @@ export default function PayoutsPage() {
   const [withdrawType, setWithdrawType] = useState<"all" | "custom">("all");
   const [customAmount, setCustomAmount] = useState<string>("");
   const [withdrawRequestKey, setWithdrawRequestKey] = useState<string | null>(null);
+  const [withdrawQuote, setWithdrawQuote] = useState<WithdrawalQuote | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
   const [verificationRequest, setVerificationRequest] = useState<any>(null);
   const [perCurrencyBalances, setPerCurrencyBalances] = useState<CurrencyBalance[]>([]);
 
@@ -50,7 +55,9 @@ export default function PayoutsPage() {
     (balance) => balance.currency === creatorCurrency,
   );
   const pendingAmount = activeBalance?.pending ?? 0;
-  const canWithdraw = withdrawThreshold !== null && pendingAmount >= withdrawThreshold;
+  const totalAvailableInSelected = perCurrencyBalances.reduce((sum, b) => sum + (b.currency === creatorCurrency ? b.pending : 0), 0);
+  const hasOtherCurrencyBalances = perCurrencyBalances.some((b) => b.currency !== creatorCurrency && b.pending > 0);
+  const canWithdraw = withdrawThreshold !== null && (pendingAmount >= withdrawThreshold || hasOtherCurrencyBalances);
   const isVerified = creator?.verified || false;
   const payoutPref = String(verificationRequest?.payoutPreference ?? "").toLowerCase();
 
@@ -94,6 +101,7 @@ export default function PayoutsPage() {
     setCreatorCurrency(balance.currency);
     setWithdrawThreshold(balance.threshold);
     setWithdrawRequestKey(null);
+    setWithdrawQuote(null);
     setCustomAmount("");
     setWithdrawType("all");
   };
@@ -108,20 +116,48 @@ export default function PayoutsPage() {
       toast.error(`Withdrawals are not configured for ${creatorCurrency}`);
       return;
     }
-    if (pendingAmount < withdrawThreshold) {
+    if (pendingAmount < withdrawThreshold && !hasOtherCurrencyBalances) {
       toast.error(
         `Minimum withdraw is ${withdrawThreshold.toLocaleString()} ${getCurrencySymbol(creatorCurrency)}`,
       );
       return;
     }
+    setWithdrawQuote(null);
     setWithdrawRequestKey((current) => current ?? crypto.randomUUID());
     setView("withdraw");
   };
 
+  const resolveRequestedAmount = (): string => {
+    if (withdrawType === "all") {
+      if (withdrawQuote) return String(withdrawQuote.requestedPayoutAmountMajor);
+      return String(pendingAmount);
+    }
+    return customAmount.trim();
+  };
+
+  const handleGetQuote = async () => {
+    const rawAmount = withdrawType === "all" ? String(pendingAmount || withdrawThreshold || 0) : customAmount.trim();
+    if (!rawAmount) {
+      toast.error("Enter an amount to convert");
+      return;
+    }
+    setQuoteLoading(true);
+    try {
+      const quote = await requestWithdrawalQuote({ amount: rawAmount, payoutCurrency: creatorCurrency });
+      setWithdrawQuote(quote);
+      toast.success("Conversion quote locked for 10 minutes");
+    } catch (e) {
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : "Failed to get conversion quote");
+      setWithdrawQuote(null);
+    } finally {
+      setQuoteLoading(false);
+    }
+  };
+
   const submitRequest = async () => {
     if (!creator) return;
-    const rawAmount =
-      withdrawType === "all" ? String(pendingAmount) : customAmount.trim();
+    const rawAmount = resolveRequestedAmount();
     let finalAmount: number;
 
     try {
@@ -144,7 +180,11 @@ export default function PayoutsPage() {
       return;
     }
 
-    if (finalAmount > pendingAmount) {
+    if (!withdrawQuote && finalAmount > pendingAmount) {
+      if (hasOtherCurrencyBalances) {
+        toast.error("Get a conversion quote to withdraw using balances in other currencies");
+        return;
+      }
       toast.error("Insufficient available balance");
       return;
     }
@@ -160,8 +200,10 @@ export default function PayoutsPage() {
         amount: rawAmount,
         currency: creatorCurrency,
         idempotencyKey,
+        quoteId: withdrawQuote?.id,
       });
       setWithdrawRequestKey(null);
+      setWithdrawQuote(null);
       const overview = await fetchPayoutOverview(creator as any);
       if (overview) {
         setCreatorCurrency(overview.creatorCurrency);
@@ -261,6 +303,11 @@ export default function PayoutsPage() {
                       </button>
                     ))}
                   </div>
+                )}
+                {hasOtherCurrencyBalances && (
+                  <p className="text-[10px] text-muted-foreground mt-3">
+                    You can convert other currency balances at withdrawal (locked quote, rates shown at request time).
+                  </p>
                 )}
               </div>
               <div className="bg-card p-8 rounded-lg border border-border shadow-sm">
@@ -461,6 +508,7 @@ export default function PayoutsPage() {
               onClick={() => {
                 setView("overview");
                 setWithdrawStep(1);
+                setWithdrawQuote(null);
               }}
               className="mb-8 flex items-center gap-2 text-muted-foreground hover:text-foreground font-black text-xs uppercase tracking-widest"
             >
@@ -481,13 +529,13 @@ export default function PayoutsPage() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-3">
                     <button
-                      onClick={() => setWithdrawType("all")}
+                      onClick={() => { setWithdrawType("all"); setWithdrawQuote(null); }}
                       className={`py-4 rounded-lg border-2 font-bold text-sm transition-all ${withdrawType === "all" ? "border-orange-600 bg-orange-50 text-orange-600" : "border-border text-muted-foreground"}`}
                     >
                       Withdraw All
                     </button>
                     <button
-                      onClick={() => setWithdrawType("custom")}
+                      onClick={() => { setWithdrawType("custom"); setWithdrawQuote(null); }}
                       className={`py-4 rounded-lg border-2 font-bold text-sm transition-all ${withdrawType === "custom" ? "border-orange-600 bg-orange-50 text-orange-600" : "border-border text-muted-foreground"}`}
                     >
                       Custom Amount
@@ -499,12 +547,44 @@ export default function PayoutsPage() {
                       <input
                         type="number"
                         min="0"
-                        step={creatorCurrency === "USD" ? "0.01" : "1"}
+                        step={1 / 10 ** getCurrencyDefinition(creatorCurrency as CurrencyCode).minorUnit}
                         value={customAmount}
-                        onChange={(e) => setCustomAmount(e.target.value)}
+                        onChange={(e) => { setCustomAmount(e.target.value); setWithdrawQuote(null); }}
                         placeholder={`Enter amount (${creatorCurrency})`}
                         className="w-full bg-muted p-4 rounded-lg font-black text-lg outline-none border-2 border-transparent focus:border-orange-600 transition"
                       />
+                    </div>
+                  )}
+
+                  {hasOtherCurrencyBalances && (
+                    <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 space-y-3">
+                      <p className="text-xs font-bold text-orange-800">
+                        You have balances in other currencies. Lock a conversion quote to withdraw them in {creatorCurrency}.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleGetQuote}
+                        disabled={quoteLoading}
+                        className="w-full bg-orange-600 text-white py-3 rounded-lg font-black text-sm disabled:opacity-50"
+                      >
+                        {quoteLoading ? "Getting quote..." : "Get conversion quote"}
+                      </button>
+                    </div>
+                  )}
+
+                  {withdrawQuote && (
+                    <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-2">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Conversion breakdown ({withdrawQuote.payoutCurrency})</p>
+                      <p className="text-sm font-black">Payout: {withdrawQuote.requestedPayoutAmountMajor.toLocaleString()} {getCurrencySymbol(withdrawQuote.payoutCurrency)}</p>
+                      <div className="space-y-1">
+                        {withdrawQuote.sources.map((s, i) => (
+                          <p key={i} className="text-xs text-muted-foreground">
+                            {s.amountMajor.toLocaleString()} {getCurrencySymbol(s.currency)}
+                            {s.currency !== withdrawQuote.payoutCurrency ? ` → ${s.payoutAmountMajor.toLocaleString()} ${getCurrencySymbol(withdrawQuote.payoutCurrency)} (rate ${s.effectiveRate.toFixed(6)})` : " (no conversion)"}
+                          </p>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Quote expires: {new Date(withdrawQuote.expiresAt).toLocaleString()}</p>
                     </div>
                   )}
                 </div>

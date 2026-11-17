@@ -1,14 +1,16 @@
 import React, { useState } from "react";
 import { ShoppingCart, Search, Truck } from "lucide-react";
-import { Order, getProductCurrency, getProductPrice } from "@/types/store";
+import { Order } from "@/types/store";
 import { formatCurrency } from "@/types/currency";
 
 export default function OrdersList({
   orders,
   onUpdateStatus,
+  currency = "RWF",
 }: {
   orders: Order[];
   onUpdateStatus: (id: string, status: Order["status"]) => void;
+  currency?: string;
 }) {
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
@@ -97,13 +99,13 @@ export default function OrdersList({
                     {item.quantity}x {item.productName}
                   </span>
                   <span className="font-medium">
-                    {formatCurrency(item.price, "RWF")}
+                    {formatCurrency(item.price, currency)}
                   </span>
                 </div>
               ))}
               <div className="border-t border-border-strong mt-3 pt-3 flex justify-between font-bold">
                 <span>Total</span>
-                <span>{formatCurrency(order.total, "RWF")}</span>
+                <span>{formatCurrency(order.total, currency)}</span>
               </div>
             </div>
 

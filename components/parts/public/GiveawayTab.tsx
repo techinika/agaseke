@@ -48,6 +48,7 @@ interface GiveawayTabProps {
   currentUserId?: string;
   compact?: boolean;
   username?: string;
+  creatorCurrency?: string;
 }
 
 export const GiveawayTab = ({
@@ -63,6 +64,7 @@ export const GiveawayTab = ({
   currentUserId,
   compact = false,
   username = "",
+  creatorCurrency,
 }: GiveawayTabProps) => {
   const { user: currentUser } = useAuth();
   const [activeGiveaways, setActiveGiveaways] = useState<Giveaway[]>([]);
@@ -276,6 +278,7 @@ export const GiveawayTab = ({
                 ? giveaway.endDate.toDate()
                 : new Date(giveaway.endDate as any);
             const daysLeft = Math.ceil(
+              // eslint-disable-next-line react-hooks/purity
               (endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
             );
 
@@ -289,6 +292,7 @@ export const GiveawayTab = ({
                 onParticipate={() => setEntryGiveaway(giveaway)}
                 onShare={() => shareGiveaway(giveaway)}
                 creatorHandle={creatorHandle}
+                currency={creatorCurrency}
               />
             );
           })}

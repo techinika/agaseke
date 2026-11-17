@@ -28,9 +28,12 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
-import { Product } from "@/types/store";
-import { Order } from "@/types/store";
-import { Coupon } from "@/types/store";
+import {
+  Product,
+  Order,
+  Coupon,
+  getProductCurrency,
+} from "@/types/store";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import {
   ProductsList,
@@ -86,6 +89,7 @@ export default function StorePage() {
         ...doc.data(),
       })) as Product[];
       setProducts(productData);
+      setLoading(false);
     });
 
     const ordersRef = collection(db, "storeOrders");
@@ -133,8 +137,6 @@ export default function StorePage() {
       setFolders(folderData);
     });
 
-    setLoading(false);
-
     return () => {
       unsubProducts();
       unsubOrders();
@@ -154,7 +156,7 @@ export default function StorePage() {
       await deleteDoc(doc(db, "storeProducts", deleteProductId));
       toast.success("Product deleted");
       setDeleteProductId(null);
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete product");
     } finally {
       setDeleting(false);
@@ -196,7 +198,7 @@ export default function StorePage() {
       await deleteDoc(doc(db, "storeCoupons", deleteCouponId));
       toast.success("Coupon deleted");
       setDeleteCouponId(null);
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete coupon");
     } finally {
       setDeleting(false);
@@ -224,6 +226,10 @@ export default function StorePage() {
       };
       if (folderData.imageUrl) data.imageUrl = folderData.imageUrl;
       if (folderData.bundlePrice > 0) data.bundlePrice = folderData.bundlePrice;
+      const firstProduct = products.find((p) => p.id === folderData.productIds[0]);
+      data.currency = firstProduct
+        ? getProductCurrency(firstProduct)
+        : String(creator?.currency || "RWF").toUpperCase();
 
       if (editingFolder) {
         await updateDoc(doc(db, "storeFolders", editingFolder.id), {
@@ -267,7 +273,7 @@ export default function StorePage() {
       await deleteDoc(doc(db, "storeFolders", deleteFolderId));
       toast.success("Folder deleted");
       setDeleteFolderId(null);
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete folder");
     } finally {
       setDeleting(false);
@@ -299,7 +305,7 @@ export default function StorePage() {
           trackingNumber: order.trackingNumber,
         }).catch((err) => { console.error("Failed to send store status email", err); });
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to update order");
     }
   };
@@ -411,6 +417,7 @@ export default function StorePage() {
           <OrdersList
             orders={orders}
             onUpdateStatus={handleUpdateOrderStatus}
+            currency={String(creator?.currency || "RWF").toUpperCase()}
           />
         )}
 
@@ -421,6 +428,7 @@ export default function StorePage() {
               setEditingCoupon(coupon);
             }}
             onDelete={handleDeleteCoupon}
+            currency={String(creator?.currency || "RWF").toUpperCase()}
           />
         )}
 
@@ -492,6 +500,7 @@ export default function StorePage() {
           products={products}
           onClose={() => setEditingCoupon(null)}
           onSave={handleCreateCoupon}
+          currency={String(creator?.currency || "RWF").toUpperCase()}
         />
       )}
 
@@ -499,6 +508,7 @@ export default function StorePage() {
         <FolderModal
           folder={editingFolder}
           products={products}
+          currency={String(creator?.currency || "RWF").toUpperCase()}
           formData={folderFormData}
           setFormData={setFolderFormData}
           onClose={() => setEditingFolder(null)}

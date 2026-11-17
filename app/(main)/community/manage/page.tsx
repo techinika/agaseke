@@ -105,7 +105,7 @@ export default function CommunityManagePage() {
                 <p>
                   <span className="text-muted-foreground text-xs">Plan: </span>
                   <span className="font-bold text-orange-600">
-                    {formatCurrency(sub.amount, sub.currency || "RWF")}
+                    {formatCurrency(sub.amount, sub.currency as any)}
                     <span className="text-xs font-normal text-muted-foreground ml-1">
                       /{sub.interval === "yearly" ? "year" : "month"}
                     </span>

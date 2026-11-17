@@ -182,7 +182,7 @@ export default function SalesPage() {
 
   const salesByCurrency = filteredSales.reduce(
     (groups: Record<string, { total: number; earnings: number }>, sale) => {
-      const cur = sale.currency || "RWF";
+      const cur = sale.currency || "";
       if (!groups[cur]) groups[cur] = { total: 0, earnings: 0 };
       groups[cur].total += sale.totalAmount;
       groups[cur].earnings += sale.creatorEarnings || 0;
@@ -226,7 +226,7 @@ export default function SalesPage() {
         currencies: {},
       };
     }
-    const cur = sale.currency || "RWF";
+    const cur = sale.currency || "";
     productSales[sale.productId].total += sale.totalAmount;
     productSales[sale.productId].quantity += sale.quantity || 1;
     productSales[sale.productId].earnings += sale.creatorEarnings || 0;
@@ -239,7 +239,7 @@ export default function SalesPage() {
       id,
       ...data,
       primaryCurrency:
-        Object.entries(data.currencies).sort((a, b) => b[1] - a[1])[0]?.[0] || "RWF",
+        Object.entries(data.currencies).sort((a, b) => b[1] - a[1])[0]?.[0] || "",
     }))
     .sort((a, b) => b.total - a.total)
     .slice(0, 5);
@@ -471,13 +471,13 @@ export default function SalesPage() {
                         <td className="px-5 py-4">
                           <span className="font-bold text-foreground">
                             {sale.totalAmount?.toLocaleString() || 0}{" "}
-                            {getCurrencySymbol(sale.currency || "RWF")}
+                            {sale.currency ? getCurrencySymbol(sale.currency as any) : ""}
                           </span>
                         </td>
                         <td className="px-5 py-4">
                           <span className="font-bold text-green-600">
                             {sale.creatorEarnings?.toLocaleString() || 0}{" "}
-                            {getCurrencySymbol(sale.currency || "RWF")}
+                            {sale.currency ? getCurrencySymbol(sale.currency as any) : ""}
                           </span>
                         </td>
                         <td className="px-5 py-4">

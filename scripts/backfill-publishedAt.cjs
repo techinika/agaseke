@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 /* One-off migration: stamp publishedAt on pre-existing, non-draft
  * creatorContent docs so reader feeds can order by publishedAt without
  * dropping legacy content (Firestore orderBy excludes docs missing the field).

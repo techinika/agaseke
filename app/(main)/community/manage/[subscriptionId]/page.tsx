@@ -12,6 +12,7 @@ import {
   type MemberInfo,
 } from "@/lib/communityService";
 import { formatCurrency } from "@/types/currency";
+import { isCurrencySupportedByMethod } from "@/lib/money/rails";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/db/firebase";
 import { toast } from "sonner";
@@ -108,11 +109,11 @@ export default function CommunityManageDetailPage() {
     };
   }, []);
 
-  const isUSD = sub?.currency === "USD";
+  const momoSupported = sub?.currency ? isCurrencySupportedByMethod("momo", sub.currency as any) : false;
 
   const handleRenew = async () => {
     if (!sub || !user) return;
-    const method = isUSD ? "card" : paymentMethod;
+    const method = momoSupported ? paymentMethod : "card";
     if (!method) return;
     if (method === "momo" && !phone.trim()) {
       toast.error("Enter your phone number");
@@ -272,7 +273,7 @@ export default function CommunityManageDetailPage() {
               <p>
                 <span className="text-muted-foreground text-xs block">Plan</span>
                 <span className="font-bold text-orange-600">
-                  {formatCurrency(sub.amount, sub.currency || "RWF")}
+                  {formatCurrency(sub.amount, sub.currency as any)}
                   <span className="text-xs font-normal text-muted-foreground ml-1">
                     /{sub.interval === "yearly" ? "year" : "month"}
                   </span>
@@ -311,7 +312,7 @@ export default function CommunityManageDetailPage() {
                 community access.
               </p>
               <div className="space-y-4">
-                {isUSD ? (
+                {!momoSupported ? (
                   <p className="text-sm text-muted-foreground">
                     This subscription is priced in USD, so card payment is the
                     only option.
@@ -373,7 +374,7 @@ export default function CommunityManageDetailPage() {
                   </div>
                 )}
 
-                {!isUSD && paymentMethod === "momo" && (
+                {momoSupported && paymentMethod === "momo" && (
                   <div>
                     <label className="text-xs font-bold text-muted-foreground mb-1 block">
                       MTN / Airtel Phone Number
@@ -389,10 +390,10 @@ export default function CommunityManageDetailPage() {
 
                 <button
                   onClick={handleRenew}
-                  disabled={renewing || (!isUSD && !paymentMethod)}
+                  disabled={renewing || (momoSupported && !paymentMethod)}
                   className="w-full py-3 bg-orange-600 text-white text-sm font-bold rounded-lg hover:bg-orange-700 transition disabled:opacity-50"
                 >
-                  {renewing ? "Processing..." : `Renew for ${formatCurrency(sub.amount, sub.currency || "RWF")}`}
+                  {renewing ? "Processing..." : `Renew for ${formatCurrency(sub.amount, sub.currency as any)}`}
                 </button>
 
                 {renewResult === "success" && (
@@ -418,8 +419,8 @@ export default function CommunityManageDetailPage() {
                 <div>
                   <p className="text-sm font-bold">Auto-renew</p>
                   <p className="text-xs text-muted-foreground">
-                    {sub.currency === "USD"
-                      ? "Auto-renew is not available for USD subscriptions."
+                    {!momoSupported
+                      ? "Auto-renew with Mobile Money is not available for this currency."
                       : sub.autoRenew
                         ? "We'll charge the saved Mobile Money number when it's time to renew."
                         : "Turn on to be charged automatically on your saved number."}
@@ -443,7 +444,7 @@ export default function CommunityManageDetailPage() {
                 )}
               </div>
 
-              {!isUSD && (
+              {momoSupported && (
                 <div className="flex items-end gap-3">
                   <div className="flex-1">
                     <label className="text-xs font-bold text-muted-foreground mb-1 block">

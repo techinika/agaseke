@@ -311,6 +311,7 @@ export default function CreatorPage({
               currentUserId={user?.uid}
               compact
               username={username}
+              creatorCurrency={creator.currency}
             />
           </Suspense>
         );

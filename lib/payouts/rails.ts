@@ -37,10 +37,9 @@ export class PayoutRouteError extends Error {
   }
 }
 
-const DEFAULT_RAILS: Record<PayoutCurrency, PayoutRail> = {
-  RWF: "mobile_money",
-  USD: "bank_transfer",
-};
+function defaultRail(currency: PayoutCurrency): PayoutRail {
+  return currency === "RWF" ? "mobile_money" : "bank_transfer";
+}
 
 function normalizeRail(raw: unknown): PayoutRail | null {
   if (typeof raw !== "string") return null;
@@ -98,13 +97,13 @@ export function resolvePayoutRoute(
   const preferredRail = preferenceRail(options.payoutPreference);
   const rail =
     configuredRail ??
-    (currency === "USD" ? "bank_transfer" : preferredRail) ??
-    DEFAULT_RAILS[currency];
+    (currency === "RWF" ? preferredRail : "bank_transfer") ??
+    defaultRail(currency);
 
-  if (currency === "USD" && rail !== "bank_transfer") {
+  if (currency !== "RWF" && rail !== "bank_transfer") {
     throw new PayoutRouteError(
       "UNSUPPORTED_PAYOUT_ROUTE",
-      "USD payouts must use a bank transfer rail",
+      `${currency} payouts must use a bank transfer rail`,
     );
   }
 

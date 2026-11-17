@@ -75,7 +75,7 @@ export default function FolderForm() {
 
     setSaving(true);
     try {
-      const data: Record<string, any> = {
+      const data: Record<string, unknown> = {
         creatorId: creator.uid,
         name: formData.name,
         description: formData.description,
@@ -88,6 +88,10 @@ export default function FolderForm() {
       };
       if (formData.imageUrl) data.imageUrl = formData.imageUrl;
       if (formData.bundlePrice > 0) data.bundlePrice = formData.bundlePrice;
+      const firstProduct = products.find((p) => p.id === formData.productIds[0]);
+      data.currency = firstProduct
+        ? getProductCurrency(firstProduct)
+        : String(creator?.currency || "RWF").toUpperCase();
 
       await addDoc(collection(db, "storeFolders"), data);
       toast.success("Folder created!");
@@ -101,18 +105,39 @@ export default function FolderForm() {
   };
 
   const toggleProduct = (productId: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      productIds: prev.productIds.includes(productId)
-        ? prev.productIds.filter((id) => id !== productId)
-        : [...prev.productIds, productId],
-    }));
+    setFormData((prev) => {
+      if (!prev.productIds.includes(productId) && prev.productIds.length > 0) {
+        const firstProduct = products.find((p) => p.id === prev.productIds[0]);
+        const nextProduct = products.find((p) => p.id === productId);
+        const firstCurrency = firstProduct ? getProductCurrency(firstProduct) : "";
+        const nextCurrency = nextProduct ? getProductCurrency(nextProduct) : "";
+        if (firstCurrency && nextCurrency && firstCurrency !== nextCurrency) {
+          toast.error(
+            `This bundle is in ${firstCurrency}. A bundle cannot mix currencies.`,
+          );
+          return prev;
+        }
+      }
+      return {
+        ...prev,
+        productIds: prev.productIds.includes(productId)
+          ? prev.productIds.filter((id) => id !== productId)
+          : [...prev.productIds, productId],
+      };
+    });
   };
 
   const totalPrice = formData.productIds.reduce((sum, id) => {
     const product = products.find((p) => p.id === id);
     return sum + (product ? getProductPrice(product) : 0);
   }, 0);
+
+  const firstFolderProduct = products.find(
+    (p) => p.id === formData.productIds[0],
+  );
+  const folderCurrency = firstFolderProduct
+    ? getProductCurrency(firstFolderProduct)
+    : String(creator?.currency || "RWF").toUpperCase();
 
   const effectivePrice = formData.bundlePrice > 0 ? formData.bundlePrice : totalPrice;
   const discountAmount = formData.discountEnabled
@@ -238,11 +263,11 @@ export default function FolderForm() {
           {formData.productIds.length > 0 && (
             <div className="p-4 bg-muted rounded-xl space-y-1">
               <p className="text-sm text-muted-foreground">
-                Sum of products: {formatCurrency(totalPrice, "RWF")}
+                Sum of products: {formatCurrency(totalPrice, folderCurrency)}
               </p>
               {formData.bundlePrice > 0 && (
                 <p className="text-sm font-bold text-orange-600">
-                  Bundle price: {formatCurrency(formData.bundlePrice, "RWF")}
+                  Bundle price: {formatCurrency(formData.bundlePrice, folderCurrency)}
                 </p>
               )}
             </div>
@@ -315,7 +340,7 @@ export default function FolderForm() {
               />
               {formData.discountPercentage > 0 && effectivePrice > 0 && (
                 <p className="text-sm text-green-600 mt-2">
-                  You save: {formatCurrency(discountAmount, "RWF")} ({formData.discountPercentage}% off)
+                  You save: {formatCurrency(discountAmount, folderCurrency)} ({formData.discountPercentage}% off)
                 </p>
               )}
             </div>

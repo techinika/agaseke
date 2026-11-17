@@ -24,7 +24,10 @@ export async function handleStoreCallback(
     referralShare: number;
   };
 
-  const currency = (txData.currency as string) || "RWF";
+  const currency = txData.currency as string;
+  if (!currency) {
+    throw new Error("Store callback missing currency");
+  }
   const payoutField = currency === "RWF" ? "pendingPayout" : `pendingPayout${currency}`;
   const earningsField = currency === "RWF" ? "totalEarnings" : `totalEarnings${currency}`;
 
@@ -48,6 +51,7 @@ export async function handleStoreCallback(
       path: `platformIncome/${safeRef}_platform`,
       fields: {
         amount: numberValue(platformShare),
+        currency: { stringValue: currency },
         txRef: { stringValue: paymentRef },
         reason: { stringValue: "product_sale_platform_fee" },
         productId: { stringValue: productId || "" },
@@ -59,6 +63,7 @@ export async function handleStoreCallback(
       fields: {
         creatorUid: { stringValue: txData.creatorUid as string },
         amount: numberValue(creatorShare),
+        currency: { stringValue: currency },
         txRef: { stringValue: paymentRef },
         reason: { stringValue: "product_sale" },
         productId: { stringValue: productId || "" },
@@ -80,6 +85,7 @@ export async function handleStoreCallback(
       fields: {
         creatorUid: { stringValue: txData.referralUid as string },
         amount: numberValue(referralShare),
+        currency: { stringValue: currency },
         txRef: { stringValue: paymentRef },
         reason: { stringValue: "referral_commission" },
         createdAt: { timestampValue: now },
@@ -92,7 +98,7 @@ export async function handleStoreCallback(
     });
   }
 
-  const orderResult = await firestorePost(env, "storeOrders", {
+  await firestorePost(env, "storeOrders", {
     fields: {
       txRef: { stringValue: paymentRef },
       buyerId: { stringValue: txData.buyerId as string },
@@ -109,7 +115,7 @@ export async function handleStoreCallback(
       platformFeePayer: { stringValue: (txData.platformFeePayer as string) || "buyer" },
       status: { stringValue: "paid" },
       paymentMethod: { stringValue: paymentMethod },
-      currency: { stringValue: (txData.currency as string) || "RWF" },
+      currency: { stringValue: currency },
       createdAt: { timestampValue: now },
     },
   });
@@ -133,7 +139,7 @@ export async function handleStoreCallback(
       referralUid: { stringValue: (txData.referralUid as string) || "" },
       status: { stringValue: "completed" },
       paymentMethod: { stringValue: paymentMethod },
-      currency: { stringValue: (txData.currency as string) || "RWF" },
+      currency: { stringValue: currency },
       createdAt: { timestampValue: now },
     },
   });

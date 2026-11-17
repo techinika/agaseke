@@ -69,17 +69,17 @@ export default function CreatorOnboarding() {
 
   useEffect(() => {
     if (formData.username.length < 3) {
-      setUsernameStatus("idle");
+      queueMicrotask(() => setUsernameStatus("idle"));
       return;
     }
     if (formData.username.length > 19) {
-      setUsernameStatus("invalid");
+      queueMicrotask(() => setUsernameStatus("invalid"));
       return;
     }
 
     const validUsernameRegex = /^[a-z0-9_]+$/;
     if (!validUsernameRegex.test(formData.username)) {
-      setUsernameStatus("invalid");
+      queueMicrotask(() => setUsernameStatus("invalid"));
       return;
     }
 
@@ -221,7 +221,7 @@ export default function CreatorOnboarding() {
 
   useEffect(() => {
     if (!formData.country) {
-      setAvailableCurrencies([]);
+      queueMicrotask(() => setAvailableCurrencies([]));
       return;
     }
     const selectedCountry = formData.country.trim().toUpperCase();
@@ -242,24 +242,26 @@ export default function CreatorOnboarding() {
             .toUpperCase(),
       ),
     );
-    setAvailableCurrencies(available);
-    const defaultMapping = mappings.find((m: any) => m.isDefault);
-    if (defaultMapping && !formData.currency) {
-      setFormData((prev) => ({
-        ...prev,
-        currency: String(defaultMapping.currencyCode).trim().toUpperCase(),
-      }));
-    } else if (
-      formData.currency &&
-      !mappings.some(
-        (m: any) =>
-          String(m.currencyCode || "")
-            .trim()
-            .toUpperCase() === formData.currency.trim().toUpperCase(),
-      )
-    ) {
-      setFormData((prev) => ({ ...prev, currency: "" }));
-    }
+    queueMicrotask(() => {
+      setAvailableCurrencies(available);
+      const defaultMapping = mappings.find((m: any) => m.isDefault);
+      if (defaultMapping && !formData.currency) {
+        setFormData((prev) => ({
+          ...prev,
+          currency: String(defaultMapping.currencyCode).trim().toUpperCase(),
+        }));
+      } else if (
+        formData.currency &&
+        !mappings.some(
+          (m: any) =>
+            String(m.currencyCode || "")
+              .trim()
+              .toUpperCase() === formData.currency.trim().toUpperCase(),
+        )
+      ) {
+        setFormData((prev) => ({ ...prev, currency: "" }));
+      }
+    });
   }, [formData.country, countryCurrencies, currencies]);
 
   const handleFinish = async () => {
@@ -286,10 +288,8 @@ export default function CreatorOnboarding() {
         currency: selectedCurrency,
         verified: false,
         totalEarnings: 0,
-        totalEarningsUSD: 0,
         totalSupporters: 0,
         pendingPayout: 0,
-        pendingPayoutUSD: 0,
         socials: {
           instagram: formData.socials.instagram || null,
           linkedin: formData.socials.linkedin || null,

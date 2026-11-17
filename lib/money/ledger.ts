@@ -20,7 +20,8 @@ export type LedgerAccount =
   | "platform_income"
   | "referral_available"
   | "fee_residual"
-  | "opening_equity";
+  | "opening_equity"
+  | "fx_clearing";
 
 export type LedgerMetadataValue = string | number | boolean | null;
 
@@ -360,6 +361,7 @@ export function ledgerAccountBalances(
     referral_available: 0,
     fee_residual: 0,
     opening_equity: 0,
+    fx_clearing: 0,
   };
 
   for (const entry of entries) {
@@ -376,6 +378,7 @@ export function ledgerAccountBalances(
     referral_available: money(currency, balances.referral_available),
     fee_residual: money(currency, balances.fee_residual),
     opening_equity: money(currency, balances.opening_equity),
+    fx_clearing: money(currency, balances.fx_clearing),
   };
 }
 
@@ -408,4 +411,38 @@ export function reconcileLedgerBalance(
     difference: subtract(expected, actual),
     reconciled: equals(expected, actual),
   };
+}
+
+
+export interface FxConversionInput extends LedgerTransactionBase {
+  readonly amountMinor: number;
+}
+
+/**
+ * fx_out: debit a source-currency account into fx_clearing as part of a
+ * cross-currency withdrawal conversion. Paired with fx_in in payout currency.
+ */
+export function createFxDebit(input: FxConversionInput): LedgerTransaction {
+  assertNonZero(input.amountMinor, "FX amount");
+  if (input.amountMinor < 0) {
+    fail("INVALID_FX_AMOUNT", "FX amount must be positive");
+  }
+  return createLedgerTransaction(input, "fx_debit", [
+    { account: "creator_pending", amountMinor: -input.amountMinor },
+    { account: "fx_clearing", amountMinor: input.amountMinor },
+  ]);
+}
+
+/**
+ * fx_in: credit payout currency from fx_clearing for settlement to provider.
+ */
+export function createFxCredit(input: FxConversionInput): LedgerTransaction {
+  assertNonZero(input.amountMinor, "FX amount");
+  if (input.amountMinor < 0) {
+    fail("INVALID_FX_AMOUNT", "FX amount must be positive");
+  }
+  return createLedgerTransaction(input, "fx_credit", [
+    { account: "fx_clearing", amountMinor: -input.amountMinor },
+    { account: "provider_clearing", amountMinor: input.amountMinor },
+  ]);
 }

@@ -62,12 +62,13 @@ export function CommunityJoinSheet({
   const [error, setError] = useState<string | null>(null);
 
   const selectedTier = tiers.find((tier) => tier.id === selectedId) || tiers[0] || null;
-  const momoSupported = selectedTier ? isCurrencySupportedByMethod("momo", selectedTier.currency || "RWF") : true;
+  const tierCurrency = selectedTier?.currency ? String(selectedTier.currency).toUpperCase() : "";
+  const momoSupported = tierCurrency ? isCurrencySupportedByMethod("momo", tierCurrency) : false;
   const requiresCard = !momoSupported;
   const activeMethod = requiresCard ? "card" : method;
   const phoneValid = isValidRwandaPhone(phone);
   const canJoin =
-    Boolean(user) && Boolean(selectedTier) && (activeMethod === "card" || phoneValid);
+    Boolean(user) && Boolean(selectedTier) && Boolean(tierCurrency) && (activeMethod === "card" || phoneValid);
 
   const payment = useTransactionPayment({
     open,
@@ -86,7 +87,7 @@ export function CommunityJoinSheet({
   const chooseTier = (tier: CommunityTierView) => {
     setSelectedId(tier.id);
     setError(null);
-    if (!isCurrencySupportedByMethod("momo", tier.currency || "RWF")) setMethod("card");
+    if (tier.currency && !isCurrencySupportedByMethod("momo", tier.currency)) setMethod("card");
   };
 
   const join = async () => {
@@ -108,7 +109,7 @@ export function CommunityJoinSheet({
       amount: tierAmount(selectedTier),
       interval: selectedTier.interval,
       paymentMethod: activeMethod,
-      currency: selectedTier.currency || "RWF",
+      ...(tierCurrency ? { currency: tierCurrency } : {}),
       supporterId: user.uid,
       ...(activeMethod === "momo"
         ? { phone: normalizeRwandaPhone(phone) || phone }
@@ -147,7 +148,7 @@ export function CommunityJoinSheet({
           ? t("actions.community.join", {
               amount: formatMoney(
                 tierAmount(selectedTier),
-                selectedTier.currency || "RWF",
+                tierCurrency || undefined,
               ),
             })
           : t("actions.community.joinFallback")}
@@ -235,7 +236,7 @@ export function CommunityJoinSheet({
                     </div>
                     <div className="shrink-0 text-right">
                       <p className="text-body font-bold text-brand-strong">
-                        {formatMoney(tierAmount(tier), tier.currency || "RWF")}
+                        {tier.currency ? formatMoney(tierAmount(tier), tier.currency) : tierAmount(tier)}
                       </p>
                       <p className="text-caption text-muted-fg">
                         {tierIntervalLabel(tier)}

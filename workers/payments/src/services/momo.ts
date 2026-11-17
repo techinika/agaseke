@@ -208,10 +208,6 @@ export async function initiateMomoPayment(
 
     if (!doc) {
       await finishAttempt(env, attempt.key, { ref: payData.ref });
-
-    if (resolved.fx) {
-      await consumeCheckoutQuote(env, resolved.fx.id, payData.ref);
-    }
       throw new PaymentRequestError(
         "TRANSACTION_PERSIST_FAILED",
         `Payment ${payData.ref} was initiated but could not be recorded. Contact support with this reference.`,
@@ -220,6 +216,10 @@ export async function initiateMomoPayment(
     }
 
     await finishAttempt(env, attempt.key, { ref: payData.ref });
+
+    if (resolved.fx) {
+      await consumeCheckoutQuote(env, resolved.fx.id, payData.ref);
+    }
 
     const txTypeLabel =
       resolved.type === "community"

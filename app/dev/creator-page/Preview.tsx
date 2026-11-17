@@ -1,5 +1,7 @@
 "use client";
 
+import { DEFAULT_CURRENCY } from "@/types/currency";
+
 import { useState } from "react";
 import { Calendar, Gift, Heart, MessageCircle, Store, Users } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
@@ -173,7 +175,7 @@ export function CreatorPagePreview() {
             name: "Aline Uwase",
             photoURL: null,
             verified: true,
-            currency: "RWF",
+            currency: DEFAULT_CURRENCY,
             storeEnabled: CREATOR.storeEnabled,
             giveawayEnabled: CREATOR.giveawayEnabled,
             gatheringsEnabled: CREATOR.gatheringsEnabled,

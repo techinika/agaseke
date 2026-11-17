@@ -226,7 +226,7 @@ export default function CreatorDashboard() {
                       : sup.supporterName || "A Supporter"
                   }
                   amount={sup.amount?.toLocaleString()}
-                  currency={sup.currency || "RWF"}
+                  currency={sup.currency || ""}
                   time={
                     sup.createdAt
                       ? formatDistanceToNow(sup.createdAt.toDate(), {

@@ -15,7 +15,10 @@ export const subscriptionRenewalReminder: EmailService = {
   async buildTemplateData(data) {
     const tierName = (data.tierName as string) || "Community";
     const amount = data.amount as string;
-    const currency = (data.currency as string) || "RWF";
+    const currency = data.currency as string;
+    if (!currency) {
+      throw new Error("Renewal reminder missing currency");
+    }
     const interval = (data.interval as string) === "yearly" ? "year" : "month";
     const expiresAt = (data.expiresAt as string) || "soon";
     const creatorName = (data.creatorHandle as string) || "the creator";

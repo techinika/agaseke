@@ -36,7 +36,7 @@ rollout until fixed:
 
 1. **A client can charge a product/tier/ticket in the wrong currency at the other
    currency's numeric price.** `resolvePayment` accepts `body.currency` and does
-   `priceUSD ?? price`; if `priceUSD` is missing, a `10,000 RWF` product is charged as
+   `legacy cross-currency fallback`; if `legacy secondary price field` is missing, a `10,000 RWF` product is charged as
    `10,000 USD` (roughly a 1,000x overcharge). The inverse undercharges.
 2. **Approving a USD withdrawal decrements the RWF balance.** Admin approval always
    runs `pendingPayout: increment(-amount)`, regardless of the request currency, and the
@@ -72,7 +72,7 @@ then add KES/UGX/TZS with an FX layer. Do not enable a third currency before Pha
 | 4 | There is no transactional ledger; balances are updated with increments | **Partial** | Support/store/bookings now use one commit per payment with field transforms plus a `paymentApplications/{ref}` `exists:false` marker (`workers/{support,store,bookings}/src/firestore.ts:147-204`; `docs/FIX_LOG.md:23-32`). This is still a counter update, not an append-only ledger. Community and gathering credits still use `firestoreIncrement` (`workers/community/src/services/subscriptions.ts:367-383`; `workers/payments/src/services/webhooks.ts:304-305,320-321`). No ledger/reconciliation collection exists. |
 | 5 | Revenue splits use floats with no defined rounding | **True** | `revenue.ts:20-24` and `:40-52` return raw floats. `pricing.ts:341-355` rounds each share independently. Webhooks round to whole units before callbacks (`webhooks.ts:213-215`). |
 | 6 | Payouts are single-currency and default to RWF | **True** | One `creatorCurrency` and one `pendingAmount` in `PayoutsPage.tsx:38,46,124`; `fetchPayoutOverview` displays extra balances but withdrawal uses only the creator currency (`payoutsService.ts:68-83`); request stores a single amount/currency (`payoutsService.ts:150-160`). |
-| 7 | Currency is client-chosen and USD prices are stored as a second field | **True, and dangerous** | `pricing.ts:390,452,575,632,681` pass `body.currency` into `normalizeCurrency`; prices use `priceUSD ?? price`. `SupportModal.tsx:92,264` forces card for USD. See §5. |
+| 7 | Currency is client-chosen and USD prices are stored as a second field | **True, and dangerous** | `pricing.ts:390,452,575,632,681` pass `body.currency` into `normalizeCurrency`; prices use `legacy cross-currency fallback`. `SupportModal.tsx:92,264` forces card for USD. See §5. |
 | 8 | There is no FX layer | **True for money movement** | No persisted rates, quotes or settlement conversion; the only "conversion" is Admin analytics multiplying USD earnings by `1000` (`AdminPage.tsx:508`). A display-only adapter now exists (`lib/money/rateSources.ts`, `lib/money/display.ts`) and is not wired into any charge or payout. |
 | 9 | Types hard-code the RWF/USD union | **True** | `types/store.ts:13-14`, `types/booking.ts:37-38`, `types/community.ts:6-7`, `features/store/types.ts:13`, `features/community/types.ts:6-7`, `workers/community/src/types.ts:17-18`. |
 | 10 | Money tests are formatting-only, no property tests | **True** | `tests/unit/money.test.ts` (34 lines) only checks `lib/format/money.ts`, which itself hard-codes zero decimals (`lib/format/money.ts:12-15`). No `fast-check`/property suite; only 5 worker payment test files exist. |
@@ -108,7 +108,7 @@ none use minor units.
 | `countryCurrencies/{id}` | `countryCode`, `currencyCode`, `isDefault` | Admin config | Display/mapping only; payments never consult it. |
 | `creators/{handle}` | `currency`, `totalEarnings`, `totalEarningsUSD`, `pendingPayout`, `pendingPayoutUSD`, `totalSupporters`; dynamic `pendingPayout${code}`/`totalEarnings${code}` read | Workers + Admin | Master balance document. Only RWF/USD fields are written. Creator can own the doc, so rules must protect these fields. |
 | `profiles/{uid}` | `currency`, `totalSupport`, `totalSupportedCreators`, `totalSpent`, `totalPurchases` | App + workers | Buyer totals are single-currency aggregates with no currency dimension. |
-| `storeProducts/{id}` | `price`, `priceUSD`, `currency`, `platformFeePayer` | Creator UI | `priceUSD` optional; `getProductCurrency` defaults to RWF (`types/store.ts:77-78`). |
+| `storeProducts/{id}` | `price`, `legacy secondary price field`, `currency`, `platformFeePayer` | Creator UI | `legacy secondary price field` optional; `getProductCurrency` defaults to RWF (`types/store.ts:77-78`). |
 | `storeOrders/{id}` | `productPrice`, `platformFee`, `totalAmount`, `currency` | Store callback | Auto-ID, written outside the credit commit. |
 | `sales/{id}` | `productPrice`, `totalAmount`, `platformFee`, `creatorEarnings`, `referralEarnings`, `currency` | Store callback | Auto-ID, written outside the credit commit. |
 | `transactions/{ref}` | `amount`, `currency`, `platformFee`, `creatorEarnings`, `referralEarnings`, `processorCost`, `discount` | Payments worker | Server-derived at initiation. Major units. |
@@ -121,10 +121,10 @@ none use minor units.
 | `withdrawRequests/{id}` | `amount`, `amountMinor`, `currency`, `provider`, `rail`, `status`, `method`, `accountNumber` | Server withdrawal route | Provider/rail resolved from payout config; no FX quote or provider execution yet. |
 | `payouts/{id}` | `amount`, `amountMinor`, `currency`, `provider`, `rail`, `status`, `method` | Admin settlement route | Created on approval; not yet linked to an executed provider disbursement. |
 | `bookingRequests/{id}` | `amount`, `currency`, `paymentStatus` | Booking flow + callback | Also patched by the callback. |
-| `creatorGatherings/{id}` | `ticketPrice`, `priceUSD`, `currency`, `attendeesCount` | Creator UI | Same two-price pattern. |
+| `creatorGatherings/{id}` | `ticketPrice`, `legacy secondary price field`, `currency`, `attendeesCount` | Creator UI | Same two-price pattern. |
 | `gatheringsAttendance/{id}` | no currency; attendance only | Payments webhooks | Amount lives on `ticketSales`. |
 | `ticketSales/{id}` | `ticketAmount` (no currency) | Payments webhooks | Currency is only on the parent transaction. |
-| `communityTiers` (embedded + `workers/community`) | `price`, `priceUSD`, `currency` | Creator UI | `workers/community/src/services/tiers.ts:23,54`; `workers/bookings/src/services/create.ts:82`. |
+| `communityTiers` (embedded + `workers/community`) | `price`, `legacy secondary price field`, `currency` | Creator UI | `workers/community/src/services/tiers.ts:23,54`; `workers/bookings/src/services/create.ts:82`. |
 | `communitySubscriptions/{id}` | tier reference; amounts on transactions | Community worker | Credit path is non-atomic and has no marker. |
 | `giveaways/{id}` | `minSupportAmount` | Creator UI | No currency field; UI renders `RWF` (`GiveawayDetail.tsx:82`). |
 | `verificationRequests/{id}` | `payoutPreference`, payout account | Creator UI | Determines MoMo vs bank, but not currency. |
@@ -166,12 +166,12 @@ unknown code is credited to RWF.
 ### P0 — wrong-currency price selection (overcharge/undercharge)
 
 `resolvePayment` lets the client choose `body.currency` for store, booking, gathering and
-community payments. It then reads `priceUSD ?? price` (or `tier.priceUSD ?? tier.price`)
+community payments. It then reads `legacy cross-currency fallback` (or `tier.legacy secondary price field ?? tier.price`)
 for USD and `price` for RWF (`pricing.ts:452-455,575-578,632-635,681-683`).
 
 Consequences:
 
-- If `priceUSD` is missing, a creation that costs `10,000 RWF` can be charged
+- If `legacy secondary price field` is missing, a creation that costs `10,000 RWF` can be charged
   `10,000 USD`.
 - If the product is priced in USD and the client sends `RWF`, the USD number is charged
   as RWF (undercharge).
@@ -333,7 +333,7 @@ the output committed as a redacted report.
    minor unit; `creatorEarnings`/`platformFee`/`referralEarnings` not integers for USD;
    sum of shares vs `amount`.
 5. `storeProducts`/`creatorGatherings`/community tiers: `currency = "USD"` with no
-   `priceUSD`; `priceUSD === price` (possible copy mistake); `currency` missing.
+   `legacy secondary price field`; `legacy secondary price field === price` (possible copy mistake); `currency` missing.
 6. `storeOrders`/`sales`: duplicate `txRef`; currency missing; `totalAmount` not equal to
    product + fee according to `platformFeePayer`.
 7. `platformIncome`/`creatorIncome`/`ticketSales`/`gatheringsAttendance`/
@@ -349,7 +349,7 @@ the output committed as a redacted report.
 
 Expected results (hypotheses to confirm): missing currency on older income/attendance
 rows; USD balances rounded to whole dollars; USD withdrawals that reduced RWF; a
-non-zero number of `priceUSD`-less USD products/tiers.
+non-zero number of `legacy secondary price field`-less USD products/tiers.
 
 ---
 
@@ -482,10 +482,10 @@ interface PricedItem {
 ```
 
 - A supporter can only pay in a currency present in `prices`; there is no `body.currency`
-  price lookup and no `priceUSD ?? price` fallback.
+  price lookup and no `legacy cross-currency fallback` fallback.
 - Voluntary support amounts may be entered in any enabled currency.
 - FX is **not** used to derive a listed price at checkout.
-- Legacy `price`/`priceUSD` remain read-only until the Phase 6 cutover.
+- Legacy `price`/`legacy secondary price field` remain read-only until the Phase 6 cutover.
 
 ### 8.6 Payout and FX flow
 
@@ -545,7 +545,7 @@ ends with tests, a small commit series, and a review checkpoint.
 | **1** | **Implemented:** `shared/money/currencies.json`, generator + 7 registry copies, `lib/money/{money,display,rateSources,index}.ts`, property tests, display-only FX adapter. No behaviour changes. CI registry check wired in `.github/workflows/quality.yml`. | done (foundation) | low | All existing tests pass; property tests cover every currency's minor unit and allocation conservation; `money:registry:check` passes |
 | **2** | **Implemented behind `MONEY_LEDGER_ENABLED` (default false):** ledger collections + dual-write in support/store/bookings/community/gatherings, atomic payment markers, deterministic entry/income IDs, legacy counters untouched. Backfill script (`npm run money:backfill:ledger`, dry-run by default) writes `opening_balance` entries from `pendingPayout`/`pendingPayoutUSD`; `npm run money:reconcile:ledger` compares balances to entries and exits non-zero on drift. **Still pending:** rules and a reviewed dry run on a sanitized production export. | 5-7 d | high | Ledger entries balance per transaction; replaying a payment is a no-op; backfill dry-run reviewed before `--apply` |
 | **3** | **Implemented (partial):** server-side withdrawal requests/holds, idempotency, per-currency available balances, thresholds and authenticated admin settlement; optional ledger hold/settlement/release behind `MONEY_LEDGER_ENABLED`. **Still pending:** emulator/browser exercise, FX quotes and provider settlement. | 5-7 d | high | USD withdrawal debits only USD; double approval is a no-op; thresholds per currency; uploaded tests for partial failure |
-| **4** | **Implemented (partial):** strict `prices` maps for products, booking tiers, gathering tickets and community tiers; creator writers build maps and validate the active currency; public/dashboard displays and server checkout/bookings/community pricing reject missing-currency prices instead of falling back across currencies. **Still pending:** admin validation across the full catalog, checkout currency enablement, and a dedicated bookings-worker map test. | 6-8 d | high | A `10,000 RWF` item cannot be charged as USD; no `priceUSD ?? price`; both currencies round-trip |
+| **4** | **Implemented (partial):** strict `prices` maps for products, booking tiers, gathering tickets and community tiers; creator writers build maps and validate the active currency; public/dashboard displays and server checkout/bookings/community pricing reject missing-currency prices instead of falling back across currencies. **Still pending:** admin validation across the full catalog, checkout currency enablement, and a dedicated bookings-worker map test. | 6-8 d | high | A `10,000 RWF` item cannot be charged as USD; no `legacy cross-currency fallback`; both currencies round-trip |
 | **5** | FX rates/quotes, KES/UGX/TZS enablement, provider routing, settlement mapping, reconciliation/alerts. | 4-6 d | high | Missing/stale rate rejects; ledger records rate id; provider sandbox tests pass |
 | **6** | Staged rollout, shadow reconciliation, cutover flags, remove legacy fields after two clean cycles. | 3-5 d | medium | Two clean reconciliation cycles; rollback tested; docs updated |
 
@@ -569,7 +569,7 @@ still need separate review before merge:
 
 1. **P0 price/currency (implemented):** listed items use their stored currency price;
    a client-selected mismatch is rejected; USD no longer falls back to the RWF price;
-   missing `priceUSD` fails closed.
+   missing `legacy secondary price field` fails closed.
 2. **P0 payout (implemented):** Admin approval reads the request in a transaction,
    requires `pending`, validates the currency, debits `pendingPayoutUSD` for USD,
    writes `currency` on `payouts`, and rejects re-approval.
@@ -643,7 +643,7 @@ Recommended defaults are in brackets; these drive Phase 3-5.
 10. **Historical rounded USD:** backfill from transactions and adjust opening balances,
     or only correct future credits? [Opening-balance adjustment + reconciliation report;
     never rewrite historical transactions.]
-11. **Legacy fields:** keep `price`/`priceUSD` and `totalEarnings*` read-only for how
+11. **Legacy fields:** keep `price`/`legacy secondary price field` and `totalEarnings*` read-only for how
     long? [Two clean release cycles after Phase 6.]
 12. **Rules owner and deployment window?** [Needed before Phase 2 dual-write goes live.]
 
@@ -661,6 +661,10 @@ plus `pendingWithdrawals`, per-currency available balances, and an authenticated
 settlement route that writes payout/settlement/release entries transactionally.
 Reconciliation now covers pending withdrawals and lifetime withdrawals.
 
-**Phase 4 (partial, this branch):** server-side payment rails matrix (`shared/money/paymentRails.json`, generated rails, `GET /api/payments/methods`, `assertMethodSupportsCurrency` in initiation) and FX/quote plumbing in the payments worker (FX snapshot primitives + scheduled refresh to `fxRates/latest`/history, disabled by default; `POST /api/payments/quote` persisting locked `fxQuotes/*` bound to request/uid/TTL; quote-aware pricing/allocation and FX metadata on transactions; `quoteId` in initiation/idempotency). Canonical item pricing is a per-currency `prices` map + primary `currency` (no per-currency fields), with a dynamic `PriceEditor` and updated product/gathering/booking/community authoring paths; legacy `price`/`priceUSD` remain derived for compatibility. See `docs/MONEY.md` and `docs/FIX_LOG.md`.
+**Phase 4 (partial, this branch):** server-side payment rails matrix (`shared/money/paymentRails.json`, generated rails, `GET /api/payments/methods`, `assertMethodSupportsCurrency` in initiation) and FX/quote plumbing in the payments worker (FX snapshot primitives + scheduled refresh to `fxRates/latest`/history, disabled by default; `POST /api/payments/quote` persisting locked `fxQuotes/*` bound to request/uid/TTL; quote-aware pricing/allocation and FX metadata on transactions; `quoteId` in initiation/idempotency). Canonical item pricing is a per-currency `prices` map + primary `currency` (no per-currency fields), with a dynamic `PriceEditor` and updated product/gathering/booking/community authoring paths; legacy `price`/`legacy secondary price field` remain derived for compatibility. See `docs/MONEY.md` and `docs/FIX_LOG.md`.
 
 **Still pending:** remaining currency-typed surface/flow generalization, full quote/rails/FX-refresh and pricing-quote test coverage, rules for `fxRates`/`fxRateHistory`/`fxQuotes`, FX provider/spread/TTL/rounding-residual decisions, broader currency enablement, and emulator/browser exercise. Before enabling FX/ledger flags: run reconciliation against a reviewed dataset, confirm the business answers above, review data-quality findings, and deploy rules.
+
+
+## Status update (current branch)
+- Phase 4 source/runtime addressed: canonical `prices` maps, no cross-currency legacy price fallbacks in money-moving paths, server-validated currency/rails/methods, locked FX checkout quotes (cached rates, staleness/TTL/binding), and idempotent payment/credit handling in workers. Historical findings above describe the pre-fix state.

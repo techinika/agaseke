@@ -57,7 +57,7 @@ export default function ChangelogPage() {
         });
     } catch (err) {
       console.error("Failed to initialize changelog query", err);
-      setLoading(false);
+      queueMicrotask(() => setLoading(false));
     }
 
     return () => {
@@ -78,7 +78,7 @@ export default function ChangelogPage() {
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">Changelog</h1>
           <p className="text-orange-100 text-lg max-w-2xl mx-auto">
-            Track our progress. See what we've built and what's coming next.
+            Track our progress. See what we&apos;ve built and what&apos;s coming next.
           </p>
           <Link
             href="https://whatsapp.com/channel/0029Vb9AemqFy72CiwMyQf06"
@@ -237,8 +237,8 @@ export default function ChangelogPage() {
             <div className="mt-6 bg-card rounded-2xl shadow-sm border border-border-strong p-6">
               <h3 className="font-bold text-foreground mb-3">Have a feature idea?</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                We're always looking for ways to improve Agaseke. If you have a feature
-                suggestion or feedback, we'd love to hear from you.
+                We&apos;re always looking for ways to improve Agaseke. If you have a feature
+                suggestion or feedback, we&apos;d love to hear from you.
               </p>
               <div className="flex flex-wrap gap-3">
                 <a
@@ -247,12 +247,12 @@ export default function ChangelogPage() {
                 >
                   Email Us
                 </a>
-                <a
+                <Link
                   href="/help-center"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-border text-foreground rounded-xl text-sm font-bold hover:bg-border-strong transition-colors"
                 >
                   Help Center
-                </a>
+                </Link>
               </div>
             </div>
           </div>

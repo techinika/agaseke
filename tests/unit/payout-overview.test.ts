@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildPayoutOverview } from "@/lib/payouts/overview";
 
 describe("payout overview", () => {
-  it("uses configured RWF and USD thresholds without a 10000 fallback", () => {
+  it("uses configured thresholds without a 10000 fallback", () => {
     const overview = buildPayoutOverview(
       {
         currency: "RWF",
@@ -15,7 +15,6 @@ describe("payout overview", () => {
       [
         { code: "RWF", payoutThreshold: 10000 },
         { code: "USD", payoutThreshold: 20 },
-        { code: "KES", payoutThreshold: 500 },
       ],
     );
 
@@ -27,30 +26,32 @@ describe("payout overview", () => {
     ]);
   });
 
+  it("includes dynamic currency balances present on creator", () => {
+    const overview = buildPayoutOverview(
+      { currency: "USD", pendingPayoutUSD: 50, pendingPayoutKES: 200, totalEarningsKES: 500 },
+      [{ code: "RWF", payoutThreshold: 10000 }],
+    );
+
+    expect(overview.creatorCurrency).toBe("USD");
+    expect(overview.withdrawThreshold).toBeNull();
+    expect(overview.perCurrencyBalances).toEqual([
+      { currency: "USD", pending: 50, threshold: null, earnings: 0 },
+      { currency: "RWF", pending: 0, threshold: 10000, earnings: 0 },
+      { currency: "KES", pending: 200, threshold: null, earnings: 500 },
+    ]);
+  });
+
   it("does not invent a withdrawal threshold when configuration is missing", () => {
     const overview = buildPayoutOverview({ currency: "USD", pendingPayoutUSD: 50 }, [
       { code: "RWF", payoutThreshold: 10000 },
     ]);
 
-    expect(overview.creatorCurrency).toBe("USD");
-    expect(overview.withdrawThreshold).toBeNull();
     expect(overview.perCurrencyBalances[0]).toEqual({
       currency: "USD",
       pending: 50,
       threshold: null,
       earnings: 0,
     });
-  });
-
-  it("filters checkout-only currencies and keeps the creator currency available", () => {
-    const overview = buildPayoutOverview({ currency: "KES", pendingPayout: 25000 }, [
-      { code: "RWF", payoutThreshold: 10000 },
-      { code: "USD", payoutThreshold: 10 },
-      { code: "EUR", payoutThreshold: 10 },
-    ]);
-
-    expect(overview.creatorCurrency).toBe("RWF");
-    expect(overview.perCurrencyBalances.map((b) => b.currency)).toEqual(["RWF", "USD"]);
   });
 
   it("rejects malformed balances instead of surfacing NaN", () => {

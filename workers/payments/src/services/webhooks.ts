@@ -198,7 +198,10 @@ async function forwardToDomainWorker(
   const referralShare = includeReferral
     ? Number(txData.referralEarnings ?? totalAmount * referralSharePercentage)
     : 0;
-  const currency = (txData.currency as string) || "RWF";
+  const currency = txData.currency as string;
+  if (!currency) {
+    throw new Error("Payment callback missing currency");
+  }
 
   try {
     const res = await fetch(callbackUrl, {
@@ -260,7 +263,10 @@ async function handleGatheringPayment(
   totalAmount: number,
   txRef: string,
 ): Promise<boolean> {
-  const currency = (txData.currency as string) || "RWF";
+  const currency = txData.currency as string;
+  if (!currency) {
+    throw new Error("Gathering payment missing currency");
+  }
   const payoutField = currency === "RWF" ? "pendingPayout" : `pendingPayout${currency}`;
   const earningsField = currency === "RWF" ? "totalEarnings" : `totalEarnings${currency}`;
   const includeReferral = !!txData.includeReferral;
@@ -291,6 +297,7 @@ async function handleGatheringPayment(
       path: `platformIncome/${safeRef}_platform`,
       fields: convertToFields({
         amount: platformAmount,
+        currency,
         txRef,
         reason: "gathering_ticket",
         createdAt: now,
@@ -301,6 +308,7 @@ async function handleGatheringPayment(
       fields: convertToFields({
         creatorUid: txData.creatorUid,
         amount: creatorAmount,
+        currency,
         txRef,
         reason: "gathering_ticket",
         createdAt: now,
@@ -352,6 +360,7 @@ async function handleGatheringPayment(
       fields: convertToFields({
         creatorUid: txData.referralUid,
         amount: referralAmount,
+        currency,
         txRef,
         reason: "referral_commission",
         createdAt: now,

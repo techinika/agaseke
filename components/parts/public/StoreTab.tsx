@@ -32,7 +32,6 @@ import {
 } from "./store";
 import type { Product, FolderData, CartItem, Order } from "./store";
 import { getProductCurrency, getProductPrice } from "./store/types";
-import { formatCurrency } from "@/types/currency";
 import { TabErrorState } from "@/components/ui/TabErrorState";
 import { CheckoutSheet } from "@/features/store";
 
@@ -83,9 +82,10 @@ export const StoreTab = ({
   compact = false,
 }: StoreTabProps) => {
   const { user: currentUser } = useAuth();
+  const canAccess = storePublic || isSupporter;
   const [products, setProducts] = useState<Product[]>([]);
   const [folders, setFolders] = useState<FolderData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(canAccess);
   const [fetchError, setFetchError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -101,13 +101,8 @@ export const StoreTab = ({
   );
   const [showMyPurchases, setShowMyPurchases] = useState(false);
 
-  const canAccess = storePublic || isSupporter;
-
   useEffect(() => {
-    if (!canAccess) {
-      setLoading(false);
-      return;
-    }
+    if (!canAccess) return;
 
     const fetchData = async () => {
       try {
@@ -216,6 +211,16 @@ export const StoreTab = ({
       quantity: number = 1,
       selectedSize?: string,
     ) => {
+      const productCurrency = getProductCurrency(product);
+      if (cart.length > 0) {
+        const cartCurrency = getProductCurrency(cart[0].product);
+        if (cartCurrency && productCurrency && cartCurrency !== productCurrency) {
+          toast.error(
+            `Your cart is in ${cartCurrency}. Remove those items before adding ${productCurrency} products.`,
+          );
+          return;
+        }
+      }
       setCart((prev) => {
         const existing = prev.find(
           (item) =>
@@ -232,7 +237,7 @@ export const StoreTab = ({
       });
       toast.success("Added to cart!");
     },
-    [],
+    [cart],
   );
 
   const addFolderToCart = (folder: FolderData) => {
@@ -242,6 +247,22 @@ export const StoreTab = ({
     if (folderProducts.length === 0) {
       toast.error("No products available in this folder");
       return;
+    }
+    const currencies = [
+      ...new Set(folderProducts.map((p) => getProductCurrency(p)).filter(Boolean)),
+    ];
+    if (currencies.length > 1) {
+      toast.error("This bundle mixes currencies and cannot be added to one cart.");
+      return;
+    }
+    if (cart.length > 0 && currencies[0]) {
+      const cartCurrency = getProductCurrency(cart[0].product);
+      if (cartCurrency && cartCurrency !== currencies[0]) {
+        toast.error(
+          `Your cart is in ${cartCurrency}. Remove those items before adding ${currencies[0]} products.`,
+        );
+        return;
+      }
     }
     for (const product of folderProducts) {
       if (!purchasedProductIds.has(product.id)) {
@@ -349,7 +370,7 @@ export const StoreTab = ({
       fee = fee - (fee * folder.discountPercentage) / 100;
     }
     return fee;
-  }, [products, purchasedProductIds, platformSharePercentage]);
+  }, [products, purchasedProductIds]);
 
   if (!canAccess) {
     return (

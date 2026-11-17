@@ -7,6 +7,7 @@ import {
 } from "../firestore";
 import { initiateMomoPayment } from "./momo";
 import { initiateCardPayment } from "./card";
+import { isCurrencySupportedByMethod } from "../money/rails";
 
 export class RetryError extends Error {
   statusCode: number;
@@ -66,13 +67,17 @@ function buildPayload(tx: Record<string, unknown>): InitRequest {
       : {};
 
   const type = toString(stored.type) || toString(tx.type) || "support";
+  const currency = toString(stored.currency) || toString(tx.currency);
+  if (!currency) {
+    throw new RetryError("Transaction is missing currency and cannot be retried", 400);
+  }
   const payload: Record<string, unknown> = {
     creatorHandle:
       toString(stored.creatorHandle) ||
       toString(tx.creatorHandle) ||
       toString(tx.creatorId),
     type,
-    currency: toString(stored.currency) || toString(tx.currency) || "RWF",
+    currency,
   };
 
   if (type === "support" || type === "gift") {
@@ -133,8 +138,11 @@ export async function retryTransaction(
 
   const method: "momo" | "card" =
     toString(tx.paymentMethod) === "card" ? "card" : "momo";
-  const currency = toString(tx.currency) || "RWF";
-  if (method === "momo" && currency !== "RWF") {
+  const currency = toString(tx.currency);
+  if (!currency) {
+    throw new RetryError("Transaction is missing currency and cannot be retried", 400);
+  }
+  if (method === "momo" && !isCurrencySupportedByMethod("momo", currency)) {
     throw new RetryError(
       `Mobile Money only supports RWF (this transaction is ${currency}). Pay by card instead.`,
       400,

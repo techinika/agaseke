@@ -37,10 +37,6 @@ export default function ExplorePage() {
 
   const ITEMS_PER_PAGE = 12;
 
-  useEffect(() => {
-    fetchCreators(true);
-  }, []);
-
   const fetchCreators = async (isInitial = false) => {
     try {
       isInitial ? setLoading(true) : setLoadingMore(true);
@@ -84,6 +80,13 @@ export default function ExplorePage() {
       setLoadingMore(false);
     }
   };
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      void fetchCreators(true);
+    });
+  }, []);
+
 
   const filteredCreators = useMemo(() => {
     if (!searchTerm) return creators;

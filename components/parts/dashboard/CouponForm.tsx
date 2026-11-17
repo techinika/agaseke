@@ -151,7 +151,7 @@ export default function CouponForm() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
-                Min. Purchase (RWF)
+                Min. Purchase ({String(creator?.currency || "RWF").toUpperCase()})
               </label>
               <input
                 type="number"

@@ -5,7 +5,7 @@ export interface CommunityTierView {
   name: string;
   description: string;
   price: number;
-  priceUSD?: number;
+
   prices?: PriceMap;
   currency?: string;
   interval: "monthly" | "yearly";

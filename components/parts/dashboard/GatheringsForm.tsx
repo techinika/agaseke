@@ -4,14 +4,13 @@
 import { useState, useEffect } from "react";
 import { sendCommsEmail } from "@/lib/commsService";
 import { useRouter } from "next/navigation";
-import { Loader, ArrowLeft, Globe, Users, ShieldCheck, Ticket, X } from "lucide-react";
+import { Loader, ArrowLeft, Globe, Users, ShieldCheck, Ticket } from "lucide-react";
 import { db } from "@/db/firebase";
 import { collection, addDoc, doc, updateDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/logger";
 import type { EventType } from "@/components/parts/public/gatherings/types";
-import { formatCurrency } from "@/types/currency";
 import { buildPriceMap, getPrice, parsePriceCurrency, type PriceMap } from "@/lib/priceMap";
 import PriceEditor from "@/components/money/PriceEditor";
 import type { CurrencyCode } from "@/lib/money/registry.generated";
@@ -24,7 +23,7 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
   const { creator } = useAuth();
   const router = useRouter();
   const isEditing = !!gatheringId;
-  const defaultCurrency: CurrencyCode = parsePriceCurrency(creator?.currency) || "RWF";
+  const defaultCurrency: CurrencyCode = (parsePriceCurrency(creator?.currency) ?? ("RWF" as CurrencyCode));
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
 
@@ -50,6 +49,13 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
     active: true,
   });
 
+  const guessEventType = (data: any): EventType => {
+    if (data.eventType) return data.eventType;
+    if (data.ticketPrice > 0) return "ticketed";
+    if (data.minSupportTier > 0) return "supporters_tiered";
+    return "public";
+  };
+
   useEffect(() => {
     if (!gatheringId || !creator?.uid) return;
     const fetchEvent = async () => {
@@ -61,11 +67,11 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
           return;
         }
         const data = snap.data();
-        const loadedCurrency = parsePriceCurrency(data.currency) || "RWF";
+        const loadedCurrency = (parsePriceCurrency(data.currency) || defaultCurrency) as CurrencyCode;
         const loadedPrices = buildPriceMap({
           prices: (data.prices as PriceMap | null | undefined) || null,
           price: data.ticketPrice ?? data.price,
-          priceUSD: data.priceUSD,
+
         });
         setFormData({
           title: data.title || "",
@@ -90,14 +96,7 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
       }
     };
     fetchEvent();
-  }, [gatheringId, creator, router]);
-
-  const guessEventType = (data: any): EventType => {
-    if (data.eventType) return data.eventType;
-    if (data.ticketPrice > 0) return "ticketed";
-    if (data.minSupportTier > 0) return "supporters_tiered";
-    return "public";
-  };
+  }, [gatheringId, creator, router, defaultCurrency]);
 
   const handleSubmit = async () => {
     if (!creator?.uid) { toast.error("Not authenticated"); return; }
@@ -120,10 +119,10 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
         location: formData.location,
         eventType: formData.eventType,
         minSupportTier: formData.eventType === "supporters_tiered" ? formData.minSupportTier : 0,
-        ticketPrice: formData.eventType === "ticketed" ? (ticketPrices.RWF ?? ticketAmount) : 0,
-        priceUSD: formData.eventType === "ticketed" ? (ticketPrices.USD ?? 0) : 0,
+        ticketPrice: formData.eventType === "ticketed" ? (ticketPrices[formData.currency] ?? ticketAmount) : 0,
+
         prices: formData.eventType === "ticketed" ? ticketPrices : null,
-        currency: formData.eventType === "ticketed" ? formData.currency : "RWF",
+        currency: formData.currency,
         supporterPrice: formData.eventType === "ticketed" ? formData.supporterPrice : 0,
         capacity: formData.capacity || 0,
         creatorId: creator.uid,
@@ -267,7 +266,7 @@ export default function GatheringsForm({ gatheringId }: GatheringsFormProps) {
           {formData.eventType === "supporters_tiered" && (
             <div>
               <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
-                Minimum Support Amount (RWF)
+                Minimum Support Amount ({formData.currency})
               </label>
               <input
                 type="number"

@@ -2,6 +2,11 @@ import { db } from "@/db/firebase";
 import { collection, getDocs, limit, orderBy, query, where } from "firebase/firestore";
 import { t } from "@/lib/i18n";
 import type { Creator } from "@/types/creator";
+import {
+  normalizePayoutCurrency,
+  pendingPayoutField,
+  totalEarningsField,
+} from "@/lib/payouts/currency";
 import type { CreatorHomeSupport } from "./types";
 
 export interface CreatorHomeStats {
@@ -23,7 +28,8 @@ export async function fetchCreatorHomeData(creator: Creator): Promise<CreatorHom
   );
   const creatorDoc = creatorSnap.docs[0];
   const creatorData = creatorDoc?.data() as Record<string, unknown> | undefined;
-  const currency = (creatorData?.currency as string) || "RWF";
+  const creatorCurrency = normalizePayoutCurrency(creatorData?.currency);
+  const currency = creatorCurrency ?? "RWF";
   const creatorDocId = creatorDoc?.id || creator.uid;
 
   const supportsSnap = await getDocs(
@@ -50,9 +56,9 @@ export async function fetchCreatorHomeData(creator: Creator): Promise<CreatorHom
   });
 
   const stats: CreatorHomeStats = {
-    pending: (creatorData?.pendingPayout as number) ?? 0,
-    totalEarnings: (creatorData?.totalEarnings as number) ?? 0,
-    supporters: (creatorData?.totalSupporters as number) ?? 0,
+    pending: Number(creatorData?.[pendingPayoutField(currency)] ?? 0),
+    totalEarnings: Number(creatorData?.[totalEarningsField(currency)] ?? 0),
+    supporters: Number(creatorData?.totalSupporters ?? 0),
     currency,
     hasPayout: Boolean(creatorData?.lastPayoutAt),
   };

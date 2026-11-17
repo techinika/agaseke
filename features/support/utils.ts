@@ -29,11 +29,12 @@ export function getSupportPresets(): number[] {
   return DEFAULT_SUPPORT_PRESETS;
 }
 
-export function getMinSupport(currency = "RWF", raw?: unknown): number {
+export function getMinSupport(currency: string = "", raw?: unknown): number {
   const parsed = Number(raw);
   if (Number.isFinite(parsed) && parsed > 0) return parsed;
-  if (isCurrencyCode(currency)) {
-    return getCurrencyDefinition(currency).minorUnit === 0 ? DEFAULT_MIN_SUPPORT : 1;
+  const code = isCurrencyCode(currency) ? currency : ("RWF" as const);
+  if (isCurrencyCode(code)) {
+    return getCurrencyDefinition(code).minorUnit === 0 ? DEFAULT_MIN_SUPPORT : 1;
   }
   return DEFAULT_MIN_SUPPORT;
 }
@@ -42,7 +43,7 @@ export function buildSupportConfig(
   creator: Pick<SupportCreator, "currency">,
   minAmount?: unknown,
 ): SupportConfig {
-  const currency = creator.currency || "RWF";
+  const currency = creator.currency || "";
   return {
     currency,
     minAmount: getMinSupport(currency, minAmount),

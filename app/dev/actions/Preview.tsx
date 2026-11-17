@@ -1,5 +1,7 @@
 "use client";
 
+import { DEFAULT_CURRENCY } from "@/types/currency";
+
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import type { User } from "firebase/auth";
 import { CalendarDays, CreditCard, Gift, ReceiptText, Ticket, Users } from "lucide-react";
@@ -20,7 +22,7 @@ const CREATOR = {
   handle: "aline",
   photoURL: null,
   verified: true,
-  currency: "RWF",
+  currency: DEFAULT_CURRENCY,
 };
 
 const MOCK_USER = {
@@ -36,7 +38,7 @@ const PAID_GATHERING = {
   time: "18:00",
   location: "Kimihurura, Kigali",
   ticketPrice: 5000,
-  currency: "RWF",
+  currency: DEFAULT_CURRENCY,
 };
 
 const CART: LegacyCartItem[] = [
@@ -48,7 +50,7 @@ const CART: LegacyCartItem[] = [
       name: "Agaseke print — limited",
       description: "Signed A3 print from the Kigali series.",
       price: 18000,
-      currency: "RWF",
+      currency: DEFAULT_CURRENCY,
       type: "physical",
       stock: 12,
       sizes: ["A3"],
@@ -68,7 +70,7 @@ const CART: LegacyCartItem[] = [
       name: "Live session album",
       description: "Digital download of the live session.",
       price: 6000,
-      currency: "RWF",
+      currency: DEFAULT_CURRENCY,
       type: "digital",
       stock: 999,
       createdAt: new Date(),
@@ -245,7 +247,7 @@ export function ActionsPreview() {
             name: "Insider",
             description: "Monthly studio notes and early listens.",
             price: 5000,
-            currency: "RWF",
+            currency: DEFAULT_CURRENCY,
             interval: "monthly",
             benefits: ["Private posts", "Monthly live session", "Member chat"],
           },
@@ -254,7 +256,7 @@ export function ActionsPreview() {
             name: "Patron",
             description: "Everything in Insider plus yearly surprises.",
             price: 50000,
-            currency: "RWF",
+            currency: DEFAULT_CURRENCY,
             interval: "yearly",
             benefits: ["All Insider perks", "Annual print", "Priority questions"],
           },
@@ -316,7 +318,7 @@ export function ActionsPreview() {
         getItemPrice={(item) => item.product.price * item.quantity}
         total={total}
         currentUser={MOCK_USER}
-        currency="RWF"
+        currency={DEFAULT_CURRENCY}
       />
 
       {active === "checkout-old" && (
@@ -330,7 +332,7 @@ export function ActionsPreview() {
           getItemPrice={(item) => item.product.price * item.quantity}
           total={total}
           currentUser={MOCK_USER}
-          currency="RWF"
+          currency={DEFAULT_CURRENCY}
         />
       )}
     </main>

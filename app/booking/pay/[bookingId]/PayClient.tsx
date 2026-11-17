@@ -113,7 +113,7 @@ export default function BookingPayClient() {
         lastName: currentUser.displayName?.split(" ")[1] || "",
         buyerName: currentUser.displayName || booking.bookerName || "Customer",
         buyerEmail: currentUser.email || booking.bookerEmail || "",
-        currency: booking.currency || "RWF",
+        ...(booking.currency ? { currency: booking.currency } : {}),
         idempotencyKey: crypto.randomUUID(),
       };
 
@@ -179,8 +179,8 @@ export default function BookingPayClient() {
 
   const handle = booking.creatorHandle;
   const isPaid = booking.paymentStatus === "paid";
-  const momoSupported = booking?.currency ? isCurrencySupportedByMethod("momo", booking.currency) : true;
-  const isUSDBooking = !momoSupported;
+  const momoSupported = booking?.currency ? isCurrencySupportedByMethod("momo", booking.currency) : false;
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -254,7 +254,7 @@ export default function BookingPayClient() {
             <div className="border-t border-border pt-3 flex justify-between font-bold">
               <span>Amount</span>
               <span className="text-orange-600">
-                {formatCurrency(booking.paymentAmount || 0, booking.currency || "RWF")}
+                {booking.currency ? formatCurrency(booking.paymentAmount || 0, booking.currency) : `${booking.paymentAmount || 0}`}
               </span>
             </div>
           </div>
@@ -301,10 +301,9 @@ export default function BookingPayClient() {
               {/* Payment Method */}
               <div className="space-y-3">
                 <p className="font-bold text-sm">Payment Method</p>
-                {isUSDBooking ? (
+                {!momoSupported ? (
                   <p className="text-sm text-muted-foreground">
-                    This booking is priced in USD, so card payment is the only
-                    option.
+                    Mobile money is not available for {booking.currency || "this currency"}. Card payment is required.
                   </p>
                 ) : (
                   <div className="grid grid-cols-2 gap-3">
@@ -332,7 +331,7 @@ export default function BookingPayClient() {
                 )}
               </div>
 
-              {!isUSDBooking && paymentMethod === "momo" && (
+              {momoSupported && paymentMethod === "momo" && (
                 <div className="bg-amber-50 rounded-xl p-4 flex items-start gap-3">
                   <AlertCircle
                     size={20}
@@ -345,7 +344,7 @@ export default function BookingPayClient() {
                 </div>
               )}
 
-              {!isUSDBooking && paymentMethod === "momo" && (
+              {momoSupported && paymentMethod === "momo" && (
                 <div className="space-y-2">
                   <label className="text-sm font-bold">
                     MTN Mobile Money Number
@@ -375,7 +374,7 @@ export default function BookingPayClient() {
 
               <button
                 onClick={handlePay}
-                disabled={paying || (paymentMethod === "momo" && !phone.trim())}
+                disabled={!booking.currency || paying || (paymentMethod === "momo" && !phone.trim())}
                 className="w-full bg-green-600 text-white py-4 rounded-lg font-bold hover:bg-green-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {paying ? (
@@ -386,7 +385,7 @@ export default function BookingPayClient() {
                 ) : (
                   <>
                     <Check size={20} />
-                    Pay {formatCurrency(booking.paymentAmount || 0, booking.currency || "RWF")}
+                    Pay {booking.currency ? formatCurrency(booking.paymentAmount || 0, booking.currency) : `${booking.paymentAmount || 0}`}
                   </>
                 )}
               </button>

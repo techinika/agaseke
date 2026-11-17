@@ -25,6 +25,12 @@ import { toast } from "sonner";
 import Loading from "@/app/loading";
 import Link from "next/link";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { formatCurrency } from "@/types/currency";
+import {
+  PAYOUT_CURRENCIES,
+  normalizePayoutCurrency,
+  pendingPayoutField,
+} from "@/lib/payouts/currency";
 
 export default function ProfileEditPage() {
   const auth = useAuth();
@@ -34,7 +40,7 @@ export default function ProfileEditPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
   const [hasPendingPayout, setHasPendingPayout] = useState(false);
-  const [pendingAmount, setPendingAmount] = useState(0);
+  const [pendingSummary, setPendingSummary] = useState("");
   const [confirmEmail, setConfirmEmail] = useState("");
   const [deleting, setDeleting] = useState(false);
 
@@ -63,9 +69,19 @@ export default function ProfileEditPage() {
           const creatorSnap = await getDoc(creatorRef);
           if (creatorSnap.exists()) {
             const creatorData = creatorSnap.data();
-            const pending = creatorData.pendingPayout || 0;
-            setPendingAmount(pending);
-            setHasPendingPayout(pending > 0);
+            const creatorCurrency = normalizePayoutCurrency(creatorData.currency) ?? "RWF";
+            const pendingBalances = PAYOUT_CURRENCIES.map((code) => ({
+              code,
+              amount: Number(creatorData[pendingPayoutField(code)] ?? 0),
+            })).filter((balance) => balance.amount > 0);
+            setPendingSummary(
+              pendingBalances.length > 0
+                ? pendingBalances
+                    .map((balance) => formatCurrency(balance.amount, balance.code))
+                    .join(" + ")
+                : formatCurrency(0, creatorCurrency),
+            );
+            setHasPendingPayout(pendingBalances.length > 0);
           }
         }
       }
@@ -263,7 +279,7 @@ export default function ProfileEditPage() {
             <p className="text-sm text-red-700 font-medium">
               {hasPendingPayout ? (
                 <>
-                  You have <span className="font-bold">{pendingAmount.toLocaleString()} RWF</span> pending payout. 
+                  You have <span className="font-bold">{pendingSummary}</span> pending payout.
                   You must withdraw your funds before deleting your account.
                 </>
               ) : (
@@ -273,7 +289,7 @@ export default function ProfileEditPage() {
             <button
               onClick={() => {
                 if (hasPendingPayout) {
-                  toast.error(`Please withdraw your ${pendingAmount.toLocaleString()} RWF first`);
+                  toast.error(`Please withdraw your ${pendingSummary} first`);
                 } else {
                   setIsDeleteModalOpen(true);
                 }

@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { ChatHeader, MessageBubble, MessageInput } from "./message";
 import type { Message } from "./message";
 import { TabErrorState } from "@/components/ui/TabErrorState";
+import { formatCurrency } from "@/types/currency";
 
 const GENERAL_WORKER_URL =
   process.env.NEXT_PUBLIC_GENERAL_WORKER_URL || "http://localhost:8787";
@@ -251,7 +252,11 @@ export const MessageTab = ({
             <p className="text-sm text-muted-foreground max-w-[250px] mx-auto">
             {messagingAllowAll
               ? "This creator has disabled direct messaging."
-              : `You need to support with at least ${messagingMinAmount.toLocaleString()} RWF to send a message.`}
+              : `You need to support with at least ${
+                  creatorData?.currency
+                    ? formatCurrency(messagingMinAmount, creatorData.currency)
+                    : messagingMinAmount.toLocaleString()
+                } to send a message.`}
           </p>
           <button
             onClick={() => setIsModalOpen(true)}

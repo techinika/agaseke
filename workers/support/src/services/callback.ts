@@ -19,7 +19,10 @@ export async function handleSupportCallback(
     referralShare: number;
   };
 
-  const currency = (txData.currency as string) || "RWF";
+  const currency = txData.currency as string;
+  if (!currency) {
+    throw new Error("Support callback missing currency");
+  }
   const payoutField = currency === "RWF" ? "pendingPayout" : `pendingPayout${currency}`;
   const earningsField = currency === "RWF" ? "totalEarnings" : `totalEarnings${currency}`;
   const platformAmount = roundCurrencyAmount(platformShare, currency);
@@ -36,6 +39,7 @@ export async function handleSupportCallback(
       path: `platformIncome/${safeRef}_platform`,
       fields: {
         amount: currencyNumberField(platformAmount, currency),
+        currency: { stringValue: currency },
         txRef: { stringValue: paymentRef },
         reason: { stringValue: paymentMethod === "momo" ? "flat_fee" : "card_payment_fee" },
         createdAt: { timestampValue: now },
@@ -46,6 +50,7 @@ export async function handleSupportCallback(
       fields: {
         creatorUid: { stringValue: txData.creatorUid as string },
         amount: currencyNumberField(creatorAmount, currency),
+        currency: { stringValue: currency },
         txRef: { stringValue: paymentRef },
         reason: { stringValue: "support" },
         createdAt: { timestampValue: now },
@@ -76,7 +81,7 @@ export async function handleSupportCallback(
       supporterId: { stringValue: supporterId },
       supporterPhoneNumber: { stringValue: (txData.phone as string) || "" },
       txRef: { stringValue: paymentRef },
-      currency: { stringValue: (txData.currency as string) || "RWF" },
+      currency: { stringValue: currency },
       createdAt: { timestampValue: now },
     });
   } else {
@@ -87,7 +92,7 @@ export async function handleSupportCallback(
         supporterId: { nullValue: null },
         supporterPhoneNumber: { stringValue: (txData.phone as string) || "" },
         txRef: { stringValue: paymentRef },
-        currency: { stringValue: (txData.currency as string) || "RWF" },
+        currency: { stringValue: currency },
         createdAt: { timestampValue: now },
       },
     });
@@ -105,6 +110,7 @@ export async function handleSupportCallback(
       fields: {
         creatorUid: { stringValue: txData.referralUid as string },
         amount: currencyNumberField(referralAmount, currency),
+        currency: { stringValue: currency },
         txRef: { stringValue: paymentRef },
         reason: { stringValue: "referral_commission" },
         createdAt: { timestampValue: now },

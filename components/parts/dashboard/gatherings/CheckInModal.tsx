@@ -46,7 +46,9 @@ export default function CheckInModal({
   const [scanMode, setScanMode] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const activeEventRef = useRef<any>(null);
-  activeEventRef.current = activeEvent;
+  useEffect(() => {
+    activeEventRef.current = activeEvent;
+  }, [activeEvent]);
 
   const checkedInCount = attendees.filter((a) => a.checkedIn).length;
   const declinedCount = attendees.filter((a) => a.checkInDeclined).length;
@@ -58,7 +60,8 @@ export default function CheckInModal({
   );
 
   const handleScanResult = useRef<((id: string, data: any) => Promise<void>) | undefined>(undefined);
-  handleScanResult.current = async (decodedText: string, data: any) => {
+  useEffect(() => {
+    handleScanResult.current = async (decodedText: string, data: any) => {
     const ev = activeEventRef.current;
     if (!ev) return;
 
@@ -88,7 +91,8 @@ export default function CheckInModal({
       console.error("QR scan error:", e);
       toast.error("Failed to process ticket");
     }
-  };
+    };
+  });
 
   useEffect(() => {
     if (!isOpen || !scanMode) {

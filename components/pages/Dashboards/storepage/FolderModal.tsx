@@ -8,6 +8,7 @@ import { formatCurrency } from "@/types/currency";
 export default function FolderModal({
   folder,
   products,
+  currency,
   formData,
   setFormData,
   onClose,
@@ -15,6 +16,7 @@ export default function FolderModal({
 }: {
   folder: any | null;
   products: Product[];
+  currency?: string;
   formData: any;
   setFormData: (data: any) => void;
   onClose: () => void;
@@ -54,18 +56,39 @@ export default function FolderModal({
   };
 
   const toggleProduct = (productId: string) => {
-    setFormData((prev: typeof formData) => ({
-      ...prev,
-      productIds: prev.productIds.includes(productId)
-        ? prev.productIds.filter((id: string) => id !== productId)
-        : [...prev.productIds, productId],
-    }));
+    setFormData((prev: typeof formData) => {
+      if (!prev.productIds.includes(productId) && prev.productIds.length > 0) {
+        const firstProduct = products.find((p) => p.id === prev.productIds[0]);
+        const nextProduct = products.find((p) => p.id === productId);
+        const firstCurrency = firstProduct ? getProductCurrency(firstProduct) : "";
+        const nextCurrency = nextProduct ? getProductCurrency(nextProduct) : "";
+        if (firstCurrency && nextCurrency && firstCurrency !== nextCurrency) {
+          toast.error(
+            `This bundle is in ${firstCurrency}. A bundle cannot mix currencies.`,
+          );
+          return prev;
+        }
+      }
+      return {
+        ...prev,
+        productIds: prev.productIds.includes(productId)
+          ? prev.productIds.filter((id: string) => id !== productId)
+          : [...prev.productIds, productId],
+      };
+    });
   };
 
   const totalPrice = formData.productIds.reduce((sum: number, id: string) => {
     const product = products.find((p) => p.id === id);
     return sum + (product ? getProductPrice(product) : 0);
   }, 0);
+
+  const firstFolderProduct = products.find(
+    (p) => p.id === formData.productIds[0],
+  );
+  const folderCurrency = firstFolderProduct
+    ? getProductCurrency(firstFolderProduct)
+    : currency || "RWF";
 
   const effectivePrice = formData.bundlePrice > 0 ? formData.bundlePrice : totalPrice;
 
@@ -195,11 +218,11 @@ export default function FolderModal({
           {formData.productIds.length > 0 && (
             <div className="p-4 bg-muted rounded-lg space-y-1">
               <p className="text-sm text-muted-foreground">
-                Sum of products: {formatCurrency(totalPrice, "RWF")}
+                Sum of products: {formatCurrency(totalPrice, folderCurrency)}
               </p>
               {formData.bundlePrice > 0 && (
                 <p className="text-sm font-bold text-orange-600">
-                  Bundle price: {formatCurrency(formData.bundlePrice, "RWF")}
+                  Bundle price: {formatCurrency(formData.bundlePrice, folderCurrency)}
                 </p>
               )}
             </div>
@@ -273,7 +296,7 @@ export default function FolderModal({
               />
               {formData.discountPercentage > 0 && effectivePrice > 0 && (
                 <p className="text-sm text-green-600 mt-2">
-                  You save: {formatCurrency(discountAmount, "RWF")} (
+                  You save: {formatCurrency(discountAmount, folderCurrency)} (
                   {formData.discountPercentage}% off)
                 </p>
               )}

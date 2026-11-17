@@ -448,6 +448,7 @@ export default function PublicProfile({
               currentUserId={currentUser?.uid}
               compact={true}
               username={username}
+              creatorCurrency={creatorData?.currency}
             />
           </Suspense>
         )}

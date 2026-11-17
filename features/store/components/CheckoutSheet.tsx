@@ -13,6 +13,7 @@ import { CreatorTrustRow, SupporterActionSheet } from "@/features/actions";
 import { useTransactionPayment } from "@/features/payments";
 import type { CartItem, ShippingAddress } from "../types";
 import { isCurrencySupportedByMethod } from "@/lib/money/rails";
+import { DEFAULT_CURRENCY } from "@/types/currency";
 
 const platformSharePercentage = Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
 
@@ -76,12 +77,11 @@ export function CheckoutSheet({
   creatorVerified,
   getItemPrice,
   total,
-  currency = "RWF",
+  currency = DEFAULT_CURRENCY,
   currentUser,
   onPaid,
 }: CheckoutSheetProps) {
   const momoSupported = isCurrencySupportedByMethod("momo", currency);
-  const isUSD = currency === "USD";
   const [step, setStep] = useState<CheckoutStep>("info");
   const [couponCode, setCouponCode] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"momo" | "card">(
@@ -497,7 +497,7 @@ export function CheckoutSheet({
               <p className="text-label font-semibold text-fg">
                 {t("support.method.title")}
               </p>
-              {isUSD ? (
+              {!momoSupported ? (
                 <p className="rounded-control bg-surface-raised p-3 text-label text-muted-fg">
                   {t("actions.checkout.cardOnly")}
                 </p>

@@ -250,7 +250,7 @@ export default function BookingsPage() {
                     {(b.paymentAmount || 0) > 0 && (
                       <span className="flex items-center gap-1.5 font-bold text-foreground">
                         <CreditCard size={14} />
-                        {formatCurrency(b.paymentAmount || 0, b.currency || "RWF")}
+                        {b.currency ? formatCurrency(b.paymentAmount || 0, b.currency as any) : `${b.paymentAmount || 0}`}
                       </span>
                     )}
                   </div>

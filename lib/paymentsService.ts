@@ -62,6 +62,9 @@ export interface UserTransaction {
   type: string;
   status: string;
   currency: string;
+  sourceCurrency: string;
+  sourceAmountMinor: number;
+  fxRate: number;
   paymentMethod: string;
   amount: number;
   createdAt: string;
@@ -168,6 +171,29 @@ async function parseError(res: Response, fallback: string): Promise<string> {
     }
   } catch {}
   return fallback;
+}
+
+export interface PaymentMethodOption {
+  method: "momo" | "card";
+  provider: string;
+  label: string;
+}
+
+export async function getPaymentMethods(
+  currency: string,
+  country?: string,
+): Promise<PaymentMethodOption[]> {
+  const params = new URLSearchParams({ currency });
+  if (country) params.set("country", country);
+  const res = await fetch(
+    `${PAYMENTS_WORKER_URL}/api/payments/methods?${params.toString()}`,
+    { method: "GET", headers: { Accept: "application/json" } },
+  );
+  if (!res.ok) {
+    throw new Error(await parseError(res, "Failed to load payment methods"));
+  }
+  const data = (await res.json()) as { methods?: PaymentMethodOption[] };
+  return Array.isArray(data.methods) ? data.methods : [];
 }
 
 export async function getUserTransactions(

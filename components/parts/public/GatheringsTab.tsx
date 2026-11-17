@@ -404,7 +404,21 @@ export function GatheringsTab({ creatorId, creatorHandle, creatorName = "the cre
           </div>
           <div className="bg-muted/50 rounded-xl border border-border p-4">
             <p className="text-sm text-muted-foreground">
-              A minimum contribution of {formatCurrency(Math.min(...lockedGatherings.map(g => g.minSupportTier || 0)), "RWF")} is required to unlock exclusive gatherings.
+              {(() => {
+                const minTier = Math.min(
+                  ...lockedGatherings.map((g) => g.minSupportTier || 0),
+                );
+                const currencies = [
+                  ...new Set(
+                    lockedGatherings
+                      .map((g) => g.currency)
+                      .filter((c): c is string => Boolean(c)),
+                  ),
+                ];
+                return currencies.length === 1
+                  ? `A minimum contribution of ${formatCurrency(minTier, currencies[0])} is required to unlock exclusive gatherings.`
+                  : `A minimum contribution of ${minTier.toLocaleString()} (across currencies) is required to unlock exclusive gatherings.`;
+              })()}
             </p>
           </div>
         </div>

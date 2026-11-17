@@ -150,13 +150,15 @@ export default function MessagesPage() {
 
   useEffect(() => {
     if (!selectedChatId) {
-      setMessages([]);
+      queueMicrotask(() => setMessages([]));
       return;
     }
 
-    setMessagesLoading(true);
-    setMessages([]);
-    setHasMoreMessages(false);
+    queueMicrotask(() => {
+      setMessagesLoading(true);
+      setMessages([]);
+      setHasMoreMessages(false);
+    });
     oldestCursorRef.current = null;
 
     const messagesRef = collection(db, "chatrooms", selectedChatId, "messages");
@@ -421,6 +423,7 @@ export default function MessagesPage() {
               </p>
             </div>
           ) : (
+            // eslint-disable-next-line react-hooks/refs
             filteredChatrooms.map((chat) => (
               <button
                 key={chat.id}

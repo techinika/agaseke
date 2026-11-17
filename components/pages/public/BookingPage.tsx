@@ -46,31 +46,7 @@ export default function BookingPage({ username, creator }: { username: string; c
   const isTiered = creator?.bookingMode === "tiered";
   const activeTiers: BookingTier[] = (creator?.bookingTiers || []).filter((t: BookingTier) => t.active);
 
-  useEffect(() => {
-    if (!isTiered && creator?.bookingAvailability) {
-      setAvailability(creator.bookingAvailability);
-      generateCalendarDates(creator.bookingAvailability);
-    }
-  }, [creator, isTiered]);
-
-  useEffect(() => {
-    if (selectedTier) {
-      setAvailability(selectedTier.availability);
-      generateCalendarDates(selectedTier.availability);
-      setSelectedDate("");
-      setSelectedTime("");
-      setSelectedType(selectedTier.availability.bookingType === "both" ? "both" : selectedTier.availability.bookingType);
-    }
-  }, [selectedTier]);
-
-  useEffect(() => {
-    if (user) {
-      setName(user.displayName || "");
-      setEmail(user.email || "");
-    }
-  }, [user]);
-
-  const generateCalendarDates = (avail: BookingAvailability) => {
+  function generateCalendarDates(avail: BookingAvailability) {
     if (!avail.daysOfWeek || avail.daysOfWeek.length === 0 || !avail.defaultSlots || avail.defaultSlots.length === 0) {
       setCalendarDates([]);
       return;
@@ -87,7 +63,38 @@ export default function BookingPage({ username, creator }: { username: string; c
       if (avail.daysOfWeek.includes(d.getDay())) dates.push(d.toISOString().split("T")[0]);
     }
     setCalendarDates(dates);
-  };
+  }
+
+  useEffect(() => {
+    if (!isTiered && creator?.bookingAvailability) {
+      queueMicrotask(() => {
+        setAvailability(creator.bookingAvailability);
+        generateCalendarDates(creator.bookingAvailability);
+      });
+    }
+  }, [creator, isTiered]);
+
+  useEffect(() => {
+    if (selectedTier) {
+      queueMicrotask(() => {
+        setAvailability(selectedTier.availability);
+        generateCalendarDates(selectedTier.availability);
+        setSelectedDate("");
+        setSelectedTime("");
+        setSelectedType(selectedTier.availability.bookingType === "both" ? "both" : selectedTier.availability.bookingType);
+      });
+    }
+  }, [selectedTier]);
+
+  useEffect(() => {
+    if (user) {
+      queueMicrotask(() => {
+        setName(user.displayName || "");
+        setEmail(user.email || "");
+      });
+    }
+  }, [user]);
+
 
   const handleSubmit = async () => {
     if (!selectedDate || !selectedTime) { toast.error("Please select a date and time"); return; }
@@ -107,7 +114,7 @@ export default function BookingPage({ username, creator }: { username: string; c
         tierId: selectedTier?.id || null,
         tierName: selectedTier?.name || null,
         paymentAmount: selectedTier ? bookingTierAmount(selectedTier) : 0,
-        currency: selectedTier?.currency || "RWF",
+        ...(selectedTier?.currency ? { currency: selectedTier.currency } : {}),
       });
 
       if (data?.paymentRequired && data?.bookingId) {
@@ -168,7 +175,7 @@ export default function BookingPage({ username, creator }: { username: string; c
                           </div>
                           <div className="text-right shrink-0 ml-4">
                             <p className="text-xl font-black text-orange-600">
-                              {bookingTierAmount(tier) > 0 ? formatCurrency(bookingTierAmount(tier), tier.currency || "RWF") : "Free"}
+                              {bookingTierAmount(tier) > 0 ? (tier.currency ? formatCurrency(bookingTierAmount(tier), tier.currency as any) : `${bookingTierAmount(tier)}`) : "Free"}
                             </p>
                             <p className="text-xs text-muted-foreground">{tier.duration} minutes</p>
                           </div>
@@ -210,7 +217,7 @@ export default function BookingPage({ username, creator }: { username: string; c
                 {isTiered && selectedTier && (
                   <div className="text-right">
                     <p className="text-sm font-bold">{selectedTier.name}</p>
-                    <p className="text-xs text-muted-foreground">{bookingTierAmount(selectedTier) > 0 ? formatCurrency(bookingTierAmount(selectedTier), selectedTier.currency || "RWF") : "Free"} &middot; {selectedTier.duration}min</p>
+                    <p className="text-xs text-muted-foreground">{bookingTierAmount(selectedTier) > 0 ? (selectedTier.currency ? formatCurrency(bookingTierAmount(selectedTier), selectedTier.currency as any) : `${bookingTierAmount(selectedTier)}`) : "Free"} &middot; {selectedTier.duration}min</p>
                   </div>
                 )}
               </div>
@@ -320,7 +327,7 @@ export default function BookingPage({ username, creator }: { username: string; c
                   <button onClick={handleSubmit} disabled={submitting || !selectedDate || !selectedTime}
                     className="w-full bg-foreground text-background py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all disabled:opacity-50">
                     {submitting ? <Loader className="animate-spin" size={18} /> : <Calendar size={18} />}
-                    {selectedTier && bookingTierAmount(selectedTier) > 0 ? `Continue to Payment — ${formatCurrency(bookingTierAmount(selectedTier), selectedTier.currency || "RWF")}` : "Submit Request"}
+                    {selectedTier && bookingTierAmount(selectedTier) > 0 ? `Continue to Payment — ${selectedTier.currency ? formatCurrency(bookingTierAmount(selectedTier), selectedTier.currency as any) : bookingTierAmount(selectedTier)}` : "Submit Request"}
                   </button>
                 </>
               )}
@@ -354,7 +361,7 @@ export default function BookingPage({ username, creator }: { username: string; c
               <AlertCircle className="text-red-500" size={32} />
             </div>
             <h2 className="text-2xl font-bold text-foreground mb-2">Something went wrong</h2>
-            <p className="text-muted-foreground mb-6">We couldn't submit your booking request. Please try again.</p>
+            <p className="text-muted-foreground mb-6">We couldn&apos;t submit your booking request. Please try again.</p>
             <button onClick={() => setStep("form")}
               className="bg-foreground text-background px-8 py-3 rounded-lg font-bold hover:bg-orange-600 transition-all">
               Try Again

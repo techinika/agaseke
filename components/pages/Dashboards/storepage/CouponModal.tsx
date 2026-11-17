@@ -1,19 +1,31 @@
 import React, { useState } from "react";
 import { X, Loader } from "lucide-react";
 import { toast } from "sonner";
-import { Product, getProductCurrency, getProductPrice } from "@/types/store";
+import { Coupon, Product, getProductCurrency, getProductPrice } from "@/types/store";
 import { formatCurrency } from "@/types/currency";
+
+export type CouponFormValues = {
+  code: string;
+  discountType: "percentage" | "fixed";
+  discountValue: number;
+  minPurchase: number;
+  maxUses: number;
+  productIds: string[];
+  active: boolean;
+};
 
 export default function CouponModal({
   coupon,
   products,
   onClose,
   onSave,
+  currency = "RWF",
 }: {
-  coupon: any | null;
+  coupon: Coupon | null;
   products: Product[];
   onClose: () => void;
-  onSave: (data: any) => void;
+  onSave: (data: CouponFormValues) => void;
+  currency?: string;
 }) {
   const [formData, setFormData] = useState({
     code: coupon?.code || "",
@@ -87,7 +99,7 @@ export default function CouponModal({
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    discountType: e.target.value as any,
+                    discountType: e.target.value as "percentage" | "fixed",
                   })
                 }
                 className="w-full bg-muted border border-border-strong rounded-lg px-4 py-3"
@@ -117,7 +129,7 @@ export default function CouponModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-bold text-foreground mb-2">
-                Min. Purchase (RWF)
+                Min. Purchase ({currency})
               </label>
               <input
                 type="number"

@@ -1,5 +1,10 @@
 import { collection, getDocs, limit, orderBy, query, where } from "firebase/firestore";
 import { db } from "@/db/firebase";
+import {
+  normalizePayoutCurrency,
+  pendingPayoutField,
+  type PayoutCurrency,
+} from "@/lib/payouts/currency";
 
 export interface CreatorDashboardBalance {
   currency: string;
@@ -41,7 +46,8 @@ export async function fetchCreatorDashboardData(creator: {
   const creatorDoc = creatorSnap.docs[0];
   const cid = creatorDoc?.id;
   const creatorData = creatorDoc?.data() as Record<string, unknown> | undefined;
-  const mainCurrency = (creatorData?.currency as string) || "RWF";
+  const source = (creatorData ?? creator) as Record<string, unknown>;
+  const mainCurrency = normalizePayoutCurrency(source.currency);
 
   let supports: Array<Record<string, unknown>> = [];
   if (cid) {
@@ -59,22 +65,19 @@ export async function fetchCreatorDashboardData(creator: {
     }));
   }
 
-  const currenciesSnap = await getDocs(collection(db, "currencies"));
-  const currencyCodes = currenciesSnap.docs.map(
-    (d) => (d.data() as { code?: string }).code,
-  );
-  const hasUSD = currencyCodes.includes("USD");
+  const getPending = (code: PayoutCurrency) =>
+    Number(source[pendingPayoutField(code)] ?? 0);
 
-  const getPending = (code: string) =>
-    code === "RWF"
-      ? Number(creator?.pendingPayout || 0)
-      : Number((creator as Record<string, unknown>)?.[`pendingPayout${code}`] || 0);
+  const displayedCodes = new Set<PayoutCurrency>();
+  if (mainCurrency) displayedCodes.add(mainCurrency);
+  for (const key of Object.keys(source)) {
+    const match = key.match(/^pendingPayout([A-Z]{3})$/);
+    const code = normalizePayoutCurrency(match?.[1]);
+    if (code) displayedCodes.add(code);
+  }
+  if (source.pendingPayout !== undefined) displayedCodes.add("RWF");
 
-  const displayedCodes = [mainCurrency];
-  if (hasUSD && mainCurrency !== "USD") displayedCodes.push("USD");
-  if (mainCurrency === "USD" && currencyCodes.includes("RWF")) displayedCodes.push("RWF");
-
-  const perCurrencyPayouts = displayedCodes.map((code) => ({
+  const perCurrencyPayouts = Array.from(displayedCodes).map((code) => ({
     currency: code,
     pending: getPending(code),
   }));
@@ -124,7 +127,7 @@ export async function fetchCreatorDashboardData(creator: {
   );
 
   return {
-    creatorCurrency: mainCurrency,
+    creatorCurrency: mainCurrency ?? "RWF",
     perCurrencyPayouts,
     recentSupport: supports,
     history,

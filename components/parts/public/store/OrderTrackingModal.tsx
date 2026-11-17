@@ -39,6 +39,13 @@ export function OrderTrackingModal({
     null,
   );
 
+  const currencyByProduct = new Map(
+    products.map((product) => [product.id, getProductCurrency(product)]),
+  );
+  const fallbackCurrency = products[0] ? getProductCurrency(products[0]) : "RWF";
+  const itemCurrency = (productId?: string) =>
+    (productId && currencyByProduct.get(productId)) || fallbackCurrency;
+
   const getStatusIndex = (status: string) => statusSteps.indexOf(status);
 
   const downloadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -90,6 +97,22 @@ export function OrderTrackingModal({
                     ? (order as any).total
                     : 0;
 
+              const orderItems = order.items
+                ? order.items
+                : [
+                    {
+                      productId: (order as any).productId,
+                      productName: (order as any).productName,
+                      quantity: (order as any).quantity,
+                      price: (order as any).productPrice,
+                    },
+                  ];
+              const orderCurrencies = Array.from(
+                new Set(orderItems.map((item: any) => itemCurrency(item.productId))),
+              );
+              const orderCurrency =
+                orderCurrencies.length === 1 ? orderCurrencies[0] : null;
+
               return (
                 <div key={order.id} className="bg-muted rounded-xl p-6">
                   <div className="flex justify-between items-start mb-4">
@@ -114,17 +137,7 @@ export function OrderTrackingModal({
                   </div>
 
                   <div className="space-y-2 mb-4">
-                    {(order.items
-                      ? order.items
-                      : [
-                          {
-                            productId: (order as any).productId,
-                            productName: (order as any).productName,
-                            quantity: (order as any).quantity,
-                            price: (order as any).productPrice,
-                          },
-                        ]
-                    ).map((item: any, idx: number) => (
+                    {orderItems.map((item: any, idx: number) => (
                       <div
                         key={idx}
                         className="flex justify-between text-sm items-center"
@@ -134,7 +147,10 @@ export function OrderTrackingModal({
                         </span>
                         <div className="flex items-center gap-3">
                           <span className="font-medium">
-                            {formatCurrency(typeof item.price === "number" ? item.price : 0, "RWF")}
+                            {formatCurrency(
+                              typeof item.price === "number" ? item.price : 0,
+                              itemCurrency(item.productId),
+                            )}
                           </span>
                           {order.status !== "cancelled" && item.productId && (
                             <button
@@ -203,7 +219,10 @@ export function OrderTrackingModal({
 
                   <div className="flex justify-between items-center mt-4 pt-4 border-t border-border-strong">
                     <span className="font-bold">
-                      Total: {formatCurrency(safeTotal, "RWF")}
+                      Total:{" "}
+                      {orderCurrency
+                        ? formatCurrency(safeTotal, orderCurrency)
+                        : `${safeTotal.toLocaleString()} (mixed currencies)`}
                     </span>
                     {order.status === "pending" && (
                       <Link
