@@ -15,6 +15,7 @@
     "test:watch": "vitest",
     "money:registry": "node scripts/money/generate-registry.mjs",
     "money:registry:check": "node scripts/money/generate-registry.mjs --check",
+    "money:enablement:check": "node scripts/money/enablement-report.mjs",
     "money:backfill:ledger": "node scripts/money/backfill-ledger.mjs",
     "money:reconcile:ledger": "node scripts/money/reconcile-ledger.mjs",
     "ui:verify": "node scripts/ui-verify.mjs"

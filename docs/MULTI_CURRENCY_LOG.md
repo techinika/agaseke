@@ -74,3 +74,9 @@
 - **Admin dashboard is per-currency:** platform income, payouts processed, pending payouts (`pendingPayout` + `pendingPayout{CODE}`) and successful transactions are grouped by currency. Cards show the single-currency total or “Multi-currency”, with a per-currency breakdown detail instead of summing unlike currencies (`components/pages/Dashboards/Admin/AdminPage.tsx`).
 - **Notes:** legacy `platformIncome`/`payouts` docs without `currency` fall back to `RWF`; monthly chart remains cross-currency. `community`/`bookings` worker `tsc` still report pre-existing type errors unrelated to this change.
 - **Verification:** root `tsc` clean; payments/support/store worker `tsc` clean; payments worker tests 88 passed; root `tests/unit` 144 passed.
+
+## 2026-11-17 (session, Phase 8 config-only enablement proof)
+- Added `scripts/money/enablement-report.mjs` + `npm run money:enablement:check`: offline report validating registered currencies, payment-rail coverage, unique display order, and generated-registry freshness. Defaults to the KES/UGX/TZS launch expansion (KES 2dp, UGX 0dp, TZS 2dp, all on `pesapal(card)`).
+- Added `tests/unit/currency-enablement.test.ts` proving the focus currencies are config-complete and that the report passes, including generated-file sync.
+- Documented the enablement runbook in `docs/MONEY.md`: config edit → `money:registry` → Firestore currency policy/thresholds, with rail sandbox/reconciliation still required before production.
+- **Verification:** new test 4/4 passed; root `tests/unit` to be rerun before commit.

@@ -6,6 +6,7 @@ Authoritative constraints: integer **minor units** for money movement; **never f
 
 - Canonical currency catalog: `shared/money/currencies.json` (generated to `lib/money/registry.generated.ts` and each worker’s `money/registry.generated.ts` via `npm run money:registry` / `money:registry:check`). Includes code, `minorUnit`, symbol/name and enablement metadata.
 - Payment rails/method matrix: `shared/money/paymentRails.json` → `rails.generated.ts` + `lib/money/rails.ts` / `workers/payments/src/money/rails.ts`. Methods/currencies must be validated server-side (`assertMethodSupportsCurrency`, `GET /api/payments/methods`); clients must not choose unsupported rails.
+- Offline enablement proof: `npm run money:enablement:check` (defaults to KES/UGX/TZS) validates the catalog, rails, unique display order and generated-file sync. Enabling a registered currency is config-only: edit the shared JSON, run `npm run money:registry`, then enable the Firestore currency policy/thresholds. Rail availability and sandbox/reconciliation checks still gate production enablement.
 
 ## Canonical item pricing: `prices` map
 
