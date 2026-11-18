@@ -1,0 +1,672 @@
+{
+  "baseUrl": "http://127.0.0.1:3100",
+  "generatedAt": "2026-11-18T13:06:48.429Z",
+  "screenshots": [
+    {
+      "name": "01-profile",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/01-profile-mobile-360-light.png"
+    },
+    {
+      "name": "02-profile-community",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/02-profile-community-mobile-360-light.png"
+    },
+    {
+      "name": "02-profile-store",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/02-profile-store-mobile-360-light.png"
+    },
+    {
+      "name": "02-profile-giveaways",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/02-profile-giveaways-mobile-360-light.png"
+    },
+    {
+      "name": "02-profile-gatherings",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/02-profile-gatherings-mobile-360-light.png"
+    },
+    {
+      "name": "02-profile-message",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/02-profile-message-mobile-360-light.png"
+    },
+    {
+      "name": "03-sheet-support",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/03-sheet-support-mobile-360-light.png"
+    },
+    {
+      "name": "03-sheet-community",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/03-sheet-community-mobile-360-light.png"
+    },
+    {
+      "name": "03-sheet-giveaway",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/03-sheet-giveaway-mobile-360-light.png"
+    },
+    {
+      "name": "03-sheet-rsvp",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/03-sheet-rsvp-mobile-360-light.png"
+    },
+    {
+      "name": "03-sheet-ticket",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/03-sheet-ticket-mobile-360-light.png"
+    },
+    {
+      "name": "03-sheet-checkout",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/03-sheet-checkout-mobile-360-light.png"
+    },
+    {
+      "name": "04-route-store",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/04-route-store-mobile-360-light.png"
+    },
+    {
+      "name": "04-route-community",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/04-route-community-mobile-360-light.png"
+    },
+    {
+      "name": "04-route-gatherings",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/04-route-gatherings-mobile-360-light.png"
+    },
+    {
+      "name": "04-route-giveaways",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/04-route-giveaways-mobile-360-light.png"
+    },
+    {
+      "name": "04-route-messaging",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/04-route-messaging-mobile-360-light.png"
+    },
+    {
+      "name": "04-route-booking",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/04-route-booking-mobile-360-light.png"
+    },
+    {
+      "name": "04-route-product-detail",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/04-route-product-detail-mobile-360-light.png"
+    },
+    {
+      "name": "04-route-gathering-detail",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/04-route-gathering-detail-mobile-360-light.png"
+    },
+    {
+      "name": "04-route-giveaway-detail",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/04-route-giveaway-detail-mobile-360-light.png"
+    },
+    {
+      "name": "04-route-community-post",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/04-route-community-post-mobile-360-light.png"
+    },
+    {
+      "name": "04-route-payment-result",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/04-route-payment-result-mobile-360-light.png"
+    },
+    {
+      "name": "04-route-store-pay",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/04-route-store-pay-mobile-360-light.png"
+    },
+    {
+      "name": "04-route-booking-pay",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase4/after/04-route-booking-pay-mobile-360-light.png"
+    },
+    {
+      "name": "01-profile",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase4/after/01-profile-mobile-360-dark.png"
+    },
+    {
+      "name": "02-profile-community",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase4/after/02-profile-community-mobile-360-dark.png"
+    },
+    {
+      "name": "02-profile-store",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase4/after/02-profile-store-mobile-360-dark.png"
+    },
+    {
+      "name": "02-profile-giveaways",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase4/after/02-profile-giveaways-mobile-360-dark.png"
+    },
+    {
+      "name": "02-profile-gatherings",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase4/after/02-profile-gatherings-mobile-360-dark.png"
+    },
+    {
+      "name": "02-profile-message",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase4/after/02-profile-message-mobile-360-dark.png"
+    },
+    {
+      "name": "03-sheet-support",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase4/after/03-sheet-support-mobile-360-dark.png"
+    },
+    {
+      "name": "03-sheet-community",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase4/after/03-sheet-community-mobile-360-dark.png"
+    },
+    {
+      "name": "03-sheet-giveaway",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase4/after/03-sheet-giveaway-mobile-360-dark.png"
+    },
+    {
+      "name": "03-sheet-rsvp",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase4/after/03-sheet-rsvp-mobile-360-dark.png"
+    },
+    {
+      "name": "03-sheet-ticket",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase4/after/03-sheet-ticket-mobile-360-dark.png"
+    },
+    {
+      "name": "03-sheet-checkout",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase4/after/03-sheet-checkout-mobile-360-dark.png"
+    },
+    {
+      "name": "01-profile",
+      "mode": "desktop-1280-light",
+      "file": "docs/ui-evidence/phase4/after/01-profile-desktop-1280-light.png"
+    },
+    {
+      "name": "02-profile-community",
+      "mode": "desktop-1280-light",
+      "file": "docs/ui-evidence/phase4/after/02-profile-community-desktop-1280-light.png"
+    },
+    {
+      "name": "02-profile-store",
+      "mode": "desktop-1280-light",
+      "file": "docs/ui-evidence/phase4/after/02-profile-store-desktop-1280-light.png"
+    },
+    {
+      "name": "02-profile-giveaways",
+      "mode": "desktop-1280-light",
+      "file": "docs/ui-evidence/phase4/after/02-profile-giveaways-desktop-1280-light.png"
+    },
+    {
+      "name": "02-profile-gatherings",
+      "mode": "desktop-1280-light",
+      "file": "docs/ui-evidence/phase4/after/02-profile-gatherings-desktop-1280-light.png"
+    },
+    {
+      "name": "02-profile-message",
+      "mode": "desktop-1280-light",
+      "file": "docs/ui-evidence/phase4/after/02-profile-message-desktop-1280-light.png"
+    },
+    {
+      "name": "01-profile",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase4/after/01-profile-desktop-1280-dark.png"
+    },
+    {
+      "name": "02-profile-community",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase4/after/02-profile-community-desktop-1280-dark.png"
+    },
+    {
+      "name": "02-profile-store",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase4/after/02-profile-store-desktop-1280-dark.png"
+    },
+    {
+      "name": "02-profile-giveaways",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase4/after/02-profile-giveaways-desktop-1280-dark.png"
+    },
+    {
+      "name": "02-profile-gatherings",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase4/after/02-profile-gatherings-desktop-1280-dark.png"
+    },
+    {
+      "name": "02-profile-message",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase4/after/02-profile-message-desktop-1280-dark.png"
+    },
+    {
+      "name": "04-route-store",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase4/after/04-route-store-desktop-1280-dark.png"
+    },
+    {
+      "name": "04-route-community",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase4/after/04-route-community-desktop-1280-dark.png"
+    },
+    {
+      "name": "04-route-gatherings",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase4/after/04-route-gatherings-desktop-1280-dark.png"
+    },
+    {
+      "name": "04-route-giveaways",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase4/after/04-route-giveaways-desktop-1280-dark.png"
+    },
+    {
+      "name": "04-route-messaging",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase4/after/04-route-messaging-desktop-1280-dark.png"
+    },
+    {
+      "name": "04-route-booking",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase4/after/04-route-booking-desktop-1280-dark.png"
+    },
+    {
+      "name": "04-route-product-detail",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase4/after/04-route-product-detail-desktop-1280-dark.png"
+    },
+    {
+      "name": "04-route-gathering-detail",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase4/after/04-route-gathering-detail-desktop-1280-dark.png"
+    },
+    {
+      "name": "04-route-giveaway-detail",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase4/after/04-route-giveaway-detail-desktop-1280-dark.png"
+    },
+    {
+      "name": "04-route-community-post",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase4/after/04-route-community-post-desktop-1280-dark.png"
+    },
+    {
+      "name": "04-route-payment-result",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase4/after/04-route-payment-result-desktop-1280-dark.png"
+    },
+    {
+      "name": "04-route-store-pay",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase4/after/04-route-store-pay-desktop-1280-dark.png"
+    },
+    {
+      "name": "04-route-booking-pay",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase4/after/04-route-booking-pay-desktop-1280-dark.png"
+    }
+  ],
+  "axe": [
+    {
+      "name": "01-profile",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "02-profile-community",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "02-profile-store",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "02-profile-giveaways",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "02-profile-gatherings",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "02-profile-message",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "03-sheet-support",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "03-sheet-community",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "03-sheet-giveaway",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "03-sheet-rsvp",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "03-sheet-ticket",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "03-sheet-checkout",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "04-route-store",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "04-route-community",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "04-route-gatherings",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "04-route-giveaways",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "04-route-messaging",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "04-route-booking",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "04-route-product-detail",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "04-route-gathering-detail",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "04-route-giveaway-detail",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "04-route-community-post",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "04-route-payment-result",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "04-route-store-pay",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "04-route-booking-pay",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "01-profile",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "02-profile-community",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "02-profile-store",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "02-profile-giveaways",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "02-profile-gatherings",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "02-profile-message",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "03-sheet-support",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "03-sheet-community",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "03-sheet-giveaway",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "03-sheet-rsvp",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "03-sheet-ticket",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "03-sheet-checkout",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "01-profile",
+      "mode": "desktop-1280-light",
+      "violations": []
+    },
+    {
+      "name": "02-profile-community",
+      "mode": "desktop-1280-light",
+      "violations": []
+    },
+    {
+      "name": "02-profile-store",
+      "mode": "desktop-1280-light",
+      "violations": []
+    },
+    {
+      "name": "02-profile-giveaways",
+      "mode": "desktop-1280-light",
+      "violations": []
+    },
+    {
+      "name": "02-profile-gatherings",
+      "mode": "desktop-1280-light",
+      "violations": []
+    },
+    {
+      "name": "02-profile-message",
+      "mode": "desktop-1280-light",
+      "violations": []
+    },
+    {
+      "name": "01-profile",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "02-profile-community",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "02-profile-store",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "02-profile-giveaways",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "02-profile-gatherings",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "02-profile-message",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "04-route-store",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "04-route-community",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "04-route-gatherings",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "04-route-giveaways",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "04-route-messaging",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "04-route-booking",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "04-route-product-detail",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "04-route-gathering-detail",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "04-route-giveaway-detail",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "04-route-community-post",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "04-route-payment-result",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "04-route-store-pay",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "04-route-booking-pay",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    }
+  ],
+  "overflow": [
+    {
+      "mode": "mobile-360-light",
+      "route": "/dev/creator-page",
+      "scrollWidth": 360,
+      "innerWidth": 360
+    },
+    {
+      "mode": "mobile-360-dark",
+      "route": "/dev/creator-page",
+      "scrollWidth": 360,
+      "innerWidth": 360
+    },
+    {
+      "mode": "desktop-1280-light",
+      "route": "/dev/creator-page",
+      "scrollWidth": 1280,
+      "innerWidth": 1280
+    },
+    {
+      "mode": "desktop-1280-dark",
+      "route": "/dev/creator-page",
+      "scrollWidth": 1280,
+      "innerWidth": 1280
+    }
+  ],
+  "console": [
+    {
+      "mode": "mobile-360-light",
+      "errors": []
+    },
+    {
+      "mode": "mobile-360-dark",
+      "errors": []
+    },
+    {
+      "mode": "desktop-1280-light",
+      "errors": []
+    },
+    {
+      "mode": "desktop-1280-dark",
+      "errors": []
+    }
+  ]
+}
