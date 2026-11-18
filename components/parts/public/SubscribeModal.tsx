@@ -20,7 +20,7 @@ import {
   getCommunityTiers,
   type CommunityTier,
 } from "@/lib/communityService";
-import { formatCurrency } from "@/types/currency";
+import { formatMoney as formatCurrency } from "@/lib/format/money";
 import { getPrice } from "@/lib/priceMap";
 import { isCurrencySupportedByMethod } from "@/lib/money/rails";
 
@@ -173,8 +173,8 @@ export function SubscribeModal({
         className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative bg-card border border-border shadow-2xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between z-10">
+      <div className="relative bg-surface border border-line shadow-2xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-surface border-b border-line px-6 py-4 flex items-center justify-between z-10">
           <h2 className="font-bold text-lg">
             {step === "browse"
               ? "Join Community"
@@ -188,7 +188,7 @@ export function SubscribeModal({
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-muted rounded-lg transition"
+            className="p-2 hover:bg-surface-sunken rounded-control transition"
           >
             <X size={18} />
           </button>
@@ -199,18 +199,18 @@ export function SubscribeModal({
             <>
               {loading ? (
                 <div className="flex justify-center py-12">
-                  <Loader className="animate-spin text-orange-500" size={32} />
+                  <Loader className="animate-spin text-brand-strong" size={32} />
                 </div>
               ) : tiers.length === 0 ? (
                 <div className="text-center py-12">
-                  <Crown size={40} className="mx-auto text-muted-foreground mb-3" />
-                  <p className="text-sm text-muted-foreground">
+                  <Crown size={40} className="mx-auto text-muted-fg mb-3" />
+                  <p className="text-sm text-muted-fg">
                     No membership tiers available yet
                   </p>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground mb-4">
+                  <p className="text-sm text-muted-fg mb-4">
                     Support {creatorName} by choosing a membership tier
                   </p>
                   {tiers.map((tier) => (
@@ -220,23 +220,23 @@ export function SubscribeModal({
                         setSelectedTier(tier);
                         setStep("payment");
                       }}
-                      className="w-full text-left bg-muted border border-border p-5 hover:border-orange-300 transition group"
+                      className="w-full text-left bg-surface-sunken border border-line p-5 hover:border-brand-strong transition group"
                     >
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="font-bold">{tier.name}</h3>
                         <ChevronRight
                           size={18}
-                          className="text-muted-foreground group-hover:text-orange-500 transition"
+                          className="text-muted-fg group-hover:text-brand-strong transition"
                         />
                       </div>
-                      <p className="text-2xl font-bold text-orange-600 mb-2">
+                      <p className="text-2xl font-bold text-brand-strong mb-2">
                         {tier.currency ? formatCurrency(tierAmount(tier), tier.currency as any) : tierAmount(tier)}
-                        <span className="text-xs font-normal text-muted-foreground ml-1">
+                        <span className="text-xs font-normal text-muted-fg ml-1">
                           /{tier.interval === "yearly" ? "year" : "month"}
                         </span>
                       </p>
                       {tier.description && (
-                        <p className="text-xs text-muted-foreground mb-3">
+                        <p className="text-xs text-muted-fg mb-3">
                           {tier.description}
                         </p>
                       )}
@@ -245,9 +245,9 @@ export function SubscribeModal({
                           {tier.benefits.map((b, i) => (
                             <li
                               key={i}
-                              className="text-xs text-muted-foreground flex items-center gap-2"
+                              className="text-xs text-muted-fg flex items-center gap-2"
                             >
-                              <Check size={12} className="text-green-500 shrink-0" />
+                              <Check size={12} className="text-success shrink-0" />
                               {b}
                             </li>
                           ))}
@@ -262,48 +262,48 @@ export function SubscribeModal({
 
           {step === "payment" && selectedTier && (
             <div className="space-y-6">
-              <div className="bg-muted rounded-lg p-4">
-                <p className="text-xs text-muted-foreground mb-1">Selected Plan</p>
+              <div className="bg-surface-sunken rounded-control p-4">
+                <p className="text-xs text-muted-fg mb-1">Selected Plan</p>
                 <p className="font-bold">{selectedTier.name}</p>
-                  <p className="text-lg font-bold text-orange-600">
+                  <p className="text-lg font-bold text-brand-strong">
                     {tierCurrency ? formatCurrency(tierAmount(selectedTier), tierCurrency as any) : tierAmount(selectedTier)}
-                    <span className="text-xs font-normal text-muted-foreground ml-1">
+                    <span className="text-xs font-normal text-muted-fg ml-1">
                       /{selectedTier.interval === "yearly" ? "year" : "month"}
                     </span>
                   </p>
               </div>
 
               <div>
-                <p className="text-xs font-bold text-muted-foreground mb-3">
+                <p className="text-xs font-bold text-muted-fg mb-3">
                   Payment Method
                 </p>
                 {!momoSupported ? (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-fg">
                     Mobile money is not available for {tierCurrency || "this currency"}. Card payment is required.
                   </p>
                 ) : (
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => setPaymentMethod("momo")}
-                      className={`p-4 border rounded-lg text-center transition ${
+                      className={`p-4 border rounded-control text-center transition ${
                         paymentMethod === "momo"
-                          ? "border-orange-500 bg-orange-50"
-                          : "border-border hover:border-orange-300"
+                          ? "border-brand-strong bg-brand-soft"
+                          : "border-line hover:border-brand-strong"
                       }`}
                     >
                       <Smartphone
                         size={24}
                         className={`mx-auto mb-2 ${
                           paymentMethod === "momo"
-                            ? "text-orange-600"
-                            : "text-muted-foreground"
+                            ? "text-brand-strong"
+                            : "text-muted-fg"
                         }`}
                       />
                       <span
                         className={`text-xs font-bold ${
                           paymentMethod === "momo"
-                            ? "text-orange-700"
-                            : "text-muted-foreground"
+                            ? "text-brand-strong"
+                            : "text-muted-fg"
                         }`}
                       >
                         Mobile Money
@@ -311,25 +311,25 @@ export function SubscribeModal({
                     </button>
                     <button
                       onClick={() => setPaymentMethod("card")}
-                      className={`p-4 border rounded-lg text-center transition ${
+                      className={`p-4 border rounded-control text-center transition ${
                         paymentMethod === "card"
-                          ? "border-orange-500 bg-orange-50"
-                          : "border-border hover:border-orange-300"
+                          ? "border-brand-strong bg-brand-soft"
+                          : "border-line hover:border-brand-strong"
                       }`}
                     >
                       <CreditCard
                         size={24}
                         className={`mx-auto mb-2 ${
                           paymentMethod === "card"
-                            ? "text-orange-600"
-                            : "text-muted-foreground"
+                            ? "text-brand-strong"
+                            : "text-muted-fg"
                         }`}
                       />
                       <span
                         className={`text-xs font-bold ${
                           paymentMethod === "card"
-                            ? "text-orange-700"
-                            : "text-muted-foreground"
+                            ? "text-brand-strong"
+                            : "text-muted-fg"
                         }`}
                       >
                         Bank Card
@@ -341,14 +341,14 @@ export function SubscribeModal({
 
               {momoSupported && paymentMethod === "momo" && (
                 <div>
-                  <label className="text-xs font-bold text-muted-foreground mb-1 block">
+                  <label className="text-xs font-bold text-muted-fg mb-1 block">
                     Phone Number
                   </label>
                   <input
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="07XX XXXXXX"
-                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm"
+                    className="w-full px-3 py-2 bg-surface-sunken border border-line rounded-control text-sm"
                   />
                 </div>
               )}
@@ -356,14 +356,14 @@ export function SubscribeModal({
               <button
                 onClick={handleSubscribe}
                 disabled={!tierCurrency || (momoSupported && !paymentMethod) || (paymentMethod === "momo" && !phone.trim())}
-                className="w-full py-3 bg-orange-600 text-white text-sm font-bold rounded-lg hover:bg-orange-700 transition disabled:opacity-50"
+                className="w-full py-3 bg-brand-strong text-on-brand text-sm font-bold rounded-control hover:bg-brand-strong transition disabled:opacity-50"
               >
                 Subscribe Now
               </button>
 
               <button
                 onClick={() => setStep("browse")}
-                className="w-full py-2 text-xs text-muted-foreground hover:text-foreground transition"
+                className="w-full py-2 text-xs text-muted-fg hover:text-fg transition"
               >
                 Back to tiers
               </button>
@@ -372,9 +372,9 @@ export function SubscribeModal({
 
           {step === "processing" && (
             <div className="text-center py-12">
-              <Loader className="animate-spin mx-auto text-orange-500 mb-4" size={40} />
+              <Loader className="animate-spin mx-auto text-brand-strong mb-4" size={40} />
               <p className="font-bold mb-2">Processing Payment</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-fg">
                 {paymentMethod === "momo"
                   ? "Check your phone and enter your PIN to confirm"
                   : "Complete payment in the opened window"}
@@ -384,23 +384,23 @@ export function SubscribeModal({
 
           {step === "success" && (
             <div className="text-center py-12">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Check size={32} className="text-green-600" />
+              <div className="w-16 h-16 bg-success-bg rounded-full flex items-center justify-center mx-auto mb-4">
+                <Check size={32} className="text-success" />
               </div>
               <h3 className="font-bold text-lg mb-2">Welcome to the Community!</h3>
-              <p className="text-sm text-muted-foreground mb-6">
+              <p className="text-sm text-muted-fg mb-6">
                 You are now a member of {creatorName}&apos;s {selectedTier?.name} tier
               </p>
               <button
                 onClick={onClose}
-                className="px-6 py-3 bg-orange-600 text-white text-sm font-bold rounded-lg hover:bg-orange-700 transition block mx-auto"
+                className="px-6 py-3 bg-brand-strong text-on-brand text-sm font-bold rounded-control hover:bg-brand-strong transition block mx-auto"
               >
                 Done
               </button>
               <Link
                 href="/community/manage"
                 onClick={onClose}
-                className="block mt-4 text-xs text-muted-foreground hover:text-orange-600 transition"
+                className="block mt-4 text-xs text-muted-fg hover:text-brand-strong transition"
               >
                 Manage my subscription
               </Link>
@@ -409,21 +409,21 @@ export function SubscribeModal({
 
           {step === "error" && (
             <div className="text-center py-12">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <X size={32} className="text-red-600" />
+              <div className="w-16 h-16 bg-danger-bg rounded-full flex items-center justify-center mx-auto mb-4">
+                <X size={32} className="text-danger" />
               </div>
               <h3 className="font-bold text-lg mb-2">Payment Failed</h3>
-              <p className="text-sm text-muted-foreground mb-6">{errorMessage}</p>
+              <p className="text-sm text-muted-fg mb-6">{errorMessage}</p>
               <div className="flex gap-3 justify-center">
                 <button
                   onClick={() => setStep("payment")}
-                  className="px-6 py-3 bg-orange-600 text-white text-sm font-bold rounded-lg hover:bg-orange-700 transition"
+                  className="px-6 py-3 bg-brand-strong text-on-brand text-sm font-bold rounded-control hover:bg-brand-strong transition"
                 >
                   Try Again
                 </button>
                 <button
                   onClick={onClose}
-                  className="px-6 py-3 bg-muted text-sm font-bold rounded-lg hover:bg-border transition"
+                  className="px-6 py-3 bg-surface-sunken text-sm font-bold rounded-control hover:bg-border transition"
                 >
                   Cancel
                 </button>

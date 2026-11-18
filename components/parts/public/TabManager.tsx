@@ -39,7 +39,7 @@ export const TabManager = ({
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 md:sticky md:top-4 md:mt-5 bg-background/95 backdrop-blur-lg border-t border-border md:border-b md:border-t-0 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] md:shadow-none md:mb-8 pb-2 md:pb-0">
+    <div className="fixed bottom-0 left-0 right-0 z-50 md:sticky md:top-4 md:mt-5 bg-canvas/95 backdrop-blur-lg border-t border-line md:border-b md:border-t-0 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] md:shadow-none md:mb-8 pb-2 md:pb-0">
       <div className="max-w-2xl mx-auto flex items-center justify-around md:justify-between px-2 w-full">
         {tabs.map((tab) => (
           <div key={tab.id} className="relative group flex-1 md:flex-none">
@@ -47,21 +47,21 @@ export const TabManager = ({
               onClick={() => setActiveTab(tab.id)}
               className={`flex flex-col items-center gap-0.5 md:gap-1 py-2 md:py-4 w-full border-t-2 md:border-b-2 md:border-t-0 transition-all duration-300 ${
                 activeTab === tab.id
-                  ? "border-orange-600 text-orange-600 font-bold"
-                  : "border-transparent text-muted-foreground hover:text-muted-foreground"
+                  ? "border-brand-strong text-brand-strong font-bold"
+                  : "border-transparent text-muted-fg hover:text-muted-fg"
               }`}
             >
               <div className={`transition-transform ${activeTab === tab.id ? "scale-110" : ""}`}>
                 {tab.icon}
               </div>
-              <span className="text-[9px] md:text-[10px] uppercase tracking-widest leading-tight">
+              <span className="text-caption md:text-caption uppercase tracking-widest leading-tight">
                 {tab.label}
               </span>
             </button>
             {username && (
               <Link
                 href={`/${username}/${tab.page}`}
-                className="absolute -top-1 right-0 p-1 bg-muted rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-orange-100 hover:text-orange-600 hidden md:block"
+                className="absolute -top-1 right-0 p-1 bg-surface-sunken rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-brand-soft hover:text-brand-strong hidden md:block"
                 title="Open full page"
               >
                 <ArrowUpRight size={12} />
