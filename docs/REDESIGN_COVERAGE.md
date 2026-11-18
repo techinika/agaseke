@@ -3,7 +3,7 @@
 **Phase:** 4 (public creator pages)
 **Branch:** `design/full-app-redesign`
 **Updated:** 2026-11-18
-**Status:** Phase 2 shell/navigation work is complete. Phase 4 creator profile sub-pages, detail routes, payment routes, and action overlays are token-migrated and evidence-captured; seeded-data states, full primitive adoption, and Lighthouse for real creator routes remain partial. Authenticated dashboard visuals still need seed/test accounts.
+**Status:** Phase 2 shell/navigation work is complete. Phase 4 creator profile sub-pages, detail routes, payment routes, and action overlays are token-migrated and evidence-captured; seeded-data states and full primitive adoption remain partial. Valid production Lighthouse runs show 100 performance with LCP ≤ 1.1 s on preview and error-state routes; seeded real creator routes still need a final pass. Authenticated dashboard visuals still need seed/test accounts.
 
 This matrix is the release checklist for the redesign. A route is not “done” until every applicable column is checked and evidence is linked in `docs/REDESIGN_LOG.md`.
 
@@ -36,8 +36,8 @@ This matrix is the release checklist for the redesign. A route is not “done”
 - Current 360 run: `npx playwright test e2e/mobile-routes.spec.ts --project=mobile-360` — 14/14 passed, including axe serious/critical checks.
 - Phase 2 shell run: `npx playwright test e2e/phase2-shells.spec.ts` — 16/16 passed across 360×640 and 1280×800 in light/dark; screenshots in `docs/ui-evidence/phase2-shells/`.
 - Phase 2 production Lighthouse: `docs/ui-evidence/phase2-shells/lighthouse/`; before/after bundle report: `docs/ui-evidence/phase2-shells/bundle-report.json`.
-- Phase 4 before/after screenshots and axe reports: `docs/ui-evidence/phase4/before/`, `docs/ui-evidence/phase4/after/`; summary: `docs/ui-evidence/phase4/summary.md`.
-- Phase 4 production Lighthouse: `docs/ui-evidence/phase4/lighthouse-prod/`; bundle report: `docs/ui-evidence/phase4/bundle-report.json`.
+- Phase 4 before/after screenshots and axe reports: `docs/ui-evidence/phase4/before/`, `docs/ui-evidence/phase4/after/`; summary: `docs/ui-evidence/phase4/summary.md`. The `before` run used invalid `/demo/*` placeholders; the corrected `after` run uses real `/aline/...` route patterns.
+- Phase 4 valid production Lighthouse: `docs/ui-evidence/phase4/lighthouse-prod-v2/`; bundle report: `docs/ui-evidence/phase4/bundle-report.json`. Older `lighthouse/` and `lighthouse-prod/` runs are superseded.
 - Lighthouse values below are prior mobile runs unless a Phase 4 preview route is linked in `docs/REDESIGN_LOG.md`.
 - Full-input screenshots at 360×640 and 1280×800 in both themes are blocked by missing Firebase emulator/seed/test accounts and provider sandboxes. See `docs/screens/before/README.md`.
 
@@ -105,9 +105,9 @@ This matrix is the release checklist for the redesign. A route is not “done”
 | `/creator/store/products/new` | `components/parts/dashboard/ProductForm` | creator | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Auth required; media upload. |
 | `/creator/supporters` | `components/pages/Dashboards/SupportersPage` | creator | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Auth/data capture; broadcast overlay. |
 | `/creator/verify` | `components/pages/Dashboards/VerifyPage` | creator | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Auth/data capture; upload/status. |
-| `/dev/actions` | `app/dev/actions/Preview.tsx` | internal | ~ | ☐ | ~ | n/a | n/a | ~ | ~ | ✅ | TBD | Phase 4 sheet captures at 360 light/dark; exclude from production nav. |
+| `/dev/actions` | `app/dev/actions/Preview.tsx` | internal | ~ | ☐ | ~ | n/a | n/a | ~ | ~ | ✅ | 100/100/96/66 | Phase 4 sheet captures at 360 light/dark; LCP 0.9 s, TBT 0 ms. Exclude from production nav. |
 | `/dev/components` | `app/dev/components/ComponentGallery.tsx` | internal | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | B | TBD | Internal gallery; primary system verification surface. |
-| `/dev/creator-page` | `app/dev/creator-page/Preview.tsx` | internal | ✅ | ✅ | ✅ | ~ | ~ | ~ | ~ | ✅ | 77/98/96/66 | Phase 4 all-mode screenshots and axe; preview, not real `[username]`. SEO 66 is expected. |
+| `/dev/creator-page` | `app/dev/creator-page/Preview.tsx` | internal | ✅ | ✅ | ✅ | ~ | ~ | ~ | ~ | ✅ | 100/100/96/66 | Phase 4 all-mode screenshots and axe; preview, not real `[username]`. LCP 0.9 s, TBT 0 ms. SEO 66 is expected. |
 | `/explore` | `components/pages/ExplorePage` | public | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | B | TBD | Public baseline. |
 | `/explore/posts` | `components/pages/ExplorePostsPage` | public | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | B | 86/100/100/100 | Public baseline. |
 | `/explore/posts/[post-id]` | `components/pages/ExplorePostDetailPage`<br>`components/pages/public/ArticleReaderPage` | public | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Public; post data required. |
@@ -117,7 +117,7 @@ This matrix is the release checklist for the redesign. A route is not “done”
 | `/help-center` | `components/pages/HelpCenterPage` | public | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | B | TBD | Public baseline. |
 | `/login` | `components/pages/LoginPage` | auth | ✅ | ✅ | ✅ | n/a | n/a | n/a | ✅ | ✅ | 93/100/96/66 | Phase 2 auth shell/axe/screenshots verified; dark brand-token contrast and heading order fixed. Baseline production score was 67/97/92/69. |
 | `/onboarding` | `components/pages/StartPage` | auth | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | 869 lines; 27 orange; onboarding state. |
-| `/payment` | `components/parts/PaymentCallback` | public | ~ | ~ | ~ | ~ | ~ | ~ | ~ | ✅ | 85/100/96/66 | Phase 4 token/money migration; provider callback not live. SEO 66 is expected on preview/callback routes. |
+| `/payment` | `components/parts/PaymentCallback` | public | ~ | ~ | ~ | ~ | ~ | ~ | ~ | ✅ | 100/100/96/66 | Phase 4 token/money migration; provider callback not live. LCP 0.9 s, TBT 0 ms. SEO 66 is expected on preview/callback routes. |
 | `/payout-policy` | `components/pages/Legal/PayoutPolicyPage` | public | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Public; long-form legal. |
 | `/privacy` | `components/pages/Legal/PrivacyPage` | public | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | B | TBD | Public baseline. |
 | `/profile` | `components/pages/ProfilePage` | account | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Auth/data capture; account deletion. |

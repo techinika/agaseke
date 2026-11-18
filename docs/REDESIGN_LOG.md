@@ -290,6 +290,7 @@
   - `/demo/booking`: 98/100/96/66
   - `/payment`: 85/100/96/66
   - SEO is 66 on these internal preview/demo routes because they are intentionally `noindex`.
+  - These numbers were superseded by the corrected production run in the Phase 4 performance validation entry below: `/demo/*` does not exist and the preview flags were omitted.
 - Bundle after: 196 files, 4,459 KB raw / 1,396 KB gzip; no like-for-like Phase 4 before build was available.
 
 ### Evidence
@@ -313,4 +314,38 @@
 
 1. Can we get seeded creator, product, tier, booking, giveaway, and payment fixtures (or emulator accounts) for real-route visual verification?
 2. Should the remaining public modals be converted to `Dialog`/`Sheet` in the same phase or split into a dedicated overlay-hardening phase?
-3. Is a 75 Lighthouse performance score acceptable for the product-detail preview route, or should lazy loading be prioritized before rollout?
+3. Should the corrected Lighthouse baseline (100 performance, LCP ≤ 1.1 s, TBT 0 ms) become a CI floor once seeded production routes exist?
+
+## 2026-11-18 — Phase 4 performance validation
+
+**Branch:** `design/full-app-redesign`
+**Status:** Performance target verified on valid production routes; no application-code performance change was required.
+
+### Done
+
+- Corrected `scripts/phase4-evidence.mjs` route mapping: removed non-existent `/demo/*` targets and pointed `04-route-*` captures at real `/aline/...` route patterns plus payment routes.
+- Rebuilt the production bundle with `NEXT_PUBLIC_DEV_CREATOR_PAGE=1`, `NEXT_PUBLIC_DEV_ACTIONS=1`, and `NEXT_PUBLIC_DEV_COMPONENTS=1` so preview routes render instead of `notFound()`.
+- Re-captured `docs/ui-evidence/phase4/after/` with the corrected route map: 62 screenshots, 0 serious/critical axe findings, 0 console errors, 0 overflow on `/dev/creator-page`.
+
+### Verification
+
+- Production Lighthouse 13.6.0 from `docs/ui-evidence/phase4/lighthouse-prod-v2/`:
+  - `/dev/creator-page`: 100/100/96/66, LCP 0.9 s, TBT 0 ms, CLS 0.
+  - `/dev/actions?open=support`: 100/100/96/66, LCP 0.9 s, TBT 0 ms, CLS 0.
+  - `/payment`: 100/100/96/66, LCP 0.9 s, TBT 0 ms, CLS 0.
+  - `/aline/store` error state: 100/95/96/66, LCP 1.1 s, TBT 0 ms, CLS 0.
+  - `/`: 100/100/92/100, LCP 1.1 s, TBT 0 ms, CLS 0.
+- Earlier Lighthouse runs in `docs/ui-evidence/phase4/lighthouse/` and `docs/ui-evidence/phase4/lighthouse-prod/` are superseded: `/demo/*` routes do not exist, and `/dev/creator-page` was measured as a 404 without the production preview flags.
+- `node --check scripts/phase4-evidence.mjs` — passed.
+- `npm run typecheck`, `npm run lint:ci`, and `npm test -- --reporter=dot` remain passing.
+
+### Evidence
+
+- Corrected summary: `docs/ui-evidence/phase4/summary.md`.
+- Corrected Lighthouse JSON: `docs/ui-evidence/phase4/lighthouse-prod-v2/`.
+- Corrected after evidence: `docs/ui-evidence/phase4/after/report.json`.
+
+### Follow-ups / rollout
+
+1. Re-run Lighthouse against seeded real creator routes once Firebase emulator/seed data exists; current real-route captures are error states.
+2. Consider a CI performance floor using the valid route set and Lighthouse mobile performance ≥ 95 once fixtures are available.

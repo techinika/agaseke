@@ -1,6 +1,6 @@
 {
   "baseUrl": "http://127.0.0.1:3100",
-  "generatedAt": "2026-11-18T13:06:48.429Z",
+  "generatedAt": "2026-11-18T14:03:29.199Z",
   "screenshots": [
     {
       "name": "01-profile",
@@ -650,6 +650,10 @@
       "scrollWidth": 1280,
       "innerWidth": 1280
     }
+  ],
+  "notes": [
+    "04-route-* captures use real creator route patterns; without seed/test accounts they render loading or error states.",
+    "Profile tabs and sheets use the enabled /dev preview routes."
   ],
   "console": [
     {

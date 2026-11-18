@@ -32,16 +32,16 @@ const SHEETS = [
 ];
 
 const ROUTES = [
-  ["store", "/demo/store"],
-  ["community", "/demo/community"],
-  ["gatherings", "/demo/gatherings"],
-  ["giveaways", "/demo/giveaways"],
-  ["messaging", "/demo/messaging"],
-  ["booking", "/demo/booking"],
-  ["product-detail", "/demo/store/product-1"],
-  ["gathering-detail", "/demo/gatherings/event-1"],
-  ["giveaway-detail", "/demo/giveaways/giveaway-1"],
-  ["community-post", "/demo/community/post-1"],
+  ["store", "/aline/store"],
+  ["community", "/aline/community"],
+  ["gatherings", "/aline/gatherings"],
+  ["giveaways", "/aline/giveaways"],
+  ["messaging", "/aline/messaging"],
+  ["booking", "/aline/booking"],
+  ["product-detail", "/aline/store/product-1"],
+  ["gathering-detail", "/aline/gatherings/event-1"],
+  ["giveaway-detail", "/aline/giveaways/giveaway-1"],
+  ["community-post", "/aline/community/post-1"],
   ["payment-result", "/payment"],
   ["store-pay", "/store/pay/order-1"],
   ["booking-pay", "/booking/pay/booking-1"],
@@ -86,7 +86,17 @@ const browser = await chromium.launch({
   executablePath: EXECUTABLE_PATH,
   args: ["--no-sandbox", "--disable-dev-shm-usage"],
 });
-const report = { baseUrl: BASE_URL, generatedAt: new Date().toISOString(), screenshots: [], axe: [], overflow: [] };
+const report = {
+  baseUrl: BASE_URL,
+  generatedAt: new Date().toISOString(),
+  screenshots: [],
+  axe: [],
+  overflow: [],
+  notes: [
+    "04-route-* captures use real creator route patterns; without seed/test accounts they render loading or error states.",
+    "Profile tabs and sheets use the enabled /dev preview routes.",
+  ],
+};
 await mkdir(OUT_DIR, { recursive: true });
 
 try {
