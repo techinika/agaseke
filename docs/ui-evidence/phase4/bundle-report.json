@@ -1,0 +1,23 @@
+{
+  "command": "ENCRYPTION_KEY=local-build-placeholder npm run build -- --webpack",
+  "scope": ".next/static/chunks/**/*.js",
+  "before": null,
+  "after": {
+    "files": 196,
+    "rawBytes": 4565526,
+    "rawKB": 4459,
+    "gzipBytes": 1429135,
+    "gzipKB": 1396
+  },
+  "delta": null,
+  "priorPhaseReference": {
+    "file": "docs/ui-evidence/phase2-shells/bundle-report.json",
+    "rawKB": 5208,
+    "gzipKB": 1596,
+    "note": "Earlier phase measured a different build baseline; not a like-for-like Phase 4 before value."
+  },
+  "notes": [
+    "Production build completed with a local placeholder ENCRYPTION_KEY; no real secrets were used.",
+    "Sitemap and featured-creator generation logged pre-existing Firebase-admin errors because no Firebase credentials are configured."
+  ]
+}
