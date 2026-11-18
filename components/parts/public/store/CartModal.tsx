@@ -1,6 +1,6 @@
 import { Plus, Minus, ShoppingCart, CreditCard, X, Package } from "lucide-react";
 import { CartItem } from "./types";
-import { formatCurrency } from "@/types/currency";
+import { formatMoney as formatCurrency } from "@/lib/format/money";
 
 export function CartModal({
   cart,
@@ -27,12 +27,12 @@ export function CartModal({
 }) {
   return (
     <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-      <div className="bg-card w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 max-h-[90vh] flex flex-col">
-        <div className="p-6 border-b border-border flex justify-between items-center">
+      <div className="bg-surface w-full max-w-lg rounded-card overflow-hidden shadow-2xl animate-in zoom-in-95 max-h-[90vh] flex flex-col">
+        <div className="p-6 border-b border-line flex justify-between items-center">
           <h2 className="text-xl font-bold">Your Cart</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-card-hover rounded-full transition"
+            className="p-2 hover:bg-surface-raised rounded-full transition"
           >
             <X size={20} />
           </button>
@@ -42,15 +42,15 @@ export function CartModal({
           {cart.length === 0 ? (
             <div className="text-center py-12">
               <ShoppingCart size={48} className="mx-auto text-border-strong mb-4" />
-              <p className="text-muted-foreground font-medium">Your cart is empty</p>
+              <p className="text-muted-fg font-medium">Your cart is empty</p>
             </div>
           ) : (
             cart.map((item) => (
               <div
                 key={`${item.product.id}-${item.selectedSize}`}
-                className="flex gap-4 p-4 bg-muted rounded-xl"
+                className="flex gap-4 p-4 bg-surface-sunken rounded-control"
               >
-                <div className="w-20 h-20 bg-card rounded-lg overflow-hidden flex-shrink-0">
+                <div className="w-20 h-20 bg-surface rounded-control overflow-hidden flex-shrink-0">
                   {item.product.imageUrl ? (
                     <img
                       src={item.product.imageUrl}
@@ -66,27 +66,27 @@ export function CartModal({
                 <div className="flex-1 min-w-0">
                   <h4 className="font-bold truncate">{item.product.name}</h4>
                   {item.selectedSize && (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-fg">
                       Size: {item.selectedSize}
                     </p>
                   )}
-                  <p className="text-sm text-orange-600 font-bold mt-1">
+                  <p className="text-sm text-brand-strong font-bold mt-1">
                     {formatCurrency(getItemPrice(item), currency)}
                   </p>
                 </div>
                 <div className="flex flex-col items-end justify-between">
                   <button
                     onClick={() => onRemove(item.product.id, item.selectedSize)}
-                    className="text-muted-foreground hover:text-red-500 transition"
+                    className="text-muted-fg hover:text-danger transition"
                   >
                     <X size={16} />
                   </button>
-                  <div className="flex items-center bg-card rounded-lg">
+                  <div className="flex items-center bg-surface rounded-control">
                     <button
                       onClick={() =>
                         onUpdateQuantity(item.product.id, item.selectedSize, -1)
                       }
-                      className="p-1 hover:bg-muted rounded transition"
+                      className="p-1 hover:bg-surface-sunken rounded transition"
                     >
                       <Minus size={12} />
                     </button>
@@ -97,7 +97,7 @@ export function CartModal({
                       onClick={() =>
                         onUpdateQuantity(item.product.id, item.selectedSize, 1)
                       }
-                      className="p-1 hover:bg-muted rounded transition"
+                      className="p-1 hover:bg-surface-sunken rounded transition"
                     >
                       <Plus size={12} />
                     </button>
@@ -109,14 +109,14 @@ export function CartModal({
         </div>
 
         {cart.length > 0 && (
-          <div className="p-6 border-t border-border space-y-4">
+          <div className="p-6 border-t border-line space-y-4">
             <div className="flex justify-between text-lg font-bold">
               <span>Total</span>
               <span>{formatCurrency(total, currency)}</span>
             </div>
             <button
               onClick={onCheckout}
-              className="w-full py-4 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition flex items-center justify-center gap-2"
+              className="w-full py-4 bg-brand-strong text-on-brand rounded-control font-bold hover:bg-brand-strong transition flex items-center justify-center gap-2"
             >
               <CreditCard size={18} />
               Proceed to Checkout

@@ -14,7 +14,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { Product, getProductCurrency, getProductPrice } from "./types";
 import { downloadProduct } from "@/lib/downloadProduct";
-import { formatCurrency } from "@/types/currency";
+import { formatMoney as formatCurrency } from "@/lib/format/money";
 
 const platformSharePercentage =
   Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
@@ -69,51 +69,51 @@ export function ProductCard({
 
   return (
     <div
-      className={`bg-card border rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all ${isPurchased ? "border-green-200" : "border-border"}`}
+      className={`bg-surface border rounded-card overflow-hidden shadow-sm hover:shadow-xl transition-all ${isPurchased ? "border-success" : "border-line"}`}
     >
       {creatorHandle ? (
-        <Link href={`/${creatorHandle}/store/${product.id}`} className="block aspect-square bg-muted relative">
+        <Link href={`/${creatorHandle}/store/${product.id}`} className="block aspect-square bg-surface-sunken relative">
           {product.imageUrl ? (
             <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Package size={48} className="text-muted-foreground" />
+              <Package size={48} className="text-muted-fg" />
             </div>
           )}
-          <span className={`absolute top-3 left-3 text-[10px] font-bold px-2 py-1 rounded-full ${product.type === "digital" ? "bg-orange-100 text-orange-600" : "bg-blue-100 text-blue-600"}`}>
+          <span className={`absolute top-3 left-3 text-caption font-bold px-2 py-1 rounded-full ${product.type === "digital" ? "bg-brand-soft text-brand-strong" : "bg-info-bg text-info"}`}>
             {product.type === "digital" ? "Digital" : "Physical"}
           </span>
           {isPurchased && (
-            <span className="absolute top-3 right-3 bg-green-100 text-green-600 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
+            <span className="absolute top-3 right-3 bg-success-bg text-success text-caption font-bold px-2 py-1 rounded-full flex items-center gap-1">
               <Check size={10} /> Owned
             </span>
           )}
           {isOutOfStock && (
-            <div className="absolute inset-0 bg-card/80 flex items-center justify-center">
-              <span className="bg-red-100 text-red-600 px-3 py-1 rounded-full text-xs font-bold">Out of Stock</span>
+            <div className="absolute inset-0 bg-surface/80 flex items-center justify-center">
+              <span className="bg-danger-bg text-danger px-3 py-1 rounded-full text-xs font-bold">Out of Stock</span>
             </div>
           )}
         </Link>
       ) : (
-        <div className="aspect-square bg-muted relative cursor-pointer" onClick={() => onSelectProduct(product)}>
+        <div className="aspect-square bg-surface-sunken relative cursor-pointer" onClick={() => onSelectProduct(product)}>
           {product.imageUrl ? (
             <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              <Package size={48} className="text-muted-foreground" />
+              <Package size={48} className="text-muted-fg" />
             </div>
           )}
-          <span className={`absolute top-3 left-3 text-[10px] font-bold px-2 py-1 rounded-full ${product.type === "digital" ? "bg-orange-100 text-orange-600" : "bg-blue-100 text-blue-600"}`}>
+          <span className={`absolute top-3 left-3 text-caption font-bold px-2 py-1 rounded-full ${product.type === "digital" ? "bg-brand-soft text-brand-strong" : "bg-info-bg text-info"}`}>
             {product.type === "digital" ? "Digital" : "Physical"}
           </span>
           {isPurchased && (
-            <span className="absolute top-3 right-3 bg-green-100 text-green-600 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
+            <span className="absolute top-3 right-3 bg-success-bg text-success text-caption font-bold px-2 py-1 rounded-full flex items-center gap-1">
               <Check size={10} /> Owned
             </span>
           )}
           {isOutOfStock && (
-            <div className="absolute inset-0 bg-card/80 flex items-center justify-center">
-              <span className="bg-red-100 text-red-600 px-3 py-1 rounded-full text-xs font-bold">Out of Stock</span>
+            <div className="absolute inset-0 bg-surface/80 flex items-center justify-center">
+              <span className="bg-danger-bg text-danger px-3 py-1 rounded-full text-xs font-bold">Out of Stock</span>
             </div>
           )}
         </div>
@@ -121,7 +121,7 @@ export function ProductCard({
 
       <div className="p-4">
         <h3 className="font-bold text-lg truncate">{product.name}</h3>
-        <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+        <p className="text-sm text-muted-fg line-clamp-2 mt-1">
           {product.description}
         </p>
         <div className="flex items-center justify-between mt-4">
@@ -130,14 +130,14 @@ export function ProductCard({
               {formatCurrency(basePrice, getProductCurrency(product))}
             </span>
             {product.platformFeePayer === "buyer" && (
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-caption text-muted-fg">
                 +{platformSharePercentage * 100}% fee ={" "}
                 {formatCurrency(priceWithFee, getProductCurrency(product))}
               </p>
             )}
           </div>
           {product.discount?.enabled && (
-            <span className="bg-orange-100 text-orange-600 text-[10px] font-bold px-2 py-1 rounded-full">
+            <span className="bg-brand-soft text-brand-strong text-caption font-bold px-2 py-1 rounded-full">
               {product.discount.percentage}% OFF
             </span>
           )}
@@ -149,10 +149,10 @@ export function ProductCard({
               <button
                 key={size}
                 onClick={() => setSelectedSize(size)}
-                className={`px-3 py-1 text-xs font-bold rounded-lg transition ${
+                className={`px-3 py-1 text-xs font-bold rounded-control transition ${
                   selectedSize === size
-                    ? "bg-orange-500 text-white"
-                    : "bg-muted text-muted-foreground hover:bg-muted"
+                    ? "bg-brand-strong text-on-brand"
+                    : "bg-surface-sunken text-muted-fg hover:bg-surface-sunken"
                 }`}
               >
                 {size}
@@ -162,7 +162,7 @@ export function ProductCard({
         )}
 
         {product.type === "physical" && (
-          <p className="text-xs text-muted-foreground mt-2">
+          <p className="text-xs text-muted-fg mt-2">
             {product.stock > 0 ? `${product.stock} in stock` : "Out of stock"}
           </p>
         )}
@@ -177,29 +177,29 @@ export function ProductCard({
                     .catch((e) => toast.error(e.message))
                     .finally(() => setDownloading(false));
                 }}
-                className="flex-1 py-2 bg-emerald-500 text-white rounded-lg font-bold text-sm hover:bg-emerald-600 transition flex items-center justify-center gap-2"
+                className="flex-1 py-2 bg-success text-on-success rounded-control font-bold text-sm hover:bg-success transition flex items-center justify-center gap-2"
               >
                 {downloading ? <Loader size={14} className="animate-spin" /> : <Download size={14} />}
                 {downloading ? "Downloading..." : "Download"}
               </button>
             )}
             {product.type === "physical" && (
-              <span className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-lg font-bold text-sm flex items-center justify-center gap-2">
+              <span className="flex-1 py-2 bg-info-bg text-info rounded-control font-bold text-sm flex items-center justify-center gap-2">
                 <Truck size={14} /> Track Order
               </span>
             )}
             {product.type === "digital" && !fileUrl && (
-              <span className="flex-1 py-2 bg-green-50 text-green-600 rounded-lg font-bold text-sm flex items-center justify-center gap-2">
+              <span className="flex-1 py-2 bg-success-bg text-success rounded-control font-bold text-sm flex items-center justify-center gap-2">
                 <Check size={14} /> Purchased
               </span>
             )}
           </div>
         ) : (
           <div className="flex items-center gap-2 mt-4">
-            <div className="flex items-center bg-muted rounded-lg">
+            <div className="flex items-center bg-surface-sunken rounded-control">
               <button
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="p-2 hover:bg-muted rounded-l-lg transition"
+                className="p-2 hover:bg-surface-sunken rounded-l-lg transition"
               >
                 <Minus size={14} />
               </button>
@@ -208,7 +208,7 @@ export function ProductCard({
               </span>
               <button
                 onClick={() => setQuantity(quantity + 1)}
-                className="p-2 hover:bg-muted rounded-r-lg transition"
+                className="p-2 hover:bg-surface-sunken rounded-r-lg transition"
               >
                 <Plus size={14} />
               </button>
@@ -216,7 +216,7 @@ export function ProductCard({
             <button
               onClick={handleAdd}
               disabled={isOutOfStock || !isLoggedIn}
-              className="flex-1 py-2 bg-orange-500 text-white rounded-lg font-bold text-sm hover:bg-orange-600 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 py-2 bg-brand-strong text-on-brand rounded-control font-bold text-sm hover:bg-brand-strong transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {!isLoggedIn ? (
                 <>
