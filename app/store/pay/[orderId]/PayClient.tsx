@@ -15,7 +15,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService";
 import Link from "next/link";
-import { formatCurrency } from "@/types/currency";
+import { formatMoney as formatCurrency } from "@/lib/format/money";
 import { getCurrencySymbol } from "@/types/currency";
 import { isCurrencySupportedByMethod } from "@/lib/money/rails";
 
@@ -168,7 +168,7 @@ export default function PayClient() {
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
-        <Loader className="animate-spin text-orange-600" size={32} />
+        <Loader className="animate-spin text-brand-strong" size={32} />
       </div>
     );
   }
@@ -177,10 +177,10 @@ export default function PayClient() {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center p-8">
-          <p className="text-red-500 font-bold">Order not found</p>
+          <p className="text-danger font-bold">Order not found</p>
           <button
             onClick={() => router.push("/")}
-            className="text-orange-600 underline mt-4 block mx-auto"
+            className="text-brand-strong underline mt-4 block mx-auto"
           >
             Go Home
           </button>
@@ -190,29 +190,29 @@ export default function PayClient() {
   }
 
   return (
-    <div className="min-h-[60vh] bg-muted/30">
+    <div className="min-h-[60vh] bg-surface-sunken/30">
       <div className="max-w-lg mx-auto px-4 pt-10 pb-24">
         {creatorHandle && (
           <Link
             href={`/${creatorHandle}/store`}
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition mb-6"
+            className="inline-flex items-center gap-2 text-sm text-muted-fg hover:text-fg transition mb-6"
           >
             <ArrowLeft size={16} />
             Back to Store
           </Link>
         )}
 
-        <div className="bg-card rounded-xl shadow-lg p-6 space-y-6">
+        <div className="bg-surface rounded-control shadow-lg p-6 space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold">Order Details</h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-fg">
                 Order #{order.id.slice(0, 8)}
               </p>
             </div>
             {isPaid && (
-              <span className="flex items-center gap-1.5 bg-green-100 text-green-700 text-xs font-bold px-3 py-1.5 rounded-full">
+              <span className="flex items-center gap-1.5 bg-success-bg text-success text-xs font-bold px-3 py-1.5 rounded-full">
                 <Check size={14} />
                 Paid
               </span>
@@ -220,7 +220,7 @@ export default function PayClient() {
           </div>
 
           {/* Order Summary */}
-          <div className="bg-muted rounded-xl p-4 space-y-2">
+          <div className="bg-surface-sunken rounded-control p-4 space-y-2">
             <h4 className="font-bold text-sm">Order Summary</h4>
             {items.length > 0 ? (
               items.map((item: any, idx: number) => (
@@ -245,26 +245,26 @@ export default function PayClient() {
                 </span>
               </div>
             )}
-            <div className="border-t border-border pt-2 flex justify-between font-bold">
+            <div className="border-t border-line pt-2 flex justify-between font-bold">
               <span>Total</span>
               <span>{currency ? formatCurrency(order.total || 0, currency) : (order.total || 0).toLocaleString()}</span>
             </div>
           </div>
 
           {/* Buyer Info */}
-          <div className="bg-muted rounded-xl p-4 space-y-1">
+          <div className="bg-surface-sunken rounded-control p-4 space-y-1">
             <h4 className="font-bold text-sm mb-2">Buyer</h4>
             <p className="text-sm">{order.buyerName || "N/A"}</p>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-fg">
               {order.buyerEmail || ""}
             </p>
             {order.shippingAddress && (
               <>
-                <p className="text-sm text-muted-foreground mt-2">
+                <p className="text-sm text-muted-fg mt-2">
                   {order.shippingAddress.address}, {order.shippingAddress.city},{" "}
                   {order.shippingAddress.country}
                 </p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-fg">
                   Phone: {order.shippingAddress.phone}
                 </p>
               </>
@@ -273,25 +273,25 @@ export default function PayClient() {
 
           {/* Payment section - only if not already paid */}
           {isPaid ? (
-            <div className="bg-green-50 rounded-xl p-4 flex items-start gap-3">
-              <Check size={20} className="text-green-600 mt-0.5 shrink-0" />
+            <div className="bg-success-bg rounded-control p-4 flex items-start gap-3">
+              <Check size={20} className="text-success mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-bold text-green-800">
+                <p className="text-sm font-bold text-success">
                   Payment Completed
                 </p>
-                <p className="text-xs text-green-600 mt-1">
+                <p className="text-xs text-success mt-1">
                   This order has been paid successfully.
                 </p>
               </div>
             </div>
           ) : paid ? (
-            <div className="bg-green-50 rounded-xl p-4 flex items-start gap-3">
-              <Check size={20} className="text-green-600 mt-0.5 shrink-0" />
+            <div className="bg-success-bg rounded-control p-4 flex items-start gap-3">
+              <Check size={20} className="text-success mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-bold text-green-800">
+                <p className="text-sm font-bold text-success">
                   Payment Initiated
                 </p>
-                <p className="text-xs text-green-600 mt-1">
+                <p className="text-xs text-success mt-1">
                   {paymentMethod === "momo"
                     ? "Check your phone to complete the payment."
                     : "You will be redirected to complete your payment."}
@@ -304,25 +304,25 @@ export default function PayClient() {
               <div className="space-y-3">
                 <p className="font-bold text-sm">Payment Method</p>
                 {!momoSupported ? (
-                  <p className="text-sm text-muted-foreground">Mobile money is not available for {currency || "this currency"}. Card payment is required.</p>
+                  <p className="text-sm text-muted-fg">Mobile money is not available for {currency || "this currency"}. Card payment is required.</p>
                 ) : (
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => setPaymentMethod("momo")}
-                    className={`py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${
+                    className={`py-3 px-4 rounded-control border-2 font-bold text-sm transition-all ${
                       paymentMethod === "momo"
-                        ? "border-orange-600 bg-orange-50 text-orange-600"
-                        : "border-border text-muted-foreground"
+                        ? "border-brand-strong bg-brand-soft text-brand-strong"
+                        : "border-line text-muted-fg"
                     }`}
                   >
                     Mobile Money
                   </button>
                   <button
                     onClick={() => setPaymentMethod("card")}
-                    className={`py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${
+                    className={`py-3 px-4 rounded-control border-2 font-bold text-sm transition-all ${
                       paymentMethod === "card"
-                        ? "border-orange-600 bg-orange-50 text-orange-600"
-                        : "border-border text-muted-foreground"
+                        ? "border-brand-strong bg-brand-soft text-brand-strong"
+                        : "border-line text-muted-fg"
                     }`}
                   >
                     Card Payment
@@ -332,12 +332,12 @@ export default function PayClient() {
               </div>
 
               {paymentMethod === "momo" && (
-                <div className="bg-amber-50 rounded-xl p-4 flex items-start gap-3">
+                <div className="bg-warning-bg rounded-control p-4 flex items-start gap-3">
                   <AlertCircle
                     size={20}
-                    className="text-amber-600 mt-0.5 shrink-0"
+                    className="text-warning mt-0.5 shrink-0"
                   />
-                  <p className="text-sm text-amber-800">
+                  <p className="text-sm text-warning">
                     Payment will be processed via Mobile Money. You will receive
                     a prompt on your phone to complete the payment.
                   </p>
@@ -354,18 +354,18 @@ export default function PayClient() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="07X XXX XXXX"
-                    className="w-full bg-muted p-4 rounded-lg text-sm font-medium outline-none"
+                    className="w-full bg-surface-sunken p-4 rounded-control text-sm font-medium outline-none"
                   />
                 </div>
               )}
 
               {paymentMethod === "card" && (
-                <div className="bg-blue-50 rounded-xl p-4 flex items-start gap-3">
+                <div className="bg-info-bg rounded-control p-4 flex items-start gap-3">
                   <CreditCard
                     size={20}
-                    className="text-blue-600 mt-0.5 shrink-0"
+                    className="text-info mt-0.5 shrink-0"
                   />
-                  <p className="text-sm text-blue-800">
+                  <p className="text-sm text-info">
                     You will be redirected to a secure payment page to complete
                     your card payment.
                   </p>
@@ -375,7 +375,7 @@ export default function PayClient() {
               <button
                 onClick={handlePay}
                 disabled={paying || (paymentMethod === "momo" && !phone.trim())}
-                className="w-full bg-green-600 text-white py-4 rounded-lg font-bold hover:bg-green-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full bg-success text-on-success py-4 rounded-control font-bold hover:bg-success transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {paying ? (
                   <>
