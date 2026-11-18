@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Gathering, type EventType } from "./types";
-import { formatCurrency } from "@/types/currency";
+import { formatMoney as formatCurrency } from "@/lib/format/money";
 import { getPrice, parsePriceCurrency } from "@/lib/priceMap";
 
 const EVENT_TYPE_CONFIG: Record<
@@ -24,22 +24,22 @@ const EVENT_TYPE_CONFIG: Record<
   public: {
     icon: <Globe size={12} />,
     label: "Public",
-    className: "bg-blue-50 text-blue-600",
+    className: "bg-info-bg text-info",
   },
   supporters: {
     icon: <ShieldCheck size={12} />,
     label: "Supporters",
-    className: "bg-purple-50 text-purple-600",
+    className: "bg-brand-soft text-brand-strong",
   },
   supporters_tiered: {
     icon: <ShieldCheck size={12} />,
     label: "Tiered",
-    className: "bg-amber-50 text-amber-600",
+    className: "bg-warning-bg text-warning",
   },
   ticketed: {
     icon: <Ticket size={12} />,
     label: "Ticketed",
-    className: "bg-green-50 text-green-600",
+    className: "bg-success-bg text-success",
   },
 };
 
@@ -70,17 +70,17 @@ export function GatheringCard({
   const ticketAmount = getPrice(gathering, (currency || undefined) as any);
 
   return (
-    <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
+    <div className="bg-surface rounded-control border border-line p-6 shadow-sm">
       <div className="flex items-start gap-4">
-        <div className="w-14 h-14 bg-orange-50 rounded-xl flex items-center justify-center flex-shrink-0">
-          <Calendar className="text-orange-500" size={24} />
+        <div className="w-14 h-14 bg-brand-soft rounded-control flex items-center justify-center flex-shrink-0">
+          <Calendar className="text-brand-strong" size={24} />
         </div>
         <div className="flex-1 min-w-0">
           <Link
             href={`/${creatorHandle}/gatherings/${gathering.id}`}
             className="block group"
           >
-            <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-orange-600 transition-colors">
+            <h3 className="text-xl font-bold text-fg mb-2 group-hover:text-brand-strong transition-colors">
               {gathering.title}
             </h3>
           </Link>
@@ -96,7 +96,7 @@ export function GatheringCard({
               if (cfg) {
                 return (
                   <span
-                    className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${cfg.className}`}
+                    className={`inline-flex items-center gap-1 text-caption font-bold px-2 py-0.5 rounded-full ${cfg.className}`}
                   >
                     {cfg.icon} {cfg.label}
                   </span>
@@ -105,34 +105,34 @@ export function GatheringCard({
               return null;
             })()}
             {ticketAmount > 0 && (
-              <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
+              <span className="text-caption font-bold text-brand-strong bg-brand-soft px-2 py-0.5 rounded-full">
                 {currency ? formatCurrency(ticketAmount, currency) : ticketAmount}
               </span>
             )}
           </div>
           {gathering.description && (
-            <p className="text-muted-foreground text-sm mb-4 line-clamp-2">
+            <p className="text-muted-fg text-sm mb-4 line-clamp-2">
               {gathering.description}
             </p>
           )}
-          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+          <div className="flex flex-wrap gap-4 text-sm text-muted-fg">
             <div className="flex items-center gap-1">
-              <Calendar size={14} className="text-muted-foreground" />
+              <Calendar size={14} className="text-muted-fg" />
               <span>{gathering.date}</span>
             </div>
             <div className="flex items-center gap-1">
-              <Clock size={14} className="text-muted-foreground" />
+              <Clock size={14} className="text-muted-fg" />
               <span>{gathering.time}</span>
             </div>
             {(isRsvped || userId === gathering.creatorId) && (
               <div className="flex items-center gap-1">
-                <MapPin size={14} className="text-muted-foreground" />
+                <MapPin size={14} className="text-muted-fg" />
                 <span>{gathering.location}</span>
               </div>
             )}
             {gathering.capacity && (
               <div className="flex items-center gap-1">
-                <Users size={14} className="text-muted-foreground" />
+                <Users size={14} className="text-muted-fg" />
                 <span>
                   {gathering.attendeesCount || 0}/{gathering.capacity}
                 </span>
@@ -142,33 +142,33 @@ export function GatheringCard({
           {isRsvped &&
             !myRsvpStatus.checkedIn &&
             !myRsvpStatus.checkInDeclined && (
-              <p className="text-xs text-orange-600 font-medium mt-2">
+              <p className="text-xs text-brand-strong font-medium mt-2">
                 Location visible after RSVP
               </p>
             )}
         </div>
       </div>
 
-      <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+      <div className="mt-4 pt-4 border-t border-line flex items-center justify-between">
         <div className="flex items-center gap-2">
           {isRsvped && myRsvpStatus.checkedIn ? (
-            <span className="text-sm font-bold text-green-600 flex items-center gap-1">
+            <span className="text-sm font-bold text-success flex items-center gap-1">
               <Check size={16} /> You&apos;re checked in
             </span>
           ) : isRsvped && myRsvpStatus.checkInDeclined ? (
-            <span className="text-sm font-bold text-red-500 flex items-center gap-1">
+            <span className="text-sm font-bold text-danger flex items-center gap-1">
               <X size={16} /> Check-in declined
             </span>
           ) : isRsvped ? (
-            <span className="text-sm font-bold text-green-600 flex items-center gap-1">
+            <span className="text-sm font-bold text-success flex items-center gap-1">
               <Check size={16} /> You&apos;re attending
             </span>
           ) : isFull ? (
-            <span className="text-sm font-bold text-muted-foreground">
+            <span className="text-sm font-bold text-muted-fg">
               Event is full
             </span>
           ) : (
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-muted-fg">
               {gathering.capacity
                 ? `${gathering.capacity - (gathering.attendeesCount || 0)} spots left`
                 : gathering.eventType === "ticketed" || ticketAmount > 0
@@ -187,7 +187,7 @@ export function GatheringCard({
           <button
             onClick={onRSVP}
             disabled={rsvping}
-            className="bg-orange-600 text-white px-6 py-2 rounded-lg font-bold text-sm hover:bg-orange-700 transition-all disabled:opacity-50 ml-3"
+            className="bg-brand-strong text-on-brand px-6 py-2 rounded-control font-bold text-sm hover:bg-brand-strong transition-all disabled:opacity-50 ml-3"
           >
             {rsvping ? (
               <Loader size={16} className="animate-spin" />
@@ -201,14 +201,14 @@ export function GatheringCard({
         {showTicket && (
           <button
             onClick={onViewTicket}
-            className="flex items-center gap-1 px-3 py-2 border border-emerald-300 text-emerald-700 rounded-lg text-sm font-bold hover:bg-emerald-50 transition"
+            className="flex items-center gap-1 px-3 py-2 border border-success text-success rounded-control text-sm font-bold hover:bg-success-bg transition"
           >
             <QrCode size={14} /> Ticket
           </button>
         )}
         <Link
           href={`/${creatorHandle}/gatherings/${gathering.id}`}
-          className="flex items-center gap-1 text-sm font-medium text-orange-600 hover:text-orange-700 transition ml-auto"
+          className="flex items-center gap-1 text-sm font-medium text-brand-strong hover:text-brand-strong transition ml-auto"
         >
           Details <ArrowRight size={14} />
         </Link>

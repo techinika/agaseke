@@ -213,7 +213,7 @@ export const GiveawayTab = ({
   if (loading) {
     return (
       <div className="animate-in fade-in duration-500 flex items-center justify-center h-[400px]">
-        <Loader className="animate-spin text-orange-500" size={32} />
+        <Loader className="animate-spin text-brand-strong" size={32} />
       </div>
     );
   }
@@ -255,10 +255,10 @@ export const GiveawayTab = ({
   if (!hasAnyGiveaways) {
     return (
       <div className="animate-in fade-in duration-500">
-        <div className="text-center py-20 bg-card border border-border rounded-3xl">
-          <Gift size={48} className="mx-auto text-muted-foreground mb-4" />
+        <div className="text-center py-20 bg-surface border border-line rounded-card">
+          <Gift size={48} className="mx-auto text-muted-fg mb-4" />
           <h3 className="text-2xl font-bold">No Giveaways Yet</h3>
-          <p className="text-muted-foreground mt-2">
+          <p className="text-muted-fg mt-2">
             Check back later for exciting prizes!
           </p>
         </div>
@@ -302,7 +302,7 @@ export const GiveawayTab = ({
       {displayEndedGiveaways.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <Star size={16} className="text-orange-500" />
+            <Star size={16} className="text-brand-strong" />
             <h3 className="text-lg font-bold">Past Giveaways</h3>
           </div>
 
@@ -327,7 +327,7 @@ export const GiveawayTab = ({
         <div className="text-center">
           <Link
             href={`/${username}/giveaways`}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-lg font-bold text-sm hover:bg-orange-700 transition shadow-lg"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-brand-strong text-on-brand rounded-control font-bold text-sm hover:bg-brand-hover transition shadow-lg"
           >
             See All Giveaways <ArrowRight size={16} />
           </Link>

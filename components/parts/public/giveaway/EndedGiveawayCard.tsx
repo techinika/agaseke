@@ -16,14 +16,14 @@ export function EndedGiveawayCard({
   creatorHandle?: string;
 }) {
   return (
-    <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-      <div className="bg-gradient-to-r from-slate-600 to-slate-700 p-6 text-white">
+    <div className="bg-surface border border-line rounded-card overflow-hidden shadow-sm">
+      <div className="bg-gradient-to-r from-surface-sunken to-surface-sunken p-6 text-on-brand">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold">
               {giveaway.type === "random" ? "Lucky Draw" : "Challenge"}
             </span>
-            <span className="bg-slate-500/80 px-2 py-1 rounded-full text-xs font-bold">
+            <span className="bg-surface-raised/80 px-2 py-1 rounded-full text-xs font-bold">
               Ended
             </span>
           </div>
@@ -35,32 +35,32 @@ export function EndedGiveawayCard({
           </button>
         </div>
         <h3 className="text-xl font-bold mb-2">{giveaway.title}</h3>
-        <p className="text-white/80 text-sm">{giveaway.description}</p>
+        <p className="text-on-brand/80 text-sm">{giveaway.description}</p>
       </div>
 
       <div className="p-6">
         {won ? (
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-2xl p-6 text-center">
-            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Sparkles size={32} className="text-white" />
+          <div className="bg-gradient-to-r from-success-bg to-success-bg border-2 border-success rounded-card p-6 text-center">
+            <div className="w-16 h-16 bg-success rounded-full flex items-center justify-center mx-auto mb-4">
+              <Sparkles size={32} className="text-on-brand" />
             </div>
-            <h4 className="text-xl font-bold text-green-800 mb-2">
+            <h4 className="text-xl font-bold text-success mb-2">
               Congratulations!
             </h4>
-            <p className="text-green-700">
+            <p className="text-success">
               You won <span className="font-bold">{reward}</span>!
             </p>
             <button
               onClick={onViewWinners}
-              className="mt-4 bg-green-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-green-700 transition"
+              className="mt-4 bg-success text-on-success px-6 py-2 rounded-control font-bold hover:bg-success transition"
             >
               View All Winners
             </button>
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-muted-foreground mb-4">
-              <Trophy size={20} className="text-orange-500" />
+            <div className="flex items-center gap-2 text-muted-fg mb-4">
+              <Trophy size={20} className="text-brand-strong" />
               <span className="font-bold">
                 {giveaway.winners.length} Winner
                 {giveaway.winners.length !== 1 ? "s" : ""} Announced
@@ -72,9 +72,9 @@ export function EndedGiveawayCard({
                 .map((winner: any, idx: number) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-3 bg-muted rounded-xl p-3"
+                    className="flex items-center gap-3 bg-surface-sunken rounded-control p-3"
                   >
-                    <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center text-muted-foreground font-bold overflow-hidden">
+                    <div className="w-10 h-10 bg-surface-sunken rounded-full flex items-center justify-center text-muted-fg font-bold overflow-hidden">
                       {winner.winnerPhoto ? (
                         <img
                           src={winner.winnerPhoto}
@@ -87,12 +87,12 @@ export function EndedGiveawayCard({
                     </div>
                     <div className="flex-1">
                       <p className="font-bold text-sm">{winner.winnerName}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-fg">
                         Won: {winner.rewardTitle}
                       </p>
                     </div>
                     {idx === 0 && (
-                      <span className="bg-orange-100 text-orange-600 text-[10px] font-bold px-2 py-1 rounded-full">
+                      <span className="bg-brand-soft text-brand-strong text-caption font-bold px-2 py-1 rounded-full">
                         1st
                       </span>
                     )}
@@ -102,7 +102,7 @@ export function EndedGiveawayCard({
             {giveaway.winners.length > 3 && (
               <button
                 onClick={onViewWinners}
-                className="w-full py-3 border border-border rounded-xl font-bold text-sm text-muted-foreground hover:bg-muted transition"
+                className="w-full py-3 border border-line rounded-control font-bold text-sm text-muted-fg hover:bg-surface-sunken transition"
               >
                 View All {giveaway.winners.length} Winners
               </button>
@@ -112,7 +112,7 @@ export function EndedGiveawayCard({
 
         <Link
           href={`/${creatorHandle}/giveaways/${giveaway.id}`}
-          className="flex items-center justify-center gap-1 text-sm font-medium text-orange-600 hover:text-orange-700 transition mt-4"
+          className="flex items-center justify-center gap-1 text-sm font-medium text-brand-strong hover:text-brand-strong transition mt-4"
         >
           View Details <ArrowRight size={14} />
         </Link>

@@ -20,7 +20,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { GatheringCard, PastGatheringCard } from "./gatherings";
 import type { Gathering } from "./gatherings";
-import { formatCurrency } from "@/types/currency";
+import { formatMoney as formatCurrency } from "@/lib/format/money";
 import { getPrice } from "@/lib/priceMap";
 import { logError, logInfo } from "@/lib/logger";
 import { QRCodeCanvas } from "qrcode.react";
@@ -326,7 +326,7 @@ export function GatheringsTab({ creatorId, creatorHandle, creatorName = "the cre
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <Loader className="animate-spin text-orange-500" size={24} />
+        <Loader className="animate-spin text-brand-strong" size={24} />
       </div>
     );
   }
@@ -334,9 +334,9 @@ export function GatheringsTab({ creatorId, creatorHandle, creatorName = "the cre
   if (gatherings.length === 0) {
     return (
       <div className="text-center py-12">
-        <Calendar className="mx-auto text-muted-foreground mb-4" size={48} />
-        <p className="text-muted-foreground font-medium">No upcoming events</p>
-        <p className="text-sm text-muted-foreground mt-2">
+        <Calendar className="mx-auto text-muted-fg mb-4" size={48} />
+        <p className="text-muted-fg font-medium">No upcoming events</p>
+        <p className="text-sm text-muted-fg mt-2">
           Check back later for new gatherings and events.
         </p>
       </div>
@@ -346,9 +346,9 @@ export function GatheringsTab({ creatorId, creatorHandle, creatorName = "the cre
   if (visibleGatherings.length === 0 && lockedGatherings.length > 0) {
     return (
       <div className="text-center py-12">
-        <Lock className="mx-auto text-muted-foreground mb-4" size={48} />
-        <p className="text-muted-foreground font-medium">Exclusive events available</p>
-        <p className="text-sm text-muted-foreground mt-2">
+        <Lock className="mx-auto text-muted-fg mb-4" size={48} />
+        <p className="text-muted-fg font-medium">Exclusive events available</p>
+        <p className="text-sm text-muted-fg mt-2">
           Contribute to unlock access to their private gatherings.
         </p>
       </div>
@@ -387,7 +387,7 @@ export function GatheringsTab({ creatorId, creatorHandle, creatorName = "the cre
         <div className="text-center">
           <Link
             href={`/${username}/gatherings`}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-lg font-bold text-sm hover:bg-orange-700 transition shadow-lg"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-brand-strong text-on-brand rounded-control font-bold text-sm hover:bg-brand-hover transition shadow-lg"
           >
             See All Events <ArrowRight size={16} />
           </Link>
@@ -397,13 +397,13 @@ export function GatheringsTab({ creatorId, creatorHandle, creatorName = "the cre
       {lockedGatherings.length > 0 && visibleGatherings.length > 0 && (
         <div className="mt-6">
           <div className="flex items-center gap-2 mb-4">
-            <Lock size={16} className="text-muted-foreground" />
-            <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+            <Lock size={16} className="text-muted-fg" />
+            <p className="text-sm font-bold text-muted-fg uppercase tracking-wider">
               {lockedGatherings.length} locked event{lockedGatherings.length !== 1 ? "s" : ""}
             </p>
           </div>
-          <div className="bg-muted/50 rounded-xl border border-border p-4">
-            <p className="text-sm text-muted-foreground">
+          <div className="bg-surface-raised/50 rounded-control border border-line p-4">
+            <p className="text-sm text-muted-fg">
               {(() => {
                 const minTier = Math.min(
                   ...lockedGatherings.map((g) => g.minSupportTier || 0),
@@ -428,7 +428,7 @@ export function GatheringsTab({ creatorId, creatorHandle, creatorName = "the cre
         <div className="mt-8">
           <button
             onClick={() => setShowPast(!showPast)}
-            className="w-full py-3 text-center text-sm font-bold text-muted-foreground hover:text-foreground transition"
+            className="w-full py-3 text-center text-sm font-bold text-muted-fg hover:text-fg transition"
           >
             {showPast ? "Hide past events" : `View ${pastGatherings.length} past event${pastGatherings.length !== 1 ? "s" : ""}`}
           </button>
@@ -479,21 +479,21 @@ export function GatheringsTab({ creatorId, creatorHandle, creatorName = "the cre
 
       {/* Ticket Modal */}
       {ticketModalGathering && ticketModalDocId && (
-        <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-          <div className="bg-card w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl">
-            <div className="p-6 border-b border-border flex justify-between items-center">
+        <div className="fixed inset-0 bg-fg/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
+          <div className="bg-surface w-full max-w-sm rounded-card overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-line flex justify-between items-center">
               <h2 className="text-xl font-bold">Your Ticket</h2>
-              <button onClick={() => { setTicketModalGathering(null); setTicketModalDocId(null); }} className="p-2 hover:bg-muted rounded-full">
+              <button aria-label="Close ticket" onClick={() => { setTicketModalGathering(null); setTicketModalDocId(null); }} className="p-2 hover:bg-surface-raised rounded-full">
                 <X size={20} />
               </button>
             </div>
             <div className="p-6 flex flex-col items-center gap-4">
-              <div className="bg-white p-4 rounded-xl shadow-inner">
+              <div className="bg-white p-4 rounded-control shadow-inner">
                 <QRCodeCanvas value={ticketModalDocId} size={200} />
               </div>
               <p className="font-bold text-lg text-center">{ticketModalGathering.title}</p>
-              <p className="text-sm text-muted-foreground">{ticketModalGathering.date} at {ticketModalGathering.time}</p>
-              <p className="text-xs text-muted-foreground text-center">
+              <p className="text-sm text-muted-fg">{ticketModalGathering.date} at {ticketModalGathering.time}</p>
+              <p className="text-xs text-muted-fg text-center">
                 Show this QR code at the event for check-in
               </p>
             </div>
