@@ -50,9 +50,9 @@ const LazyGatheringsTab = lazy(() =>
 function TabFallback() {
   return (
     <div className="space-y-4" aria-busy="true">
-      <div className="h-32 bg-muted/60 rounded-2xl animate-pulse" />
-      <div className="h-24 bg-muted/60 rounded-2xl animate-pulse" />
-      <div className="h-24 bg-muted/60 rounded-2xl animate-pulse" />
+      <div className="h-32 bg-surface-sunken/60 rounded-card animate-pulse" />
+      <div className="h-24 bg-surface-sunken/60 rounded-card animate-pulse" />
+      <div className="h-24 bg-surface-sunken/60 rounded-card animate-pulse" />
     </div>
   );
 }
@@ -61,32 +61,32 @@ function ProfileSkeleton() {
   return (
     <div className="mx-auto max-w-2xl px-6" aria-busy="true">
       <div className="mt-8">
-        <div className="h-40 sm:h-52 bg-muted/60 rounded-2xl animate-pulse" />
+        <div className="h-40 sm:h-52 bg-surface-sunken/60 rounded-card animate-pulse" />
         <div className="mt-6 flex items-center gap-4">
-          <div className="w-20 h-20 rounded-full bg-muted/60 animate-pulse" />
+          <div className="w-20 h-20 rounded-full bg-surface-sunken/60 animate-pulse" />
           <div className="flex-1 space-y-3">
-            <div className="h-5 w-1/2 bg-muted/60 rounded-lg animate-pulse" />
-            <div className="h-3 w-1/3 bg-muted/60 rounded-lg animate-pulse" />
+            <div className="h-5 w-1/2 bg-surface-sunken/60 rounded-control animate-pulse" />
+            <div className="h-3 w-1/3 bg-surface-sunken/60 rounded-control animate-pulse" />
           </div>
         </div>
         <div className="mt-5 space-y-2">
-          <div className="h-3 w-full bg-muted/60 rounded-lg animate-pulse" />
-          <div className="h-3 w-4/5 bg-muted/60 rounded-lg animate-pulse" />
+          <div className="h-3 w-full bg-surface-sunken/60 rounded-control animate-pulse" />
+          <div className="h-3 w-4/5 bg-surface-sunken/60 rounded-control animate-pulse" />
         </div>
         <div className="mt-6 grid grid-cols-2 gap-3">
-          <div className="h-12 bg-muted/60 rounded-xl animate-pulse" />
-          <div className="h-12 bg-muted/60 rounded-xl animate-pulse" />
+          <div className="h-12 bg-surface-sunken/60 rounded-control animate-pulse" />
+          <div className="h-12 bg-surface-sunken/60 rounded-control animate-pulse" />
         </div>
       </div>
-      <div className="mt-10 flex gap-6 border-b border-border">
+      <div className="mt-10 flex gap-6 border-b border-line">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="h-4 w-16 bg-muted/60 rounded-lg animate-pulse" />
+          <div key={i} className="h-4 w-16 bg-surface-sunken/60 rounded-control animate-pulse" />
         ))}
       </div>
       <div className="mt-8 space-y-4">
-        <div className="h-28 bg-muted/60 rounded-2xl animate-pulse" />
-        <div className="h-28 bg-muted/60 rounded-2xl animate-pulse" />
-        <div className="h-28 bg-muted/60 rounded-2xl animate-pulse" />
+        <div className="h-28 bg-surface-sunken/60 rounded-card animate-pulse" />
+        <div className="h-28 bg-surface-sunken/60 rounded-card animate-pulse" />
+        <div className="h-28 bg-surface-sunken/60 rounded-card animate-pulse" />
       </div>
     </div>
   );
@@ -315,16 +315,16 @@ export default function PublicProfile({
     return (
       <div className="flex items-center justify-center min-h-[60vh] px-6">
         <div className="text-center max-w-md">
-          <h2 className="text-2xl font-bold text-foreground mb-2">
+          <h2 className="text-2xl font-bold text-fg mb-2">
             Couldn&apos;t load this profile
           </h2>
-          <p className="text-muted-foreground mb-6">
+          <p className="text-muted-fg mb-6">
             There was a network error while fetching this creator. Please try
             again.
           </p>
           <button
             onClick={() => router.refresh()}
-            className="bg-foreground text-background px-6 py-3 rounded-lg font-bold hover:bg-orange-600 transition"
+            className="bg-foreground text-background px-6 py-3 rounded-control font-bold hover:bg-brand-strong transition"
           >
             Try Again
           </button>
@@ -470,19 +470,19 @@ export default function PublicProfile({
         <section className="max-w-2xl mx-auto px-6 py-12">
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border"></div>
+              <div className="w-full border-t border-line"></div>
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-background px-4 flex items-center gap-2">
-                <Building2 size={16} className="text-orange-500" />
-                <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">
+              <span className="bg-canvas px-4 flex items-center gap-2">
+                <Building2 size={16} className="text-brand-strong" />
+                <span className="text-caption font-bold uppercase text-muted-fg tracking-widest">
                   Partners & Collaborations
                 </span>
               </span>
             </div>
           </div>
 
-          <div className="mt-8 bg-card rounded-2xl border border-border p-6 shadow-sm">
+          <div className="mt-8 bg-surface rounded-card border border-line p-6 shadow-sm">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {featuredPartners.map((partner) => (
                 <a
@@ -490,9 +490,9 @@ export default function PublicProfile({
                   href={partner.website || "#"}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex items-center gap-4 p-4 bg-muted rounded-xl hover:bg-orange-50 hover:border-orange-200 border border-transparent transition-all"
+                  className="group flex items-center gap-4 p-4 bg-surface-sunken rounded-control hover:bg-brand-soft hover:border-brand-strong border border-transparent transition-all"
                 >
-                  <div className="w-14 h-14 bg-card rounded-xl overflow-hidden flex items-center justify-center shadow-sm border border-border">
+                  <div className="w-14 h-14 bg-surface rounded-control overflow-hidden flex items-center justify-center shadow-sm border border-line">
                     {partner.logo ? (
                       <img
                         src={partner.logo}
@@ -505,20 +505,20 @@ export default function PublicProfile({
                         decoding="async"
                       />
                     ) : (
-                      <Building2 size={24} className="text-muted-foreground" />
+                      <Building2 size={24} className="text-muted-fg" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-foreground group-hover:text-orange-700 transition-colors truncate">
+                    <p className="font-bold text-fg group-hover:text-brand-strong transition-colors truncate">
                       {partner.name}
                     </p>
                     {partner.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                      <p className="text-xs text-muted-fg line-clamp-1 mt-0.5">
                         {partner.description}
                       </p>
                     )}
                     {partner.website && (
-                      <p className="text-[10px] text-orange-500 mt-1 flex items-center gap-1">
+                      <p className="text-caption text-brand-strong mt-1 flex items-center gap-1">
                         Visit Website <ExternalLink size={10} />
                       </p>
                     )}
