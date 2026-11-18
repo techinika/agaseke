@@ -17,7 +17,7 @@ import { logError, logInfo } from "@/lib/logger";
 import { LinkifyText } from "@/components/ui/LinkifyText";
 import { QRCodeCanvas } from "qrcode.react";
 import { getPrice } from "@/lib/priceMap";
-import { formatCurrency } from "@/types/currency";
+import { formatMoney as formatCurrency } from "@/lib/format/money";
 
 export default function GatheringDetailPage({ username, gatheringId }: { username: string; gatheringId: string }) {
   const { user, profile } = useAuth();
@@ -255,8 +255,8 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <p className="text-muted-foreground">Event not found</p>
-          <Link href={`/${username}`} className="text-orange-500 font-bold mt-4 inline-block">Go Back</Link>
+          <p className="text-muted-fg">Event not found</p>
+          <Link href={`/${username}`} className="text-brand-strong font-bold mt-4 inline-block">Go Back</Link>
         </div>
       </div>
     );
@@ -274,78 +274,78 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
     <>
       <div className="max-w-3xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
-          <Link href={`/${username}/gatherings`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition">
+          <Link href={`/${username}/gatherings`} className="flex items-center gap-2 text-muted-fg hover:text-fg transition">
             <ArrowLeft size={20} />
             <span className="font-medium">Back to Events</span>
           </Link>
 
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-orange-700 transition"
+            className="flex items-center gap-2 bg-brand-strong text-on-brand px-4 py-2 rounded-control font-bold hover:bg-brand-strong transition"
           >
             <Heart size={18} className="fill-current" />
             Support
           </button>
         </div>
 
-        <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
-          <div className={`p-8 ${isUpcoming ? "bg-gradient-to-r from-orange-500 to-amber-500" : "bg-border-strong"} text-white`}>
-            <span className="bg-card/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+        <div className="bg-surface rounded-card border border-line overflow-hidden shadow-sm">
+          <div className={`p-8 ${isUpcoming ? "bg-gradient-to-r from-brand-strong to-warning" : "bg-border-strong"} text-on-brand`}>
+            <span className="bg-surface/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
               {isUpcoming ? "Upcoming" : "Past Event"}
             </span>
             <h1 className="text-3xl font-bold mt-4 mb-2">{gathering.title}</h1>
-            {gathering.description && <p className="text-white/80 whitespace-pre-wrap"><LinkifyText text={gathering.description} /></p>}
+            {gathering.description && <p className="text-on-brand/80 whitespace-pre-wrap"><LinkifyText text={gathering.description} /></p>}
           </div>
 
           <div className="p-6 space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center gap-3 bg-muted p-4 rounded-xl">
-                <Calendar size={20} className="text-orange-500" />
+              <div className="flex items-center gap-3 bg-surface-sunken p-4 rounded-control">
+                <Calendar size={20} className="text-brand-strong" />
                 <div>
-                  <p className="text-xs text-muted-foreground font-bold uppercase">Date</p>
-                  <p className="text-sm font-bold text-foreground">{formattedDate}</p>
+                  <p className="text-xs text-muted-fg font-bold uppercase">Date</p>
+                  <p className="text-sm font-bold text-fg">{formattedDate}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 bg-muted p-4 rounded-xl">
-                <Clock size={20} className="text-orange-500" />
+              <div className="flex items-center gap-3 bg-surface-sunken p-4 rounded-control">
+                <Clock size={20} className="text-brand-strong" />
                 <div>
-                  <p className="text-xs text-muted-foreground font-bold uppercase">Time</p>
-                  <p className="text-sm font-bold text-foreground">{gathering.time}</p>
+                  <p className="text-xs text-muted-fg font-bold uppercase">Time</p>
+                  <p className="text-sm font-bold text-fg">{gathering.time}</p>
                 </div>
               </div>
               {gathering.capacity && (
-                <div className="flex items-center gap-3 bg-muted p-4 rounded-xl">
-                  <Users size={20} className="text-orange-500" />
+                <div className="flex items-center gap-3 bg-surface-sunken p-4 rounded-control">
+                  <Users size={20} className="text-brand-strong" />
                   <div>
-                    <p className="text-xs text-muted-foreground font-bold uppercase">Capacity</p>
-                    <p className="text-sm font-bold text-foreground">{gathering.attendeesCount || 0} / {gathering.capacity}</p>
+                    <p className="text-xs text-muted-fg font-bold uppercase">Capacity</p>
+                    <p className="text-sm font-bold text-fg">{gathering.attendeesCount || 0} / {gathering.capacity}</p>
                   </div>
                 </div>
               )}
               {isRsvped && gathering.location && (
-                <div className="flex items-center gap-3 bg-muted p-4 rounded-xl">
-                  <MapPin size={20} className="text-orange-500" />
+                <div className="flex items-center gap-3 bg-surface-sunken p-4 rounded-control">
+                  <MapPin size={20} className="text-brand-strong" />
                   <div>
-                    <p className="text-xs text-muted-foreground font-bold uppercase">Location</p>
-                    <p className="text-sm font-bold text-foreground">{gathering.location}</p>
+                    <p className="text-xs text-muted-fg font-bold uppercase">Location</p>
+                    <p className="text-sm font-bold text-fg">{gathering.location}</p>
                   </div>
                 </div>
               )}
             </div>
 
             {isUpcoming && (
-              <div className="border-t border-border pt-5">
+              <div className="border-t border-line pt-5">
                 {isRsvped ? (
-                  <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl">
+                  <div className="bg-success-bg border border-success p-4 rounded-control">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <CheckCircle size={20} className="text-emerald-500" />
-                        <p className="text-sm font-bold text-emerald-700">You&apos;re attending! {isFull && " (Limited spots remaining)"}</p>
+                        <CheckCircle size={20} className="text-success" />
+                        <p className="text-sm font-bold text-success">You&apos;re attending! {isFull && " (Limited spots remaining)"}</p>
                       </div>
                       {attendanceDocId && (
                         <button
                           onClick={() => setShowTicket(true)}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition"
+                          className="flex items-center gap-1 px-3 py-1.5 bg-success text-on-success rounded-control text-xs font-bold hover:bg-success transition"
                         >
                           <QrCode size={14} /> View Ticket
                         </button>
@@ -353,30 +353,30 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
                     </div>
                   </div>
                 ) : isFull ? (
-                  <div className="bg-red-50 border border-red-200 p-4 rounded-xl flex items-center gap-3">
-                    <XCircle size={20} className="text-red-500" />
-                    <p className="text-sm font-bold text-red-700">This event is full</p>
+                  <div className="bg-danger-bg border border-danger p-4 rounded-control flex items-center gap-3">
+                    <XCircle size={20} className="text-danger" />
+                    <p className="text-sm font-bold text-danger">This event is full</p>
                   </div>
                 ) : ticketAmount > 0 && user ? (
                   <button onClick={handleRSVP} disabled={rsvping}
-                    className="w-full py-3 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition disabled:opacity-50 flex items-center justify-center gap-2">
+                    className="w-full py-3 bg-brand-strong text-on-brand rounded-control font-bold hover:bg-brand-strong transition disabled:opacity-50 flex items-center justify-center gap-2">
                     <CreditCard size={18} />
                     Buy Ticket ({gathering?.currency ? formatCurrency(ticketAmount, gathering.currency as any) : `${ticketAmount}`})
                   </button>
                 ) : !meetsTier && user ? (
-                  <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex items-center gap-3">
-                    <Lock size={20} className="text-amber-500" />
-                    <p className="text-sm font-bold text-amber-700">
+                  <div className="bg-warning-bg border border-warning p-4 rounded-control flex items-center gap-3">
+                    <Lock size={20} className="text-warning" />
+                    <p className="text-sm font-bold text-warning">
                       A minimum contribution of {gathering?.currency ? formatCurrency(gathering.minSupportTier || 0, gathering.currency as any) : `${gathering.minSupportTier || 0}`} is required to attend
                     </p>
                   </div>
                 ) : !user ? (
-                  <div className="bg-muted p-4 rounded-xl text-center">
-                    <p className="text-sm text-muted-foreground">Please log in to RSVP</p>
+                  <div className="bg-surface-sunken p-4 rounded-control text-center">
+                    <p className="text-sm text-muted-fg">Please log in to RSVP</p>
                   </div>
                 ) : (
                   <button onClick={handleRSVP} disabled={rsvping}
-                    className="w-full py-3 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition disabled:opacity-50 flex items-center justify-center gap-2">
+                    className="w-full py-3 bg-brand-strong text-on-brand rounded-control font-bold hover:bg-brand-strong transition disabled:opacity-50 flex items-center justify-center gap-2">
                     {rsvping ? <Loader className="animate-spin" size={18} /> : <CheckCircle size={18} />}
                     Confirm RSVP
                   </button>
@@ -385,8 +385,8 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
             )}
 
             {!isUpcoming && (
-              <div className="border-t border-border pt-5">
-                <p className="text-center text-sm text-muted-foreground bg-muted py-3 rounded-xl">
+              <div className="border-t border-line pt-5">
+                <p className="text-center text-sm text-muted-fg bg-surface-sunken py-3 rounded-control">
                   This event has already taken place.
                 </p>
               </div>
@@ -397,33 +397,33 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
 
       {payingGathering && (
         <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-          <div className="bg-card w-full max-w-md rounded-2xl overflow-hidden shadow-2xl">
-            <div className="p-6 border-b border-border flex justify-between items-center">
+          <div className="bg-surface w-full max-w-md rounded-card overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-line flex justify-between items-center">
               <h2 className="text-xl font-bold">Buy Ticket</h2>
-              <button onClick={() => { setPayingGathering(null); setPaying(false); }} className="p-2 hover:bg-muted rounded-full">
+              <button onClick={() => { setPayingGathering(null); setPaying(false); }} className="p-2 hover:bg-surface-sunken rounded-full">
                 <X size={20} />
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <div className="bg-muted p-4 rounded-lg">
-                <p className="text-sm text-muted-foreground">Event</p>
+              <div className="bg-surface-sunken p-4 rounded-control">
+                <p className="text-sm text-muted-fg">Event</p>
                 <p className="font-bold">{payingGathering.title}</p>
-                <p className="text-2xl font-bold text-orange-600 mt-2">{payingGathering?.currency ? formatCurrency(getPrice(payingGathering), payingGathering.currency as any) : `${getPrice(payingGathering)}`}</p>
+                <p className="text-2xl font-bold text-brand-strong mt-2">{payingGathering?.currency ? formatCurrency(getPrice(payingGathering), payingGathering.currency as any) : `${getPrice(payingGathering)}`}</p>
               </div>
 
               <div className="flex gap-2">
                 <button
                   onClick={() => setPayMethod("momo")}
-                  className={`flex-1 p-3 rounded-lg border-2 font-bold text-sm flex items-center justify-center gap-2 transition ${
-                    payMethod === "momo" ? "border-orange-500 bg-orange-50 text-orange-600" : "border-border text-muted-foreground"
+                  className={`flex-1 p-3 rounded-control border-2 font-bold text-sm flex items-center justify-center gap-2 transition ${
+                    payMethod === "momo" ? "border-brand-strong bg-brand-soft text-brand-strong" : "border-line text-muted-fg"
                   }`}
                 >
                   <Smartphone size={18} /> MoMo
                 </button>
                 <button
                   onClick={() => setPayMethod("card")}
-                  className={`flex-1 p-3 rounded-lg border-2 font-bold text-sm flex items-center justify-center gap-2 transition ${
-                    payMethod === "card" ? "border-orange-500 bg-orange-50 text-orange-600" : "border-border text-muted-foreground"
+                  className={`flex-1 p-3 rounded-control border-2 font-bold text-sm flex items-center justify-center gap-2 transition ${
+                    payMethod === "card" ? "border-brand-strong bg-brand-soft text-brand-strong" : "border-line text-muted-fg"
                   }`}
                 >
                   <CreditCard size={18} /> Card
@@ -436,14 +436,14 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
                   placeholder="Phone number (e.g. 078xxxxxxx)"
                   value={payPhone}
                   onChange={(e) => setPayPhone(e.target.value)}
-                  className="w-full bg-muted p-4 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-100"
+                  className="w-full bg-surface-sunken p-4 rounded-control text-sm outline-none focus:ring-2 focus:ring-brand-soft"
                 />
               )}
 
               <button
                 onClick={() => handlePaidRSVP(payingGathering)}
                 disabled={paying || (payMethod === "momo" && !payPhone)}
-                className="w-full py-4 bg-orange-600 text-white rounded-xl font-bold text-lg hover:bg-orange-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-4 bg-brand-strong text-on-brand rounded-control font-bold text-lg hover:bg-brand-strong transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {paying ? <Loader size={20} className="animate-spin" /> : null}
                 {paying ? "Processing..." : `Pay ${payingGathering?.currency ? formatCurrency(getPrice(payingGathering), payingGathering.currency as any) : `${getPrice(payingGathering)}`}`}
@@ -456,20 +456,20 @@ export default function GatheringDetailPage({ username, gatheringId }: { usernam
       {/* Ticket Modal */}
       {showTicket && attendanceDocId && gathering && (
         <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-          <div className="bg-card w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl">
-            <div className="p-6 border-b border-border flex justify-between items-center">
+          <div className="bg-surface w-full max-w-sm rounded-card overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-line flex justify-between items-center">
               <h2 className="text-xl font-bold">Your Ticket</h2>
-              <button onClick={() => setShowTicket(false)} className="p-2 hover:bg-muted rounded-full">
+              <button onClick={() => setShowTicket(false)} className="p-2 hover:bg-surface-sunken rounded-full">
                 <X size={20} />
               </button>
             </div>
             <div className="p-6 flex flex-col items-center gap-4">
-              <div className="bg-white p-4 rounded-xl shadow-inner">
+              <div className="bg-white p-4 rounded-control shadow-inner">
                 <QRCodeCanvas value={attendanceDocId} size={200} />
               </div>
               <p className="font-bold text-lg text-center">{gathering.title}</p>
-              <p className="text-sm text-muted-foreground">{gathering.date} at {gathering.time}</p>
-              <p className="text-xs text-muted-foreground text-center">
+              <p className="text-sm text-muted-fg">{gathering.date} at {gathering.time}</p>
+              <p className="text-xs text-muted-fg text-center">
                 Show this QR code at the event for check-in
               </p>
             </div>
