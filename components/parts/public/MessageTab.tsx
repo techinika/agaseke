@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { ChatHeader, MessageBubble, MessageInput } from "./message";
 import type { Message } from "./message";
 import { TabErrorState } from "@/components/ui/TabErrorState";
-import { formatCurrency } from "@/types/currency";
+import { formatMoney as formatCurrency } from "@/lib/format/money";
 
 const GENERAL_WORKER_URL =
   process.env.NEXT_PUBLIC_GENERAL_WORKER_URL || "http://localhost:8787";
@@ -242,14 +242,14 @@ export const MessageTab = ({
   if (!canMessage) {
     return (
       <div className="animate-in fade-in duration-500">
-          <div className="bg-card border border-border rounded-3xl p-8 text-center shadow-xl">
-            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-              <MessageSquare size={32} className="text-muted-foreground" />
+          <div className="bg-surface border border-line rounded-card p-8 text-center shadow-xl">
+            <div className="w-16 h-16 bg-surface-raised rounded-full flex items-center justify-center mx-auto mb-4">
+              <MessageSquare size={32} className="text-muted-fg" />
             </div>
-            <h4 className="font-bold text-lg text-foreground mb-2">
+            <h4 className="font-bold text-lg text-fg mb-2">
               Messaging Disabled
             </h4>
-            <p className="text-sm text-muted-foreground max-w-[250px] mx-auto">
+            <p className="text-sm text-muted-fg max-w-[250px] mx-auto">
             {messagingAllowAll
               ? "This creator has disabled direct messaging."
               : `You need to support with at least ${
@@ -260,7 +260,7 @@ export const MessageTab = ({
           </p>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="mt-6 bg-orange-500 text-white px-6 py-3 rounded-lg font-bold text-sm hover:bg-orange-600 transition-colors"
+            className="mt-6 bg-brand-strong text-on-brand px-6 py-3 rounded-control font-bold text-sm hover:bg-brand-strong transition-colors"
           >
             Support to Unlock
           </button>
@@ -272,7 +272,7 @@ export const MessageTab = ({
   if (loading) {
     return (
       <div className="animate-in fade-in duration-500 flex items-center justify-center h-[400px]">
-        <Loader className="animate-spin text-orange-500" size={32} />
+        <Loader className="animate-spin text-brand-strong" size={32} />
       </div>
     );
   }
@@ -292,17 +292,17 @@ export const MessageTab = ({
 
   return (
     <div className="animate-in fade-in duration-500">
-      <div className="flex flex-col h-[550px] bg-card border border-border rounded-3xl overflow-hidden shadow-xl">
+      <div className="flex flex-col h-[550px] bg-surface border border-line rounded-card overflow-hidden shadow-xl">
         <ChatHeader name={name} profilePicture={creatorData?.profilePicture} />
 
-        <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-muted/30">
+        <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-surface-raised/30">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className="w-16 h-16 bg-card rounded-full flex items-center justify-center mb-4 shadow-sm">
-                <Send size={24} className="text-muted-foreground" />
+              <div className="w-16 h-16 bg-surface rounded-full flex items-center justify-center mb-4 shadow-sm">
+                <Send size={24} className="text-muted-fg" />
               </div>
-              <h4 className="font-bold text-foreground">Start the conversation</h4>
-              <p className="text-sm text-muted-foreground max-w-[250px]">
+              <h4 className="font-bold text-fg">Start the conversation</h4>
+              <p className="text-sm text-muted-fg max-w-[250px]">
                 Send your first message to {name.split(" ")[0]}. They&apos;ll receive
                 it via email too!
               </p>

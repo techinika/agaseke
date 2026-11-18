@@ -12,16 +12,16 @@ export function MessageBubble({
       className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
     >
       <div
-        className={`max-w-[80%] px-4 py-3 rounded-2xl ${
+        className={`max-w-[80%] px-4 py-3 rounded-card ${
           isOwn
-            ? "bg-orange-500 text-white rounded-br-md"
-            : "bg-card border border-border text-foreground rounded-bl-md shadow-sm"
+            ? "bg-brand-strong text-on-brand rounded-br-md"
+            : "bg-surface border border-line text-fg rounded-bl-md shadow-sm"
         }`}
       >
         <p className="text-sm whitespace-pre-wrap">{message.content}</p>
         <p
-          className={`text-[10px] mt-1 ${
-            isOwn ? "text-orange-100" : "text-muted-foreground"
+          className={`text-caption mt-1 ${
+            isOwn ? "text-brand-strong" : "text-muted-fg"
           }`}
         >
           {message.createdAt?.toDate?.().toLocaleTimeString([], {
