@@ -102,8 +102,8 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <p className="text-muted-foreground">Giveaway not found</p>
-          <Link href={`/${username}`} className="text-orange-500 font-bold mt-4 inline-block">Go Back</Link>
+          <p className="text-muted-fg">Giveaway not found</p>
+          <Link href={`/${username}`} className="text-brand-strong font-bold mt-4 inline-block">Go Back</Link>
         </div>
       </div>
     );
@@ -119,26 +119,26 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
     <>
       <div className="max-w-3xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
-          <Link href={`/${username}/giveaways`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition">
+          <Link href={`/${username}/giveaways`} className="flex items-center gap-2 text-muted-fg hover:text-fg transition">
             <ArrowLeft size={20} />
             <span className="font-medium">Back to Giveaways</span>
           </Link>
         </div>
 
-        <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
-          <div className="bg-gradient-to-r from-orange-500 to-amber-500 p-8 text-white">
+        <div className="bg-surface rounded-card border border-line overflow-hidden shadow-sm">
+          <div className="bg-gradient-to-r from-brand-strong to-warning p-8 text-on-brand">
             <div className="flex items-center justify-between mb-4">
-              <span className="bg-card/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+              <span className="bg-surface/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
                 {isActive ? "Active" : "Ended"}
               </span>
-              <button onClick={shareGiveaway} className="bg-card/20 p-2 rounded-full hover:bg-white/30 transition">
+              <button onClick={shareGiveaway} className="bg-surface/20 p-2 rounded-full hover:bg-white/30 transition">
                 <Share2 size={16} />
               </button>
             </div>
             <h1 className="text-3xl font-bold mb-2">{giveaway.title}</h1>
-            <p className="text-white/80">{giveaway.description}</p>
+            <p className="text-on-brand/80">{giveaway.description}</p>
             {isActive && (
-              <div className="flex items-center gap-2 mt-4 bg-card/15 px-4 py-2 rounded-lg inline-flex">
+              <div className="flex items-center gap-2 mt-4 bg-surface/15 px-4 py-2 rounded-control inline-flex">
                 <Clock size={16} />
                 <span className="text-sm font-bold">{daysLeft} days left</span>
               </div>
@@ -147,35 +147,35 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
 
           <div className="p-6 space-y-6">
             <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Trophy size={16} className="text-orange-500" />
+              <div className="flex items-center gap-2 text-sm text-muted-fg">
+                <Trophy size={16} className="text-brand-strong" />
                 <span className="font-bold">{giveaway.winners.length} / {giveaway.maxWinners} winners</span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Users size={16} className="text-orange-500" />
+              <div className="flex items-center gap-2 text-sm text-muted-fg">
+                <Users size={16} className="text-brand-strong" />
                 <span className="font-bold">{giveaway.winners.length > 0 ? "Completed" : "Open"}</span>
               </div>
             </div>
 
             {giveaway.partners && giveaway.partners.length > 0 && (
               <div>
-                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Partners</p>
+                <p className="text-xs font-bold text-muted-fg uppercase tracking-wider mb-2">Partners</p>
                 <div className="flex flex-wrap gap-2">
                   {giveaway.partners.map((p: any) => (
-                    <span key={p.id} className="bg-muted px-3 py-1 rounded-full text-xs font-medium text-muted-foreground">{p.name}</span>
+                    <span key={p.id} className="bg-surface-sunken px-3 py-1 rounded-full text-xs font-medium text-muted-fg">{p.name}</span>
                   ))}
                 </div>
               </div>
             )}
 
             <div>
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Prizes</p>
+              <p className="text-xs font-bold text-muted-fg uppercase tracking-wider mb-3">Prizes</p>
               <div className="space-y-2">
                 {giveaway.rewards.map((r, i) => (
-                  <div key={i} className="flex items-center gap-3 bg-muted p-3 rounded-lg">
-                    <Star size={16} className="text-amber-500" />
-                    <span className="text-sm font-medium text-foreground">{r.title}</span>
-                    <span className="text-[10px] text-muted-foreground ml-auto">{r.type}</span>
+                  <div key={i} className="flex items-center gap-3 bg-surface-sunken p-3 rounded-control">
+                    <Star size={16} className="text-warning" />
+                    <span className="text-sm font-medium text-fg">{r.title}</span>
+                    <span className="text-caption text-muted-fg ml-auto">{r.type}</span>
                   </div>
                 ))}
               </div>
@@ -183,32 +183,32 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
 
             {giveaway.winners.length > 0 && (
               <button onClick={() => setShowWinners(true)}
-                className="w-full py-3 bg-amber-50 text-amber-700 rounded-xl font-bold text-sm hover:bg-amber-100 transition flex items-center justify-center gap-2">
+                className="w-full py-3 bg-warning-bg text-warning rounded-control font-bold text-sm hover:bg-warning-bg transition flex items-center justify-center gap-2">
                 <Trophy size={16} /> View All Winners
               </button>
             )}
 
             {isActive && (
-              <div className="border-t border-border pt-6">
+              <div className="border-t border-line pt-6">
                 {!isLoggedIn ? (
                   <Link href={`/login?referral=${username}&redirect=${encodeURIComponent(pathname)}`}
-                    className="block w-full py-3 bg-orange-500 text-white rounded-xl font-bold text-center hover:bg-orange-600 transition">
+                    className="block w-full py-3 bg-brand-strong text-on-brand rounded-control font-bold text-center hover:bg-brand-strong transition">
                     Log in to Enter
                   </Link>
                 ) : !accessible ? (
-                  <p className="text-center text-sm text-muted-foreground bg-muted py-3 rounded-xl">This giveaway requires supporter access.</p>
+                  <p className="text-center text-sm text-muted-fg bg-surface-sunken py-3 rounded-control">This giveaway requires supporter access.</p>
                 ) : participating ? (
-                  <p className="text-center text-sm text-emerald-600 bg-emerald-50 py-3 rounded-xl font-bold">You&apos;ve entered! Good luck!</p>
+                  <p className="text-center text-sm text-success bg-success-bg py-3 rounded-control font-bold">You&apos;ve entered! Good luck!</p>
                 ) : (
                   <button onClick={participate}
-                    className="w-full py-3 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition flex items-center justify-center gap-2">
+                    className="w-full py-3 bg-brand-strong text-on-brand rounded-control font-bold hover:bg-brand-strong transition flex items-center justify-center gap-2">
                     <Gift size={18} /> Enter Giveaway
                   </button>
                 )}
               </div>
             )}
 
-            <div className="text-xs text-muted-foreground text-center">
+            <div className="text-xs text-muted-fg text-center">
               Ends: {endDate.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
             </div>
           </div>
