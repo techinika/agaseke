@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import {
   FileText,
   Lock,
@@ -22,7 +22,7 @@ import { db } from "@/db/firebase";
 import { collection, getCountFromServer, doc, updateDoc, increment } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { getMySubscriptions } from "@/lib/communityService";
-import { formatCurrency } from "@/types/currency";
+import { formatMoney as formatCurrency } from "@/lib/format/money";
 import { getPrice, type PriceMap } from "@/lib/priceMap";
 function tierAmount(tier: Pick<CommunityTier, "price" | "prices" | "currency">): number {
   return getPrice(tier);
@@ -125,15 +125,22 @@ export const CommunityTab = ({
     }).catch((err) => { console.error("Failed to fetch subscriptions", err); });
   }, [user]);
 
-  const allPosts = isSupporter
-    ? [...privatePosts, ...publicPosts].sort(
-        (a, b) =>
-          (b.publishedAt?.toMillis?.() ?? b.createdAt?.toMillis?.() ?? 0) -
-          (a.publishedAt?.toMillis?.() ?? a.createdAt?.toMillis?.() ?? 0),
-      )
-    : publicPosts;
+  const allPosts = useMemo(
+    () =>
+      isSupporter
+        ? [...privatePosts, ...publicPosts].sort(
+            (a, b) =>
+              (b.publishedAt?.toMillis?.() ?? b.createdAt?.toMillis?.() ?? 0) -
+              (a.publishedAt?.toMillis?.() ?? a.createdAt?.toMillis?.() ?? 0),
+          )
+        : publicPosts,
+    [isSupporter, privatePosts, publicPosts],
+  );
 
-  const displayPosts = compact ? allPosts.slice(0, 2) : allPosts;
+  const displayPosts = useMemo(
+    () => (compact ? allPosts.slice(0, 2) : allPosts),
+    [allPosts, compact],
+  );
   const hasMorePosts = allPosts.length > 2;
   const visiblePrivatePosts = privatePosts.length;
 
@@ -158,7 +165,7 @@ export const CommunityTab = ({
       setCounts(newCounts);
     };
     if (displayPosts.length > 0) fetchCounts();
-  }, [displayPosts.map((p) => p.id).join(",")]);
+  }, [displayPosts]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -182,17 +189,17 @@ export const CommunityTab = ({
     cards.forEach((card) => observer.observe(card));
 
     return () => observer.disconnect();
-  }, [displayPosts.map((p) => p.id).join(",")]);
+  }, [displayPosts]);
 
   if (allPosts.length === 0 && !communityEnabled) {
     return (
       <div className="animate-in fade-in duration-500">
-        <div className="text-center py-20 bg-muted rounded-3xl border-2 border-dashed border-border-strong">
-          <div className="bg-card w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-            <FileText className="text-muted-foreground" size={24} />
+        <div className="text-center py-20 bg-surface-raised rounded-card border-2 border-dashed border-line-strong">
+          <div className="bg-surface w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+            <FileText className="text-muted-fg" size={24} />
           </div>
-          <h3 className="font-bold text-foreground">No posts yet</h3>
-          <p className="text-muted-foreground text-sm">
+          <h3 className="font-bold text-fg">No posts yet</h3>
+          <p className="text-muted-fg text-sm">
             When {name} shares updates, they will appear here.
           </p>
         </div>
@@ -203,32 +210,32 @@ export const CommunityTab = ({
   return (
     <div className="animate-in fade-in duration-500 space-y-8">
       {communityEnabled && communityTiers.length > 0 && (
-        <div className="bg-card border border-border p-6">
+        <div className="bg-surface border border-line p-6">
           <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-            <Crown size={20} className="text-orange-500" />
+            <Crown size={20} className="text-brand-strong" />
             Membership
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {communityTiers.map((tier) => (
               <div
                 key={tier.id}
-                className="bg-muted border border-border p-5 hover:border-orange-300 transition"
+                className="bg-surface-raised border border-line p-5 hover:border-brand-strong transition"
               >
                 <h4 className="font-bold text-sm mb-1">{tier.name}</h4>
-                <p className="text-2xl font-bold text-orange-600 mb-2">
+                <p className="text-2xl font-bold text-brand-strong mb-2">
                   {tier.currency ? formatCurrency(tierAmount(tier), tier.currency as any) : tierAmount(tier)}
-                  <span className="text-xs font-normal text-muted-foreground ml-1">
+                  <span className="text-xs font-normal text-muted-fg ml-1">
                     /{tier.interval === "yearly" ? "year" : "month"}
                   </span>
                 </p>
                 {tier.description && (
-                  <p className="text-xs text-muted-foreground mb-3">{tier.description}</p>
+                  <p className="text-xs text-muted-fg mb-3">{tier.description}</p>
                 )}
                 {tier.benefits?.length > 0 && (
                   <ul className="space-y-1 mb-4">
                     {tier.benefits.map((b, i) => (
-                      <li key={i} className="text-xs text-muted-foreground flex items-center gap-2">
-                        <Check size={12} className="text-green-500 shrink-0" />
+                      <li key={i} className="text-xs text-muted-fg flex items-center gap-2">
+                        <Check size={12} className="text-success shrink-0" />
                         {b}
                       </li>
                     ))}
@@ -237,7 +244,7 @@ export const CommunityTab = ({
                 {subscribedTierIds.has(tier.id) ? (
                   <Link
                     href={`/${username}/community/chat/${tier.id}`}
-                    className="flex items-center justify-center gap-2 w-full py-2 bg-green-600 text-white text-xs font-bold hover:bg-green-700 transition rounded-lg"
+                    className="flex items-center justify-center gap-2 w-full py-2 bg-success text-on-brand text-xs font-bold hover:opacity-90 transition rounded-control"
                   >
                     <MessageCircle size={14} />
                     Open Chat
@@ -245,7 +252,7 @@ export const CommunityTab = ({
                 ) : (
                   <button
                     onClick={() => onSubscribe?.(tier)}
-                    className="w-full py-2 bg-orange-600 text-white text-xs font-bold hover:bg-orange-700 transition"
+                    className="w-full py-2 bg-brand-strong text-on-brand text-xs font-bold hover:bg-brand-hover transition"
                   >
                     Join
                   </button>
@@ -257,9 +264,9 @@ export const CommunityTab = ({
       )}
 
       {isSupporter && visiblePrivatePosts > 0 && (
-        <div className="bg-gradient-to-r from-orange-50 dark:from-orange-950/50 to-amber-50 dark:to-amber-950/50 p-4 rounded-xl border border-orange-100 dark:border-orange-900/50 flex items-center gap-3">
-          <Heart size={20} className="text-orange-500 fill-orange-500" />
-          <p className="text-sm text-orange-800 dark:text-orange-200 font-medium">
+        <div className="bg-brand-soft p-4 rounded-control border border-brand-soft flex items-center gap-3">
+          <Heart size={20} className="text-brand-strong fill-brand-strong" />
+          <p className="text-sm text-brand-strong font-medium">
             You have access to {visiblePrivatePosts} supporter-only{" "}
             {visiblePrivatePosts === 1 ? "post" : "posts"}!
           </p>
@@ -271,10 +278,10 @@ export const CommunityTab = ({
           <div
             key={item.id}
             data-post-id={item.id}
-            className="bg-card border border-border p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow"
+            className="bg-surface border border-line p-5 rounded-card shadow-sm hover:shadow-md transition-shadow"
           >
             <div className="flex items-center justify-between mb-3">
-              <span className="text-[10px] font-bold bg-muted px-2 py-1 rounded uppercase tracking-widest text-muted-foreground">
+              <span className="text-caption font-bold bg-surface-raised px-2 py-1 rounded uppercase tracking-widest text-muted-fg">
                 {item.type === "video"
                   ? "Video"
                   : item.type === "image"
@@ -286,10 +293,10 @@ export const CommunityTab = ({
                         : "Post"}
               </span>
               <span
-                className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest ${
+                className={`flex items-center gap-1 text-caption font-bold px-2 py-1 rounded uppercase tracking-widest ${
                   item.isPrivate
-                    ? "bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400"
-                    : "bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400"
+                    ? "bg-warning-bg text-warning"
+                    : "bg-success-bg text-success"
                 }`}
               >
                 {item.isPrivate ? (
@@ -305,7 +312,7 @@ export const CommunityTab = ({
             </div>
 
             {item.type === "article" && (item.coverUrl || item.contentUrl) && (
-              <div className="mb-3 rounded-lg overflow-hidden">
+              <div className="mb-3 rounded-control overflow-hidden">
                 <MediaAsset
                   postId={item.id}
                   isPrivate={!!item.isPrivate}
@@ -317,7 +324,7 @@ export const CommunityTab = ({
             )}
 
             {item.type === "image" && item.contentUrl && (
-              <div className="mb-3 rounded-lg overflow-hidden cursor-zoom-in" onClick={() => setViewingImage({ url: item.contentUrl, postId: item.id, isPrivate: !!item.isPrivate })}>
+              <div className="mb-3 rounded-control overflow-hidden cursor-zoom-in" onClick={() => setViewingImage({ url: item.contentUrl, postId: item.id, isPrivate: !!item.isPrivate })}>
                 <MediaAsset
                   postId={item.id}
                   isPrivate={!!item.isPrivate}
@@ -329,7 +336,7 @@ export const CommunityTab = ({
             )}
 
             {item.type === "video" && item.contentUrl && (
-              <div className="mb-3 rounded-lg overflow-hidden bg-black">
+              <div className="mb-3 rounded-control overflow-hidden bg-black">
                 <MediaAsset postId={item.id} isPrivate={!!item.isPrivate} url={item.contentUrl} as="video" controls controlsList="nodownload" className="w-full aspect-video" />
               </div>
             )}
@@ -339,26 +346,26 @@ export const CommunityTab = ({
               const currentIndex = documentIndex[item.id] || 0;
               const currentUrl = pages[currentIndex] || pages[0];
               return (
-                <div className="mb-3 bg-muted rounded-lg p-4 border border-border">
+                <div className="mb-3 bg-surface-raised rounded-control p-4 border border-line">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                      <FileText size={24} className="text-orange-600" />
+                    <div className="w-12 h-12 bg-brand-soft rounded-control flex items-center justify-center">
+                      <FileText size={24} className="text-brand-strong" />
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium text-sm text-foreground">Document</p>
-                      <p className="text-xs text-muted-foreground">{pages.length} page{pages.length > 1 ? "s" : ""}</p>
+                      <p className="font-medium text-sm text-fg">Document</p>
+                      <p className="text-xs text-muted-fg">{pages.length} page{pages.length > 1 ? "s" : ""}</p>
                     </div>
                   </div>
                   {pages.length > 1 && (
                     <div className="flex items-center justify-between mb-3">
-                      <button onClick={(e) => { e.stopPropagation(); setDocumentIndex((prev) => ({ ...prev, [item.id]: Math.max(0, currentIndex - 1) })); }} disabled={currentIndex === 0} className="p-1.5 bg-card border rounded-lg disabled:opacity-50"><ChevronLeft size={16} /></button>
-                      <span className="text-sm text-muted-foreground">{currentIndex + 1} of {pages.length}</span>
-                      <button onClick={(e) => { e.stopPropagation(); setDocumentIndex((prev) => ({ ...prev, [item.id]: Math.min(pages.length - 1, currentIndex + 1) })); }} disabled={currentIndex === pages.length - 1} className="p-1.5 bg-card border rounded-lg disabled:opacity-50"><ChevronRight size={16} /></button>
+                      <button aria-label="Previous page" onClick={(e) => { e.stopPropagation(); setDocumentIndex((prev) => ({ ...prev, [item.id]: Math.max(0, currentIndex - 1) })); }} disabled={currentIndex === 0} className="p-1.5 bg-surface border rounded-control disabled:opacity-50"><ChevronLeft size={16} /></button>
+                      <span className="text-sm text-muted-fg">{currentIndex + 1} of {pages.length}</span>
+                      <button aria-label="Next page" onClick={(e) => { e.stopPropagation(); setDocumentIndex((prev) => ({ ...prev, [item.id]: Math.min(pages.length - 1, currentIndex + 1) })); }} disabled={currentIndex === pages.length - 1} className="p-1.5 bg-surface border rounded-control disabled:opacity-50"><ChevronRight size={16} /></button>
                     </div>
                   )}
                   <button
                     onClick={() => setViewingDocument({ url: currentUrl, title: item.title, postId: item.id, isPrivate: !!item.isPrivate })}
-                    className="block w-full text-center py-2.5 bg-orange-500 text-white rounded-lg font-medium text-sm hover:bg-orange-600 transition"
+                    className="block w-full text-center py-2.5 bg-brand-strong text-on-brand rounded-control font-medium text-sm hover:bg-brand-hover transition"
                   >
                     Read Document
                   </button>
@@ -368,11 +375,11 @@ export const CommunityTab = ({
 
             {item.title && (
               <Link href={`/${username}/community/${item.id}`} className="block group">
-                <h4 className="font-bold text-lg mb-2 group-hover:text-orange-600 transition-colors">{item.title}</h4>
+                <h4 className="font-bold text-lg mb-2 group-hover:text-brand-strong transition-colors">{item.title}</h4>
               </Link>
             )}
             {item.description || item.content ? (
-              <div className="text-muted-foreground text-sm whitespace-pre-wrap leading-relaxed">
+              <div className="text-muted-fg text-sm whitespace-pre-wrap leading-relaxed">
                 {(item.description || item.content).length > 200 &&
                 !expandedPosts.has(item.id) ? (
                   <>
@@ -380,7 +387,7 @@ export const CommunityTab = ({
                     <span>...</span>
                     <button
                       onClick={() => toggleExpand(item.id)}
-                      className="ml-1 text-orange-600 font-medium hover:underline"
+                      className="ml-1 text-brand-strong font-medium hover:underline"
                     >
                       Read more
                     </button>
@@ -391,7 +398,7 @@ export const CommunityTab = ({
                     {(item.description || item.content).length > 200 && (
                       <button
                         onClick={() => toggleExpand(item.id)}
-                        className="ml-1 text-orange-600 font-medium hover:underline"
+                        className="ml-1 text-brand-strong font-medium hover:underline"
                       >
                         Read less
                       </button>
@@ -408,13 +415,13 @@ export const CommunityTab = ({
               const videoId = extractYouTubeId(youtubeUrl);
               if (!videoId) return null;
               return (
-                <div className="mt-3 rounded-lg overflow-hidden bg-black">
+                <div className="mt-3 rounded-control overflow-hidden bg-black">
                   <iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full aspect-video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
                 </div>
               );
             })()}
 
-            <div className="mt-4 pt-3 border-t border-border flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="mt-4 pt-3 border-t border-line flex items-center gap-3 text-xs text-muted-fg">
               <span>
                 {(() => {
                   const ms =
@@ -449,17 +456,18 @@ export const CommunityTab = ({
                 </div>
               )}
               <button
+                aria-label="Support this post"
                 onClick={(e) => {
                   e.preventDefault();
                   setSupportItem(item);
                 }}
-                className="flex items-center gap-1 text-xs sm:text-sm px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
+                className="flex items-center gap-1 text-xs sm:text-sm px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-control bg-brand-soft text-brand-strong hover:bg-brand-strong/10 transition-colors font-medium"
               >
                 <Heart size={12} className="sm:size-[14]" />
               </button>
               <Link
                 href={`/${username}/community/${item.id}`}
-                className="flex items-center gap-1 text-orange-600 font-medium hover:underline"
+                className="flex items-center gap-1 text-brand-strong font-medium hover:underline"
               >
                 View Post <ArrowRight size={12} />
               </Link>
@@ -472,7 +480,7 @@ export const CommunityTab = ({
         <div className="text-center">
           <Link
             href={`/${username}/community`}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-lg font-bold text-sm hover:bg-orange-700 transition shadow-lg"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-brand-strong text-on-brand rounded-control font-bold text-sm hover:bg-brand-hover transition shadow-lg"
           >
             See All Posts <ArrowRight size={16} />
           </Link>
@@ -481,7 +489,7 @@ export const CommunityTab = ({
 
       {viewingImage && (
         <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setViewingImage(null)}>
-          <button className="absolute top-4 right-4 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition" onClick={() => setViewingImage(null)}>
+          <button aria-label="Close image" className="absolute top-4 right-4 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition" onClick={() => setViewingImage(null)}>
             <X size={28} />
           </button>
           <MediaAsset
@@ -495,19 +503,19 @@ export const CommunityTab = ({
       )}
 
       {viewingDocument && (
-        <div className="fixed inset-0 z-[100] bg-foreground/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200" onClick={() => setViewingDocument(null)}>
-          <div className="bg-card w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="p-4 border-b border-border flex items-center justify-between">
-              <h3 className="font-bold text-foreground truncate">{viewingDocument.title}</h3>
+        <div className="fixed inset-0 z-[100] bg-fg/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200" onClick={() => setViewingDocument(null)}>
+          <div className="bg-surface w-full max-w-4xl rounded-card overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 border-b border-line flex items-center justify-between">
+              <h3 className="font-bold text-fg truncate">{viewingDocument.title}</h3>
               <div className="flex items-center gap-2">
                 {!viewingDocument.isPrivate && (
-                  <a href={viewingDocument.url} target="_blank" rel="noopener noreferrer" className="text-xs text-orange-600 font-medium hover:underline">Open original</a>
+                  <a href={viewingDocument.url} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-strong font-medium hover:underline">Open original</a>
                 )}
-                <button onClick={() => setViewingDocument(null)} className="p-2 hover:bg-muted rounded-full"><X size={20} /></button>
+                <button aria-label="Close document" onClick={() => setViewingDocument(null)} className="p-2 hover:bg-surface-raised rounded-full"><X size={20} /></button>
               </div>
             </div>
             {viewingDocument.isPrivate ? (
-              <div className="w-full h-[80vh] bg-muted overflow-auto flex items-start justify-center p-4">
+              <div className="w-full h-[80vh] bg-surface-raised overflow-auto flex items-start justify-center p-4">
                 <MediaAsset
                   postId={viewingDocument.postId}
                   isPrivate
@@ -517,7 +525,7 @@ export const CommunityTab = ({
                 />
               </div>
             ) : (
-              <iframe src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocument.url)}&embedded=true`} className="w-full h-[80vh] bg-card" title="Document Viewer" />
+              <iframe src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocument.url)}&embedded=true`} className="w-full h-[80vh] bg-surface" title="Document Viewer" />
             )}
           </div>
         </div>

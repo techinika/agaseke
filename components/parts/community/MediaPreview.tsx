@@ -155,24 +155,24 @@ export function MediaPreview({ url, mimeType, originalName, onClose }: MediaPrev
             src={url}
             controls
             controlsList="nodownload"
-            className="max-w-full max-h-full rounded-lg"
+            className="max-w-full max-h-full rounded-control"
             autoPlay
           />
         ) : isPDF ? (
           <iframe
             src={`https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`}
-            className="w-full h-full min-h-[70vh] rounded-lg bg-white"
+            className="w-full h-full min-h-[70vh] rounded-control bg-white"
             title={originalName}
           />
         ) : (
-          <div className="text-center text-white">
+          <div className="text-center text-on-brand">
             <p className="text-lg font-bold mb-4">{originalName}</p>
             <a
               href={url}
               target="_blank"
               rel="noopener noreferrer"
               download={originalName}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-lg font-bold hover:bg-orange-700 transition"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-brand-strong text-on-brand rounded-control font-bold hover:bg-brand-strong transition"
             >
               <Download size={20} />
               Download File
@@ -185,16 +185,16 @@ export function MediaPreview({ url, mimeType, originalName, onClose }: MediaPrev
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-black/60 rounded-full px-4 py-2">
           <button
             onClick={(e) => { e.stopPropagation(); setScale((s) => Math.max(0.5, s - 0.25)); }}
-            className="text-white/70 hover:text-white transition"
+            className="text-on-brand/70 hover:text-on-brand transition"
           >
             <ZoomOut size={18} />
           </button>
-          <span className="text-white text-xs font-medium min-w-[3rem] text-center">
+          <span className="text-on-brand text-xs font-medium min-w-[3rem] text-center">
             {Math.round(scale * 100)}%
           </span>
           <button
             onClick={(e) => { e.stopPropagation(); setScale((s) => Math.min(5, s + 0.25)); }}
-            className="text-white/70 hover:text-white transition"
+            className="text-on-brand/70 hover:text-on-brand transition"
           >
             <ZoomIn size={18} />
           </button>
