@@ -1,246 +1,157 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { ArrowLeft, Heart, Loader } from "lucide-react";
-import { db } from "@/db/firebase";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-  limit,
-} from "firebase/firestore";
-import { Creator } from "@/types/creator";
+import { useEffect, useState } from "react";
+import { collection, getDocs, limit, query, where } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
-import { SupportModal } from "@/components/parts/public/SupportModal";
+import { CreatorSubpage } from "@/components/shell/CreatorSubpage";
 import { CommunityTab } from "@/components/parts/public/CommunityTab";
-import { SubscribeModal } from "@/components/parts/public/SubscribeModal";
-import Loading from "@/app/loading";
+import { CommunityJoinSheet, type CommunityTierView } from "@/features/community";
+import { useCreatorSubpageData } from "@/features/creator-page/hooks/useCreatorSubpageData";
+import { db } from "@/db/firebase";
+import { t } from "@/lib/i18n";
 
 const GENERAL_WORKER_URL =
   process.env.NEXT_PUBLIC_GENERAL_WORKER_URL || "http://localhost:8787";
 
-interface CommunityPageProps {
-  username: string;
+function logError(message: string, username: string, error: unknown) {
+  fetch(`${GENERAL_WORKER_URL}/api/general/log-error`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      level: "error",
+      category: "general",
+      message,
+      metadata: { username, error: String(error) },
+    }),
+  }).catch(() => {});
 }
 
-export default function CommunityPage({ username }: CommunityPageProps) {
-  const { user: currentUser } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [creatorData, setCreatorData] = useState<Creator | null>(null);
-  const [profileData, setProfileData] = useState<any>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSubscribeModalOpen, setIsSubscribeModalOpen] = useState(false);
-  const [isSupporter, setIsSupporter] = useState(false);
+export default function CommunityPage({ username }: { username: string }) {
+  const { user } = useAuth();
+  const data = useCreatorSubpageData(username);
   const [publicPosts, setPublicPosts] = useState<any[]>([]);
   const [privatePosts, setPrivatePosts] = useState<any[]>([]);
-  const [referralId, setReferralId] = useState("");
+  const [joinTier, setJoinTier] = useState<CommunityTierView | null>(null);
+
+  const uid = data.creator?.uid;
 
   useEffect(() => {
-    const fetchData = async () => {
+    if (!uid || !username) return;
+    let cancelled = false;
+    const contentRef = collection(db, "creatorContent");
+    const creatorIds = [data.creator?.handle, uid].filter(Boolean) as string[];
+
+    const load = async () => {
       try {
-        const creatorRef = doc(db, "creators", username as string);
-        const creatorSnap = await getDoc(creatorRef);
-
-        if (creatorSnap.exists()) {
-          const cData = creatorSnap.data();
-          setCreatorData(cData as any);
-
-          const userRef = doc(db, "profiles", cData.uid);
-          const userSnap = await getDoc(userRef);
-
-          if (userSnap.exists()) {
-            setProfileData(userSnap.data());
-            if (userSnap.data().referralCreator != null) {
-              const referralRef = doc(
-                db,
-                "creators",
-                String(userSnap.data().referralCreator),
-              );
-              const referralSnap = await getDoc(referralRef);
-              if (referralSnap.exists()) {
-                setReferralId(referralSnap.data().uid);
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching creator:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (username) fetchData();
-  }, [username]);
-
-  useEffect(() => {
-    const fetchPosts = async () => {
-      if (!creatorData?.uid || !username) return;
-
-      const contentRef = collection(db, "creatorContent");
-
-      // Always fetch public posts (regardless of login status)
-      try {
-        const publicQ = query(
+        const publicQuery = query(
           contentRef,
-          where("creatorId", "in", [creatorData.handle, creatorData.uid]),
+          where("creatorId", "in", creatorIds),
           where("isPrivate", "==", false),
           limit(20),
         );
-        const publicSnap = await getDocs(publicQ);
-        const publicList = publicSnap.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() }))
-          .filter((d: any) => d.status !== "draft")
-          .sort((a: any, b: any) => (b.publishedAt?.toMillis?.() ?? b.createdAt?.toMillis?.() ?? 0) - (a.publishedAt?.toMillis?.() ?? a.createdAt?.toMillis?.() ?? 0));
-        setPublicPosts(publicList);
-      } catch (error) {
-        console.error("Error fetching public posts:", error);
-        fetch(`${GENERAL_WORKER_URL}/api/general/log-error`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            level: "error",
-            category: "general",
-            message: "Error fetching public posts",
-            metadata: { username, creatorUid: creatorData?.uid, error: String(error) },
-          }),
-        }).catch(() => {});
-      }
-
-      // Only check support status and fetch private posts if logged in
-      if (!currentUser?.uid) {
-        setIsSupporter(false);
-        return;
-      }
-
-      try {
-        const supportRef = collection(db, "supportedCreators");
-        const q = query(
-          supportRef,
-          where("supporterId", "==", currentUser.uid),
-          where("creatorId", "==", username),
-        );
-        const querySnapshot = await getDocs(q);
-        setIsSupporter(!querySnapshot.empty);
-
-          if (!querySnapshot.empty) {
-          const privateQ = query(
-            contentRef,
-            where("creatorId", "in", [creatorData.handle, creatorData.uid]),
-            where("isPrivate", "==", true),
-            limit(20),
+        const snapshot = await getDocs(publicQuery);
+        if (cancelled) return;
+        const posts = snapshot.docs
+          .map((item) => ({ id: item.id, ...item.data() }))
+          .filter((item: any) => item.status !== "draft")
+          .sort(
+            (a: any, b: any) =>
+              (b.publishedAt?.toMillis?.() ?? b.createdAt?.toMillis?.() ?? 0) -
+              (a.publishedAt?.toMillis?.() ?? a.createdAt?.toMillis?.() ?? 0),
           );
-          const privateSnap = await getDocs(privateQ);
-          const privateList = privateSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-          privateList.sort((a: any, b: any) => (b.publishedAt?.toMillis?.() ?? b.createdAt?.toMillis?.() ?? 0) - (a.publishedAt?.toMillis?.() ?? a.createdAt?.toMillis?.() ?? 0));
-          setPrivatePosts(privateList);
-        }
+        setPublicPosts(posts);
       } catch (error) {
-        console.error("Error checking support status:", error);
-        fetch(`${GENERAL_WORKER_URL}/api/general/log-error`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            level: "error",
-            category: "general",
-            message: "Error checking support status",
-            metadata: { username, creatorUid: creatorData?.uid, error: String(error) },
-          }),
-        }).catch(() => {});
+        if (!cancelled) {
+          console.error("Error fetching public posts:", error);
+          logError("Error fetching public posts", username, error);
+        }
       }
     };
 
-    fetchPosts();
-  }, [currentUser, creatorData?.uid, username]);
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [uid, username, data.creator?.handle]);
 
-  if (loading) {
-    return <Loading />;
-  }
+  useEffect(() => {
+    if (!uid || !username || !user?.uid || !data.isSupporter) {
+      queueMicrotask(() => setPrivatePosts([]));
+      return;
+    }
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const snapshot = await getDocs(
+          query(
+            collection(db, "creatorContent"),
+            where("creatorId", "in", [data.creator?.handle, uid].filter(Boolean)),
+            where("isPrivate", "==", true),
+            limit(20),
+          ),
+        );
+        if (cancelled) return;
+        const posts = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+        posts.sort(
+          (a: any, b: any) =>
+            (b.publishedAt?.toMillis?.() ?? b.createdAt?.toMillis?.() ?? 0) -
+            (a.publishedAt?.toMillis?.() ?? a.createdAt?.toMillis?.() ?? 0),
+        );
+        setPrivatePosts(posts);
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Error fetching private posts:", error);
+          logError("Error checking support status", username, error);
+        }
+      }
+    };
 
-  if (!creatorData) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <p className="text-muted-foreground">Creator not found</p>
-          <Link
-            href="/"
-            className="text-orange-500 font-bold mt-4 inline-block"
-          >
-            Go Home
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const creatorName = creatorData.name || profileData?.displayName || "Creator";
-  const creatorFirstName = creatorName.split(" ")[0];
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [uid, username, user?.uid, data.isSupporter, data.creator?.handle]);
 
   return (
-    <>
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <Link
-            href={`/${username}`}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition"
-          >
-            <ArrowLeft size={20} />
-            <span className="font-medium">Back to Profile</span>
-          </Link>
-
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-orange-700 transition"
-          >
-            <Heart size={18} className="fill-current" />
-            Support {creatorFirstName}
-          </button>
-        </div>
-
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Community</h1>
-          <p className="text-muted-foreground mt-1">
-            Public posts and content from {creatorName}
-          </p>
-        </div>
-
-        <main className="min-h-[500px]">
+    <CreatorSubpage
+      username={username}
+      title={t("creator.community")}
+      description={t("creatorSubpage.communityDescription", { name: data.creatorName })}
+      data={data}
+    >
+      {() => (
+        <>
           <CommunityTab
             publicPosts={publicPosts}
             privatePosts={privatePosts}
-            isSupporter={isSupporter}
-            name={creatorName}
+            isSupporter={data.isSupporter}
+            name={data.creatorName}
             username={username}
-            uid={creatorData?.uid || ""}
-            communityEnabled={creatorData?.communityEnabled as boolean}
-            communityTiers={creatorData?.communityTiers || []}
-            onSubscribe={() => setIsSubscribeModalOpen(true)}
+            uid={uid ?? ""}
+            communityEnabled={data.creator?.communityEnabled === true}
+            communityTiers={data.creator?.communityTiers ?? []}
+            onSubscribe={setJoinTier}
           />
-        </main>
-      </div>
 
-      <SupportModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        creatorName={creatorName}
-        creatorId={username}
-        uid={creatorData?.uid || ""}
-        includeReferral={profileData?.referralCreator != null}
-        referralUid={referralId}
-        referralId={profileData?.referralCreator}
-      />
-
-      <SubscribeModal
-        isOpen={isSubscribeModalOpen}
-        onClose={() => setIsSubscribeModalOpen(false)}
-        creatorName={creatorName}
-        creatorHandle={username}
-        creatorUid={creatorData?.uid || ""}
-      />
-    </>
+          {joinTier && data.creator && (
+            <CommunityJoinSheet
+              open
+              onClose={() => setJoinTier(null)}
+              creatorName={data.creatorName}
+              creatorPhotoURL={data.creator.photoURL}
+              creatorVerified={data.creator.verified}
+              creatorHandle={username}
+              creatorUid={data.creator.uid}
+              tiers={data.creator.communityTiers ?? []}
+              initialTierId={joinTier.id}
+              user={user}
+              displayName={data.profile?.displayName as string | undefined}
+              onJoined={data.retry}
+            />
+          )}
+        </>
+      )}
+    </CreatorSubpage>
   );
 }
