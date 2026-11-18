@@ -17,6 +17,7 @@
   --ag-brand: #ff0000;
   --ag-brand-strong: #c40000;
   --ag-brand-hover: #a30000;
+  --ag-brand-soft: #fef2f2;
   --ag-on-brand: #ffffff;
 
   /* Surfaces and text */
@@ -47,6 +48,10 @@
   --ag-danger-bg: #fef2f2;
   --ag-info: #1d4ed8;
   --ag-info-bg: #eff6ff;
+  --ag-on-success: #ffffff;
+  --ag-on-warning: #ffffff;
+  --ag-on-danger: #ffffff;
+  --ag-on-info: #ffffff;
 
   /* Focus */
   --ag-focus: #c40000;
@@ -113,9 +118,10 @@
   color-scheme: dark;
 
   --ag-brand: #ff4d4d;
-  --ag-brand-strong: #c40000;
-  --ag-brand-hover: #e00000;
-  --ag-on-brand: #ffffff;
+  --ag-brand-strong: #ff6b6b;
+  --ag-brand-hover: #ff8080;
+  --ag-brand-soft: #3b0a0a;
+  --ag-on-brand: #160808;
 
   --ag-bg: #0f172a;
   --ag-fg: #f1f5f9;
@@ -142,6 +148,10 @@
   --ag-danger-bg: #3b0a0a;
   --ag-info: #93c5fd;
   --ag-info-bg: #0b2447;
+  --ag-on-success: #052e1a;
+  --ag-on-warning: #2b1a02;
+  --ag-on-danger: #2a0505;
+  --ag-on-info: #071a38;
 
   --ag-focus: #ff4d4d;
 

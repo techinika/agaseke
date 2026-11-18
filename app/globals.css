@@ -44,7 +44,9 @@
   --color-brand: var(--ag-brand);
   --color-brand-strong: var(--ag-brand-strong);
   --color-brand-hover: var(--ag-brand-hover);
+  --color-brand-soft: var(--ag-brand-soft);
   --color-on-brand: var(--ag-on-brand);
+  --color-canvas: var(--ag-bg);
   --color-surface: var(--ag-surface);
   --color-surface-raised: var(--ag-surface-raised);
   --color-surface-sunken: var(--ag-surface-sunken);
@@ -67,6 +69,10 @@
   --color-danger-bg: var(--ag-danger-bg);
   --color-info: var(--ag-info);
   --color-info-bg: var(--ag-info-bg);
+  --color-on-success: var(--ag-on-success);
+  --color-on-warning: var(--ag-on-warning);
+  --color-on-danger: var(--ag-on-danger);
+  --color-on-info: var(--ag-on-info);
   --color-focus: var(--ag-focus);
 
   /*

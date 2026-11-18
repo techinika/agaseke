@@ -1,12 +1,39 @@
 #!/usr/bin/env node
 
-import { readFile, readdir, writeFile } from "node:fs/promises";
+import { readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
 const ROOT = process.cwd();
 const BASELINE_PATH = path.join(ROOT, "scripts/design-lint-baseline.json");
-const ROOTS = ["components/ui", "components/shell", "config", "app/dev/components"];
+const ROOTS = [
+  "components/ui",
+  "components/shell",
+  "config",
+  "app/dev/components",
+  "app/(authentication)/layout.tsx",
+  "app/(dashboards)/admin/layout.tsx",
+  "app/(dashboards)/creator/layout.tsx",
+  "app/(dashboards)/supporter/layout.tsx",
+  "app/(main)/layout.tsx",
+  "app/(public_profile)/layout.tsx",
+  "components/parts/dashboard/Layout.tsx",
+  "components/parts/dashboard/CreatorBottomNav.tsx",
+  "app/(public_profile)",
+  "app/store/pay",
+  "app/booking/pay",
+  "components/pages/public",
+  "components/parts/public",
+  "components/parts/community",
+  "components/parts/PaymentCallback.tsx",
+  "components/pages/PublicProfile.tsx",
+  "features/creator-page",
+  "features/gatherings",
+  "features/giveaways",
+  "features/community",
+  "features/support",
+  "features/actions",
+];
 const EXTENSIONS = new Set([".ts", ".tsx"]);
 
 const RULES = [
@@ -48,6 +75,20 @@ async function walk(directory) {
   return files;
 }
 
+async function collectFiles(target) {
+  const absolute = path.join(ROOT, target);
+  try {
+    const info = await stat(absolute);
+    if (info.isFile()) {
+      return EXTENSIONS.has(path.extname(absolute)) ? [absolute] : [];
+    }
+  } catch (error) {
+    if (error.code === "ENOENT") return [];
+    throw error;
+  }
+  return walk(absolute);
+}
+
 function emptyCounts() {
   return Object.fromEntries(RULES.map((rule) => [rule.id, 0]));
 }
@@ -66,11 +107,7 @@ async function loadBaseline() {
 
 const files = [];
 for (const root of ROOTS) {
-  try {
-    files.push(...(await walk(path.join(ROOT, root))));
-  } catch (error) {
-    if (error.code !== "ENOENT") throw error;
-  }
+  files.push(...(await collectFiles(root)));
 }
 
 const violations = [];
@@ -141,7 +178,7 @@ for (const [file, current] of Object.entries(byFile)) {
 
 if (violations.length > 0) {
   console.log(
-    `design-lint: ${violations.length} foundation violation(s) across ${Object.keys(byFile).length} file(s).`,
+    `design-lint: ${violations.length} violation(s) across ${Object.keys(byFile).length} file(s).`,
   );
   for (const violation of violations) {
     console.log(
@@ -149,7 +186,7 @@ if (violations.length > 0) {
     );
   }
 } else {
-  console.log("design-lint: no foundation violations.");
+  console.log("design-lint: no violations.");
 }
 
 if (regressions.length > 0) {
