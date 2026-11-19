@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Bell, Compass, Home, Library, Settings, User } from "lucide-react";
+import { Bell, Compass, Home, Library, Settings, User, Heart } from "lucide-react";
 import {
   AmountInput,
   Avatar,
@@ -9,20 +9,29 @@ import {
   BottomNav,
   Button,
   Card,
+  Checkbox,
+  Dialog,
+  Drawer,
   EmptyState,
   ErrorState,
+  IconButton,
   Input,
   MediaImage,
   MediaPlayer,
   Money,
+  RadioGroup,
   PhoneInput,
   QRCode,
+  SearchInput,
+  Select,
   ShareButton,
   Sheet,
   Skeleton,
   SkeletonText,
   StatusScreen,
+  Switch,
   Tabs,
+  Textarea,
   TopBar,
   toast,
 } from "@/components/ui";
@@ -30,6 +39,8 @@ import {
 const SWATCHES = [
   ["Brand", "bg-brand"],
   ["Brand strong", "bg-brand-strong"],
+  ["Brand soft", "bg-brand-soft"],
+  ["Surface sunken", "bg-surface-sunken"],
   ["Foreground", "bg-fg"],
   ["Muted text", "bg-muted-fg"],
   ["Surface", "bg-surface border border-line"],
@@ -37,6 +48,8 @@ const SWATCHES = [
   ["Warning", "bg-warning"],
   ["Danger", "bg-danger"],
   ["Info", "bg-info"],
+  ["Chart 1", "bg-chart-1"],
+  ["Chart 4", "bg-chart-4"],
 ] as const;
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -55,6 +68,12 @@ export function ComponentGallery() {
   const [phone, setPhone] = useState("");
   const [tab, setTab] = useState("home");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [notify, setNotify] = useState(true);
+  const [plan, setPlan] = useState("monthly");
+  const [terms, setTerms] = useState(false);
 
   return (
     <div className="min-h-dvh bg-background pb-24 text-fg">
@@ -121,6 +140,53 @@ export function ComponentGallery() {
             label="Support amount"
             hint="100% goes to the creator"
           />
+        </Section>
+
+        <Section title="Form fields">
+          <Textarea
+            label="Message"
+            placeholder="Say something kind…"
+            hint="A short note is enough"
+          />
+          <Select label="Visibility" hint="Who can see this post">
+            <option value="public">Everyone</option>
+            <option value="supporters">Supporters</option>
+            <option value="tier">Selected tier</option>
+          </Select>
+          <SearchInput
+            label="Search"
+            placeholder="Search creators"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            onClear={() => setSearch("")}
+          />
+          <Checkbox
+            label="I agree to the creator terms"
+            description="You can change this later."
+            checked={terms}
+            onChange={(event) => setTerms(event.target.checked)}
+          />
+          <RadioGroup
+            name="gallery-plan"
+            label="Billing"
+            value={plan}
+            onValueChange={setPlan}
+            orientation="horizontal"
+            options={[
+              { value: "monthly", label: "Monthly" },
+              { value: "yearly", label: "Yearly", description: "Save 20%" },
+            ]}
+          />
+          <Switch
+            label="New supporter alerts"
+            description="Get notified when someone subscribes."
+            checked={notify}
+            onCheckedChange={setNotify}
+          />
+          <div className="flex items-center gap-2">
+            <IconButton label="Favorite" icon={<Heart />} />
+            <IconButton label="Open settings" icon={<Settings />} variant="primary" />
+          </div>
         </Section>
 
         <Section title="Tabs">
@@ -238,6 +304,12 @@ export function ComponentGallery() {
             <Button variant="ghost" onClick={() => setSheetOpen(true)}>
               Open sheet
             </Button>
+            <Button variant="secondary" onClick={() => setDialogOpen(true)}>
+              Open dialog
+            </Button>
+            <Button variant="secondary" onClick={() => setDrawerOpen(true)}>
+              Open drawer
+            </Button>
           </div>
           <div className="flex justify-center">
             <QRCode value="https://agaseke.me/aline" />
@@ -292,6 +364,42 @@ export function ComponentGallery() {
       >
         <AmountInput value={amount} onChange={setAmount} />
       </Sheet>
+
+      <Dialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        title="Publish this post?"
+        description="It will be visible to everyone on your page."
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => setDialogOpen(false)}>Publish</Button>
+          </div>
+        }
+      >
+        <p className="text-body text-muted-fg">
+          You can edit or unpublish it later from your content page.
+        </p>
+      </Dialog>
+
+      <Drawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        title="Post details"
+        description="A right-side drawer for supporting context."
+        footer={
+          <Button fullWidth onClick={() => setDrawerOpen(false)}>
+            Done
+          </Button>
+        }
+      >
+        <p className="text-body text-muted-fg">
+          Drawers keep lists and detail views in context on desktop while becoming
+          full-height panels on narrow screens.
+        </p>
+      </Drawer>
     </div>
   );
 }

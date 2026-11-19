@@ -5,29 +5,29 @@ export const SupportPerks = ({ name }: { name: string }) => {
   return (
     <div className="max-w-2xl mx-auto px-6 mt-16 space-y-12">
       {/* SUPPORT PERKS SECTION */}
-      <section className="bg-card border border-border p-8 rounded-lg shadow-sm">
-        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-orange-600 mb-8 flex items-center gap-2">
+      <section className="bg-surface border border-line p-8 rounded-control shadow-sm">
+        <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-brand-strong mb-8 flex items-center gap-2">
           <Star size={14} fill="currentColor" /> Why Send a Gift to{" "}
           {name.split(" ")[0]}?
         </h3>
         <div className="space-y-6">
           <PerkRow
-            icon={<Lock className="text-orange-500" />}
+            icon={<Lock className="text-brand-strong" />}
             title="Private Contents"
             desc="Access daily life updates and exclusive behind-the-scenes footage."
           />
           <PerkRow
-            icon={<Zap className="text-orange-500" />}
+            icon={<Zap className="text-brand-strong" />}
             title="Early Access"
             desc="Be the first to see new content before it hits the public feed."
           />
           <PerkRow
-            icon={<Calendar className="text-orange-500" />}
+            icon={<Calendar className="text-brand-strong" />}
             title="Private Gatherings"
             desc="Get exclusive invites to intimate meetups and private events."
           />
           <PerkRow
-            icon={<MessageCircle className="text-orange-500" />}
+            icon={<MessageCircle className="text-brand-strong" />}
             title="Direct Connection"
             desc="Top gifters get direct messaging access to the creator."
           />
@@ -37,30 +37,30 @@ export const SupportPerks = ({ name }: { name: string }) => {
       {/* {creator.events.length > 0 && (
         <section>
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
+            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-muted-fg">
               Next Gathering
             </h3>
-            <div className="h-px bg-slate-100 flex-1 ml-6" />
+            <div className="h-px bg-surface-sunken flex-1 ml-6" />
           </div>
           {creator.events.map((event: any, i: number) => (
             <div
               key={i}
-              className="bg-card border border-border p-6 rounded-lg flex items-center justify-between group hover:border-orange-500 transition-all cursor-pointer"
+              className="bg-surface border border-line p-6 rounded-control flex items-center justify-between group hover:border-brand-strong transition-all cursor-pointer"
             >
               <div className="flex items-center gap-4">
-                <div className="bg-muted p-4 rounded-lg group-hover:bg-orange-50 group-hover:text-orange-600 transition-colors">
+                <div className="bg-surface-sunken p-4 rounded-control group-hover:bg-brand-soft group-hover:text-brand-strong transition-colors">
                   <Calendar size={24} />
                 </div>
                 <div>
                   <h4 className="font-bold text-lg">{event.title}</h4>
-                  <p className="text-sm text-muted-foreground font-bold uppercase tracking-widest flex items-center gap-2">
+                  <p className="text-sm text-muted-fg font-bold uppercase tracking-widest flex items-center gap-2">
                     {event.date}{" "}
-                    <span className="w-1 h-1 bg-muted-foreground rounded-full" />{" "}
+                    <span className="w-1 h-1 bg-surface-sunken-foreground rounded-full" />{" "}
                     {event.type}
                   </p>
                 </div>
               </div>
-              <button className="bg-foreground text-background px-4 py-2 rounded-lg text-xs font-bold uppercase group-hover:bg-orange-600 group-hover:text-white transition-colors">
+              <button className="bg-foreground text-background px-4 py-2 rounded-control text-xs font-bold uppercase group-hover:bg-brand-strong group-hover:text-on-brand transition-colors">
                 Join
               </button>
             </div>

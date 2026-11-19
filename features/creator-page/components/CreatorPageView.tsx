@@ -59,7 +59,7 @@ export function CreatorPageView({
     : `/login?referral=${handle}&redirect=${encodeURIComponent(`/${handle}`)}`;
 
   return (
-    <div className="creator-page-shell min-h-dvh bg-background pb-28 md:pb-8">
+    <div className="creator-page-shell min-h-dvh bg-canvas pb-28 text-fg md:pb-8">
       <CreatorHeader
         displayName={displayName}
         handle={handle}

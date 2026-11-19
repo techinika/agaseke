@@ -147,3 +147,31 @@ price and payout fixes in `docs/MONEY_AUDIT.md` are merged.
   `shared/money/currencies.json` (enforce in server validation too).
 - Keep legacy fields protected during dual-write. Do not relax rules for the
   migration, and do not add personal or payment data to public reads.
+
+## Phase 5 auth flows (added 2026-11-19)
+
+The login, onboarding, and verification redesign did not change Firestore rules, data collections, payment logic, or server endpoints.
+
+- Onboarding persists its in-progress form in browser `sessionStorage` only. No new client-write path was introduced.
+- The reserved-handle list remains client-side validation. A server-side uniqueness/claim check is still required before a handle is committed.
+- Verification reads the existing creator fields and keeps local UI state for code entry, uploads, and error feedback; the real OTP, file upload, and payout-status endpoints were not changed.
+- `/dev/auth-onboarding` and `/dev/auth-verify` are `noindex` previews gated outside production; exclude them from production nav and rules review.
+
+## Phase 6A creator dashboard core (added 2026-11-19)
+
+The creator dashboard core redesign did not change Firestore rules, data collections, payment logic, pricing, fees, payouts, or server endpoints.
+
+- Payout withdrawal actions, currency conversion, ledger writes, and payout status remain server-owned; the UI redesign only changed presentation primitives.
+- Settings still uses the existing profile writes, media uploads, reference-data reads, and bulk updates. Do not relax rules to accommodate UI-only changes.
+- Sales and supporters still rely on the existing Firestore subscriptions and profile enrichment; client-side filtering/mocking in `/dev/creator-core` does not expose new data paths.
+- The broadcast modal uses the same comms delivery path as before; no new recipient fields or client-authorised send path was added.
+- `/dev/creator-core` is a `noindex` preview with mock data only; exclude it from production nav and rules review.
+
+## Phase 6B creator community and communications (added 2026-11-19)
+
+The creator community/chat/messages/notices redesign did not change Firestore rules, data collections, payment logic, pricing, fees, payouts, server endpoints, or seeded data.
+
+- Community tier/member/earning views still rely on the existing subscriptions and client-side presentation; the UI migration did not expose new fields or new client-write paths.
+- Chat still uses the existing tier access checks, message subscription, and send path. The preview's local messages are mock data only and do not create documents.
+- Messages and notices still use the existing read-state and notification paths; no new recipient fields, batch writes, or client-authorised delivery path was added.
+- `/dev/creator-community` is a `noindex` preview with mock data only; exclude it from production nav and rules review.

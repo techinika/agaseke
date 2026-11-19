@@ -18,7 +18,7 @@ import {
 import { useAuth } from "@/auth/AuthContext";
 import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService";
 import { CartItem, ShippingAddress, getProductCurrency } from "./types";
-import { formatCurrency } from "@/types/currency";
+import { formatMoney as formatCurrency } from "@/lib/format/money";
 import { isCurrencySupportedByMethod } from "@/lib/money/rails";
 
 const platformSharePercentage =
@@ -210,13 +210,13 @@ export function CheckoutModal({
       aria-modal="true"
       aria-label="Checkout"
     >
-      <div className="bg-card w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 max-h-[90vh] flex flex-col">
-        <div className="p-6 border-b border-border flex justify-between items-center">
+      <div className="bg-surface w-full max-w-lg rounded-card overflow-hidden shadow-2xl animate-in zoom-in-95 max-h-[90vh] flex flex-col">
+        <div className="p-6 border-b border-line flex justify-between items-center">
           <h2 className="text-xl font-bold">Checkout</h2>
           <button
             onClick={onClose}
             aria-label="Close checkout"
-            className="flex size-11 items-center justify-center rounded-full transition hover:bg-muted"
+            className="flex size-11 items-center justify-center rounded-full transition hover:bg-surface-sunken"
           >
             <X size={20} />
           </button>
@@ -232,10 +232,10 @@ export function CheckoutModal({
               <button
                 key={s}
                 onClick={() => setStep(s as any)}
-                className={`min-h-11 flex-1 rounded-lg px-2 py-2 text-xs font-bold capitalize transition ${
+                className={`min-h-11 flex-1 rounded-control px-2 py-2 text-xs font-bold capitalize transition ${
                   step === s
-                    ? "bg-orange-700 text-white"
-                    : "bg-muted text-muted-foreground"
+                    ? "bg-brand-strong text-on-brand"
+                    : "bg-surface-sunken text-muted-fg"
                 }`}
               >
                 {s}
@@ -245,7 +245,7 @@ export function CheckoutModal({
 
           {step === "info" && (
             <div className="space-y-4">
-              <div className="bg-muted rounded-xl p-4 space-y-2">
+              <div className="bg-surface-sunken rounded-control p-4 space-y-2">
                 <h4 className="font-bold">Order Summary</h4>
                 {cart.map((item) => (
                   <div
@@ -258,7 +258,7 @@ export function CheckoutModal({
                     <span>{formatCurrency(getItemPrice(item), currency)}</span>
                   </div>
                 ))}
-                <div className="border-t border-border pt-2 flex justify-between font-bold">
+                <div className="border-t border-line pt-2 flex justify-between font-bold">
                   <span>Subtotal</span>
                   <span>{formatCurrency(total, currency)}</span>
                 </div>
@@ -274,13 +274,13 @@ export function CheckoutModal({
                       setCouponCode(e.target.value.toUpperCase())
                     }
                     placeholder="Enter code"
-                    className="flex-1 bg-muted p-3 rounded-lg text-sm font-medium outline-none"
+                    className="flex-1 bg-surface-sunken p-3 rounded-control text-sm font-medium outline-none"
                     disabled={!!appliedCoupon}
                   />
                   <button
                     onClick={applyCoupon}
                     disabled={applyingCoupon || !!appliedCoupon}
-                    className="bg-foreground text-background px-4 rounded-lg font-bold text-sm disabled:opacity-50"
+                    className="bg-foreground text-background px-4 rounded-control font-bold text-sm disabled:opacity-50"
                   >
                     {applyingCoupon ? (
                       <Loader size={16} className="animate-spin" />
@@ -292,7 +292,7 @@ export function CheckoutModal({
               </div>
 
               {appliedCoupon && (
-                <div className="bg-green-50 text-green-700 p-3 rounded-lg text-sm font-medium flex items-center gap-2">
+                <div className="bg-success-bg text-success p-3 rounded-control text-sm font-medium flex items-center gap-2">
                   <Check size={16} />
                   Coupon &quot;{appliedCoupon}&quot; applied! You save{" "}
                   {formatCurrency(couponDiscount, currency)}
@@ -300,7 +300,7 @@ export function CheckoutModal({
               )}
 
               {couponDiscount > 0 && (
-                <div className="flex justify-between text-lg font-bold text-green-600">
+                <div className="flex justify-between text-lg font-bold text-success">
                   <span>Total</span>
                   <span>{formatCurrency(finalTotal, currency)}</span>
                 </div>
@@ -321,7 +321,7 @@ export function CheckoutModal({
                   }))
                 }
                 placeholder="Full Name"
-                className="w-full bg-muted p-4 rounded-lg text-sm font-medium outline-none"
+                className="w-full bg-surface-sunken p-4 rounded-control text-sm font-medium outline-none"
               />
               <input
                 type="tel"
@@ -333,7 +333,7 @@ export function CheckoutModal({
                   }))
                 }
                 placeholder="Phone Number"
-                className="w-full bg-muted p-4 rounded-lg text-sm font-medium outline-none"
+                className="w-full bg-surface-sunken p-4 rounded-control text-sm font-medium outline-none"
               />
               <input
                 type="text"
@@ -345,7 +345,7 @@ export function CheckoutModal({
                   }))
                 }
                 placeholder="Street Address"
-                className="w-full bg-muted p-4 rounded-lg text-sm font-medium outline-none"
+                className="w-full bg-surface-sunken p-4 rounded-control text-sm font-medium outline-none"
               />
               <div className="grid grid-cols-2 gap-4">
                 <input
@@ -358,7 +358,7 @@ export function CheckoutModal({
                     }))
                   }
                   placeholder="City"
-                  className="w-full bg-muted p-4 rounded-lg text-sm font-medium outline-none"
+                  className="w-full bg-surface-sunken p-4 rounded-control text-sm font-medium outline-none"
                 />
                 <input
                   type="text"
@@ -370,7 +370,7 @@ export function CheckoutModal({
                     }))
                   }
                   placeholder="Country"
-                  className="w-full bg-muted p-4 rounded-lg text-sm font-medium outline-none"
+                  className="w-full bg-surface-sunken p-4 rounded-control text-sm font-medium outline-none"
                 />
               </div>
             </div>
@@ -378,16 +378,16 @@ export function CheckoutModal({
 
           {step === "payment" && (
             <div className="space-y-4">
-              <div className="bg-muted rounded-xl p-4 space-y-2">
+              <div className="bg-surface-sunken rounded-control p-4 space-y-2">
                 <h4 className="font-bold">Final Total</h4>
-                <div className="flex justify-between text-2xl font-bold text-orange-600">
+                <div className="flex justify-between text-2xl font-bold text-brand-strong">
                   <span>Total</span>
                   <span>
                     {formatCurrency(buyerPaysMore ? totalWithPlatformFee : finalTotal, currency)}
                   </span>
                 </div>
                 {buyerPaysMore && (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-fg">
                     (Includes platform fee: {formatCurrency(platformFee, currency)})
                   </p>
                 )}
@@ -396,7 +396,7 @@ export function CheckoutModal({
               <div className="space-y-3">
                 <label className="text-sm font-bold">Payment Method</label>
                 {!momoSupported ? (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-fg">
                     Mobile Money is not available for this currency, so card payment is the only option.
                   </p>
                 ) : (
@@ -404,10 +404,10 @@ export function CheckoutModal({
                     <button
                       type="button"
                       onClick={() => setPaymentMethod("momo")}
-                      className={`py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${
+                      className={`py-3 px-4 rounded-control border-2 font-bold text-sm transition-all ${
                         paymentMethod === "momo"
-                          ? "border-orange-600 bg-orange-50 text-orange-600"
-                          : "border-border text-muted-foreground"
+                          ? "border-brand-strong bg-brand-soft text-brand-strong"
+                          : "border-line text-muted-fg"
                       }`}
                     >
                       Mobile Money
@@ -415,10 +415,10 @@ export function CheckoutModal({
                     <button
                       type="button"
                       onClick={() => setPaymentMethod("card")}
-                      className={`py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${
+                      className={`py-3 px-4 rounded-control border-2 font-bold text-sm transition-all ${
                         paymentMethod === "card"
-                          ? "border-orange-600 bg-orange-50 text-orange-600"
-                          : "border-border text-muted-foreground"
+                          ? "border-brand-strong bg-brand-soft text-brand-strong"
+                          : "border-line text-muted-fg"
                       }`}
                     >
                       Card Payment
@@ -428,9 +428,9 @@ export function CheckoutModal({
               </div>
 
               {momoSupported && paymentMethod === "momo" && (
-                <div className="bg-amber-50 rounded-xl p-4 flex items-start gap-3">
-                  <AlertCircle size={20} className="text-amber-600 mt-0.5" />
-                  <p className="text-sm text-amber-800">
+                <div className="bg-warning-bg rounded-control p-4 flex items-start gap-3">
+                  <AlertCircle size={20} className="text-warning mt-0.5" />
+                  <p className="text-sm text-warning">
                     Payment will be processed via Mobile Money. You will receive
                     a prompt on your phone to complete the payment.
                   </p>
@@ -452,15 +452,15 @@ export function CheckoutModal({
                         phone: e.target.value,
                       })
                     }
-                    className="w-full bg-muted p-4 rounded-lg text-sm font-medium outline-none"
+                    className="w-full bg-surface-sunken p-4 rounded-control text-sm font-medium outline-none"
                   />
                 </div>
               )}
 
               {paymentMethod === "card" && (
-                <div className="bg-blue-50 rounded-xl p-4 flex items-start gap-3">
-                  <CreditCard size={20} className="text-blue-600 mt-0.5" />
-                  <p className="text-sm text-blue-800">
+                <div className="bg-info-bg rounded-control p-4 flex items-start gap-3">
+                  <CreditCard size={20} className="text-info mt-0.5" />
+                  <p className="text-sm text-info">
                     You will be redirected to a secure payment page to complete
                     your card payment.
                   </p>
@@ -470,14 +470,14 @@ export function CheckoutModal({
           )}
         </div>
 
-        <div className="p-6 border-t border-border">
+        <div className="p-6 border-t border-line">
           <div className="flex gap-3">
             {step !== "info" && (
               <button
                 onClick={() =>
                   setStep(step === "shipping" ? "info" : "shipping")
                 }
-                className="flex-1 py-4 border border-border rounded-xl font-bold hover:bg-muted transition"
+                className="flex-1 py-4 border border-line rounded-control font-bold hover:bg-surface-sunken transition"
               >
                 Back
               </button>
@@ -487,7 +487,7 @@ export function CheckoutModal({
                 onClick={() =>
                   setStep(step === "info" ? "shipping" : "payment")
                 }
-                className="flex-1 py-4 bg-orange-700 text-white rounded-xl font-bold hover:bg-orange-800 transition"
+                className="flex-1 py-4 bg-brand-strong text-on-brand rounded-control font-bold hover:bg-brand-strong transition"
               >
                 Continue
               </button>
@@ -495,7 +495,7 @@ export function CheckoutModal({
               <button
                 onClick={placeOrder}
                 disabled={processing}
-                className="flex-1 py-4 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition flex items-center justify-center gap-2 disabled:opacity-50"
+                className="flex-1 py-4 bg-success text-on-success rounded-control font-bold hover:bg-success transition flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {processing ? (
                   <Loader size={18} className="animate-spin" />

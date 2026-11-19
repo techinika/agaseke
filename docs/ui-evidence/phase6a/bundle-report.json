@@ -1,0 +1,27 @@
+{
+  "generatedAt": "2026-11-19T08:26:42.768Z",
+  "branch": "design/full-app-redesign",
+  "scope": ".next/static/chunks/**/*.js",
+  "buildCommand": "ENCRYPTION_KEY=local-build-placeholder NEXT_PUBLIC_DEV_CREATOR_CORE=1 npm run build -- --webpack",
+  "after": {
+    "files": 204,
+    "rawKB": 4530,
+    "gzipKB": 1424
+  },
+  "reference": {
+    "phase": "Phase 5 after",
+    "files": 201,
+    "rawKB": 4500,
+    "gzipKB": 1410,
+    "source": "docs/ui-evidence/phase5/bundle-report.json"
+  },
+  "delta": {
+    "files": 3,
+    "rawKB": 30,
+    "gzipKB": 14
+  },
+  "notes": [
+    "Reference-only comparison: the working tree contains earlier uncommitted phase work, so this is not an isolated Phase 6A before build.",
+    "No like-for-like Phase 6A before build was captured; the redesign is presentation-only within already-uncommitted creator pages."
+  ]
+}

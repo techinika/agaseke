@@ -1,10 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any, @next/next/no-img-element -- Firestore records are untyped and local/signed preview images cannot use next/image */
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
 import { sendCommsEmail } from "@/lib/commsService";
 import {
-  Zap,
   Loader,
   User,
   MapPin,
@@ -20,22 +19,16 @@ import {
   ChevronRight,
   Paperclip,
   Clock,
-  Home,
-  Compass,
-  Image,
+  Image as ImageIcon,
   Video,
   File,
   Lock,
   Globe,
-  ImageUp,
-  Camera,
   Save,
   Trash2,
   ArrowRight,
   Search,
 } from "lucide-react";
-import Navbar from "@/components/parts/Navigation";
-import MobileBottomBar from "@/components/parts/MobileBottomBar";
 import { SupportModal } from "@/components/parts/public/SupportModal";
 import { useAuth } from "@/auth/AuthContext";
 import Loading from "@/app/loading";
@@ -59,6 +52,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { LinkifyText } from "@/components/ui/LinkifyText";
+import { Avatar } from "@/components/ui/Avatar";
+import { Button, buttonClasses } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
 import {
   uploadFile,
   storedAssetValue,
@@ -130,8 +126,8 @@ function SupporterMediaBlock({
       <div
         className={
           mode === "preview"
-            ? "mt-3 rounded-lg overflow-hidden bg-muted"
-            : "relative aspect-video bg-foreground rounded-lg overflow-hidden mt-3"
+            ? "mt-3 rounded-control overflow-hidden bg-surface-sunken"
+            : "relative aspect-video bg-black rounded-control overflow-hidden mt-3"
         }
       >
         <MediaAsset
@@ -157,12 +153,12 @@ function SupporterMediaBlock({
       return (
         <div className="p-4">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-              <FileText size={20} className="text-orange-600" />
+            <div className="w-10 h-10 bg-brand-soft rounded-control flex items-center justify-center">
+              <FileText size={20} className="text-brand-strong" />
             </div>
             <div>
-              <p className="text-sm font-medium text-foreground">Document</p>
-              <p className="text-xs text-muted-foreground">PDF</p>
+              <p className="text-sm font-medium text-fg">Document</p>
+              <p className="text-xs text-muted-fg">PDF</p>
             </div>
           </div>
           <button
@@ -170,7 +166,7 @@ function SupporterMediaBlock({
               src && onViewDocument({ url: src, title: item.title })
             }
             disabled={!src}
-            className="w-full py-2 bg-orange-500 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+            className="w-full py-2 bg-brand-strong text-on-brand rounded-control text-sm font-medium disabled:opacity-50"
           >
             Read Document
           </button>
@@ -179,14 +175,14 @@ function SupporterMediaBlock({
     }
 
     return (
-      <div className="mt-3 bg-muted rounded-lg p-4 border border-border">
+      <div className="mt-3 bg-surface-sunken rounded-control p-4 border border-line">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-            <FileText size={24} className="text-orange-600" />
+          <div className="w-12 h-12 bg-brand-soft rounded-control flex items-center justify-center">
+            <FileText size={24} className="text-brand-strong" />
           </div>
           <div className="flex-1">
-            <p className="font-medium text-sm text-foreground">Document</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="font-medium text-sm text-fg">Document</p>
+            <p className="text-xs text-muted-fg">
               {pages.length} page{pages.length > 1 ? "s" : ""}
             </p>
           </div>
@@ -194,6 +190,8 @@ function SupporterMediaBlock({
         {pages.length > 1 && (
           <div className="flex items-center justify-between mb-3">
             <button
+              type="button"
+              aria-label="Previous document page"
               onClick={(e) => {
                 e.stopPropagation();
                 setDocumentIndex((prev) => ({
@@ -202,14 +200,16 @@ function SupporterMediaBlock({
                 }));
               }}
               disabled={currentIndex === 0}
-              className="p-1.5 bg-card border rounded-lg disabled:opacity-50"
+              className="p-1.5 bg-surface border border-line rounded-control disabled:opacity-50"
             >
               <ChevronLeft size={16} />
             </button>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-muted-fg">
               {currentIndex + 1} of {pages.length}
             </span>
             <button
+              type="button"
+              aria-label="Next document page"
               onClick={(e) => {
                 e.stopPropagation();
                 setDocumentIndex((prev) => ({
@@ -218,7 +218,7 @@ function SupporterMediaBlock({
                 }));
               }}
               disabled={currentIndex === pages.length - 1}
-              className="p-1.5 bg-card border rounded-lg disabled:opacity-50"
+              className="p-1.5 bg-surface border border-line rounded-control disabled:opacity-50"
             >
               <ChevronRight size={16} />
             </button>
@@ -227,7 +227,7 @@ function SupporterMediaBlock({
         <button
           onClick={() => src && onViewDocument({ url: src, title: item.title })}
           disabled={!src}
-          className="block w-full text-center py-2.5 bg-orange-500 text-white rounded-lg font-medium text-sm hover:bg-orange-600 transition disabled:opacity-50"
+          className="block w-full text-center py-2.5 bg-brand-strong text-on-brand rounded-control font-medium text-sm hover:bg-brand-hover transition disabled:opacity-50"
         >
           Read Document
         </button>
@@ -255,7 +255,7 @@ function SupporterMediaBlock({
   }
 
   return (
-    <div className="mt-3 rounded-lg overflow-hidden bg-muted">
+    <div className="mt-3 rounded-control overflow-hidden bg-surface-sunken">
       <MediaAsset
         postId={item.id}
         isPrivate={isPrivate}
@@ -601,7 +601,7 @@ export default function SupporterSpace() {
         const combinedFeed = [...contents, ...gatherings].map((item: any) => {
           let creator = creatorMap.get(item.creatorId);
           if (!creator) {
-            for (const [handle, data] of creatorMap) {
+            for (const data of creatorMap.values()) {
               if (data.uid === item.creatorId) {
                 creator = data;
                 break;
@@ -803,7 +803,7 @@ export default function SupporterSpace() {
         commentCount: increment(1),
       });
       toast.success("Comment added");
-    } catch (e) {
+    } catch {
       toast.error("Failed to add comment");
     }
   };
@@ -842,7 +842,7 @@ export default function SupporterSpace() {
             : f,
         ),
       );
-    } catch (e) {
+    } catch {
       toast.error("Failed to add reply");
     }
   };
@@ -986,7 +986,7 @@ const searchedContentItems = searchTerm.trim()
     if (!videoId) return null;
 
     return (
-      <div className="mt-3 rounded-lg overflow-hidden bg-black">
+      <div className="mt-3 rounded-control overflow-hidden bg-black">
         <iframe
           src={`https://www.youtube.com/embed/${videoId}`}
           className="w-full aspect-video"
@@ -1015,7 +1015,7 @@ const searchedContentItems = searchTerm.trim()
   ) => {
     if (isExpanded || text.length <= 200) {
       return (
-        <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+        <p className="text-sm text-muted-fg whitespace-pre-wrap leading-relaxed">
           <LinkifyText text={text} />
         </p>
       );
@@ -1024,12 +1024,12 @@ const searchedContentItems = searchTerm.trim()
     const firstPart = text.substring(0, 200);
 
     return (
-      <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+      <p className="text-sm text-muted-fg whitespace-pre-wrap leading-relaxed">
         <LinkifyText text={firstPart} />
         <span>...</span>
         <button
           onClick={() => setExpandedPostId(itemId)}
-          className="text-orange-500 hover:underline font-medium"
+          className="text-brand-strong hover:underline font-medium"
         >
           Read more
         </button>
@@ -1040,49 +1040,42 @@ const searchedContentItems = searchTerm.trim()
   const renderPostComments = (item: any) => (
     <div
       onClick={(e) => e.stopPropagation()}
-      className="px-4 pb-4 border-t border-border pt-3 bg-muted"
+      className="px-4 pb-4 border-t border-line pt-3 bg-surface-sunken"
     >
-      <h4 className="text-xs font-semibold text-muted-foreground mb-3">
+      <h4 className="text-xs font-semibold text-muted-fg mb-3">
         Comments ({comments[item.id]?.length || 0})
       </h4>
 
       {loadingComments[item.id] ? (
         <div className="flex items-center justify-center py-4">
-          <Loader className="animate-spin text-muted-foreground" size={20} />
+          <Loader className="animate-spin text-muted-fg" size={20} />
         </div>
       ) : (
         <div className="space-y-3 max-h-[300px] overflow-y-auto">
           {comments[item.id]?.slice(0, 5).map((comment) => (
-            <div key={comment.id} className="bg-card rounded-lg p-2.5">
+            <div key={comment.id} className="bg-surface rounded-control p-2.5">
               <div className="flex items-start gap-2">
-                <div className="w-7 h-7 rounded-full bg-gray-200 overflow-hidden shrink-0">
-                  {comment.userPhoto ? (
-                    <img
-                      src={comment.userPhoto}
-                      alt={comment.userName || "Commenter"}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-[10px] flex items-center justify-center h-full text-muted-foreground">
-                      {comment.userName?.[0]}
-                    </span>
-                  )}
-                </div>
+                <Avatar
+                  src={comment.userPhoto}
+                  name={comment.userName}
+                  size="sm"
+                  className="size-7 text-caption"
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-xs">
                       {comment.userName}
                     </span>
                     {comment.userId === item.creatorId && (
-                      <span className="text-[10px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
+                      <span className="text-caption bg-brand-soft text-brand-strong px-2 py-0.5 rounded-full">
                         Owner
                       </span>
                     )}
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-caption text-muted-fg">
                       {comment.createdAt?.toDate?.()?.toLocaleDateString()}
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap">
+                  <p className="text-xs text-muted-fg mt-0.5 whitespace-pre-wrap">
                     <LinkifyText text={comment.text} />
                   </p>
                   <button
@@ -1092,7 +1085,7 @@ const searchedContentItems = searchTerm.trim()
                         [comment.id]: comment.id,
                       }))
                     }
-                    className="text-[10px] text-blue-500 mt-1"
+                    className="text-caption text-info mt-1"
                   >
                     Reply
                   </button>
@@ -1108,11 +1101,13 @@ const searchedContentItems = searchTerm.trim()
                           }))
                         }
                         placeholder="Write a reply..."
-                        className="flex-1 text-xs px-2 py-1.5 border rounded-lg"
+                        className="flex-1 text-xs px-2 py-1.5 border rounded-control"
                       />
                       <button
+                        type="button"
+                        aria-label="Send reply"
                         onClick={() => handleAddReply(item.id, comment.id)}
-                        className="px-2 py-1 bg-blue-500 text-white rounded text-xs"
+                        className="px-2 py-1 bg-info text-on-brand rounded-pill text-xs"
                       >
                         Send
                       </button>
@@ -1122,32 +1117,25 @@ const searchedContentItems = searchTerm.trim()
                   {(comment.replies || []).slice(0, 2).map((reply) => (
                     <div
                       key={reply.id}
-                      className="mt-2 ml-3 pl-2 border-l-2 border-border"
+                      className="mt-2 ml-3 pl-2 border-l-2 border-line"
                     >
                       <div className="flex items-start gap-1.5">
-                        <div className="w-5 h-5 rounded-full bg-gray-200 overflow-hidden shrink-0">
-                          {reply.userPhoto ? (
-                            <img
-                              src={reply.userPhoto}
-                              alt={reply.userName || "Commenter"}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <span className="text-[8px] flex items-center justify-center h-full text-muted-foreground">
-                              {reply.userName?.[0]}
-                            </span>
-                          )}
-                        </div>
+                        <Avatar
+                          src={reply.userPhoto}
+                          name={reply.userName}
+                          size="sm"
+                          className="size-5 text-caption"
+                        />
                         <div>
-                          <span className="font-medium text-[10px]">
+                          <span className="font-medium text-caption">
                             {reply.userName}
                           </span>
                           {reply.userId === item.creatorId && (
-                            <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full ml-1">
+                            <span className="text-caption bg-brand-soft text-brand-strong px-1.5 py-0.5 rounded-full ml-1">
                               Owner
                             </span>
                           )}
-                          <p className="text-xs text-muted-foreground whitespace-pre-wrap">
+                          <p className="text-xs text-muted-fg whitespace-pre-wrap">
                             <LinkifyText text={reply.text} />
                           </p>
                         </div>
@@ -1155,7 +1143,7 @@ const searchedContentItems = searchTerm.trim()
                     </div>
                   ))}
                   {(comment.replies?.length || 0) > 2 && (
-                    <button className="text-[10px] text-blue-500 mt-1">
+                    <button className="text-caption text-info mt-1">
                       View {(comment.replies?.length || 0) - 2} more replies
                     </button>
                   )}
@@ -1164,7 +1152,7 @@ const searchedContentItems = searchTerm.trim()
             </div>
           ))}
           {(!comments[item.id] || comments[item.id].length === 0) && (
-            <p className="text-xs text-muted-foreground text-center py-2">
+            <p className="text-xs text-muted-fg text-center py-2">
               No comments yet
             </p>
           )}
@@ -1178,12 +1166,14 @@ const searchedContentItems = searchTerm.trim()
             setCommentText((prev) => ({ ...prev, [item.id]: e.target.value }))
           }
           placeholder="Write a comment..."
-          className="flex-1 text-xs px-3 py-2 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 text-xs px-3 py-2 border border-line rounded-full focus:outline-none focus:ring-2 focus:ring-focus"
           onKeyDown={(e) => e.key === "Enter" && handleAddComment(item.id)}
         />
         <button
+          type="button"
+          aria-label="Send comment"
           onClick={() => handleAddComment(item.id)}
-          className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition"
+          className="p-2 bg-info text-on-brand rounded-full hover:bg-info/90 transition"
         >
           <Send size={14} />
         </button>
@@ -1194,20 +1184,20 @@ const searchedContentItems = searchTerm.trim()
   if (auth.loading || loading) return <Loading />;
 
   return (
-    <div className="min-h-screen bg-muted">
-      <Navbar />
-
-      <div className="max-w-7xl mx-auto px-4 pt-12 pb-24">
+    <div className="min-h-screen bg-canvas text-fg">
+      <div className="max-w-7xl mx-auto px-4 pt-8 pb-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">
+            <h1 className="text-2xl font-bold text-fg">
               Welcome back,{" "}
               {auth.profile?.displayName?.split(" ")[0] || "Supporter"}
             </h1>
           </div>
           <Link
             href={auth?.isCreator ? "/creator" : "/onboarding"}
-            className="hidden lg:flex bg-orange-600 text-white px-5 py-3 rounded-lg text-sm font-bold hover:bg-orange-700 transition items-center gap-2 shadow-lg shadow-orange-200"
+            className={buttonClasses({
+              className: "hidden lg:inline-flex shadow-card",
+            })}
           >
             {auth?.isCreator ? "Creator Dashboard" : "Become Creator"}
           </Link>
@@ -1226,10 +1216,10 @@ const searchedContentItems = searchTerm.trim()
                   setFeedFilter(filter.key as any);
                   setVisibleCount(POSTS_PER_PAGE);
                 }}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                className={`px-4 py-2 rounded-control text-sm font-medium transition ${
                   feedFilter === filter.key
-                    ? "bg-foreground text-background"
-                    : "bg-card text-muted-foreground border border-border hover:bg-muted"
+                    ? "bg-brand-strong text-on-brand"
+                    : "bg-surface text-muted-fg border border-line hover:bg-surface-raised"
                 }`}
               >
                 {filter.label}
@@ -1240,25 +1230,27 @@ const searchedContentItems = searchTerm.trim()
           <div className="relative flex-1 sm:max-w-xs sm:ml-auto">
             <Search
               size={16}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-fg pointer-events-none"
             />
             <input
-              type="text"
+              type="search"
+              aria-label="Search creators"
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
                 setVisibleCount(POSTS_PER_PAGE);
               }}
               placeholder="Search by creator..."
-              className="w-full pl-9 pr-8 py-2 rounded-lg bg-card border border-border text-sm outline-none focus:ring-2 focus:ring-orange-100 placeholder:text-muted-foreground/60"
+              className="w-full pl-9 pr-8 py-2 rounded-control bg-surface border border-line text-sm outline-none focus:ring-2 focus:ring-focus/20 placeholder:text-muted-fg/60"
             />
             {searchTerm && (
               <button
+                type="button"
                 onClick={() => {
                 setSearchTerm("");
                 setVisibleCount(POSTS_PER_PAGE);
               }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-fg hover:text-fg transition"
                 aria-label="Clear search"
               >
                 <X size={16} />
@@ -1270,13 +1262,13 @@ const searchedContentItems = searchTerm.trim()
         {gatheringItems.length > 0 && (
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-                <MapPin size={16} className="text-orange-600" />
+              <div className="w-8 h-8 bg-brand-soft rounded-control flex items-center justify-center">
+                <MapPin size={16} className="text-brand-strong" />
               </div>
-              <h2 className="text-lg font-bold text-foreground">
+              <h2 className="text-lg font-bold text-fg">
                 Upcoming Events
               </h2>
-              <span className="text-xs text-muted-foreground bg-card px-2 py-0.5 rounded-full border border-border">
+              <span className="text-xs text-muted-fg bg-surface px-2 py-0.5 rounded-full border border-line">
                 {gatheringItems.length} event
                 {gatheringItems.length !== 1 ? "s" : ""}
               </span>
@@ -1292,10 +1284,10 @@ const searchedContentItems = searchTerm.trim()
                   <Link
                     key={item.id}
                     href={`/${item.creatorHandle}/gatherings/${item.id}`}
-                    className="block bg-card rounded-xl border border-orange-200 overflow-hidden hover:shadow-md hover:border-orange-300 transition-all group"
+                    className="block bg-surface rounded-card border border-brand-strong/20 overflow-hidden hover:shadow-md hover:border-brand-strong/40 transition-all group"
                   >
                     <div className="flex">
-                      <div className="w-20 bg-orange-500 flex flex-col items-center justify-center text-white p-3 shrink-0">
+                      <div className="w-20 bg-brand-strong flex flex-col items-center justify-center text-on-brand p-3 shrink-0">
                         <span className="text-xs font-bold uppercase tracking-wider">
                           {eventDate
                             ? eventDate.toLocaleString("default", {
@@ -1309,19 +1301,19 @@ const searchedContentItems = searchTerm.trim()
                       </div>
                       <div className="flex-1 p-4">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-orange-600 bg-orange-50 px-2 py-0.5 rounded">
+                          <span className="text-caption font-bold uppercase tracking-wider text-brand-strong bg-brand-soft px-2 py-0.5 rounded-pill">
                             Event
                           </span>
                           {getPrice(item) > 0 && (
-                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                            <span className="text-caption font-bold text-success bg-success-bg px-2 py-0.5 rounded-pill">
                               {item.currency ? formatCurrency(getPrice(item), item.currency as any) : getPrice(item)}
                             </span>
                           )}
                         </div>
-                        <h3 className="font-bold text-foreground group-hover:text-orange-600 transition-colors line-clamp-1">
+                        <h3 className="font-bold text-fg group-hover:text-brand-strong transition-colors line-clamp-1">
                           {item.title}
                         </h3>
-                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-fg">
                           <span className="flex items-center gap-1">
                             <Clock size={12} /> {item.time || "All day"}
                           </span>
@@ -1331,7 +1323,7 @@ const searchedContentItems = searchTerm.trim()
                           </span>
                         </div>
                         {item.location && (
-                          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                          <p className="text-xs text-muted-fg mt-1 flex items-center gap-1">
                             <MapPin size={10} /> {item.location}
                           </p>
                         )}
@@ -1347,9 +1339,9 @@ const searchedContentItems = searchTerm.trim()
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-8">
             {auth.isCreator && (
-              <div className="bg-card rounded-xl border border-border p-4 mb-6 shadow-sm">
+              <div className="bg-surface rounded-card border border-line p-4 mb-6 shadow-sm">
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-sm shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-brand-soft flex items-center justify-center text-brand-strong font-bold text-sm shrink-0">
                     {auth.profile?.displayName?.[0] || auth.user?.email?.[0] || "C"}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -1363,44 +1355,44 @@ const searchedContentItems = searchTerm.trim()
                       }
                       placeholder="What's on your mind?"
                       rows={newPost.description ? 3 : 1}
-                      className="w-full text-sm bg-transparent outline-none resize-none placeholder:text-muted-foreground/50"
+                      className="w-full text-sm bg-transparent outline-none resize-none placeholder:text-muted-fg/50"
                     />
                     {(isUploading || filePreview || uploadedUrl || failedFile) && (
                       <div className="mb-2">
                         {isUploading ? (
-                          <div className="flex items-center gap-2 text-xs text-orange-600 bg-orange-50 px-3 py-2 rounded-lg">
+                          <div className="flex items-center gap-2 text-xs text-brand-strong bg-brand-soft px-3 py-2 rounded-control">
                             <Loader size={14} className="animate-spin" />
                             <span>Uploading...</span>
                           </div>
                         ) : failedFile ? (
                           <div className="relative">
                             {newPost.type === "image" ? (
-                              <img src={filePreview!} alt="Preview" className="w-full max-h-48 object-cover rounded-lg border border-red-300" />
+                              <img src={filePreview!} alt="Preview" className="w-full max-h-48 object-cover rounded-control border border-danger/30" />
                             ) : newPost.type === "video" ? (
-                              <video src={filePreview!} controls className="w-full max-h-48 rounded-lg border border-red-300" />
+                              <video src={filePreview!} controls className="w-full max-h-48 rounded-control border border-danger/30" />
                             ) : (
-                              <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg border border-red-200">
+                              <div className="flex items-center gap-2 text-xs text-danger bg-danger-bg px-3 py-2 rounded-control border border-danger/30">
                                 <File size={14} />
                                 <span>Upload failed</span>
                               </div>
                             )}
                             <div className="absolute bottom-2 right-2 flex gap-2">
-                              <button onClick={handleRetryUpload} className="px-3 py-1.5 bg-orange-500 text-white text-xs font-medium rounded-lg hover:bg-orange-600 transition">
+                              <button type="button" onClick={handleRetryUpload} className="px-3 py-1.5 bg-brand-strong text-on-brand text-xs font-medium rounded-control hover:bg-brand-hover transition">
                                 Retry
                               </button>
-                              <button onClick={() => { setFailedFile(null); setFilePreview(null); setUploadedUrl(""); setUploadedVisibility(null); setNewPost((prev) => ({ ...prev, type: "text" })); }} className="p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition">
-                                <Trash2 size={14} />
+                              <button type="button" aria-label="Remove failed upload" onClick={() => { setFailedFile(null); setFilePreview(null); setUploadedUrl(""); setUploadedVisibility(null); setNewPost((prev) => ({ ...prev, type: "text" })); }} className="p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition">
+                                <Trash2 size={14} aria-hidden="true" />
                               </button>
                             </div>
                           </div>
                         ) : filePreview && !uploadedUrl ? (
                           <div className="relative">
                             {newPost.type === "image" ? (
-                              <img src={filePreview} alt="Preview" className="w-full max-h-48 object-cover rounded-lg border border-border" />
+                              <img src={filePreview} alt="Preview" className="w-full max-h-48 object-cover rounded-control border border-line" />
                             ) : newPost.type === "video" ? (
-                              <video src={filePreview} controls className="w-full max-h-48 rounded-lg border border-border" />
+                              <video src={filePreview} controls className="w-full max-h-48 rounded-control border border-line" />
                             ) : (
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted px-3 py-2 rounded-lg">
+                              <div className="flex items-center gap-2 text-xs text-muted-fg bg-surface-sunken px-3 py-2 rounded-control">
                                 <File size={14} />
                                 <span>Preparing file...</span>
                               </div>
@@ -1409,18 +1401,17 @@ const searchedContentItems = searchTerm.trim()
                         ) : uploadedUrl && (
                           <div className="relative">
                             {newPost.type === "image" ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={filePreview || uploadedUrl} alt="Uploaded" className="w-full max-h-48 object-cover rounded-lg border border-border" />
+                              <img src={filePreview || uploadedUrl} alt="Uploaded" className="w-full max-h-48 object-cover rounded-control border border-line" />
                             ) : newPost.type === "video" ? (
-                              <video src={filePreview || uploadedUrl} controls className="w-full max-h-48 rounded-lg border border-border" />
+                              <video src={filePreview || uploadedUrl} controls className="w-full max-h-48 rounded-control border border-line" />
                             ) : (
-                              <div className="flex items-center gap-2 text-xs text-green-600 bg-green-50 px-3 py-2 rounded-lg">
+                              <div className="flex items-center gap-2 text-xs text-success bg-success-bg px-3 py-2 rounded-control">
                                 <FileText size={14} />
                                 <span className="font-medium">File attached</span>
                               </div>
                             )}
-                            <button onClick={() => { setUploadedUrl(""); setUploadedVisibility(null); setFilePreview(null); setFailedFile(null); setNewPost((prev) => ({ ...prev, type: "text" })); }} className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition">
-                              <Trash2 size={14} />
+                            <button type="button" aria-label="Remove uploaded file" onClick={() => { setUploadedUrl(""); setUploadedVisibility(null); setFilePreview(null); setFailedFile(null); setNewPost((prev) => ({ ...prev, type: "text" })); }} className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-black/80 transition">
+                              <Trash2 size={14} aria-hidden="true" />
                             </button>
                           </div>
                         )}
@@ -1434,7 +1425,7 @@ const searchedContentItems = searchTerm.trim()
                     />
                   </div>
                 </div>
-                <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-line">
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => {
@@ -1442,10 +1433,12 @@ const searchedContentItems = searchTerm.trim()
                         if (fileInputRef.current) fileInputRef.current.accept = "image/*";
                         fileInputRef.current?.click();
                       }}
-                      className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-green-600 transition"
+                      type="button"
+                      aria-label="Add image"
+                      className="p-2 rounded-control hover:bg-surface-sunken text-muted-fg hover:text-success transition"
                       title="Add Image"
                     >
-                      <Image size={16} />
+                      <ImageIcon size={16} aria-hidden="true" />
                     </button>
                     <button
                       onClick={() => {
@@ -1453,7 +1446,9 @@ const searchedContentItems = searchTerm.trim()
                         if (fileInputRef.current) fileInputRef.current.accept = "video/*";
                         fileInputRef.current?.click();
                       }}
-                      className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-blue-600 transition"
+                      type="button"
+                      aria-label="Add video"
+                      className="p-2 rounded-control hover:bg-surface-sunken text-muted-fg hover:text-info transition"
                       title="Add Video"
                     >
                       <Video size={16} />
@@ -1464,12 +1459,14 @@ const searchedContentItems = searchTerm.trim()
                         if (fileInputRef.current) fileInputRef.current.accept = ".pdf,.doc,.docx";
                         fileInputRef.current?.click();
                       }}
-                      className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-orange-600 transition"
+                      type="button"
+                      aria-label="Add document"
+                      className="p-2 rounded-control hover:bg-surface-sunken text-muted-fg hover:text-brand-strong transition"
                       title="Add Document"
                     >
                       <File size={16} />
                     </button>
-                    <div className="w-px h-5 bg-border mx-1" />
+                    <div className="w-px h-5 bg-line mx-1" />
                     <button
                       onClick={() =>
                         setNewPost((prev) => ({
@@ -1477,24 +1474,21 @@ const searchedContentItems = searchTerm.trim()
                           isPrivate: !prev.isPrivate,
                         }))
                       }
-                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition ${newPost.isPrivate ? "bg-amber-50 text-amber-700" : "bg-green-50 text-green-700"}`}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-control text-xs font-medium transition ${newPost.isPrivate ? "bg-warning-bg text-warning" : "bg-success-bg text-success"}`}
                     >
                       {newPost.isPrivate ? <Lock size={12} /> : <Globe size={12} />}
                       {newPost.isPrivate ? "Supporters" : "Public"}
                     </button>
                   </div>
-                  <button
+                  <Button
                     onClick={handleCreatePost}
-                    disabled={!newPost.description.trim() || posting}
-                    className="bg-foreground text-background px-5 py-2 rounded-lg text-xs font-bold hover:bg-orange-600 transition disabled:opacity-40 flex items-center gap-2"
+                    disabled={!newPost.description.trim()}
+                    loading={posting}
+                    size="sm"
+                    leadingIcon={<Save size={14} aria-hidden="true" />}
                   >
-                    {posting ? (
-                      <Loader size={14} className="animate-spin" />
-                    ) : (
-                      <Save size={14} />
-                    )}
                     {posting ? "Posting..." : "Post"}
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -1510,7 +1504,7 @@ const searchedContentItems = searchTerm.trim()
                       }}
                       data-post-id={item.id}
                       onClick={(e) => handleCardClick(item, e)}
-                      className="bg-card rounded-lg shadow-sm border border-border overflow-hidden cursor-pointer"
+                      className="bg-surface rounded-control shadow-sm border border-line overflow-hidden cursor-pointer"
                     >
                       <div className="p-4">
                         <div className="flex items-center justify-between">
@@ -1519,37 +1513,29 @@ const searchedContentItems = searchTerm.trim()
                               href={`/${item.creatorHandle}`}
                               className="shrink-0"
                             >
-                              <div className="w-12 h-12 rounded-full bg-muted overflow-hidden">
-                                {item.creatorPhoto ? (
-                                  <img
-                                    src={item.creatorPhoto}
-                                    alt={item.creatorName}
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-muted-foreground font-medium">
-                                    {item.creatorName?.[0] || "?"}
-                                  </div>
-                                )}
-                              </div>
+                              <Avatar
+                                src={item.creatorPhoto}
+                                name={item.creatorName}
+                                size="md"
+                              />
                             </Link>
                             <div>
                               <Link
                                 href={`/${item.creatorHandle}`}
-                                className="font-semibold text-foreground hover:text-blue-600"
+                                className="font-semibold text-fg hover:text-info"
                               >
                                 {item.creatorName}
                               </Link>
                               <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-xs text-muted-foreground">
+                                <span className="text-xs text-muted-fg">
                                   @{item.creatorHandle}
                                 </span>
                                 <span
-                                  className={`text-[10px] px-2 py-0.5 rounded-full ${item.isFollowing ? "bg-emerald-100 text-emerald-700" : "bg-blue-100 text-blue-700"}`}
+                                  className={`text-caption px-2 py-0.5 rounded-full ${item.isFollowing ? "bg-success-bg text-success" : "bg-info-bg text-info"}`}
                                 >
                                   {item.isFollowing ? "Following" : "Public"}
                                 </span>
-                                <span className="text-xs text-muted-foreground">
+                                <span className="text-xs text-muted-fg">
                                   ·{" "}
                                   {item.createdAt
                                     ?.toDate?.()
@@ -1569,15 +1555,15 @@ const searchedContentItems = searchTerm.trim()
                                   isPrivate={!!item.isPrivate}
                                   url={item.coverUrl || item.contentUrl}
                                   alt={item.title || "Article cover"}
-                                  className="w-full h-52 object-cover rounded-lg mb-3"
+                                  className="w-full h-52 object-cover rounded-control mb-3"
                                 />
                               )}
                               {item.title && (
-                                <h3 className="font-semibold text-lg text-foreground mb-2">
+                                <h3 className="font-semibold text-lg text-fg mb-2">
                                   {item.title}
                                 </h3>
                               )}
-                              <p className="text-sm text-muted-foreground leading-relaxed line-clamp-3">
+                              <p className="text-sm text-muted-fg leading-relaxed line-clamp-3">
                                 {item.shortDescription || item.description}
                               </p>
                               <button
@@ -1585,7 +1571,7 @@ const searchedContentItems = searchTerm.trim()
                                   e.stopPropagation();
                                   router.push(`/supporter/${item.id}`);
                                 }}
-                                className="mt-3 inline-flex items-center gap-1 text-sm text-orange-600 font-medium hover:underline"
+                                className="mt-3 inline-flex items-center gap-1 text-sm text-brand-strong font-medium hover:underline"
                               >
                                 Read Article <ArrowRight size={14} />
                               </button>
@@ -1593,7 +1579,7 @@ const searchedContentItems = searchTerm.trim()
                           ) : (
                             <>
                               {item.title && (
-                                <h3 className="font-semibold text-lg text-foreground mb-2">
+                                <h3 className="font-semibold text-lg text-fg mb-2">
                                   {item.title}
                                 </h3>
                               )}
@@ -1638,7 +1624,7 @@ const searchedContentItems = searchTerm.trim()
                                 url={item.contentUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="mt-4 flex items-center gap-2 text-blue-600 text-sm hover:underline"
+                                className="mt-4 flex items-center gap-2 text-info text-sm hover:underline"
                               >
                                 <Paperclip size={14} /> View Attached Document
                               </MediaLink>
@@ -1647,14 +1633,14 @@ const searchedContentItems = searchTerm.trim()
                         )}
                       </div>
 
-                      <div className="px-4 pb-3 pt-2 flex items-center justify-between border-t border-border">
+                      <div className="px-4 pb-3 pt-2 flex items-center justify-between border-t border-line">
                         <div className="flex items-center gap-4">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleLike(item);
                             }}
-                            className={`flex items-center gap-1.5 text-sm ${likedPosts.has(item.id) ? "text-red-500" : "text-muted-foreground hover:text-red-500"}`}
+                            className={`flex items-center gap-1.5 text-sm ${likedPosts.has(item.id) ? "text-danger" : "text-muted-fg hover:text-danger"}`}
                           >
                             <Heart
                               size={18}
@@ -1669,18 +1655,18 @@ const searchedContentItems = searchTerm.trim()
                               e.stopPropagation();
                               toggleComments(item);
                             }}
-                            className={`flex items-center gap-1.5 text-sm ${showCommentFor === item.id ? "text-blue-500" : "text-muted-foreground hover:text-blue-500"}`}
+                            className={`flex items-center gap-1.5 text-sm ${showCommentFor === item.id ? "text-info" : "text-muted-fg hover:text-info"}`}
                           >
                             <MessageCircle size={18} />
                             {item.commentCount || 0}
                           </button>
-                          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1.5 text-sm text-muted-fg">
                             <Eye size={16} /> {item.views || 0}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
                           {item.type === "gathering" && (
-                            <span className="text-xs text-orange-600 flex items-center gap-1">
+                            <span className="text-xs text-brand-strong flex items-center gap-1">
                               <MapPin size={14} /> {item.location}
                             </span>
                           )}
@@ -1689,7 +1675,7 @@ const searchedContentItems = searchTerm.trim()
                               e.stopPropagation();
                               setSupportItem(item);
                             }}
-                            className="flex items-center gap-1 text-xs sm:text-sm px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
+                            className="flex items-center gap-1 text-xs sm:text-sm px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-control bg-brand-soft text-brand-strong hover:bg-brand-strong/10 transition-colors font-medium"
                           >
                             <Heart size={12} className="sm:size-[14]" />
                             <span className="hidden sm:inline">Support</span>
@@ -1700,7 +1686,7 @@ const searchedContentItems = searchTerm.trim()
                                 e.stopPropagation();
                                 router.push(`/supporter/${item.id}`);
                               }}
-                              className="text-xs text-orange-500 hover:underline font-medium"
+                              className="text-xs text-brand-strong hover:underline font-medium"
                             >
                               View Post
                             </button>
@@ -1718,36 +1704,31 @@ const searchedContentItems = searchTerm.trim()
                       className="flex items-center justify-center py-8"
                     >
                       <Loader
-                        className="animate-spin text-muted-foreground"
+                        className="animate-spin text-muted-fg"
                         size={22}
                       />
-                      <span className="text-xs text-muted-foreground ml-2">
+                      <span className="text-xs text-muted-fg ml-2">
                         Loading more posts...
                       </span>
                     </div>
                   )}
                 </>
               ) : (
-                <div className="text-center py-16 bg-card rounded-lg border border-border">
-                  <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                    <User className="text-muted-foreground" size={24} />
-                  </div>
-                  <p className="text-muted-foreground text-sm">
-                    {contentItems.length === 0
+                <EmptyState
+                  icon={<User className="size-6" aria-hidden="true" />}
+                  title="Nothing here yet"
+                  description={
+                    contentItems.length === 0
                       ? feedFilter === "following"
                         ? "No posts from creators you follow"
                         : feedFilter === "public"
                           ? "No public posts available"
                           : "No posts in your feed yet"
-                      : "No creators match your search"}
-                  </p>
-                  <button
-                    onClick={() => router.push("/explore")}
-                    className="mt-4 text-sm text-background bg-foreground px-4 py-2 rounded-lg hover:bg-foreground/90 transition"
-                  >
-                    Explore Creators
-                  </button>
-                </div>
+                      : "No creators match your search"
+                  }
+                  action={<Button onClick={() => router.push("/explore")}>Explore Creators</Button>}
+                  className="py-16"
+                />
               )}
             </div>
           </div>
@@ -1757,53 +1738,53 @@ const searchedContentItems = searchTerm.trim()
               {auth.isCreator && (
                 <Link
                   href="/creator"
-                  className="hidden lg:flex bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg p-4 text-white items-center gap-3 hover:from-orange-600 hover:to-orange-700 transition shadow-lg"
+                  className="hidden lg:flex bg-gradient-to-r from-brand-strong to-brand rounded-control p-4 text-on-brand items-center gap-3 hover:from-brand-strong hover:to-brand-strong transition shadow-lg"
                 >
                   <div className="flex-1">
                     <p className="font-bold text-sm">Creator Dashboard</p>
-                    <p className="text-xs text-white/80">
+                    <p className="text-xs text-on-brand">
                       Manage your community
                     </p>
                   </div>
                 </Link>
               )}
-              <div className="bg-card rounded-lg shadow-sm border border-border p-4">
-                <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+              <div className="bg-surface rounded-control shadow-sm border border-line p-4">
+                <h3 className="font-semibold text-fg mb-4 flex items-center gap-2">
                   Your Stats
                 </h3>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-sm text-muted-fg">
                       Total Supported
                     </span>
-                    <span className="font-semibold text-orange-600">
+                    <span className="font-semibold text-brand-strong">
                       {(auth?.profile?.totalSupport || 0).toLocaleString()}
-                      <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+                      <span className="ml-1 text-caption font-normal text-muted-fg">
                         across currencies
                       </span>
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-sm text-muted-fg">
                       Following
                     </span>
-                    <span className="font-semibold text-foreground">
+                    <span className="font-semibold text-fg">
                       {favorites.length} creators
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-sm text-muted-fg">
                       Purchases
                     </span>
-                    <span className="font-semibold text-foreground">
+                    <span className="font-semibold text-fg">
                       {purchases.length} items
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-card rounded-lg shadow-sm border border-border p-4">
-                <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+              <div className="bg-surface rounded-control shadow-sm border border-line p-4">
+                <h3 className="font-semibold text-fg mb-4 flex items-center gap-2">
                   Following
                 </h3>
                 <div className="space-y-2">
@@ -1811,33 +1792,21 @@ const searchedContentItems = searchTerm.trim()
                     <Link
                       key={c.id}
                       href={`/${c.handle}`}
-                      className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-muted transition"
+                      className="flex items-center gap-3 p-2 -mx-2 rounded-control hover:bg-surface-sunken transition"
                     >
-                      <div className="w-10 h-10 rounded-full bg-muted overflow-hidden">
-                        {c.photoURL ? (
-                          <img
-                            src={c.photoURL}
-                            alt={c.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-sm flex items-center justify-center h-full text-muted-foreground">
-                            {c.name?.[0]}
-                          </span>
-                        )}
-                      </div>
+                      <Avatar src={c.photoURL} name={c.name} size="md" className="size-10" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
+                        <p className="text-sm font-medium text-fg truncate">
                           {c.name}
                         </p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-fg">
                           @{c.handle}
                         </p>
                       </div>
                     </Link>
                   ))}
                   {favorites.length === 0 && (
-                    <p className="text-xs text-muted-foreground text-center py-2">
+                    <p className="text-xs text-muted-fg text-center py-2">
                       Not following anyone yet
                     </p>
                   )}
@@ -1845,32 +1814,32 @@ const searchedContentItems = searchTerm.trim()
               </div>
 
               {purchases.length > 0 && (
-                <div className="bg-card rounded-lg shadow-sm border border-border p-4">
-                  <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <ShoppingBag size={18} className="text-emerald-500" />
+                <div className="bg-surface rounded-control shadow-sm border border-line p-4">
+                  <h3 className="font-semibold text-fg mb-4 flex items-center gap-2">
+                    <ShoppingBag size={18} className="text-success" />
                     Recent Purchases
                   </h3>
                   <div className="space-y-2">
                     {purchases.slice(0, 4).map((purchase) => (
                       <div
                         key={purchase.id}
-                        className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-muted"
+                        className="flex items-center gap-3 p-2 -mx-2 rounded-control hover:bg-surface-sunken"
                       >
-                        <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center shrink-0">
+                        <div className="w-8 h-8 bg-surface-sunken rounded-control flex items-center justify-center shrink-0">
                           <Package
                             size={14}
-                            className="text-muted-foreground"
+                            className="text-muted-fg"
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-foreground truncate">
+                          <p className="text-xs font-medium text-fg truncate">
                             {purchase.productName || "Product"}
                           </p>
-                          <p className="text-[10px] text-muted-foreground">
+                          <p className="text-caption text-muted-fg">
                             from @{purchase.creatorHandle}
                           </p>
                         </div>
-                        <span className="text-xs font-medium text-emerald-600">
+                        <span className="text-xs font-medium text-success">
                           {purchase.currency ? formatCurrency(Number(purchase.totalAmount || 0), purchase.currency as any) : Number(purchase.totalAmount || 0)}
                         </span>
                       </div>
@@ -1879,8 +1848,8 @@ const searchedContentItems = searchTerm.trim()
                 </div>
               )}
 
-              <div className="bg-card rounded-lg shadow-sm border border-border p-4">
-                <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+              <div className="bg-surface rounded-control shadow-sm border border-line p-4">
+                <h3 className="font-semibold text-fg mb-4 flex items-center gap-2">
                   Discover Creators
                 </h3>
                 <div className="space-y-2">
@@ -1888,26 +1857,14 @@ const searchedContentItems = searchTerm.trim()
                     <Link
                       key={c.handle}
                       href={`/${c.handle}`}
-                      className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-muted transition"
+                      className="flex items-center gap-3 p-2 -mx-2 rounded-control hover:bg-surface-sunken transition"
                     >
-                      <div className="w-10 h-10 rounded-full bg-muted overflow-hidden">
-                        {c.photoURL ? (
-                          <img
-                            src={c.photoURL}
-                            alt={c.handle}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-sm flex items-center justify-center h-full text-muted-foreground">
-                            {c.handle?.[0]}
-                          </span>
-                        )}
-                      </div>
+                      <Avatar src={c.photoURL} name={c.handle} size="md" className="size-10" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground">
+                        <p className="text-sm font-medium text-fg">
                           @{c.handle}
                         </p>
-                        <p className="text-xs text-muted-foreground truncate">
+                        <p className="text-xs text-muted-fg truncate">
                           {c.bio || "New Creator"}
                         </p>
                       </div>
@@ -1916,20 +1873,20 @@ const searchedContentItems = searchTerm.trim()
                 </div>
                 <button
                   onClick={() => router.push("/explore")}
-                  className="w-full bg-orange-600 text-white hover:bg-orange-700 py-2 rounded-lg mt-4 text-sm font-medium text-center"
+                  className="w-full bg-brand-strong text-on-brand hover:bg-brand-hover py-2 rounded-control mt-4 text-sm font-medium text-center"
                 >
                   Explore more
                 </button>
               </div>
 
-              <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg p-4 text-white">
+              <div className="bg-gradient-to-br from-brand-strong to-brand rounded-control p-4 text-on-brand">
                 <h3 className="font-semibold mb-2">Start Creating</h3>
-                <p className="text-sm text-white/80 mb-4">
+                <p className="text-sm text-on-brand mb-4">
                   Share your content and grow your audience
                 </p>
                 <Link
                   href={auth?.isCreator ? "/creator" : "/onboarding"}
-                  className="block w-full bg-card text-orange-600 text-center py-2 rounded-lg font-medium hover:bg-card/90 transition"
+                  className="block w-full bg-surface text-brand-strong text-center py-2 rounded-control font-medium hover:bg-surface/90 transition"
                 >
                   {auth?.isCreator ? "Go to Dashboard" : "Become Creator"}
                 </Link>
@@ -1939,11 +1896,9 @@ const searchedContentItems = searchTerm.trim()
         </div>
       </div>
 
-      <MobileBottomBar />
-
       {viewingDocument && (
         <div className="fixed inset-0 z-[100] bg-black/90 flex flex-col animate-in fade-in duration-200">
-          <div className="flex items-center justify-between p-4 bg-foreground text-background">
+          <div className="flex items-center justify-between p-4 bg-black/80 text-white">
             <div className="flex items-center gap-3">
               <FileText size={24} />
               <span className="font-medium truncate max-w-md">
@@ -1956,13 +1911,15 @@ const searchedContentItems = searchTerm.trim()
                 download
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 py-2 bg-orange-500 hover:bg-orange-600 rounded-lg text-sm font-medium flex items-center gap-2"
+                className="px-4 py-2 bg-brand-strong hover:bg-brand-hover rounded-control text-sm font-medium flex items-center gap-2"
               >
                 <Download size={16} /> Download
               </Link> */}
               <button
+                type="button"
+                aria-label="Close document viewer"
                 onClick={() => setViewingDocument(null)}
-                className="p-2 hover:bg-gray-700 rounded-lg"
+                className="p-2 hover:bg-white/10 rounded-control"
               >
                 <X size={24} />
               </button>
@@ -1971,7 +1928,7 @@ const searchedContentItems = searchTerm.trim()
           <div className="flex-1 flex items-center justify-center p-4 overflow-auto">
             <iframe
               src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocument.url)}&embedded=true`}
-              className="w-full max-w-4xl h-full bg-card"
+              className="w-full max-w-4xl h-full bg-surface"
               title="PDF Viewer"
             />
           </div>
@@ -1984,6 +1941,8 @@ const searchedContentItems = searchTerm.trim()
           onClick={() => setViewingImage(null)}
         >
           <button
+            type="button"
+            aria-label="Close image viewer"
             className="absolute top-4 right-4 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition"
             onClick={() => setViewingImage(null)}
           >

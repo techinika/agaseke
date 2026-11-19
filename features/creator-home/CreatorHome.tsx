@@ -14,12 +14,14 @@ import {
   Check,
 } from "lucide-react";
 import { useCreatorHome } from "./hooks/useCreatorHome";
-import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { Badge } from "@/components/ui/Badge";
+import { Button, buttonClasses } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { Money } from "@/components/ui/Money";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/cn";
 
@@ -29,6 +31,16 @@ export function CreatorHome() {
   const { creator, stats, supports, loading, error, refetch } = useCreatorHome();
   const unverified = creator && !creator.verified;
   const currency = stats?.currency || "";
+
+  const shareCreatorLink = () => {
+    if (typeof navigator !== "undefined" && navigator.share) {
+      void navigator.share({
+        title: creator?.name || "Agaseke Creator",
+        text: `Support ${creator?.name} on Agaseke`,
+        url: `https://agaseke.me/${creator?.handle}`,
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -52,14 +64,11 @@ export function CreatorHome() {
   if (error) {
     return (
       <div className="mx-auto max-w-2xl px-4 pt-4 pb-24 text-center">
-        <EmptyState
+        <ErrorState
           title={t("creatorHome.loadErrorTitle")}
           description={t("creatorHome.loadErrorBody")}
-          action={
-            <Button variant="ghost" onClick={() => void refetch()}>
-              {t("common.retry")}
-            </Button>
-          }
+          onRetry={() => void refetch()}
+          retryLabel={t("common.retry")}
         />
       </div>
     );
@@ -79,7 +88,11 @@ export function CreatorHome() {
             </p>
             <Link
               href="/creator/verify"
-              className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-control border border-line bg-surface px-3 py-2 text-label font-semibold text-brand-strong hover:bg-surface-raised focus-visible:ring-2 focus-visible:ring-focus"
+              className={buttonClasses({
+                variant: "secondary",
+                size: "sm",
+                className: "mt-3",
+              })}
             >
               {t("creatorHome.verifyNow")}{" "}
               <ChevronRight className="size-4" aria-hidden="true" />
@@ -89,7 +102,7 @@ export function CreatorHome() {
       )}
 
       <div className="grid gap-3 md:grid-cols-2 mb-6">
-        <Card className="p-4 border-success/20">
+        <Card className="flex flex-col p-4 border-success/20">
           <div className="flex items-center justify-between">
             <p className="text-label font-semibold text-muted-fg">
               {t("creatorHome.availableBalance")}
@@ -105,13 +118,17 @@ export function CreatorHome() {
           </div>
           <Link
             href="/creator/payouts"
-            className="mt-auto inline-flex min-h-10 items-center gap-1 rounded-control border border-transparent px-2 py-1 text-caption font-semibold text-brand-strong hover:bg-surface-raised hover:border-line-strong focus-visible:ring-2 focus-visible:ring-focus"
+            className={buttonClasses({
+              variant: "ghost",
+              size: "sm",
+              className: "mt-auto gap-1 text-brand-strong",
+            })}
           >
             {t("creatorHome.viewDetails")}{" "}
             <ChevronRight className="size-4" aria-hidden="true" />
           </Link>
         </Card>
-        <Card className="p-4 border-brand-strong/20">
+        <Card className="flex flex-col p-4 border-brand-strong/20">
           <div className="flex items-center justify-between">
             <p className="text-label font-semibold text-muted-fg">
               {t("creatorHome.earningsThisMonth")}
@@ -127,13 +144,17 @@ export function CreatorHome() {
           </div>
           <Link
             href="/creator/payouts"
-            className="mt-auto inline-flex min-h-10 items-center gap-1 rounded-control border border-transparent px-2 py-1 text-caption font-semibold text-brand-strong hover:bg-surface-raised hover:border-line-strong focus-visible:ring-2 focus-visible:ring-focus"
+            className={buttonClasses({
+              variant: "ghost",
+              size: "sm",
+              className: "mt-auto gap-1 text-brand-strong",
+            })}
           >
             {t("creatorHome.viewDetails")}{" "}
             <ChevronRight className="size-4" aria-hidden="true" />
           </Link>
         </Card>
-        <Card className="p-4 border-info/20">
+        <Card className="flex flex-col p-4 border-info/20">
           <div className="flex items-center justify-between">
             <p className="text-label font-semibold text-muted-fg">
               {t("creatorHome.supporters")}
@@ -147,13 +168,17 @@ export function CreatorHome() {
           </div>
           <Link
             href="/creator/supporters"
-            className="mt-auto inline-flex min-h-10 items-center gap-1 rounded-control border border-transparent px-2 py-1 text-caption font-semibold text-brand-strong hover:bg-surface-raised hover:border-line-strong focus-visible:ring-2 focus-visible:ring-focus"
+            className={buttonClasses({
+              variant: "ghost",
+              size: "sm",
+              className: "mt-auto gap-1 text-brand-strong",
+            })}
           >
             {t("creatorHome.viewDetails")}{" "}
             <ChevronRight className="size-4" aria-hidden="true" />
           </Link>
         </Card>
-        <Card className="p-4 border-info/20">
+        <Card className="flex flex-col p-4 border-info/20">
           <div className="flex items-center justify-between">
             <p className="text-label font-semibold text-muted-fg">
               {t("creatorHome.nextPayout")}
@@ -169,7 +194,11 @@ export function CreatorHome() {
           </div>
           <Link
             href="/creator/payouts"
-            className="mt-auto inline-flex min-h-10 items-center gap-1 rounded-control border border-transparent px-2 py-1 text-caption font-semibold text-brand-strong hover:bg-surface-raised hover:border-line-strong focus-visible:ring-2 focus-visible:ring-focus"
+            className={buttonClasses({
+              variant: "ghost",
+              size: "sm",
+              className: "mt-auto gap-1 text-brand-strong",
+            })}
           >
             {t("creatorHome.viewDetails")}{" "}
             <ChevronRight className="size-4" aria-hidden="true" />
@@ -187,18 +216,7 @@ export function CreatorHome() {
             title={t("creatorHome.noSupportsYet")}
             description={t("creatorHome.noSupportsBody")}
             action={
-              <Button
-                variant="primary"
-                onClick={() => {
-                  if (typeof navigator !== "undefined" && navigator.share) {
-                    void navigator.share({
-                      title: creator?.name || "Agaseke Creator",
-                      text: `Support ${creator?.name} on Agaseke`,
-                      url: `https://agaseke.me/${creator?.handle}`,
-                    });
-                  }
-                }}
-              >
+              <Button variant="primary" onClick={shareCreatorLink}>
                 {t("creatorHome.shareLink")}
               </Button>
             }
@@ -251,15 +269,7 @@ export function CreatorHome() {
               hint: t("creatorHome.shareLinkHint"),
               href: "#",
               icon: <Share2 className="size-5" aria-hidden="true" />,
-              onClick: () => {
-                if (typeof navigator !== "undefined" && navigator.share) {
-                  void navigator.share({
-                    title: creator?.name || "Agaseke Creator",
-                    text: `Support ${creator?.name} on Agaseke`,
-                    url: `https://agaseke.me/${creator?.handle}`,
-                  });
-                }
-              },
+              onClick: shareCreatorLink,
             },
             {
               label: t("creatorHome.verify"),
@@ -269,52 +279,47 @@ export function CreatorHome() {
             },
           ].map((action) => {
             const isShare = action.href === "#";
+            const content = (
+              <>
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-strong/10 text-brand-strong">
+                    {action.icon}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-body font-semibold text-fg">{action.label}</p>
+                    <p className="text-caption text-muted-fg">{action.hint}</p>
+                  </div>
+                </div>
+                <ChevronRight
+                  className="size-4 shrink-0 text-muted-fg"
+                  aria-hidden="true"
+                />
+              </>
+            );
             return (
-              <div
-                key={action.label}
-                className="rounded-card border border-line bg-surface p-3"
-              >
+              <Card key={action.label} className="p-3">
                 {isShare ? (
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="md"
                     onClick={action.onClick}
-                    className="flex w-full items-center justify-between gap-3 text-left transition-colors hover:bg-surface-raised focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-outline"
+                    className="w-full justify-between gap-3 text-left"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-strong/10 text-brand-strong">
-                        {action.icon}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-body font-semibold text-fg">{action.label}</p>
-                        <p className="text-caption text-muted-fg">{action.hint}</p>
-                      </div>
-                    </div>
-                    <ChevronRight
-                      className="size-4 shrink-0 text-muted-fg"
-                      aria-hidden="true"
-                    />
-                  </button>
+                    {content}
+                  </Button>
                 ) : (
                   <Link
                     href={action.href}
-                    className="flex w-full items-center justify-between gap-3 text-left transition-colors hover:bg-surface-raised hover:border-line-strong focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-outline border-brand-strong/20 border"
+                    className={buttonClasses({
+                      variant: "ghost",
+                      size: "md",
+                      className: "w-full justify-between gap-3 text-left",
+                    })}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-strong/10 text-brand-strong">
-                        {action.icon}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-body font-semibold text-fg">{action.label}</p>
-                        <p className="text-caption text-muted-fg">{action.hint}</p>
-                      </div>
-                    </div>
-                    <ChevronRight
-                      className="size-4 shrink-0 text-muted-fg"
-                      aria-hidden="true"
-                    />
+                    {content}
                   </Link>
                 )}
-              </div>
+              </Card>
             );
           })}
         </div>
@@ -368,14 +373,9 @@ export function CreatorHome() {
                   {item.label}
                 </span>
               </div>
-              <span
-                className={cn(
-                  "text-caption font-semibold shrink-0",
-                  item.done ? "text-success" : "text-muted-fg",
-                )}
-              >
+              <Badge tone={item.done ? "success" : "neutral"} className="shrink-0">
                 {item.done ? t("creatorHome.checkDone") : t("creatorHome.checkTodo")}
-              </span>
+              </Badge>
             </div>
           ))}
         </Card>

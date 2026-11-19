@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Timestamp } from "firebase/firestore";
 import { Order, Product, getProductCurrency, getProductPrice } from "./types";
 import { downloadProduct } from "@/lib/downloadProduct";
-import { formatCurrency } from "@/types/currency";
+import { formatMoney as formatCurrency } from "@/lib/format/money";
 
 const statusSteps = ["pending", "paid", "processing", "shipped", "delivered"];
 const statusLabels: Record<string, string> = {
@@ -16,12 +16,12 @@ const statusLabels: Record<string, string> = {
   delivered: "Delivered",
 };
 const statusColors: Record<string, string> = {
-  pending: "bg-yellow-100 text-yellow-700",
-  paid: "bg-green-100 text-green-700",
-  processing: "bg-blue-100 text-blue-700",
-  shipped: "bg-orange-100 text-orange-700",
-  delivered: "bg-muted text-foreground",
-  cancelled: "bg-red-100 text-red-700",
+  pending: "bg-warning-bg text-warning",
+  paid: "bg-success-bg text-success",
+  processing: "bg-info-bg text-info",
+  shipped: "bg-brand-soft text-brand-strong",
+  delivered: "bg-surface-sunken text-fg",
+  cancelled: "bg-danger-bg text-danger",
 };
 
 export function OrderTrackingModal({
@@ -68,12 +68,12 @@ export function OrderTrackingModal({
 
   return (
     <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-      <div className="bg-card w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95 max-h-[90vh] flex flex-col">
-        <div className="p-6 border-b border-border flex justify-between items-center">
+      <div className="bg-surface w-full max-w-2xl rounded-card overflow-hidden shadow-2xl animate-in zoom-in-95 max-h-[90vh] flex flex-col">
+        <div className="p-6 border-b border-line flex justify-between items-center">
           <h2 className="text-xl font-bold">My Orders</h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-muted rounded-full transition"
+            className="p-2 hover:bg-surface-sunken rounded-full transition"
           >
             <X size={20} />
           </button>
@@ -83,8 +83,8 @@ export function OrderTrackingModal({
           {orders.length === 0 ? (
             <div className="text-center py-12">
               <Truck size={48} className="mx-auto text-border-strong mb-4" />
-              <p className="text-muted-foreground font-medium">No orders yet</p>
-              <p className="text-muted-foreground text-sm mt-2">
+              <p className="text-muted-fg font-medium">No orders yet</p>
+              <p className="text-muted-fg text-sm mt-2">
                 Your orders will appear here
               </p>
             </div>
@@ -114,13 +114,13 @@ export function OrderTrackingModal({
                 orderCurrencies.length === 1 ? orderCurrencies[0] : null;
 
               return (
-                <div key={order.id} className="bg-muted rounded-xl p-6">
+                <div key={order.id} className="bg-surface-sunken rounded-control p-6">
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-fg">
                         Order #{order.id.slice(0, 8)}
                       </p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-muted-fg">
                         {order.createdAt instanceof Timestamp
                           ? order.createdAt.toDate().toLocaleDateString()
                           : new Date(
@@ -130,7 +130,7 @@ export function OrderTrackingModal({
                       </p>
                     </div>
                     <span
-                      className={`text-xs font-bold px-3 py-1 rounded-full ${statusColors[order.status] || "bg-muted text-foreground"}`}
+                      className={`text-xs font-bold px-3 py-1 rounded-full ${statusColors[order.status] || "bg-surface-sunken text-fg"}`}
                     >
                       {(order.status || "unknown").toUpperCase()}
                     </span>
@@ -157,7 +157,7 @@ export function OrderTrackingModal({
                               onClick={() =>
                                 handleDownload(item.productId)
                               }
-                              className="text-green-600 hover:bg-green-50 p-1 rounded transition"
+                              className="text-success hover:bg-success-bg p-1 rounded transition"
                               title="Download"
                             >
                               <Download size={14} />
@@ -174,10 +174,10 @@ export function OrderTrackingModal({
                         {statusSteps.map((step, idx) => (
                           <div key={step} className="flex items-center">
                             <div
-                              className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                              className={`w-8 h-8 rounded-full flex items-center justify-center text-caption font-bold ${
                                 getStatusIndex(order.status) >= idx
-                                  ? "bg-orange-500 text-white"
-                                  : "bg-border-strong text-muted-foreground"
+                                  ? "bg-brand-strong text-on-brand"
+                                  : "bg-border-strong text-muted-fg"
                               }`}
                             >
                               {getStatusIndex(order.status) > idx ? (
@@ -190,7 +190,7 @@ export function OrderTrackingModal({
                               <div
                                 className={`w-8 h-0.5 ${
                                   getStatusIndex(order.status) > idx
-                                    ? "bg-orange-500"
+                                    ? "bg-brand-strong"
                                     : "bg-border-strong"
                                 }`}
                               />
@@ -198,7 +198,7 @@ export function OrderTrackingModal({
                           </div>
                         ))}
                       </div>
-                      <div className="flex justify-between text-[10px] text-muted-foreground">
+                      <div className="flex justify-between text-caption text-muted-fg">
                         {statusSteps.map((step) => (
                           <span key={step}>{statusLabels[step]}</span>
                         ))}
@@ -207,17 +207,17 @@ export function OrderTrackingModal({
                   )}
 
                   {order.trackingNumber && (
-                    <div className="bg-blue-50 rounded-lg p-3 text-sm">
-                      <span className="text-blue-800 font-medium">
+                    <div className="bg-info-bg rounded-control p-3 text-sm">
+                      <span className="text-info font-medium">
                         Tracking:{" "}
                       </span>
-                      <span className="text-blue-600">
+                      <span className="text-info">
                         {order.trackingNumber}
                       </span>
                     </div>
                   )}
 
-                  <div className="flex justify-between items-center mt-4 pt-4 border-t border-border-strong">
+                  <div className="flex justify-between items-center mt-4 pt-4 border-t border-line-strong">
                     <span className="font-bold">
                       Total:{" "}
                       {orderCurrency
@@ -227,7 +227,7 @@ export function OrderTrackingModal({
                     {order.status === "pending" && (
                       <Link
                         href={`/store/pay/${order.id}`}
-                        className="px-4 py-2 bg-green-500 text-white rounded-lg font-bold text-sm hover:bg-green-600 transition"
+                        className="px-4 py-2 bg-success text-on-success rounded-control font-bold text-sm hover:bg-success transition"
                       >
                         Pay Now
                       </Link>

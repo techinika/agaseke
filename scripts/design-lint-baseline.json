@@ -1,0 +1,16 @@
+{
+  "updated": "2026-11-17",
+  "roots": [
+    "components/ui",
+    "components/shell",
+    "config",
+    "app/dev/components"
+  ],
+  "byRule": {
+    "raw-palette": 0,
+    "raw-hex": 0,
+    "tiny-text": 0,
+    "arbitrary-radius": 0
+  },
+  "byFile": {}
+}

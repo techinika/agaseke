@@ -254,8 +254,8 @@ export function SupportModal({
 
   return (
     <div className={`fixed inset-0 z-[100] flex items-end sm:items-center justify-center ${isClosing ? "animate-out fade-out duration-200" : "animate-in fade-in duration-200"} bg-foreground/60 backdrop-blur-md`}>
-      <div className={`bg-card w-full max-w-lg rounded-t-2xl sm:rounded-lg shadow-2xl max-h-[90vh] overflow-y-auto ${isClosing ? "animate-out slide-out-to-bottom-full sm:zoom-out-95 duration-200" : "animate-in slide-in-from-bottom-full sm:zoom-in-95 duration-200"}`}>
-        <div className="sticky top-0 bg-card z-10 p-4 sm:p-6 pb-0 flex justify-between items-center">
+      <div className={`bg-surface w-full max-w-lg rounded-t-2xl sm:rounded-control shadow-2xl max-h-[90vh] overflow-y-auto ${isClosing ? "animate-out slide-out-to-bottom-full sm:zoom-out-95 duration-200" : "animate-in slide-in-from-bottom-full sm:zoom-in-95 duration-200"}`}>
+        <div className="sticky top-0 bg-surface z-10 p-4 sm:p-6 pb-0 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <h3 className="text-xl sm:text-2xl font-bold tracking-tight">
               Support {creatorName.split(" ")[0]}
@@ -264,7 +264,7 @@ export function SupportModal({
               <select
                 value={selectedCurrency}
                 onChange={(e) => setSelectedCurrency(e.target.value)}
-                className="text-xs font-bold bg-orange-100 text-orange-700 px-2 py-1 rounded-lg border border-orange-200 outline-none"
+                className="text-xs font-bold bg-brand-soft text-brand-strong px-2 py-1 rounded-control border border-brand-strong outline-none"
               >
                 {availableCurrencies.map((c) => (
                   <option key={c} value={c}>{c}</option>
@@ -272,7 +272,7 @@ export function SupportModal({
               </select>
             )}
           </div>
-          <button onClick={handleClose} className="p-2 sm:p-3 bg-muted rounded-full text-muted-foreground hover:text-foreground transition-colors">
+          <button onClick={handleClose} className="p-2 sm:p-3 bg-surface-sunken rounded-full text-muted-fg hover:text-fg transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -281,7 +281,7 @@ export function SupportModal({
           {step === "input" && (
             <div className="space-y-5 sm:space-y-8">
               <div className="text-center">
-                <p className="text-muted-foreground text-xs sm:text-sm font-medium mb-3 sm:mb-4">
+                <p className="text-muted-fg text-xs sm:text-sm font-medium mb-3 sm:mb-4">
                   How much would you like to support {creatorName.split(" ")[0]}?
                 </p>
                 <div className="relative">
@@ -291,20 +291,20 @@ export function SupportModal({
                     step="any"
                     min={minSupportAmount}
                     placeholder={String(minSupportAmount)}
-                    className="w-full text-center text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground outline-none placeholder:text-muted-foreground"
+                    className="w-full text-center text-4xl sm:text-5xl lg:text-6xl font-bold text-fg outline-none placeholder:text-muted-fg"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                   />
-                  <span className="block text-[10px] font-bold text-muted-foreground mt-2 uppercase tracking-[0.3em]">
+                  <span className="block text-caption font-bold text-muted-fg mt-2 uppercase tracking-[0.3em]">
                     {selectedCurrency ? `${selectedCurrency} (${getCurrencySymbol(selectedCurrency as any)})` : "Select currency"}
                   </span>
                 </div>
               </div>
 
               {loadingMethods ? (
-                <div className="flex justify-center py-4"><Loader className="w-5 h-5 animate-spin text-orange-600" /></div>
+                <div className="flex justify-center py-4"><Loader className="w-5 h-5 animate-spin text-brand-strong" /></div>
               ) : methods.length === 0 ? (
-                <div className="rounded-xl bg-muted p-4 text-center text-sm text-muted-foreground">
+                <div className="rounded-control bg-surface-sunken p-4 text-center text-sm text-muted-fg">
                   No payment methods available for {selectedCurrency}.
                 </div>
               ) : (
@@ -313,19 +313,19 @@ export function SupportModal({
                     {hasMomo && (
                       <button
                         onClick={() => setPaymentMethod("momo")}
-                        className={`flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-xl border-2 transition-all ${paymentMethod === "momo" ? "border-orange-500 bg-orange-50" : "border-border hover:border-border"}`}
+                        className={`flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-control border-2 transition-all ${paymentMethod === "momo" ? "border-brand-strong bg-brand-soft" : "border-line hover:border-line"}`}
                       >
-                        <Smartphone size={20} className={paymentMethod === "momo" ? "text-orange-600" : "text-muted-foreground"} />
-                        <span className={`text-[10px] font-bold uppercase tracking-widest ${paymentMethod === "momo" ? "text-orange-900" : "text-muted-foreground"}`}>MoMo</span>
+                        <Smartphone size={20} className={paymentMethod === "momo" ? "text-brand-strong" : "text-muted-fg"} />
+                        <span className={`text-caption font-bold uppercase tracking-widest ${paymentMethod === "momo" ? "text-brand-strong" : "text-muted-fg"}`}>MoMo</span>
                       </button>
                     )}
                     {hasCard && (
                       <button
                         onClick={() => setPaymentMethod("card")}
-                        className={`flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-xl border-2 transition-all ${paymentMethod === "card" ? "border-orange-500 bg-orange-50" : "border-border hover:border-border"}`}
+                        className={`flex flex-col items-center gap-1.5 sm:gap-2 p-3 sm:p-4 rounded-control border-2 transition-all ${paymentMethod === "card" ? "border-brand-strong bg-brand-soft" : "border-line hover:border-line"}`}
                       >
-                        <ShieldCheck size={20} className={paymentMethod === "card" ? "text-orange-600" : "text-muted-foreground"} />
-                        <span className={`text-[10px] font-bold uppercase tracking-widest ${paymentMethod === "card" ? "text-orange-900" : "text-muted-foreground"}`}>Card</span>
+                        <ShieldCheck size={20} className={paymentMethod === "card" ? "text-brand-strong" : "text-muted-fg"} />
+                        <span className={`text-caption font-bold uppercase tracking-widest ${paymentMethod === "card" ? "text-brand-strong" : "text-muted-fg"}`}>Card</span>
                       </button>
                     )}
                   </div>
@@ -333,13 +333,13 @@ export function SupportModal({
                   <div className="space-y-3 sm:space-y-4">
                     {paymentMethod === "momo" && (
                       <div>
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">MoMo Phone Number</label>
+                        <label className="text-caption font-bold uppercase tracking-widest text-muted-fg">MoMo Phone Number</label>
                         <div className="relative mt-1">
-                          <Smartphone className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                          <Smartphone className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-muted-fg" size={16} />
                           <input
                             type="tel"
                             placeholder="078 000 0000"
-                            className="w-full bg-muted border-2 border-border p-3 sm:p-4 pl-10 sm:pl-12 rounded-lg font-bold focus:border-orange-500 outline-none transition-all text-sm sm:text-base"
+                            className="w-full bg-surface-sunken border-2 border-line p-3 sm:p-4 pl-10 sm:pl-12 rounded-control font-bold focus:border-brand-strong outline-none transition-all text-sm sm:text-base"
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
                           />
@@ -347,26 +347,26 @@ export function SupportModal({
                       </div>
                     )}
                     <div>
-                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                        Heartfelt Message <Heart size={10} className="text-pink-500" />
+                      <label className="text-caption font-bold uppercase tracking-widest text-muted-fg flex items-center gap-2">
+                        Heartfelt Message <Heart size={16} className="text-brand-strong" />
                       </label>
                       <textarea
                         placeholder="Write a nice note to the creator..."
-                        className="w-full mt-1 bg-muted border-2 border-border p-3 sm:p-4 rounded-lg font-medium text-sm focus:border-orange-500 outline-none transition-all resize-none h-20 sm:h-24"
+                        className="w-full mt-1 bg-surface-sunken border-2 border-line p-3 sm:p-4 rounded-control font-medium text-sm focus:border-brand-strong outline-none transition-all resize-none h-20 sm:h-24"
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
                       />
                     </div>
                   </div>
 
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-caption text-muted-fg">
                     You pay {amountValid ? numericAmount : minSupportAmount} {selectedCurrency}. The creator receives the amount in {selectedCurrency} after platform fees.
                   </p>
 
                   <button
                     onClick={paymentMethod === "momo" ? handleSupport : handlePesapalSupport}
                     disabled={!selectedCurrency || !amountValid || !paymentMethod || (paymentMethod === "momo" && !phone) || isSubmitting || methods.length === 0}
-                    className="w-full bg-orange-600 text-white py-4 sm:py-6 rounded-lg font-bold text-base sm:text-xl shadow-xl shadow-orange-100 hover:bg-orange-700 transition-all flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
+                    className="w-full bg-brand-strong text-on-brand py-4 sm:py-6 rounded-control font-bold text-base sm:text-xl shadow-xl shadow-brand-strong hover:bg-brand-strong transition-all flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
                   >
                     {isSubmitting ? <Loader className="w-5 h-5 sm:w-6 sm:h-6 rounded-full animate-spin" /> : (
                       paymentMethod === "momo" ? "Support with MoMo" : "Support with Card"
@@ -380,11 +380,11 @@ export function SupportModal({
           {step === "processing" && (
             <div className="py-8 sm:py-12 text-center space-y-4 sm:space-y-6">
               <div className="relative mx-auto w-16 h-16 sm:w-20 sm:h-20">
-                <div className="absolute inset-0 border-4 border-border rounded-full" />
+                <div className="absolute inset-0 border-4 border-line rounded-full" />
                 <div className="absolute inset-0 border-4 border-t-orange-600 rounded-full animate-spin" />
               </div>
               <h4 className="text-lg sm:text-xl font-bold">Verifying Payment...</h4>
-              <p className="text-muted-foreground font-medium leading-relaxed text-sm sm:text-base">
+              <p className="text-muted-fg font-medium leading-relaxed text-sm sm:text-base">
                 {paymentMethod === "momo" ? (
                   <>We sent a MoMo prompt to <b>{phone}</b>.<br />Enter your PIN on your phone to finish.</>
                 ) : (
@@ -396,14 +396,14 @@ export function SupportModal({
 
           {step === "success" && (
             <div className="py-8 sm:py-12 text-center space-y-4 sm:space-y-6 animate-in fade-in zoom-in">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 bg-success-bg text-success rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
                 <ShieldCheck size={40} />
               </div>
-              <h4 className="text-2xl sm:text-3xl font-bold text-foreground">Payment Verified!</h4>
-              <p className="text-muted-foreground font-medium leading-relaxed text-sm sm:text-base">
+              <h4 className="text-2xl sm:text-3xl font-bold text-fg">Payment Verified!</h4>
+              <p className="text-muted-fg font-medium leading-relaxed text-sm sm:text-base">
                 Your support of <b>{amount} {selectedCurrency}</b> was delivered.
               </p>
-              <button onClick={handleClose} className="w-full bg-foreground text-background py-3 sm:py-4 rounded-lg font-bold text-sm sm:text-base hover:bg-orange-600 transition-colors">
+              <button onClick={handleClose} className="w-full bg-foreground text-background py-3 sm:py-4 rounded-control font-bold text-sm sm:text-base hover:bg-brand-strong transition-colors">
                 Back to Profile
               </button>
             </div>
@@ -411,17 +411,17 @@ export function SupportModal({
 
           {step === "error" && (
             <div className="py-8 sm:py-12 text-center space-y-4 sm:space-y-6 animate-in fade-in zoom-in">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-danger-bg text-danger rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
                 <X size={32} />
               </div>
-              <h4 className="text-xl sm:text-2xl font-bold text-foreground">Payment Failed</h4>
-              <p className="text-muted-foreground font-medium text-sm sm:text-base">{errorMessage}</p>
+              <h4 className="text-xl sm:text-2xl font-bold text-fg">Payment Failed</h4>
+              <p className="text-muted-fg font-medium text-sm sm:text-base">{errorMessage}</p>
               {popupBlocked && (
-                <Link href={redirectUrl} target="_blank" className="w-full bg-orange-600 text-center text-white py-3 sm:py-4 rounded-lg font-bold text-sm sm:text-base block">
+                <Link href={redirectUrl} target="_blank" className="w-full bg-brand-strong text-center text-on-brand py-3 sm:py-4 rounded-control font-bold text-sm sm:text-base block">
                   Open Payment Window
                 </Link>
               )}
-              <button onClick={() => setStep("input")} className="w-full bg-muted text-foreground py-3 sm:py-4 rounded-lg font-bold text-sm sm:text-base hover:bg-muted transition-colors">
+              <button onClick={() => setStep("input")} className="w-full bg-surface-sunken text-fg py-3 sm:py-4 rounded-control font-bold text-sm sm:text-base hover:bg-surface-sunken transition-colors">
                 Try Again
               </button>
             </div>

@@ -319,7 +319,7 @@ export default function AdminUsersPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
-      <main className="max-w-7xl mx-auto px-6 mt-12">
+      <div className="max-w-7xl mx-auto px-6 mt-12">
         <header className="mb-8 flex items-start justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground uppercase">
@@ -613,7 +613,7 @@ export default function AdminUsersPage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
 
       {/* Verify User Modal */}
       {verifyingUser && (

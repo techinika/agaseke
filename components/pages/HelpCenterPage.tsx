@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-"use client";
-
 import {
   Mail,
   Instagram,
@@ -10,194 +7,195 @@ import {
   ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
+import { buttonClasses } from "@/components/ui/Button";
 
 const faqs = [
   {
-    category: "For Supporters",
+    category: "For supporters",
     questions: [
       {
         q: "How do I support a creator?",
-        a: "Simply visit a creator's profile, click 'Gift', and enter the amount you wish to contribute. You will be prompted to complete the transaction via MoMo.",
+        a: "Visit a creator's profile, choose Support, and enter the amount you want to contribute. You finish the payment through Mobile Money or card.",
       },
       {
         q: "Is my payment secure?",
-        a: "Yes. We use standard payment gateways (PayPack, Pesapal) and do not store your private financial PINs. Transactions are processed directly through your service provider.",
+        a: "Yes. Payments go through standard gateways (PayPack, Pesapal). Agaseke does not store your private financial PINs.",
       },
       {
         q: "Can I get a refund?",
-        a: "As stated in our terms, support contributions are voluntary and non-refundable as they are sent directly to the creator.",
+        a: "Support contributions are voluntary and non-refundable because they go directly to the creator.",
       },
     ],
   },
   {
-    category: "For Creators",
+    category: "For creators",
     questions: [
       {
         q: "How do I get paid?",
-        a: "Payouts are processed monthly between the 25th and 30th. You must have a minimum balance of 10,000 RWF and a verified account.",
+        a: "Payouts are processed monthly between the 25th and 30th. You need a minimum balance of 10,000 RWF and a verified account.",
       },
       {
-        q: "What is 'Verification'?",
-        a: "Verification is the process of confirming your identity using your National ID (Indangamuntu) to ensure safe and legal fund transfers.",
+        q: "What is verification?",
+        a: "Verification confirms your identity using your National ID so funds can move safely and legally.",
       },
       {
-        q: "How do I create a Gathering?",
-        a: "Go to your dashboard, click 'New Gathering', add your event details, and it will automatically appear on your public profile for supporters to RSVP.",
+        q: "How do I create a gathering?",
+        a: "Open your dashboard, choose New Gathering, add the event details, and it appears on your public profile for supporters to RSVP.",
       },
     ],
   },
 ];
 
+const CONTACTS = [
+  {
+    icon: Mail,
+    title: "Email support",
+    detail: "Response within 24 hours",
+    href: "mailto:hello@agaseke.me",
+    label: "hello@agaseke.me",
+    tone: "bg-info-bg text-info",
+  },
+  {
+    icon: Instagram,
+    title: "Instagram DM",
+    detail: "Quick community help",
+    href: "https://instagram.com/agaseke_support",
+    label: "@agaseke_support",
+    tone: "bg-brand-soft text-brand-strong",
+  },
+  {
+    icon: Twitter,
+    title: "X (Twitter)",
+    detail: "Real-time updates",
+    href: "https://x.com/agaseke_support",
+    label: "@agaseke_support",
+    tone: "bg-surface-raised text-fg",
+  },
+  {
+    icon: MessageCircle,
+    title: "WhatsApp channel",
+    detail: "Updates and creator highlights",
+    href: "https://whatsapp.com/channel/0029Vb9AemqFy72CiwMyQf06",
+    label: "Join the channel",
+    tone: "bg-success-bg text-success",
+  },
+];
+
 export default function HelpCenter() {
   const allQuestions = faqs.flatMap((section) => section.questions);
-
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: allQuestions.map((item: any) => ({
+    mainEntity: allQuestions.map((item) => ({
       "@type": "Question",
       name: item.q,
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: item.a,
-      },
+      acceptedAnswer: { "@type": "Answer", text: item.a },
     })),
   };
 
   return (
-    <div className="min-h-screen bg-muted text-foreground pb-20">
+    <div className="bg-canvas pb-20 text-fg">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <div className="bg-orange-600 pt-20 pb-32 px-6">
-        <div className="max-w-3xl mx-auto text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
+      <section className="border-b border-line bg-surface-sunken px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+        <div className="mx-auto max-w-3xl text-center">
+          <Badge tone="brand" className="mb-4 px-3 py-1">
+            <HelpCircle className="size-3.5" aria-hidden="true" />
+            Help center
+          </Badge>
+          <h1 className="text-display font-black text-fg sm:text-hero">
             How can we help?
           </h1>
+          <p className="mx-auto mt-4 max-w-xl text-body-lg text-muted-fg">
+            Find quick answers, reach the team, or join the community.
+          </p>
         </div>
-      </div>
+      </section>
 
-      <main className="max-w-5xl mx-auto px-6 -mt-16">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-          <div className="bg-card p-8 rounded-lg shadow-sm border border-border flex flex-col items-center text-center">
-            <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-4">
-              <Mail size={24} />
-            </div>
-            <h3 className="font-bold mb-2">Email Support</h3>
-            <p className="text-sm text-muted-foreground mb-4">Response within 24 hours</p>
-            <Link
-              href="mailto:hello@agaseke.me"
-              target="_blank"
-              className="inline-flex min-h-11 items-center text-orange-600 font-bold hover:underline text-sm"
-            >
-              hello@agaseke.me
-            </Link>
-          </div>
-
-          <div className="bg-card p-8 rounded-lg shadow-sm border border-border flex flex-col items-center text-center">
-            <div className="w-12 h-12 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center mb-4">
-              <Instagram size={24} />
-            </div>
-            <h3 className="font-bold mb-2">Instagram DM</h3>
-            <p className="text-sm text-muted-foreground mb-4">Quick community help</p>
-            <Link
-              href="https://instagram.com/agaseke_support"
-              target="_blank"
-              className="inline-flex min-h-11 items-center text-orange-600 font-bold hover:underline text-sm"
-            >
-              @agaseke_support
-            </Link>
-          </div>
-
-          <div className="bg-card p-8 rounded-lg shadow-sm border border-border flex flex-col items-center text-center">
-            <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4">
-              <Twitter size={24} />
-            </div>
-            <h3 className="font-bold mb-2">X (Twitter)</h3>
-            <p className="text-sm text-muted-foreground mb-4">Real-time updates</p>
-            <Link
-              href="https://x.com/agaseke_support"
-              target="_blank"
-              className="inline-flex min-h-11 items-center text-orange-600 font-bold hover:underline text-sm"
-            >
-              @agaseke_support
-            </Link>
-          </div>
-
-          <div className="bg-card p-8 rounded-lg shadow-sm border border-emerald-200 flex flex-col items-center text-center">
-            <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4">
-              <MessageCircle size={24} />
-            </div>
-            <h3 className="font-bold mb-2">WhatsApp Channel</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              New updates, features & creator highlights
-            </p>
-            <Link
-              href="https://whatsapp.com/channel/0029Vb9AemqFy72CiwMyQf06"
-              target="_blank"
-              className="inline-flex min-h-11 items-center text-emerald-600 font-bold hover:underline text-sm"
-            >
-              Join the channel
-            </Link>
-          </div>
+      <main className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8">
+        <div className="-mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {CONTACTS.map(({ icon: Icon, title, detail, href, label, tone }) => (
+            <Card key={title} className="flex flex-col items-center p-6 text-center">
+              <span
+                className={`flex size-11 items-center justify-center rounded-control ${tone}`}
+              >
+                <Icon className="size-5" aria-hidden="true" />
+              </span>
+              <h2 className="mt-4 text-body font-bold text-fg">{title}</h2>
+              <p className="mt-1 text-caption text-muted-fg">{detail}</p>
+              <Link
+                href={href}
+                target={href.startsWith("http") ? "_blank" : undefined}
+                rel={href.startsWith("http") ? "noreferrer" : undefined}
+                className="mt-3 inline-flex min-h-11 items-center text-label font-semibold text-brand-strong hover:underline"
+              >
+                {label}
+              </Link>
+            </Card>
+          ))}
         </div>
 
-        <div className="mb-16 bg-emerald-50 border border-emerald-100 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
-          <div className="flex items-center gap-5">
-            <div className="w-14 h-14 bg-emerald-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-200 shrink-0">
-              <MessageCircle size={32} />
-            </div>
+        <Card className="mt-6 flex flex-col items-center justify-between gap-5 border-success/20 bg-success-bg p-6 sm:flex-row">
+          <div className="flex items-center gap-4">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-control bg-surface text-success">
+              <MessageCircle className="size-6" aria-hidden="true" />
+            </span>
             <div>
-              <h3 className="text-xl font-bold text-emerald-900">Join our Community</h3>
-              <p className="text-emerald-700 font-medium text-sm">
-                Get community support and quick assistance via WhatsApp.
+              <h2 className="text-body-lg font-bold text-fg">Join the community</h2>
+              <p className="text-label text-muted-fg">
+                Get quick support and meet other creators and supporters.
               </p>
             </div>
           </div>
-          <Link
+          <a
             href="https://chat.whatsapp.com/DSLKCybSApGKrEmn0HvlLx"
             target="_blank"
-            rel="noopener noreferrer"
-            className="w-full md:w-auto bg-emerald-600 text-white px-8 py-4 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-emerald-700 transition-all text-center shadow-lg shadow-emerald-100"
+            rel="noreferrer"
+            className={buttonClasses({ variant: "primary", size: "md" })}
           >
             Join on WhatsApp
-          </Link>
-        </div>
+          </a>
+        </Card>
 
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-3xl font-bold mb-10 flex items-center gap-3">
-            <HelpCircle className="text-orange-600" size={32} /> Frequently Asked
-            Questions
-          </h2>
+        <div className="mx-auto mt-16 max-w-3xl">
+          <div className="flex items-center gap-3">
+            <HelpCircle className="size-6 text-brand-strong" aria-hidden="true" />
+            <h2 className="text-heading font-black text-fg">
+              Frequently asked questions
+            </h2>
+          </div>
 
-          <div className="space-y-12">
+          <div className="mt-8 space-y-10">
             {faqs.map((section) => (
-              <div key={section.category}>
-                <h3 className="text-sm uppercase tracking-widest font-bold text-muted-foreground mb-6">
+              <section key={section.category}>
+                <h3 className="text-caption font-bold uppercase tracking-wide text-muted-fg">
                   {section.category}
                 </h3>
-                <div className="space-y-4">
-                  {section.questions.map((item, i) => (
+                <div className="mt-3 space-y-3">
+                  {section.questions.map((item) => (
                     <details
-                      key={i}
-                      className="group bg-card rounded-lg border border-border-strong overflow-hidden"
+                      key={item.q}
+                      className="group overflow-hidden rounded-card border border-line bg-surface"
                     >
-                      <summary className="flex items-center justify-between p-6 cursor-pointer list-none font-bold text-foreground">
+                      <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-5 py-3 text-body font-semibold text-fg">
                         {item.q}
                         <ChevronRight
-                          className="group-open:rotate-90 transition-transform text-muted-foreground"
-                          size={20}
+                          className="size-5 shrink-0 text-muted-fg transition-transform group-open:rotate-90"
+                          aria-hidden="true"
                         />
                       </summary>
-                      <div className="px-6 pb-6 text-muted-foreground leading-relaxed">
+                      <div className="px-5 pb-5 text-label leading-relaxed text-muted-fg">
                         {item.a}
                       </div>
                     </details>
                   ))}
                 </div>
-              </div>
+              </section>
             ))}
           </div>
         </div>

@@ -363,7 +363,7 @@ export default function StorePage() {
         </nav>
       </aside>
 
-      <main className="flex-1 p-8">
+      <div className="flex-1 p-8">
         <div className="flex justify-between items-center mb-8">
           <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
             {activeTab === "products" && "Products"}
@@ -452,7 +452,7 @@ export default function StorePage() {
             onDelete={handleDeleteFolder}
           />
         )}
-      </main>
+      </div>
 
       {editingProduct && (
         <ProductModal

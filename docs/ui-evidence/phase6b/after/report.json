@@ -1,0 +1,453 @@
+{
+  "baseUrl": "http://127.0.0.1:3100",
+  "generatedAt": "2026-11-19T09:07:47.417Z",
+  "screenshots": [
+    {
+      "name": "01-community",
+      "route": "/dev/creator-community?surface=community",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase6b/after/01-community-mobile-360-light.png"
+    },
+    {
+      "name": "02-chat",
+      "route": "/dev/creator-community?surface=chat",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase6b/after/02-chat-mobile-360-light.png"
+    },
+    {
+      "name": "03-messages",
+      "route": "/dev/creator-community?surface=messages",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase6b/after/03-messages-mobile-360-light.png"
+    },
+    {
+      "name": "04-notices",
+      "route": "/dev/creator-community?surface=notices",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase6b/after/04-notices-mobile-360-light.png"
+    },
+    {
+      "name": "05-notice-dialog",
+      "route": "/dev/creator-community?surface=notices&dialog=notice",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase6b/after/05-notice-dialog-mobile-360-light.png"
+    },
+    {
+      "name": "01-community",
+      "route": "/dev/creator-community?surface=community",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase6b/after/01-community-mobile-360-dark.png"
+    },
+    {
+      "name": "02-chat",
+      "route": "/dev/creator-community?surface=chat",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase6b/after/02-chat-mobile-360-dark.png"
+    },
+    {
+      "name": "03-messages",
+      "route": "/dev/creator-community?surface=messages",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase6b/after/03-messages-mobile-360-dark.png"
+    },
+    {
+      "name": "04-notices",
+      "route": "/dev/creator-community?surface=notices",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase6b/after/04-notices-mobile-360-dark.png"
+    },
+    {
+      "name": "05-notice-dialog",
+      "route": "/dev/creator-community?surface=notices&dialog=notice",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase6b/after/05-notice-dialog-mobile-360-dark.png"
+    },
+    {
+      "name": "01-community",
+      "route": "/dev/creator-community?surface=community",
+      "mode": "desktop-1280-light",
+      "file": "docs/ui-evidence/phase6b/after/01-community-desktop-1280-light.png"
+    },
+    {
+      "name": "02-chat",
+      "route": "/dev/creator-community?surface=chat",
+      "mode": "desktop-1280-light",
+      "file": "docs/ui-evidence/phase6b/after/02-chat-desktop-1280-light.png"
+    },
+    {
+      "name": "03-messages",
+      "route": "/dev/creator-community?surface=messages",
+      "mode": "desktop-1280-light",
+      "file": "docs/ui-evidence/phase6b/after/03-messages-desktop-1280-light.png"
+    },
+    {
+      "name": "04-notices",
+      "route": "/dev/creator-community?surface=notices",
+      "mode": "desktop-1280-light",
+      "file": "docs/ui-evidence/phase6b/after/04-notices-desktop-1280-light.png"
+    },
+    {
+      "name": "05-notice-dialog",
+      "route": "/dev/creator-community?surface=notices&dialog=notice",
+      "mode": "desktop-1280-light",
+      "file": "docs/ui-evidence/phase6b/after/05-notice-dialog-desktop-1280-light.png"
+    },
+    {
+      "name": "01-community",
+      "route": "/dev/creator-community?surface=community",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase6b/after/01-community-desktop-1280-dark.png"
+    },
+    {
+      "name": "02-chat",
+      "route": "/dev/creator-community?surface=chat",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase6b/after/02-chat-desktop-1280-dark.png"
+    },
+    {
+      "name": "03-messages",
+      "route": "/dev/creator-community?surface=messages",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase6b/after/03-messages-desktop-1280-dark.png"
+    },
+    {
+      "name": "04-notices",
+      "route": "/dev/creator-community?surface=notices",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase6b/after/04-notices-desktop-1280-dark.png"
+    },
+    {
+      "name": "05-notice-dialog",
+      "route": "/dev/creator-community?surface=notices&dialog=notice",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase6b/after/05-notice-dialog-desktop-1280-dark.png"
+    }
+  ],
+  "axe": [
+    {
+      "name": "01-community",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "02-chat",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "03-messages",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "04-notices",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "05-notice-dialog",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "01-community",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "02-chat",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "03-messages",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "04-notices",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "05-notice-dialog",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "01-community",
+      "mode": "desktop-1280-light",
+      "violations": []
+    },
+    {
+      "name": "02-chat",
+      "mode": "desktop-1280-light",
+      "violations": []
+    },
+    {
+      "name": "03-messages",
+      "mode": "desktop-1280-light",
+      "violations": []
+    },
+    {
+      "name": "04-notices",
+      "mode": "desktop-1280-light",
+      "violations": []
+    },
+    {
+      "name": "05-notice-dialog",
+      "mode": "desktop-1280-light",
+      "violations": []
+    },
+    {
+      "name": "01-community",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "02-chat",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "03-messages",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "04-notices",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "05-notice-dialog",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    }
+  ],
+  "overflow": [
+    {
+      "name": "01-community",
+      "mode": "mobile-360-light",
+      "overflow": 0
+    },
+    {
+      "name": "02-chat",
+      "mode": "mobile-360-light",
+      "overflow": 0
+    },
+    {
+      "name": "03-messages",
+      "mode": "mobile-360-light",
+      "overflow": 0
+    },
+    {
+      "name": "04-notices",
+      "mode": "mobile-360-light",
+      "overflow": 0
+    },
+    {
+      "name": "05-notice-dialog",
+      "mode": "mobile-360-light",
+      "overflow": 0
+    },
+    {
+      "name": "01-community",
+      "mode": "mobile-360-dark",
+      "overflow": 0
+    },
+    {
+      "name": "02-chat",
+      "mode": "mobile-360-dark",
+      "overflow": 0
+    },
+    {
+      "name": "03-messages",
+      "mode": "mobile-360-dark",
+      "overflow": 0
+    },
+    {
+      "name": "04-notices",
+      "mode": "mobile-360-dark",
+      "overflow": 0
+    },
+    {
+      "name": "05-notice-dialog",
+      "mode": "mobile-360-dark",
+      "overflow": 0
+    },
+    {
+      "name": "01-community",
+      "mode": "desktop-1280-light",
+      "overflow": 0
+    },
+    {
+      "name": "02-chat",
+      "mode": "desktop-1280-light",
+      "overflow": 0
+    },
+    {
+      "name": "03-messages",
+      "mode": "desktop-1280-light",
+      "overflow": 0
+    },
+    {
+      "name": "04-notices",
+      "mode": "desktop-1280-light",
+      "overflow": 0
+    },
+    {
+      "name": "05-notice-dialog",
+      "mode": "desktop-1280-light",
+      "overflow": 0
+    },
+    {
+      "name": "01-community",
+      "mode": "desktop-1280-dark",
+      "overflow": 0
+    },
+    {
+      "name": "02-chat",
+      "mode": "desktop-1280-dark",
+      "overflow": 0
+    },
+    {
+      "name": "03-messages",
+      "mode": "desktop-1280-dark",
+      "overflow": 0
+    },
+    {
+      "name": "04-notices",
+      "mode": "desktop-1280-dark",
+      "overflow": 0
+    },
+    {
+      "name": "05-notice-dialog",
+      "mode": "desktop-1280-dark",
+      "overflow": 0
+    }
+  ],
+  "smallTargets": [
+    {
+      "name": "01-community",
+      "mode": "mobile-360-light",
+      "targets": []
+    },
+    {
+      "name": "02-chat",
+      "mode": "mobile-360-light",
+      "targets": []
+    },
+    {
+      "name": "03-messages",
+      "mode": "mobile-360-light",
+      "targets": []
+    },
+    {
+      "name": "04-notices",
+      "mode": "mobile-360-light",
+      "targets": []
+    },
+    {
+      "name": "05-notice-dialog",
+      "mode": "mobile-360-light",
+      "targets": []
+    },
+    {
+      "name": "01-community",
+      "mode": "mobile-360-dark",
+      "targets": []
+    },
+    {
+      "name": "02-chat",
+      "mode": "mobile-360-dark",
+      "targets": []
+    },
+    {
+      "name": "03-messages",
+      "mode": "mobile-360-dark",
+      "targets": []
+    },
+    {
+      "name": "04-notices",
+      "mode": "mobile-360-dark",
+      "targets": []
+    },
+    {
+      "name": "05-notice-dialog",
+      "mode": "mobile-360-dark",
+      "targets": []
+    },
+    {
+      "name": "01-community",
+      "mode": "desktop-1280-light",
+      "targets": []
+    },
+    {
+      "name": "02-chat",
+      "mode": "desktop-1280-light",
+      "targets": []
+    },
+    {
+      "name": "03-messages",
+      "mode": "desktop-1280-light",
+      "targets": []
+    },
+    {
+      "name": "04-notices",
+      "mode": "desktop-1280-light",
+      "targets": []
+    },
+    {
+      "name": "05-notice-dialog",
+      "mode": "desktop-1280-light",
+      "targets": []
+    },
+    {
+      "name": "01-community",
+      "mode": "desktop-1280-dark",
+      "targets": []
+    },
+    {
+      "name": "02-chat",
+      "mode": "desktop-1280-dark",
+      "targets": []
+    },
+    {
+      "name": "03-messages",
+      "mode": "desktop-1280-dark",
+      "targets": []
+    },
+    {
+      "name": "04-notices",
+      "mode": "desktop-1280-dark",
+      "targets": []
+    },
+    {
+      "name": "05-notice-dialog",
+      "mode": "desktop-1280-dark",
+      "targets": []
+    }
+  ],
+  "console": [
+    {
+      "mode": "mobile-360-light",
+      "errors": []
+    },
+    {
+      "mode": "mobile-360-dark",
+      "errors": []
+    },
+    {
+      "mode": "desktop-1280-light",
+      "errors": []
+    },
+    {
+      "mode": "desktop-1280-dark",
+      "errors": []
+    }
+  ],
+  "notes": [
+    "Creator community surfaces are captured through a gated /dev preview with mock data; no real Firebase data or secrets are used."
+  ]
+}

@@ -33,32 +33,32 @@ export const ShareModal = ({
   };
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-foreground/40 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-card w-full max-w-sm rounded-2xl shadow-2xl p-6 border border-border animate-in zoom-in-95 duration-300">
+      <div className="bg-surface w-full max-w-sm rounded-card shadow-2xl p-6 border border-line animate-in zoom-in-95 duration-300">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="font-bold text-lg text-foreground">Share Profile</h3>
+          <h3 className="font-bold text-lg text-fg">Share Profile</h3>
           <button
             onClick={() => setIsShareModalOpen(false)}
-            className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+            className="p-1 text-muted-fg hover:text-fg transition-colors"
           >
             <X size={20} />
           </button>
         </div>
 
-        <p className="text-sm text-muted-foreground mb-4">
+        <p className="text-sm text-muted-fg mb-4">
           Copy this link to share {name.split(" ")[0]}&apos;s Agaseke with your
           community.
         </p>
 
-        <div className="flex items-center gap-2 bg-muted border border-border p-2 rounded-xl">
-          <div className="flex-1 px-2 text-sm font-medium text-muted-foreground truncate">
+        <div className="flex items-center gap-2 bg-surface-sunken border border-line p-2 rounded-control">
+          <div className="flex-1 px-2 text-sm font-medium text-muted-fg truncate">
             {profileUrl}
           </div>
           <button
             onClick={copyToClipboard}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-widest transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-control font-bold text-xs uppercase tracking-widest transition-all ${
               copySuccess
-                ? "bg-green-500 text-white"
-                : "bg-foreground text-background hover:bg-orange-600"
+                ? "bg-success text-on-success"
+                : "bg-foreground text-background hover:bg-brand-strong"
             }`}
           >
             {copySuccess ? (
@@ -75,7 +75,7 @@ export const ShareModal = ({
 
         <button
           onClick={() => setIsShareModalOpen(false)}
-          className="w-full mt-6 text-muted-foreground text-xs font-bold uppercase tracking-widest hover:text-foreground transition-colors"
+          className="w-full mt-6 text-muted-fg text-xs font-bold uppercase tracking-widest hover:text-fg transition-colors"
         >
           Close
         </button>

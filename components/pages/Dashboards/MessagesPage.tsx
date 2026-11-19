@@ -1,17 +1,13 @@
- 
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/auth/AuthContext";
 import { useSearchParams } from "next/navigation";
 import {
-  Search,
   Send,
   MessageSquare,
   MoreVertical,
-  Loader,
   ArrowLeft,
-  Phone,
   Ban,
   CheckCircle,
 } from "lucide-react";
@@ -38,6 +34,14 @@ import {
   decryptChatMessage,
   decryptChatroomLastMessage,
 } from "@/lib/generalWorkerService";
+import { Avatar } from "@/components/ui/Avatar";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { IconButton } from "@/components/ui/IconButton";
+import { Input } from "@/components/ui/Input";
+import { SearchInput } from "@/components/ui/SearchInput";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 interface Chatroom {
   id: string;
@@ -76,7 +80,7 @@ export default function MessagesPage() {
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [decryptedRooms, setDecryptedRooms] = useState<Set<string>>(new Set());
+  const [, setDecryptedRooms] = useState<Set<string>>(new Set());
   const [decryptingIds, setDecryptingIds] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesTopRef = useRef<HTMLDivElement>(null);
@@ -92,7 +96,9 @@ export default function MessagesPage() {
         decryptedCache.current.set(id, plaintext);
         return plaintext;
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return "";
   };
 
@@ -113,7 +119,7 @@ export default function MessagesPage() {
     const q = query(
       chatroomsRef,
       where("creatorId", "==", creator.uid),
-      orderBy("updatedAt", "desc")
+      orderBy("updatedAt", "desc"),
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -132,7 +138,10 @@ export default function MessagesPage() {
   useEffect(() => {
     if (chatrooms.length === 0) return;
     const todo = chatrooms.filter(
-      (c) => c.lastMessage && c.lastMessage.includes(":") && !decryptedCache.current.has(`room_${c.id}`)
+      (c) =>
+        c.lastMessage &&
+        c.lastMessage.includes(":") &&
+        !decryptedCache.current.has(`room_${c.id}`),
     );
     if (todo.length === 0) return;
     Promise.all(
@@ -141,8 +150,10 @@ export default function MessagesPage() {
         try {
           const plaintext = await decryptChatroomLastMessage(chat.id);
           if (plaintext) decryptedCache.current.set(key, plaintext);
-        } catch { /* ignore */ }
-      })
+        } catch {
+          /* ignore */
+        }
+      }),
     ).then(() => {
       setDecryptedRooms(new Set(todo.map((c) => c.id)));
     });
@@ -162,10 +173,15 @@ export default function MessagesPage() {
     oldestCursorRef.current = null;
 
     const messagesRef = collection(db, "chatrooms", selectedChatId, "messages");
-    const recentQuery = query(messagesRef, orderBy("createdAt", "desc"), orderBy("__name__", "desc"), limit(10));
+    const recentQuery = query(
+      messagesRef,
+      orderBy("createdAt", "desc"),
+      orderBy("__name__", "desc"),
+      limit(10),
+    );
 
     const unsubscribe = onSnapshot(recentQuery, (snapshot) => {
-      const raw = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Message));
+      const raw = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Message);
 
       const displayMsgs = raw.map((m) => {
         const cached = decryptedCache.current.get(m.id);
@@ -176,7 +192,7 @@ export default function MessagesPage() {
       setMessages(displayMsgs);
 
       const uncached = raw.filter(
-        (m) => m.content?.includes(":") && !decryptedCache.current.has(m.id)
+        (m) => m.content?.includes(":") && !decryptedCache.current.has(m.id),
       );
 
       if (uncached.length > 0) {
@@ -186,7 +202,7 @@ export default function MessagesPage() {
           uncached.map(async (msg) => {
             const plaintext = await decryptMessage(selectedChatId, msg.id);
             return { id: msg.id, content: plaintext };
-          })
+          }),
         ).then((results) => {
           setDecryptingIds(new Set());
           setMessages((prev) => {
@@ -197,9 +213,15 @@ export default function MessagesPage() {
               }
             }
             const all = Array.from(map.values());
-            all.sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
+            all.sort(
+              (a, b) =>
+                (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0),
+            );
             if (all.length > 0) {
-              oldestCursorRef.current = { createdAt: all[0].createdAt as Timestamp, id: all[0].id };
+              oldestCursorRef.current = {
+                createdAt: all[0].createdAt as Timestamp,
+                id: all[0].id,
+              };
               setHasMoreMessages(true);
             }
             return all;
@@ -210,10 +232,13 @@ export default function MessagesPage() {
       } else {
         setMessagesLoading(false);
         if (raw.length > 0) {
-          const sorted = [...raw].sort((a, b) =>
-            (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0)
+          const sorted = [...raw].sort(
+            (a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0),
           );
-          oldestCursorRef.current = { createdAt: sorted[0].createdAt as Timestamp, id: sorted[0].id };
+          oldestCursorRef.current = {
+            createdAt: sorted[0].createdAt as Timestamp,
+            id: sorted[0].id,
+          };
           setHasMoreMessages(true);
         }
         scrollToBottom();
@@ -227,17 +252,14 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!selectedChatId || messages.length === 0) return;
 
-    const unreadMsgs = messages.filter(
-      (m) => m.senderType === "supporter" && !m.read
-    );
+    const unreadMsgs = messages.filter((m) => m.senderType === "supporter" && !m.read);
     if (unreadMsgs.length === 0) return;
 
     const batch = writeBatch(db);
     for (const msg of unreadMsgs) {
-      batch.update(
-        doc(db, "chatrooms", selectedChatId, "messages", msg.id),
-        { read: true }
-      );
+      batch.update(doc(db, "chatrooms", selectedChatId, "messages", msg.id), {
+        read: true,
+      });
     }
     batch.update(doc(db, "chatrooms", selectedChatId), { unreadCount: 0 });
     batch.commit();
@@ -253,10 +275,10 @@ export default function MessagesPage() {
         orderBy("createdAt", "desc"),
         orderBy("__name__", "desc"),
         limit(10),
-        startAfter(oldestCursorRef.current.createdAt, oldestCursorRef.current.id)
+        startAfter(oldestCursorRef.current.createdAt, oldestCursorRef.current.id),
       );
       const snapshot = await getDocs(q);
-      const rawOlder = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Message));
+      const rawOlder = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Message);
 
       const displayOlder = rawOlder.map((m) => {
         const cached = decryptedCache.current.get(m.id);
@@ -268,16 +290,21 @@ export default function MessagesPage() {
         const map = new Map(prev.map((m) => [m.id, m]));
         for (const m of displayOlder) map.set(m.id, m);
         const all = Array.from(map.values());
-        all.sort((a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0));
+        all.sort(
+          (a, b) => (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0),
+        );
         if (all.length > 0) {
-          oldestCursorRef.current = { createdAt: all[0].createdAt as Timestamp, id: all[0].id };
+          oldestCursorRef.current = {
+            createdAt: all[0].createdAt as Timestamp,
+            id: all[0].id,
+          };
         }
         setHasMoreMessages(rawOlder.length === 10);
         return all;
       });
 
       const uncached = rawOlder.filter(
-        (m) => m.content?.includes(":") && !decryptedCache.current.has(m.id)
+        (m) => m.content?.includes(":") && !decryptedCache.current.has(m.id),
       );
       if (uncached.length > 0) {
         setDecryptingIds((prev) => {
@@ -289,7 +316,7 @@ export default function MessagesPage() {
           uncached.map(async (msg) => {
             const plaintext = await decryptMessage(selectedChatId, msg.id);
             return { id: msg.id, content: plaintext };
-          })
+          }),
         ).then((results) => {
           setDecryptingIds((prev) => {
             const next = new Set(prev);
@@ -303,8 +330,9 @@ export default function MessagesPage() {
                 map.set(r.id, { ...map.get(r.id)!, content: r.content });
               }
             }
-            return Array.from(map.values()).sort((a, b) =>
-              (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0)
+            return Array.from(map.values()).sort(
+              (a, b) =>
+                (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0),
             );
           });
         });
@@ -365,7 +393,7 @@ export default function MessagesPage() {
   };
 
   const filteredChatrooms = chatrooms.filter((chat) =>
-    chat.supporterName.toLowerCase().includes(searchQuery.toLowerCase())
+    chat.supporterName.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const formatTime = (timestamp: Timestamp | null) => {
@@ -383,94 +411,75 @@ export default function MessagesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-[calc(100vh-70px)] flex items-center justify-center">
-        <Loader className="animate-spin text-orange-500" size={40} />
+      <div className="flex min-h-[calc(100vh-70px)] items-center justify-center bg-canvas p-8">
+        <div className="w-full max-w-4xl space-y-4">
+          <Skeleton className="h-9 w-56" />
+          <Skeleton className="h-72 w-full" rounded="card" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-[calc(100vh-70px)] bg-card flex overflow-hidden">
-      <aside className="w-full md:w-80 lg:w-96 border-r border-border flex flex-col bg-muted/50">
+    <div className="flex min-h-[calc(100vh-70px)] overflow-hidden bg-surface">
+      <aside className="flex w-full flex-col border-r border-line bg-surface-raised/50 md:w-80 lg:w-96">
         <div className="p-6">
-          <h1 className="text-2xl font-bold uppercase mb-6">Messages</h1>
-          <div className="relative">
-            <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
-              size={18}
-            />
-            <input
-              type="text"
-              placeholder="Search supporters..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-card border border-border rounded-lg py-3 pl-12 pr-4 text-sm outline-none focus:ring-2 focus:ring-orange-100 transition"
-            />
-          </div>
+          <h1 className="mb-6 text-2xl font-bold uppercase">Messages</h1>
+          <SearchInput
+            placeholder="Search supporters..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
 
-        <div className="flex-1 overflow-y-auto px-3 space-y-1">
+        <div className="flex-1 space-y-1 overflow-y-auto px-3">
           {filteredChatrooms.length === 0 ? (
-            <div className="text-center py-12 px-4">
-              <MessageSquare size={40} className="mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground font-medium">
-                {searchQuery ? "No conversations found" : "No messages yet"}
-              </p>
-              <p className="text-muted-foreground text-sm mt-2">
-                {searchQuery
+            <EmptyState
+              icon={<MessageSquare className="size-6" aria-hidden="true" />}
+              title={searchQuery ? "No conversations found" : "No messages yet"}
+              description={
+                searchQuery
                   ? "Try a different search term"
-                  : "Supporters will appear here once they message you"}
-              </p>
-            </div>
+                  : "Supporters will appear here once they message you"
+              }
+            />
           ) : (
             // eslint-disable-next-line react-hooks/refs
             filteredChatrooms.map((chat) => (
               <button
                 key={chat.id}
                 onClick={() => setSelectedChatId(chat.id)}
-                className={`w-full flex items-center gap-4 p-4 rounded-lg transition-all ${
+                className={`flex w-full items-center gap-4 rounded-control p-4 text-left transition-all ${
                   selectedChatId === chat.id
-                    ? "bg-card shadow-sm border border-border"
-                    : "hover:bg-muted"
+                    ? "border border-line bg-surface shadow-sm"
+                    : "hover:bg-surface-raised"
                 }`}
               >
                 <div className="relative">
-                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center font-bold text-orange-600 overflow-hidden">
-                    {chat.supporterPhoto ? (
-                      <img
-                        src={chat.supporterPhoto}
-                        alt={chat.supporterName}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      chat.supporterName[0]
-                    )}
-                  </div>
+                  <Avatar src={chat.supporterPhoto} name={chat.supporterName} size="md" />
                   {chat.unreadCount > 0 && (
-                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-orange-600 border-2 border-white dark:border-foreground rounded-full flex items-center justify-center">
-                      <span className="text-[10px] font-bold text-white">
-                        {chat.unreadCount > 9 ? "9+" : chat.unreadCount}
-                      </span>
-                    </div>
+                    <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full border-2 border-surface bg-brand-strong text-caption font-bold text-on-brand">
+                      {chat.unreadCount > 9 ? "9+" : chat.unreadCount}
+                    </span>
                   )}
                 </div>
                 <div className="flex-1 text-left overflow-hidden">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="font-bold text-sm truncate">
+                  <div className="mb-1 flex items-center justify-between">
+                    <span className="truncate text-label font-bold">
                       {chat.supporterName}
                     </span>
-                    <span className="text-[10px] font-bold text-muted-foreground">
+                    <span className="text-caption font-bold text-muted-fg">
                       {formatTime(chat.lastMessageAt)}
                     </span>
                   </div>
                   <p
-                    className={`text-xs truncate ${
-                      chat.unreadCount > 0
-                        ? "text-foreground font-medium"
-                        : "text-muted-foreground"
+                    className={`truncate text-caption ${
+                      chat.unreadCount > 0 ? "font-medium text-fg" : "text-muted-fg"
                     }`}
                   >
-                    {decryptedCache.current.get(`room_${chat.id}`) || chat.lastMessage || "No messages yet"}
+                    {decryptedCache.current.get(`room_${chat.id}`) ||
+                      chat.lastMessage ||
+                      "No messages yet"}
                   </p>
                 </div>
               </button>
@@ -479,109 +488,94 @@ export default function MessagesPage() {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col bg-card">
+      <div className="flex flex-1 flex-col bg-surface">
         {selectedChatroom ? (
           <>
-            <header className="p-4 md:p-6 border-b border-border flex justify-between items-center bg-gradient-to-r from-muted to-orange-50">
+            <header className="flex items-center justify-between border-b border-line bg-gradient-to-r from-surface-raised to-brand-soft p-4 md:p-6">
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => setSelectedChatId(null)}
-                  className="md:hidden p-2 text-muted-foreground hover:text-foreground"
+                  className="p-2 text-muted-fg transition-colors hover:text-fg md:hidden"
                 >
                   <ArrowLeft size={20} />
                 </button>
-                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center font-bold text-orange-600 overflow-hidden">
-                  {selectedChatroom.supporterPhoto ? (
-                    <img
-                      src={selectedChatroom.supporterPhoto}
-                      alt={selectedChatroom.supporterName}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    selectedChatroom.supporterName[0]
-                  )}
-                </div>
+                <Avatar
+                  src={selectedChatroom.supporterPhoto}
+                  name={selectedChatroom.supporterName}
+                  size="md"
+                />
                 <div>
-                  <h3 className="font-bold text-sm">
+                  <h3 className="text-label font-bold">
                     {selectedChatroom.supporterName}
                   </h3>
                   <div className="flex items-center gap-1">
-                    <span
-                      className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                        selectedChatroom.enabled !== false
-                          ? "bg-green-50 text-green-600"
-                          : "bg-red-50 text-red-500"
-                      }`}
+                    <Badge
+                      tone={selectedChatroom.enabled !== false ? "success" : "danger"}
                     >
                       {selectedChatroom.enabled !== false ? "Active" : "Disabled"}
-                    </span>
+                    </Badge>
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => toggleChatroomEnabled(selectedChatroom.id, selectedChatroom.enabled !== false)}
-                  className={`p-2 transition ${
+                <IconButton
+                  label={
                     selectedChatroom.enabled !== false
-                      ? "text-muted-foreground hover:text-red-500"
-                      : "text-red-500 hover:text-green-500"
-                  }`}
-                  title={selectedChatroom.enabled !== false ? "Disable messages from this supporter" : "Enable messages from this supporter"}
-                >
-                  {selectedChatroom.enabled !== false ? (
-                    <Ban size={20} />
-                  ) : (
-                    <CheckCircle size={20} />
-                  )}
-                </button>
-                <button className="p-2 text-muted-foreground hover:text-foreground transition">
+                      ? "Disable messages from this supporter"
+                      : "Enable messages from this supporter"
+                  }
+                  icon={selectedChatroom.enabled !== false ? <Ban /> : <CheckCircle />}
+                  onClick={() =>
+                    toggleChatroomEnabled(
+                      selectedChatroom.id,
+                      selectedChatroom.enabled !== false,
+                    )
+                  }
+                  className={
+                    selectedChatroom.enabled !== false
+                      ? "hover:text-danger"
+                      : "hover:text-success"
+                  }
+                />
+                <button className="p-2 text-muted-fg transition-colors hover:text-fg">
                   <MoreVertical size={20} />
                 </button>
               </div>
             </header>
 
-            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-muted/30">
+            <div className="flex-1 space-y-4 overflow-y-auto bg-surface-raised/30 p-4 md:p-6">
               {messagesLoading ? (
-                <div className="flex flex-col items-center justify-center h-full gap-4">
+                <div className="flex h-full flex-col items-center justify-center gap-4">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex w-full max-w-[80%] gap-3 animate-pulse">
+                    <div key={i} className="flex w-full max-w-[80%] gap-3">
                       <div className={`flex-1 ${i % 2 === 0 ? "ml-auto" : ""}`}>
-                        <div className="h-12 bg-muted rounded-2xl" />
+                        <Skeleton className="h-12 w-full" rounded="card" />
                       </div>
                     </div>
                   ))}
                 </div>
               ) : messages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center">
-                  <div className="w-16 h-16 bg-card rounded-full flex items-center justify-center mb-4 shadow-sm">
-                    <MessageSquare size={24} className="text-muted-foreground" />
-                  </div>
-                  <h4 className="font-bold text-foreground">
-                    Start the conversation
-                  </h4>
-                  <p className="text-sm text-muted-foreground max-w-[250px]">
-                    Send your first message to{" "}
-                    {selectedChatroom.supporterName.split(" ")[0]}!
-                  </p>
+                <div className="flex h-full items-center justify-center">
+                  <EmptyState
+                    icon={<MessageSquare className="size-6" aria-hidden="true" />}
+                    title="Start the conversation"
+                    description={`Send your first message to ${
+                      selectedChatroom.supporterName.split(" ")[0]
+                    }!`}
+                  />
                 </div>
               ) : (
                 <>
                   {hasMoreMessages && (
                     <div className="text-center">
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={loadMoreMessages}
-                        disabled={loadingMore}
-                        className="text-xs font-medium text-muted-foreground hover:text-foreground px-4 py-2 rounded-lg hover:bg-muted transition disabled:opacity-50"
+                        loading={loadingMore}
                       >
-                        {loadingMore ? (
-                          <span className="flex items-center gap-2">
-                            <Loader size={12} className="animate-spin" />
-                            Loading...
-                          </span>
-                        ) : (
-                          "Load older messages"
-                        )}
-                      </button>
+                        {loadingMore ? "Loading..." : "Load older messages"}
+                      </Button>
                     </div>
                   )}
                   <div ref={messagesTopRef} />
@@ -591,31 +585,31 @@ export default function MessagesPage() {
                       className={`flex ${msg.senderType === "creator" ? "justify-end" : "justify-start"}`}
                     >
                       {decryptingIds.has(msg.id) ? (
-                        <div className={`max-w-[80%] w-48 px-4 py-3 rounded-2xl animate-pulse ${
-                          msg.senderType === "creator"
-                            ? "bg-orange-300 rounded-br-md"
-                            : "bg-muted border border-border rounded-bl-md"
-                        }`}>
-                          <div className="h-3 bg-white/40 rounded w-full mb-2" />
-                          <div className="h-3 bg-white/40 rounded w-3/4 mb-2" />
-                          <div className="h-2 bg-white/30 rounded w-1/4" />
+                        <div
+                          className={`w-48 max-w-[80%] space-y-2 rounded-card px-4 py-3 ${
+                            msg.senderType === "creator"
+                              ? "rounded-br-md bg-brand-soft"
+                              : "rounded-bl-md border border-line bg-surface-raised"
+                          }`}
+                        >
+                          <Skeleton className="h-3 w-full" />
+                          <Skeleton className="h-3 w-3/4" />
+                          <Skeleton className="h-2 w-1/4" />
                         </div>
                       ) : (
                         <div
-                          className={`max-w-[80%] px-4 py-3 rounded-2xl ${
+                          className={`max-w-[80%] rounded-card px-4 py-3 ${
                             msg.senderType === "creator"
-                              ? "bg-orange-500 text-white rounded-br-md"
-                              : "bg-card border border-border text-foreground rounded-bl-md shadow-sm"
+                              ? "rounded-br-md bg-brand-strong text-on-brand"
+                              : "rounded-bl-md border border-line bg-surface text-fg shadow-sm"
                           }`}
                         >
-                          <p className="text-sm whitespace-pre-wrap">
-                            {msg.content}
-                          </p>
+                          <p className="whitespace-pre-wrap text-label">{msg.content}</p>
                           <p
-                            className={`text-[10px] mt-1 ${
+                            className={`mt-1 text-caption ${
                               msg.senderType === "creator"
-                                ? "text-orange-100"
-                                : "text-muted-foreground"
+                                ? "text-on-brand/70"
+                                : "text-muted-fg"
                             }`}
                           >
                             {msg.createdAt?.toDate?.().toLocaleTimeString([], {
@@ -632,43 +626,38 @@ export default function MessagesPage() {
               )}
             </div>
 
-            <footer className="p-4 md:p-6 bg-card border-t border-border">
-              <div className="flex items-center gap-3 bg-muted p-2 pl-4 rounded-2xl">
-                <input
+            <footer className="border-t border-line bg-surface p-4 md:p-6">
+              <div className="flex items-center gap-3 rounded-card bg-surface-raised p-2 pl-4">
+                <Input
+                  containerClassName="min-w-0 flex-1"
                   type="text"
                   placeholder="Type your reply..."
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
-                  className="flex-1 bg-transparent outline-none text-sm font-medium"
                   disabled={sending}
                 />
-                <button
+                <Button
                   onClick={sendMessage}
                   disabled={!newMessage.trim() || sending}
-                  className="bg-orange-500 text-white p-3 rounded-xl hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  loading={sending}
+                  size="sm"
+                  aria-label="Send message"
                 >
-                  {sending ? (
-                    <Loader size={18} className="animate-spin" />
-                  ) : (
-                    <Send size={18} />
-                  )}
-                </button>
+                  {sending ? null : <Send className="size-4" aria-hidden="true" />}
+                </Button>
               </div>
             </footer>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-12 text-center">
-            <div className="w-20 h-20 bg-muted rounded-lg flex items-center justify-center mb-6">
-              <MessageSquare size={40} className="opacity-20" />
-            </div>
-            <h3 className="text-xl font-bold uppercase mb-2">Your Messages</h3>
-            <p className="text-sm font-medium max-w-xs text-muted-foreground">
-              Select a supporter from the left to view your conversation.
-            </p>
-          </div>
+          <EmptyState
+            className="m-auto"
+            icon={<MessageSquare className="size-10 opacity-20" aria-hidden="true" />}
+            title="Your Messages"
+            description="Select a supporter from the left to view your conversation."
+          />
         )}
-      </main>
+      </div>
     </div>
   );
 }

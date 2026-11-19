@@ -53,7 +53,7 @@ export const SendGiftSection = ({
   return (
     <div className="relative">
       <div
-        className={`h-48 w-full relative overflow-hidden ${bannerURL ? "" : "bg-linear-to-r from-orange-100 via-orange-50 to-orange-100 dark:from-orange-950 dark:via-orange-900/50 dark:to-orange-950"}`}
+        className={`h-48 w-full relative overflow-hidden ${bannerURL ? "" : "bg-linear-to-r from-brand-soft via-brand-soft to-brand-soft dark:from-brand-strong dark:via-brand-strong/50 dark:to-brand-strong"}`}
       >
         {bannerURL ? (
           <>
@@ -73,15 +73,15 @@ export const SendGiftSection = ({
             </p>
           </>
         ) : (
-          <p className="absolute bottom-3 right-4 text-orange-200 dark:text-orange-800/40 text-4xl font-black tracking-tighter truncate max-w-[80%] select-none pointer-events-none">
+          <p className="absolute bottom-3 right-4 text-brand-strong dark:text-brand-strong/40 text-4xl font-black tracking-tighter truncate max-w-[80%] select-none pointer-events-none">
             {name}
           </p>
         )}
       </div>
       <div className="max-w-2xl mx-auto px-6 -mt-16 text-center">
         <div className="relative inline-block">
-          <div className="w-32 h-32 bg-card rounded-lg p-1 shadow-2xl mx-auto">
-            <div className="w-full h-full bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+          <div className="w-32 h-32 bg-surface rounded-control p-1 shadow-2xl mx-auto">
+            <div className="w-full h-full bg-surface-sunken rounded-control flex items-center justify-center overflow-hidden">
               {photoURL ? (
                 <img
                   src={photoURL}
@@ -94,29 +94,29 @@ export const SendGiftSection = ({
                   fetchPriority="high"
                 />
               ) : (
-                <User size={50} className="text-muted-foreground" />
+                <User size={50} className="text-muted-fg" />
               )}
             </div>
           </div>
           {verified && (
-            <div className="absolute bottom-0 right-0 bg-green-500 w-6 h-6 border-4 border-white dark:border-card rounded-full shadow-lg" />
+            <div className="absolute bottom-0 right-0 bg-success w-6 h-6 border-4 border-white dark:border-card rounded-full shadow-lg" />
           )}
         </div>
 
-        <h1 className="mt-6 text-4xl font-bold tracking-tight text-foreground flex items-center justify-center gap-2">
+        <h1 className="mt-6 text-4xl font-bold tracking-tight text-fg flex items-center justify-center gap-2">
           {name}{" "}
-          {verified && <CheckCircle2 size={20} className="text-orange-600" />}
+          {verified && <CheckCircle2 size={20} className="text-brand-strong" />}
         </h1>
-        <p className="flex items-center justify-center text-orange-600 font-bold text-sm mb-4 tracking-wide">
+        <p className="flex items-center justify-center text-brand-strong font-bold text-sm mb-4 tracking-wide">
           agaseke.me/{handle}{" "}
           <button
             onClick={() => setIsShareModalOpen(true)}
-            className="ml-3 p-1.5 rounded-full bg-orange-50 dark:bg-orange-900/50 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-800 transition-all border border-orange-100 dark:border-orange-800"
+            className="ml-3 p-1.5 rounded-full bg-brand-soft dark:bg-brand-strong/50 text-brand-strong hover:bg-brand-soft dark:hover:bg-brand-strong transition-all border border-brand-soft dark:border-brand-strong"
           >
             <Share2 size={14} />
           </button>
         </p>
-        <p className="text-muted-foreground text-lg leading-relaxed max-w-lg mx-auto mb-8 font-medium">
+        <p className="text-muted-fg text-lg leading-relaxed max-w-lg mx-auto mb-8 font-medium">
           {bio}
         </p>
 
@@ -136,10 +136,10 @@ export const SendGiftSection = ({
 
         <button
           onClick={() => setIsModalOpen(true)}
-          className="group w-full bg-foreground text-background p-2 rounded-lg flex items-center justify-between hover:bg-orange-600 transition-all duration-500 shadow-2xl shadow-orange-100 active:scale-95"
+          className="group w-full bg-foreground text-background p-2 rounded-control flex items-center justify-between hover:bg-brand-strong transition-all duration-500 shadow-2xl shadow-brand-strong active:scale-95"
         >
           <div className="flex items-center gap-4 pl-4">
-            <div className="bg-background/10 p-3 rounded-lg group-hover:bg-background/20">
+            <div className="bg-canvas/10 p-3 rounded-control group-hover:bg-canvas/20">
               <Heart
                 size={24}
                 fill="white"
@@ -155,7 +155,7 @@ export const SendGiftSection = ({
         {communityEnabled && (
           <Link
             href={`/${handle}/community`}
-            className="w-full mt-3 py-3 px-4 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-100"
+            className="w-full mt-3 py-3 px-4 bg-success text-on-success rounded-control font-bold text-sm hover:bg-success transition-all flex items-center justify-center gap-2 shadow-lg shadow-success"
           >
             <Users size={16} />
             Join {name.split(" ")[0]}&apos;s Community
@@ -165,15 +165,15 @@ export const SendGiftSection = ({
         {bookingEnabled && (
           <Link
             href={`/${handle}/booking`}
-            className="w-full mt-3 py-3 px-4 border border-slate-200 rounded-lg text-muted-foreground font-medium text-sm hover:bg-muted transition-all flex items-center justify-center gap-2"
+            className="w-full mt-3 py-3 px-4 border border-line rounded-control text-muted-fg font-medium text-sm hover:bg-surface-sunken transition-all flex items-center justify-center gap-2"
           >
-            <Calendar size={16} className="text-orange-600" />
+            <Calendar size={16} className="text-brand-strong" />
             Book a Meeting
           </Link>
         )}
 
         {!currentUser && (
-          <div className="mt-6 p-4 bg-orange-50 dark:bg-orange-950 border border-orange-100 dark:border-orange-800 rounded-lg flex items-center justify-center gap-3 text-orange-800 dark:text-orange-200 animate-pulse">
+          <div className="mt-6 p-4 bg-brand-soft dark:bg-brand-strong border border-brand-soft dark:border-brand-strong rounded-control flex items-center justify-center gap-3 text-brand-strong dark:text-brand-strong animate-pulse">
             <LogIn size={18} />
             <p className="text-sm font-bold">
               <Link

@@ -14,6 +14,22 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   trailingIcon?: ReactNode;
 }
 
+export const buttonBaseClasses =
+  "inline-flex select-none items-center justify-center gap-2 rounded-control font-semibold transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:pointer-events-none disabled:opacity-50";
+
+export const buttonVariantClasses: Record<ButtonVariant, string> = {
+  primary: "bg-brand-strong text-on-brand hover:bg-brand-hover active:bg-brand-hover",
+  secondary: "border border-line-strong bg-surface text-fg hover:bg-surface-raised",
+  ghost: "bg-transparent text-fg hover:bg-surface-raised",
+  danger: "bg-danger text-white hover:opacity-90",
+};
+
+export const buttonSizeClasses: Record<ButtonSize, string> = {
+  sm: "min-h-11 px-3 text-label",
+  md: "min-h-12 px-4 text-body",
+  lg: "min-h-14 px-5 text-body-lg",
+};
+
 export const buttonClasses = ({
   variant = "primary",
   size = "md",
@@ -26,16 +42,9 @@ export const buttonClasses = ({
   className?: string;
 } = {}) =>
   cn(
-    "inline-flex select-none items-center justify-center gap-2 rounded-control font-semibold transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:pointer-events-none disabled:opacity-50",
-    size === "sm" && "min-h-11 px-3 text-label",
-    size === "md" && "min-h-12 px-4 text-body",
-    size === "lg" && "min-h-14 px-5 text-body-lg",
-    variant === "primary" &&
-      "bg-brand-strong text-on-brand hover:bg-brand-hover active:bg-brand-hover",
-    variant === "secondary" &&
-      "border border-line-strong bg-surface text-fg hover:bg-surface-raised",
-    variant === "ghost" && "bg-transparent text-fg hover:bg-surface-raised",
-    variant === "danger" && "bg-danger text-white hover:opacity-90",
+    buttonBaseClasses,
+    buttonSizeClasses[size],
+    buttonVariantClasses[variant],
     fullWidth && "w-full",
     className,
   );

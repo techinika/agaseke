@@ -25,14 +25,18 @@ function splitWithLinks(text: string): React.ReactNode[] {
 
     const token = match[0];
     const isEmail = !!match[1];
-    const href = isEmail ? `mailto:${token}` : token.startsWith("http://") || token.startsWith("https://") ? token : `https://${token}`;
+    const href = isEmail
+      ? `mailto:${token}`
+      : token.startsWith("http://") || token.startsWith("https://")
+        ? token
+        : `https://${token}`;
 
     parts.push(
       isEmail ? (
         <a
           key={match.index}
           href={href}
-          className="text-orange-600 hover:text-orange-700 underline underline-offset-2"
+          className="text-brand-strong underline underline-offset-2 hover:text-brand-hover"
         >
           {token}
         </a>
@@ -42,7 +46,7 @@ function splitWithLinks(text: string): React.ReactNode[] {
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-orange-600 hover:text-orange-700 underline underline-offset-2"
+          className="text-brand-strong underline underline-offset-2 hover:text-brand-hover"
         >
           {token}
         </a>
@@ -68,9 +72,5 @@ export function LinkifyText({ text, className }: { text: string; className?: str
     return <span className={className}>{text}</span>;
   }
 
-  return (
-    <span className={className}>
-      {splitWithLinks(text)}
-    </span>
-  );
+  return <span className={className}>{splitWithLinks(text)}</span>;
 }

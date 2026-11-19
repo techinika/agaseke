@@ -17,6 +17,7 @@
   --ag-brand: #ff0000;
   --ag-brand-strong: #c40000;
   --ag-brand-hover: #a30000;
+  --ag-brand-soft: #fef2f2;
   --ag-on-brand: #ffffff;
 
   /* Surfaces and text */
@@ -24,9 +25,19 @@
   --ag-fg: #171717;
   --ag-surface: #ffffff;
   --ag-surface-raised: #f8fafc;
+  --ag-surface-sunken: #f1f5f9;
   --ag-line: #e2e8f0;
   --ag-line-strong: #cbd5e1;
-  --ag-muted-fg: #64748b;
+  --ag-muted-fg: #5f6f84;
+  --ag-overlay: rgb(15 23 42 / 0.55);
+
+  /* Categorical chart palette (AA on light surfaces) */
+  --ag-chart-1: #c40000;
+  --ag-chart-2: #1d4ed8;
+  --ag-chart-3: #047857;
+  --ag-chart-4: #b45309;
+  --ag-chart-5: #7c3aed;
+  --ag-chart-6: #0e7490;
 
   /* Status */
   --ag-success: #146c43;
@@ -37,6 +48,10 @@
   --ag-danger-bg: #fef2f2;
   --ag-info: #1d4ed8;
   --ag-info-bg: #eff6ff;
+  --ag-on-success: #ffffff;
+  --ag-on-warning: #ffffff;
+  --ag-on-danger: #ffffff;
+  --ag-on-info: #ffffff;
 
   /* Focus */
   --ag-focus: #c40000;
@@ -73,6 +88,12 @@
   --ag-text-heading-lh: 2rem;
   --ag-text-display: 2rem;
   --ag-text-display-lh: 2.5rem;
+  --ag-text-hero: 3rem;
+  --ag-text-hero-lh: 3.5rem;
+
+  /* Shell */
+  --ag-sidebar-width: 16rem;
+  --ag-content-max: 90rem;
 
   /* Shadows */
   --ag-shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06);
@@ -97,17 +118,27 @@
   color-scheme: dark;
 
   --ag-brand: #ff4d4d;
-  --ag-brand-strong: #c40000;
-  --ag-brand-hover: #e00000;
-  --ag-on-brand: #ffffff;
+  --ag-brand-strong: #ff6b6b;
+  --ag-brand-hover: #ff8080;
+  --ag-brand-soft: #3b0a0a;
+  --ag-on-brand: #160808;
 
   --ag-bg: #0f172a;
   --ag-fg: #f1f5f9;
   --ag-surface: #1e293b;
   --ag-surface-raised: #273449;
+  --ag-surface-sunken: #111c30;
   --ag-line: #334155;
   --ag-line-strong: #475569;
   --ag-muted-fg: #94a3b8;
+  --ag-overlay: rgb(0 0 0 / 0.7);
+
+  --ag-chart-1: #ff6b6b;
+  --ag-chart-2: #93c5fd;
+  --ag-chart-3: #4ade80;
+  --ag-chart-4: #fbbf24;
+  --ag-chart-5: #c4b5fd;
+  --ag-chart-6: #67e8f9;
 
   --ag-success: #4ade80;
   --ag-success-bg: #052e1a;
@@ -117,6 +148,10 @@
   --ag-danger-bg: #3b0a0a;
   --ag-info: #93c5fd;
   --ag-info-bg: #0b2447;
+  --ag-on-success: #052e1a;
+  --ag-on-warning: #2b1a02;
+  --ag-on-danger: #2a0505;
+  --ag-on-info: #071a38;
 
   --ag-focus: #ff4d4d;
 

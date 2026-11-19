@@ -11,7 +11,7 @@ import { SupportModal } from "@/components/parts/public/SupportModal";
 import { BookingAvailability, BookingType, BookingTier } from "@/types/booking";
 import { logError } from "@/lib/logger";
 import { createBooking } from "@/lib/bookingsService";
-import { formatCurrency } from "@/types/currency";
+import { formatMoney as formatCurrency } from "@/lib/format/money";
 import { getPrice } from "@/lib/priceMap";
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -139,11 +139,11 @@ export default function BookingPage({ username, creator }: { username: string; c
     <>
       <div className="max-w-2xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
-          <Link href={`/${creator?.handle || username}`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition">
+          <Link href={`/${creator?.handle || username}`} className="flex items-center gap-2 text-muted-fg hover:text-fg transition">
             <ArrowLeft size={20} />
             <span className="font-medium">Back to Profile</span>
           </Link>
-          <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-orange-700 transition">
+          <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 bg-brand-strong text-on-brand px-4 py-2 rounded-control font-bold hover:bg-brand-strong transition">
             <Heart size={18} className="fill-current" />
             Support
           </button>
@@ -151,50 +151,50 @@ export default function BookingPage({ username, creator }: { username: string; c
 
         {step === "tier-select" && isTiered && (
           <div className="space-y-4">
-            <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
-              <div className="bg-foreground p-6 text-background">
+            <div className="bg-surface rounded-card shadow-sm border border-line overflow-hidden">
+              <div className="bg-surface-raised p-6 text-fg">
                 <h1 className="text-2xl font-bold">Choose a Tier</h1>
-                <p className="text-muted-foreground text-sm mt-1">Select a meeting package with {creator?.name || username}</p>
+                <p className="text-muted-fg text-sm mt-1">Select a meeting package with {creator?.name || username}</p>
               </div>
               <div className="p-6">
                 {activeTiers.length === 0 ? (
                   <div className="text-center py-12">
-                    <CalendarDays className="mx-auto text-muted-foreground mb-3" size={48} />
-                    <p className="text-muted-foreground font-medium">No tiers available yet</p>
-                    <p className="text-sm text-muted-foreground mt-1">Check back later or contact them directly.</p>
+                    <CalendarDays className="mx-auto text-muted-fg mb-3" size={48} />
+                    <p className="text-muted-fg font-medium">No tiers available yet</p>
+                    <p className="text-sm text-muted-fg mt-1">Check back later or contact them directly.</p>
                   </div>
                 ) : (
                   <div className="grid gap-4">
                     {activeTiers.map((tier) => (
                       <button key={tier.id} onClick={() => { setSelectedTier(tier); setStep("form"); }}
-                        className="text-left bg-muted hover:bg-border-strong rounded-xl p-5 transition-all border-2 border-transparent hover:border-orange-500/50 group">
+                        className="text-left bg-surface-sunken hover:bg-border-strong rounded-control p-5 transition-all border-2 border-transparent hover:border-brand-strong/50 group">
                         <div className="flex justify-between items-start mb-3">
                           <div>
                             <h3 className="text-lg font-bold">{tier.name}</h3>
-                            <p className="text-sm text-muted-foreground mt-0.5">{tier.description}</p>
+                            <p className="text-sm text-muted-fg mt-0.5">{tier.description}</p>
                           </div>
                           <div className="text-right shrink-0 ml-4">
-                            <p className="text-xl font-black text-orange-600">
+                            <p className="text-xl font-black text-brand-strong">
                               {bookingTierAmount(tier) > 0 ? (tier.currency ? formatCurrency(bookingTierAmount(tier), tier.currency as any) : `${bookingTierAmount(tier)}`) : "Free"}
                             </p>
-                            <p className="text-xs text-muted-foreground">{tier.duration} minutes</p>
+                            <p className="text-xs text-muted-fg">{tier.duration} minutes</p>
                           </div>
                         </div>
                         {tier.offers.length > 0 && (
                           <div className="space-y-1 mb-3">
                             {tier.offers.filter(o => o.trim()).map((offer, i) => (
-                              <p key={i} className="text-sm flex items-center gap-2 text-foreground">
-                                <Star size={14} className="text-orange-500 shrink-0" /> {offer}
+                              <p key={i} className="text-sm flex items-center gap-2 text-fg">
+                                <Star size={14} className="text-brand-strong shrink-0" /> {offer}
                               </p>
                             ))}
                           </div>
                         )}
                         {tier.purpose && (
-                          <p className="text-xs text-muted-foreground italic border-t border-border pt-3 mt-1">
+                          <p className="text-xs text-muted-fg italic border-t border-line pt-3 mt-1">
                             {tier.purpose}
                           </p>
                         )}
-                        <div className="mt-3 flex items-center gap-2 text-orange-600 font-bold text-sm group-hover:underline">
+                        <div className="mt-3 flex items-center gap-2 text-brand-strong font-bold text-sm group-hover:underline">
                           Select <ArrowRight size={16} />
                         </div>
                       </button>
@@ -207,23 +207,23 @@ export default function BookingPage({ username, creator }: { username: string; c
         )}
 
         {step === "form" && (
-          <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
-            <div className="bg-foreground p-6 text-background">
+          <div className="bg-surface rounded-card shadow-sm border border-line overflow-hidden">
+            <div className="bg-surface-raised p-6 text-fg">
               <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-2xl font-bold">Book a Meeting</h1>
-                  <p className="text-muted-foreground text-sm mt-1">with {creator?.name || username}</p>
+                  <p className="text-muted-fg text-sm mt-1">with {creator?.name || username}</p>
                 </div>
                 {isTiered && selectedTier && (
                   <div className="text-right">
                     <p className="text-sm font-bold">{selectedTier.name}</p>
-                    <p className="text-xs text-muted-foreground">{bookingTierAmount(selectedTier) > 0 ? (selectedTier.currency ? formatCurrency(bookingTierAmount(selectedTier), selectedTier.currency as any) : `${bookingTierAmount(selectedTier)}`) : "Free"} &middot; {selectedTier.duration}min</p>
+                    <p className="text-xs text-muted-fg">{bookingTierAmount(selectedTier) > 0 ? (selectedTier.currency ? formatCurrency(bookingTierAmount(selectedTier), selectedTier.currency as any) : `${bookingTierAmount(selectedTier)}`) : "Free"} &middot; {selectedTier.duration}min</p>
                   </div>
                 )}
               </div>
               {isTiered && (
                 <button onClick={() => { setSelectedTier(null); setStep("tier-select"); }}
-                  className="text-xs text-muted-foreground hover:text-foreground underline mt-2">
+                  className="text-xs text-muted-fg hover:text-fg underline mt-2">
                   Change tier
                 </button>
               )}
@@ -231,9 +231,9 @@ export default function BookingPage({ username, creator }: { username: string; c
             <div className="p-6 space-y-5">
               {!availability || availability.daysOfWeek.length === 0 || availability.defaultSlots.length === 0 ? (
                 <div className="text-center py-12">
-                  <CalendarDays className="mx-auto text-muted-foreground mb-3" size={48} />
-                  <p className="text-muted-foreground font-medium">Availability not set up yet</p>
-                  <p className="text-sm text-muted-foreground mt-1">Check back later or contact them directly.</p>
+                  <CalendarDays className="mx-auto text-muted-fg mb-3" size={48} />
+                  <p className="text-muted-fg font-medium">Availability not set up yet</p>
+                  <p className="text-sm text-muted-fg mt-1">Check back later or contact them directly.</p>
                 </div>
               ) : (
                 <>
@@ -243,17 +243,17 @@ export default function BookingPage({ username, creator }: { username: string; c
                         const prev = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
                         setCurrentMonth(prev);
                       }} disabled={currentMonth <= new Date(new Date().getFullYear(), new Date().getMonth(), 1)}
-                        className="p-2 hover:bg-muted rounded-lg disabled:opacity-30 transition">
-                        <ChevronLeft size={18} className="text-muted-foreground" />
+                        className="p-2 hover:bg-surface-sunken rounded-control disabled:opacity-30 transition">
+                        <ChevronLeft size={18} className="text-muted-fg" />
                       </button>
-                      <h3 className="font-bold text-foreground">{MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}</h3>
+                      <h3 className="font-bold text-fg">{MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}</h3>
                       <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
-                        className="p-2 hover:bg-muted rounded-lg transition">
-                        <ChevronRight size={18} className="text-muted-foreground" />
+                        className="p-2 hover:bg-surface-sunken rounded-control transition">
+                        <ChevronRight size={18} className="text-muted-fg" />
                       </button>
                     </div>
                     <div className="grid grid-cols-7 gap-1 mb-2">
-                      {DAYS_OF_WEEK.map(d => <div key={d} className="text-center text-xs font-bold text-muted-foreground py-2">{d}</div>)}
+                      {DAYS_OF_WEEK.map(d => <div key={d} className="text-center text-xs font-bold text-muted-fg py-2">{d}</div>)}
                     </div>
                     <div className="grid grid-cols-7 gap-1">
                       {(() => {
@@ -266,7 +266,7 @@ export default function BookingPage({ username, creator }: { username: string; c
                           const isAvailable = calendarDates.includes(dateStr);
                           nodes.push(
                             <button key={dateStr} onClick={() => isAvailable && setSelectedDate(dateStr)} disabled={!isAvailable}
-                              className={`p-2 rounded-lg text-center text-sm transition-all ${selectedDate === dateStr ? "bg-orange-500 text-white font-bold" : isAvailable ? "bg-muted text-foreground hover:bg-border-strong" : "text-muted-foreground cursor-not-allowed"}`}>
+                              className={`p-2 rounded-control text-center text-sm transition-all ${selectedDate === dateStr ? "bg-brand-strong text-on-brand font-bold" : isAvailable ? "bg-surface-sunken text-fg hover:bg-border-strong" : "text-muted-fg cursor-not-allowed"}`}>
                               {d}
                             </button>
                           );
@@ -278,11 +278,11 @@ export default function BookingPage({ username, creator }: { username: string; c
 
                   {selectedDate && (
                     <div>
-                      <label className="block text-sm font-bold text-foreground mb-2">Select Time</label>
+                      <label className="block text-sm font-bold text-fg mb-2">Select Time</label>
                       <div className="flex flex-wrap gap-2">
                         {availability.defaultSlots.map(slot => (
                           <button key={slot.id} onClick={() => setSelectedTime(`${slot.startTime} - ${slot.endTime}`)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${selectedTime === `${slot.startTime} - ${slot.endTime}` ? "bg-orange-500 text-white" : "bg-muted text-muted-foreground hover:bg-border-strong"}`}>
+                            className={`px-4 py-2 rounded-control text-sm font-medium transition-all ${selectedTime === `${slot.startTime} - ${slot.endTime}` ? "bg-brand-strong text-on-brand" : "bg-surface-sunken text-muted-fg hover:bg-border-strong"}`}>
                             {slot.startTime} - {slot.endTime}
                           </button>
                         ))}
@@ -292,14 +292,14 @@ export default function BookingPage({ username, creator }: { username: string; c
 
                   {selectedDate && selectedTime && availability.bookingType === "both" && (
                     <div>
-                      <label className="block text-sm font-bold text-foreground mb-2">Meeting Type</label>
+                      <label className="block text-sm font-bold text-fg mb-2">Meeting Type</label>
                       <div className="flex gap-3">
                         <button onClick={() => setSelectedType("online")}
-                          className={`flex-1 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${selectedType === "online" ? "bg-orange-500 text-white" : "bg-muted text-muted-foreground hover:bg-border-strong"}`}>
+                          className={`flex-1 py-3 rounded-control text-sm font-medium transition-all flex items-center justify-center gap-2 ${selectedType === "online" ? "bg-brand-strong text-on-brand" : "bg-surface-sunken text-muted-fg hover:bg-border-strong"}`}>
                           <Video size={16} /> Online
                         </button>
                         <button onClick={() => setSelectedType("physical")}
-                          className={`flex-1 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${selectedType === "physical" ? "bg-orange-500 text-white" : "bg-muted text-muted-foreground hover:bg-border-strong"}`}>
+                          className={`flex-1 py-3 rounded-control text-sm font-medium transition-all flex items-center justify-center gap-2 ${selectedType === "physical" ? "bg-brand-strong text-on-brand" : "bg-surface-sunken text-muted-fg hover:bg-border-strong"}`}>
                           <MapPin size={16} /> In Person
                         </button>
                       </div>
@@ -307,25 +307,25 @@ export default function BookingPage({ username, creator }: { username: string; c
                   )}
 
                   <div>
-                    <label className="block text-sm font-bold text-foreground mb-2">Your Information</label>
+                    <label className="block text-sm font-bold text-fg mb-2">Your Information</label>
                     <div className="space-y-2">
                       <input type="text" placeholder="Your name" value={name} onChange={e => setName(e.target.value)}
-                        className="w-full bg-muted p-3 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-card transition-all" />
+                        className="w-full bg-surface-sunken p-3 rounded-control text-sm font-medium focus:ring-2 focus:ring-brand-soft outline-none border border-transparent focus:bg-surface transition-all" />
                       <input type="email" placeholder="Your email" value={email} onChange={e => setEmail(e.target.value)}
-                        className="w-full bg-muted p-3 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-card transition-all" />
+                        className="w-full bg-surface-sunken p-3 rounded-control text-sm font-medium focus:ring-2 focus:ring-brand-soft outline-none border border-transparent focus:bg-surface transition-all" />
                       <input type="tel" placeholder="Phone (optional)" value={phone} onChange={e => setPhone(e.target.value)}
-                        className="w-full bg-muted p-3 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-card transition-all" />
+                        className="w-full bg-surface-sunken p-3 rounded-control text-sm font-medium focus:ring-2 focus:ring-brand-soft outline-none border border-transparent focus:bg-surface transition-all" />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-foreground mb-2">Reason for Meeting (optional)</label>
+                    <label className="block text-sm font-bold text-fg mb-2">Reason for Meeting (optional)</label>
                     <textarea placeholder="Briefly describe what you'd like to discuss..." value={reason} onChange={e => setReason(e.target.value)} rows={2}
-                      className="w-full bg-muted p-3 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-card transition-all resize-none" />
+                      className="w-full bg-surface-sunken p-3 rounded-control text-sm font-medium focus:ring-2 focus:ring-brand-soft outline-none border border-transparent focus:bg-surface transition-all resize-none" />
                   </div>
 
                   <button onClick={handleSubmit} disabled={submitting || !selectedDate || !selectedTime}
-                    className="w-full bg-foreground text-background py-3 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-all disabled:opacity-50">
+                    className="w-full bg-foreground text-background py-3 rounded-control font-bold flex items-center justify-center gap-2 hover:bg-brand-strong transition-all disabled:opacity-50">
                     {submitting ? <Loader className="animate-spin" size={18} /> : <Calendar size={18} />}
                     {selectedTier && bookingTierAmount(selectedTier) > 0 ? `Continue to Payment — ${selectedTier.currency ? formatCurrency(bookingTierAmount(selectedTier), selectedTier.currency as any) : bookingTierAmount(selectedTier)}` : "Submit Request"}
                   </button>
@@ -336,34 +336,34 @@ export default function BookingPage({ username, creator }: { username: string; c
         )}
 
         {step === "success" && (
-          <div className="bg-card rounded-2xl shadow-sm border border-border p-12 text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Check className="text-green-500" size={32} />
+          <div className="bg-surface rounded-card shadow-sm border border-line p-12 text-center">
+            <div className="w-16 h-16 bg-success-bg rounded-full flex items-center justify-center mx-auto mb-4">
+              <Check className="text-success" size={32} />
             </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">
+            <h2 className="text-2xl font-bold text-fg mb-2">
               {selectedTier?.price && selectedTier.price > 0 ? "Proceed to Payment" : "Request Sent!"}
             </h2>
-            <p className="text-muted-foreground mb-6">
+            <p className="text-muted-fg mb-6">
               {selectedTier?.price && selectedTier.price > 0
                 ? "Your booking request is pending payment. Complete payment to confirm your booking."
                 : `Your booking request has been sent to ${creator?.name || username}. You'll receive an email once they respond.`}
             </p>
             <Link href={`/${creator?.handle || username}`}
-              className="bg-foreground text-background px-8 py-3 rounded-lg font-bold hover:bg-orange-600 transition-all inline-block">
+              className="bg-foreground text-background px-8 py-3 rounded-control font-bold hover:bg-brand-strong transition-all inline-block">
               Back to Profile
             </Link>
           </div>
         )}
 
         {step === "error" && (
-          <div className="bg-card rounded-2xl shadow-sm border border-border p-12 text-center">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertCircle className="text-red-500" size={32} />
+          <div className="bg-surface rounded-card shadow-sm border border-line p-12 text-center">
+            <div className="w-16 h-16 bg-danger-bg rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="text-danger" size={32} />
             </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">Something went wrong</h2>
-            <p className="text-muted-foreground mb-6">We couldn&apos;t submit your booking request. Please try again.</p>
+            <h2 className="text-2xl font-bold text-fg mb-2">Something went wrong</h2>
+            <p className="text-muted-fg mb-6">We couldn&apos;t submit your booking request. Please try again.</p>
             <button onClick={() => setStep("form")}
-              className="bg-foreground text-background px-8 py-3 rounded-lg font-bold hover:bg-orange-600 transition-all">
+              className="bg-foreground text-background px-8 py-3 rounded-control font-bold hover:bg-brand-strong transition-all">
               Try Again
             </button>
           </div>

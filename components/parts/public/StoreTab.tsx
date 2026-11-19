@@ -389,7 +389,7 @@ export const StoreTab = ({
   if (loading) {
     return (
       <div className="animate-in fade-in duration-500 flex items-center justify-center h-[400px]">
-        <Loader className="animate-spin text-orange-500" size={32} />
+        <Loader className="animate-spin text-brand-strong" size={32} />
       </div>
     );
   }
@@ -529,10 +529,10 @@ export const StoreTab = ({
     return (
       <div className="animate-in fade-in duration-500">
         {products.length === 0 ? (
-          <div className="text-center py-20 bg-card border border-border rounded-3xl">
-            <Package size={48} className="mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground font-medium">No products available</p>
-            <p className="text-muted-foreground text-sm mt-2">
+          <div className="text-center py-20 bg-surface border border-line rounded-card">
+            <Package size={48} className="mx-auto text-muted-fg mb-4" />
+            <p className="text-muted-fg font-medium">No products available</p>
+            <p className="text-muted-fg text-sm mt-2">
               Check back later for new products
             </p>
           </div>
@@ -556,7 +556,7 @@ export const StoreTab = ({
               <div className="mt-6 text-center">
                 <Link
                   href={`/${creatorHandle}/store`}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-lg font-bold text-sm hover:bg-orange-700 transition shadow-lg"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-brand-strong text-on-brand rounded-control font-bold text-sm hover:bg-brand-hover transition shadow-lg"
                 >
                   View All Products <ArrowRight size={16} />
                 </Link>
@@ -586,14 +586,14 @@ export const StoreTab = ({
         <div className="relative flex-1 max-w-md">
           <Search
             size={18}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-fg"
           />
           <input
             type="text"
             placeholder="Search products..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-card border border-border rounded-lg py-3 pl-12 pr-4 text-sm outline-none focus:ring-2 focus:ring-orange-100"
+            className="w-full bg-surface border border-line rounded-control py-3 pl-12 pr-4 text-sm outline-none focus:ring-2 focus:ring-brand-soft"
           />
         </div>
 
@@ -601,7 +601,7 @@ export const StoreTab = ({
           {purchasedProductIds.size > 0 && (
             <button
               onClick={() => setShowMyPurchases(true)}
-              className="flex items-center gap-2 px-4 py-3 bg-card border border-border rounded-lg text-sm font-bold hover:bg-muted transition"
+              className="flex items-center gap-2 px-4 py-3 bg-surface border border-line rounded-control text-sm font-bold hover:bg-surface-raised transition"
             >
               <Package size={16} />
               <span className="hidden md:inline">My Purchases</span>
@@ -610,7 +610,7 @@ export const StoreTab = ({
           {userOrders.length > 0 && (
             <button
               onClick={() => setShowOrderTracking(true)}
-              className="flex items-center gap-2 px-4 py-3 bg-card border border-border rounded-lg text-sm font-bold hover:bg-muted transition"
+              className="flex items-center gap-2 px-4 py-3 bg-surface border border-line rounded-control text-sm font-bold hover:bg-surface-raised transition"
             >
               <Truck size={16} />
               <span className="hidden md:inline">My Orders</span>
@@ -618,12 +618,12 @@ export const StoreTab = ({
           )}
           <button
             onClick={() => setShowCart(true)}
-            className="relative flex items-center gap-2 px-4 py-3 bg-orange-600 text-white rounded-lg font-bold text-sm hover:bg-orange-700 transition shadow-lg"
+            className="relative flex items-center gap-2 px-4 py-3 bg-brand-strong text-on-brand rounded-control font-bold text-sm hover:bg-brand-hover transition shadow-lg"
           >
             <ShoppingCart size={18} />
             <span className="hidden md:inline">Cart</span>
             {cartCount > 0 && (
-              <span className="absolute -top-2 -right-2 w-6 h-6 bg-white text-orange-600 rounded-full flex items-center justify-center text-xs font-bold">
+              <span className="absolute -top-2 -right-2 w-6 h-6 bg-white text-brand-strong rounded-full flex items-center justify-center text-xs font-bold">
                 {cartCount}
               </span>
             )}
@@ -632,10 +632,10 @@ export const StoreTab = ({
       </div>
 
       {filteredProducts.length === 0 && activeFolders().length === 0 ? (
-        <div className="text-center py-20 bg-card border border-border rounded-3xl">
-          <Package size={48} className="mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground font-medium">No products available</p>
-          <p className="text-muted-foreground text-sm mt-2">
+        <div className="text-center py-20 bg-surface border border-line rounded-card">
+          <Package size={48} className="mx-auto text-muted-fg mb-4" />
+          <p className="text-muted-fg font-medium">No products available</p>
+          <p className="text-muted-fg text-sm mt-2">
             Check back later for new products
           </p>
         </div>
@@ -643,7 +643,7 @@ export const StoreTab = ({
         <div className="space-y-8">
           {activeFolders().length > 0 && (
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-widest                 text-muted-foreground mb-4">
+              <h3 className="text-sm font-bold uppercase tracking-widest                 text-muted-fg mb-4">
                 Bundles
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
@@ -663,7 +663,7 @@ export const StoreTab = ({
           {filteredProducts.length > 0 && (
             <div>
               {activeFolders().length > 0 && (
-                <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-4">
+                <h3 className="text-sm font-bold uppercase tracking-widest text-muted-fg mb-4">
                   All Products
                 </h3>
               )}

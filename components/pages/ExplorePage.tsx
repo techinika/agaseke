@@ -12,19 +12,18 @@ import {
   QueryDocumentSnapshot,
 } from "firebase/firestore";
 import { db } from "@/db/firebase";
-import {
-  Search,
-  ArrowRight,
-  User,
-  CheckCircle2,
-  ChevronDown,
-  Loader,
-} from "lucide-react";
+import { ArrowRight, CheckCircle2, ChevronDown, Search, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { Creator } from "@/types/creator";
-import ExploreSchema from "../seo/ExploreSchema";
-import MobileBottomBar from "@/components/parts/MobileBottomBar";
-import { MdVerifiedUser } from "react-icons/md";
+import { Avatar } from "@/components/ui/Avatar";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SearchInput } from "@/components/ui/SearchInput";
+import { Skeleton, SkeletonText } from "@/components/ui/Skeleton";
+
+const ITEMS_PER_PAGE = 12;
 
 export default function ExplorePage() {
   const [creators, setCreators] = useState<Creator[]>([]);
@@ -35,14 +34,12 @@ export default function ExplorePage() {
     useState<QueryDocumentSnapshot<DocumentData> | null>(null);
   const [hasMore, setHasMore] = useState(true);
 
-  const ITEMS_PER_PAGE = 12;
-
   const fetchCreators = async (isInitial = false) => {
     try {
-      isInitial ? setLoading(true) : setLoadingMore(true);
+      if (isInitial) setLoading(true);
+      else setLoadingMore(true);
 
       const creatorsRef = collection(db, "creators");
-
       let q = query(creatorsRef, orderBy("name"), limit(ITEMS_PER_PAGE));
 
       if (!isInitial && lastVisible) {
@@ -55,26 +52,22 @@ export default function ExplorePage() {
       }
 
       const querySnapshot = await getDocs(q);
-
       const fetched = querySnapshot.docs.map((doc) => ({
         handle: doc.id,
         ...doc.data(),
-      }));
+      })) as Creator[];
 
       if (isInitial) {
-        setCreators(fetched as Creator[]);
+        setCreators(fetched);
       } else {
-        setCreators((prev) => [...prev, ...fetched] as Creator[]);
+        setCreators((prev) => [...prev, ...fetched]);
       }
 
       const lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
       setLastVisible(lastDoc);
-
-      if (querySnapshot.docs.length < ITEMS_PER_PAGE) {
-        setHasMore(false);
-      }
-    } catch (e) {
-      console.error("Error loading creators:", e);
+      if (querySnapshot.docs.length < ITEMS_PER_PAGE) setHasMore(false);
+    } catch (error) {
+      console.error("Error loading creators:", error);
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -85,174 +78,163 @@ export default function ExplorePage() {
     queueMicrotask(() => {
       void fetchCreators(true);
     });
+    // Initial load only; pagination is triggered explicitly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
 
   const filteredCreators = useMemo(() => {
     if (!searchTerm) return creators;
-
     const term = searchTerm.toLowerCase();
     return creators.filter(
-      (c) =>
-        c.handle.toLowerCase().includes(term) ||
-        (c.name && c.name.toLowerCase().includes(term)) ||
-        (c.bio && c.bio.toLowerCase().includes(term)),
+      (creator) =>
+        creator.handle.toLowerCase().includes(term) ||
+        (creator.name && creator.name.toLowerCase().includes(term)) ||
+        (creator.bio && creator.bio.toLowerCase().includes(term)),
     );
   }, [searchTerm, creators]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20">
-      <ExploreSchema />
-      <header className="pt-20 pb-12 px-6">
-        <div className="max-w-6xl mx-auto text-center">
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tighter mb-6">
-            Discover{" "}
-            <span className="text-orange-600 underline decoration-orange-100">
-              Creators
-            </span>
+    <div className="min-h-screen bg-canvas pb-20 text-fg">
+      <section className="border-b border-line bg-surface-sunken px-4 pb-12 pt-16 sm:px-6 sm:pb-16 sm:pt-20 lg:px-8">
+        <div className="mx-auto w-full max-w-6xl text-center">
+          <Badge tone="brand" className="mb-4 px-3 py-1">
+            <Sparkles className="size-3.5" aria-hidden="true" />
+            Explore creators
+          </Badge>
+          <h1 className="text-display font-black text-fg sm:text-hero">
+            Find your next favourite{" "}
+            <span className="text-brand-strong">African creator.</span>
           </h1>
-          <p className="text-muted-foreground font-medium text-lg max-w-xl mx-auto mb-10">
-            Connect with the artists, storytellers, and innovators shaping the
-            creative landscape in Kigali.
+          <p className="mx-auto mt-4 max-w-xl text-body-lg text-muted-fg">
+            Connect with the artists, storytellers, and innovators shaping the creative
+            landscape across the continent.
           </p>
 
-          <div className="max-w-2xl mx-auto relative group">
-            <Search
-              className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-orange-600 transition-colors"
-              size={20}
-            />
-            <input
-              type="text"
+          <div className="mx-auto mt-8 max-w-2xl text-left">
+            <SearchInput
+              label="Search creators"
               placeholder="Search by name, handle, or bio keywords..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-card border border-border shadow-xl shadow-border rounded-lg py-6 pl-14 pr-6 text-lg outline-none focus:ring-4 focus:ring-orange-50 transition-all font-medium"
+              onChange={(event) => setSearchTerm(event.target.value)}
+              onClear={() => setSearchTerm("")}
+              autoComplete="off"
             />
           </div>
         </div>
-      </header>
+      </section>
 
-      <main className="max-w-6xl mx-auto px-6">
+      <main className="mx-auto w-full max-w-6xl px-4 pt-10 sm:px-6 lg:px-8">
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div
-                key={i}
-                className="h-80 bg-muted animate-pulse rounded-lg"
-              />
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3, 4, 5, 6].map((item) => (
+              <Card key={item} className="p-6">
+                <div className="flex items-center gap-4">
+                  <Skeleton className="size-16" rounded="full" />
+                  <div className="flex-1">
+                    <SkeletonText lines={2} />
+                  </div>
+                </div>
+                <SkeletonText lines={3} className="mt-6" />
+                <Skeleton className="mt-6 h-10 w-full" />
+              </Card>
             ))}
           </div>
         ) : (
           <>
-            {/* Results Info */}
-            <div className="flex items-center justify-between mb-8 px-2">
-              <h3 className="text-xs font-bold uppercase tracking-[0.3em] text-muted-foreground">
-                {searchTerm
-                  ? `Searching for "${searchTerm}"`
-                  : "Community Spotlight"}
-              </h3>
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-2 px-1">
+              <h2 className="text-label font-bold uppercase tracking-wide text-muted-fg">
+                {searchTerm ? `Searching for "${searchTerm}"` : "Community spotlight"}
+              </h2>
+              <p aria-live="polite" className="text-label text-muted-fg">
+                {filteredCreators.length} creator
+                {filteredCreators.length === 1 ? "" : "s"}
+              </p>
             </div>
 
-            {/* Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
               {filteredCreators.map((creator) => (
-                <Link
+                <Card
                   key={creator.handle}
-                  href={`/${creator.handle}`}
-                  className="group bg-card border border-border p-8 rounded-lg shadow-sm hover:shadow-2xl hover:shadow-orange-900/5 hover:-translate-y-1 transition-all duration-500 relative overflow-hidden"
+                  className="group relative overflow-hidden p-6 transition-shadow hover:shadow-card"
                 >
-                  <div className="absolute -top-10 -right-10 w-32 h-32 bg-orange-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <Link
+                    href={`/${creator.handle}`}
+                    className="absolute inset-0 z-10 outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                    aria-label={`View ${creator.name || creator.handle}'s profile`}
+                  />
 
-                  <div className="flex items-start justify-between mb-6">
-                    <div className="w-20 h-20 bg-muted rounded-lg p-1 border border-border">
-                      <div className="w-full h-full bg-muted rounded-lg overflow-hidden flex items-center justify-center">
-                        {creator.profilePicture ? (
-                          <img
-                            src={creator.profilePicture}
-                            alt={creator.name || creator.handle || "Creator profile"}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <User size={30} className="text-muted-foreground" />
-                        )}
-                      </div>
-                    </div>
+                  <div className="flex items-start justify-between gap-4">
+                    <Avatar
+                      src={creator.profilePicture || creator.photoURL}
+                      name={creator.name || creator.handle}
+                      size="lg"
+                    />
                     {creator.verified && (
-                      <div className="bg-orange-50 text-orange-600 p-2 rounded-lg">
-                        <MdVerifiedUser size={16} fill="currentColor" />
+                      <span className="flex size-9 items-center justify-center rounded-control bg-success-bg text-success">
+                        <CheckCircle2 className="size-4" aria-hidden="true" />
+                        <span className="sr-only">Verified creator</span>
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-5">
+                    <h2 className="flex items-center gap-2 text-title font-bold text-fg transition-colors group-hover:text-brand-strong">
+                      {creator.name || creator.handle}
+                    </h2>
+                    <p className="mt-0.5 text-caption font-bold uppercase tracking-wide text-brand-strong">
+                      @{creator.handle}
+                    </p>
+                    <p className="mt-3 line-clamp-3 text-label leading-relaxed text-muted-fg">
+                      {creator.bio || "No bio available yet."}
+                    </p>
+
+                    {creator.focus && creator.focus.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {creator.focus.slice(0, 3).map((focus) => (
+                          <Badge key={focus} tone="neutral">
+                            {focus}
+                          </Badge>
+                        ))}
                       </div>
                     )}
                   </div>
 
-                  <div className="space-y-2">
-                    <h2 className="text-2xl font-bold tracking-tight group-hover:text-orange-600 transition-colors flex items-center gap-2">
-                      {creator.name || creator.handle}
-                      {creator.verified && (
-                        <CheckCircle2 size={18} className="text-orange-600" />
-                      )}
-                    </h2>
-                    <p className="text-orange-600 font-bold text-xs uppercase tracking-widest">
-                      @{creator.handle}
-                    </p>
-                    <p className="text-muted-foreground text-sm leading-relaxed line-clamp-2 pt-2">
-                      {creator.bio || "No bio available."}
-                    </p>
-                  </div>
-
-                  <div className="mt-8 pt-6 border-t border-border flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                      View Profile
+                  <div className="mt-6 flex items-center justify-between border-t border-line pt-4">
+                    <span className="text-label font-semibold text-muted-fg">
+                      View profile
                     </span>
-                    <div className="w-10 h-10 rounded-full bg-foreground text-background flex items-center justify-center group-hover:bg-orange-600 transition-colors">
-                      <ArrowRight size={18} />
-                    </div>
+                    <span className="flex size-10 items-center justify-center rounded-control bg-surface-raised text-fg transition-colors group-hover:bg-brand-strong group-hover:text-on-brand">
+                      <ArrowRight className="size-4" aria-hidden="true" />
+                    </span>
                   </div>
-                </Link>
+                </Card>
               ))}
             </div>
 
-            {hasMore && !searchTerm && (
-              <div className="mt-20 text-center">
-                <button
-                  onClick={() => fetchCreators()}
-                  disabled={loadingMore}
-                  className="group relative inline-flex items-center gap-3 bg-card border border-border px-12 py-5 rounded-lg font-bold text-xs uppercase tracking-[0.2em] hover:border-orange-600 hover:text-orange-600 transition-all disabled:opacity-50 shadow-sm overflow-hidden"
-                >
-                  {loadingMore ? (
-                    <Loader
-                      size={18}
-                      className="animate-spin text-orange-600"
-                    />
-                  ) : (
-                    <>
-                      Load More Creators
-                      <ChevronDown
-                        size={16}
-                        className="group-hover:translate-y-1 transition-transform"
-                      />
-                    </>
-                  )}
-                </button>
-              </div>
+            {filteredCreators.length === 0 && (
+              <EmptyState
+                icon={<Search className="size-6" aria-hidden="true" />}
+                title="No creators found"
+                description="Try searching for a different name, handle, or keyword."
+              />
             )}
 
-            {filteredCreators.length === 0 && (
-              <div className="py-24 text-center">
-                <div className="w-24 h-24 bg-muted rounded-lg flex items-center justify-center mx-auto mb-8 border border-border">
-                  <Search size={32} className="text-muted-foreground" />
-                </div>
-                <h3 className="text-3xl font-bold tracking-tighter">
-                  No creators found
-                </h3>
-                <p className="text-muted-foreground mt-2 font-medium">
-                  Try searching for different keywords or names.
-                </p>
+            {hasMore && !searchTerm && (
+              <div className="mt-12 text-center">
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  loading={loadingMore}
+                  onClick={() => fetchCreators()}
+                  trailingIcon={<ChevronDown className="size-4" aria-hidden="true" />}
+                >
+                  Load more creators
+                </Button>
               </div>
             )}
           </>
         )}
       </main>
-      <MobileBottomBar />
     </div>
   );
 }

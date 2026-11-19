@@ -24,7 +24,7 @@ import Link from "next/link";
 import Navbar from "@/components/parts/Navigation";
 import Footer from "@/components/parts/Footer";
 import { logError } from "@/lib/logger";
-import { formatCurrency } from "@/types/currency";
+import { formatMoney as formatCurrency } from "@/lib/format/money";
 
 export default function BookingPayClient() {
   const params = useParams();
@@ -147,10 +147,10 @@ export default function BookingPayClient() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-canvas">
         <Navbar />
         <div className="min-h-[60vh] flex items-center justify-center">
-          <Loader className="animate-spin text-orange-600" size={32} />
+          <Loader className="animate-spin text-brand-strong" size={32} />
         </div>
         <Footer />
       </div>
@@ -159,14 +159,14 @@ export default function BookingPayClient() {
 
   if (!booking) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-canvas">
         <Navbar />
         <div className="min-h-[60vh] flex items-center justify-center">
           <div className="text-center p-8">
-            <p className="text-red-500 font-bold">Booking not found</p>
+            <p className="text-danger font-bold">Booking not found</p>
             <button
               onClick={() => router.push("/")}
-              className="text-orange-600 underline mt-4 block mx-auto"
+              className="text-brand-strong underline mt-4 block mx-auto"
             >
               Go Home
             </button>
@@ -183,30 +183,30 @@ export default function BookingPayClient() {
 
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-canvas">
       <Navbar />
       <div className="max-w-lg mx-auto px-4 pt-10 pb-24">
         {handle && (
           <Link
             href={`/${handle}/booking`}
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition mb-6"
+            className="inline-flex items-center gap-2 text-sm text-muted-fg hover:text-fg transition mb-6"
           >
             <ArrowLeft size={16} />
             Back to Booking
           </Link>
         )}
 
-        <div className="bg-card rounded-xl shadow-lg p-6 space-y-6">
+        <div className="bg-surface rounded-control shadow-lg p-6 space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold">Complete Payment</h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-fg">
                 Booking with {booking.creatorName || handle}
               </p>
             </div>
             {isPaid && (
-              <span className="flex items-center gap-1.5 bg-green-100 text-green-700 text-xs font-bold px-3 py-1.5 rounded-full">
+              <span className="flex items-center gap-1.5 bg-success-bg text-success text-xs font-bold px-3 py-1.5 rounded-full">
                 <Check size={14} />
                 Paid
               </span>
@@ -214,82 +214,82 @@ export default function BookingPayClient() {
           </div>
 
           {/* Booking Summary */}
-          <div className="bg-muted rounded-xl p-4 space-y-3">
+          <div className="bg-surface-sunken rounded-control p-4 space-y-3">
             <h4 className="font-bold text-sm">Booking Summary</h4>
             {booking.tierName && (
               <div className="flex items-center gap-2 text-sm">
-                <Star size={16} className="text-orange-500 shrink-0" />
+                <Star size={16} className="text-brand-strong shrink-0" />
                 <span className="font-medium">{booking.tierName}</span>
               </div>
             )}
             <div className="flex items-center gap-2 text-sm">
-              <Calendar size={16} className="text-muted-foreground shrink-0" />
+              <Calendar size={16} className="text-muted-fg shrink-0" />
               <span>{booking.preferredDate}</span>
             </div>
             <div className="flex items-center gap-2 text-sm">
-              <Clock size={16} className="text-muted-foreground shrink-0" />
+              <Clock size={16} className="text-muted-fg shrink-0" />
               <span>{booking.preferredTime}</span>
             </div>
             <div className="flex items-center gap-2 text-sm">
               {booking.preferredType === "online" ? (
-                <Video size={16} className="text-muted-foreground shrink-0" />
+                <Video size={16} className="text-muted-fg shrink-0" />
               ) : (
-                <MapPin size={16} className="text-muted-foreground shrink-0" />
+                <MapPin size={16} className="text-muted-fg shrink-0" />
               )}
               <span className="capitalize">{booking.preferredType} Meeting</span>
             </div>
             {booking.meetingLocation && (
               <div className="flex items-start gap-2 text-sm">
                 {booking.preferredType === "online" ? (
-                  <Video size={16} className="text-orange-500 shrink-0 mt-0.5" />
+                  <Video size={16} className="text-brand-strong shrink-0 mt-0.5" />
                 ) : (
-                  <MapPin size={16} className="text-orange-500 shrink-0 mt-0.5" />
+                  <MapPin size={16} className="text-brand-strong shrink-0 mt-0.5" />
                 )}
-                <span className="text-muted-foreground break-all">
+                <span className="text-muted-fg break-all">
                   {booking.preferredType === "online" ? "Link: " : "Location: "}
                   {booking.meetingLocation}
                 </span>
               </div>
             )}
-            <div className="border-t border-border pt-3 flex justify-between font-bold">
+            <div className="border-t border-line pt-3 flex justify-between font-bold">
               <span>Amount</span>
-              <span className="text-orange-600">
+              <span className="text-brand-strong">
                 {booking.currency ? formatCurrency(booking.paymentAmount || 0, booking.currency) : `${booking.paymentAmount || 0}`}
               </span>
             </div>
           </div>
 
           {/* Booker Info */}
-          <div className="bg-muted rounded-xl p-4 space-y-1">
+          <div className="bg-surface-sunken rounded-control p-4 space-y-1">
             <h4 className="font-bold text-sm mb-2">Your Information</h4>
             <p className="text-sm">{booking.bookerName}</p>
-            <p className="text-sm text-muted-foreground">{booking.bookerEmail}</p>
+            <p className="text-sm text-muted-fg">{booking.bookerEmail}</p>
             {booking.bookerPhone && (
-              <p className="text-sm text-muted-foreground">{booking.bookerPhone}</p>
+              <p className="text-sm text-muted-fg">{booking.bookerPhone}</p>
             )}
           </div>
 
           {/* Payment section */}
           {isPaid || confirmed ? (
-            <div className="bg-green-50 rounded-xl p-4 flex items-start gap-3">
-              <Check size={20} className="text-green-600 mt-0.5 shrink-0" />
+            <div className="bg-success-bg rounded-control p-4 flex items-start gap-3">
+              <Check size={20} className="text-success mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-bold text-green-800">
+                <p className="text-sm font-bold text-success">
                   Payment Completed
                 </p>
-                <p className="text-xs text-green-600 mt-1">
+                <p className="text-xs text-success mt-1">
                   Your booking has been paid successfully. The creator will confirm your meeting.
                 </p>
               </div>
             </div>
           ) : paid ? (
-            <div className="bg-amber-50 rounded-xl p-4 flex items-start gap-3">
-              <Loader size={20} className="animate-spin text-amber-600 mt-0.5 shrink-0" />
+            <div className="bg-warning-bg rounded-control p-4 flex items-start gap-3">
+              <Loader size={20} className="animate-spin text-warning mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-bold text-amber-800">
+                <p className="text-sm font-bold text-warning">
                   Waiting for Payment Confirmation
                 </p>
-                <p className="text-xs text-amber-600 mt-1">
+                <p className="text-xs text-warning mt-1">
                   {paymentMethod === "momo"
                     ? "Please check your phone to complete the payment. Waiting for confirmation..."
                     : "Waiting for card payment confirmation..."}
@@ -302,27 +302,27 @@ export default function BookingPayClient() {
               <div className="space-y-3">
                 <p className="font-bold text-sm">Payment Method</p>
                 {!momoSupported ? (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-fg">
                     Mobile money is not available for {booking.currency || "this currency"}. Card payment is required.
                   </p>
                 ) : (
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => setPaymentMethod("momo")}
-                      className={`py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${
+                      className={`py-3 px-4 rounded-control border-2 font-bold text-sm transition-all ${
                         paymentMethod === "momo"
-                          ? "border-orange-600 bg-orange-50 text-orange-600"
-                          : "border-border text-muted-foreground"
+                          ? "border-brand-strong bg-brand-soft text-brand-strong"
+                          : "border-line text-muted-fg"
                       }`}
                     >
                       Mobile Money
                     </button>
                     <button
                       onClick={() => setPaymentMethod("card")}
-                      className={`py-3 px-4 rounded-lg border-2 font-bold text-sm transition-all ${
+                      className={`py-3 px-4 rounded-control border-2 font-bold text-sm transition-all ${
                         paymentMethod === "card"
-                          ? "border-orange-600 bg-orange-50 text-orange-600"
-                          : "border-border text-muted-foreground"
+                          ? "border-brand-strong bg-brand-soft text-brand-strong"
+                          : "border-line text-muted-fg"
                       }`}
                     >
                       Card Payment
@@ -332,12 +332,12 @@ export default function BookingPayClient() {
               </div>
 
               {momoSupported && paymentMethod === "momo" && (
-                <div className="bg-amber-50 rounded-xl p-4 flex items-start gap-3">
+                <div className="bg-warning-bg rounded-control p-4 flex items-start gap-3">
                   <AlertCircle
                     size={20}
-                    className="text-amber-600 mt-0.5 shrink-0"
+                    className="text-warning mt-0.5 shrink-0"
                   />
-                  <p className="text-sm text-amber-800">
+                  <p className="text-sm text-warning">
                     Payment will be processed via Mobile Money. You will receive
                     a prompt on your phone to complete the payment.
                   </p>
@@ -354,18 +354,18 @@ export default function BookingPayClient() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="07X XXX XXXX"
-                    className="w-full bg-muted p-4 rounded-lg text-sm font-medium outline-none"
+                    className="w-full bg-surface-sunken p-4 rounded-control text-sm font-medium outline-none"
                   />
                 </div>
               )}
 
               {paymentMethod === "card" && (
-                <div className="bg-blue-50 rounded-xl p-4 flex items-start gap-3">
+                <div className="bg-info-bg rounded-control p-4 flex items-start gap-3">
                   <CreditCard
                     size={20}
-                    className="text-blue-600 mt-0.5 shrink-0"
+                    className="text-info mt-0.5 shrink-0"
                   />
-                  <p className="text-sm text-blue-800">
+                  <p className="text-sm text-info">
                     You will be redirected to a secure payment page to complete
                     your card payment.
                   </p>
@@ -375,7 +375,7 @@ export default function BookingPayClient() {
               <button
                 onClick={handlePay}
                 disabled={!booking.currency || paying || (paymentMethod === "momo" && !phone.trim())}
-                className="w-full bg-green-600 text-white py-4 rounded-lg font-bold hover:bg-green-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full bg-success text-on-success py-4 rounded-control font-bold hover:bg-success transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {paying ? (
                   <>

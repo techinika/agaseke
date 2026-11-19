@@ -1,7 +1,7 @@
 import { ChevronRight, Package, ShoppingCart } from "lucide-react";
 import { Product, FolderData, getProductCurrency, getProductPrice } from "./types";
 import { ProductCard } from "./ProductCard";
-import { formatCurrency } from "@/types/currency";
+import { formatMoney as formatCurrency } from "@/lib/format/money";
 
 export function FolderExplorer({
   folder,
@@ -36,37 +36,37 @@ export function FolderExplorer({
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={onBack}
-          className="p-2 hover:bg-card-hover rounded-lg transition"
+          className="p-2 hover:bg-surface-raised rounded-control transition"
         >
           <ChevronRight size={20} className="rotate-180" />
         </button>
         <div>
           <h2 className="text-xl font-bold">{folder.name}</h2>
           {folder.description && (
-            <p className="text-sm text-muted-foreground">{folder.description}</p>
+            <p className="text-sm text-muted-fg">{folder.description}</p>
           )}
         </div>
       </div>
 
       {unpurchased.length > 0 && (
-        <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 mb-6">
+        <div className="bg-brand-soft border border-brand-soft rounded-control p-4 mb-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-lg font-bold text-foreground">
+              <p className="text-lg font-bold text-fg">
                 Bundle Total: {formatCurrency(folderTotal, currency)}
               </p>
               {folderPlatformFee > 0 && (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-fg">
                   + Platform fee: {formatCurrency(folderPlatformFee, currency)}
                 </p>
               )}
               {folderPlatformFee > 0 && (
-                <p className="text-sm font-bold text-orange-600">
+                <p className="text-sm font-bold text-brand-strong">
                   Total: {formatCurrency(totalWithFee, currency)}
                 </p>
               )}
               {folder.discountEnabled && (
-                <p className="text-xs text-green-600 font-bold">
+                <p className="text-xs text-success font-bold">
                   {folder.discountPercentage}% bundle discount applied
                 </p>
               )}
@@ -74,7 +74,7 @@ export function FolderExplorer({
             <button
               onClick={onAddFolderToCart}
               disabled={!isLoggedIn}
-              className="px-6 py-3 bg-orange-600 text-white rounded-lg font-bold text-sm hover:bg-orange-700 transition disabled:opacity-50 flex items-center gap-2"
+              className="px-6 py-3 bg-brand-strong text-on-brand rounded-control font-bold text-sm hover:bg-brand-strong transition disabled:opacity-50 flex items-center gap-2"
             >
               <ShoppingCart size={16} />
               Buy Bundle
@@ -84,9 +84,9 @@ export function FolderExplorer({
       )}
 
       {products.length === 0 ? (
-        <div className="text-center py-20 bg-card border border-border rounded-3xl">
+        <div className="text-center py-20 bg-surface border border-line rounded-card">
           <Package size={48} className="mx-auto text-border-strong mb-4" />
-          <p className="text-muted-foreground font-medium">
+          <p className="text-muted-fg font-medium">
             No products in this bundle
           </p>
         </div>

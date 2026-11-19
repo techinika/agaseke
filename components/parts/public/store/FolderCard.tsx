@@ -1,6 +1,6 @@
 import { FolderOpen, ChevronRight, Check } from "lucide-react";
 import { Product, FolderData, getProductCurrency, getProductPrice } from "./types";
-import { formatCurrency } from "@/types/currency";
+import { formatMoney as formatCurrency } from "@/lib/format/money";
 
 const platformSharePercentage =
   Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
@@ -37,9 +37,9 @@ export function FolderCard({
   return (
     <div
       onClick={onEnter}
-      className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all cursor-pointer group"
+      className="bg-surface border border-line rounded-card overflow-hidden shadow-sm hover:shadow-xl transition-all cursor-pointer group"
     >
-      <div className="aspect-square bg-gradient-to-br from-orange-50 to-amber-50 relative flex items-center justify-center">
+      <div className="aspect-square bg-gradient-to-br from-brand-soft to-warning-bg relative flex items-center justify-center">
         {folder.imageUrl ? (
           <img
             src={folder.imageUrl}
@@ -48,17 +48,17 @@ export function FolderCard({
           />
         ) : (
           <div className="text-center">
-            <FolderOpen size={64} className="text-orange-300 mx-auto mb-2" />
-            <p className="text-orange-400 font-bold text-sm">
+            <FolderOpen size={64} className="text-brand-strong mx-auto mb-2" />
+            <p className="text-brand-strong font-bold text-sm">
               {folderProducts.length} items
             </p>
           </div>
         )}
-        <div className="absolute top-3 left-3 bg-orange-100 text-orange-600 text-[10px] font-bold px-2 py-1 rounded-full">
+        <div className="absolute top-3 left-3 bg-brand-soft text-brand-strong text-caption font-bold px-2 py-1 rounded-full">
           Bundle
         </div>
         {folder.discountEnabled && (
-          <div className="absolute top-3 right-3 bg-green-100 text-green-600 text-[10px] font-bold px-2 py-1 rounded-full">
+          <div className="absolute top-3 right-3 bg-success-bg text-success text-caption font-bold px-2 py-1 rounded-full">
             {folder.discountPercentage}% OFF
           </div>
         )}
@@ -66,7 +66,7 @@ export function FolderCard({
       <div className="p-4">
         <h3 className="font-bold text-lg truncate">{folder.name}</h3>
         {folder.description && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+          <p className="text-sm text-muted-fg line-clamp-2 mt-1">
             {folder.description}
           </p>
         )}
@@ -76,9 +76,9 @@ export function FolderCard({
               key={p.id}
               className="flex items-center justify-between text-xs"
             >
-              <span className="text-muted-foreground truncate flex-1">{p.name}</span>
+              <span className="text-muted-fg truncate flex-1">{p.name}</span>
               <span
-                className={`font-medium ml-2 ${purchasedProductIds.has(p.id) ? "text-green-500" : "text-foreground"}`}
+                className={`font-medium ml-2 ${purchasedProductIds.has(p.id) ? "text-success" : "text-fg"}`}
               >
                 {purchasedProductIds.has(p.id)
                   ? "Owned"
@@ -87,7 +87,7 @@ export function FolderCard({
             </div>
           ))}
           {folderProducts.length > 3 && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-fg">
               +{folderProducts.length - 3} more items
             </p>
           )}
@@ -95,23 +95,23 @@ export function FolderCard({
         {unpurchased.length > 0 && (
           <div className="mt-4 flex items-center justify-between">
             <div>
-              <p className="text-lg font-bold text-foreground">
+              <p className="text-lg font-bold text-fg">
                 {formatCurrency(discountedPrice, bundleCurrency)}
               </p>
               {folder.discountEnabled && (
-                <p className="text-xs text-green-600 font-bold">
+                <p className="text-xs text-success font-bold">
                   {folder.discountPercentage}% bundle discount
                 </p>
               )}
             </div>
-            <span className="flex items-center gap-1 text-orange-600 text-sm font-bold group-hover:gap-2 transition-all">
+            <span className="flex items-center gap-1 text-brand-strong text-sm font-bold group-hover:gap-2 transition-all">
               Open <ChevronRight size={16} />
             </span>
           </div>
         )}
         {unpurchased.length === 0 && (
           <div className="mt-4">
-            <span className="text-green-600 font-bold text-sm flex items-center gap-1">
+            <span className="text-success font-bold text-sm flex items-center gap-1">
               <Check size={16} /> All items owned
             </span>
           </div>

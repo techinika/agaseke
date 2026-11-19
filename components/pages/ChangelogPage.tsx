@@ -1,11 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Package, Zap, Calendar, Tag, ChevronRight, MessageCircle } from "lucide-react";
 import { db } from "@/db/firebase";
 import { collection, query, orderBy, getDocs, Timestamp } from "firebase/firestore";
 import Loading from "@/app/loading";
+import { buttonClasses } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 
 interface ChangelogEntry {
   id: string;
@@ -19,9 +21,9 @@ interface ChangelogEntry {
 }
 
 const priorityColors: Record<string, string> = {
-  high: "bg-red-100 text-red-700 border-red-200",
-  medium: "bg-amber-100 text-amber-700 border-amber-200",
-  low: "bg-blue-100 text-blue-700 border-blue-200",
+  high: "bg-danger-bg text-danger border-danger/20",
+  medium: "bg-warning-bg text-warning border-warning/20",
+  low: "bg-info-bg text-info border-info/20",
 };
 
 const priorityLabels: Record<string, string> = {
@@ -73,145 +75,76 @@ export default function ChangelogPage() {
   }
 
   return (
-    <div className="min-h-screen bg-muted text-foreground pb-20">
-      <div className="bg-gradient-to-br from-orange-600 to-orange-700 pt-20 pb-32 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">Changelog</h1>
-          <p className="text-orange-100 text-lg max-w-2xl mx-auto">
+    <div className="min-h-screen bg-surface-sunken pb-20 text-fg">
+      <section className="bg-brand-strong px-4 pb-28 pt-20 text-on-brand sm:px-6">
+        <div className="mx-auto max-w-4xl text-center">
+          <h1 className="text-display font-black text-on-brand sm:text-hero">
+            Changelog
+          </h1>
+          <p className="mx-auto mt-4 max-w-2xl text-body-lg text-on-brand/90">
             Track our progress. See what we&apos;ve built and what&apos;s coming next.
           </p>
           <Link
             href="https://whatsapp.com/channel/0029Vb9AemqFy72CiwMyQf06"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 bg-white/10 border border-white/30 hover:bg-white/20 transition-all rounded-full px-5 py-2.5 mt-6 text-sm font-bold text-white"
+            className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-pill border border-on-brand/30 bg-on-brand/10 px-5 py-2.5 text-label font-bold text-on-brand transition-colors hover:bg-on-brand/20"
           >
-            <MessageCircle size={16} /> Get announcements & new features on our WhatsApp
-            Channel
+            <MessageCircle className="size-4" aria-hidden="true" /> Get announcements &
+            new features on our WhatsApp Channel
           </Link>
         </div>
-      </div>
+      </section>
 
-      <main className="max-w-6xl mx-auto px-6 -mt-20">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div>
-            <div className="bg-card rounded-2xl shadow-sm border border-border-strong overflow-hidden">
-              <div className="bg-emerald-50 border-b border-emerald-100 px-8 py-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center">
-                    <Package size={20} className="text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-emerald-900">
-                      Current Features
-                    </h2>
-                    <p className="text-sm text-emerald-600">
-                      {currentEntries.length} released features
-                    </p>
-                  </div>
+      <main className="mx-auto -mt-20 max-w-6xl px-4 sm:px-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8">
+          <Card className="overflow-hidden">
+            <div className="border-b border-success/20 bg-success-bg px-6 py-5 sm:px-8">
+              <div className="flex items-center gap-3">
+                <span className="flex size-10 items-center justify-center rounded-control bg-success text-on-brand">
+                  <Package className="size-5" aria-hidden="true" />
+                </span>
+                <div>
+                  <h2 className="text-heading font-bold text-fg">Current Features</h2>
+                  <p className="text-label text-success">
+                    {currentEntries.length} released features
+                  </p>
                 </div>
-              </div>
-
-              <div className="p-6">
-                {currentEntries.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Package className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                    <p className="text-muted-foreground">
-                      No current features listed yet.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {currentEntries.map((entry, index) => (
-                      <div
-                        key={entry.id}
-                        className="relative pl-6 pb-6 border-l-2 border-emerald-200 last:border-l-0 last:pb-0"
-                      >
-                        {index !== currentEntries.length - 1 && (
-                          <div className="absolute left-[-9px] top-0 w-4 h-4 bg-emerald-500 rounded-lg border-2 border-white dark:border-foreground shadow-sm" />
-                        )}
-
-                        <div className="bg-muted rounded-xl p-5 hover:bg-card-hover transition-colors">
-                          <div className="flex items-start justify-between gap-3 mb-2">
-                            <h3 className="font-bold text-foreground">{entry.title}</h3>
-                            {entry.releaseDate && (
-                              <span className="flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap">
-                                <Calendar size={12} /> {entry.releaseDate}
-                              </span>
-                            )}
-                          </div>
-
-                          <p className="text-sm text-muted-foreground mb-3">
-                            {entry.description}
-                          </p>
-
-                          {entry.tags && entry.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                              {entry.tags.map((tag) => (
-                                <span
-                                  key={tag}
-                                  className="px-2.5 py-1 bg-card border border-border-strong text-muted-foreground rounded-lg text-xs font-medium"
-                                >
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
-          </div>
 
-          <div>
-            <div className="bg-card rounded-2xl shadow-sm border border-border-strong overflow-hidden">
-              <div className="bg-blue-50 border-b border-blue-100 px-8 py-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-                    <Zap size={20} className="text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-blue-900">Coming Soon</h2>
-                    <p className="text-sm text-blue-600">
-                      {plannedEntries.length} planned features
-                    </p>
-                  </div>
+            <div className="p-6">
+              {currentEntries.length === 0 ? (
+                <div className="py-12 text-center">
+                  <Package
+                    className="mx-auto mb-3 size-12 text-muted-fg"
+                    aria-hidden="true"
+                  />
+                  <p className="text-muted-fg">No current features listed yet.</p>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-4">
+                  {currentEntries.map((entry, index) => (
+                    <div
+                      key={entry.id}
+                      className="relative border-l-2 border-success/30 pb-6 pl-6 last:border-l-0 last:pb-0"
+                    >
+                      {index !== currentEntries.length - 1 && (
+                        <div className="absolute left-[-9px] top-0 size-4 rounded-pill border-2 border-surface bg-success" />
+                      )}
 
-              <div className="p-6">
-                {plannedEntries.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Zap className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                    <p className="text-muted-foreground">
-                      No planned features listed yet.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {plannedEntries.map((entry) => (
-                      <div
-                        key={entry.id}
-                        className="bg-gradient-to-r from-muted to-card rounded-xl p-5 border border-dashed border-border-strong hover:border-blue-200 hover:from-blue-50/30 transition-all"
-                      >
-                        <div className="flex items-start justify-between gap-3 mb-2">
-                          <h3 className="font-bold text-foreground flex items-center gap-2">
-                            {entry.title}
-                            <ChevronRight size={14} className="text-blue-400" />
-                          </h3>
-                          {entry.priority && (
-                            <span
-                              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase border ${priorityColors[entry.priority]}`}
-                            >
-                              {priorityLabels[entry.priority]}
+                      <div className="rounded-control bg-surface-sunken p-5 transition-colors hover:bg-surface-raised">
+                        <div className="mb-2 flex items-start justify-between gap-3">
+                          <h3 className="font-bold text-fg">{entry.title}</h3>
+                          {entry.releaseDate && (
+                            <span className="flex items-center gap-1 whitespace-nowrap text-caption text-muted-fg">
+                              <Calendar className="size-3" aria-hidden="true" />{" "}
+                              {entry.releaseDate}
                             </span>
                           )}
                         </div>
 
-                        <p className="text-sm text-muted-foreground mb-3">
+                        <p className="mb-3 text-label text-muted-fg">
                           {entry.description}
                         </p>
 
@@ -220,9 +153,82 @@ export default function ChangelogPage() {
                             {entry.tags.map((tag) => (
                               <span
                                 key={tag}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-medium"
+                                className="rounded-pill border border-line bg-surface px-2.5 py-1 text-caption font-medium text-muted-fg"
                               >
-                                <Tag size={10} /> {tag}
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Card>
+
+          <div>
+            <Card className="overflow-hidden">
+              <div className="border-b border-info/20 bg-info-bg px-6 py-5 sm:px-8">
+                <div className="flex items-center gap-3">
+                  <span className="flex size-10 items-center justify-center rounded-control bg-info text-on-brand">
+                    <Zap className="size-5" aria-hidden="true" />
+                  </span>
+                  <div>
+                    <h2 className="text-heading font-bold text-fg">Coming Soon</h2>
+                    <p className="text-label text-info">
+                      {plannedEntries.length} planned features
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6">
+                {plannedEntries.length === 0 ? (
+                  <div className="py-12 text-center">
+                    <Zap
+                      className="mx-auto mb-3 size-12 text-muted-fg"
+                      aria-hidden="true"
+                    />
+                    <p className="text-muted-fg">No planned features listed yet.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {plannedEntries.map((entry) => (
+                      <div
+                        key={entry.id}
+                        className="rounded-control border border-dashed border-line bg-surface-sunken p-5 transition-colors hover:border-info/30 hover:bg-surface-raised"
+                      >
+                        <div className="mb-2 flex items-start justify-between gap-3">
+                          <h3 className="flex items-center gap-2 font-bold text-fg">
+                            {entry.title}
+                            <ChevronRight
+                              className="size-3.5 text-info"
+                              aria-hidden="true"
+                            />
+                          </h3>
+                          {entry.priority && (
+                            <span
+                              className={`rounded-pill border px-2.5 py-1 text-caption font-bold uppercase ${priorityColors[entry.priority]}`}
+                            >
+                              {priorityLabels[entry.priority]}
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="mb-3 text-label text-muted-fg">
+                          {entry.description}
+                        </p>
+
+                        {entry.tags && entry.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {entry.tags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="inline-flex items-center gap-1 rounded-pill bg-info-bg px-2.5 py-1 text-caption font-medium text-info"
+                              >
+                                <Tag className="size-2.5" aria-hidden="true" /> {tag}
                               </span>
                             ))}
                           </div>
@@ -232,29 +238,29 @@ export default function ChangelogPage() {
                   </div>
                 )}
               </div>
-            </div>
+            </Card>
 
-            <div className="mt-6 bg-card rounded-2xl shadow-sm border border-border-strong p-6">
-              <h3 className="font-bold text-foreground mb-3">Have a feature idea?</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                We&apos;re always looking for ways to improve Agaseke. If you have a feature
-                suggestion or feedback, we&apos;d love to hear from you.
+            <Card className="mt-6 p-6">
+              <h3 className="mb-3 font-bold text-fg">Have a feature idea?</h3>
+              <p className="mb-4 text-label text-muted-fg">
+                We&apos;re always looking for ways to improve Agaseke. If you have a
+                feature suggestion or feedback, we&apos;d love to hear from you.
               </p>
               <div className="flex flex-wrap gap-3">
                 <a
                   href="mailto:hello@agaseke.me"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-xl text-sm font-bold hover:bg-orange-700 transition-colors"
+                  className={buttonClasses({ variant: "primary", size: "sm" })}
                 >
                   Email Us
                 </a>
                 <Link
                   href="/help-center"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-border text-foreground rounded-xl text-sm font-bold hover:bg-border-strong transition-colors"
+                  className={buttonClasses({ variant: "secondary", size: "sm" })}
                 >
                   Help Center
                 </Link>
               </div>
-            </div>
+            </Card>
           </div>
         </div>
       </main>

@@ -98,7 +98,7 @@ export default function PartnersPage() {
         </Link>
       </aside>
 
-      <main className="flex-1 p-8">
+      <div className="flex-1 p-8">
         <div className="mb-8">
           <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-2">
             Your Partners
@@ -205,7 +205,7 @@ export default function PartnersPage() {
             ))}
           </div>
         )}
-      </main>
+      </div>
 
       {editingPartner && (
         <PartnerModal

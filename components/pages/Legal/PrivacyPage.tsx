@@ -7,28 +7,28 @@ export default function PrivacyPage() {
   const lastUpdated = "February 02, 2026";
 
   return (
-    <div className="min-h-screen bg-card text-foreground pb-20">
+    <div className="min-h-screen bg-canvas text-fg pb-20">
       <Navbar />
 
       <main className="max-w-3xl mx-auto px-6 py-16">
         <header className="mb-12">
-          <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600 mb-6">
+          <div className="w-12 h-12 bg-brand-soft rounded-control flex items-center justify-center text-brand-strong mb-6">
             <ShieldCheck size={28} />
           </div>
-          <h1 className="text-4xl font-bold mb-4">Privacy Policy</h1>
-          <p className="text-muted-foreground font-medium">Last updated: {lastUpdated}</p>
+          <h1 className="text-display font-bold mb-4">Privacy Policy</h1>
+          <p className="text-muted-fg font-medium">Last updated: {lastUpdated}</p>
         </header>
 
-        <div className="prose prose-slate max-w-none space-y-12">
+        <div className="max-w-none space-y-12">
           <section>
             <div className="flex items-center gap-3 mb-4">
-              <h2 className="text-2xl font-bold m-0">1. Information We Collect</h2>
+              <h2 className="text-heading font-bold m-0">1. Information We Collect</h2>
             </div>
-            <p className="text-muted-foreground leading-relaxed">
+            <p className="text-muted-fg leading-relaxed">
               To provide a seamless experience for creators and supporters in Africa, we
               collect:
             </p>
-            <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+            <ul className="list-disc pl-6 space-y-2 text-muted-fg">
               <li>
                 <strong>Account Information:</strong> Your name, email address, and
                 profile photo when you sign up via Google or Email.
@@ -46,13 +46,13 @@ export default function PrivacyPage() {
 
           <section>
             <div className="flex items-center gap-3 mb-4">
-              <h2 className="text-2xl font-bold m-0">2. How We Share Your Data</h2>
+              <h2 className="text-heading font-bold m-0">2. How We Share Your Data</h2>
             </div>
-            <p className="text-muted-foreground leading-relaxed">
+            <p className="text-muted-fg leading-relaxed">
               We value your privacy. We do not sell your data. However, data sharing
               occurs in the following instances:
             </p>
-            <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+            <ul className="list-disc pl-6 space-y-2 text-muted-fg">
               <li>
                 <strong>Creator-Supporter Connection:</strong> When you RSVP for a
                 gathering, your name and phone number are shared <strong>only</strong>{" "}
@@ -67,9 +67,9 @@ export default function PrivacyPage() {
 
           <section>
             <div className="flex items-center gap-3 mb-4">
-              <h2 className="text-2xl font-bold m-0">3. Data Security</h2>
+              <h2 className="text-heading font-bold m-0">3. Data Security</h2>
             </div>
-            <p className="text-muted-foreground leading-relaxed">
+            <p className="text-muted-fg leading-relaxed">
               We use industry-standard encryption and Firebase Security Rules to ensure
               that your private data (like your total support impact or account settings)
               is only accessible by you.
@@ -77,25 +77,25 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-bold mb-4">4. Your Rights</h2>
-            <p className="text-muted-foreground leading-relaxed">
+            <h2 className="text-heading font-bold mb-4">4. Your Rights</h2>
+            <p className="text-muted-fg leading-relaxed">
               Under Rwandan data protection laws, you have the right to access your data,
               request corrections, or ask for the deletion of your account. To exercise
               these rights, please contact us at the email below.
             </p>
           </section>
 
-          <section className="bg-slate-900 text-white p-8 rounded-lg">
-            <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+          <section className="bg-brand-strong text-on-brand p-8 rounded-control">
+            <h2 className="text-heading font-bold mb-4 flex items-center gap-2">
               Contact Privacy Team
             </h2>
-            <p className="text-slate-300 mb-6">
+            <p className="text-on-brand/90 mb-6">
               For any questions regarding your data privacy, account deletion, or security
               concerns:
             </p>
             <div className="space-y-2">
               <p className="font-bold">hello@agaseke.me</p>
-              <p className="text-sm text-slate-300">Subject: Privacy Inquiry</p>
+              <p className="text-label text-on-brand/90">Subject: Privacy Inquiry</p>
               <a
                 href="https://whatsapp.com/channel/0029Vb9AemqFy72CiwMyQf06"
                 target="_blank"

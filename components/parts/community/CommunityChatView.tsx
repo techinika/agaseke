@@ -14,6 +14,10 @@ import {
   Crown,
   Users,
 } from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { IconButton } from "@/components/ui/IconButton";
+import { Input } from "@/components/ui/Input";
 import { LinkifyText } from "@/components/ui/LinkifyText";
 import { MediaPreview } from "./MediaPreview";
 import {
@@ -201,54 +205,52 @@ export function CommunityChatView({
   if (canAccess === false) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center">
-        <Crown size={48} className="text-muted-foreground mb-4" />
+        <Crown size={48} className="text-muted-fg mb-4" />
         <h3 className="font-bold text-lg mb-2">Subscription Required</h3>
-        <p className="text-sm text-muted-foreground mb-6">
+        <p className="text-sm text-muted-fg mb-6">
           You need an active subscription to access this community chat.
         </p>
-        <button
-          onClick={onBack}
-          className="text-orange-600 font-medium underline text-sm"
-        >
+        <Button variant="ghost" size="sm" onClick={onBack} className="underline">
           Go back
-        </button>
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] bg-background">
-      <div className="sticky top-0 z-10 bg-card border-b border-border px-4 py-3 flex items-center gap-3 shrink-0">
-        <button
+    <div className="flex flex-col h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] bg-canvas">
+      <div className="sticky top-0 z-10 bg-surface border-b border-line px-4 py-3 flex items-center gap-3 shrink-0">
+        <IconButton
+          label="Back"
+          icon={<ArrowLeft />}
+          size="sm"
+          className="-ml-1"
           onClick={onBack}
-          className="p-1.5 hover:bg-muted rounded-lg transition -ml-1"
-        >
-          <ArrowLeft size={20} />
-        </button>
+        />
         <div className="flex-1 min-w-0">
           <h2 className="font-bold text-sm truncate">
             {chatTierName || "Community"} Chat
           </h2>
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <p className="text-xs text-muted-fg flex items-center gap-1">
             <Users size={12} />
             {memberCount} {memberCount === 1 ? "member" : "members"}
           </p>
         </div>
-        <span className="text-[10px] font-bold bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-400 px-2 py-1 rounded uppercase tracking-wider">
+        <Badge tone="brand" className="uppercase tracking-wider">
           {isCreator ? "Creator" : "Member"}
-        </span>
+        </Badge>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messagesLoading ? (
           <div className="flex justify-center py-12">
-            <Loader className="animate-spin text-orange-500" size={24} />
+            <Loader className="animate-spin text-brand-strong" size={24} />
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
-            <Crown size={40} className="text-muted-foreground mb-3" />
-            <p className="text-sm text-muted-foreground">No messages yet</p>
-            <p className="text-xs text-muted-foreground mt-1">Start the conversation!</p>
+            <Crown size={40} className="text-muted-fg mb-3" />
+            <p className="text-sm text-muted-fg">No messages yet</p>
+            <p className="text-xs text-muted-fg mt-1">Start the conversation!</p>
           </div>
         ) : (
           messages.map((msg) => {
@@ -260,15 +262,15 @@ export function CommunityChatView({
                 className={`flex flex-col ${isOwn ? "items-end" : "items-start"}`}
               >
                 {showSender && (
-                  <span className="text-[10px] text-muted-foreground mb-1 px-1 font-medium">
+                  <span className="text-caption text-muted-fg mb-1 px-1 font-medium">
                     {showSender}
                   </span>
                 )}
                 <div
-                  className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2.5 ${
+                  className={`max-w-[85%] sm:max-w-[70%] rounded-card px-4 py-2.5 ${
                     isOwn
-                      ? "bg-orange-600 text-white rounded-br-md"
-                      : "bg-muted text-foreground rounded-bl-md"
+                      ? "bg-brand-strong text-on-brand rounded-br-md"
+                      : "bg-surface-sunken text-fg rounded-bl-md"
                   }`}
                 >
                   {msg.text && (
@@ -281,7 +283,7 @@ export function CommunityChatView({
                       {isImageType(att.mimeType) ? (
                         <button
                           onClick={() => setPreviewMedia(att)}
-                          className="block w-full rounded-lg overflow-hidden focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          className="block w-full rounded-control overflow-hidden focus:outline-none focus:ring-2 focus:ring-brand-strong"
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element -- community chat attachment */}
                           <img
@@ -296,7 +298,7 @@ export function CommunityChatView({
                           src={att.url}
                           controls
                           controlsList="nodownload"
-                          className="w-full rounded-lg max-h-64"
+                          className="w-full rounded-control max-h-64"
                           preload="metadata"
                         >
                           <source src={att.url} type={att.mimeType} />
@@ -307,10 +309,10 @@ export function CommunityChatView({
                           target="_blank"
                           rel="noopener noreferrer"
                           download={att.originalName}
-                          className="flex items-center gap-3 p-3 bg-black/5 dark:bg-white/5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition"
+                          className="flex items-center gap-3 p-3 bg-black/5 dark:bg-white/5 rounded-control hover:bg-black/10 dark:hover:bg-white/10 transition"
                         >
-                          <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center shrink-0">
-                            <FileText size={20} className="text-orange-600" />
+                          <div className="w-10 h-10 bg-brand-soft dark:bg-brand-strong rounded-control flex items-center justify-center shrink-0">
+                            <FileText size={20} className="text-brand-strong" />
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium truncate">
@@ -325,8 +327,11 @@ export function CommunityChatView({
                     </div>
                   ))}
                 </div>
-                <span className="text-[10px] text-muted-foreground mt-1 px-1">
-                  {(() => { const c = msg.createdAt as { toDate?: () => Date } | null | undefined; return c?.toDate ? formatTime(c.toDate()) : ""; })()}
+                <span className="text-caption text-muted-fg mt-1 px-1">
+                  {(() => {
+                    const c = msg.createdAt as { toDate?: () => Date } | null | undefined;
+                    return c?.toDate ? formatTime(c.toDate()) : "";
+                  })()}
                 </span>
               </div>
             );
@@ -335,25 +340,27 @@ export function CommunityChatView({
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="sticky bottom-0 bg-card border-t border-border p-3 shrink-0">
+      <div className="sticky bottom-0 bg-surface border-t border-line p-3 shrink-0">
         {uploading && (
-          <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 mb-2 text-xs text-muted-fg">
             <Loader className="animate-spin" size={14} />
             Uploading...
           </div>
         )}
         <div className="flex items-end gap-2">
           <div className="relative">
-            <button
-              onClick={() => setShowAttachMenu(!showAttachMenu)}
+            <IconButton
+              label="Attach file"
+              icon={<Paperclip className="text-muted-fg" />}
+              size="sm"
               disabled={uploading || sending}
-              className="p-2.5 hover:bg-muted rounded-full transition disabled:opacity-50"
-            >
-              <Paperclip size={20} className="text-muted-foreground" />
-            </button>
+              onClick={() => setShowAttachMenu(!showAttachMenu)}
+            />
             {showAttachMenu && (
-              <div className="absolute bottom-full left-0 mb-2 bg-card border border-border rounded-xl shadow-xl p-2 flex gap-1">
-                <button
+              <div className="absolute bottom-full left-0 mb-2 bg-surface border border-line rounded-control shadow-xl p-2 flex gap-1">
+                <Button
+                  variant="ghost"
+                  className="flex-col py-2 text-muted-fg"
                   onClick={() => {
                     fileInputRef.current!.accept = "image/*";
                     (
@@ -362,12 +369,13 @@ export function CommunityChatView({
                     fileInputRef.current!.click();
                     setShowAttachMenu(false);
                   }}
-                  className="p-3 hover:bg-muted rounded-lg transition flex flex-col items-center gap-1"
                 >
-                  <ImageIcon size={20} className="text-blue-500" />
-                  <span className="text-[10px] text-muted-foreground">Photo</span>
-                </button>
-                <button
+                  <ImageIcon size={20} className="text-info" />
+                  <span>Photo</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="flex-col py-2 text-muted-fg"
                   onClick={() => {
                     fileInputRef.current!.accept = "video/*";
                     (
@@ -376,12 +384,13 @@ export function CommunityChatView({
                     fileInputRef.current!.click();
                     setShowAttachMenu(false);
                   }}
-                  className="p-3 hover:bg-muted rounded-lg transition flex flex-col items-center gap-1"
                 >
-                  <Video size={20} className="text-purple-500" />
-                  <span className="text-[10px] text-muted-foreground">Video</span>
-                </button>
-                <button
+                  <Video size={20} className="text-chart-5" />
+                  <span>Video</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="flex-col py-2 text-muted-fg"
                   onClick={() => {
                     fileInputRef.current!.accept =
                       ".pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx";
@@ -389,11 +398,10 @@ export function CommunityChatView({
                     fileInputRef.current!.click();
                     setShowAttachMenu(false);
                   }}
-                  className="p-3 hover:bg-muted rounded-lg transition flex flex-col items-center gap-1"
                 >
-                  <FileText size={20} className="text-orange-500" />
-                  <span className="text-[10px] text-muted-foreground">File</span>
-                </button>
+                  <FileText size={20} className="text-brand-strong" />
+                  <span>File</span>
+                </Button>
               </div>
             )}
             <input
@@ -403,28 +411,29 @@ export function CommunityChatView({
               onChange={handleFileSelect}
             />
           </div>
-          <div className="flex-1 relative">
-            <input
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendText();
-                }
-              }}
-              placeholder="Type a message..."
-              disabled={uploading || sending}
-              className="w-full bg-muted rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-orange-500/50 transition disabled:opacity-50"
-            />
-          </div>
-          <button
-            onClick={handleSendText}
+          <Input
+            containerClassName="flex-1 min-w-0"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSendText();
+              }
+            }}
+            placeholder="Type a message..."
+            disabled={uploading || sending}
+            className="bg-surface-sunken py-2.5"
+          />
+          <IconButton
+            label="Send message"
+            icon={<Send />}
+            variant="primary"
+            size="sm"
+            loading={sending}
             disabled={!inputText.trim() || sending || uploading}
-            className="p-2.5 bg-orange-600 text-white rounded-full hover:bg-orange-700 transition disabled:opacity-50 shrink-0"
-          >
-            {sending ? <Loader className="animate-spin" size={18} /> : <Send size={18} />}
-          </button>
+            onClick={handleSendText}
+          />
         </div>
       </div>
 

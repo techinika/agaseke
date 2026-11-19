@@ -944,7 +944,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20 relative">
-      <main className="max-w-7xl mx-auto px-6 mt-12">
+      <div className="max-w-7xl mx-auto px-6 mt-12">
         <header className="mb-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-4xl font-bold tracking-tight text-foreground uppercase">
@@ -1665,7 +1665,7 @@ export default function AdminDashboard() {
             </div>
           </section>
         </div>
-      </main>
+      </div>
 
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-foreground/40 backdrop-blur-sm animate-in fade-in duration-200">

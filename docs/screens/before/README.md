@@ -30,8 +30,10 @@ This file records exactly why and what is needed to unblock it.
 - No staging project or test accounts (the audit noted the same:
   email/password signup is disabled and no Google test account existed).
 - No provider sandbox keys for Paypack/Pesapal.
-- No app-level Playwright config; the only runner is the read-only audit in
-  `../audit/`.
+
+An app-level `playwright.config.ts` and Playwright specs now exist. They can
+capture public routes at 360, but authenticated routes still need the data and
+credentials above.
 
 ## Options to unblock (pick one)
 
@@ -50,10 +52,20 @@ Until one of these exists, the "before" evidence is the audit bundle already in
 - Web vitals / payloads: `audit/artifacts/perf/chromium-mid-android.json`
 - One mobile screenshot: `audit/artifacts/func/login-mobile.png`
 
+## Redesign Phase 0 update — 2026-11-17
+
+The full-app redesign requires every route at **360×640** and **1280×800**, in
+light and dark. Public 360 evidence was refreshed with
+`npx playwright test e2e/mobile-routes.spec.ts --project=mobile-360` (14/14
+passed), but authenticated and desktop captures remain blocked by the same
+environment gaps. No production data was used.
+
 ## Capture spec (ready to run once unblocked)
 
-Viewports: **360×640** and **390×844**, mobile Chrome device profile, `en-RW`,
-`Africa/Kigali`. Save to `docs/screens/before/<viewport>/<role>/<screen>.png`.
+Viewports: **360×640** and **1280×800** per the redesign brief; keep the existing
+**390×844** mobile set for continuity. Capture both light and dark themes.
+Mobile Chrome profile, `en-RW`, `Africa/Kigali`. Save to
+`docs/screens/before/<viewport>/<theme>/<role>/<screen>.png`.
 
 Screens to capture (minimum for the plan):
 

@@ -224,8 +224,8 @@ export default function PostDetailPage({ username, postId }: { username: string;
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <p className="text-muted-foreground">Post not found</p>
-          <Link href={`/${username}`} className="text-orange-500 font-bold mt-4 inline-block">Go Back</Link>
+          <p className="text-muted-fg">Post not found</p>
+          <Link href={`/${username}`} className="text-brand-strong font-bold mt-4 inline-block">Go Back</Link>
         </div>
       </div>
     );
@@ -235,42 +235,42 @@ export default function PostDetailPage({ username, postId }: { username: string;
     <>
       <div className="max-w-3xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
-          <Link href={`/${username}`} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition inline-flex">
+          <Link href={`/${username}`} className="flex items-center gap-2 text-muted-fg hover:text-fg transition inline-flex">
             <ArrowLeft size={20} />
             <span className="font-medium">Back to Profile</span>
           </Link>
 
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-orange-700 transition"
+            className="flex items-center gap-2 bg-brand-strong text-on-brand px-4 py-2 rounded-control font-bold hover:bg-brand-strong transition"
           >
             <Heart size={18} className="fill-current" />
             Support
           </button>
         </div>
 
-        <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
+        <div className="bg-surface rounded-card shadow-sm border border-line overflow-hidden">
           <div className="p-6">
             <div className="flex items-center gap-3 mb-4">
               <Link href={`/${username}`} className="shrink-0">
-                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-medium">
+                <div className="w-10 h-10 rounded-full bg-surface-sunken flex items-center justify-center text-muted-fg font-medium">
                   {creatorData?.name?.[0] || "?"}
                 </div>
               </Link>
               <div>
-                <Link href={`/${username}`} className="font-semibold text-foreground hover:text-orange-600">
+                <Link href={`/${username}`} className="font-semibold text-fg hover:text-brand-strong">
                   {creatorData?.name || username}
                 </Link>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-fg">
                   @{username} &middot; {post.createdAt?.toDate?.().toLocaleDateString()}
                 </p>
               </div>
               <div className="ml-auto flex items-center gap-2">
-                <span className="text-[10px] font-bold bg-muted px-2 py-1 rounded uppercase tracking-widest text-muted-foreground">
+                <span className="text-caption font-bold bg-surface-sunken px-2 py-1 rounded uppercase tracking-widest text-muted-fg">
                   {post.type === "video" ? "Video" : post.type === "image" ? "Image" : post.type === "document" ? "Document" : post.type === "article" ? "Article" : "Post"}
                 </span>
                 {post.isPrivate && (
-                  <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
+                  <span className="flex items-center gap-1 text-caption font-bold px-2 py-1 rounded uppercase tracking-widest bg-warning-bg dark:bg-warning text-warning dark:text-warning">
                     <Lock size={10} /> Supporters Only
                   </span>
                 )}
@@ -278,7 +278,7 @@ export default function PostDetailPage({ username, postId }: { username: string;
             </div>
 
             {post.title && (
-              <h1 className="text-2xl font-bold text-foreground mb-3">{post.title}</h1>
+              <h1 className="text-2xl font-bold text-fg mb-3">{post.title}</h1>
             )}
 
             {post.type === "article" ? (
@@ -289,18 +289,18 @@ export default function PostDetailPage({ username, postId }: { username: string;
                     isPrivate={!!post.isPrivate}
                     url={post.coverUrl || post.contentUrl}
                     alt={post.title}
-                    className="w-full max-h-[420px] object-cover rounded-xl mb-4"
+                    className="w-full max-h-[420px] object-cover rounded-control mb-4"
                   />
                 )}
                 {post.shortDescription && (
-                  <p className="text-sm text-muted-foreground italic mb-4">
+                  <p className="text-sm text-muted-fg italic mb-4">
                     {post.shortDescription}
                   </p>
                 )}
                 <RichContentRenderer html={post.htmlContent || ""} />
               </div>
             ) : (
-              <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed mb-4">
+              <div className="text-muted-fg whitespace-pre-wrap leading-relaxed mb-4">
                 <LinkifyText text={post.description || post.content} />
               </div>
             )}
@@ -312,20 +312,20 @@ export default function PostDetailPage({ username, postId }: { username: string;
               const videoId = extractYouTubeId(youtubeUrl);
               if (!videoId) return null;
               return (
-                <div className="rounded-lg overflow-hidden bg-black mb-4">
+                <div className="rounded-control overflow-hidden bg-black mb-4">
                   <iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full aspect-video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
                 </div>
               );
             })()}
 
             {post.type === "image" && !Array.isArray(post.contentUrl) && post.contentUrl && (
-              <div className="rounded-lg overflow-hidden bg-muted mb-4 cursor-zoom-in" onClick={() => setViewingImage({ url: post.contentUrl })}>
+              <div className="rounded-control overflow-hidden bg-surface-sunken mb-4 cursor-zoom-in" onClick={() => setViewingImage({ url: post.contentUrl })}>
                 <MediaAsset postId={post.id} isPrivate={!!post.isPrivate} url={post.contentUrl} alt={post.title} className="w-full max-h-[500px] object-contain hover:opacity-90 transition-opacity" />
               </div>
             )}
 
             {post.type === "video" && post.contentUrl && (
-              <div className="rounded-lg overflow-hidden bg-black mb-4">
+              <div className="rounded-control overflow-hidden bg-black mb-4">
                 <MediaAsset postId={post.id} isPrivate={!!post.isPrivate} url={post.contentUrl} as="video" controls controlsList="nodownload" className="w-full aspect-video" />
               </div>
             )}
@@ -336,37 +336,37 @@ export default function PostDetailPage({ username, postId }: { username: string;
               const documentSrc = mediaSrc(pages[documentIndex]);
               if (!documentSrc) return null;
               return (
-                <div className="bg-muted rounded-lg p-4 border border-border mb-4">
+                <div className="bg-surface-sunken rounded-control p-4 border border-line mb-4">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                      <FileText size={24} className="text-orange-600" />
+                    <div className="w-12 h-12 bg-brand-soft rounded-control flex items-center justify-center">
+                      <FileText size={24} className="text-brand-strong" />
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium text-sm text-foreground">Document</p>
-                      <p className="text-xs text-muted-foreground">{pages.length} page{pages.length > 1 ? "s" : ""}</p>
+                      <p className="font-medium text-sm text-fg">Document</p>
+                      <p className="text-xs text-muted-fg">{pages.length} page{pages.length > 1 ? "s" : ""}</p>
                     </div>
                   </div>
                   {pages.length > 1 && (
                     <div className="flex items-center justify-between mb-3">
-                      <button onClick={() => setDocumentIndex((i) => Math.max(0, i - 1))} disabled={documentIndex === 0} className="p-1.5 bg-card border rounded-lg disabled:opacity-50"><ChevronLeft size={16} /></button>
-                      <span className="text-sm text-muted-foreground">{documentIndex + 1} of {pages.length}</span>
-                      <button onClick={() => setDocumentIndex((i) => Math.min(pages.length - 1, i + 1))} disabled={documentIndex === pages.length - 1} className="p-1.5 bg-card border rounded-lg disabled:opacity-50"><ChevronRight size={16} /></button>
+                      <button onClick={() => setDocumentIndex((i) => Math.max(0, i - 1))} disabled={documentIndex === 0} className="p-1.5 bg-surface border rounded-control disabled:opacity-50"><ChevronLeft size={16} /></button>
+                      <span className="text-sm text-muted-fg">{documentIndex + 1} of {pages.length}</span>
+                      <button onClick={() => setDocumentIndex((i) => Math.min(pages.length - 1, i + 1))} disabled={documentIndex === pages.length - 1} className="p-1.5 bg-surface border rounded-control disabled:opacity-50"><ChevronRight size={16} /></button>
                     </div>
                   )}
-                  <iframe src={`https://docs.google.com/viewer?url=${encodeURIComponent(documentSrc)}&embedded=true`} className="w-full h-[500px] rounded-lg bg-card" title="Document" />
+                  <iframe src={`https://docs.google.com/viewer?url=${encodeURIComponent(documentSrc)}&embedded=true`} className="w-full h-[500px] rounded-control bg-surface" title="Document" />
                 </div>
               );
             })()}
 
-            <div className="flex items-center gap-4 pt-4 border-t border-border text-sm text-muted-foreground">
+            <div className="flex items-center gap-4 pt-4 border-t border-line text-sm text-muted-fg">
               <span className="flex items-center gap-1.5"><Eye size={16} /> {post.views || 0}</span>
             </div>
 
             <div className="flex items-center gap-4 mt-4">
-              <button onClick={handleLike} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition ${userLiked ? "bg-red-50 text-red-500" : "bg-muted text-muted-foreground hover:bg-gray-200"}`}>
+              <button onClick={handleLike} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-control text-sm font-medium transition ${userLiked ? "bg-danger-bg text-danger" : "bg-surface-sunken text-muted-fg hover:bg-surface-sunken"}`}>
                 <Heart size={18} className={userLiked ? "fill-current" : ""} /> {likes.size}
               </button>
-              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-muted text-muted-foreground">
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-control text-sm font-medium bg-surface-sunken text-muted-fg">
                 <MessageCircle size={18} /> {comments.length}
               </span>
             </div>
@@ -374,32 +374,32 @@ export default function PostDetailPage({ username, postId }: { username: string;
         </div>
 
         <div className="mt-8">
-          <h3 className="text-lg font-bold mb-4 text-foreground">Comments ({comments.length})</h3>
+          <h3 className="text-lg font-bold mb-4 text-fg">Comments ({comments.length})</h3>
           <div className="space-y-4">
             {comments.map((c) => (
-              <div key={c.id} className="flex gap-3 bg-card p-4 rounded-xl border border-border">
-                <div className="w-8 h-8 rounded-full bg-orange-100 dark:bg-orange-900 flex items-center justify-center text-xs font-bold text-orange-600 dark:text-orange-300 flex-shrink-0 overflow-hidden">
+              <div key={c.id} className="flex gap-3 bg-surface p-4 rounded-control border border-line">
+                <div className="w-8 h-8 rounded-full bg-brand-soft dark:bg-brand-strong flex items-center justify-center text-xs font-bold text-brand-strong dark:text-brand-strong flex-shrink-0 overflow-hidden">
                   {c.userPhoto ? <img src={c.userPhoto} alt="" className="w-full h-full object-cover" /> : (c.userName?.[0] || "?")}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-foreground">{c.userName}</p>
+                  <p className="text-sm font-bold text-fg">{c.userName}</p>
                   {editingCommentId === c.id ? (
                     <div className="mt-1 flex gap-2">
                       <input value={editCommentContent} onChange={e => setEditCommentContent(e.target.value)}
-                        className="flex-1 bg-background border border-border-strong rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900 outline-none text-foreground"
+                        className="flex-1 bg-canvas border border-line-strong rounded-control px-3 py-1.5 text-sm focus:ring-2 focus:ring-brand-soft dark:focus:ring-brand-strong outline-none text-fg"
                         onKeyDown={e => e.key === "Enter" && handleEditComment(c.id)} />
-                      <button onClick={() => handleEditComment(c.id)} className="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-950 rounded-lg transition"><Check size={16} /></button>
-                      <button onClick={() => { setEditingCommentId(null); setEditCommentContent(""); }} className="p-1.5 text-muted-foreground hover:bg-muted dark:hover:bg-card-hover rounded-lg transition"><X size={16} /></button>
+                      <button onClick={() => handleEditComment(c.id)} className="p-1.5 text-success hover:bg-success-bg dark:hover:bg-success rounded-control transition"><Check size={16} /></button>
+                      <button onClick={() => { setEditingCommentId(null); setEditCommentContent(""); }} className="p-1.5 text-muted-fg hover:bg-surface-sunken dark:hover:bg-surface-raised rounded-control transition"><X size={16} /></button>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground mt-0.5 whitespace-pre-wrap"><LinkifyText text={c.content || c.text} /></p>
+                    <p className="text-sm text-muted-fg mt-0.5 whitespace-pre-wrap"><LinkifyText text={c.content || c.text} /></p>
                   )}
                   <div className="flex items-center gap-3 mt-1">
-                    <p className="text-[10px] text-muted-foreground">{c.createdAt?.toDate?.().toLocaleDateString() || ""}</p>
+                    <p className="text-caption text-muted-fg">{c.createdAt?.toDate?.().toLocaleDateString() || ""}</p>
                     {(currentUser?.uid === c.userId) && !editingCommentId && (
                       <div className="flex items-center gap-1">
-                        <button onClick={() => startEditing(c)} className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded transition"><Pencil size={12} /></button>
-                        <button onClick={() => handleDeleteComment(c.id)} className="p-1 text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950 rounded transition"><Trash2 size={12} /></button>
+                        <button onClick={() => startEditing(c)} className="p-1 text-muted-fg hover:text-fg hover:bg-surface-sunken rounded transition"><Pencil size={12} /></button>
+                        <button onClick={() => handleDeleteComment(c.id)} className="p-1 text-muted-fg hover:text-danger hover:bg-danger-bg dark:hover:bg-danger rounded transition"><Trash2 size={12} /></button>
                       </div>
                     )}
                   </div>
@@ -407,16 +407,16 @@ export default function PostDetailPage({ username, postId }: { username: string;
               </div>
             ))}
             {comments.length === 0 && (
-              <p className="text-muted-foreground text-sm text-center py-8">No comments yet. Be the first to comment!</p>
+              <p className="text-muted-fg text-sm text-center py-8">No comments yet. Be the first to comment!</p>
             )}
           </div>
 
           <div className="mt-6 flex gap-3">
             <input value={newComment} onChange={e => setNewComment(e.target.value)} placeholder={currentUser ? "Write a comment..." : "Log in to comment"}
               disabled={!currentUser} onKeyDown={e => e.key === "Enter" && handleComment()}
-              className="flex-1 bg-background border border-border-strong rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-orange-100 dark:focus:ring-orange-900 outline-none text-foreground placeholder:text-muted-foreground" />
+              className="flex-1 bg-canvas border border-line-strong rounded-control px-4 py-3 text-sm focus:ring-2 focus:ring-brand-soft dark:focus:ring-brand-strong outline-none text-fg placeholder:text-muted-fg" />
             <button onClick={handleComment} disabled={!currentUser || !newComment.trim() || submittingComment}
-              className="px-5 py-3 bg-orange-500 text-white rounded-xl font-bold text-sm hover:bg-orange-600 transition disabled:opacity-50">
+              className="px-5 py-3 bg-brand-strong text-on-brand rounded-control font-bold text-sm hover:bg-brand-strong transition disabled:opacity-50">
               {submittingComment ? <Loader className="animate-spin" size={16} /> : "Post"}
             </button>
           </div>

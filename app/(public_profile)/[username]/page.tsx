@@ -8,6 +8,7 @@ import type { CreatorPageCreator } from "@/features/creator-page/types";
 import { adminDb, admin } from "@/db/firebaseAdmin";
 import { Metadata } from "next";
 import { baseUrl } from "@/lib/baseUrl";
+import { BRAND_THEME_COLOR } from "@/lib/theme";
 
 const getCreatorData = cache(async (username: string) => {
   try {
@@ -208,7 +209,7 @@ export async function generateMetadata({
         "max-snippet": -1,
       },
     },
-    other: { "theme-color": "#FF0000" },
+    other: { "theme-color": BRAND_THEME_COLOR },
     category: "Creator Profile",
   };
 }

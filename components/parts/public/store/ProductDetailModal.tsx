@@ -13,7 +13,7 @@ import {
 import { toast } from "sonner";
 import { Product, getProductCurrency, getProductPrice } from "./types";
 import { downloadProduct } from "@/lib/downloadProduct";
-import { formatCurrency } from "@/types/currency";
+import { formatMoney as formatCurrency } from "@/lib/format/money";
 
 const platformSharePercentage =
   Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
@@ -64,9 +64,9 @@ export function ProductDetailModal({
 
   return (
     <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-      <div className="bg-card w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl animate-in zoom-in-95">
+      <div className="bg-surface w-full max-w-2xl rounded-card overflow-hidden shadow-2xl animate-in zoom-in-95">
         <div className="md:flex">
-          <div className="md:w-1/2 bg-muted aspect-square">
+          <div className="md:w-1/2 bg-surface-sunken aspect-square">
             {product.imageUrl ? (
               <img
                 src={product.imageUrl}
@@ -83,10 +83,10 @@ export function ProductDetailModal({
           <div className="md:w-1/2 p-6 space-y-4">
             <div className="flex items-center gap-2 flex-wrap-reverse justify-between">
               <span
-                className={`text-[10px] font-bold px-2 py-1 rounded-full ${
+                className={`text-caption font-bold px-2 py-1 rounded-full ${
                   product.type === "digital"
-                    ? "bg-orange-100 text-orange-600"
-                    : "bg-blue-100 text-blue-600"
+                    ? "bg-brand-soft text-brand-strong"
+                    : "bg-info-bg text-info"
                 }`}
               >
                 {product.type === "digital"
@@ -94,45 +94,45 @@ export function ProductDetailModal({
                   : "Physical Product"}
               </span>
               {isPurchased && (
-                <span className="bg-green-100 text-green-600 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                <span className="bg-success-bg text-success text-caption font-bold px-2 py-1 rounded-full flex items-center gap-1">
                   <Check size={10} /> Owned
                 </span>
               )}
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-card-hover rounded-full transition"
+                className="p-2 hover:bg-surface-raised rounded-full transition"
               >
                 <X size={20} />
               </button>
             </div>
 
             <h2 className="text-2xl font-bold">{product.name}</h2>
-            <p className="text-muted-foreground">{product.description}</p>
+            <p className="text-muted-fg">{product.description}</p>
 
             <div>
               <div className="text-3xl font-bold">
                 {formatCurrency(basePrice, getProductCurrency(product))}
               </div>
               {product.platformFeePayer === "buyer" && (
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs text-muted-fg mt-1">
                   {formatCurrency(priceWithFee, getProductCurrency(product))} with platform fee
                 </p>
               )}
             </div>
 
             {product.discount?.enabled && (
-              <div className="bg-orange-50 text-orange-600 px-3 py-2 rounded-lg text-sm font-bold inline-block">
+              <div className="bg-brand-soft text-brand-strong px-3 py-2 rounded-control text-sm font-bold inline-block">
                 {product.discount.percentage}% discount applied
               </div>
             )}
 
             {product.bulkPricing && product.bulkPricing.length > 0 && (
-              <div className="bg-green-50 rounded-lg p-3 space-y-1">
-                <p className="text-xs font-bold text-green-800 uppercase">
+              <div className="bg-success-bg rounded-control p-3 space-y-1">
+                <p className="text-xs font-bold text-success uppercase">
                   Bulk Discounts
                 </p>
                 {product.bulkPricing.map((bulk, idx) => (
-                  <p key={idx} className="text-sm text-green-700">
+                  <p key={idx} className="text-sm text-success">
                     Buy {bulk.minQuantity}+: {bulk.discountPercentage}% off
                   </p>
                 ))}
@@ -147,10 +147,10 @@ export function ProductDetailModal({
                     <button
                       key={size}
                       onClick={() => setSelectedSize(size)}
-                      className={`px-4 py-2 font-bold rounded-lg transition ${
+                      className={`px-4 py-2 font-bold rounded-control transition ${
                         selectedSize === size
-                          ? "bg-orange-500 text-white"
-                          : "bg-muted hover:bg-border-strong"
+                          ? "bg-brand-strong text-on-brand"
+                          : "bg-surface-sunken hover:bg-border-strong"
                       }`}
                     >
                       {size}
@@ -170,21 +170,21 @@ export function ProductDetailModal({
                         .catch((e) => toast.error(e.message))
                         .finally(() => setDownloading(false));
                     }}
-                    className="flex-1 py-3 bg-emerald-500 text-white rounded-lg font-bold hover:bg-emerald-600 transition flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-success text-on-success rounded-control font-bold hover:bg-success transition flex items-center justify-center gap-2"
                   >
                     {downloading ? <Loader size={18} className="animate-spin" /> : <Download size={18} />}
                     {downloading ? "Downloading..." : "Download"}
                   </button>
                 )}
                 {product.type === "physical" && (
-                  <span className="flex-1 py-3 bg-blue-50 text-blue-600 rounded-lg font-bold flex items-center justify-center gap-2">
+                  <span className="flex-1 py-3 bg-info-bg text-info rounded-control font-bold flex items-center justify-center gap-2">
                     <Truck size={18} /> Track in My Orders
                   </span>
                 )}
               </div>
             ) : (
               <div className="flex items-center gap-4">
-                <div className="flex items-center bg-muted rounded-lg">
+                <div className="flex items-center bg-surface-sunken rounded-control">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
                     className="p-3 hover:bg-border-strong rounded-l-lg transition"
@@ -206,7 +206,7 @@ export function ProductDetailModal({
                     !isLoggedIn ||
                     (product.type === "physical" && product.stock <= 0)
                   }
-                  className="flex-1 py-3 bg-orange-500 text-white rounded-lg font-bold hover:bg-orange-600 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-brand-strong text-on-brand rounded-control font-bold hover:bg-brand-strong transition disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   <ShoppingCart size={18} />
                   Add to Cart

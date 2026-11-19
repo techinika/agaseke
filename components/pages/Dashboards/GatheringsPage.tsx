@@ -387,7 +387,7 @@ export default function GatheringsPage() {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col md:flex-row">
+      <div className="flex-1 flex flex-col md:flex-row">
         <GatheringListPanel
           loading={loading}
           events={events}
@@ -412,7 +412,7 @@ export default function GatheringsPage() {
           onToggleStatus={handleUpdateStatus}
           onOpenCheckIn={() => setShowCheckIn(true)}
         />
-      </main>
+      </div>
 
       <ConfirmModal
         isOpen={isDeleting !== null}

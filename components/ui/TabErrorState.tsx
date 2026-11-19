@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, RefreshCw } from "lucide-react";
+import { Button } from "./Button";
 
 interface TabErrorStateProps {
   message?: string;
@@ -12,19 +13,18 @@ export function TabErrorState({
   onRetry,
 }: TabErrorStateProps) {
   return (
-    <div className="animate-in fade-in duration-500 text-center py-12">
-      <AlertTriangle className="mx-auto text-amber-500 mb-4" size={48} />
-      <p className="text-foreground font-medium">Couldn&apos;t load this section</p>
-      <p className="text-sm text-muted-foreground mt-2 max-w-sm mx-auto">
-        {message}
-      </p>
+    <div className="animate-in fade-in duration-500 py-12 text-center">
+      <AlertTriangle className="mx-auto mb-4 size-12 text-warning" aria-hidden="true" />
+      <p className="text-body font-bold text-fg">Couldn&apos;t load this section</p>
+      <p className="mx-auto mt-2 max-w-sm text-label text-muted-fg">{message}</p>
       {onRetry && (
-        <button
+        <Button
+          className="mt-5"
           onClick={onRetry}
-          className="mt-5 inline-flex items-center gap-2 px-6 py-2.5 bg-foreground text-background rounded-lg font-bold text-sm hover:bg-orange-600 transition"
+          leadingIcon={<RefreshCw className="size-4" aria-hidden="true" />}
         >
-          <RefreshCw size={16} /> Try Again
-        </button>
+          Try again
+        </Button>
       )}
     </div>
   );

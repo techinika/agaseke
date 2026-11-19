@@ -26,7 +26,7 @@ import {
   ImageIcon,
   Users,
 } from "lucide-react";
-import { db, auth } from "@/db/firebase";
+import { db } from "@/db/firebase";
 import {
   doc,
   onSnapshot,
@@ -42,6 +42,20 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AiFillTikTok } from "react-icons/ai";
 import { uploadBase64Image } from "@/lib/uploadService";
+import {
+  Badge,
+  Button,
+  Card,
+  FormField,
+  IconButton,
+  Input,
+  MediaImage,
+  Select,
+  Skeleton,
+  Switch,
+  Tabs,
+  Textarea,
+} from "@/components/ui";
 
 export default function CreatorSettings() {
   const { creator } = useAuth();
@@ -223,856 +237,817 @@ export default function CreatorSettings() {
 
   if (loading)
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader className="animate-spin text-orange-600" size={32} />
+      <div
+        role="status"
+        aria-label="Loading settings"
+        className="min-h-screen bg-canvas px-6 pt-10"
+      >
+        <div className="mx-auto max-w-5xl space-y-8">
+          <div className="space-y-3">
+            <Skeleton className="h-10 w-56" rounded="card" />
+            <Skeleton className="h-5 w-80" />
+          </div>
+          <Skeleton className="h-12 w-full" rounded="card" />
+          <Card className="space-y-6 p-8">
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-40 w-full" rounded="card" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-32 w-full" rounded="card" />
+          </Card>
+        </div>
       </div>
     );
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20">
-      <div className="max-w-5xl mx-auto px-6 pt-10">
-        <header className="flex justify-between items-end mb-10">
-          <div>
-            <h1 className="text-4xl font-bold tracking-tighter uppercase">Settings</h1>
-            <p className="text-muted-foreground font-medium">
+    <div className="min-h-screen bg-canvas pb-20 text-fg">
+      <div className="mx-auto max-w-5xl px-6 pt-10">
+        <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div className="space-y-1">
+            <h1 className="text-display font-bold tracking-tight uppercase">Settings</h1>
+            <p className="text-label font-medium text-muted-fg">
               Customize your creator identity and supporter perks.
             </p>
           </div>
-          <button
+          <Button
             onClick={saveSettings}
-            disabled={saving || uploading}
-            className="bg-foreground text-background px-8 py-3 rounded-lg font-black flex items-center gap-2 hover:bg-orange-600 transition-all shadow-xl disabled:opacity-50"
+            loading={saving}
+            disabled={uploading}
+            size="lg"
+            leadingIcon={<Save className="size-4" aria-hidden="true" />}
           >
-            {saving ? <Loader className="animate-spin" size={18} /> : <Save size={18} />}
             Save Changes
-          </button>
+          </Button>
         </header>
 
-        <div className="flex flex-col md:flex-row gap-8">
-          <aside className="w-full md:w-64 space-y-2">
-            {[
-              { id: "profile", label: "Profile Info", icon: User },
-              { id: "socials", label: "Social Links", icon: Share2 },
-              { id: "location", label: "Location & Currency", icon: Globe },
-              { id: "perks", label: "Supporter Perks", icon: ShieldCheck },
-              { id: "messaging", label: "Messaging", icon: MessageSquare },
-              { id: "community", label: "Community", icon: Users },
-            ].map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-3 px-5 py-4 rounded-lg font-black text-sm transition-all ${
-                  activeTab === item.id
-                    ? "bg-card text-orange-600 shadow-sm border border-border"
-                    : "text-muted-foreground hover:text-muted-foreground"
-                }`}
-              >
-                <item.icon size={18} />
-                {item.label}
-              </button>
-            ))}
-          </aside>
+        <Tabs
+          ariaLabel="Settings sections"
+          value={activeTab}
+          onChange={setActiveTab}
+          items={[
+            {
+              id: "profile",
+              label: "Profile Info",
+              icon: <User className="size-4" aria-hidden="true" />,
+            },
+            {
+              id: "socials",
+              label: "Social Links",
+              icon: <Share2 className="size-4" aria-hidden="true" />,
+            },
+            {
+              id: "location",
+              label: "Location & Currency",
+              icon: <Globe className="size-4" aria-hidden="true" />,
+            },
+            {
+              id: "perks",
+              label: "Supporter Perks",
+              icon: <ShieldCheck className="size-4" aria-hidden="true" />,
+            },
+            {
+              id: "messaging",
+              label: "Messaging",
+              icon: <MessageSquare className="size-4" aria-hidden="true" />,
+            },
+            {
+              id: "community",
+              label: "Community",
+              icon: <Users className="size-4" aria-hidden="true" />,
+            },
+          ]}
+          className="mb-8"
+        />
 
-          <main className="flex-1 space-y-8">
-            {activeTab === "profile" && (
-              <section className="bg-card border border-border rounded-lg p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                {/* Cover Image Upload */}
-                <div>
-                  <h4 className="font-black text-lg mb-1">Cover Image</h4>
-                  <p className="text-xs text-muted-foreground mb-4">
-                    Recommended: 1200x400px JPEG or PNG.
-                  </p>
-                  <div className="relative group rounded-lg overflow-hidden">
-                    <div className="h-40 bg-linear-to-r from-orange-100 via-orange-50 to-orange-100 dark:from-orange-950 dark:via-orange-900/50 dark:to-orange-950 flex items-center justify-center">
-                      {uploading ? (
-                        <Loader className="animate-spin text-orange-600" size={32} />
-                      ) : creatorData?.bannerURL ? (
-                        <img
-                          src={creatorData.bannerURL}
-                          className="w-full h-full object-cover"
-                          alt="Cover"
-                        />
-                      ) : (
-                        <ImageIcon
-                          size={40}
-                          className="text-orange-300 dark:text-orange-700"
-                        />
-                      )}
-                      {creatorData?.bannerURL && (
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <button
-                            onClick={() => bannerFileInputRef.current?.click()}
-                            className="p-3 bg-white/20 backdrop-blur rounded-lg hover:bg-white/30 transition-all"
-                          >
-                            <Camera size={24} className="text-white" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    {!creatorData?.bannerURL && (
-                      <button
-                        onClick={() => bannerFileInputRef.current?.click()}
-                        className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20"
-                      >
-                        <div className="p-3 bg-white/20 backdrop-blur rounded-lg">
-                          <Camera size={24} className="text-white" />
-                        </div>
-                      </button>
+        <div className="space-y-8">
+          {activeTab === "profile" && (
+            <Card className="space-y-8 p-6 md:p-8">
+              <div>
+                <h4 className="text-body-lg font-bold text-fg">Cover Image</h4>
+                <p className="mt-1 text-caption text-muted-fg">
+                  Recommended: 1200x400px JPEG or PNG.
+                </p>
+                <div className="group relative mt-4 overflow-hidden rounded-card">
+                  <div className="flex h-40 items-center justify-center bg-linear-to-r from-brand-soft via-surface-raised to-brand-soft">
+                    {uploading ? (
+                      <Loader
+                        className="size-8 animate-spin text-brand-strong"
+                        role="status"
+                        aria-label="Uploading image"
+                      />
+                    ) : creatorData?.bannerURL ? (
+                      <MediaImage
+                        src={creatorData.bannerURL}
+                        alt="Cover"
+                        unoptimized
+                        className="absolute inset-0 size-full"
+                      />
+                    ) : (
+                      <ImageIcon
+                        size={40}
+                        className="text-line-strong"
+                        aria-hidden="true"
+                      />
                     )}
-                    <input
-                      type="file"
-                      ref={bannerFileInputRef}
-                      onChange={handleBannerUpload}
-                      className="hidden"
-                      accept="image/*"
-                    />
-                  </div>
-                </div>
-
-                {/* Profile Picture Upload */}
-                <div className="flex items-center gap-6">
-                  <div className="relative group">
-                    <div className="w-24 h-24 rounded-lg bg-muted overflow-hidden border-4 border-white dark:border-foreground shadow-lg">
-                      {uploading ? (
-                        <div className="w-full h-full flex items-center justify-center bg-foreground/50">
-                          <Loader className="animate-spin text-white" />
-                        </div>
-                      ) : (
-                        <img
-                          src={
-                            creatorData?.profilePicture ||
-                            `https://api.dicebear.com/7.x/avataaars/svg?seed=${creatorData?.handle}`
-                          }
-                          className="w-full h-full object-cover"
-                          alt="Profile"
+                    {creatorData?.bannerURL && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-overlay opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                        <IconButton
+                          label="Change cover image"
+                          icon={<Camera />}
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => bannerFileInputRef.current?.click()}
                         />
-                      )}
-                    </div>
+                      </div>
+                    )}
+                  </div>
+                  {!creatorData?.bannerURL && (
                     <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="absolute -bottom-2 -right-2 p-2 bg-foreground text-background rounded-lg shadow-lg hover:bg-orange-600 transition-all"
+                      type="button"
+                      onClick={() => bannerFileInputRef.current?.click()}
+                      className="absolute inset-0 flex items-center justify-center bg-overlay opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                      aria-label="Change cover image"
                     >
-                      <Camera size={16} />
+                      <span className="rounded-control bg-surface/90 p-3 text-fg shadow-sm">
+                        <Camera size={24} aria-hidden="true" />
+                      </span>
                     </button>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleImageUpload}
-                      className="hidden"
-                      accept="image/*"
-                    />
-                  </div>
-                  <div>
-                    <h4 className="font-black text-lg">Profile Photo</h4>
-                    <p className="text-xs text-muted-foreground">
-                      Recommended: Square JPEG or PNG, min 400x400px.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
-                      Creator Name
-                    </label>
-                    <input
-                      type="text"
-                      value={creatorData?.name || ""}
-                      onChange={(e) => handleUpdate("name", e.target.value)}
-                      className="w-full bg-muted p-4 rounded-lg text-sm font-bold focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-card transition-all"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
-                      Username (Permanent)
-                    </label>
-                    <div className="w-full bg-muted p-4 rounded-lg text-sm font-bold text-muted-foreground cursor-not-allowed">
-                      @{creatorData?.handle}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
-                    Bio
-                  </label>
-                  <textarea
-                    value={creatorData?.bio || ""}
-                    onChange={(e) => handleUpdate("bio", e.target.value)}
-                    placeholder="Tell your supporters who you are..."
-                    className="w-full h-32 bg-muted p-4 rounded-lg text-sm font-medium focus:ring-2 focus:ring-orange-100 outline-none resize-none border border-transparent focus:bg-card transition-all"
+                  )}
+                  <input
+                    type="file"
+                    ref={bannerFileInputRef}
+                    onChange={handleBannerUpload}
+                    className="hidden"
+                    accept="image/*"
                   />
                 </div>
+              </div>
 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
-                    Creator Focus
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {categories.map((cat) => {
-                      const selected = (creatorData?.focus || []).includes(cat);
-                      return (
-                        <button
-                          key={cat}
-                          type="button"
-                          onClick={() => {
-                            const current = creatorData?.focus || [];
-                            const next = selected
-                              ? current.filter((c) => c !== cat)
-                              : [...current, cat];
-                            handleUpdate("focus", next);
-                          }}
-                          className={`px-4 py-2 rounded-lg text-sm font-bold border-2 transition-all ${
-                            selected
-                              ? "bg-orange-500 text-white border-orange-500"
-                              : "bg-muted text-muted-foreground border-border hover:border-orange-300"
-                          }`}
+              <div className="flex items-center gap-6">
+                <div className="group relative">
+                  <div className="size-24 overflow-hidden rounded-full border-4 border-surface bg-surface-sunken shadow-sm">
+                    {uploading ? (
+                      <div className="flex size-full items-center justify-center">
+                        <Loader
+                          className="size-6 animate-spin text-brand-strong"
+                          role="status"
+                          aria-label="Uploading image"
+                        />
+                      </div>
+                    ) : (
+                      <MediaImage
+                        src={
+                          creatorData?.profilePicture ||
+                          `https://api.dicebear.com/7.x/avataaars/svg?seed=${creatorData?.handle}`
+                        }
+                        alt="Profile"
+                        unoptimized
+                        aspectRatio="1 / 1"
+                        className="size-full"
+                      />
+                    )}
+                  </div>
+                  <div className="absolute -right-2 -bottom-2">
+                    <IconButton
+                      label="Change profile photo"
+                      icon={<Camera />}
+                      variant="primary"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                    />
+                  </div>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    accept="image/*"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-body-lg font-bold text-fg">Profile Photo</h4>
+                  <p className="text-caption text-muted-fg">
+                    Recommended: Square JPEG or PNG, min 400x400px.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <Input
+                  label="Creator Name"
+                  type="text"
+                  value={creatorData?.name || ""}
+                  onChange={(e) => handleUpdate("name", e.target.value)}
+                />
+                <FormField id="username-locked" label="Username (Permanent)">
+                  <div className="flex min-h-12 w-full cursor-not-allowed items-center rounded-control border border-line bg-surface-sunken px-4 text-body font-semibold text-muted-fg">
+                    @{creatorData?.handle}
+                  </div>
+                </FormField>
+              </div>
+
+              <Textarea
+                label="Bio"
+                value={creatorData?.bio || ""}
+                onChange={(e) => handleUpdate("bio", e.target.value)}
+                placeholder="Tell your supporters who you are..."
+                className="min-h-32 resize-none"
+              />
+
+              <div className="space-y-2">
+                <p className="text-label font-semibold text-fg">Creator Focus</p>
+                <div className="flex flex-wrap gap-2">
+                  {categories.map((cat) => {
+                    const selected = (creatorData?.focus || []).includes(cat);
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => {
+                          const current = creatorData?.focus || [];
+                          const next = selected
+                            ? current.filter((c) => c !== cat)
+                            : [...current, cat];
+                          handleUpdate("focus", next);
+                        }}
+                        className="rounded-pill outline-none transition-opacity focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                      >
+                        <Badge
+                          tone={selected ? "brand" : "neutral"}
+                          className="px-4 py-1.5 text-label font-semibold"
                         >
                           {cat}
-                        </button>
-                      );
-                    })}
+                        </Badge>
+                      </button>
+                    );
+                  })}
+                </div>
+                {(!creatorData?.focus || creatorData.focus.length === 0) && (
+                  <p className="text-caption text-muted-fg">
+                    Select one or more categories that describe your content.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-4 rounded-card bg-surface-sunken p-6 shadow-sm">
+                <div className="flex items-center gap-4">
+                  <div
+                    className={`rounded-control p-3 ${
+                      creatorData?.verified
+                        ? "bg-success-bg text-success"
+                        : "bg-brand-soft text-brand-strong"
+                    }`}
+                  >
+                    {creatorData?.verified ? (
+                      <Check className="size-6" aria-hidden="true" />
+                    ) : (
+                      <Phone className="size-6" aria-hidden="true" />
+                    )}
                   </div>
-                  {(!creatorData?.focus || creatorData.focus.length === 0) && (
-                    <p className="text-xs text-muted-foreground">
-                      Select one or more categories that describe your content.
+                  <div>
+                    <p className="font-bold text-fg">
+                      {creatorData?.verified ? "Identity Verified" : "Verify Identity"}
+                    </p>
+                    <p className="text-caption text-muted-fg">
+                      {creatorData?.payoutNumber || "No number linked"}
+                    </p>
+                  </div>
+                </div>
+                {!creatorData?.verified && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => router.push("/creator/verify")}
+                  >
+                    Verify Now
+                  </Button>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {activeTab === "socials" && (
+            <Card className="space-y-6 p-6 md:p-8">
+              <h3 className="text-title font-bold uppercase text-fg">
+                Connected Networks
+              </h3>
+              <div className="space-y-4">
+                {[
+                  {
+                    id: "instagram",
+                    icon: Instagram,
+                    color: "text-brand-strong",
+                    label: "Instagram Username",
+                  },
+                  {
+                    id: "linkedin",
+                    icon: Linkedin,
+                    color: "text-info",
+                    label: "LinkedIn Link",
+                  },
+                  {
+                    id: "twitter",
+                    icon: Twitter,
+                    color: "text-info",
+                    label: "Twitter / X Username",
+                  },
+                  {
+                    id: "youtube",
+                    icon: Youtube,
+                    color: "text-danger",
+                    label: "YouTube Channel URL",
+                  },
+                  {
+                    id: "tiktok",
+                    icon: AiFillTikTok,
+                    color: "text-fg",
+                    label: "TikTok Channel URL",
+                  },
+                  {
+                    id: "web",
+                    icon: Globe,
+                    color: "text-muted-fg",
+                    label: "Personal Website",
+                  },
+                ].map((social) => (
+                  <div
+                    key={social.id}
+                    className="flex items-center gap-3 rounded-control bg-surface-sunken p-2"
+                  >
+                    <div
+                      className={`rounded-control bg-surface p-3 shadow-sm ${social.color}`}
+                    >
+                      <social.icon size={20} aria-hidden="true" />
+                    </div>
+                    <Input
+                      type="text"
+                      aria-label={social.label}
+                      placeholder={social.label}
+                      value={
+                        creatorData?.socials?.[
+                          social.id as keyof typeof creatorData.socials
+                        ] || ""
+                      }
+                      onChange={(e) => handleSocialUpdate(social.id, e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {activeTab === "location" && (
+            <Card className="space-y-6 p-6 md:p-8">
+              <h3 className="text-title font-bold uppercase text-fg">
+                Location & Currency
+              </h3>
+              <p className="text-label text-muted-fg">
+                Your country and currency were set during onboarding and cannot be
+                changed.
+              </p>
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  {creatorData?.country ? (
+                    <FormField id="country-locked" label="Your Country">
+                      <div className="flex min-h-12 w-full items-center gap-2 rounded-control border border-line bg-surface-sunken px-4 text-body font-semibold text-muted-fg opacity-60">
+                        {countries.find((c: any) => c.code === creatorData.country)
+                          ?.flag || ""}{" "}
+                        {countries.find((c: any) => c.code === creatorData.country)
+                          ?.name || creatorData.country}
+                      </div>
+                    </FormField>
+                  ) : (
+                    <Select
+                      label="Your Country"
+                      value={creatorData?.country || ""}
+                      onChange={(e) => handleUpdate("country", e.target.value)}
+                    >
+                      <option value="">Select country...</option>
+                      {countries.map((c: any) => (
+                        <option key={c.id} value={c.code}>
+                          {c.flag || ""} {c.name}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+                  {creatorData?.country && (
+                    <p className="text-caption font-semibold text-warning">
+                      ⚠ Country cannot be changed once set.
                     </p>
                   )}
                 </div>
-
-                <div className="p-6 bg-foreground rounded-lg text-background flex items-center justify-between shadow-xl">
-                  <div className="flex items-center gap-4">
-                    <div
-                      className={`p-3 rounded-lg ${creatorData?.verified ? "bg-green-500" : "bg-card"}`}
-                    >
-                      {creatorData?.verified ? <Check size={24} /> : <Phone size={24} />}
-                    </div>
-                    <div>
-                      <p className="font-black">
-                        {creatorData?.verified ? "Identity Verified" : "Verify Identity"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {creatorData?.payoutNumber || "No number linked"}
-                      </p>
-                    </div>
-                  </div>
-                  {!creatorData?.verified && (
-                    <button
-                      onClick={() => router.push("/creator/verify")}
-                      className="bg-card text-foreground px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest hover:bg-orange-500 hover:text-white transition-all"
-                    >
-                      Verify Now
-                    </button>
-                  )}
-                </div>
-              </section>
-            )}
-
-            {activeTab === "socials" && (
-              <section className="bg-card border border-border rounded-lg p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                <h3 className="text-lg font-black uppercase">Connected Networks</h3>
-                <div className="space-y-4">
-                  {[
-                    {
-                      id: "instagram",
-                      icon: Instagram,
-                      color: "text-pink-500",
-                      label: "Instagram Username",
-                    },
-                    {
-                      id: "linkedin",
-                      icon: Linkedin,
-                      color: "text-blue-500",
-                      label: "LinkedIn Link",
-                    },
-                    {
-                      id: "twitter",
-                      icon: Twitter,
-                      color: "text-blue-400",
-                      label: "Twitter / X Username",
-                    },
-                    {
-                      id: "youtube",
-                      icon: Youtube,
-                      color: "text-red-600",
-                      label: "YouTube Channel URL",
-                    },
-                    {
-                      id: "tiktok",
-                      icon: AiFillTikTok,
-                      color: "text-black-600",
-                      label: "TikTok Channel URL",
-                    },
-                    {
-                      id: "web",
-                      icon: Globe,
-                      color: "text-muted-foreground",
-                      label: "Personal Website",
-                    },
-                  ].map((social) => (
-                    <div
-                      key={social.id}
-                      className="flex items-center gap-4 bg-muted p-2 rounded-lg border border-transparent focus-within:border-border focus-within:bg-card transition-all"
-                    >
-                      <div className={`p-3 bg-card rounded-lg shadow-sm ${social.color}`}>
-                        <social.icon size={20} />
+                <div className="space-y-2">
+                  {creatorData?.currency ? (
+                    <FormField id="currency-locked" label="Preferred Currency">
+                      <div className="flex min-h-12 w-full items-center gap-2 rounded-control border border-line bg-surface-sunken px-4 text-body font-semibold text-muted-fg opacity-60">
+                        {creatorData.currency} -{" "}
+                        {currencies.find((c: any) => c.code === creatorData.currency)
+                          ?.name || ""}{" "}
+                        (
+                        {currencies.find((c: any) => c.code === creatorData.currency)
+                          ?.symbol || ""}
+                        )
                       </div>
-                      <input
-                        type="text"
-                        placeholder={social.label}
-                        value={
-                          creatorData?.socials?.[
-                            social.id as keyof typeof creatorData.socials
-                          ] || ""
-                        }
-                        onChange={(e) => handleSocialUpdate(social.id, e.target.value)}
-                        className="flex-1 bg-transparent outline-none text-sm font-bold"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {activeTab === "location" && (
-              <section className="bg-card border border-border rounded-lg p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                <h3 className="text-lg font-black uppercase">Location & Currency</h3>
-                <p className="text-sm text-muted-foreground">
-                  Your country and currency were set during onboarding and cannot be
-                  changed.
-                </p>
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
-                      Your Country
-                    </label>
-                    {creatorData?.country ? (
-                      <>
-                        <div className="w-full bg-muted p-4 rounded-lg text-sm font-bold opacity-60 cursor-not-allowed flex items-center gap-2">
-                          {countries.find((c: any) => c.code === creatorData.country)
-                            ?.flag || ""}{" "}
-                          {countries.find((c: any) => c.code === creatorData.country)
-                            ?.name || creatorData.country}
-                        </div>
-                        <p className="text-xs text-amber-600 font-semibold flex items-center gap-1">
-                          ⚠ Country cannot be changed once set.
-                        </p>
-                      </>
-                    ) : (
-                      <select
-                        value={creatorData?.country || ""}
-                        onChange={(e) => handleUpdate("country", e.target.value)}
-                        className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
-                      >
-                        <option value="">Select country...</option>
-                        {countries.map((c: any) => (
-                          <option key={c.id} value={c.code}>
-                            {c.flag || ""} {c.name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest ml-1">
-                      Preferred Currency
-                    </label>
-                    {creatorData?.currency ? (
-                      <>
-                        <div className="w-full bg-muted p-4 rounded-lg text-sm font-bold opacity-60 cursor-not-allowed flex items-center gap-2">
-                          {creatorData.currency} -{" "}
-                          {currencies.find((c: any) => c.code === creatorData.currency)
-                            ?.name || ""}{" "}
-                          (
-                          {currencies.find((c: any) => c.code === creatorData.currency)
-                            ?.symbol || ""}
-                          )
-                        </div>
-                        <p className="text-xs text-amber-600 font-semibold flex items-center gap-1">
-                          ⚠ Currency cannot be changed once set.
-                        </p>
-                      </>
-                    ) : (
-                      <select
-                        value={creatorData?.currency || ""}
-                        onChange={(e) => handleUpdate("currency", e.target.value)}
-                        className="w-full bg-muted p-4 rounded-lg text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
-                        disabled={!creatorData?.country}
-                      >
-                        <option value="">Select currency...</option>
-                        {availableCurrencies.map((c: any) => (
-                          <option key={c.code} value={c.code}>
-                            {c.code} - {c.name} ({c.symbol})
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    {creatorData?.country && availableCurrencies.length === 0 && (
-                      <p className="text-xs text-amber-600 bg-amber-50 p-3 rounded-lg mt-2">
-                        No currencies configured for this country yet. Contact an admin to
-                        add currencies.
-                      </p>
-                    )}
-                  </div>
+                    </FormField>
+                  ) : (
+                    <Select
+                      label="Preferred Currency"
+                      value={creatorData?.currency || ""}
+                      onChange={(e) => handleUpdate("currency", e.target.value)}
+                      disabled={!creatorData?.country}
+                    >
+                      <option value="">Select currency...</option>
+                      {availableCurrencies.map((c: any) => (
+                        <option key={c.code} value={c.code}>
+                          {c.code} - {c.name} ({c.symbol})
+                        </option>
+                      ))}
+                    </Select>
+                  )}
                   {creatorData?.currency && (
-                    <div className="p-4 bg-orange-50 rounded-lg border border-orange-100">
-                      <p className="text-sm font-bold text-orange-800">
-                        All transactions will be processed in {creatorData.currency}
-                      </p>
-                      <p className="text-xs text-orange-600 mt-1">
-                        Prices shown on your profile will use this currency. Existing
-                        transactions keep their original currency.
-                      </p>
-                    </div>
+                    <p className="text-caption font-semibold text-warning">
+                      ⚠ Currency cannot be changed once set.
+                    </p>
+                  )}
+                  {creatorData?.country && availableCurrencies.length === 0 && (
+                    <p className="mt-2 rounded-control bg-warning-bg p-3 text-caption text-warning">
+                      No currencies configured for this country yet. Contact an admin to
+                      add currencies.
+                    </p>
                   )}
                 </div>
-              </section>
-            )}
+                {creatorData?.currency && (
+                  <div className="rounded-control border border-line bg-brand-soft p-4">
+                    <p className="text-label font-bold text-brand-strong">
+                      All transactions will be processed in {creatorData.currency}
+                    </p>
+                    <p className="mt-1 text-caption text-brand-strong">
+                      Prices shown on your profile will use this currency. Existing
+                      transactions keep their original currency.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
 
-            {activeTab === "perks" && (
-              <section className="bg-card border border-border rounded-lg p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-black uppercase">Supporter Perks</h3>
-                </div>
-                <p className="text-sm text-muted-foreground">
+          {activeTab === "perks" && (
+            <Card className="space-y-6 p-6 md:p-8">
+              <div className="space-y-1">
+                <h3 className="text-title font-bold uppercase text-fg">
+                  Supporter Perks
+                </h3>
+                <p className="text-label text-muted-fg">
                   Enable special features for your supporters and visitors.
                 </p>
+              </div>
 
-                <div className="space-y-6">
-                  <div className="p-6 bg-muted rounded-lg border border-border">
-                    <div className="flex flex-wrap justify-between items-start gap-4">
-                      <div className="flex items-start gap-4">
-                        <div className="p-3 bg-orange-100 rounded-lg">
-                          <Store size={24} className="text-orange-600" />
-                        </div>
-                        <div>
-                          <p className="font-black text-lg">Store</p>
-                          <p className="text-sm text-muted-foreground">
-                            Sell merchandise, digital products, and physical goods
-                            directly to your audience.
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() =>
-                          handleUpdate("storeEnabled", !creatorData?.storeEnabled)
-                        }
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
-                          creatorData?.storeEnabled ? "bg-orange-500" : "bg-border-strong"
-                        }`}
-                        role="switch"
-                        aria-checked={creatorData?.storeEnabled}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-card shadow-sm ring-0 transition-transform ${
-                            creatorData?.storeEnabled ? "translate-x-6" : "translate-x-1"
-                          }`}
-                        />
-                      </button>
-                    </div>
-
-                    {creatorData?.storeEnabled && (
-                      <div className="mt-6 pt-6 border-t border-border space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-bold text-sm">Public Access</p>
-                            <p className="text-xs text-muted-foreground">
-                              Allow anyone to purchase (not just supporters)
-                            </p>
-                          </div>
-                          <button
-                            onClick={() =>
-                              handleUpdate("storePublic", !creatorData?.storePublic)
-                            }
-                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
-                              creatorData?.storePublic
-                                ? "bg-orange-500"
-                                : "bg-border-strong"
-                            }`}
-                            role="switch"
-                            aria-checked={creatorData?.storePublic}
-                          >
-                            <span
-                              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-card shadow-sm transition-transform ${
-                                creatorData?.storePublic
-                                  ? "translate-x-5"
-                                  : "translate-x-0.5"
-                              }`}
-                            />
-                          </button>
-                        </div>
-                        {!creatorData?.storePublic && (
-                          <p className="text-xs text-orange-600 bg-orange-50 p-3 rounded-lg">
-                            Only supporters will be able to see and purchase from your
-                            store.
-                          </p>
-                        )}
-                        <Link
-                          href="/creator/store"
-                          className="inline-flex items-center gap-2 text-sm font-bold text-orange-600 hover:text-orange-700"
-                        >
-                          <ShoppingBag size={16} />
-                          Manage your store
-                        </Link>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Giveaways */}
-                <div className="p-6 bg-muted rounded-lg border border-border">
-                  <div className="flex flex-wrap justify-between items-start gap-4">
+              <div className="space-y-6">
+                <div className="rounded-card border border-line bg-surface-sunken p-6">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="flex items-start gap-4">
-                      <div className="p-3 bg-orange-100 rounded-lg">
-                        <Gift size={24} className="text-orange-600" />
+                      <div className="rounded-control bg-brand-soft p-3 text-brand-strong">
+                        <Store className="size-6" aria-hidden="true" />
                       </div>
                       <div>
-                        <p className="font-black text-lg">Giveaways</p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-body-lg font-bold text-fg">Store</p>
+                        <p className="text-label text-muted-fg">
+                          Sell merchandise, digital products, and physical goods directly
+                          to your audience.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="w-14 shrink-0">
+                      <Switch
+                        checked={!!creatorData?.storeEnabled}
+                        onCheckedChange={(checked) =>
+                          handleUpdate("storeEnabled", checked)
+                        }
+                        label={<span className="sr-only">Store</span>}
+                      />
+                    </div>
+                  </div>
+
+                  {creatorData?.storeEnabled && (
+                    <div className="mt-6 space-y-4 border-t border-line pt-6">
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <p className="text-label font-bold text-fg">Public Access</p>
+                          <p className="text-caption text-muted-fg">
+                            Allow anyone to purchase (not just supporters)
+                          </p>
+                        </div>
+                        <div className="w-14 shrink-0">
+                          <Switch
+                            checked={!!creatorData?.storePublic}
+                            onCheckedChange={(checked) =>
+                              handleUpdate("storePublic", checked)
+                            }
+                            label={<span className="sr-only">Public Access</span>}
+                          />
+                        </div>
+                      </div>
+                      {!creatorData?.storePublic && (
+                        <p className="rounded-control bg-brand-soft p-3 text-caption text-brand-strong">
+                          Only supporters will be able to see and purchase from your
+                          store.
+                        </p>
+                      )}
+                      <Link
+                        href="/creator/store"
+                        className="inline-flex items-center gap-2 text-label font-bold text-brand-strong hover:text-brand-hover"
+                      >
+                        <ShoppingBag className="size-4" aria-hidden="true" />
+                        Manage your store
+                      </Link>
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-card border border-line bg-surface-sunken p-6">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                      <div className="rounded-control bg-brand-soft p-3 text-brand-strong">
+                        <Gift className="size-6" aria-hidden="true" />
+                      </div>
+                      <div>
+                        <p className="text-body-lg font-bold text-fg">Giveaways</p>
+                        <p className="text-label text-muted-fg">
                           Run contests and reward your supporters with prizes.
                         </p>
                       </div>
                     </div>
-                    <button
-                      onClick={() =>
-                        handleUpdate("giveawayEnabled", !creatorData?.giveawayEnabled)
-                      }
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
-                        creatorData?.giveawayEnabled
-                          ? "bg-orange-500"
-                          : "bg-border-strong"
-                      }`}
-                      role="switch"
-                      aria-checked={creatorData?.giveawayEnabled}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-card shadow-sm ring-0 transition-transform ${
-                          creatorData?.giveawayEnabled ? "translate-x-6" : "translate-x-1"
-                        }`}
+                    <div className="w-14 shrink-0">
+                      <Switch
+                        checked={!!creatorData?.giveawayEnabled}
+                        onCheckedChange={(checked) =>
+                          handleUpdate("giveawayEnabled", checked)
+                        }
+                        label={<span className="sr-only">Giveaways</span>}
                       />
-                    </button>
+                    </div>
                   </div>
 
                   {creatorData?.giveawayEnabled && (
-                    <div className="mt-6 pt-6 border-t border-border">
+                    <div className="mt-6 border-t border-line pt-6">
                       <Link
                         href="/creator/giveaways"
-                        className="inline-flex items-center gap-2 text-sm font-bold text-orange-600 hover:text-orange-700"
+                        className="inline-flex items-center gap-2 text-label font-bold text-brand-strong hover:text-brand-hover"
                       >
-                        <Gift size={16} />
+                        <Gift className="size-4" aria-hidden="true" />
                         Manage giveaways
                       </Link>
                     </div>
                   )}
                 </div>
 
-                {/* Booking */}
-                <div className="p-6 bg-muted rounded-lg border border-border">
-                  <div className="flex flex-wrap justify-between items-start gap-4">
+                <div className="rounded-card border border-line bg-surface-sunken p-6">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="flex items-start gap-4">
-                      <div className="p-3 bg-blue-100 rounded-lg">
-                        <Calendar size={24} className="text-blue-600" />
+                      <div className="rounded-control bg-info-bg p-3 text-info">
+                        <Calendar className="size-6" aria-hidden="true" />
                       </div>
                       <div>
-                        <p className="font-black text-lg">Book a Meeting</p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-body-lg font-bold text-fg">Book a Meeting</p>
+                        <p className="text-label text-muted-fg">
                           Allow supporters to book meetings or consultations with you.
                         </p>
                       </div>
                     </div>
-                    <button
-                      onClick={() =>
-                        handleUpdate("bookingEnabled", !creatorData?.bookingEnabled)
-                      }
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
-                        creatorData?.bookingEnabled ? "bg-orange-500" : "bg-border-strong"
-                      }`}
-                      role="switch"
-                      aria-checked={creatorData?.bookingEnabled}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-card shadow-sm ring-0 transition-transform ${
-                          creatorData?.bookingEnabled ? "translate-x-6" : "translate-x-1"
-                        }`}
+                    <div className="w-14 shrink-0">
+                      <Switch
+                        checked={!!creatorData?.bookingEnabled}
+                        onCheckedChange={(checked) =>
+                          handleUpdate("bookingEnabled", checked)
+                        }
+                        label={<span className="sr-only">Book a Meeting</span>}
                       />
-                    </button>
+                    </div>
                   </div>
 
                   {creatorData?.bookingEnabled && (
-                    <div className="mt-6 pt-6 border-t border-border space-y-4">
-                      <div className="flex items-center justify-between">
+                    <div className="mt-6 space-y-4 border-t border-line pt-6">
+                      <div className="flex items-center justify-between gap-4">
                         <div>
-                          <p className="font-bold text-sm">Supporters Only</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-label font-bold text-fg">Supporters Only</p>
+                          <p className="text-caption text-muted-fg">
                             Only supporters can book meetings
                           </p>
                         </div>
-                        <button
-                          onClick={() =>
-                            handleUpdate(
-                              "bookingAccess",
-                              creatorData?.bookingAccess === "supporters"
-                                ? "public"
-                                : "supporters",
-                            )
-                          }
-                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
-                            creatorData?.bookingAccess === "supporters"
-                              ? "bg-orange-500"
-                              : "bg-border-strong"
-                          }`}
-                          role="switch"
-                          aria-checked={creatorData?.bookingAccess === "supporters"}
-                        >
-                          <span
-                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-card shadow-sm transition-transform ${
-                              creatorData?.bookingAccess === "supporters"
-                                ? "translate-x-5"
-                                : "translate-x-0.5"
-                            }`}
+                        <div className="w-14 shrink-0">
+                          <Switch
+                            checked={creatorData?.bookingAccess === "supporters"}
+                            onCheckedChange={(checked) =>
+                              handleUpdate(
+                                "bookingAccess",
+                                checked ? "supporters" : "public",
+                              )
+                            }
+                            label={<span className="sr-only">Supporters Only</span>}
                           />
-                        </button>
+                        </div>
                       </div>
                       <Link
                         href="/creator/bookings"
-                        className="inline-flex items-center gap-2 text-sm font-bold text-orange-600 hover:text-orange-700"
+                        className="inline-flex items-center gap-2 text-label font-bold text-brand-strong hover:text-brand-hover"
                       >
-                        <Calendar size={16} />
+                        <Calendar className="size-4" aria-hidden="true" />
                         Manage bookings
                       </Link>
                     </div>
                   )}
                 </div>
 
-                {/* Gatherings */}
-                <div className="p-6 bg-muted rounded-lg border border-border">
-                  <div className="flex flex-wrap justify-between items-start gap-4">
+                <div className="rounded-card border border-line bg-surface-sunken p-6">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="flex items-start gap-4">
-                      <div className="p-3 bg-green-100 rounded-lg">
-                        <Calendar size={24} className="text-green-600" />
+                      <div className="rounded-control bg-success-bg p-3 text-success">
+                        <Calendar className="size-6" aria-hidden="true" />
                       </div>
                       <div>
-                        <p className="font-black text-lg">Gatherings</p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-body-lg font-bold text-fg">Gatherings</p>
+                        <p className="text-label text-muted-fg">
                           Create events and allow supporters to RSVP.
                         </p>
                       </div>
                     </div>
-                    <button
-                      onClick={() =>
-                        handleUpdate("gatheringsEnabled", !creatorData?.gatheringsEnabled)
-                      }
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
-                        creatorData?.gatheringsEnabled
-                          ? "bg-orange-500"
-                          : "bg-border-strong"
-                      }`}
-                      role="switch"
-                      aria-checked={creatorData?.gatheringsEnabled}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-card shadow-sm ring-0 transition-transform ${
-                          creatorData?.gatheringsEnabled
-                            ? "translate-x-6"
-                            : "translate-x-1"
-                        }`}
+                    <div className="w-14 shrink-0">
+                      <Switch
+                        checked={!!creatorData?.gatheringsEnabled}
+                        onCheckedChange={(checked) =>
+                          handleUpdate("gatheringsEnabled", checked)
+                        }
+                        label={<span className="sr-only">Gatherings</span>}
                       />
-                    </button>
+                    </div>
                   </div>
 
                   {creatorData?.gatheringsEnabled && (
-                    <div className="mt-6 pt-6 border-t border-border">
+                    <div className="mt-6 border-t border-line pt-6">
                       <Link
                         href="/creator/gatherings"
-                        className="inline-flex items-center gap-2 text-sm font-bold text-orange-600 hover:text-orange-700"
+                        className="inline-flex items-center gap-2 text-label font-bold text-brand-strong hover:text-brand-hover"
                       >
-                        <Calendar size={16} />
+                        <Calendar className="size-4" aria-hidden="true" />
                         Manage gatherings
                       </Link>
                     </div>
                   )}
                 </div>
-              </section>
-            )}
+              </div>
+            </Card>
+          )}
 
-            {activeTab === "messaging" && (
-              <section className="bg-card border border-border rounded-lg p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                <div className="flex flex-wrap justify-between items-start gap-4">
-                  <div>
-                    <h3 className="text-lg font-black uppercase mb-2">
-                      Direct Messaging
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Allow your supporters to send you private messages.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() =>
-                      handleUpdate("messagingEnabled", !creatorData?.messagingEnabled)
-                    }
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
-                      creatorData?.messagingEnabled ? "bg-orange-500" : "bg-border-strong"
-                    }`}
-                    role="switch"
-                    aria-checked={creatorData?.messagingEnabled}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-card shadow-sm ring-0 transition-transform ${
-                        creatorData?.messagingEnabled ? "translate-x-6" : "translate-x-1"
-                      }`}
-                    />
-                  </button>
+          {activeTab === "messaging" && (
+            <Card className="space-y-8 p-6 md:p-8">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <h3 className="text-title font-bold uppercase text-fg">
+                    Direct Messaging
+                  </h3>
+                  <p className="text-label text-muted-fg">
+                    Allow your supporters to send you private messages.
+                  </p>
                 </div>
+                <div className="w-14 shrink-0">
+                  <Switch
+                    checked={!!creatorData?.messagingEnabled}
+                    onCheckedChange={(checked) =>
+                      handleUpdate("messagingEnabled", checked)
+                    }
+                    label={<span className="sr-only">Direct Messaging</span>}
+                  />
+                </div>
+              </div>
 
-                {creatorData?.messagingEnabled && (
-                  <div className="space-y-6 pt-6 border-t border-border">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-bold text-sm">Allow all supporters</p>
-                          <p className="text-xs text-muted-foreground">
-                            Any supporter can message you, regardless of amount
-                          </p>
-                        </div>
-                        <button
-                          onClick={() =>
-                            handleUpdate(
-                              "messagingAllowAll",
-                              !creatorData?.messagingAllowAll,
-                            )
+              {creatorData?.messagingEnabled && (
+                <div className="space-y-6 border-t border-line pt-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-label font-bold text-fg">
+                          Allow all supporters
+                        </p>
+                        <p className="text-caption text-muted-fg">
+                          Any supporter can message you, regardless of amount
+                        </p>
+                      </div>
+                      <div className="w-14 shrink-0">
+                        <Switch
+                          checked={!!creatorData?.messagingAllowAll}
+                          onCheckedChange={(checked) =>
+                            handleUpdate("messagingAllowAll", checked)
                           }
-                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
-                            creatorData?.messagingAllowAll
-                              ? "bg-orange-500"
-                              : "bg-border-strong"
-                          }`}
-                          role="switch"
-                          aria-checked={creatorData?.messagingAllowAll}
-                        >
-                          <span
-                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-card shadow-sm transition-transform ${
-                              creatorData?.messagingAllowAll
-                                ? "translate-x-5"
-                                : "translate-x-0.5"
-                            }`}
-                          />
-                        </button>
+                          label={<span className="sr-only">Allow all supporters</span>}
+                        />
                       </div>
+                    </div>
 
-                      {!creatorData?.messagingAllowAll && (
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">
-                            Minimum Support Amount (RWF)
-                          </label>
-                          <input
-                            type="number"
-                            value={creatorData?.messagingMinAmount || 0}
-                            onChange={(e) =>
-                              handleUpdate("messagingMinAmount", Number(e.target.value))
-                            }
-                            placeholder="0"
-                            className="w-full md:w-48 bg-muted p-4 rounded-lg text-sm font-bold focus:ring-2 focus:ring-orange-100 outline-none border border-transparent focus:bg-card transition-all"
-                          />
-                          <p className="text-xs text-muted-foreground">
-                            Only supporters who have given at least this amount can
-                            message you
-                          </p>
-                        </div>
-                      )}
+                    {!creatorData?.messagingAllowAll && (
+                      <Input
+                        label="Minimum Support Amount (RWF)"
+                        type="number"
+                        value={creatorData?.messagingMinAmount || 0}
+                        onChange={(e) =>
+                          handleUpdate("messagingMinAmount", Number(e.target.value))
+                        }
+                        placeholder="0"
+                        hint="Only supporters who have given at least this amount can message you"
+                        containerClassName="md:w-48"
+                      />
+                    )}
 
-                      <div className="p-4 bg-green-50 rounded-lg border border-green-100 flex items-start gap-3">
-                        <MessageSquare size={20} className="text-green-600 mt-0.5" />
-                        <div>
-                          <p className="font-bold text-sm text-green-800">
-                            Email notifications enabled
-                          </p>
-                          <p className="text-xs text-green-600">
-                            You will receive an email when a supporter sends you a new
-                            message
-                          </p>
-                        </div>
+                    <div className="flex items-start gap-3 rounded-control border border-line bg-success-bg p-4">
+                      <MessageSquare
+                        className="mt-0.5 size-5 text-success"
+                        aria-hidden="true"
+                      />
+                      <div>
+                        <p className="text-label font-bold text-success">
+                          Email notifications enabled
+                        </p>
+                        <p className="text-caption text-success">
+                          You will receive an email when a supporter sends you a new
+                          message
+                        </p>
                       </div>
                     </div>
                   </div>
-                )}
-
-                {!creatorData?.messagingEnabled && (
-                  <div className="p-6 bg-muted rounded-lg border border-border">
-                    <div className="flex items-center gap-3 text-muted-foreground">
-                      <AlertCircle size={20} />
-                      <p className="text-sm">
-                        Messaging is disabled. Your supporters won&apos;t be able to send
-                        you direct messages.
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </section>
-            )}
-
-            {activeTab === "community" && (
-              <section className="bg-card border border-border rounded-lg p-8 space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                <div className="flex flex-wrap justify-between items-start gap-4">
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 bg-purple-100 rounded-lg">
-                      <Users size={24} className="text-purple-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-black uppercase">Community Tiers</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Create subscription tiers so supporters can support you monthly or
-                        yearly.
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() =>
-                      handleUpdate("communityEnabled", !creatorData?.communityEnabled)
-                    }
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
-                      creatorData?.communityEnabled ? "bg-orange-500" : "bg-border-strong"
-                    }`}
-                    role="switch"
-                    aria-checked={creatorData?.communityEnabled}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-card shadow-sm ring-0 transition-transform ${
-                        creatorData?.communityEnabled ? "translate-x-6" : "translate-x-1"
-                      }`}
-                    />
-                  </button>
                 </div>
+              )}
 
-                {creatorData?.communityEnabled && (
-                  <div className="mt-2 pt-6 border-t border-border">
-                    <Link
-                      href="/creator/community"
-                      className="inline-flex items-center gap-2 text-sm font-bold text-orange-600 hover:text-orange-700"
-                    >
-                      <Users size={16} />
-                      Manage community tiers
-                    </Link>
-                    <p className="text-xs text-muted-foreground mt-3">
-                      When enabled, a &ldquo;Tiers&rdquo; link appears in your sidebar so
-                      you can manage subscription plans.
+              {!creatorData?.messagingEnabled && (
+                <div className="rounded-card border border-line bg-surface-sunken p-6">
+                  <div className="flex items-center gap-3 text-muted-fg">
+                    <AlertCircle className="size-5" aria-hidden="true" />
+                    <p className="text-label">
+                      Messaging is disabled. Your supporters won&apos;t be able to send
+                      you direct messages.
                     </p>
                   </div>
-                )}
+                </div>
+              )}
+            </Card>
+          )}
 
-                {!creatorData?.communityEnabled && (
-                  <div className="p-6 bg-muted rounded-lg border border-border">
-                    <div className="flex items-center gap-3 text-muted-foreground">
-                      <AlertCircle size={20} />
-                      <p className="text-sm">
-                        Community tiers are disabled. Your supporters won&apos;t be able
-                        to subscribe to recurring support.
-                      </p>
-                    </div>
+          {activeTab === "community" && (
+            <Card className="space-y-6 p-6 md:p-8">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <div className="rounded-control bg-info-bg p-3 text-info">
+                    <Users className="size-6" aria-hidden="true" />
                   </div>
-                )}
-              </section>
-            )}
-          </main>
+                  <div className="space-y-1">
+                    <h3 className="text-title font-bold uppercase text-fg">
+                      Community Tiers
+                    </h3>
+                    <p className="text-label text-muted-fg">
+                      Create subscription tiers so supporters can support you monthly or
+                      yearly.
+                    </p>
+                  </div>
+                </div>
+                <div className="w-14 shrink-0">
+                  <Switch
+                    checked={!!creatorData?.communityEnabled}
+                    onCheckedChange={(checked) =>
+                      handleUpdate("communityEnabled", checked)
+                    }
+                    label={<span className="sr-only">Community Tiers</span>}
+                  />
+                </div>
+              </div>
+
+              {creatorData?.communityEnabled && (
+                <div className="mt-2 border-t border-line pt-6">
+                  <Link
+                    href="/creator/community"
+                    className="inline-flex items-center gap-2 text-label font-bold text-brand-strong hover:text-brand-hover"
+                  >
+                    <Users className="size-4" aria-hidden="true" />
+                    Manage community tiers
+                  </Link>
+                  <p className="mt-3 text-caption text-muted-fg">
+                    When enabled, a &ldquo;Tiers&rdquo; link appears in your sidebar so
+                    you can manage subscription plans.
+                  </p>
+                </div>
+              )}
+
+              {!creatorData?.communityEnabled && (
+                <div className="rounded-card border border-line bg-surface-sunken p-6">
+                  <div className="flex items-center gap-3 text-muted-fg">
+                    <AlertCircle className="size-5" aria-hidden="true" />
+                    <p className="text-label">
+                      Community tiers are disabled. Your supporters won&apos;t be able to
+                      subscribe to recurring support.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </Card>
+          )}
         </div>
       </div>
     </div>
