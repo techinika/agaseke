@@ -13,52 +13,57 @@ import {
   Check,
   CheckCircle2,
   CreditCard,
-  HandCoins,
-  Heart,
-  Loader,
+  Loader2,
   Lock,
   ShieldCheck,
   Smartphone,
-  Sparkles,
   Store,
-  TrendingUp,
   Users,
   Wallet,
   XCircle,
 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { Avatar } from "@/components/ui/Avatar";
-import { Badge } from "@/components/ui/Badge";
 import { Button, buttonClasses } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { RESERVED_USERNAMES } from "@/features/onboarding/reservedUsernames";
 
-const FALLBACK_CREATORS = [
+interface FeaturedCreator {
+  id: string;
+  name: string;
+  profilePicture?: string;
+  photoURL?: string;
+  country?: string;
+  location?: string;
+  focus?: string[];
+  bio?: string;
+  verified?: boolean;
+}
+
+const FALLBACK_CREATORS: FeaturedCreator[] = [
   {
     id: "kellys",
     name: "Kelly S.",
-    profilePicture: "https://i.pravatar.cc/150?u=kellys",
     country: "RW",
     focus: ["Musician", "Songwriter"],
-    bio: "Afrobeat artist from Kigali. New EP out now.",
+    bio: "Afrobeat artist from Kigali sharing new releases with supporters.",
     verified: true,
   },
   {
     id: "achille_songa",
     name: "Achille S.",
-    profilePicture: "https://i.pravatar.cc/150?u=achille",
     country: "RW",
     focus: ["Producer", "Artist"],
-    bio: "Beats that cross borders. Open for collabs.",
+    bio: "Beats that cross borders. Open for creative collaborations.",
     verified: false,
   },
   {
     id: "hollboi",
     name: "Hollboi",
-    profilePicture: "https://i.pravatar.cc/150?u=hollboi",
     country: "KE",
     focus: ["Comedian", "Creator"],
-    bio: "Laughing across East Africa. Tour dates below.",
+    bio: "Live stand-up, tour dates, and supporter-only clips across East Africa.",
     verified: true,
   },
 ];
@@ -66,52 +71,38 @@ const FALLBACK_CREATORS = [
 const FEATURES = [
   {
     icon: Users,
-    title: "A community you own",
-    text: "Invite your biggest fans into a private space that belongs to you, not an algorithm.",
+    title: "Private community",
+    text: "Host your biggest supporters in tiers you control — free from social feeds.",
   },
   {
     icon: Lock,
-    title: "Exclusive content",
-    text: "Publish posts and articles for everyone, your supporters, or a specific tier.",
+    title: "Posts & longform articles",
+    text: "Publish essays, audio, video, and downloads for everyone or members only.",
   },
   {
     icon: Store,
-    title: "A store that fits your work",
-    text: "Sell physical or digital products from your page with secure checkout.",
+    title: "Built-in storefront",
+    text: "Sell digital files or physical merchandise directly from your Agaseke page.",
   },
   {
     icon: CalendarCheck,
     title: "Paid bookings",
-    text: "Offer one-on-one sessions and get paid for your time.",
+    text: "Offer coaching, consulting, or feedback sessions on your schedule.",
   },
   {
     icon: CalendarDays,
-    title: "Gatherings and giveaways",
-    text: "Sell tickets to events and run giveaways that bring your audience closer.",
+    title: "Gatherings & giveaways",
+    text: "Sell event tickets with QR check-in and run verified supporter giveaways.",
   },
   {
     icon: Wallet,
-    title: "Payouts that make sense",
-    text: "Withdraw to Mobile Money or bank in the currency you earn in.",
+    title: "Local payouts",
+    text: "Receive support via Mobile Money or card and withdraw to Mobile Money or bank.",
   },
 ];
 
-const PAINS = [
-  "Platform fees take a large cut of your work.",
-  "Tools are built for cards, not Mobile Money.",
-  "Your audience belongs to an algorithm.",
-  "Content, store, and messages live in different places.",
-];
-
-const WINS = [
-  "A flat 10% platform fee. You keep 90%.",
-  "Mobile Money and card payments in one place.",
-  "Your supporters, your community, your rules.",
-  "Content, store, bookings, and messages together.",
-];
-
 function getFlagEmoji(countryCode?: string): string {
-  if (!countryCode) return "🌍";
+  if (!countryCode) return "";
   const map: Record<string, string> = {
     RW: "🇷🇼",
     KE: "🇰🇪",
@@ -134,10 +125,14 @@ function getFlagEmoji(countryCode?: string): string {
     ML: "🇲🇱",
     BF: "🇧🇫",
   };
-  return map[countryCode.toUpperCase()] || "🌍";
+  return map[countryCode.toUpperCase()] || "";
 }
 
-export default function LandingPage({ initialCreators }: { initialCreators?: any[] }) {
+export default function LandingPage({
+  initialCreators,
+}: {
+  initialCreators?: FeaturedCreator[];
+}) {
   const { isCreator, user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -145,7 +140,9 @@ export default function LandingPage({ initialCreators }: { initialCreators?: any
   const [usernameCheck, setUsernameCheck] = useState<
     "idle" | "checking" | "available" | "taken"
   >("idle");
-  const featuredCreators = initialCreators?.length ? initialCreators : FALLBACK_CREATORS;
+  const featuredCreators: FeaturedCreator[] = initialCreators?.length
+    ? (initialCreators as any[])
+    : FALLBACK_CREATORS;
 
   const usernameValidation: "idle" | "invalid" | null =
     username.length < 3
@@ -165,84 +162,16 @@ export default function LandingPage({ initialCreators }: { initialCreators?: any
       if (cancelled) return;
       setUsernameCheck("checking");
       try {
+        if (RESERVED_USERNAMES.has(username.toLowerCase())) {
+          if (!cancelled) setUsernameCheck("taken");
+          return;
+        }
         const response = await fetch(
           `/api/creators/check-username?username=${encodeURIComponent(username)}`,
         );
         const data = (await response.json()) as { exists?: boolean };
-        const reserved = new Set([
-          "admin",
-          "creator",
-          "supporter",
-          "explore",
-          "login",
-          "signup",
-          "terms",
-          "privacy",
-          "auth",
-          "help-center",
-          "api",
-          "test",
-          "offline",
-          "sitemap",
-          "sitemap.xml",
-          "robots",
-          "robots.txt",
-          "robot",
-          "profile",
-          "payout",
-          "payout-policy",
-          "content-guidelines",
-          "onboarding",
-          "payment",
-          "dashboard",
-          "checkout",
-          "verify",
-          "payments",
-          "help",
-          "search",
-          "about",
-          "contact",
-          "faq",
-          "support",
-          "feedback",
-          "blog",
-          "contact-us",
-          "help-us-improve",
-          "login-demo",
-          "settings",
-          "notification",
-          "support-us",
-          "store",
-          "messages",
-          "artist",
-          "podcasts",
-          "photographers",
-          "vloggers",
-          "dancers",
-          "comedians",
-          "musicians",
-          "public",
-          "business",
-          "entrepreneurs",
-          "athletes",
-          "reviewers",
-          "content-creators",
-          "journalists",
-          "models",
-          "educators",
-          "interviewers",
-          "bloggers",
-          "designers",
-          "transactions",
-          "bookings",
-          "for-creators",
-          "for-supporters",
-          "for-brands",
-        ]);
         if (!cancelled) {
-          setUsernameCheck(
-            Boolean(data?.exists) || reserved.has(username) ? "taken" : "available",
-          );
+          setUsernameCheck(data?.exists ? "taken" : "available");
         }
       } catch (error) {
         console.error(error);
@@ -250,7 +179,7 @@ export default function LandingPage({ initialCreators }: { initialCreators?: any
       }
     };
 
-    const timeoutId = setTimeout(checkUsername, 500);
+    const timeoutId = setTimeout(checkUsername, 450);
     return () => {
       cancelled = true;
       clearTimeout(timeoutId);
@@ -259,9 +188,11 @@ export default function LandingPage({ initialCreators }: { initialCreators?: any
 
   const handleClaim = () => {
     if (username.length < 3) {
-      toast.info("Please enter a username (at least 3 characters).");
-    } else if (username.length > 19) {
-      toast.error("Username must be under 20 characters.");
+      toast.info("Enter a username with at least 3 characters.");
+    } else if (username.length > 19 || !/^[a-z0-9_]+$/.test(username)) {
+      toast.error("Use 3–19 lowercase letters, numbers, or underscores.");
+    } else if (usernameStatus === "taken") {
+      toast.error("That link is already taken. Try another name.");
     } else {
       router.push(`/login?username=${username}&redirect=${encodeURIComponent(pathname)}`);
     }
@@ -275,13 +206,13 @@ export default function LandingPage({ initialCreators }: { initialCreators?: any
         : undefined;
   const usernameHint =
     usernameStatus === "available"
-      ? "This link is available."
+      ? "Available — claim this link now."
       : usernameStatus === "idle"
-        ? "This will be your public Agaseke link."
+        ? "Your public link on agaseke.me"
         : undefined;
   const usernameTrailing =
     usernameStatus === "checking" ? (
-      <Loader className="size-5 animate-spin text-muted-fg" aria-hidden="true" />
+      <Loader2 className="size-5 animate-spin text-muted-fg" aria-hidden="true" />
     ) : usernameStatus === "available" ? (
       <Check className="size-5 text-success" aria-hidden="true" />
     ) : usernameStatus === "taken" || usernameStatus === "invalid" ? (
@@ -294,7 +225,7 @@ export default function LandingPage({ initialCreators }: { initialCreators?: any
     name: "Agaseke",
     url: "https://agaseke.me",
     description:
-      "A private community platform for content creators and influencers. Your biggest fans support you directly through tips, subscriptions, and exclusive content.",
+      "A private community platform for content creators and influencers. Supporters back your work directly through tips, memberships, store purchases, and bookings.",
     applicationCategory: "BusinessApplication",
     operatingSystem: "All",
     offers: {
@@ -306,10 +237,10 @@ export default function LandingPage({ initialCreators }: { initialCreators?: any
     featureList: [
       "Private Creator Community",
       "Fan Support & Tips",
-      "Exclusive Content",
-      "Direct Fan Messaging",
-      "Mobile Money & Card Payments",
-      "Digital Storefront",
+      "Exclusive Content & Articles",
+      "Creator Storefront",
+      "Paid Bookings & Gatherings",
+      "Mobile Money & Card Payouts",
     ],
     author: {
       "@type": "Organization",
@@ -326,33 +257,32 @@ export default function LandingPage({ initialCreators }: { initialCreators?: any
       />
 
       <section className="px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
-        <div className="mx-auto grid w-full max-w-6xl items-center gap-12 lg:grid-cols-[1.15fr_0.85fr]">
+        <div className="mx-auto grid w-full max-w-6xl items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
           <div>
-            <Badge tone="brand" className="mb-5 gap-1.5 px-3 py-1">
-              <Sparkles className="size-3.5" aria-hidden="true" />
+            <p className="text-caption font-bold uppercase tracking-[0.16em] text-brand-strong">
               Built for African creators
-            </Badge>
-            <h1 className="max-w-2xl text-display font-black tracking-tight text-fg sm:text-hero">
-              Build your private community.
-              <span className="block text-brand-strong">Get paid directly.</span>
+            </p>
+            <h1 className="mt-3 max-w-2xl text-display font-black tracking-tight text-fg sm:text-hero">
+              Your community, content, and store —{" "}
+              <span className="text-brand-strong">paid directly.</span>
             </h1>
             <p className="mt-5 max-w-xl text-body-lg leading-relaxed text-muted-fg">
-              Agaseke gives creators one home for content, community, store, bookings, and
-              events — with Mobile Money and card payments from your biggest fans.
+              One home for your supporters. Share exclusive posts, sell products, book
+              sessions, and accept Mobile Money or card payments with zero monthly fee.
             </p>
 
             <div className="mt-8 max-w-xl">
               {isCreator ? (
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-wrap items-center gap-4">
                   <Link
                     href="/creator"
                     className={buttonClasses({ variant: "primary", size: "lg" })}
                   >
-                    Go to my creator space
+                    Open creator space
                     <ArrowRight className="size-5" aria-hidden="true" />
                   </Link>
                   <p className="text-label font-medium text-muted-fg">
-                    Welcome back, {user?.displayName?.split(" ")[0] || "creator"}.
+                    Signed in as {user?.displayName?.split(" ")[0] || "creator"}
                   </p>
                 </div>
               ) : (
@@ -374,6 +304,9 @@ export default function LandingPage({ initialCreators }: { initialCreators?: any
                           event.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""),
                         );
                       }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") handleClaim();
+                      }}
                       placeholder="yourname"
                       autoComplete="username"
                       error={usernameError}
@@ -382,19 +315,18 @@ export default function LandingPage({ initialCreators }: { initialCreators?: any
                       containerClassName="flex-1"
                     />
                     <Button size="lg" onClick={handleClaim} className="sm:shrink-0">
-                      Start for free
+                      Start free
                     </Button>
                   </div>
                   <p className="mt-2 flex items-center gap-2 text-caption text-muted-fg">
                     <ShieldCheck className="size-4 text-success" aria-hidden="true" />
-                    Takes a minute. No credit card needed.
+                    Free to start. We only charge 10% when you earn.
                   </p>
                 </>
               )}
             </div>
 
-            <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-line pt-6 text-caption font-semibold text-muted-fg">
-              <span className="uppercase tracking-wide">Get paid via</span>
+            <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-line pt-6 text-caption font-semibold text-muted-fg">
               <span className="inline-flex items-center gap-1.5">
                 <Smartphone className="size-4 text-brand-strong" aria-hidden="true" />
                 Mobile Money
@@ -405,71 +337,77 @@ export default function LandingPage({ initialCreators }: { initialCreators?: any
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <Banknote className="size-4 text-brand-strong" aria-hidden="true" />
-                Bank payout
+                Bank payouts
               </span>
             </div>
           </div>
 
           <div>
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-label font-bold uppercase tracking-wide text-muted-fg">
-                Creators on Agaseke
+              <p className="text-caption font-bold uppercase tracking-wider text-muted-fg">
+                Featured creators
               </p>
               <Link
                 href="/explore"
-                className="inline-flex min-h-11 items-center gap-1 text-label font-semibold text-brand-strong"
+                className="inline-flex min-h-11 items-center gap-1 text-label font-semibold text-brand-strong hover:underline"
               >
-                Explore
+                Explore all
                 <ArrowRight className="size-4" aria-hidden="true" />
               </Link>
             </div>
 
             <div className="space-y-3">
-              {featuredCreators.slice(0, 3).map((creator) => (
-                <Card
-                  key={creator.id}
-                  className="flex items-start gap-3 p-4 transition-colors hover:bg-surface-raised"
-                >
-                  <Avatar
-                    src={creator.profilePicture || creator.photoURL}
-                    name={creator.name}
-                    size="md"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <p className="truncate text-body font-bold text-fg">
-                        {creator.name}
-                      </p>
-                      {creator.verified && (
-                        <CheckCircle2
-                          className="size-4 shrink-0 text-success"
-                          aria-label="Verified creator"
-                        />
-                      )}
-                      <span className="ml-auto text-body">
-                        {getFlagEmoji(creator.country || creator.location)}
-                      </span>
-                    </div>
-                    <p className="truncate text-caption font-semibold text-brand-strong">
-                      agaseke.me/{creator.id}
-                    </p>
-                    {creator.bio && (
-                      <p className="mt-1 line-clamp-2 text-caption leading-relaxed text-muted-fg">
-                        {creator.bio}
-                      </p>
-                    )}
-                    {creator.focus?.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {creator.focus.slice(0, 2).map((focus: string) => (
-                          <Badge key={focus} tone="neutral">
-                            {focus}
-                          </Badge>
-                        ))}
+              {featuredCreators.slice(0, 3).map((creator) => {
+                const flag = getFlagEmoji(creator.country || creator.location);
+                const focusLine = creator.focus?.slice(0, 2).join(" · ");
+                return (
+                  <Link
+                    key={creator.id}
+                    href={`/${creator.id}`}
+                    className="block rounded-card outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                  >
+                    <Card className="flex items-start gap-3.5 p-4 transition-colors hover:bg-surface-raised">
+                      <Avatar
+                        src={creator.profilePicture || creator.photoURL}
+                        name={creator.name}
+                        size="md"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <p className="truncate text-body font-bold text-fg">
+                            {creator.name}
+                          </p>
+                          {creator.verified && (
+                            <CheckCircle2
+                              className="size-4 shrink-0 text-success"
+                              aria-label="Verified creator"
+                            />
+                          )}
+                          {flag && (
+                            <span className="ml-auto text-body" aria-hidden="true">
+                              {flag}
+                            </span>
+                          )}
+                        </div>
+                        <p className="truncate text-caption font-semibold text-brand-strong">
+                          agaseke.me/{creator.id}
+                          {focusLine ? (
+                            <span className="font-medium text-muted-fg">
+                              {" "}
+                              · {focusLine}
+                            </span>
+                          ) : null}
+                        </p>
+                        {creator.bio && (
+                          <p className="mt-1 line-clamp-2 text-caption leading-relaxed text-muted-fg">
+                            {creator.bio}
+                          </p>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </Card>
-              ))}
+                    </Card>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -478,10 +416,10 @@ export default function LandingPage({ initialCreators }: { initialCreators?: any
       <section className="border-y border-line bg-surface">
         <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-6 px-4 py-10 sm:px-6 lg:grid-cols-4 lg:px-8">
           {[
-            ["300+", "Creators onboarded"],
-            ["USD 2k+", "Paid to creators"],
-            ["30+", "Countries active"],
-            ["10%", "Platform fee only"],
+            ["300+", "Creators"],
+            ["USD 2k+", "Paid out"],
+            ["30+", "Countries"],
+            ["10%", "Flat platform fee"],
           ].map(([value, label]) => (
             <div key={label} className="text-center">
               <p className="text-heading font-black text-fg sm:text-display">{value}</p>
@@ -493,22 +431,21 @@ export default function LandingPage({ initialCreators }: { initialCreators?: any
         </div>
       </section>
 
-      <section className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+      <section id="features" className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
         <div className="mx-auto w-full max-w-6xl">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-heading font-black text-fg sm:text-display">
-              Everything your audience needs, in one place
-            </h2>
-            <p className="mt-3 text-body text-muted-fg">
-              No patchwork of links, forms, and payment apps. Your page connects the whole
-              relationship with your supporters.
+          <div className="max-w-2xl">
+            <p className="text-caption font-bold uppercase tracking-wider text-brand-strong">
+              Everything in one place
             </p>
+            <h2 className="mt-2 text-heading font-black text-fg sm:text-display">
+              Tools built for direct support
+            </h2>
           </div>
 
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {FEATURES.map(({ icon: Icon, title, text }) => (
               <Card key={title} className="p-5">
-                <span className="flex size-11 items-center justify-center rounded-control bg-brand-soft text-brand-strong">
+                <span className="flex size-10 items-center justify-center rounded-control bg-brand-soft text-brand-strong">
                   <Icon className="size-5" aria-hidden="true" />
                 </span>
                 <h3 className="mt-4 text-body-lg font-bold text-fg">{title}</h3>
@@ -519,91 +456,32 @@ export default function LandingPage({ initialCreators }: { initialCreators?: any
         </div>
       </section>
 
-      <section className="border-y border-line bg-surface-sunken px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
-        <div className="mx-auto w-full max-w-5xl">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-heading font-black text-fg sm:text-display">
-              Global platforms were not built for African creators
-            </h2>
-            <p className="mt-3 text-body text-muted-fg">
-              Agaseke starts with how creators here actually get paid and how fans
-              actually support them.
-            </p>
-          </div>
-
-          <div className="mt-10 grid gap-4 md:grid-cols-2">
-            <Card className="p-6">
-              <p className="text-label font-bold uppercase tracking-wide text-muted-fg">
-                The usual stack
-              </p>
-              <ul className="mt-4 space-y-3">
-                {PAINS.map((item) => (
-                  <li key={item} className="flex gap-3 text-label text-muted-fg">
-                    <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-danger-bg text-danger">
-                      <XCircle className="size-3.5" aria-hidden="true" />
-                    </span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </Card>
-
-            <Card className="border-brand-strong/30 bg-brand-soft p-6">
-              <p className="text-label font-bold uppercase tracking-wide text-brand-strong">
-                With Agaseke
-              </p>
-              <ul className="mt-4 space-y-3">
-                {WINS.map((item) => (
-                  <li key={item} className="flex gap-3 text-label text-fg">
-                    <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-surface text-success">
-                      <Check className="size-3.5" aria-hidden="true" />
-                    </span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      <section className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+      <section className="border-y border-line bg-surface-sunken px-4 py-16 sm:px-6 lg:px-8">
         <div className="mx-auto w-full max-w-6xl">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-heading font-black text-fg sm:text-display">
-              From claim to first supporter in three steps
-            </h2>
-          </div>
-
-          <ol className="mt-10 grid gap-4 md:grid-cols-3">
+          <h2 className="text-heading font-black text-fg sm:text-display">
+            Start in three steps
+          </h2>
+          <ol className="mt-8 grid gap-4 md:grid-cols-3">
             {[
               {
-                icon: Sparkles,
-                title: "Claim your space",
-                text: "Choose your link, add what you create, and publish your page. No credit card needed.",
+                title: "Claim your link",
+                text: "Pick your agaseke.me handle, add a bio, and publish in under two minutes.",
               },
               {
-                icon: TrendingUp,
-                title: "Move your fans",
-                text: "Share your Agaseke link on Instagram, TikTok, X, or WhatsApp and bring your audience home.",
+                title: "Share with supporters",
+                text: "Add your link to Instagram, TikTok, X, YouTube, or WhatsApp.",
               },
               {
-                icon: HandCoins,
-                title: "Start earning",
-                text: "Post exclusive content, open your store, take bookings, and get paid directly.",
+                title: "Earn directly",
+                text: "Accept tips, memberships, bookings, and store orders with 90% going to you.",
               },
-            ].map(({ icon: Icon, title, text }, index) => (
+            ].map(({ title, text }, index) => (
               <li key={title}>
                 <Card className="h-full p-6">
-                  <div className="flex items-center justify-between">
-                    <span className="flex size-11 items-center justify-center rounded-control bg-brand-soft text-brand-strong">
-                      <Icon className="size-5" aria-hidden="true" />
-                    </span>
-                    <span className="text-display font-black text-line-strong">
-                      {index + 1}
-                    </span>
-                  </div>
-                  <h3 className="mt-4 text-body-lg font-bold text-fg">{title}</h3>
+                  <p className="text-caption font-bold uppercase tracking-wider text-brand-strong">
+                    Step 0{index + 1}
+                  </p>
+                  <h3 className="mt-2 text-body-lg font-bold text-fg">{title}</h3>
                   <p className="mt-1.5 text-label leading-relaxed text-muted-fg">
                     {text}
                   </p>
@@ -614,66 +492,45 @@ export default function LandingPage({ initialCreators }: { initialCreators?: any
         </div>
       </section>
 
-      <section className="px-4 pb-8 sm:px-6 lg:px-8">
-        <div className="mx-auto w-full max-w-5xl overflow-hidden rounded-sheet bg-brand-strong px-6 py-12 text-center text-on-brand sm:px-10 sm:py-16">
-          <p className="text-label font-bold uppercase tracking-[0.2em] text-on-brand/90">
-            No monthly fees
-          </p>
-          <p className="mt-3 text-hero font-black leading-none">10%</p>
-          <h2 className="mt-4 text-heading font-black sm:text-display">
-            We only earn when you earn
-          </h2>
-          <p className="mx-auto mt-3 max-w-xl text-body leading-relaxed text-on-brand/90">
-            A flat 10% platform fee on what you earn. No subscriptions, no hidden charges,
-            no surprise cuts.
-          </p>
-          <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-            <Link
-              href="/onboarding"
-              className={buttonClasses({
-                variant: "secondary",
-                size: "lg",
-                className:
-                  "border-transparent bg-surface text-brand-strong hover:bg-surface-raised",
-              })}
-            >
-              Start your community
-            </Link>
-            <Link
-              href="/for-creators"
-              className={buttonClasses({
-                variant: "ghost",
-                size: "lg",
-                className: "text-on-brand hover:bg-on-brand/10",
-              })}
-            >
-              See how it works
-              <ArrowRight className="size-5" aria-hidden="true" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mx-auto flex w-full max-w-5xl flex-col items-center justify-between gap-4 rounded-card border border-line bg-surface p-6 sm:flex-row">
-          <div className="flex items-center gap-3">
-            <span className="flex size-11 items-center justify-center rounded-full bg-brand-soft text-brand-strong">
-              <Heart className="size-5" aria-hidden="true" />
-            </span>
-            <div>
-              <p className="text-body font-bold text-fg">Here to support creators?</p>
-              <p className="text-label text-muted-fg">
-                Explore pages, join communities, and back the work you love.
+      <section className="px-4 pt-14 sm:px-6 lg:px-8">
+        <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-sheet bg-brand-strong px-6 py-12 text-on-brand sm:px-10 sm:py-14">
+          <div className="flex flex-col items-start justify-between gap-8 md:flex-row md:items-center">
+            <div className="max-w-xl">
+              <p className="text-caption font-bold uppercase tracking-[0.18em] text-on-brand/90">
+                Simple pricing
+              </p>
+              <h2 className="mt-2 text-heading font-black sm:text-display">
+                Free to start. 10% only when you earn.
+              </h2>
+              <p className="mt-3 text-body leading-relaxed text-on-brand/90">
+                No monthly fees or upfront costs. Your fans pay via Mobile Money or card.
               </p>
             </div>
+            <div className="flex flex-wrap gap-3">
+              <Link
+                href="/onboarding"
+                className={buttonClasses({
+                  variant: "secondary",
+                  size: "lg",
+                  className:
+                    "border-transparent bg-surface text-brand-strong hover:bg-surface-raised",
+                })}
+              >
+                Create your page
+              </Link>
+              <Link
+                href="/explore/posts"
+                className={buttonClasses({
+                  variant: "ghost",
+                  size: "lg",
+                  className: "text-on-brand hover:bg-on-brand/10",
+                })}
+              >
+                Browse posts
+                <ArrowRight className="size-4" aria-hidden="true" />
+              </Link>
+            </div>
           </div>
-          <Link
-            href="/explore"
-            className={buttonClasses({ variant: "secondary", size: "md" })}
-          >
-            Explore creators
-            <ArrowRight className="size-4" aria-hidden="true" />
-          </Link>
         </div>
       </section>
     </div>

@@ -4,7 +4,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { sendCommsEmail } from "@/lib/commsService";
 import {
-  Loader,
+  Loader2,
   User,
   MapPin,
   X,
@@ -31,7 +31,7 @@ import {
 } from "lucide-react";
 import { SupportModal } from "@/components/parts/public/SupportModal";
 import { useAuth } from "@/auth/AuthContext";
-import Loading from "@/app/loading";
+import { LoadingState } from "@/components/ui/LoadingState";
 import {
   collection,
   collectionGroup,
@@ -1048,7 +1048,7 @@ const searchedContentItems = searchTerm.trim()
 
       {loadingComments[item.id] ? (
         <div className="flex items-center justify-center py-4">
-          <Loader className="animate-spin text-muted-fg" size={20} />
+          <Loader2 className="animate-spin text-muted-fg" size={20} aria-hidden="true" />
         </div>
       ) : (
         <div className="space-y-3 max-h-[300px] overflow-y-auto">
@@ -1181,7 +1181,7 @@ const searchedContentItems = searchTerm.trim()
     </div>
   );
 
-  if (auth.loading || loading) return <Loading />;
+  if (auth.loading || loading) return <LoadingState variant="feed" />;
 
   return (
     <div className="min-h-screen bg-canvas text-fg">
@@ -1361,7 +1361,7 @@ const searchedContentItems = searchTerm.trim()
                       <div className="mb-2">
                         {isUploading ? (
                           <div className="flex items-center gap-2 text-xs text-brand-strong bg-brand-soft px-3 py-2 rounded-control">
-                            <Loader size={14} className="animate-spin" />
+                            <Loader2 size={14} className="animate-spin" aria-hidden="true" />
                             <span>Uploading...</span>
                           </div>
                         ) : failedFile ? (
@@ -1703,12 +1703,13 @@ const searchedContentItems = searchTerm.trim()
                       ref={sentinelRef}
                       className="flex items-center justify-center py-8"
                     >
-                      <Loader
+                      <Loader2
                         className="animate-spin text-muted-fg"
-                        size={22}
+                        size={20}
+                        aria-hidden="true"
                       />
-                      <span className="text-xs text-muted-fg ml-2">
-                        Loading more posts...
+                      <span className="text-caption text-muted-fg ml-2">
+                        Loading more posts…
                       </span>
                     </div>
                   )}

@@ -41,7 +41,7 @@ import {
 } from "firebase/firestore";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/logger";
-import Loading from "@/app/loading";
+import { LoadingState } from "@/components/ui/LoadingState";
 import Link from "next/link";
 
 interface UserProfile {
@@ -314,7 +314,7 @@ export default function AdminUsersPage() {
   };
 
   if (loading) {
-    return <Loading />;
+    return <LoadingState variant="list" />;
   }
 
   return (

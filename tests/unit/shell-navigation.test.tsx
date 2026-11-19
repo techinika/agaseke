@@ -89,4 +89,36 @@ describe("Sidebar", () => {
     expect(screen.getByRole("button", { name: "Expand sidebar" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Home" })).toHaveAttribute("title", "Home");
   });
+
+  it("renders grouped section headings when expanded", () => {
+    const items = getNavItems({
+      surface: "creator",
+      role: "creator",
+      slot: "desktop",
+    });
+
+    render(<Sidebar items={items} brand={<span>agaseke.me</span>} />);
+
+    expect(screen.getAllByText("Store")[0].tagName).toBe("P");
+    expect(screen.getAllByText("Settings")[0].tagName).toBe("P");
+  });
 });
+
+describe("Public navigation simplification", () => {
+  it("exposes Explore, Posts, and Help without audience marketing links", () => {
+    const desktop = getNavItems({
+      surface: "public",
+      role: "guest",
+      slot: "desktop",
+    });
+    const hrefs = desktop
+      .map((item) => ("href" in item ? item.href : undefined))
+      .filter(Boolean);
+
+    expect(hrefs).toEqual(["/explore", "/explore/posts", "/help-center"]);
+    expect(hrefs).not.toContain("/for-creators");
+    expect(hrefs).not.toContain("/for-supporters");
+    expect(hrefs).not.toContain("/for-brands");
+  });
+});
+

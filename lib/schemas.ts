@@ -278,3 +278,80 @@ export function getEventSchema({
     }),
   };
 }
+
+export function getPostSchema({
+  headline,
+  description,
+  image,
+  url,
+  authorName,
+  authorUrl,
+  publishedTime,
+  modifiedTime,
+  views,
+  commentCount,
+}: {
+  headline: string;
+  description: string;
+  image?: string;
+  url: string;
+  authorName: string;
+  authorUrl?: string;
+  publishedTime?: string;
+  modifiedTime?: string;
+  views?: number;
+  commentCount?: number;
+}) {
+  const fullUrl = url.startsWith("http") ? url : `${baseUrl}${url}`;
+  const fullAuthorUrl = authorUrl
+    ? authorUrl.startsWith("http")
+      ? authorUrl
+      : `${baseUrl}${authorUrl}`
+    : undefined;
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "SocialMediaPosting",
+    headline,
+    articleBody: description,
+    description,
+    ...(image ? { image } : {}),
+    url: fullUrl,
+    author: {
+      "@type": "Person",
+      name: authorName,
+      ...(fullAuthorUrl ? { url: fullAuthorUrl } : {}),
+    },
+    publisher: getOrganizationSchema(),
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": fullUrl,
+    },
+    ...(publishedTime ? { datePublished: publishedTime } : {}),
+    ...(modifiedTime ? { dateModified: modifiedTime } : {}),
+    ...(typeof views === "number" || typeof commentCount === "number"
+      ? {
+          interactionStatistic: [
+            ...(typeof views === "number"
+              ? [
+                  {
+                    "@type": "InteractionCounter",
+                    interactionType: "https://schema.org/WatchAction",
+                    userInteractionCount: views,
+                  },
+                ]
+              : []),
+            ...(typeof commentCount === "number"
+              ? [
+                  {
+                    "@type": "InteractionCounter",
+                    interactionType: "https://schema.org/CommentAction",
+                    userInteractionCount: commentCount,
+                  },
+                ]
+              : []),
+          ],
+        }
+      : {}),
+  };
+}

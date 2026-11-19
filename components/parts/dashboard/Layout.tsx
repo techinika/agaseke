@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -9,6 +10,7 @@ import {
   Check,
   ChevronDown,
   Copy,
+  ExternalLink,
   Heart,
   LogOut,
   Menu,
@@ -21,13 +23,15 @@ import {
 import { useAuth } from "@/auth/AuthContext";
 import { handleLogout } from "@/db/functions/LogOut";
 import { toast } from "sonner";
-import SharePageModal from "../SharePage";
 import type { Creator } from "@/types/creator";
-import NotificationDrawer from "@/components/ui/NotificationDrawer";
 import { subscribeToUnreadNotificationCount } from "@/lib/notifications";
 import { subscribeToCreatorSettings } from "@/lib/creatorSettings";
 import { submitUserFeedback } from "@/lib/feedback";
-import ThemeToggle from "../ThemeToggle";
+
+const SharePageModal = dynamic(() => import("../SharePage"), { ssr: false });
+const NotificationDrawer = dynamic(() => import("@/components/ui/NotificationDrawer"), {
+  ssr: false,
+});
 import { AppShell } from "@/components/shell/AppShell";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { DashboardMobileNav } from "@/components/shell/DashboardMobileNav";
@@ -256,15 +260,26 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       <p className="mb-3 truncate text-label font-medium text-muted-fg">
         agaseke.me/{creator?.handle || "..."}
       </p>
-      <Button
-        variant="secondary"
-        size="sm"
-        fullWidth
-        onClick={() => setShowShareModal(true)}
-        trailingIcon={<Share2 className="size-4" aria-hidden="true" />}
-      >
-        {t("nav.sharePage")}
-      </Button>
+      <div className="flex flex-col gap-2">
+        <Button
+          variant="secondary"
+          size="sm"
+          fullWidth
+          onClick={() => setShowShareModal(true)}
+          trailingIcon={<Share2 className="size-4" aria-hidden="true" />}
+        >
+          {t("nav.sharePage")}
+        </Button>
+        {creator?.handle && (
+          <Link
+            href={`/${creator.handle}`}
+            className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-control px-3 text-caption font-semibold text-muted-fg outline-none transition-colors hover:bg-surface hover:text-fg focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            <span>{t("nav.viewProfile")}</span>
+            <ExternalLink className="size-3.5" aria-hidden="true" />
+          </Link>
+        )}
+      </div>
     </div>
   );
 
@@ -312,9 +327,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
 
             <div className="flex items-center gap-1 sm:gap-2">
-              <div className="hidden sm:block">
-                <ThemeToggle />
-              </div>
               <IconButton
                 label={t("creator.shareMyLink")}
                 icon={<Share2 />}
@@ -394,6 +406,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       >
                         <Briefcase className="size-4" aria-hidden="true" />
                         {t("nav.adminDashboard")}
+                      </Link>
+                    )}
+                    {creator?.handle && (
+                      <Link
+                        href={`/${creator.handle}`}
+                        role="menuitem"
+                        onClick={() => setShowDropdown(false)}
+                        className="flex min-h-11 items-center gap-3 px-4 text-label font-medium text-muted-fg transition-colors hover:bg-surface-raised hover:text-fg"
+                      >
+                        <ExternalLink className="size-4" aria-hidden="true" />
+                        {t("nav.viewProfile")}
                       </Link>
                     )}
                     <Link
@@ -536,13 +559,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </form>
       </Dialog>
 
-      <SharePageModal isOpen={showShareModal} onClose={() => setShowShareModal(false)} />
+      {showShareModal && (
+        <SharePageModal isOpen={showShareModal} onClose={() => setShowShareModal(false)} />
+      )}
 
-      <NotificationDrawer
-        isOpen={showNotifications}
-        onClose={() => setShowNotifications(false)}
-        userId={user?.uid || ""}
-      />
+      {showNotifications && user?.uid && (
+        <NotificationDrawer
+          isOpen={showNotifications}
+          onClose={() => setShowNotifications(false)}
+          userId={user.uid}
+        />
+      )}
     </>
   );
 }

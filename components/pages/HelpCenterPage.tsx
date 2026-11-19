@@ -7,7 +7,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
-import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { buttonClasses } from "@/components/ui/Button";
 
@@ -17,11 +16,11 @@ const faqs = [
     questions: [
       {
         q: "How do I support a creator?",
-        a: "Visit a creator's profile, choose Support, and enter the amount you want to contribute. You finish the payment through Mobile Money or card.",
+        a: "Visit a creator's profile, select Support, and choose the amount you want to contribute via Mobile Money or card.",
       },
       {
         q: "Is my payment secure?",
-        a: "Yes. Payments go through standard gateways (PayPack, Pesapal). Agaseke does not store your private financial PINs.",
+        a: "Yes. Payments run through regulated gateways (PayPack, Pesapal). Agaseke never stores your private financial PINs.",
       },
       {
         q: "Can I get a refund?",
@@ -34,15 +33,15 @@ const faqs = [
     questions: [
       {
         q: "How do I get paid?",
-        a: "Payouts are processed monthly between the 25th and 30th. You need a minimum balance of 10,000 RWF and a verified account.",
+        a: "Payouts are processed monthly between the 25th and 30th once you have a verified account and at least 10,000 RWF.",
       },
       {
         q: "What is verification?",
-        a: "Verification confirms your identity using your National ID so funds can move safely and legally.",
+        a: "Verification confirms your identity using your National ID or passport so funds can settle safely.",
       },
       {
-        q: "How do I create a gathering?",
-        a: "Open your dashboard, choose New Gathering, add the event details, and it appears on your public profile for supporters to RSVP.",
+        q: "What can I offer on my page?",
+        a: "You can publish posts and articles, manage community tiers, sell products in your store, host gatherings, and offer paid bookings.",
       },
     ],
   },
@@ -52,7 +51,7 @@ const CONTACTS = [
   {
     icon: Mail,
     title: "Email support",
-    detail: "Response within 24 hours",
+    detail: "Reply within 24 hours",
     href: "mailto:hello@agaseke.me",
     label: "hello@agaseke.me",
     tone: "bg-info-bg text-info",
@@ -60,7 +59,7 @@ const CONTACTS = [
   {
     icon: Instagram,
     title: "Instagram DM",
-    detail: "Quick community help",
+    detail: "Direct community help",
     href: "https://instagram.com/agaseke_support",
     label: "@agaseke_support",
     tone: "bg-brand-soft text-brand-strong",
@@ -68,7 +67,7 @@ const CONTACTS = [
   {
     icon: Twitter,
     title: "X (Twitter)",
-    detail: "Real-time updates",
+    detail: "Platform updates",
     href: "https://x.com/agaseke_support",
     label: "@agaseke_support",
     tone: "bg-surface-raised text-fg",
@@ -76,9 +75,9 @@ const CONTACTS = [
   {
     icon: MessageCircle,
     title: "WhatsApp channel",
-    detail: "Updates and creator highlights",
+    detail: "Updates & highlights",
     href: "https://whatsapp.com/channel/0029Vb9AemqFy72CiwMyQf06",
-    label: "Join the channel",
+    label: "Join channel",
     tone: "bg-success-bg text-success",
   },
 ];
@@ -102,22 +101,21 @@ export default function HelpCenter() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <section className="border-b border-line bg-surface-sunken px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+      <section className="border-b border-line bg-surface-sunken px-4 py-14 sm:px-6 sm:py-16 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
-          <Badge tone="brand" className="mb-4 px-3 py-1">
-            <HelpCircle className="size-3.5" aria-hidden="true" />
+          <p className="text-caption font-bold uppercase tracking-[0.16em] text-brand-strong">
             Help center
-          </Badge>
-          <h1 className="text-display font-black text-fg sm:text-hero">
+          </p>
+          <h1 className="mt-2 text-display font-black tracking-tight text-fg sm:text-hero">
             How can we help?
           </h1>
-          <p className="mx-auto mt-4 max-w-xl text-body-lg text-muted-fg">
-            Find quick answers, reach the team, or join the community.
+          <p className="mx-auto mt-3 max-w-xl text-body-lg text-muted-fg">
+            Quick answers for creators and supporters, plus direct support channels.
           </p>
         </div>
       </section>
 
-      <main className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8">
         <div className="-mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {CONTACTS.map(({ icon: Icon, title, detail, href, label, tone }) => (
             <Card key={title} className="flex flex-col items-center p-6 text-center">
@@ -148,7 +146,7 @@ export default function HelpCenter() {
             <div>
               <h2 className="text-body-lg font-bold text-fg">Join the community</h2>
               <p className="text-label text-muted-fg">
-                Get quick support and meet other creators and supporters.
+                Get fast help and connect with other creators and supporters.
               </p>
             </div>
           </div>
@@ -162,7 +160,7 @@ export default function HelpCenter() {
           </a>
         </Card>
 
-        <div className="mx-auto mt-16 max-w-3xl">
+        <div className="mx-auto mt-14 max-w-3xl">
           <div className="flex items-center gap-3">
             <HelpCircle className="size-6 text-brand-strong" aria-hidden="true" />
             <h2 className="text-heading font-black text-fg">
@@ -173,7 +171,7 @@ export default function HelpCenter() {
           <div className="mt-8 space-y-10">
             {faqs.map((section) => (
               <section key={section.category}>
-                <h3 className="text-caption font-bold uppercase tracking-wide text-muted-fg">
+                <h3 className="text-caption font-bold uppercase tracking-wider text-muted-fg">
                   {section.category}
                 </h3>
                 <div className="mt-3 space-y-3">
@@ -199,7 +197,7 @@ export default function HelpCenter() {
             ))}
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

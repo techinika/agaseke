@@ -3,7 +3,7 @@
 import { useAuth } from "@/auth/AuthContext";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
-import Loading from "@/app/loading";
+import { LoadingState } from "@/components/ui/LoadingState";
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isLoggedIn, isCreator, loading, isAdmin } = useAuth();
@@ -32,7 +32,14 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [isLoggedIn, isCreator, isAdmin, loading, router, pathname]);
 
-  if (loading) return <Loading />;
+  if (loading) {
+    return (
+      <LoadingState
+        variant={pathname.startsWith("/supporter") ? "feed" : "dashboard"}
+        className="mx-auto max-w-app px-4 py-8 sm:px-6 lg:px-8"
+      />
+    );
+  }
 
   const isAuthPage = !isLoggedIn;
   const isCreatorPage = pathname.startsWith("/creator");

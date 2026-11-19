@@ -1,8 +1,6 @@
 @import "tailwindcss";
 @import "../styles/tokens.css";
 
-@custom-variant dark (&:where(.dark, .dark *));
-
 :root {
   --background: #FBFBFC;
   --foreground: #171717;
@@ -12,17 +10,6 @@
   --border-strong: #e2e8f0;
   --muted: #f8fafc;
   --muted-foreground: #64748b;
-}
-
-.dark {
-  --background: #0f172a;
-  --foreground: #f1f5f9;
-  --card: #1e293b;
-  --card-hover: #334155;
-  --border: #1e293b;
-  --border-strong: #334155;
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8;
 }
 
 * {
@@ -259,7 +246,7 @@ body {
 }
 
 .article-editor .tiptap a {
-  color: #ea580c;
+  color: var(--ag-brand-strong);
   font-weight: 500;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -289,7 +276,7 @@ body {
 }
 
 .article-editor .tiptap li::marker {
-  color: #ea580c;
+  color: var(--ag-brand-strong);
 }
 
 .article-editor .tiptap u {
@@ -351,7 +338,7 @@ body {
 }
 
 .article-body a {
-  color: #ea580c;
+  color: var(--ag-brand-strong);
   font-weight: 500;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -359,7 +346,7 @@ body {
 }
 
 .article-body a:hover {
-  color: #c2410c;
+  color: var(--ag-brand-hover);
 }
 
 .article-body strong,
@@ -387,7 +374,7 @@ body {
 }
 
 .article-body li::marker {
-  color: #ea580c;
+  color: var(--ag-brand-strong);
 }
 
 .article-body blockquote {

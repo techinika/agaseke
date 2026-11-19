@@ -13,8 +13,12 @@ import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { formatCurrency } from "@/types/currency";
 import { getCurrencyDefinition } from "@/lib/money/registry.generated";
 import { toast } from "sonner";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { Button, buttonClasses } from "@/components/ui/Button";
 import {
-  Loader,
+  Loader2,
   Receipt,
   RotateCcw,
   RefreshCw,
@@ -23,6 +27,7 @@ import {
   CheckCircle2,
   XCircle,
   ChevronDown,
+  ExternalLink,
 } from "lucide-react";
 
 const PAGE_SIZE = 20;
@@ -55,16 +60,16 @@ function typeLabel(type: string): string {
   }
 }
 
-function statusBadge(status: string): string {
+function statusTone(status: string): string {
   switch (status) {
     case "successful":
-      return "bg-green-100 text-green-700";
+      return "text-success";
     case "pending":
-      return "bg-amber-100 text-amber-700";
+      return "text-warning";
     case "failed":
-      return "bg-red-100 text-red-700";
+      return "text-danger";
     default:
-      return "bg-muted text-muted-foreground";
+      return "text-muted-fg";
   }
 }
 
@@ -83,6 +88,13 @@ function statusLabel(status: string): string {
 
 const FILTERS = ["all", "successful", "pending", "failed"] as const;
 type Filter = (typeof FILTERS)[number];
+
+const FILTER_LABELS: Record<Filter, string> = {
+  all: "All",
+  successful: "Successful",
+  pending: "Pending",
+  failed: "Failed",
+};
 
 function transactionTitle(tx: UserTransaction): string {
   if (tx.type === "store") return tx.productName || "Store purchase";
@@ -133,6 +145,7 @@ export default function TransactionsPage() {
   });
   const [filter, setFilter] = useState<Filter>("all");
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
 
@@ -166,8 +179,15 @@ export default function TransactionsPage() {
       .finally(() => setLoading(false));
   }, [isLoggedIn]);
 
-  const refreshTransactions = () => {
-    applyFirstPage(PAGE_SIZE).catch(() => {});
+  const refreshTransactions = async () => {
+    setRefreshing(true);
+    try {
+      await applyFirstPage(PAGE_SIZE);
+    } catch {
+      // keep existing rows visible
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const loadMore = async () => {
@@ -188,7 +208,7 @@ export default function TransactionsPage() {
     newRef: string,
     oldRef: string,
     method: string,
-    redirectUrl?: string
+    redirectUrl?: string,
   ) => {
     stopListening();
     const q = query(collection(db, "transactions"), where("ref", "==", newRef));
@@ -235,18 +255,8 @@ export default function TransactionsPage() {
           method: "card",
           redirectUrl: result.redirect_url,
           phase: "confirming",
+          message: "Complete your card payment in the checkout link below.",
         });
-        const popup = window.open(result.redirect_url, "_blank");
-        if (!popup || popup.closed || typeof popup.closed === "undefined") {
-          setActiveRetry({
-            oldRef: tx.ref,
-            newRef: result.ref,
-            method: "card",
-            redirectUrl: result.redirect_url,
-            phase: "confirming",
-            message: "Your browser blocked the payment window. Use the link below to finish paying.",
-          });
-        }
         listenForPayment(result.ref, tx.ref, "card", result.redirect_url);
       } else {
         setActiveRetry({
@@ -277,128 +287,134 @@ export default function TransactionsPage() {
 
   const filtered = useMemo(
     () => (filter === "all" ? transactions : transactions.filter((t) => t.status === filter)),
-    [transactions, filter]
+    [transactions, filter],
   );
 
   const hasMore = transactions.length < total;
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-1">Transactions</h1>
-        <p className="text-sm text-muted-foreground">
-          Your payments across support, store, bookings, gatherings, and
-          subscriptions.
-        </p>
+    <div className="mx-auto max-w-3xl px-4 py-10">
+      <div className="mb-8 flex items-end justify-between gap-4">
+        <div>
+          <p className="text-caption font-semibold uppercase tracking-wider text-brand-strong">
+            Account
+          </p>
+          <h1 className="mt-1 text-heading font-bold tracking-tight text-fg">
+            Transactions
+          </h1>
+          <p className="mt-1 text-label text-muted-fg">
+            Your payments across support, store orders, bookings, gatherings, and subscriptions.
+          </p>
+        </div>
+        {isLoggedIn && !loading && !error && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={refreshTransactions}
+            loading={refreshing}
+            leadingIcon={<RefreshCw className="size-3.5" aria-hidden="true" />}
+          >
+            Refresh
+          </Button>
+        )}
       </div>
 
       {!isLoggedIn ? (
-        <div className="text-center py-16">
-          <Receipt size={40} className="mx-auto text-muted-foreground mb-3" />
-          <p className="text-sm text-muted-foreground mb-4">
-            Log in to see your transactions.
-          </p>
-          <Link
-            href="/login"
-            className="px-6 py-3 bg-orange-600 text-white text-sm font-bold rounded-lg hover:bg-orange-700 transition"
-          >
-            Log in
-          </Link>
-        </div>
+        <EmptyState
+          icon={<Receipt className="size-6" aria-hidden="true" />}
+          title="Log in to view your transactions"
+          description="Sign in to track payments, receipts, and retries."
+          action={
+            <Link href="/login" className={buttonClasses({ variant: "primary" })}>
+              Log in
+            </Link>
+          }
+        />
       ) : loading ? (
-        <div className="flex justify-center py-16">
-          <Loader className="animate-spin text-orange-500" size={32} />
-        </div>
+        <LoadingState variant="list" label="Loading transactions" />
       ) : error ? (
-        <div className="text-center py-16 bg-card border border-border rounded-xl">
-          <p className="text-sm text-red-600 mb-2">{error}</p>
-          <button
-            onClick={() => {
-              setError("");
-              setLoading(true);
-              applyFirstPage(PAGE_SIZE)
-                .catch((err: unknown) =>
-                  setError(err instanceof Error ? err.message : "Failed to load transactions")
-                )
-                .finally(() => setLoading(false));
-            }}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-orange-600 border border-border rounded-lg hover:bg-muted transition"
-          >
-            <RotateCcw size={14} /> Try again
-          </button>
-        </div>
+        <EmptyState
+          icon={<XCircle className="size-6 text-danger" aria-hidden="true" />}
+          title="Could not load transactions"
+          description={error}
+          action={
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setError("");
+                setLoading(true);
+                applyFirstPage(PAGE_SIZE)
+                  .catch((err: unknown) =>
+                    setError(err instanceof Error ? err.message : "Failed to load transactions"),
+                  )
+                  .finally(() => setLoading(false));
+              }}
+              leadingIcon={<RotateCcw className="size-4" aria-hidden="true" />}
+            >
+              Try again
+            </Button>
+          }
+        />
       ) : (
         <>
-          <div className="flex flex-wrap gap-2 mb-6">
-            {FILTERS.map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-4 py-2 text-sm font-bold rounded-full border transition ${
-                  filter === f
-                    ? "bg-orange-600 text-white border-orange-600"
-                    : "bg-card text-muted-foreground border-border hover:text-foreground"
-                }`}
-              >
-                {f === "all"
-                  ? "All"
-                  : f === "successful"
-                    ? "Successful"
-                    : f === "pending"
-                      ? "Pending"
-                      : "Failed"}
-                <span className="ml-1.5 text-xs opacity-70">
-                  {counts[f as string] || 0}
-                </span>
-              </button>
-            ))}
-            <button
-              onClick={() => {
-                setLoading(true);
-                refreshTransactions();
-                setTimeout(() => setLoading(false), 0);
-              }}
-              className="ml-auto inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-muted-foreground border border-border rounded-full hover:text-foreground transition"
-              title="Refresh statuses"
-            >
-              <RefreshCw size={14} /> Refresh
-            </button>
+          <div className="mb-6 flex gap-1 overflow-x-auto border-b border-line pb-px" role="tablist" aria-label="Filter transactions">
+            {FILTERS.map((f) => {
+              const active = filter === f;
+              return (
+                <button
+                  key={f}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setFilter(f)}
+                  className={`shrink-0 border-b-2 px-3 py-2.5 text-label font-semibold transition-colors ${
+                    active
+                      ? "border-brand-strong text-fg"
+                      : "border-transparent text-muted-fg hover:text-fg"
+                  }`}
+                >
+                  {FILTER_LABELS[f]}
+                  <span className="ml-1.5 text-caption text-muted-fg">
+                    {counts[f] || 0}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           {activeRetry && (
             <div
-              className={`mb-6 border rounded-xl p-4 ${
+              className={`mb-6 rounded-card border p-4 ${
                 activeRetry.phase === "success"
-                  ? "bg-green-50 dark:bg-green-950 border-green-300"
+                  ? "border-success/30 bg-success-bg"
                   : activeRetry.phase === "failed"
-                    ? "bg-red-50 dark:bg-red-950 border-red-300"
-                    : "bg-amber-50 dark:bg-amber-950 border-amber-300"
+                    ? "border-danger/30 bg-danger-bg"
+                    : "border-warning/30 bg-warning-bg"
               }`}
             >
               <div className="flex items-start gap-3">
                 {activeRetry.phase === "initiating" || activeRetry.phase === "confirming" ? (
-                  <Loader className="animate-spin text-amber-600 shrink-0 mt-0.5" size={18} />
+                  <Loader2 className="mt-0.5 size-4 shrink-0 animate-spin text-warning" aria-hidden="true" />
                 ) : activeRetry.phase === "success" ? (
-                  <CheckCircle2 className="text-green-600 shrink-0 mt-0.5" size={18} />
+                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" aria-hidden="true" />
                 ) : (
-                  <XCircle className="text-red-600 shrink-0 mt-0.5" size={18} />
+                  <XCircle className="mt-0.5 size-4 shrink-0 text-danger" aria-hidden="true" />
                 )}
-                <div className="text-sm">
-                  <p className="font-bold text-foreground">
+                <div className="text-label">
+                  <p className="font-bold text-fg">
                     {activeRetry.phase === "initiating"
                       ? "Starting payment…"
                       : activeRetry.phase === "confirming"
                         ? activeRetry.method === "card"
-                          ? "Card payment in progress"
+                          ? "Card payment ready"
                           : "Waiting for mobile money confirmation"
                         : activeRetry.phase === "success"
                           ? "Payment completed"
                           : "Payment failed"}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="mt-0.5 text-caption text-muted-fg">
                     {activeRetry.phase === "confirming"
-                      ? activeRetry.message ||
-                        "Confirm the payment and we'll update this automatically."
+                      ? activeRetry.message || "Confirm the payment and we'll update this automatically."
                       : activeRetry.phase === "success"
                         ? "Your transaction list has been refreshed."
                         : activeRetry.message || "You can try again below."}
@@ -410,61 +426,55 @@ export default function TransactionsPage() {
                         href={activeRetry.redirectUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-block mt-2 text-xs font-bold text-orange-600 underline"
+                        className="mt-2 inline-flex items-center gap-1.5 text-caption font-semibold text-brand-strong hover:underline"
                       >
-                        Open the payment window again
+                        Open checkout page <ExternalLink className="size-3.5" aria-hidden="true" />
                       </a>
                     )}
                 </div>
-<button
+                <button
+                  type="button"
                   onClick={cancelRetry}
-                  className="ml-auto text-xs font-bold text-muted-foreground hover:text-foreground shrink-0"
+                  className="ml-auto shrink-0 text-caption font-semibold text-muted-fg hover:text-fg"
                 >
-                  {activeRetry.phase === "success" || activeRetry.phase === "failed"
-                    ? "Dismiss"
-                    : "Cancel"}
+                  {activeRetry.phase === "success" || activeRetry.phase === "failed" ? "Dismiss" : "Cancel"}
                 </button>
               </div>
             </div>
           )}
 
           {filtered.length === 0 ? (
-            <div className="text-center py-16 bg-card border border-border rounded-xl">
-              <Receipt size={40} className="mx-auto text-muted-foreground mb-3" />
-              <p className="text-sm text-muted-foreground">
-                {transactions.length === 0
-                  ? "You haven't made any payments yet."
-                  : "No transactions in this filter."}
-              </p>
-            </div>
+            <EmptyState
+              icon={<Receipt className="size-6" aria-hidden="true" />}
+              title={transactions.length === 0 ? "No payments yet" : "No matching transactions"}
+              description={
+                transactions.length === 0
+                  ? "Receipts for support, orders, bookings, and tickets appear here."
+                  : "Try switching tabs above to view other transactions."
+              }
+            />
           ) : (
             <div className="space-y-3">
               {filtered.map((tx) => {
                 const isRetryingThis =
                   activeRetry !== null &&
                   activeRetry.oldRef === tx.ref &&
-                  (activeRetry.phase === "initiating" ||
-                    activeRetry.phase === "confirming");
+                  (activeRetry.phase === "initiating" || activeRetry.phase === "confirming");
                 return (
-                  <div
-                    key={tx.ref}
-                    className="bg-card border border-border rounded-xl p-4"
-                  >
-                    <div className="flex items-start justify-between gap-3 mb-2">
+                  <Card key={tx.ref} className="p-4 sm:p-5">
+                    <div className="mb-2 flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-foreground truncate">
+                        <p className="truncate text-body font-bold text-fg">
                           {transactionTitle(tx)}
                         </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
+                        <p className="mt-0.5 text-caption text-muted-fg">
                           {typeLabel(tx.type)}
                           {tx.paymentMethod ? ` · ${tx.paymentMethod === "card" ? "Card" : "MoMo"}` : ""}
                           {tx.attendeeName ? ` · ${tx.attendeeName}` : ""}
                           {tx.message ? ` · “${tx.message}”` : ""}
                         </p>
                       </div>
-                      <span
-                        className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${statusBadge(tx.status)}`}
-                      >
+                      <span className={`shrink-0 text-caption font-semibold ${statusTone(tx.status)}`}>
                         {statusLabel(tx.status)}
                       </span>
                     </div>
@@ -472,45 +482,45 @@ export default function TransactionsPage() {
                     {tx.creatorId && (
                       <Link
                         href={`/${tx.creatorId}`}
-                        className="inline-flex items-center gap-1 text-xs font-bold text-orange-600 hover:underline mb-2"
+                        className="mb-2 inline-flex items-center gap-1 text-caption font-semibold text-brand-strong hover:underline"
                       >
-                        <Receipt size={12} /> Paid to @{tx.creatorId}
+                        <Receipt className="size-3" aria-hidden="true" /> Paid to @{tx.creatorId}
                         {tx.creatorName ? ` · ${tx.creatorName}` : ""}
                       </Link>
                     )}
 
-                    <div className="flex items-center justify-between border-t border-border pt-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
                       <div>
-                        <p className="text-lg font-black text-foreground">
+                        <p className="text-title font-bold text-fg tabular-nums">
                           {formatCurrency(tx.amount, tx.currency)}
                         </p>
                         {hasOriginalCharge(tx) && (
-                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                          <p className="mt-0.5 text-caption text-muted-fg">
                             Original {formatMinorUnits(tx.sourceAmountMinor, tx.sourceCurrency)} · charged in {tx.currency}
                           </p>
                         )}
-                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                        <p className="mt-0.5 text-caption text-muted-fg">
                           {formatDate(tx.createdAt)} · {tx.ref}
                         </p>
                       </div>
                       {tx.status === "failed" && (
-                        <button
+                        <Button
+                          size="sm"
                           onClick={() => handleRetry(tx)}
-                          disabled={isRetryingThis}
-                          className="shrink-0 inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                          loading={isRetryingThis}
+                          leadingIcon={
+                            tx.paymentMethod === "card" ? (
+                              <CreditCard className="size-4" aria-hidden="true" />
+                            ) : (
+                              <Smartphone className="size-4" aria-hidden="true" />
+                            )
+                          }
                         >
-                          {isRetryingThis ? (
-                            <Loader className="animate-spin" size={15} />
-                          ) : tx.paymentMethod === "card" ? (
-                            <CreditCard size={15} />
-                          ) : (
-                            <Smartphone size={15} />
-                          )}
                           {isRetryingThis ? "Retrying…" : "Pay again"}
-                        </button>
+                        </Button>
                       )}
                     </div>
-                  </div>
+                  </Card>
                 );
               })}
             </div>
@@ -518,21 +528,14 @@ export default function TransactionsPage() {
 
           {hasMore && (
             <div className="mt-6 text-center">
-              <button
+              <Button
+                variant="secondary"
                 onClick={loadMore}
-                disabled={loadingMore}
-                className="inline-flex items-center gap-2 px-6 py-3 text-sm font-bold text-foreground bg-card border border-border rounded-full hover:bg-muted transition disabled:opacity-60"
+                loading={loadingMore}
+                leadingIcon={<ChevronDown className="size-4" aria-hidden="true" />}
               >
-                {loadingMore ? (
-                  <Loader className="animate-spin text-orange-500" size={16} />
-                ) : (
-                  <ChevronDown size={16} />
-                )}
-                Load more
-                <span className="text-xs text-muted-foreground">
-                  · {transactions.length} of {total}
-                </span>
-              </button>
+                Load more ({transactions.length} of {total})
+              </Button>
             </div>
           )}
         </>

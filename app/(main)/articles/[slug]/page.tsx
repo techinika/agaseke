@@ -7,6 +7,12 @@ import { notFound } from "next/navigation";
 import { baseUrl } from "@/lib/baseUrl";
 import ArticleReaderPage from "@/components/pages/public/ArticleReaderPage";
 import ArticleSchema from "@/components/seo/ArticleSchema";
+import {
+  getCreatorForPost,
+  getMoreCreatorPosts,
+  serializeReaderArticle,
+  serializeReaderCreator,
+} from "@/lib/articleReader";
 
 async function getArticle(slug: string) {
   try {
@@ -19,47 +25,6 @@ async function getArticle(slug: string) {
     return { id: snap.docs[0].id, ...snap.docs[0].data() };
   } catch {
     return null;
-  }
-}
-
-async function getCreatorData(username: string) {
-  try {
-    const snap = await adminDb.collection("creators").doc(username).get();
-    return snap.exists ? snap.data() : null;
-  } catch {
-    return null;
-  }
-}
-
-async function getMoreCreatorContent(
-  creatorUid: string,
-  creatorHandle: string,
-  excludeId: string,
-  limitCount = 3,
-) {
-  try {
-    if (!creatorUid && !creatorHandle) return [];
-    const snap = await adminDb
-      .collection("creatorContent")
-      .where("creatorId", "in", [creatorHandle, creatorUid])
-      .where("isPrivate", "==", false)
-      .orderBy("createdAt", "desc")
-      .limit(10)
-      .get();
-    return snap.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
-      .filter((p: any) => p.id !== excludeId && p.status !== "draft")
-      .slice(0, limitCount)
-      .map((p: any) => ({
-        id: p.id,
-        title: (p.title as string) || "Untitled",
-        coverUrl: (p.coverUrl || p.contentUrl || "") as string,
-        type: (p.type as string) || "post",
-        slug: (p.slug as string) || "",
-        createdAt: p.createdAt?.toDate?.()?.toISOString?.() ?? null,
-      }));
-  } catch {
-    return [];
   }
 }
 
@@ -109,10 +74,7 @@ export async function generateMetadata({
     };
   }
 
-  const creatorHandle = article.creatorId || "";
-  const creator = creatorHandle
-    ? await getCreatorData(creatorHandle)
-    : null;
+  const { creator, handle: creatorHandle } = await getCreatorForPost(article);
   const displayName = (creator as any)?.name || creatorHandle || "Creator";
   const title = article.title || "Untitled Article";
   const description =
@@ -137,8 +99,10 @@ export async function generateMetadata({
       title,
       "Agaseke article",
       "African creator content",
-    ],
-    authors: [{ name: displayName, url: `${baseUrl}/${creatorHandle}` }],
+    ].filter(Boolean),
+    authors: creatorHandle
+      ? [{ name: displayName, url: `${baseUrl}/${creatorHandle}` }]
+      : [{ name: displayName }],
     openGraph: {
       title: `${title} | ${displayName}`,
       description,
@@ -189,50 +153,30 @@ export default async function Page({
     notFound();
   }
 
-  const creatorHandle = article.creatorId || "";
-  const creator = creatorHandle ? await getCreatorData(creatorHandle) : null;
-
-  const serialized = {
-    id: article.id as string,
-    title: (article.title as string) || "Untitled",
-    shortDescription: (article.shortDescription ||
-      article.description ||
-      "") as string,
-    htmlContent: (article.htmlContent as string) || "",
-    coverUrl: (article.coverUrl || article.contentUrl || "") as string,
-    slug: slug as string,
-    isPrivate: !!article.isPrivate,
-    commentCount: (article.commentCount as number) || 0,
-    views: (article.views as number) || 0,
-    createdAt: (article.createdAt?.toDate?.()?.toISOString?.() as string) || null,
-  };
-
-  const serializedCreator = {
-    name: (creator as any)?.name || creatorHandle,
-    handle: creatorHandle,
-    uid: (creator as any)?.uid || "",
-    photoURL: (creator as any)?.profilePicture || null,
-    bio: (creator as any)?.bio || "",
-  };
-
-  const moreContent = await getMoreCreatorContent(
-    serializedCreator.uid,
-    serializedCreator.handle,
-    serialized.id
-  );
+  const { creator, handle: creatorHandle } = await getCreatorForPost(article);
+  const serialized = serializeReaderArticle(article);
+  const serializedCreator = serializeReaderCreator(creator, creatorHandle);
+  const moreContent = creatorHandle
+    ? await getMoreCreatorPosts(creatorHandle, serialized.id)
+    : [];
 
   return (
     <>
       {!article.isPrivate && (
         <ArticleSchema
           headline={serialized.title}
-        description={serialized.shortDescription || stripHtml(article.htmlContent as string).slice(0, 160)}
-        image={serialized.coverUrl || `${baseUrl}/agaseke.png`}
-        url={`/articles/${slug}`}
-        authorName={serializedCreator.name}
-        authorUrl={`/${creatorHandle}`}
-        publishedTime={serialized.createdAt || undefined}
-          modifiedTime={article.updatedAt?.toDate?.()?.toISOString?.() as string | undefined}
+          description={
+            serialized.shortDescription ||
+            stripHtml(article.htmlContent as string).slice(0, 160)
+          }
+          image={serialized.coverUrl || `${baseUrl}/agaseke.png`}
+          url={`/articles/${slug}`}
+          authorName={serializedCreator.name}
+          authorUrl={creatorHandle ? `/${creatorHandle}` : undefined}
+          publishedTime={serialized.createdAt || undefined}
+          modifiedTime={
+            article.updatedAt?.toDate?.()?.toISOString?.() as string | undefined
+          }
         />
       )}
       <ArticleReaderPage

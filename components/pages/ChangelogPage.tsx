@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Package, Zap, Calendar, Tag, ChevronRight, MessageCircle } from "lucide-react";
 import { db } from "@/db/firebase";
 import { collection, query, orderBy, getDocs, Timestamp } from "firebase/firestore";
-import Loading from "@/app/loading";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { buttonClasses } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
@@ -71,7 +71,7 @@ export default function ChangelogPage() {
   const plannedEntries = entries.filter((e) => e.category === "planned");
 
   if (loading) {
-    return <Loading />;
+    return <LoadingState variant="list" />;
   }
 
   return (

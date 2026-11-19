@@ -34,7 +34,7 @@ import {
   Clock,
   Loader,
 } from "lucide-react";
-import Loading from "@/app/loading";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { StatCard } from "@/components/parts/dashboard/StatCard";
 import { RankRow } from "@/components/parts/dashboard/RankRow";
 import { toast } from "sonner";
@@ -940,7 +940,7 @@ export default function AdminDashboard() {
     }
   };
 
-  if (loading) return <Loading />;
+  if (loading) return <LoadingState variant="dashboard" />;
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20 relative">

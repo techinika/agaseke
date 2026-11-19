@@ -6,7 +6,6 @@ import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import {
   Bell,
-  Calendar,
   ChevronDown,
   LayoutDashboard,
   LogIn,
@@ -29,7 +28,6 @@ import { Button } from "@/components/ui/Button";
 import { buttonClasses } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 import { Sheet } from "@/components/ui/Sheet";
-import ThemeToggle from "@/components/parts/ThemeToggle";
 
 const NotificationDrawer = dynamic(() => import("@/components/ui/NotificationDrawer"), {
   ssr: false,
@@ -106,7 +104,9 @@ function MenuLink({
       onClick={onNavigate}
       className="flex min-h-12 items-center gap-3 rounded-control px-3 text-body font-semibold text-fg outline-none transition-colors hover:bg-surface-raised focus-visible:ring-2 focus-visible:ring-focus"
       aria-current={
-        pathname === item.href || pathname.startsWith(`${item.href}/`)
+        (item.href === "/explore"
+          ? pathname === "/explore"
+          : pathname === item.href || pathname.startsWith(`${item.href}/`))
           ? "page"
           : undefined
       }
@@ -237,22 +237,18 @@ export function PublicHeader() {
               aria-label={t("nav.publicNavigation")}
               className="hidden items-center gap-0.5 lg:flex"
             >
-              {desktopItems.map((item) => (
-                <HeaderLink
-                  key={item.id}
-                  item={item}
-                  active={
-                    isNavLink(item) &&
-                    (pathname === item.href || pathname.startsWith(`${item.href}/`))
-                  }
-                />
-              ))}
+              {desktopItems.map((item) => {
+                const active =
+                  isNavLink(item) &&
+                  (item.href === "/explore"
+                    ? pathname === "/explore"
+                    : pathname === item.href || pathname.startsWith(`${item.href}/`));
+                return <HeaderLink key={item.id} item={item} active={active} />;
+              })}
             </nav>
           </div>
 
           <div className="flex items-center gap-1.5">
-            <ThemeToggle />
-
             {signedIn ? (
               <>
                 <IconButton
@@ -352,15 +348,6 @@ export function PublicHeader() {
             ) : (
               <div className="hidden items-center gap-2 sm:flex">
                 <Link
-                  href="https://agaseke.me/agaseke/booking"
-                  target="_blank"
-                  rel="noreferrer"
-                  className={buttonClasses({ variant: "ghost", size: "sm" })}
-                >
-                  <Calendar className="size-4" aria-hidden="true" />
-                  <span className="hidden md:inline">{t("nav.bookDemo")}</span>
-                </Link>
-                <Link
                   href={loginHref}
                   className={buttonClasses({ variant: "primary", size: "sm" })}
                 >
@@ -391,32 +378,17 @@ export function PublicHeader() {
               {t("common.close")}
             </Button>
           ) : (
-            <div className="flex flex-col gap-2">
-              <Link
-                href={loginHref}
-                onClick={closeMenus}
-                className={buttonClasses({
-                  variant: "primary",
-                  size: "md",
-                  fullWidth: true,
-                })}
-              >
-                {t("nav.login")}
-              </Link>
-              <Link
-                href="https://agaseke.me/agaseke/booking"
-                target="_blank"
-                rel="noreferrer"
-                onClick={closeMenus}
-                className={buttonClasses({
-                  variant: "secondary",
-                  size: "md",
-                  fullWidth: true,
-                })}
-              >
-                {t("nav.bookDemo")}
-              </Link>
-            </div>
+            <Link
+              href={loginHref}
+              onClick={closeMenus}
+              className={buttonClasses({
+                variant: "primary",
+                size: "md",
+                fullWidth: true,
+              })}
+            >
+              {t("nav.login")}
+            </Link>
           )
         }
       >

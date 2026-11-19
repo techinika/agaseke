@@ -10,7 +10,6 @@ import {
   Heart,
   Lock,
   Share2,
-  Calendar,
   LogIn,
   Sparkles,
   FileText,
@@ -21,6 +20,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import {
   doc,
+  getDoc,
   increment,
   updateDoc,
   collection,
@@ -40,7 +40,6 @@ import { MediaAsset } from "@/components/parts/public/MediaAsset";
 import { useAuth } from "@/auth/AuthContext";
 import { baseUrl } from "@/lib/baseUrl";
 import { Avatar } from "@/components/ui/Avatar";
-import { Badge } from "@/components/ui/Badge";
 import { Button, buttonClasses } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -92,10 +91,16 @@ export default function ArticleReaderPage({
   backLabel?: string;
 }) {
   const { user: currentUser, profile } = useAuth();
+  const [unlockedOverride, setUnlockedOverride] =
+    useState<Partial<ArticleReaderData> & { id: string } | null>(null);
+  const articleData: ArticleReaderData =
+    unlockedOverride?.id === article.id
+      ? { ...article, ...unlockedOverride }
+      : article;
   const [supportOpen, setSupportOpen] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [access, setAccess] = useState<"checking" | "locked" | "unlocked">(
-    "checking",
+    article.isPrivate ? "checking" : "unlocked",
   );
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState("");
@@ -152,6 +157,29 @@ export default function ArticleReaderPage({
       cancelled = true;
     };
   }, [article.id, article.isPrivate, creator.handle, creator.uid, currentUser?.uid]);
+
+  useEffect(() => {
+    if (!article.isPrivate || access !== "unlocked" || articleData.htmlContent) {
+      return;
+    }
+    let cancelled = false;
+    getDoc(doc(db, "creatorContent", article.id))
+      .then((snap) => {
+        if (cancelled || !snap.exists()) return;
+        const d = snap.data() as any;
+        setUnlockedOverride({
+          id: article.id,
+          title: (d.title as string) || article.title,
+          shortDescription: (d.shortDescription || d.description || "") as string,
+          htmlContent: (d.htmlContent as string) || "",
+          coverUrl: (d.coverUrl || d.contentUrl || "") as string,
+        });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [access, article.id, article.isPrivate, article.title, articleData.htmlContent]);
 
   useEffect(() => {
     if (!article.id) return;
@@ -261,7 +289,15 @@ export default function ArticleReaderPage({
     }
   };
 
-  const unlocked = !article.isPrivate || access === "unlocked";
+  const unlocked = !articleData.isPrivate || access === "unlocked";
+  const wordCount = articleData.htmlContent
+    ? articleData.htmlContent
+        .replace(/<[^>]+>/g, " ")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean).length
+    : 0;
+  const readingMinutes = Math.max(1, Math.ceil(wordCount / 200));
   const loginHref = `/login?redirect=${encodeURIComponent(`/articles/${article.slug}`)}`;
   const referralLoginHref = `/login?referral=${creator.handle}&redirect=${encodeURIComponent(
     `/articles/${article.slug}`,
@@ -290,36 +326,38 @@ export default function ArticleReaderPage({
         </div>
 
         <article className="overflow-hidden rounded-card border border-line bg-surface shadow-card">
-          {article.coverUrl && (
+          {articleData.coverUrl && (
             <div className="aspect-video w-full bg-surface-raised">
               <MediaAsset
-                postId={article.id}
-                isPrivate={article.isPrivate}
-                url={article.coverUrl}
-                alt={article.title}
+                postId={articleData.id}
+                isPrivate={articleData.isPrivate}
+                url={articleData.coverUrl}
+                alt={articleData.title}
                 className="size-full object-cover"
               />
             </div>
           )}
 
           <div className="p-5 sm:p-8 md:p-10">
-            <div className="mb-6 flex flex-wrap items-center gap-3">
-              <Badge tone="brand">Article</Badge>
-              <span className="flex items-center gap-1.5 text-caption text-muted-fg">
-                <Calendar className="size-3.5" aria-hidden="true" />
-                {formatDate(article.publishedAt || article.createdAt)}
+            <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-caption font-semibold text-muted-fg">
+              <span className="uppercase tracking-wider text-brand-strong">Article</span>
+              <span aria-hidden="true">·</span>
+              <span>{formatDate(articleData.publishedAt || articleData.createdAt)}</span>
+              <span aria-hidden="true">·</span>
+              <span>{readingMinutes} min read</span>
+              <span aria-hidden="true">·</span>
+              <span className="inline-flex items-center gap-1">
+                <Eye className="size-3.5" aria-hidden="true" /> {articleData.views}
               </span>
-              <span className="flex items-center gap-1.5 text-caption text-muted-fg">
-                <Eye className="size-3.5" aria-hidden="true" /> {article.views}
-              </span>
-              <span className="flex items-center gap-1.5 text-caption text-muted-fg">
+              <span aria-hidden="true">·</span>
+              <span className="inline-flex items-center gap-1">
                 <MessageCircle className="size-3.5" aria-hidden="true" />{" "}
-                {article.commentCount}
+                {articleData.commentCount}
               </span>
             </div>
 
             <h1 className="text-heading font-black tracking-tight text-fg sm:text-display">
-              {article.title}
+              {articleData.title}
             </h1>
 
             <Link
@@ -339,19 +377,19 @@ export default function ArticleReaderPage({
             </Link>
 
             <div>
-              {article.shortDescription && (
-                <p className="mb-6 border-l-4 border-brand-strong pl-4 text-body-lg italic leading-relaxed text-muted-fg">
-                  {article.shortDescription}
+              {articleData.shortDescription && (
+                <p className="mb-6 border-y border-line py-4 text-body-lg leading-relaxed text-muted-fg">
+                  {articleData.shortDescription}
                 </p>
               )}
 
               {unlocked ? (
-                <RichContentRenderer html={article.htmlContent} />
+                <RichContentRenderer html={articleData.htmlContent} />
               ) : (
                 <div>
                   <div className="relative">
                     <div className="pointer-events-none max-h-[25rem] select-none overflow-hidden">
-                      <RichContentRenderer html={article.htmlContent} />
+                      <RichContentRenderer html={articleData.htmlContent} />
                     </div>
 
                     <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[30rem]">

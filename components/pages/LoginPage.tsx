@@ -1,8 +1,8 @@
 "use client";
 
 import { Zap, Wallet, Star, UserPlus, ArrowLeft } from "lucide-react";
+import { FcGoogle } from "react-icons/fc";
 import Link from "next/link";
-import Image from "next/image";
 import React from "react";
 import { PerkItem } from "./loginpage/index";
 import { sanitizeRedirectPath } from "@/lib/safeRedirect";
@@ -110,16 +110,7 @@ export default function LoginPage({
             size="lg"
             fullWidth
             loading={loading}
-            leadingIcon={
-              <Image
-                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                width={20}
-                height={20}
-                className="size-5"
-                alt=""
-                aria-hidden="true"
-              />
-            }
+            leadingIcon={<FcGoogle className="size-5 shrink-0" aria-hidden="true" />}
             onClick={signIn}
           >
             {t("auth.login.cta")}

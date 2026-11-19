@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { doc, getDoc, updateDoc, getDocs, query, where, collection } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "@/db/firebase";
 import { deleteUser } from "firebase/auth";
 import {
-  User,
   Mail,
   MapPin,
   Shield,
@@ -14,17 +13,19 @@ import {
   Save,
   ExternalLink,
   CheckCircle2,
-  Loader,
-  X,
   Phone,
-  DollarSign,
 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { Profile } from "@/types/profile";
 import { toast } from "sonner";
-import Loading from "@/app/loading";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { Card } from "@/components/ui/Card";
+import { Button, buttonClasses } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Avatar } from "@/components/ui/Avatar";
+import { Dialog } from "@/components/ui/Dialog";
 import Link from "next/link";
-import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { useRouter } from "next/navigation";
 import { formatCurrency } from "@/types/currency";
 import {
   PAYOUT_CURRENCIES,
@@ -34,11 +35,11 @@ import {
 
 export default function ProfileEditPage() {
   const auth = useAuth();
+  const router = useRouter();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isCreator, setIsCreator] = useState(false);
   const [hasPendingPayout, setHasPendingPayout] = useState(false);
   const [pendingSummary, setPendingSummary] = useState("");
   const [confirmEmail, setConfirmEmail] = useState("");
@@ -62,9 +63,8 @@ export default function ProfileEditPage() {
           setPhone(data?.phoneNumber || "");
         }
 
-        const userHandle = (user as any).handle || user.username;
+        const userHandle = (user as { handle?: string }).handle || user.username;
         if (user.type === "creator" && userHandle) {
-          setIsCreator(true);
           const creatorRef = doc(db, "creators", userHandle);
           const creatorSnap = await getDoc(creatorRef);
           if (creatorSnap.exists()) {
@@ -121,172 +121,142 @@ export default function ProfileEditPage() {
       });
       await deleteUser(user);
       toast.success("Account deleted successfully");
-      window.location.href = "/";
-    } catch (error: any) {
+      setIsDeleteModalOpen(false);
+      router.replace("/");
+    } catch (error: unknown) {
       console.error("Deletion error:", error);
-      if (error.code === "auth/requires-recent-login") {
+      const code = typeof error === "object" && error && "code" in error ? (error as { code?: string }).code : "";
+      if (code === "auth/requires-recent-login") {
         toast.error("Please log out and log back in, then try again to delete your account.");
       } else {
         toast.error("Failed to delete account. Please try again.");
       }
     } finally {
       setDeleting(false);
-      setIsDeleteModalOpen(false);
     }
   };
 
-  if (loading) return <Loading />;
+  if (loading) return <LoadingState variant="form" label="Loading profile settings" />;
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20">
-      <main className="max-w-3xl mx-auto px-6 pt-20">
-        <div className="mb-10">
-          <h1 className="text-4xl font-bold tracking-tighter">
+    <div className="min-h-screen bg-canvas pb-20 text-fg">
+      <main className="mx-auto max-w-3xl px-4 pt-12 sm:px-6">
+        <div className="mb-8">
+          <p className="text-caption font-semibold uppercase tracking-wider text-brand-strong">
+            Account
+          </p>
+          <h1 className="mt-1 text-heading font-bold tracking-tight text-fg">
             Profile Settings
           </h1>
-          <p className="text-muted-foreground font-medium">
-            Manage your identity and account preferences.
+          <p className="mt-1 text-label text-muted-fg">
+            Manage your identity, contact details, and account preferences.
           </p>
         </div>
 
         {profile?.type !== "creator" && (
-          <div className="bg-orange-600 rounded-lg p-8 mb-8 text-white relative overflow-hidden group">
+          <div className="relative mb-6 overflow-hidden rounded-card bg-brand-strong p-6 text-on-brand sm:p-8">
             <div className="relative z-10">
-              <h3 className="text-2xl font-bold mb-2">Want a public page?</h3>
-              <p className="text-orange-100 font-medium mb-6 max-w-md">
-                Create an Agaseke to get your unique link and start receiving
-                support from your fans.
+              <h2 className="mb-2 text-title font-bold">Want a creator page?</h2>
+              <p className="mb-5 max-w-md text-body text-on-brand/90">
+                Set up your Agaseke page to get a unique link and start receiving
+                support, bookings, and store orders.
               </p>
               <Link
                 href="/onboarding"
-                className="inline-flex items-center gap-2 bg-card text-orange-600 px-6 py-3 rounded-lg font-bold text-sm transition-transform active:scale-95"
+                className={buttonClasses({
+                  variant: "secondary",
+                  className: "border-transparent bg-surface text-brand-strong hover:bg-surface-raised",
+                })}
               >
-                Setup Creator Page <ExternalLink size={16} />
+                Setup Creator Page <ExternalLink className="size-4" aria-hidden="true" />
               </Link>
             </div>
-            <Shield className="absolute -right-4 -bottom-4 w-40 h-40 text-orange-500 opacity-50 rotate-12" />
+            <Shield className="pointer-events-none absolute -bottom-4 -right-4 size-36 rotate-12 opacity-20" aria-hidden="true" />
           </div>
         )}
 
         <div className="space-y-6">
-          {/* Identity Section */}
-          <section className="bg-card p-8 rounded-lg border border-border shadow-sm space-y-6">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center overflow-hidden">
-                {profile?.photoURL ? (
-                  <img
-                    src={profile.photoURL}
-                    className="w-full h-full object-cover"
-                    alt="Profile"
-                  />
-                ) : (
-                  <User size={30} className="text-muted-foreground" />
-                )}
-              </div>
+          <Card className="space-y-6 p-6 sm:p-8">
+            <div className="flex items-center gap-4">
+              <Avatar
+                src={profile?.photoURL}
+                name={displayName || profile?.email || "User"}
+                size="lg"
+              />
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                <p className="text-caption font-semibold uppercase tracking-wider text-muted-fg">
                   Account Type
                 </p>
-                <div className="flex items-center gap-2 font-bold text-orange-600 capitalize">
-                  {profile?.type} <CheckCircle2 size={14} />
+                <div className="mt-0.5 flex items-center gap-1.5 font-bold capitalize text-brand-strong">
+                  <span>{profile?.type || "Supporter"}</span>
+                  <CheckCircle2 className="size-4" aria-hidden="true" />
                 </div>
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">
-                  Email Address
-                </label>
-                <div className="relative">
-                  <Mail
-                    size={16}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  />
-                  <input
-                    type="email"
-                    value={profile?.email || ""}
-                    disabled
-                    className="w-full bg-muted border-none rounded-lg py-4 pl-12 pr-4 text-muted-foreground cursor-not-allowed font-medium"
-                  />
-                </div>
-              </div>
+            <div className="grid gap-5 md:grid-cols-2">
+              <Input
+                label="Email Address"
+                type="email"
+                value={profile?.email || ""}
+                disabled
+                leading={<Mail className="size-4" aria-hidden="true" />}
+              />
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">
-                  Display Name
-                </label>
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  className="w-full bg-muted border-none focus:ring-2 focus:ring-orange-100 rounded-lg py-4 px-6 font-bold transition-all"
-                />
-              </div>
+              <Input
+                label="Display Name"
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Your name"
+              />
 
-              <div className="space-y-2 md:col-span-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">
-                  Location
-                </label>
-                <div className="relative">
-                  <MapPin
-                    size={16}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  />
-                  <input
-                    type="text"
-                    value={location}
-                    onChange={(e) => setLocation(e.target.value)}
-                    placeholder="e.g. Kigali, Rwanda"
-                    className="w-full bg-muted border-none focus:ring-2 focus:ring-orange-100 rounded-lg py-4 pl-12 pr-6 font-bold transition-all"
-                  />
-                </div>
-                <div className="relative">
-                  <Phone
-                    size={16}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  />
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="e.g. +250789999999"
-                    className="w-full bg-muted border-none focus:ring-2 focus:ring-orange-100 rounded-lg py-4 pl-12 pr-6 font-bold transition-all"
-                  />
-                </div>
-              </div>
+              <Input
+                label="Location"
+                type="text"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="e.g. Kigali, Rwanda"
+                leading={<MapPin className="size-4" aria-hidden="true" />}
+              />
+
+              <Input
+                label="Phone Number"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="e.g. +250789999999"
+                leading={<Phone className="size-4" aria-hidden="true" />}
+              />
             </div>
 
-            <button
+            <Button
+              fullWidth
               onClick={handleUpdate}
-              disabled={saving}
-              className="w-full bg-foreground text-background py-5 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors disabled:opacity-50"
+              loading={saving}
+              leadingIcon={<Save className="size-4" aria-hidden="true" />}
             >
-              {saving ? (
-                <Loader className="animate-spin" />
-              ) : (
-                <Save size={18} />
-              )}{" "}
               Save Changes
-            </button>
-          </section>
+            </Button>
+          </Card>
 
-          {/* Danger Zone */}
-          <section className="bg-red-50/50 p-8 rounded-lg border border-red-100 space-y-4">
-            <h3 className="font-bold text-red-600 flex items-center gap-2">
-              <AlertTriangle size={18} /> Danger Zone
-            </h3>
-            <p className="text-sm text-red-700 font-medium">
+          <section className="space-y-4 rounded-card border border-danger/25 bg-danger-bg p-6 sm:p-8">
+            <h2 className="flex items-center gap-2 text-body-lg font-bold text-danger">
+              <AlertTriangle className="size-5" aria-hidden="true" /> Danger Zone
+            </h2>
+            <p className="text-label text-fg">
               {hasPendingPayout ? (
                 <>
-                  You have <span className="font-bold">{pendingSummary}</span> pending payout.
-                  You must withdraw your funds before deleting your account.
+                  You have <span className="font-bold">{pendingSummary}</span> in pending payouts.
+                  Withdraw your funds before deleting your account.
                 </>
               ) : (
-                "Deleting your account is permanent. Your auth account will be deleted and your profile will be archived."
+                "Deleting your account is permanent. Your authentication account is deleted and your profile is archived."
               )}
             </p>
-            <button
+            <Button
+              variant="danger"
+              disabled={hasPendingPayout}
               onClick={() => {
                 if (hasPendingPayout) {
                   toast.error(`Please withdraw your ${pendingSummary} first`);
@@ -294,64 +264,58 @@ export default function ProfileEditPage() {
                   setIsDeleteModalOpen(true);
                 }
               }}
-              disabled={hasPendingPayout}
-              className="bg-card border border-red-200 text-red-600 px-6 py-3 rounded-lg font-bold text-sm hover:bg-red-600 hover:text-white transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              leadingIcon={<Trash2 className="size-4" aria-hidden="true" />}
             >
-              <Trash2 size={16} /> Delete My Account
-            </button>
+              Delete My Account
+            </Button>
           </section>
         </div>
       </main>
 
-      {/* Delete Confirmation Modal */}
-      <ConfirmModal
-        isOpen={isDeleteModalOpen}
+      <Dialog
+        open={isDeleteModalOpen}
         onClose={() => {
+          if (deleting) return;
           setIsDeleteModalOpen(false);
           setConfirmEmail("");
         }}
-        onConfirm={handleDeleteAccount}
-        title="Delete Your Account?"
-        message={`This will permanently delete your auth account. Your profile data will be archived but your creator content will remain accessible. This action cannot be undone.
-
-To confirm, type your email address (${profile?.email}) below.`}
-        confirmText="Delete Account"
-        cancelText="Cancel"
-        loading={deleting}
-        variant="danger"
-      />
-
-      {/* Email Confirmation Input (rendered outside modal for styling) */}
-      {isDeleteModalOpen && (
-        <div className="fixed inset-0 z-[101] flex items-center justify-center bg-foreground/60 backdrop-blur-sm p-4 pointer-events-none">
-          <div className="bg-card w-full max-w-md rounded-xl shadow-2xl p-6 pointer-events-auto">
-            <p className="text-sm text-muted-foreground mb-4 font-medium">
-              Type your email to confirm deletion:
-            </p>
-            <input
-              type="text"
-              autoComplete="off"
-              placeholder="Type your email address"
-              className="w-full bg-muted border border-border focus:ring-2 focus:ring-red-100 rounded-lg py-4 px-6 font-bold text-center mb-4"
-              value={confirmEmail}
-              onChange={(e) => setConfirmEmail(e.target.value)}
-            />
-            <button
-              onClick={handleDeleteAccount}
-              disabled={deleting || confirmEmail !== auth?.user?.email}
-              className="w-full bg-red-600 text-white py-4 rounded-lg font-bold text-sm hover:bg-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        title="Delete your account?"
+        description={`This permanently removes your login account. To confirm, type your email address (${profile?.email || ""}) below.`}
+        size="sm"
+        preventClose={deleting}
+        footer={
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              variant="secondary"
+              disabled={deleting}
+              onClick={() => {
+                setIsDeleteModalOpen(false);
+                setConfirmEmail("");
+              }}
             >
-              {deleting ? (
-                <Loader size={18} className="animate-spin" />
-              ) : (
-                <>
-                  <Trash2 size={18} /> Delete Account
-                </>
-              )}
-            </button>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              loading={deleting}
+              disabled={!auth?.user?.email || confirmEmail !== auth.user.email}
+              onClick={handleDeleteAccount}
+              leadingIcon={<Trash2 className="size-4" aria-hidden="true" />}
+            >
+              Delete Account
+            </Button>
           </div>
-        </div>
-      )}
+        }
+      >
+        <Input
+          label="Confirm Email Address"
+          type="email"
+          autoComplete="off"
+          placeholder={profile?.email || "Type your email address"}
+          value={confirmEmail}
+          onChange={(e) => setConfirmEmail(e.target.value)}
+        />
+      </Dialog>
     </div>
   );
 }

@@ -8,8 +8,11 @@ import { collection, query, where, orderBy, onSnapshot } from "firebase/firestor
 import { formatCurrency } from "@/types/currency";
 import { isEncrypted } from "@/lib/generalWorkerService";
 import type { BookingRequest } from "@/types/booking";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { buttonClasses } from "@/components/ui/Button";
 import {
-  Loader,
   Calendar,
   CalendarDays,
   CalendarCheck,
@@ -27,6 +30,15 @@ import {
 
 const FILTERS = ["all", "payment-pending", "awaiting", "upcoming", "ended", "declined"] as const;
 type Filter = (typeof FILTERS)[number];
+
+const FILTER_LABELS: Record<Filter, string> = {
+  all: "All",
+  "payment-pending": "Pending payment",
+  awaiting: "Awaiting response",
+  upcoming: "Upcoming",
+  ended: "Ended",
+  declined: "Declined",
+};
 
 function formatDate(date: string): string {
   if (!date) return "—";
@@ -106,199 +118,205 @@ export default function BookingsPage() {
     }
   }, [filter, bookings, sections]);
 
-  const statusChip = (b: BookingRequest) => {
-    if (b.paymentStatus === "pending")
+  const statusMeta = (b: BookingRequest) => {
+    if (b.paymentStatus === "pending") {
       return (
-        <span className="inline-flex items-center gap-1 shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">
-          <CreditCard size={12} /> Payment pending
+        <span className="inline-flex items-center gap-1 shrink-0 text-caption font-semibold text-warning">
+          <CreditCard className="size-3.5" aria-hidden="true" /> Payment pending
         </span>
       );
-    if (b.status === "pending")
+    }
+    if (b.status === "pending") {
       return (
-        <span className="inline-flex items-center gap-1 shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full bg-sky-100 text-sky-700">
-          <Hourglass size={12} /> Awaiting response
+        <span className="inline-flex items-center gap-1 shrink-0 text-caption font-semibold text-info">
+          <Hourglass className="size-3.5" aria-hidden="true" /> Awaiting response
         </span>
       );
+    }
     if (b.status === "accepted") {
       const isPast = b.preferredDate && b.preferredDate < todayKey;
       return isPast ? (
-        <span className="inline-flex items-center gap-1 shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full bg-muted text-muted-foreground">
-          <CheckCircle2 size={12} /> Ended
+        <span className="inline-flex items-center gap-1 shrink-0 text-caption font-semibold text-muted-fg">
+          <CheckCircle2 className="size-3.5" aria-hidden="true" /> Ended
         </span>
       ) : (
-        <span className="inline-flex items-center gap-1 shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full bg-green-100 text-green-700">
-          <CheckCircle2 size={12} /> Confirmed
+        <span className="inline-flex items-center gap-1 shrink-0 text-caption font-semibold text-success">
+          <CheckCircle2 className="size-3.5" aria-hidden="true" /> Confirmed
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center gap-1 shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full bg-red-100 text-red-700">
-        <XCircle size={12} /> {b.status === "declined" ? "Declined" : "Cancelled"}
+      <span className="inline-flex items-center gap-1 shrink-0 text-caption font-semibold text-danger">
+        <XCircle className="size-3.5" aria-hidden="true" /> {b.status === "declined" ? "Declined" : "Cancelled"}
       </span>
     );
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10">
+    <div className="mx-auto max-w-3xl px-4 py-10">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-1">Bookings</h1>
-        <p className="text-sm text-muted-foreground">
-          Meetings you have booked with creators — pending payments, responses,
-          and past appointments.
+        <p className="text-caption font-semibold uppercase tracking-wider text-brand-strong">
+          Account
+        </p>
+        <h1 className="mt-1 text-heading font-bold tracking-tight text-fg">
+          Bookings
+        </h1>
+        <p className="mt-1 text-label text-muted-fg">
+          Meetings booked with creators, pending payments, and confirmations.
         </p>
       </div>
 
       {!isLoggedIn ? (
-        <div className="text-center py-16">
-          <Calendar size={40} className="mx-auto text-muted-foreground mb-3" />
-          <p className="text-sm text-muted-foreground mb-4">
-            Log in to see your bookings.
-          </p>
-          <Link
-            href="/login"
-            className="px-6 py-3 bg-orange-600 text-white text-sm font-bold rounded-lg hover:bg-orange-700 transition"
-          >
-            Log in
-          </Link>
-        </div>
+        <EmptyState
+          icon={<Calendar className="size-6" aria-hidden="true" />}
+          title="Log in to view your bookings"
+          description="Sign in to check your upcoming meetings and pending booking payments."
+          action={
+            <Link href="/login" className={buttonClasses({ variant: "primary" })}>
+              Log in
+            </Link>
+          }
+        />
       ) : loading ? (
-        <div className="flex justify-center py-16">
-          <Loader className="animate-spin text-orange-500" size={32} />
-        </div>
+        <LoadingState variant="list" label="Loading bookings" />
       ) : (
         <>
-          <div className="flex flex-wrap gap-2 mb-6">
-            {FILTERS.map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-4 py-2 text-sm font-bold rounded-full border transition ${
-                  filter === f
-                    ? "bg-orange-600 text-white border-orange-600"
-                    : "bg-card text-muted-foreground border-border hover:text-foreground"
-                }`}
-              >
-                {f === "all"
-                  ? "All"
-                  : f === "payment-pending"
-                    ? "Pending payment"
-                    : f === "awaiting"
-                      ? "Awaiting response"
-                      : f === "upcoming"
-                        ? "Upcoming"
-                        : f === "ended"
-                          ? "Ended"
-                          : "Declined"}
-                <span className="ml-1.5 text-xs opacity-70">{counts[f]}</span>
-              </button>
-            ))}
+          <div className="mb-6 flex gap-1 overflow-x-auto border-b border-line pb-px" role="tablist" aria-label="Filter bookings">
+            {FILTERS.map((f) => {
+              const active = filter === f;
+              return (
+                <button
+                  key={f}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setFilter(f)}
+                  className={`shrink-0 border-b-2 px-3 py-2.5 text-label font-semibold transition-colors ${
+                    active
+                      ? "border-brand-strong text-fg"
+                      : "border-transparent text-muted-fg hover:text-fg"
+                  }`}
+                >
+                  {FILTER_LABELS[f]}
+                  <span className="ml-1.5 text-caption text-muted-fg">
+                    {counts[f]}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
           {sections.paymentPending.length > 0 && (
-            <div className="flex items-start gap-2 mb-6 p-3 bg-amber-100/70 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-800 rounded-lg text-sm">
-              <AlertTriangle className="shrink-0 text-amber-600 mt-0.5" size={16} />
-              <p className="text-foreground">
-                <span className="font-black">{sections.paymentPending.length}</span> booking
-                {sections.paymentPending.length > 1 ? "s are" : " is"} waiting on you to
-                complete payment so the creator can confirm.
+            <div className="mb-6 flex items-start gap-2.5 rounded-card border border-warning/30 bg-warning-bg p-3.5 text-label">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden="true" />
+              <p className="text-fg">
+                <span className="font-bold">{sections.paymentPending.length}</span> booking
+                {sections.paymentPending.length > 1 ? "s need" : " needs"} payment before the creator can confirm.
               </p>
             </div>
           )}
 
           {filtered.length === 0 ? (
-            <div className="text-center py-16 bg-card border border-border rounded-xl">
-              <CalendarDays size={40} className="mx-auto text-muted-foreground mb-3" />
-              <p className="text-sm text-muted-foreground">
-                {bookings.length === 0
-                  ? "You haven't booked any meetings yet."
-                  : "No bookings in this filter."}
-              </p>
-            </div>
+            <EmptyState
+              icon={<CalendarDays className="size-6" aria-hidden="true" />}
+              title={bookings.length === 0 ? "No bookings yet" : "No matching bookings"}
+              description={
+                bookings.length === 0
+                  ? "When you book a session with a creator, it appears here."
+                  : "Try switching tabs above to view other bookings."
+              }
+            />
           ) : (
             <div className="space-y-3">
               {filtered.map((b) => (
-                <div key={b.id} className="bg-card border border-border rounded-xl p-4">
-                  <div className="flex items-start justify-between gap-3 mb-2">
+                <Card key={b.id} className="p-4 sm:p-5">
+                  <div className="mb-2.5 flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-black text-foreground truncate">
+                      <p className="truncate text-body font-bold text-fg">
                         {b.tierName ? `${b.tierName} booking` : "Booking"}
                       </p>
                       {b.creatorHandle && (
                         <Link
                           href={`/${b.creatorHandle}`}
-                          className="inline-flex items-center gap-1 text-xs font-bold text-orange-600 hover:underline mt-0.5"
+                          className="mt-0.5 inline-flex items-center gap-1 text-caption font-semibold text-brand-strong hover:underline"
                         >
-                          <Calendar size={12} /> @{b.creatorHandle}
+                          <Calendar className="size-3" aria-hidden="true" /> @{b.creatorHandle}
                           {b.creatorName ? ` · ${b.creatorName}` : ""}
                         </Link>
                       )}
                     </div>
-                    {statusChip(b)}
+                    {statusMeta(b)}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 text-sm text-muted-foreground mb-3">
+                  <div className="mb-3 grid grid-cols-2 gap-2.5 text-label text-muted-fg">
                     <span className="flex items-center gap-1.5">
-                      <CalendarDays size={14} /> {formatDate(b.preferredDate)}
+                      <CalendarDays className="size-3.5" aria-hidden="true" /> {formatDate(b.preferredDate)}
                     </span>
                     <span className="flex items-center gap-1.5">
-                      <Clock size={14} /> {b.preferredTime}
+                      <Clock className="size-3.5" aria-hidden="true" /> {b.preferredTime}
                     </span>
                     <span className="flex items-center gap-1.5">
-                      {b.preferredType === "online" ? <Video size={14} /> : <MapPin size={14} />}
+                      {b.preferredType === "online" ? (
+                        <Video className="size-3.5" aria-hidden="true" />
+                      ) : (
+                        <MapPin className="size-3.5" aria-hidden="true" />
+                      )}
                       {typeName(b.preferredType)}
                     </span>
                     {(b.paymentAmount || 0) > 0 && (
-                      <span className="flex items-center gap-1.5 font-bold text-foreground">
-                        <CreditCard size={14} />
-                        {b.currency ? formatCurrency(b.paymentAmount || 0, b.currency as any) : `${b.paymentAmount || 0}`}
+                      <span className="flex items-center gap-1.5 font-semibold text-fg">
+                        <CreditCard className="size-3.5" aria-hidden="true" />
+                        {b.currency
+                          ? formatCurrency(b.paymentAmount || 0, b.currency as never)
+                          : `${b.paymentAmount || 0}`}
                       </span>
                     )}
                   </div>
 
-                  {(b.reason && !isEncrypted(b.reason)) || b.responseNote ? (
-                    <div className="space-y-2 mb-3">
+                  {((b.reason && !isEncrypted(b.reason)) || b.responseNote) && (
+                    <div className="mb-3 space-y-2">
                       {b.reason && !isEncrypted(b.reason) && (
-                        <div className="p-3 bg-muted rounded-lg text-sm">
-                          <p className="text-xs font-black uppercase text-muted-foreground mb-1">
-                            Your message
+                        <div className="rounded-control bg-surface-sunken p-3 text-label">
+                          <p className="mb-1 text-caption font-semibold uppercase tracking-wide text-muted-fg">
+                            Your note
                           </p>
-                          <p className="text-foreground">{b.reason}</p>
+                          <p className="text-fg">{b.reason}</p>
                         </div>
                       )}
                       {b.responseNote && (
-                        <div className="p-3 bg-green-50 dark:bg-green-950/40 border border-green-100 dark:border-green-900 rounded-lg text-sm">
-                          <p className="inline-flex items-center gap-1 text-xs font-black uppercase text-green-700 dark:text-green-400 mb-1">
-                            <MessageSquare size={12} /> Creator feedback
+                        <div className="rounded-control border border-success/25 bg-success-bg p-3 text-label">
+                          <p className="mb-1 inline-flex items-center gap-1 text-caption font-semibold uppercase tracking-wide text-success">
+                            <MessageSquare className="size-3" aria-hidden="true" /> Creator reply
                           </p>
-                          <p className="text-foreground">{b.responseNote}</p>
+                          <p className="text-fg">{b.responseNote}</p>
                         </div>
                       )}
                     </div>
-                  ) : null}
+                  )}
 
-                  {b.bookerEmail ? (
-                    <p className="flex items-center gap-1 text-xs text-muted-foreground mb-3">
-                      <Mail size={12} /> {b.bookerEmail}
+                  {b.bookerEmail && (
+                    <p className="mb-3 flex items-center gap-1.5 text-caption text-muted-fg">
+                      <Mail className="size-3" aria-hidden="true" /> {b.bookerEmail}
                     </p>
-                  ) : null}
+                  )}
 
                   {b.paymentStatus === "pending" && (
-                    <div className="flex items-center justify-between border-t border-border pt-3">
-                      <p className="text-sm text-muted-foreground">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
+                      <p className="text-label text-muted-fg">
                         Complete payment to confirm this booking.
                       </p>
                       <Link
                         href={`/booking/pay/${b.id}`}
-                        className="shrink-0 inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition"
+                        className={buttonClasses({ variant: "primary", size: "sm" })}
                       >
-                        <CreditCard size={15} /> Complete Payment
+                        <CreditCard className="size-4" aria-hidden="true" /> Complete Payment
                       </Link>
                     </div>
                   )}
                   {b.status === "accepted" && b.paymentStatus !== "pending" && (
-                    <div className="flex items-center gap-2 border-t border-border pt-3">
-                      <CalendarCheck size={14} className="text-green-600" />
-                      <p className="text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2 border-t border-line pt-3">
+                      <CalendarCheck className="size-4 text-success" aria-hidden="true" />
+                      <p className="text-label text-muted-fg">
                         {b.preferredDate && b.preferredDate < todayKey
                           ? "This meeting has taken place."
                           : "Your booking is confirmed with the creator."}
@@ -306,14 +324,14 @@ export default function BookingsPage() {
                     </div>
                   )}
                   {b.status === "pending" && b.paymentStatus !== "pending" && (
-                    <div className="flex items-center gap-2 border-t border-border pt-3">
-                      <Hourglass size={14} className="text-sky-600" />
-                      <p className="text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2 border-t border-line pt-3">
+                      <Hourglass className="size-4 text-info" aria-hidden="true" />
+                      <p className="text-label text-muted-fg">
                         Waiting for {b.creatorName || "the creator"} to respond.
                       </p>
                     </div>
                   )}
-                </div>
+                </Card>
               ))}
             </div>
           )}

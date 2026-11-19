@@ -5,7 +5,11 @@ import Link from "next/link";
 import { useAuth } from "@/auth/AuthContext";
 import { getMySubscriptions, type MemberInfo } from "@/lib/communityService";
 import { formatCurrency } from "@/types/currency";
-import { Loader, Crown, ChevronRight } from "lucide-react";
+import { Card } from "@/components/ui/Card";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { buttonClasses } from "@/components/ui/Button";
+import { Crown, ChevronRight } from "lucide-react";
 
 function formatDate(iso: string): string {
   if (!iso) return "—";
@@ -16,15 +20,15 @@ function formatDate(iso: string): string {
   });
 }
 
-function statusBadge(status: string) {
+function statusTone(status: string) {
   const map: Record<string, string> = {
-    active: "bg-green-100 text-green-700",
-    pending: "bg-amber-100 text-amber-700",
-    expired: "bg-red-100 text-red-700",
-    cancelled: "bg-muted text-muted-foreground",
-    failed: "bg-red-100 text-red-700",
+    active: "text-success",
+    pending: "text-warning",
+    expired: "text-danger",
+    cancelled: "text-muted-fg",
+    failed: "text-danger",
   };
-  return map[status] || "bg-muted text-muted-foreground";
+  return map[status] || "text-muted-fg";
 }
 
 export default function CommunityManagePage() {
@@ -41,93 +45,95 @@ export default function CommunityManagePage() {
   }, [isLoggedIn]);
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10">
+    <div className="mx-auto max-w-3xl px-4 py-10">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-1">Your Subscriptions</h1>
-        <p className="text-sm text-muted-foreground">
-          Renew your memberships, update your payment method, or manage
-          auto-renewal.
+        <p className="text-caption font-semibold uppercase tracking-wider text-brand-strong">
+          Memberships
+        </p>
+        <h1 className="mt-1 text-heading font-bold tracking-tight text-fg">
+          Your Subscriptions
+        </h1>
+        <p className="mt-1 text-label text-muted-fg">
+          Renew memberships, update your payment number, or manage auto-renewal.
         </p>
       </div>
 
       {!isLoggedIn ? (
-        <div className="text-center py-16">
-          <Crown size={40} className="mx-auto text-muted-foreground mb-3" />
-          <p className="text-sm text-muted-foreground mb-4">
-            Log in to manage your community subscriptions.
-          </p>
-          <Link
-            href="/login"
-            className="px-6 py-3 bg-orange-600 text-white text-sm font-bold rounded-lg hover:bg-orange-700 transition"
-          >
-            Log in
-          </Link>
-        </div>
+        <EmptyState
+          icon={<Crown className="size-6" aria-hidden="true" />}
+          title="Log in to manage subscriptions"
+          description="Sign in to see active and past creator memberships."
+          action={
+            <Link href="/login" className={buttonClasses({ variant: "primary" })}>
+              Log in
+            </Link>
+          }
+        />
       ) : loading ? (
-        <div className="flex justify-center py-16">
-          <Loader className="animate-spin text-orange-500" size={32} />
-        </div>
+        <LoadingState variant="list" label="Loading subscriptions" />
       ) : subs.length === 0 ? (
-        <div className="text-center py-16 bg-card border border-border rounded-xl">
-          <Crown size={40} className="mx-auto text-muted-foreground mb-3" />
-          <p className="text-sm text-muted-foreground">
-            You don&apos;t have any community subscriptions yet.
-          </p>
-        </div>
+        <EmptyState
+          icon={<Crown className="size-6" aria-hidden="true" />}
+          title="No subscriptions yet"
+          description="Join a creator's membership tier to unlock members-only posts and chat."
+          action={
+            <Link href="/explore" className={buttonClasses({ variant: "secondary" })}>
+              Explore creators
+            </Link>
+          }
+        />
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {subs.map((sub) => (
             <Link
               key={sub.subscriptionId}
               href={`/community/manage/${sub.subscriptionId}`}
-              className="block bg-card border border-border rounded-xl p-5 hover:border-orange-300 transition group"
+              className="group block"
             >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <h3 className="font-bold">{sub.tierName}</h3>
-                  <span
-                    className={`text-xs font-bold px-2 py-0.5 rounded-full ${statusBadge(sub.status)}`}
-                  >
-                    {sub.status}
-                  </span>
-                </div>
-                <ChevronRight
-                  size={18}
-                  className="text-muted-foreground group-hover:text-orange-500 transition"
-                />
-              </div>
-              {sub.creatorHandle && (
-                <p className="text-xs text-muted-foreground mb-3">
-                  by @{sub.creatorHandle}
-                </p>
-              )}
-              <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
-                <p>
-                  <span className="text-muted-foreground text-xs">Plan: </span>
-                  <span className="font-bold text-orange-600">
-                    {formatCurrency(sub.amount, sub.currency as any)}
-                    <span className="text-xs font-normal text-muted-foreground ml-1">
-                      /{sub.interval === "yearly" ? "year" : "month"}
+              <Card className="p-5 transition-colors hover:border-line-strong">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                    <h3 className="text-body font-bold text-fg">{sub.tierName}</h3>
+                    <span className={`text-caption font-semibold capitalize ${statusTone(sub.status)}`}>
+                      · {sub.status}
                     </span>
-                  </span>
-                </p>
-                <p>
-                  <span className="text-muted-foreground text-xs">
-                    {sub.status === "active" ? "Next renewal: " : "Membership ends: "}
-                  </span>
-                  {formatDate(sub.expiresAt)}
-                </p>
-                <p>
-                  <span className="text-muted-foreground text-xs">
-                    Auto-renew:{" "}
-                  </span>
-                  <span
-                    className={`font-bold ${sub.autoRenew ? "text-green-600" : "text-muted-foreground"}`}
-                  >
-                    {sub.autoRenew ? "On" : "Off"}
-                  </span>
-                </p>
-              </div>
+                  </div>
+                  <ChevronRight
+                    className="size-4 shrink-0 text-muted-fg transition-transform group-hover:translate-x-0.5 group-hover:text-brand-strong"
+                    aria-hidden="true"
+                  />
+                </div>
+
+                {sub.creatorHandle && (
+                  <p className="mb-3 text-caption text-muted-fg">
+                    by @{sub.creatorHandle}
+                  </p>
+                )}
+
+                <div className="flex flex-wrap gap-x-6 gap-y-1.5 text-label">
+                  <p>
+                    <span className="text-caption text-muted-fg">Plan: </span>
+                    <span className="font-bold text-brand-strong">
+                      {formatCurrency(sub.amount, sub.currency as never)}
+                      <span className="ml-1 text-caption font-normal text-muted-fg">
+                        /{sub.interval === "yearly" ? "year" : "month"}
+                      </span>
+                    </span>
+                  </p>
+                  <p className="text-fg">
+                    <span className="text-caption text-muted-fg">
+                      {sub.status === "active" ? "Next renewal: " : "Ends: "}
+                    </span>
+                    {formatDate(sub.expiresAt)}
+                  </p>
+                  <p>
+                    <span className="text-caption text-muted-fg">Auto-renew: </span>
+                    <span className={sub.autoRenew ? "font-semibold text-success" : "text-muted-fg"}>
+                      {sub.autoRenew ? "On" : "Off"}
+                    </span>
+                  </p>
+                </div>
+              </Card>
             </Link>
           ))}
         </div>

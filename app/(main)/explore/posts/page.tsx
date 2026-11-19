@@ -2,6 +2,96 @@ import ExplorePostsPage from "@/components/pages/ExplorePostsPage";
 import ExplorePostsSchema from "@/components/seo/ExplorePostsSchema";
 import { Metadata } from "next";
 import { baseUrl } from "@/lib/baseUrl";
+import { adminDb } from "@/db/firebaseAdmin";
+
+export const revalidate = 120;
+
+async function getInitialExplorePosts() {
+  try {
+    const snap = await adminDb
+      .collection("creatorContent")
+      .where("isPrivate", "==", false)
+      .orderBy("createdAt", "desc")
+      .limit(10)
+      .get();
+
+    const rawDocs = snap.docs
+      .filter((doc) => doc.data().status !== "draft")
+      .map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt: data.createdAt?.toDate?.()?.toISOString() ?? null,
+          updatedAt: data.updatedAt?.toDate?.()?.toISOString() ?? null,
+          publishedAt: data.publishedAt?.toDate?.()?.toISOString() ?? null,
+        };
+      });
+
+    const creatorIds = Array.from(
+      new Set(
+        rawDocs
+          .map((d: Record<string, unknown>) => String(d.creatorId || d.creatorUid || ""))
+          .filter(Boolean),
+      ),
+    ).slice(0, 10);
+
+    const creatorEntries: Array<
+      [string, { name: string; handle: string; uid?: string; photoURL: string | null }]
+    > = [];
+
+    await Promise.all(
+      creatorIds.map(async (cid) => {
+        try {
+          const directSnap = await adminDb.collection("creators").doc(cid).get();
+          const docSnap = directSnap.exists
+            ? directSnap
+            : (
+                await adminDb
+                  .collection("creators")
+                  .where("uid", "==", cid)
+                  .limit(1)
+                  .get()
+              ).docs[0];
+          if (!docSnap?.exists) return;
+          const data = docSnap.data();
+          const entry = {
+            name: String(data?.name || docSnap.id),
+            handle: docSnap.id,
+            uid: data?.uid ? String(data.uid) : undefined,
+            photoURL: (data?.profilePicture || data?.photoURL || null) as string | null,
+          };
+          creatorEntries.push([docSnap.id, entry]);
+          if (entry.uid) creatorEntries.push([entry.uid, entry]);
+        } catch {
+          // Ignore single creator lookup failure
+        }
+      }),
+    );
+
+    const creatorMap = new Map(creatorEntries);
+    const posts = rawDocs.map((data: Record<string, unknown>) => {
+      const creatorId = String(data.creatorId || data.creatorUid || "");
+      const creator =
+        creatorMap.get(creatorId) ||
+        creatorMap.get(String(data.creatorUid || "")) ||
+        creatorMap.get(String(data.creatorId || ""));
+      return JSON.parse(
+        JSON.stringify({
+          ...data,
+          authorName: creator?.name || creatorId.substring(0, 8) || "Unknown",
+          authorHandle: creator?.handle || creatorId,
+          authorPhoto: creator?.photoURL || null,
+        }),
+      );
+    });
+
+    return { posts, creatorEntries };
+  } catch (error) {
+    console.error("Error fetching initial public posts:", error);
+    return { posts: [], creatorEntries: [] };
+  }
+}
 
 export const metadata: Metadata = {
   title: "Discover Public Posts from African Creators | Agaseke",
@@ -63,11 +153,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Page() {
+export default async function Page() {
+  const { posts, creatorEntries } = await getInitialExplorePosts();
   return (
     <>
       <ExplorePostsSchema />
-      <ExplorePostsPage />
+      <ExplorePostsPage
+        initialPosts={posts}
+        initialCreatorEntries={creatorEntries}
+      />
     </>
   );
 }

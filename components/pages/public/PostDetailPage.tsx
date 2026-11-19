@@ -1,20 +1,63 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @next/next/no-img-element -- public media URLs are signed/arbitrary */
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import { ArrowLeft, Heart, Loader, FileText, Lock, MessageCircle, Pencil, Trash2, Check, X, ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  FileText,
+  Heart,
+  Lock,
+  LogIn,
+  MessageCircle,
+  Pencil,
+  Play,
+  Share2,
+  Trash2,
+  Type,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  increment,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
+} from "firebase/firestore";
+import { db } from "@/db/firebase";
+import { useAuth } from "@/auth/AuthContext";
+import { baseUrl } from "@/lib/baseUrl";
+import type { MoreCreatorItem, ReaderCreator, ReaderPost } from "@/lib/articleReader";
+import { usePostMediaSrc } from "@/lib/usePostMediaSrc";
 import { SupportModal } from "@/components/parts/public/SupportModal";
 import { MediaAsset } from "@/components/parts/public/MediaAsset";
-import { usePostMediaSrc } from "@/lib/usePostMediaSrc";
 import RichContentRenderer from "@/components/ui/RichContentRenderer";
-import { db } from "@/db/firebase";
-import { doc, getDoc, getDocs, collection, query, where, orderBy, addDoc, deleteDoc, updateDoc, onSnapshot, serverTimestamp, increment } from "firebase/firestore";
-import { useAuth } from "@/auth/AuthContext";
-import { toast } from "sonner";
-import DetailSkeleton from "@/components/ui/DetailSkeleton";
-import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Avatar } from "@/components/ui/Avatar";
+import { Button, buttonClasses } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Dialog } from "@/components/ui/Dialog";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { IconButton } from "@/components/ui/IconButton";
+import { Input } from "@/components/ui/Input";
 import { LinkifyText } from "@/components/ui/LinkifyText";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { cn } from "@/lib/cn";
 
 const GENERAL_WORKER_URL =
   process.env.NEXT_PUBLIC_GENERAL_WORKER_URL || "http://localhost:8787";
@@ -32,132 +75,335 @@ const extractYouTubeId = (url: string): string | null => {
 };
 
 const hasYouTubeLink = (text: string): string | null => {
-  const urlPattern = /https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)[^\s]+/gi;
+  const urlPattern =
+    /https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)[^\s]+/gi;
   const match = text.match(urlPattern);
-  if (match) return match[0];
-  return null;
+  return match ? match[0] : null;
 };
 
-export default function PostDetailPage({ username, postId }: { username: string; postId: string }) {
+function typeLabel(type?: string) {
+  if (type === "video") return "Video";
+  if (type === "image") return "Image";
+  if (type === "document") return "Document";
+  if (type === "article") return "Article";
+  return "Post";
+}
+
+function formatDate(value: any): string {
+  if (!value) return "Recently";
+  try {
+    const date =
+      typeof value?.toDate === "function" ? value.toDate() : new Date(value);
+    if (Number.isNaN(date.getTime())) return "Recently";
+    return date.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  } catch {
+    return "Recently";
+  }
+}
+
+interface CommentItem {
+  id: string;
+  content?: string;
+  text?: string;
+  userId: string;
+  userName: string;
+  userPhoto?: string | null;
+  createdAt: any;
+  parentId?: string;
+  replies?: CommentItem[];
+}
+
+export interface PostDetailPageProps {
+  postId: string;
+  username?: string;
+  initialPost?: ReaderPost | null;
+  initialCreator?: ReaderCreator | null;
+  initialMoreContent?: MoreCreatorItem[];
+  backHref?: string;
+  backLabel?: string;
+}
+
+export default function PostDetailPage({
+  postId,
+  username,
+  initialPost = null,
+  initialCreator = null,
+  initialMoreContent = [],
+  backHref,
+  backLabel,
+}: PostDetailPageProps) {
   const { user: currentUser, profile } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [post, setPost] = useState<any>(null);
-  const { mediaSrc } = usePostMediaSrc(post?.id, !!post?.isPrivate);
-  const [creatorData, setCreatorData] = useState<any>(null);
-  const [comments, setComments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(!initialPost);
+  const [post, setPost] = useState<any>(initialPost);
+  const [creatorData, setCreatorData] = useState<any>(initialCreator);
+  const [access, setAccess] = useState<"checking" | "locked" | "unlocked">(
+    initialPost && !initialPost.isPrivate ? "unlocked" : "checking",
+  );
+  const [comments, setComments] = useState<CommentItem[]>([]);
   const [likes, setLikes] = useState<Set<string>>(new Set());
   const [userLiked, setUserLiked] = useState(false);
+  const [liking, setLiking] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editCommentContent, setEditCommentContent] = useState("");
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [deleteCommentId, setDeleteCommentId] = useState<string | null>(null);
+  const [deletingComment, setDeletingComment] = useState(false);
   const [documentIndex, setDocumentIndex] = useState(0);
-  const [viewingImage, setViewingImage] = useState<{ url: string } | null>(null);
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [supportOpen, setSupportOpen] = useState(false);
   const viewCounted = useRef(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const { mediaSrc } = usePostMediaSrc(post?.id, !!post?.isPrivate);
 
   useEffect(() => {
-    const fetch = async () => {
+    if (initialPost && !initialPost.isPrivate && initialCreator) return;
+
+    let cancelled = false;
+    const load = async () => {
       try {
-        const creatorRef = doc(db, "creators", username);
-        const creatorSnap = await getDoc(creatorRef);
-        if (!creatorSnap.exists()) { setLoading(false); return; }
-        setCreatorData(creatorSnap.data());
+        let loadedPost: any = initialPost;
+        if (!loadedPost || loadedPost.isPrivate) {
+          const postSnap = await getDoc(doc(db, "creatorContent", postId));
+          if (postSnap.exists()) {
+            const data = postSnap.data() as any;
+            if (data.status !== "draft") {
+              loadedPost = { id: postSnap.id, ...data };
+              if (!cancelled) setPost(loadedPost);
+            }
+          }
+        }
 
-        const postRef = doc(db, "creatorContent", postId);
-        const postSnap = await getDoc(postRef);
-        if (!postSnap.exists()) { setLoading(false); return; }
-        const postData = { id: postSnap.id, ...postSnap.data() };
-        setPost(postData);
-      } catch (e) { console.error("Failed to load post", e); toast.error("Failed to load post"); }
-      finally { setLoading(false); }
+        if (!loadedPost) {
+          if (!cancelled) setLoading(false);
+          return;
+        }
+
+        const handleToLookup =
+          username || loadedPost.creatorId || creatorData?.handle || "";
+        if (!creatorData && handleToLookup) {
+          const creatorSnap = await getDoc(doc(db, "creators", handleToLookup));
+          if (creatorSnap.exists() && !cancelled) {
+            setCreatorData({
+              handle: creatorSnap.id,
+              ...creatorSnap.data(),
+            });
+          } else if (loadedPost.creatorUid) {
+            const profileSnap = await getDoc(
+              doc(db, "profiles", loadedPost.creatorUid),
+            );
+            if (profileSnap.exists() && !cancelled) {
+              const p = profileSnap.data();
+              setCreatorData({
+                name: p.displayName || handleToLookup,
+                handle: p.username || handleToLookup,
+                photoURL: p.photoURL || null,
+                uid: loadedPost.creatorUid,
+              });
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load post:", e);
+        toast.error("Failed to load post");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     };
-    fetch();
-  }, [username, postId]);
+    void load();
+    return () => {
+      cancelled = true;
+    };
+    // Initial SSR hydration + client fallback on postId/username/user sign-in changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postId, username, currentUser?.uid]);
+
+  const creatorHandle =
+    creatorData?.handle || username || post?.creatorId || "";
+  const creatorName = creatorData?.name || creatorHandle || "Creator";
+  const creatorPhoto =
+    creatorData?.photoURL || creatorData?.profilePicture || null;
+  const creatorUid = creatorData?.uid || post?.creatorUid || "";
 
   useEffect(() => {
-    if (loading || !postId || viewCounted.current) return;
+    let cancelled = false;
+    const checkAccess = async () => {
+      if (!post) return;
+      const isOwner =
+        Boolean(creatorUid) &&
+        Boolean(currentUser?.uid) &&
+        creatorUid === currentUser?.uid;
+
+      if (!post.isPrivate || isOwner) {
+        if (!cancelled) setAccess("unlocked");
+        return;
+      }
+      if (!currentUser?.uid || !creatorHandle) {
+        if (!cancelled) setAccess("locked");
+        return;
+      }
+      try {
+        const supportRef = collection(db, "supportedCreators");
+        const q = query(
+          supportRef,
+          where("supporterId", "==", currentUser.uid),
+          where("creatorId", "==", creatorHandle),
+        );
+        const snap = await getDocs(q);
+        if (!cancelled) setAccess(!snap.empty ? "unlocked" : "locked");
+      } catch {
+        if (!cancelled) setAccess("locked");
+      }
+    };
+    void checkAccess();
+    return () => {
+      cancelled = true;
+    };
+  }, [post, creatorUid, creatorHandle, currentUser?.uid]);
+
+  useEffect(() => {
+    if (loading || !post?.id || viewCounted.current) return;
+    const key = `viewed_post_${post.id}`;
+    if (typeof window !== "undefined" && sessionStorage.getItem(key)) return;
+    if (typeof window !== "undefined") sessionStorage.setItem(key, "1");
     viewCounted.current = true;
-    const postRef = doc(db, "creatorContent", postId);
-    updateDoc(postRef, { views: increment(1) }).catch((err) => { console.error("Failed to update view count", err); });
-  }, [loading, postId]);
+    updateDoc(doc(db, "creatorContent", post.id), {
+      views: increment(1),
+    }).catch(() => {});
+  }, [loading, post?.id]);
 
   useEffect(() => {
     if (!postId) return;
     const commentsRef = collection(db, "creatorContent", postId, "comments");
     const q = query(commentsRef, orderBy("createdAt", "asc"));
-    const unsub = onSnapshot(q,
-      (snap) => { setComments(snap.docs.map(d => ({ id: d.id, ...d.data() }))); },
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const flat = snap.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        })) as CommentItem[];
+        const topLevel: CommentItem[] = [];
+        const replyMap: Record<string, CommentItem[]> = {};
+        for (const c of flat) {
+          if (c.parentId) {
+            if (!replyMap[c.parentId]) replyMap[c.parentId] = [];
+            replyMap[c.parentId].push(c);
+          } else {
+            topLevel.push({ ...c, replies: [] });
+          }
+        }
+        for (const c of topLevel) {
+          c.replies = replyMap[c.id] || [];
+        }
+        setComments(topLevel);
+      },
       () => {},
     );
     return () => unsub();
   }, [postId]);
-
-  useEffect(() => {
-    if (!currentUser?.uid || !postId) return;
-    const checkLike = async () => {
-      const likeRef = collection(db, "creatorContent", postId, "likes");
-      const q = query(likeRef, where("userId", "==", currentUser.uid));
-      const snap = await getDocs(q);
-      setUserLiked(!snap.empty);
-    };
-    checkLike();
-  }, [currentUser?.uid, postId]);
 
   useEffect(() => {
     if (!postId) return;
     const likesRef = collection(db, "creatorContent", postId, "likes");
-    const unsub = onSnapshot(likesRef,
-      (snap) => { setLikes(new Set(snap.docs.map(d => d.data().userId))); },
+    const unsub = onSnapshot(
+      likesRef,
+      (snap) => {
+        const nextLikes = new Set<string>(
+          snap.docs.map((d) => String(d.data().userId || "")),
+        );
+        setLikes(nextLikes);
+        if (currentUser?.uid) {
+          setUserLiked(nextLikes.has(currentUser.uid));
+        }
+      },
       () => {},
     );
     return () => unsub();
-  }, [postId]);
+  }, [postId, currentUser?.uid]);
 
   const handleLike = useCallback(async () => {
-    if (!currentUser?.uid) { toast.error("Please log in to like"); return; }
-    const postRef = doc(db, "creatorContent", postId);
-    const likeRef = collection(db, "creatorContent", postId, "likes");
-    const q = query(likeRef, where("userId", "==", currentUser.uid));
-    const snap = await getDocs(q);
-    if (!snap.empty) {
-      await deleteDoc(snap.docs[0].ref);
-      await updateDoc(postRef, { "stats.likes": increment(-1) });
-      setUserLiked(false);
-    } else {
-      await addDoc(likeRef, { userId: currentUser.uid, createdAt: serverTimestamp() });
-      await updateDoc(postRef, { "stats.likes": increment(1) });
-      setUserLiked(true);
-      if (currentUser.uid !== creatorData?.uid) {
-        currentUser.getIdToken().then((token) => {
-          fetch(`${GENERAL_WORKER_URL}/api/general/notification`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-            body: JSON.stringify({
-              userId: creatorData?.uid,
-              type: "new_like",
-              title: "New Like!",
-              message: `${profile?.displayName || currentUser.displayName || "Someone"} liked your post${post?.title ? ` "${post.title}"` : ""}`,
-              link: `/${username}/community/${postId}`,
-              actorName: profile?.displayName || currentUser.displayName || "Anonymous",
-              actorId: currentUser.uid,
-              metadata: { postId, postTitle: post?.title, username },
-            }),
-          }).catch(() => {});
-        }).catch(() => {});
-      }
+    if (!currentUser?.uid) {
+      toast.error("Please log in to like this post");
+      return;
     }
-  }, [currentUser, postId, creatorData, profile, post, username]);
+    if (liking) return;
+    setLiking(true);
+    try {
+      const postRef = doc(db, "creatorContent", postId);
+      const likeRef = collection(db, "creatorContent", postId, "likes");
+      const snap = await getDocs(
+        query(likeRef, where("userId", "==", currentUser.uid)),
+      );
+      if (!snap.empty) {
+        await deleteDoc(snap.docs[0].ref);
+        await updateDoc(postRef, { "stats.likes": increment(-1) });
+        setUserLiked(false);
+      } else {
+        await addDoc(likeRef, {
+          postId,
+          userId: currentUser.uid,
+          createdAt: serverTimestamp(),
+        });
+        await updateDoc(postRef, { "stats.likes": increment(1) });
+        setUserLiked(true);
+
+        if (creatorUid && currentUser.uid !== creatorUid) {
+          currentUser
+            .getIdToken()
+            .then((token) =>
+              fetch(`${GENERAL_WORKER_URL}/api/general/notification`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  userId: creatorUid,
+                  type: "new_like",
+                  title: "New Like!",
+                  message: `${profile?.displayName || currentUser.displayName || "Someone"} liked your post${post?.title ? ` "${post.title}"` : ""}`,
+                  link: creatorHandle
+                    ? `/${creatorHandle}/community/${postId}`
+                    : `/explore/posts/${postId}`,
+                  actorName:
+                    profile?.displayName ||
+                    currentUser.displayName ||
+                    "Anonymous",
+                  actorId: currentUser.uid,
+                  metadata: { postId, postTitle: post?.title, username: creatorHandle },
+                }),
+              }),
+            )
+            .catch(() => {});
+        }
+      }
+    } catch {
+      toast.error("Could not update like");
+    } finally {
+      setLiking(false);
+    }
+  }, [currentUser, liking, postId, creatorUid, profile, post, creatorHandle]);
 
   const handleComment = useCallback(async () => {
-    if (!currentUser?.uid) { toast.error("Please log in to comment"); return; }
+    if (!currentUser?.uid) {
+      toast.error("Please log in to comment");
+      return;
+    }
     if (!newComment.trim()) return;
     setSubmittingComment(true);
     try {
       await addDoc(collection(db, "creatorContent", postId, "comments"), {
+        postId,
         userId: currentUser.uid,
-        userName: profile?.displayName || currentUser.displayName || "Anonymous",
+        userName:
+          profile?.displayName || currentUser.displayName || "Anonymous",
         userPhoto: profile?.photoURL || currentUser.photoURL || "",
         content: newComment.trim(),
         createdAt: serverTimestamp(),
@@ -166,42 +412,72 @@ export default function PostDetailPage({ username, postId }: { username: string;
         commentCount: increment(1),
       });
       setNewComment("");
-      if (currentUser.uid !== creatorData?.uid) {
-        currentUser.getIdToken().then((token) => {
-          fetch(`${GENERAL_WORKER_URL}/api/general/notification`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-            body: JSON.stringify({
-              userId: creatorData?.uid,
-              type: "new_comment",
-              title: "New Comment!",
-              message: `${profile?.displayName || currentUser.displayName || "Someone"} commented on your post${post?.title ? ` "${post.title}"` : ""}`,
-              link: `/${username}/community/${postId}`,
-              actorName: profile?.displayName || currentUser.displayName || "Anonymous",
-              actorId: currentUser.uid,
-              metadata: { postId, postTitle: post?.title, username },
+
+      if (creatorUid && currentUser.uid !== creatorUid) {
+        currentUser
+          .getIdToken()
+          .then((token) =>
+            fetch(`${GENERAL_WORKER_URL}/api/general/notification`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                userId: creatorUid,
+                type: "new_comment",
+                title: "New Comment!",
+                message: `${profile?.displayName || currentUser.displayName || "Someone"} commented on your post${post?.title ? ` "${post.title}"` : ""}`,
+                link: creatorHandle
+                  ? `/${creatorHandle}/community/${postId}`
+                  : `/explore/posts/${postId}`,
+                actorName:
+                  profile?.displayName ||
+                  currentUser.displayName ||
+                  "Anonymous",
+                actorId: currentUser.uid,
+                metadata: { postId, postTitle: post?.title, username: creatorHandle },
+              }),
             }),
-          }).catch(() => {});
-        }).catch(() => {});
+          )
+          .catch(() => {});
       }
-    } catch { toast.error("Failed to add comment"); }
-    finally { setSubmittingComment(false); }
-  }, [currentUser, newComment, postId, profile, creatorData, post, username]);
+    } catch {
+      toast.error("Failed to post comment");
+    } finally {
+      setSubmittingComment(false);
+    }
+  }, [currentUser, newComment, postId, profile, creatorUid, post, creatorHandle]);
 
-  const handleDeleteComment = useCallback(async (commentId: string) => {
-    setDeleteCommentId(commentId);
-  }, []);
-
-  const confirmDeleteComment = useCallback(async () => {
-    if (!deleteCommentId) return;
+  const handleReply = async (parentId: string) => {
+    if (!currentUser?.uid) {
+      toast.error("Please log in to reply");
+      return;
+    }
+    const text = replyText[parentId]?.trim();
+    if (!text) return;
     try {
-      await deleteDoc(doc(db, "creatorContent", postId, "comments", deleteCommentId));
-      toast.success("Comment deleted");
-      setDeleteCommentId(null);
-    } catch { toast.error("Failed to delete comment"); }
-  }, [postId, deleteCommentId]);
+      await addDoc(collection(db, "creatorContent", postId, "comments"), {
+        postId,
+        parentId,
+        userId: currentUser.uid,
+        userName:
+          profile?.displayName || currentUser.displayName || "Anonymous",
+        userPhoto: profile?.photoURL || currentUser.photoURL || "",
+        content: text,
+        createdAt: serverTimestamp(),
+      });
+      await updateDoc(doc(db, "creatorContent", postId), {
+        commentCount: increment(1),
+      });
+      setReplyText((prev) => ({ ...prev, [parentId]: "" }));
+      setReplyingTo(null);
+    } catch {
+      toast.error("Failed to post reply");
+    }
+  };
 
-  const handleEditComment = useCallback(async (commentId: string) => {
+  const handleEditComment = async (commentId: string) => {
     if (!editCommentContent.trim()) return;
     try {
       await updateDoc(doc(db, "creatorContent", postId, "comments", commentId), {
@@ -210,251 +486,734 @@ export default function PostDetailPage({ username, postId }: { username: string;
       });
       setEditingCommentId(null);
       setEditCommentContent("");
-      toast.success("Comment updated");
-    } catch { toast.error("Failed to update comment"); }
-  }, [editCommentContent, postId]);
-
-  const startEditing = (comment: any) => {
-    setEditingCommentId(comment.id);
-    setEditCommentContent(comment.content || comment.text || "");
+    } catch {
+      toast.error("Failed to update comment");
+    }
   };
 
-  if (loading) return <DetailSkeleton />;
-  if (!post || !creatorData) {
+  const handleDeleteComment = async (commentId: string) => {
+    setDeletingComment(true);
+    try {
+      await deleteDoc(doc(db, "creatorContent", postId, "comments", commentId));
+      await updateDoc(doc(db, "creatorContent", postId), {
+        commentCount: increment(-1),
+      });
+      setDeleteCommentId(null);
+    } catch {
+      toast.error("Failed to delete comment");
+    } finally {
+      setDeletingComment(false);
+    }
+  };
+
+  const canonicalPath = creatorHandle
+    ? `/${creatorHandle}/community/${postId}`
+    : `/explore/posts/${postId}`;
+
+  const handleShare = async () => {
+    const shareUrl = `${baseUrl}${canonicalPath}`;
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({ title: post?.title || "Post on Agaseke", url: shareUrl });
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success("Link copied to clipboard");
+      }
+    } catch (error) {
+      if ((error as { name?: string })?.name !== "AbortError") {
+        toast.error("Could not share link");
+      }
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <p className="text-muted-fg">Post not found</p>
-          <Link href={`/${username}`} className="text-brand-strong font-bold mt-4 inline-block">Go Back</Link>
+      <div className="min-h-screen bg-canvas pb-20 text-fg">
+        <LoadingState
+          variant="page"
+          className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8"
+        />
+      </div>
+    );
+  }
+
+  if (!post) {
+    return (
+      <div className="min-h-screen bg-canvas px-4 py-20 text-fg">
+        <div className="mx-auto max-w-2xl">
+          <EmptyState
+            title="Post not found"
+            description="This post may have been removed or is not available."
+            action={
+              <Link
+                href={backHref || "/explore/posts"}
+                className={buttonClasses({ variant: "primary", size: "md" })}
+              >
+                <ArrowLeft className="size-4" aria-hidden="true" />
+                {backLabel || "Back to posts"}
+              </Link>
+            }
+          />
         </div>
       </div>
     );
   }
 
+  const unlocked = !post.isPrivate || access === "unlocked";
+  const textBody = post.description || post.content || "";
+  const youtubeUrl = (() => {
+    if (!unlocked || !textBody) return null;
+    const link = hasYouTubeLink(textBody);
+    const id = link ? extractYouTubeId(link) : null;
+    return id ? { videoId: id } : null;
+  })();
+
+  const pages =
+    post.type === "document" && post.contentUrl
+      ? Array.isArray(post.contentUrl)
+        ? post.contentUrl
+        : [post.contentUrl]
+      : [];
+
+  const totalCommentsCount = comments.reduce(
+    (sum, item) => sum + 1 + (item.replies?.length || 0),
+    0,
+  );
+  const likeDisplayCount =
+    likes.size > 0 ? likes.size : Number(post.likesCount || 0);
+  const resolvedBackHref =
+    backHref || (username ? `/${username}` : "/explore/posts");
+  const resolvedBackLabel =
+    backLabel || (username ? `Back to ${creatorName}` : "All posts");
+  const loginHref = `/login?redirect=${encodeURIComponent(canonicalPath)}`;
+
   return (
-    <>
-      <div className="max-w-3xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <Link href={`/${username}`} className="flex items-center gap-2 text-muted-fg hover:text-fg transition inline-flex">
-            <ArrowLeft size={20} />
-            <span className="font-medium">Back to Profile</span>
+    <div className="min-h-screen bg-canvas pb-20 text-fg">
+      <div className="mx-auto max-w-3xl px-4 pt-8 sm:px-6 lg:px-8">
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <Link
+            href={resolvedBackHref}
+            className="inline-flex min-h-11 items-center gap-2 rounded-control text-label font-semibold text-muted-fg transition-colors hover:text-fg"
+          >
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            {resolvedBackLabel}
           </Link>
 
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-brand-strong text-on-brand px-4 py-2 rounded-control font-bold hover:bg-brand-strong transition"
-          >
-            <Heart size={18} className="fill-current" />
-            Support
-          </button>
+          <div className="flex items-center gap-2">
+            <IconButton
+              variant="secondary"
+              label="Share post"
+              icon={<Share2 />}
+              onClick={handleShare}
+            />
+            {creatorHandle && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setSupportOpen(true)}
+                leadingIcon={<Heart className="size-4" aria-hidden="true" />}
+              >
+                Support
+              </Button>
+            )}
+          </div>
         </div>
 
-        <div className="bg-surface rounded-card shadow-sm border border-line overflow-hidden">
-          <div className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <Link href={`/${username}`} className="shrink-0">
-                <div className="w-10 h-10 rounded-full bg-surface-sunken flex items-center justify-center text-muted-fg font-medium">
-                  {creatorData?.name?.[0] || "?"}
-                </div>
-              </Link>
-              <div>
-                <Link href={`/${username}`} className="font-semibold text-fg hover:text-brand-strong">
-                  {creatorData?.name || username}
-                </Link>
-                <p className="text-xs text-muted-fg">
-                  @{username} &middot; {post.createdAt?.toDate?.().toLocaleDateString()}
-                </p>
-              </div>
-              <div className="ml-auto flex items-center gap-2">
-                <span className="text-caption font-bold bg-surface-sunken px-2 py-1 rounded uppercase tracking-widest text-muted-fg">
-                  {post.type === "video" ? "Video" : post.type === "image" ? "Image" : post.type === "document" ? "Document" : post.type === "article" ? "Article" : "Post"}
-                </span>
-                {post.isPrivate && (
-                  <span className="flex items-center gap-1 text-caption font-bold px-2 py-1 rounded uppercase tracking-widest bg-warning-bg dark:bg-warning text-warning dark:text-warning">
-                    <Lock size={10} /> Supporters Only
+        <article className="overflow-hidden rounded-card border border-line bg-surface shadow-card">
+          {unlocked && post.type === "image" && !Array.isArray(post.contentUrl) && post.contentUrl && (
+            <button
+              type="button"
+              className="block w-full overflow-hidden border-b border-line bg-surface-raised text-left"
+              onClick={() => setViewingImage(post.contentUrl)}
+              aria-label="View full size image"
+            >
+              <MediaAsset
+                postId={post.id}
+                isPrivate={!!post.isPrivate}
+                url={post.contentUrl}
+                alt={post.title || "Post image"}
+                className="max-h-[34rem] w-full cursor-zoom-in object-contain transition-opacity hover:opacity-95"
+              />
+            </button>
+          )}
+
+          {unlocked && post.type === "video" && post.contentUrl && (
+            <div className="overflow-hidden border-b border-line bg-black">
+              <MediaAsset
+                postId={post.id}
+                isPrivate={!!post.isPrivate}
+                url={post.contentUrl}
+                as="video"
+                controls
+                controlsList="nodownload"
+                className="aspect-video w-full"
+              />
+            </div>
+          )}
+
+          <div className="p-6 sm:p-8 md:p-10">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-caption font-semibold text-muted-fg">
+              <span className="uppercase tracking-wider text-brand-strong">
+                {typeLabel(post.type)}
+              </span>
+              <span aria-hidden="true">·</span>
+              <span>{formatDate(post.publishedAt || post.createdAt)}</span>
+              {typeof post.views === "number" && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="inline-flex items-center gap-1">
+                    <Eye className="size-3.5" aria-hidden="true" />
+                    {post.views}
                   </span>
-                )}
-              </div>
+                </>
+              )}
+              {post.isPrivate && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="inline-flex items-center gap-1 text-warning">
+                    <Lock className="size-3.5" aria-hidden="true" />
+                    Supporters only
+                  </span>
+                </>
+              )}
             </div>
 
             {post.title && (
-              <h1 className="text-2xl font-bold text-fg mb-3">{post.title}</h1>
+              <h1 className="mt-3 text-heading font-black tracking-tight text-fg sm:text-display">
+                {post.title}
+              </h1>
             )}
 
-            {post.type === "article" ? (
-              <div className="mb-4">
-                {(post.coverUrl || post.contentUrl) && (
-                  <MediaAsset
-                    postId={post.id}
-                    isPrivate={!!post.isPrivate}
-                    url={post.coverUrl || post.contentUrl}
-                    alt={post.title}
-                    className="w-full max-h-[420px] object-cover rounded-control mb-4"
-                  />
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-b border-line pb-6">
+              <Link
+                href={creatorHandle ? `/${creatorHandle}` : "/explore"}
+                className="group flex min-w-0 items-center gap-3"
+              >
+                <Avatar src={creatorPhoto} name={creatorName} size="md" />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="truncate text-label font-bold text-fg transition-colors group-hover:text-brand-strong">
+                      {creatorName}
+                    </span>
+                    {creatorData?.verified && (
+                      <CheckCircle2
+                        className="size-4 shrink-0 text-success"
+                        aria-label="Verified creator"
+                      />
+                    )}
+                  </div>
+                  {creatorHandle && (
+                    <p className="truncate text-caption text-muted-fg">
+                      @{creatorHandle}
+                    </p>
+                  )}
+                </div>
+              </Link>
+
+              {creatorHandle && (
+                <Link
+                  href={`/${creatorHandle}`}
+                  className={buttonClasses({ variant: "secondary", size: "sm" })}
+                >
+                  View creator page
+                </Link>
+              )}
+            </div>
+
+            {!unlocked ? (
+              <div className="py-10 text-center">
+                <span className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-brand-soft text-brand-strong">
+                  <Lock className="size-6" aria-hidden="true" />
+                </span>
+                <h2 className="text-title font-bold text-fg">
+                  {currentUser
+                    ? `Supporters-only post by ${creatorName}`
+                    : "Sign in to view this post"}
+                </h2>
+                <p className="mx-auto mt-2 max-w-md text-body text-muted-fg">
+                  {currentUser
+                    ? `Support ${creatorName} on Agaseke to unlock this post and future supporter-only releases.`
+                    : `Log in to check access or support ${creatorName}.`}
+                </p>
+                {currentUser ? (
+                  <Button
+                    className="mt-6"
+                    size="lg"
+                    onClick={() => setSupportOpen(true)}
+                    leadingIcon={
+                      <Heart className="size-5 fill-current" aria-hidden="true" />
+                    }
+                  >
+                    Support {creatorName}
+                  </Button>
+                ) : (
+                  <Link
+                    href={loginHref}
+                    className={buttonClasses({
+                      variant: "primary",
+                      size: "lg",
+                      className: "mt-6",
+                    })}
+                  >
+                    <LogIn className="size-5" aria-hidden="true" />
+                    Log in
+                  </Link>
                 )}
-                {post.shortDescription && (
-                  <p className="text-sm text-muted-fg italic mb-4">
-                    {post.shortDescription}
-                  </p>
-                )}
-                <RichContentRenderer html={post.htmlContent || ""} />
               </div>
             ) : (
-              <div className="text-muted-fg whitespace-pre-wrap leading-relaxed mb-4">
-                <LinkifyText text={post.description || post.content} />
-              </div>
-            )}
-
-            {(() => {
-              const text = post.description || post.content || "";
-              const youtubeUrl = hasYouTubeLink(text);
-              if (!youtubeUrl) return null;
-              const videoId = extractYouTubeId(youtubeUrl);
-              if (!videoId) return null;
-              return (
-                <div className="rounded-control overflow-hidden bg-black mb-4">
-                  <iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full aspect-video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-                </div>
-              );
-            })()}
-
-            {post.type === "image" && !Array.isArray(post.contentUrl) && post.contentUrl && (
-              <div className="rounded-control overflow-hidden bg-surface-sunken mb-4 cursor-zoom-in" onClick={() => setViewingImage({ url: post.contentUrl })}>
-                <MediaAsset postId={post.id} isPrivate={!!post.isPrivate} url={post.contentUrl} alt={post.title} className="w-full max-h-[500px] object-contain hover:opacity-90 transition-opacity" />
-              </div>
-            )}
-
-            {post.type === "video" && post.contentUrl && (
-              <div className="rounded-control overflow-hidden bg-black mb-4">
-                <MediaAsset postId={post.id} isPrivate={!!post.isPrivate} url={post.contentUrl} as="video" controls controlsList="nodownload" className="w-full aspect-video" />
-              </div>
-            )}
-
-            {post.type === "document" && (() => {
-              const pages = post.contentUrl && Array.isArray(post.contentUrl) ? post.contentUrl : post.contentUrl ? [post.contentUrl] : [];
-              if (pages.length === 0) return null;
-              const documentSrc = mediaSrc(pages[documentIndex]);
-              if (!documentSrc) return null;
-              return (
-                <div className="bg-surface-sunken rounded-control p-4 border border-line mb-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-12 h-12 bg-brand-soft rounded-control flex items-center justify-center">
-                      <FileText size={24} className="text-brand-strong" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-sm text-fg">Document</p>
-                      <p className="text-xs text-muted-fg">{pages.length} page{pages.length > 1 ? "s" : ""}</p>
-                    </div>
+              <div className="mt-6 space-y-6">
+                {post.type === "article" ? (
+                  <>
+                    {(post.coverUrl || post.contentUrl) && (
+                      <MediaAsset
+                        postId={post.id}
+                        isPrivate={!!post.isPrivate}
+                        url={post.coverUrl || post.contentUrl}
+                        alt={post.title || "Article cover"}
+                        className="max-h-[26rem] w-full rounded-control object-cover"
+                      />
+                    )}
+                    {post.shortDescription && (
+                      <p className="border-y border-line py-4 text-body-lg leading-relaxed text-muted-fg">
+                        {post.shortDescription}
+                      </p>
+                    )}
+                    <RichContentRenderer html={post.htmlContent || ""} />
+                  </>
+                ) : textBody ? (
+                  <div className="whitespace-pre-wrap text-body-lg leading-relaxed text-fg/90">
+                    <LinkifyText text={textBody} />
                   </div>
-                  {pages.length > 1 && (
-                    <div className="flex items-center justify-between mb-3">
-                      <button onClick={() => setDocumentIndex((i) => Math.max(0, i - 1))} disabled={documentIndex === 0} className="p-1.5 bg-surface border rounded-control disabled:opacity-50"><ChevronLeft size={16} /></button>
-                      <span className="text-sm text-muted-fg">{documentIndex + 1} of {pages.length}</span>
-                      <button onClick={() => setDocumentIndex((i) => Math.min(pages.length - 1, i + 1))} disabled={documentIndex === pages.length - 1} className="p-1.5 bg-surface border rounded-control disabled:opacity-50"><ChevronRight size={16} /></button>
+                ) : null}
+
+                {post.type === "document" && pages.length > 0 && (
+                  <div className="rounded-card border border-line bg-surface-sunken p-4 sm:p-6">
+                    <div className="mb-4 flex items-center gap-3">
+                      <span className="flex size-11 items-center justify-center rounded-control bg-brand-soft text-brand-strong">
+                        <FileText className="size-5" aria-hidden="true" />
+                      </span>
+                      <div className="flex-1">
+                        <p className="text-label font-bold text-fg">Document</p>
+                        <p className="text-caption text-muted-fg">
+                          {pages.length} page{pages.length > 1 ? "s" : ""}
+                        </p>
+                      </div>
+                      {pages.length > 1 && (
+                        <div className="flex items-center gap-2">
+                          <IconButton
+                            size="sm"
+                            variant="secondary"
+                            label="Previous document page"
+                            icon={<ChevronLeft />}
+                            disabled={documentIndex === 0}
+                            onClick={() =>
+                              setDocumentIndex(Math.max(0, documentIndex - 1))
+                            }
+                          />
+                          <span className="text-caption font-semibold text-fg">
+                            {documentIndex + 1} / {pages.length}
+                          </span>
+                          <IconButton
+                            size="sm"
+                            variant="secondary"
+                            label="Next document page"
+                            icon={<ChevronRight />}
+                            disabled={documentIndex === pages.length - 1}
+                            onClick={() =>
+                              setDocumentIndex(
+                                Math.min(pages.length - 1, documentIndex + 1),
+                              )
+                            }
+                          />
+                        </div>
+                      )}
                     </div>
-                  )}
-                  <iframe src={`https://docs.google.com/viewer?url=${encodeURIComponent(documentSrc)}&embedded=true`} className="w-full h-[500px] rounded-control bg-surface" title="Document" />
-                </div>
-              );
-            })()}
-
-            <div className="flex items-center gap-4 pt-4 border-t border-line text-sm text-muted-fg">
-              <span className="flex items-center gap-1.5"><Eye size={16} /> {post.views || 0}</span>
-            </div>
-
-            <div className="flex items-center gap-4 mt-4">
-              <button onClick={handleLike} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-control text-sm font-medium transition ${userLiked ? "bg-danger-bg text-danger" : "bg-surface-sunken text-muted-fg hover:bg-surface-sunken"}`}>
-                <Heart size={18} className={userLiked ? "fill-current" : ""} /> {likes.size}
-              </button>
-              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-control text-sm font-medium bg-surface-sunken text-muted-fg">
-                <MessageCircle size={18} /> {comments.length}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-8">
-          <h3 className="text-lg font-bold mb-4 text-fg">Comments ({comments.length})</h3>
-          <div className="space-y-4">
-            {comments.map((c) => (
-              <div key={c.id} className="flex gap-3 bg-surface p-4 rounded-control border border-line">
-                <div className="w-8 h-8 rounded-full bg-brand-soft dark:bg-brand-strong flex items-center justify-center text-xs font-bold text-brand-strong dark:text-brand-strong flex-shrink-0 overflow-hidden">
-                  {c.userPhoto ? <img src={c.userPhoto} alt="" className="w-full h-full object-cover" /> : (c.userName?.[0] || "?")}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-fg">{c.userName}</p>
-                  {editingCommentId === c.id ? (
-                    <div className="mt-1 flex gap-2">
-                      <input value={editCommentContent} onChange={e => setEditCommentContent(e.target.value)}
-                        className="flex-1 bg-canvas border border-line-strong rounded-control px-3 py-1.5 text-sm focus:ring-2 focus:ring-brand-soft dark:focus:ring-brand-strong outline-none text-fg"
-                        onKeyDown={e => e.key === "Enter" && handleEditComment(c.id)} />
-                      <button onClick={() => handleEditComment(c.id)} className="p-1.5 text-success hover:bg-success-bg dark:hover:bg-success rounded-control transition"><Check size={16} /></button>
-                      <button onClick={() => { setEditingCommentId(null); setEditCommentContent(""); }} className="p-1.5 text-muted-fg hover:bg-surface-sunken dark:hover:bg-surface-raised rounded-control transition"><X size={16} /></button>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-fg mt-0.5 whitespace-pre-wrap"><LinkifyText text={c.content || c.text} /></p>
-                  )}
-                  <div className="flex items-center gap-3 mt-1">
-                    <p className="text-caption text-muted-fg">{c.createdAt?.toDate?.().toLocaleDateString() || ""}</p>
-                    {(currentUser?.uid === c.userId) && !editingCommentId && (
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => startEditing(c)} className="p-1 text-muted-fg hover:text-fg hover:bg-surface-sunken rounded transition"><Pencil size={12} /></button>
-                        <button onClick={() => handleDeleteComment(c.id)} className="p-1 text-muted-fg hover:text-danger hover:bg-danger-bg dark:hover:bg-danger rounded transition"><Trash2 size={12} /></button>
+                    {mediaSrc(pages[documentIndex]) ? (
+                      <iframe
+                        src={`https://docs.google.com/viewer?url=${encodeURIComponent(
+                          mediaSrc(pages[documentIndex]) as string,
+                        )}&embedded=true`}
+                        className="h-[31rem] w-full rounded-control border border-line bg-surface"
+                        title="Document viewer"
+                      />
+                    ) : (
+                      <div className="flex h-[24rem] items-center justify-center rounded-control border border-line bg-surface text-label text-muted-fg">
+                        Preparing document…
                       </div>
                     )}
                   </div>
-                </div>
-              </div>
-            ))}
-            {comments.length === 0 && (
-              <p className="text-muted-fg text-sm text-center py-8">No comments yet. Be the first to comment!</p>
-            )}
-          </div>
+                )}
 
-          <div className="mt-6 flex gap-3">
-            <input value={newComment} onChange={e => setNewComment(e.target.value)} placeholder={currentUser ? "Write a comment..." : "Log in to comment"}
-              disabled={!currentUser} onKeyDown={e => e.key === "Enter" && handleComment()}
-              className="flex-1 bg-canvas border border-line-strong rounded-control px-4 py-3 text-sm focus:ring-2 focus:ring-brand-soft dark:focus:ring-brand-strong outline-none text-fg placeholder:text-muted-fg" />
-            <button onClick={handleComment} disabled={!currentUser || !newComment.trim() || submittingComment}
-              className="px-5 py-3 bg-brand-strong text-on-brand rounded-control font-bold text-sm hover:bg-brand-strong transition disabled:opacity-50">
-              {submittingComment ? <Loader className="animate-spin" size={16} /> : "Post"}
-            </button>
+                {youtubeUrl && (
+                  <div className="overflow-hidden rounded-card bg-black">
+                    <iframe
+                      src={`https://www.youtube.com/embed/${youtubeUrl.videoId}`}
+                      className="aspect-video w-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      title={`Video: ${post.title || "Creator post"}`}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  aria-pressed={userLiked}
+                  disabled={liking}
+                  onClick={handleLike}
+                  leadingIcon={
+                    <Heart
+                      className={cn(
+                        "size-4",
+                        userLiked && "fill-current text-brand-strong",
+                      )}
+                      aria-hidden="true"
+                    />
+                  }
+                >
+                  {likeDisplayCount}
+                </Button>
+                <span className="inline-flex min-h-9 items-center gap-1.5 rounded-control border border-line bg-surface-raised px-3 text-label font-semibold text-muted-fg">
+                  <MessageCircle className="size-4" aria-hidden="true" />
+                  {totalCommentsCount}
+                </span>
+              </div>
+
+              {creatorHandle && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setSupportOpen(true)}
+                  leadingIcon={<Heart className="size-4" aria-hidden="true" />}
+                >
+                  Support {creatorName}
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
+        </article>
+
+        <Card className="mt-6 p-5 sm:p-6">
+          <h2 className="flex items-center gap-2 text-title font-bold text-fg">
+            <MessageCircle className="size-5 text-brand-strong" aria-hidden="true" />
+            Comments ({totalCommentsCount})
+          </h2>
+
+          {currentUser ? (
+            <div className="mt-5 flex gap-3">
+              <Avatar
+                src={profile?.photoURL || currentUser.photoURL}
+                name={profile?.displayName || currentUser.displayName}
+                size="md"
+              />
+              <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row">
+                <Input
+                  aria-label="Write a comment"
+                  placeholder="Add a comment…"
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      void handleComment();
+                    }
+                  }}
+                  containerClassName="flex-1"
+                />
+                <Button
+                  onClick={handleComment}
+                  disabled={!newComment.trim()}
+                  loading={submittingComment}
+                >
+                  Post
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-4 text-label text-muted-fg">
+              <Link
+                href={loginHref}
+                className="font-semibold text-brand-strong hover:underline"
+              >
+                Log in
+              </Link>{" "}
+              to join the conversation.
+            </p>
+          )}
+
+          {comments.length > 0 ? (
+            <div className="mt-6 space-y-5">
+              {comments.map((comment) => {
+                const body = comment.content || comment.text || "";
+                return (
+                  <div key={comment.id} className="flex gap-3">
+                    <Avatar
+                      src={comment.userPhoto}
+                      name={comment.userName}
+                      size="sm"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="rounded-card bg-surface-raised px-4 py-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-caption font-bold text-fg">
+                            {comment.userName}
+                          </p>
+                          <span className="text-caption text-muted-fg">
+                            {formatDate(comment.createdAt)}
+                          </span>
+                        </div>
+                        {editingCommentId === comment.id ? (
+                          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                            <Input
+                              aria-label="Edit comment"
+                              value={editCommentContent}
+                              onChange={(e) => setEditCommentContent(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  void handleEditComment(comment.id);
+                                }
+                              }}
+                              containerClassName="flex-1"
+                              autoFocus
+                            />
+                            <div className="flex gap-1.5">
+                              <Button
+                                size="sm"
+                                onClick={() => handleEditComment(comment.id)}
+                                leadingIcon={<Check className="size-4" aria-hidden="true" />}
+                              >
+                                Save
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => {
+                                  setEditingCommentId(null);
+                                  setEditCommentContent("");
+                                }}
+                                leadingIcon={<X className="size-4" aria-hidden="true" />}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="mt-1 whitespace-pre-wrap text-body text-fg/90">
+                            <LinkifyText text={body} />
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="mt-1 flex flex-wrap items-center gap-3 px-1">
+                        {currentUser && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setReplyingTo(
+                                replyingTo === comment.id ? null : comment.id,
+                              )
+                            }
+                            className="inline-flex min-h-10 items-center text-caption font-semibold text-muted-fg hover:text-fg"
+                          >
+                            Reply
+                          </button>
+                        )}
+                        {currentUser?.uid === comment.userId && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingCommentId(comment.id);
+                                setEditCommentContent(body);
+                              }}
+                              className="inline-flex min-h-10 items-center gap-1 text-caption font-semibold text-muted-fg hover:text-fg"
+                            >
+                              <Pencil className="size-3.5" aria-hidden="true" />
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDeleteCommentId(comment.id)}
+                              className="inline-flex min-h-10 items-center gap-1 text-caption font-semibold text-danger hover:underline"
+                            >
+                              <Trash2 className="size-3.5" aria-hidden="true" />
+                              Delete
+                            </button>
+                          </>
+                        )}
+                      </div>
+
+                      {replyingTo === comment.id && (
+                        <div className="mt-2 flex gap-2">
+                          <Input
+                            aria-label="Write a reply"
+                            placeholder="Write a reply…"
+                            value={replyText[comment.id] || ""}
+                            onChange={(e) =>
+                              setReplyText((prev) => ({
+                                ...prev,
+                                [comment.id]: e.target.value,
+                              }))
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                void handleReply(comment.id);
+                              }
+                            }}
+                            containerClassName="flex-1"
+                            autoFocus
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => handleReply(comment.id)}
+                            disabled={!replyText[comment.id]?.trim()}
+                          >
+                            Reply
+                          </Button>
+                        </div>
+                      )}
+
+                      {comment.replies && comment.replies.length > 0 && (
+                        <div className="mt-3 space-y-2 border-l-2 border-line pl-3">
+                          {comment.replies.map((reply) => (
+                            <div
+                              key={reply.id}
+                              className="flex items-start gap-2.5 rounded-control bg-surface-raised px-3 py-2"
+                            >
+                              <Avatar
+                                src={reply.userPhoto}
+                                name={reply.userName}
+                                size="sm"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-caption font-bold text-fg">
+                                  {reply.userName}
+                                </p>
+                                <p className="mt-0.5 whitespace-pre-wrap text-label text-muted-fg">
+                                  <LinkifyText text={reply.content || reply.text || ""} />
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="mt-6 text-center text-label text-muted-fg">
+              No comments yet.
+            </p>
+          )}
+        </Card>
+
+        {initialMoreContent.length > 0 && (
+          <section className="mt-8">
+            <h2 className="mb-4 text-title font-bold text-fg">
+              More from {creatorName}
+            </h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {initialMoreContent.map((item) => (
+                <Link
+                  key={item.id}
+                  href={
+                    item.type === "article" && item.slug
+                      ? `/articles/${item.slug}`
+                      : creatorHandle
+                        ? `/${creatorHandle}/community/${item.id}`
+                        : `/explore/posts/${item.id}`
+                  }
+                  className="group overflow-hidden rounded-card border border-line bg-surface transition-shadow hover:shadow-card"
+                >
+                  {item.type === "video" ? (
+                    <div className="relative flex aspect-video items-center justify-center bg-surface-raised">
+                      <span className="flex size-11 items-center justify-center rounded-full bg-brand-strong text-on-brand">
+                        <Play className="ml-0.5 size-4 fill-current" aria-hidden="true" />
+                      </span>
+                    </div>
+                  ) : item.coverUrl ? (
+                    <div className="aspect-video overflow-hidden bg-surface-raised">
+                      <img
+                        src={item.coverUrl}
+                        alt={item.title}
+                        className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex aspect-video items-center justify-center bg-surface-raised">
+                      {item.type === "document" ? (
+                        <FileText className="size-6 text-muted-fg" aria-hidden="true" />
+                      ) : (
+                        <Type className="size-6 text-muted-fg" aria-hidden="true" />
+                      )}
+                    </div>
+                  )}
+                  <div className="p-3">
+                    <p className="line-clamp-2 text-label font-bold text-fg transition-colors group-hover:text-brand-strong">
+                      {item.title}
+                    </p>
+                    <p className="mt-1 text-caption text-muted-fg">
+                      {typeLabel(item.type)} ·{" "}
+                      {formatDate(item.publishedAt || item.createdAt)}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
-      {viewingImage && (
-        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setViewingImage(null)}>
-          <button className="absolute top-4 right-4 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition" onClick={() => setViewingImage(null)}>
-            <X size={28} />
-          </button>
+
+      <Dialog
+        open={!!viewingImage}
+        onClose={() => setViewingImage(null)}
+        title={post.title || "Post image"}
+        size="xl"
+        contentClassName="p-2 sm:p-4"
+      >
+        {viewingImage && (
           <MediaAsset
             postId={post.id}
             isPrivate={!!post.isPrivate}
-            url={viewingImage.url}
-            alt="Full size"
-            className="max-w-full max-h-full object-contain animate-in zoom-in-95 duration-200"
+            url={viewingImage}
+            alt={post.title || "Post image"}
+            className="max-h-[75dvh] w-full rounded-control object-contain"
           />
-        </div>
-      )}
+        )}
+      </Dialog>
 
-      <SupportModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        creatorName={creatorData?.name || username}
-        creatorId={username}
-        uid={creatorData?.uid || ""}
-        includeReferral={false}
-      />
-
-      <ConfirmModal
-        isOpen={deleteCommentId !== null}
+      <ConfirmDialog
+        open={!!deleteCommentId}
         onClose={() => setDeleteCommentId(null)}
-        onConfirm={confirmDeleteComment}
-        title="Delete Comment?"
-        message="Are you sure you want to delete this comment? This action cannot be undone."
-        confirmText="Delete"
-        variant="danger"
+        onConfirm={() => deleteCommentId && handleDeleteComment(deleteCommentId)}
+        title="Delete comment"
+        description="This comment will be permanently removed."
+        confirmLabel="Delete"
+        loading={deletingComment}
       />
-    </>
+
+      {creatorHandle && (
+        <SupportModal
+          isOpen={supportOpen}
+          onClose={() => setSupportOpen(false)}
+          creatorName={creatorName}
+          creatorId={creatorHandle}
+          uid={creatorUid}
+          includeReferral={false}
+          defaultMessage={
+            post.title ? `I love this post! "${post.title}"` : "I love this post!"
+          }
+        />
+      )}
+    </div>
   );
 }

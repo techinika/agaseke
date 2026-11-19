@@ -65,44 +65,68 @@ export function Sidebar({
       <nav
         aria-label={navLabel}
         className={cn(
-          "flex-1 space-y-1 overflow-y-auto pb-4",
-          collapsed ? "px-2" : "px-3",
+          "flex-1 overflow-y-auto pb-4",
+          collapsed ? "space-y-1 px-2" : "space-y-4 px-3",
         )}
       >
-        {links.map((item) => {
-          const active = isNavItemActive(item, pathname);
-          const Icon = item.icon;
-          const label = t(item.labelKey);
+        {(() => {
+          const sections: Array<{ group?: NavItem["group"]; items: typeof links }> = [];
+          for (const item of links) {
+            const last = sections[sections.length - 1];
+            if (last && last.group === item.group) {
+              last.items.push(item);
+            } else {
+              sections.push({ group: item.group, items: [item] });
+            }
+          }
 
-          return (
-            <Link
-              key={item.id}
-              href={item.href}
-              target={item.external ? "_blank" : undefined}
-              rel={item.external ? "noreferrer" : undefined}
-              aria-current={active ? "page" : undefined}
-              aria-label={collapsed ? label : undefined}
-              title={collapsed ? label : undefined}
-              className={cn(
-                "flex min-h-11 items-center gap-3 rounded-control px-3 py-2.5 text-body font-medium outline-none transition-colors",
-                "focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
-                collapsed && "justify-center px-0",
-                active
-                  ? "bg-brand-soft text-brand-strong"
-                  : "text-muted-fg hover:bg-surface-raised hover:text-fg",
-              )}
-            >
-              <Icon
-                className={cn(
-                  "size-5 shrink-0",
-                  active ? "text-brand-strong" : "text-muted-fg",
-                )}
-                aria-hidden="true"
-              />
-              {!collapsed && <span className="truncate">{label}</span>}
-            </Link>
-          );
-        })}
+          return sections.map((section, sectionIdx) => (
+            <div key={section.group ?? `section-${sectionIdx}`} className="space-y-1">
+              {section.group &&
+                (collapsed ? (
+                  <div className="my-2 h-px bg-line" aria-hidden="true" />
+                ) : (
+                  <p className="px-3 pt-1 text-caption font-bold uppercase tracking-wider text-muted-fg">
+                    {t(section.group)}
+                  </p>
+                ))}
+              {section.items.map((item) => {
+                const active = isNavItemActive(item, pathname);
+                const Icon = item.icon;
+                const label = t(item.labelKey);
+
+                return (
+                  <Link
+                    key={item.id}
+                    href={item.href}
+                    target={item.external ? "_blank" : undefined}
+                    rel={item.external ? "noreferrer" : undefined}
+                    aria-current={active ? "page" : undefined}
+                    aria-label={collapsed ? label : undefined}
+                    title={collapsed ? label : undefined}
+                    className={cn(
+                      "flex min-h-11 items-center gap-3 rounded-control px-3 py-2 text-label font-semibold outline-none transition-colors",
+                      "focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
+                      collapsed && "justify-center px-0",
+                      active
+                        ? "bg-brand-soft text-brand-strong"
+                        : "text-muted-fg hover:bg-surface-raised hover:text-fg",
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        "size-5 shrink-0",
+                        active ? "text-brand-strong" : "text-muted-fg",
+                      )}
+                      aria-hidden="true"
+                    />
+                    {!collapsed && <span className="truncate">{label}</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          ));
+        })()}
       </nav>
 
       {footer && !collapsed && <div className="border-t border-line p-3">{footer}</div>}

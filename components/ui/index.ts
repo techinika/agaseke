@@ -13,6 +13,7 @@ export * from "./ErrorState";
 export * from "./FormField";
 export * from "./IconButton";
 export * from "./Input";
+export * from "./LoadingState";
 export * from "./MediaImage";
 export * from "./MediaPlayer";
 export * from "./Money";

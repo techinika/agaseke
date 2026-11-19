@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { ArrowLeft, LogOut, Shield } from "lucide-react";
 import AuthGuard from "@/auth/AuthGuard";
 import { handleLogout } from "@/db/functions/LogOut";
-import ThemeToggle from "@/components/parts/ThemeToggle";
 import { AppShell } from "@/components/shell/AppShell";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { DashboardMobileNav } from "@/components/shell/DashboardMobileNav";
@@ -36,8 +35,7 @@ export default function RootLayout({
           t("nav.admin"));
 
   return (
-    <AuthGuard>
-      <AppShell
+    <AppShell
         padded={false}
         width="full"
         bottomNav={<DashboardMobileNav surface="admin" role="admin" />}
@@ -85,7 +83,6 @@ export default function RootLayout({
               </h1>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
-              <ThemeToggle />
               <Link
                 href="/creator"
                 className="inline-flex min-h-11 items-center gap-2 rounded-control px-3 text-label font-semibold text-muted-fg transition-colors hover:bg-surface-raised hover:text-fg"
@@ -102,8 +99,7 @@ export default function RootLayout({
           </div>
         }
       >
-        {children}
+        <AuthGuard>{children}</AuthGuard>
       </AppShell>
-    </AuthGuard>
   );
 }

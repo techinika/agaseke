@@ -6,7 +6,6 @@ import { Compass, LogOut, UserCircle } from "lucide-react";
 import AuthGuard from "@/auth/AuthGuard";
 import { useAuth } from "@/auth/AuthContext";
 import { handleLogout } from "@/db/functions/LogOut";
-import ThemeToggle from "@/components/parts/ThemeToggle";
 import { AppShell } from "@/components/shell/AppShell";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { DashboardMobileNav } from "@/components/shell/DashboardMobileNav";
@@ -39,8 +38,7 @@ export default function SupporterLayout({
         : t("supporterLayout.title");
 
   return (
-    <AuthGuard>
-      <AppShell
+    <AppShell
         padded={false}
         width="full"
         bottomNav={<DashboardMobileNav surface="supporter" role="supporter" />}
@@ -91,7 +89,6 @@ export default function SupporterLayout({
               </h1>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
-              <ThemeToggle />
               <Link
                 href={isCreator ? "/creator" : "/onboarding"}
                 className={buttonClasses({
@@ -119,8 +116,7 @@ export default function SupporterLayout({
           </div>
         }
       >
-        {children}
+        <AuthGuard>{children}</AuthGuard>
       </AppShell>
-    </AuthGuard>
   );
 }

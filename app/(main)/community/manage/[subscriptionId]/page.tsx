@@ -16,14 +16,20 @@ import { isCurrencySupportedByMethod } from "@/lib/money/rails";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/db/firebase";
 import { toast } from "sonner";
+import { Card } from "@/components/ui/Card";
+import { Button, buttonClasses } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { LoadingState } from "@/components/ui/LoadingState";
 import {
-  Loader,
   Crown,
   Smartphone,
   CreditCard,
   ArrowLeft,
   Check,
   X,
+  ExternalLink,
 } from "lucide-react";
 
 function formatDate(iso: string): string {
@@ -35,15 +41,15 @@ function formatDate(iso: string): string {
   });
 }
 
-function statusBadge(status: string) {
+function statusTone(status: string) {
   const map: Record<string, string> = {
-    active: "bg-green-100 text-green-700",
-    pending: "bg-amber-100 text-amber-700",
-    expired: "bg-red-100 text-red-700",
-    cancelled: "bg-muted text-muted-foreground",
-    failed: "bg-red-100 text-red-700",
+    active: "text-success",
+    pending: "text-warning",
+    expired: "text-danger",
+    cancelled: "text-muted-fg",
+    failed: "text-danger",
   };
-  return map[status] || "bg-muted text-muted-foreground";
+  return map[status] || "text-muted-fg";
 }
 
 export default function CommunityManageDetailPage() {
@@ -60,7 +66,11 @@ export default function CommunityManageDetailPage() {
   const [renewing, setRenewing] = useState(false);
   const [renewError, setRenewError] = useState("");
   const [renewResult, setRenewResult] = useState<"success" | "error" | null>(null);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
   const [savingAutoRenew, setSavingAutoRenew] = useState(false);
+
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const processingRef = useRef<string | null>(null);
   const paymentTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -72,6 +82,7 @@ export default function CommunityManageDetailPage() {
       setSub(s);
       setPhone(s.phone || "");
       setRenewResult(null);
+      setCheckoutUrl(null);
     } catch {
       setNotFound(true);
     } finally {
@@ -109,7 +120,7 @@ export default function CommunityManageDetailPage() {
     };
   }, []);
 
-  const momoSupported = sub?.currency ? isCurrencySupportedByMethod("momo", sub.currency as any) : false;
+  const momoSupported = sub?.currency ? isCurrencySupportedByMethod("momo", sub.currency as never) : false;
 
   const handleRenew = async () => {
     if (!sub || !user) return;
@@ -123,6 +134,7 @@ export default function CommunityManageDetailPage() {
     setRenewing(true);
     setRenewError("");
     setRenewResult(null);
+    setCheckoutUrl(null);
     const runId = `renew-${Date.now()}`;
     processingRef.current = runId;
 
@@ -154,7 +166,7 @@ export default function CommunityManageDetailPage() {
               unsub();
             }
           });
-        }
+        },
       );
 
       if (paymentTimeoutRef.current) clearTimeout(paymentTimeoutRef.current);
@@ -168,7 +180,8 @@ export default function CommunityManageDetailPage() {
       }, 120000);
 
       if (method === "card" && result.paymentUrl) {
-        window.open(result.paymentUrl, "_blank");
+        setCheckoutUrl(result.paymentUrl);
+        toast.info("Open the checkout link below to complete your card payment.");
       } else if (method === "momo") {
         toast.info("Check your phone and enter your PIN to confirm");
       }
@@ -210,162 +223,155 @@ export default function CommunityManageDetailPage() {
     }
   };
 
-  const handleCancel = async () => {
+  const confirmCancel = async () => {
     if (!sub) return;
-    if (!window.confirm("Cancel this subscription? You can renew again later.")) return;
+    setCancelling(true);
     try {
       await cancelSubscription(sub.subscriptionId);
       toast.success("Subscription cancelled");
-      load();
+      setCancelOpen(false);
+      await load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to cancel");
+    } finally {
+      setCancelling(false);
     }
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-10">
+    <div className="mx-auto max-w-3xl px-4 py-10">
       <Link
         href="/community/manage"
-        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition mb-6"
+        className="mb-6 inline-flex items-center gap-2 text-label font-medium text-muted-fg transition-colors hover:text-fg"
       >
-        <ArrowLeft size={16} />
+        <ArrowLeft className="size-4" aria-hidden="true" />
         Back to subscriptions
       </Link>
 
       {!isLoggedIn ? (
-        <div className="text-center py-16">
-          <p className="text-sm text-muted-foreground mb-4">
-            Log in to manage this subscription.
-          </p>
-          <Link
-            href="/login"
-            className="px-6 py-3 bg-orange-600 text-white text-sm font-bold rounded-lg hover:bg-orange-700 transition"
-          >
-            Log in
-          </Link>
-        </div>
+        <EmptyState
+          icon={<Crown className="size-6" aria-hidden="true" />}
+          title="Log in to manage this subscription"
+          description="Sign in to view billing, renew, or update auto-renewal."
+          action={
+            <Link href="/login" className={buttonClasses({ variant: "primary" })}>
+              Log in
+            </Link>
+          }
+        />
       ) : loading ? (
-        <div className="flex justify-center py-16">
-          <Loader className="animate-spin text-orange-500" size={32} />
-        </div>
+        <LoadingState variant="page" label="Loading subscription" />
       ) : notFound || !sub ? (
-        <div className="text-center py-16 bg-card border border-border rounded-xl">
-          <Crown size={40} className="mx-auto text-muted-foreground mb-3" />
-          <p className="text-sm text-muted-foreground">
-            That subscription could not be found.
-          </p>
-        </div>
+        <EmptyState
+          icon={<Crown className="size-6" aria-hidden="true" />}
+          title="Subscription not found"
+          description="This membership could not be located."
+          action={
+            <Link href="/community/manage" className={buttonClasses({ variant: "secondary" })}>
+              All subscriptions
+            </Link>
+          }
+        />
       ) : (
-        <div className="space-y-8">
-          <div className="bg-card border border-border rounded-xl p-6">
-            <div className="flex items-center justify-between mb-2">
-              <h1 className="text-xl font-bold">{sub.tierName}</h1>
-              <span
-                className={`text-xs font-bold px-2 py-0.5 rounded-full ${statusBadge(sub.status)}`}
-              >
+        <div className="space-y-6">
+          <Card className="p-6">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <h1 className="text-title font-bold text-fg">{sub.tierName}</h1>
+              <span className={`text-caption font-semibold capitalize ${statusTone(sub.status)}`}>
                 {sub.status}
               </span>
             </div>
             {sub.creatorHandle && (
-              <p className="text-xs text-muted-foreground mb-4">by @{sub.creatorHandle}</p>
+              <p className="mb-5 text-caption text-muted-fg">
+                by @{sub.creatorHandle}
+              </p>
             )}
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <p>
-                <span className="text-muted-foreground text-xs block">Plan</span>
-                <span className="font-bold text-orange-600">
-                  {formatCurrency(sub.amount, sub.currency as any)}
-                  <span className="text-xs font-normal text-muted-foreground ml-1">
+            <div className="grid grid-cols-2 gap-4 text-label">
+              <div>
+                <span className="block text-caption text-muted-fg">Plan</span>
+                <span className="font-bold text-brand-strong">
+                  {formatCurrency(sub.amount, sub.currency as never)}
+                  <span className="ml-1 text-caption font-normal text-muted-fg">
                     /{sub.interval === "yearly" ? "year" : "month"}
                   </span>
                 </span>
-              </p>
-              <p>
-                <span className="text-muted-foreground text-xs block">
+              </div>
+              <div>
+                <span className="block text-caption text-muted-fg">
                   {sub.status === "active" ? "Next renewal" : "Membership ends"}
                 </span>
-                {formatDate(sub.expiresAt)}
-              </p>
-              <p>
-                <span className="text-muted-foreground text-xs block">Payment method</span>
-                {sub.paymentMethod === "momo" ? (
-                  <span className="capitalize">Mobile Money</span>
-                ) : (
-                  <span className="capitalize">
-                    {(sub.paymentMethod || "card") === "momo" ? "Mobile Money" : "Card"}
-                  </span>
-                )}
-              </p>
-              <p>
-                <span className="text-muted-foreground text-xs block">Auto-renew</span>
-                <span className={sub.autoRenew ? "text-green-600 font-bold" : ""}>
+                <span className="font-medium text-fg">{formatDate(sub.expiresAt)}</span>
+              </div>
+              <div>
+                <span className="block text-caption text-muted-fg">Payment method</span>
+                <span className="font-medium text-fg">
+                  {sub.paymentMethod === "momo" ? "Mobile Money" : "Card"}
+                </span>
+              </div>
+              <div>
+                <span className="block text-caption text-muted-fg">Auto-renew</span>
+                <span className={sub.autoRenew ? "font-semibold text-success" : "text-fg"}>
                   {sub.autoRenew ? "On" : "Off"}
                 </span>
-              </p>
+              </div>
             </div>
-          </div>
+          </Card>
 
           {(sub.status === "expired" || sub.status === "cancelled") && (
-            <div className="bg-card border border-border rounded-xl p-6">
-              <h2 className="font-bold mb-4">Renew Your Subscription</h2>
-              <p className="text-sm text-muted-foreground mb-6">
-                Renew your {sub.tierName} subscription to keep your benefits and
-                community access.
+            <Card className="p-6">
+              <h2 className="mb-2 text-body-lg font-bold text-fg">Renew Your Subscription</h2>
+              <p className="mb-6 text-label text-muted-fg">
+                Renew {sub.tierName} to keep your community perks and access.
               </p>
+
               <div className="space-y-4">
                 {!momoSupported ? (
-                  <p className="text-sm text-muted-foreground">
-                    This subscription is priced in USD, so card payment is the
-                    only option.
+                  <p className="text-label text-muted-fg">
+                    This subscription is priced in USD, so card payment is the only option.
                   </p>
                 ) : (
                   <div className="grid grid-cols-2 gap-3">
                     <button
+                      type="button"
                       onClick={() => setPaymentMethod("momo")}
-                      className={`p-4 border rounded-lg text-center transition ${
+                      className={`rounded-control border p-4 text-center transition-colors ${
                         paymentMethod === "momo"
-                          ? "border-orange-500 bg-orange-50"
-                          : "border-border hover:border-orange-300"
+                          ? "border-brand-strong bg-brand-soft"
+                          : "border-line bg-surface hover:border-line-strong"
                       }`}
                     >
                       <Smartphone
-                        size={24}
-                        className={`mx-auto mb-2 ${
-                          paymentMethod === "momo"
-                            ? "text-orange-600"
-                            : "text-muted-foreground"
+                        className={`mx-auto mb-2 size-6 ${
+                          paymentMethod === "momo" ? "text-brand-strong" : "text-muted-fg"
                         }`}
+                        aria-hidden="true"
                       />
                       <span
-                        className={`text-xs font-bold ${
-                          paymentMethod === "momo"
-                            ? "text-orange-700"
-                            : "text-muted-foreground"
+                        className={`text-caption font-bold ${
+                          paymentMethod === "momo" ? "text-brand-strong" : "text-muted-fg"
                         }`}
                       >
                         Mobile Money
                       </span>
                     </button>
                     <button
+                      type="button"
                       onClick={() => setPaymentMethod("card")}
-                      className={`p-4 border rounded-lg text-center transition ${
+                      className={`rounded-control border p-4 text-center transition-colors ${
                         paymentMethod === "card"
-                          ? "border-orange-500 bg-orange-50"
-                          : "border-border hover:border-orange-300"
+                          ? "border-brand-strong bg-brand-soft"
+                          : "border-line bg-surface hover:border-line-strong"
                       }`}
                     >
                       <CreditCard
-                        size={24}
-                        className={`mx-auto mb-2 ${
-                          paymentMethod === "card"
-                            ? "text-orange-600"
-                            : "text-muted-foreground"
+                        className={`mx-auto mb-2 size-6 ${
+                          paymentMethod === "card" ? "text-brand-strong" : "text-muted-fg"
                         }`}
+                        aria-hidden="true"
                       />
                       <span
-                        className={`text-xs font-bold ${
-                          paymentMethod === "card"
-                            ? "text-orange-700"
-                            : "text-muted-foreground"
+                        className={`text-caption font-bold ${
+                          paymentMethod === "card" ? "text-brand-strong" : "text-muted-fg"
                         }`}
                       >
                         Bank Card
@@ -375,69 +381,84 @@ export default function CommunityManageDetailPage() {
                 )}
 
                 {momoSupported && paymentMethod === "momo" && (
-                  <div>
-                    <label className="text-xs font-bold text-muted-foreground mb-1 block">
-                      MTN / Airtel Phone Number
-                    </label>
-                    <input
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="07XX XXXXXX"
-                      className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm"
-                    />
+                  <Input
+                    label="MTN / Airtel Phone Number"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="07XX XXXXXX"
+                  />
+                )}
+
+                <Button
+                  fullWidth
+                  onClick={handleRenew}
+                  loading={renewing}
+                  disabled={momoSupported && !paymentMethod}
+                >
+                  {renewing
+                    ? "Processing…"
+                    : `Renew for ${formatCurrency(sub.amount, sub.currency as never)}`}
+                </Button>
+
+                {checkoutUrl && (
+                  <div className="rounded-control border border-line bg-surface-sunken p-3 text-label">
+                    <p className="font-semibold text-fg">Continue to checkout</p>
+                    <a
+                      href={checkoutUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 inline-flex items-center gap-1.5 font-semibold text-brand-strong hover:underline"
+                    >
+                      Open card payment window <ExternalLink className="size-3.5" aria-hidden="true" />
+                    </a>
                   </div>
                 )}
 
-                <button
-                  onClick={handleRenew}
-                  disabled={renewing || (momoSupported && !paymentMethod)}
-                  className="w-full py-3 bg-orange-600 text-white text-sm font-bold rounded-lg hover:bg-orange-700 transition disabled:opacity-50"
-                >
-                  {renewing ? "Processing..." : `Renew for ${formatCurrency(sub.amount, sub.currency as any)}`}
-                </button>
-
                 {renewResult === "success" && (
-                  <div className="flex items-center gap-2 text-sm text-green-600 font-bold">
-                    <Check size={18} />
+                  <div className="flex items-center gap-2 text-label font-semibold text-success">
+                    <Check className="size-4" aria-hidden="true" />
                     Subscription renewed successfully!
                   </div>
                 )}
                 {renewError && (
-                  <div className="flex items-center gap-2 text-sm text-red-600">
-                    <X size={18} />
+                  <div className="flex items-center gap-2 text-label text-danger">
+                    <X className="size-4" aria-hidden="true" />
                     {renewError}
                   </div>
                 )}
               </div>
-            </div>
+            </Card>
           )}
 
-          <div className="bg-card border border-border rounded-xl p-6">
-            <h2 className="font-bold mb-4">Manage Subscription</h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
+          <Card className="p-6">
+            <h2 className="mb-4 text-body-lg font-bold text-fg">Manage Subscription</h2>
+            <div className="space-y-5">
+              <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-bold">Auto-renew</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-body font-semibold text-fg">Auto-renew</p>
+                  <p className="text-caption text-muted-fg">
                     {!momoSupported
                       ? "Auto-renew with Mobile Money is not available for this currency."
                       : sub.autoRenew
-                        ? "We'll charge the saved Mobile Money number when it's time to renew."
-                        : "Turn on to be charged automatically on your saved number."}
+                        ? "We'll charge your saved Mobile Money number when it's time to renew."
+                        : "Turn on to renew automatically using your saved number."}
                   </p>
                 </div>
                 {sub.status === "active" && (
                   <button
+                    type="button"
+                    role="switch"
+                    aria-checked={sub.autoRenew}
                     onClick={handleToggleAutoRenew}
                     disabled={savingAutoRenew}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-                      sub.autoRenew ? "bg-green-600" : "bg-muted"
-                    } disabled:opacity-50`}
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-pill transition-colors disabled:opacity-50 ${
+                      sub.autoRenew ? "bg-success" : "bg-surface-sunken border border-line-strong"
+                    }`}
                     aria-label="Toggle auto-renew"
                   >
                     <span
-                      className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
-                        sub.autoRenew ? "translate-x-5" : "translate-x-0.5"
+                      className={`inline-block size-4 transform rounded-full bg-surface shadow-sm transition-transform ${
+                        sub.autoRenew ? "translate-x-6" : "translate-x-1"
                       }`}
                     />
                   </button>
@@ -445,46 +466,54 @@ export default function CommunityManageDetailPage() {
               </div>
 
               {momoSupported && (
-                <div className="flex items-end gap-3">
-                  <div className="flex-1">
-                    <label className="text-xs font-bold text-muted-foreground mb-1 block">
-                      Saved Phone Number
-                    </label>
-                    <input
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="07XX XXXXXX"
-                      className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm"
-                    />
-                  </div>
-                  <button
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <Input
+                    label="Saved Phone Number"
+                    containerClassName="flex-1"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="07XX XXXXXX"
+                  />
+                  <Button
+                    variant="secondary"
                     onClick={handleUpdatePhone}
                     disabled={savingAutoRenew || !phone.trim()}
-                    className="px-4 py-2 bg-muted text-sm font-bold rounded-lg hover:bg-border transition disabled:opacity-50"
                   >
                     Update
-                  </button>
+                  </Button>
                 </div>
               )}
 
               {sub.status === "active" && (
-                <>
-                  <button
-                    onClick={handleCancel}
-                    className="w-full py-3 bg-red-50 text-red-600 text-sm font-bold rounded-lg hover:bg-red-100 transition"
+                <div className="border-t border-line pt-4">
+                  <Button
+                    variant="danger"
+                    fullWidth
+                    onClick={() => setCancelOpen(true)}
                   >
                     Cancel Subscription
-                  </button>
-                  <p className="text-xs text-muted-foreground">
-                    Cancelling ends auto-renewal. You keep access until your
-                    current period ends.
+                  </Button>
+                  <p className="mt-2 text-caption text-muted-fg">
+                    Cancelling ends auto-renewal. You keep access until the current period ends.
                   </p>
-                </>
+                </div>
               )}
             </div>
-          </div>
+          </Card>
         </div>
       )}
+
+      <ConfirmDialog
+        open={cancelOpen}
+        onClose={() => setCancelOpen(false)}
+        onConfirm={confirmCancel}
+        title="Cancel subscription?"
+        description="Cancelling stops automatic renewals. You can renew again anytime later."
+        confirmLabel="Cancel subscription"
+        cancelLabel="Keep subscription"
+        loading={cancelling}
+        tone="warning"
+      />
     </div>
   );
 }

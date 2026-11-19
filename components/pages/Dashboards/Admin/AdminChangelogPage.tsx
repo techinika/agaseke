@@ -22,7 +22,7 @@ import {
 } from "@/lib/changelogService";
 import { toast } from "sonner";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
-import Loading from "@/app/loading";
+import { LoadingState } from "@/components/ui/LoadingState";
 
 interface ChangelogEntry {
   id: string;
@@ -172,7 +172,7 @@ export default function AdminChangelogPage() {
   const plannedEntries = filteredEntries.filter((e) => e.category === "planned");
 
   if (loading) {
-    return <Loading />;
+    return <LoadingState variant="list" />;
   }
 
   return (

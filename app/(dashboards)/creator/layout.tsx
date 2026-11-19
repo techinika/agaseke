@@ -12,8 +12,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <AuthGuard>
-      <DashboardLayout>{children}</DashboardLayout>
-    </AuthGuard>
+    <DashboardLayout>
+      <AuthGuard>{children}</AuthGuard>
+    </DashboardLayout>
   );
 }

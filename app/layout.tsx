@@ -6,7 +6,6 @@ import { ToastViewport } from "@/components/ui/Toast";
 import DeferredAnalytics from "@/components/parts/DeferredAnalytics";
 import PwaRegister from "@/components/parts/PwaRegister";
 import LoginRedirectCapture from "@/auth/LoginRedirectCapture";
-import { ThemeProvider } from "next-themes";
 
 const rubik = Rubik({
   variable: "--font-rubik",
@@ -97,7 +96,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#FF0000",
+  themeColor: "#C40000",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
@@ -109,7 +108,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="scroll-smooth" suppressHydrationWarning>
+    <html lang="en" className="scroll-smooth">
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="apple-touch-icon" href="/agaseke.png" />
@@ -121,19 +120,12 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className={`${rubik.variable} antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <AuthProvider>
-            <ToastViewport />
-            {children}
-            <PwaRegister />
-            <LoginRedirectCapture />
-          </AuthProvider>
-        </ThemeProvider>
+        <AuthProvider>
+          <ToastViewport />
+          {children}
+          <PwaRegister />
+          <LoginRedirectCapture />
+        </AuthProvider>
         {process.env.NODE_ENV === "production" && <DeferredAnalytics />}
       </body>
     </html>

@@ -1,37 +1,21 @@
 export const revalidate = 300;
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { adminDb } from "@/db/firebaseAdmin";
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { baseUrl } from "@/lib/baseUrl";
 import ExplorePostDetailPage from "@/components/pages/ExplorePostDetailPage";
 import ArticleReaderPage from "@/components/pages/public/ArticleReaderPage";
 import ArticleSchema from "@/components/seo/ArticleSchema";
+import PostSchema from "@/components/seo/PostSchema";
 import {
+  getCreatorForPost,
+  getMoreCreatorPosts,
+  getPostById,
   serializeReaderArticle,
   serializeReaderCreator,
+  serializeReaderPost,
 } from "@/lib/articleReader";
-
-async function getPost(postId: string) {
-  try {
-    const snap = await adminDb.collection("creatorContent").doc(postId).get();
-    if (!snap.exists) return null;
-    const data = snap.data() as any;
-    return { id: snap.id, ...data };
-  } catch {
-    return null;
-  }
-}
-
-async function getCreatorByHandle(handle: string) {
-  try {
-    const snap = await adminDb.collection("creators").doc(handle).get();
-    return snap.exists ? snap.data() : null;
-  } catch {
-    return null;
-  }
-}
 
 export async function generateMetadata({
   params,
@@ -39,9 +23,9 @@ export async function generateMetadata({
   params: Promise<{ "post-id": string }>;
 }): Promise<Metadata> {
   const { "post-id": postId } = await params;
-  const post = await getPost(postId);
+  const post = await getPostById(postId);
 
-  if (!post || (post as any).status === "draft") {
+  if (!post) {
     return { title: "Post Not Found | Agaseke", robots: { index: false } };
   }
 
@@ -58,7 +42,7 @@ export async function generateMetadata({
         title,
         description,
         siteName: "Agaseke",
-        images: [{ url: defaultImage, width: 800, height: 800 }],
+        images: [{ url: defaultImage, width: 1200, height: 630 }],
         type: "article",
       },
       twitter: {
@@ -70,40 +54,45 @@ export async function generateMetadata({
     };
   }
 
-  const creatorHandle = (post as any).creatorId || "";
-  const creatorUid = (post as any).creatorUid || "";
-  const creator = creatorHandle ? await getCreatorByHandle(creatorHandle) : null;
-
+  const { creator, handle: creatorHandle } = await getCreatorForPost(post);
   const displayName = (creator as any)?.name || creatorHandle || "Creator";
-  const title = (post as any).title || "Untitled Post";
-  const rawDesc = (post as any).shortDescription || (post as any).description || (post as any).content || "";
-  const description = rawDesc.slice(0, 200);
-  const image = (post as any).contentUrl || `${baseUrl}/agaseke.png`;
+  const title = (post as any).title || `Post by ${displayName}`;
+  const rawDesc =
+    (post as any).shortDescription ||
+    (post as any).description ||
+    (post as any).content ||
+    "";
+  const description =
+    rawDesc.slice(0, 180) || `View "${title}" by ${displayName} on Agaseke.`;
+  const image =
+    (typeof (post as any).coverUrl === "string" && (post as any).coverUrl) ||
+    (typeof (post as any).contentUrl === "string" && (post as any).contentUrl) ||
+    (creator as any)?.profilePicture ||
+    `${baseUrl}/agaseke.png`;
   const canonical =
     (post as any).type === "article" && (post as any).slug
       ? `/articles/${(post as any).slug}`
-      : `/explore/posts/${postId}`;
+      : creatorHandle
+        ? `/${creatorHandle}/community/${postId}`
+        : `/explore/posts/${postId}`;
 
   return {
-    title: `${title} by ${displayName} | Agaseke Posts`,
-    description: description || `View "${title}" by ${displayName} on Agaseke.`,
+    title: `${title} by ${displayName} | Agaseke`,
+    description,
     keywords: [
       displayName,
       creatorHandle,
       title,
       "Agaseke post",
       "African creator content",
-      "public post",
-    ],
-    alternates: {
-      canonical,
-    },
+    ].filter(Boolean),
+    alternates: { canonical },
     openGraph: {
-      title: `${title} | ${displayName}`,
-      description: description || `View this post by ${displayName}.`,
+      title: `${title} · ${displayName}`,
+      description,
       url: `${baseUrl}${canonical}`,
       siteName: "Agaseke",
-      images: [{ url: image, width: 800, height: 800, alt: title }],
+      images: [{ url: image, width: 1200, height: 630, alt: title }],
       type: "article",
       locale: "en_RW",
       ...(creatorHandle && {
@@ -114,8 +103,8 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: `${title} | ${displayName}`,
-      description: description || `View this post by ${displayName}.`,
+      title: `${title} · ${displayName}`,
+      description,
       images: [image],
       site: "@Agaseke_support",
     },
@@ -137,40 +126,103 @@ export default async function Page({
   params: Promise<{ "post-id": string }>;
 }) {
   const { "post-id": postId } = await params;
-  const post = await getPost(postId);
+  const post = await getPostById(postId);
 
-  if ((post as any)?.status === "draft") {
+  if (!post) {
     notFound();
   }
 
-  const isArticle = (post as any)?.type === "article" && (post as any)?.slug;
   const isPrivate = (post as any)?.isPrivate === true;
+  const isArticle = (post as any)?.type === "article" && (post as any)?.slug;
+  const { creator, handle: creatorHandle } = await getCreatorForPost(post);
+  const displayName = (creator as any)?.name || creatorHandle || "Creator";
+  const serializedCreator = serializeReaderCreator(creator, creatorHandle);
+  const moreContent = creatorHandle
+    ? await getMoreCreatorPosts(creatorHandle, postId)
+    : [];
 
   if (isArticle) {
-    const creatorHandle = (post as any)?.creatorId || "";
-    const creator = creatorHandle ? await getCreatorByHandle(creatorHandle) : null;
-    const displayName = (creator as any)?.name || creatorHandle || "Creator";
     const title = (post as any)?.title || "Untitled";
     const article = serializeReaderArticle(post);
-    const serializedCreator = serializeReaderCreator(creator, creatorHandle);
+    const publishedTime = (post as any)?.createdAt
+      ?.toDate?.()
+      ?.toISOString?.() as string | undefined;
 
     return (
       <>
         {!isPrivate && (
           <ArticleSchema
             headline={title}
-          description={(post as any)?.shortDescription || `Read "${title}" by ${displayName} on Agaseke.`}
-          image={(post as any)?.contentUrl || `${baseUrl}/agaseke.png`}
-          url={`/articles/${(post as any)?.slug}`}
-          authorName={displayName}
-          authorUrl={`/${creatorHandle}`}
-            publishedTime={(post as any)?.createdAt?.toDate?.()?.toISOString?.() as string | undefined}
+            description={
+              (post as any)?.shortDescription ||
+              `Read "${title}" by ${displayName} on Agaseke.`
+            }
+            image={
+              (post as any)?.coverUrl ||
+              (post as any)?.contentUrl ||
+              `${baseUrl}/agaseke.png`
+            }
+            url={`/articles/${(post as any)?.slug}`}
+            authorName={displayName}
+            authorUrl={creatorHandle ? `/${creatorHandle}` : undefined}
+            publishedTime={publishedTime}
           />
         )}
-        <ArticleReaderPage article={article} creator={serializedCreator} />
+        <ArticleReaderPage
+          article={article}
+          creator={serializedCreator}
+          moreContent={moreContent}
+        />
       </>
     );
   }
 
-  return <ExplorePostDetailPage postId={postId} />;
+  const serializedPost = serializeReaderPost(post);
+  const publishedTime = (post as any)?.createdAt
+    ?.toDate?.()
+    ?.toISOString?.() as string | undefined;
+  const canonicalUrl = creatorHandle
+    ? `/${creatorHandle}/community/${postId}`
+    : `/explore/posts/${postId}`;
+
+  return (
+    <>
+      {!isPrivate && (
+        <PostSchema
+          headline={serializedPost.title || `Post by ${displayName}`}
+          description={
+            serializedPost.description ||
+            serializedPost.content ||
+            `View post by ${displayName} on Agaseke.`
+          }
+          image={
+            typeof serializedPost.contentUrl === "string"
+              ? serializedPost.contentUrl
+              : serializedCreator.photoURL || `${baseUrl}/agaseke.png`
+          }
+          url={canonicalUrl}
+          authorName={displayName}
+          authorUrl={creatorHandle ? `/${creatorHandle}` : undefined}
+          publishedTime={publishedTime}
+          views={serializedPost.views}
+          commentCount={serializedPost.commentCount}
+          breadcrumbs={[
+            { name: "Home", url: "/" },
+            { name: "Posts", url: "/explore/posts" },
+            {
+              name: serializedPost.title || `Post by ${displayName}`,
+              url: canonicalUrl,
+            },
+          ]}
+        />
+      )}
+      <ExplorePostDetailPage
+        postId={postId}
+        username={creatorHandle || undefined}
+        initialPost={serializedPost}
+        initialCreator={serializedCreator}
+        initialMoreContent={moreContent}
+      />
+    </>
+  );
 }

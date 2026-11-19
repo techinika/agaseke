@@ -5,7 +5,7 @@ import React, { useState, useEffect } from "react";
 import { Megaphone, Bell, Calendar } from "lucide-react";
 import { subscribeToBroadcastNotices } from "@/lib/notifications";
 import { useAuth } from "@/auth/AuthContext";
-import Loading from "@/app/loading";
+import { LoadingState } from "@/components/ui/LoadingState";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -68,7 +68,7 @@ export default function NoticesPage() {
   };
 
   if (loading) {
-    return <Loading />;
+    return <LoadingState variant="list" />;
   }
 
   return (

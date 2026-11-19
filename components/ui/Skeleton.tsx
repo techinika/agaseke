@@ -10,7 +10,7 @@ export function Skeleton({ className, rounded = "control" }: SkeletonProps) {
     <span
       aria-hidden="true"
       className={cn(
-        "block animate-pulse bg-line",
+        "block bg-line motion-safe:animate-pulse",
         rounded === "control" && "rounded-control",
         rounded === "card" && "rounded-card",
         rounded === "full" && "rounded-full",
