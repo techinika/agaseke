@@ -7,49 +7,58 @@ import {
   FaYoutube,
 } from "react-icons/fa";
 import { ArrowUpRight } from "lucide-react";
+import { getNavItems, isNavLink } from "@/config/navigation";
+import { t, type TranslationKey } from "@/lib/i18n";
 
-const GROUPS = [
+interface FooterLink {
+  href: string;
+  labelKey: TranslationKey;
+  external?: boolean;
+}
+
+interface FooterGroup {
+  titleKey: TranslationKey;
+  links: FooterLink[];
+}
+
+const PLATFORM_LINKS: FooterLink[] = [
+  ...getNavItems({ surface: "public", role: "guest", slot: "desktop" })
+    .filter(isNavLink)
+    .map((item) => ({
+      href: item.href,
+      labelKey: item.labelKey,
+      external: item.external,
+    })),
+  { href: "/changelog", labelKey: "nav.changelog" },
+];
+
+const GROUPS: FooterGroup[] = [
+  { titleKey: "footer.platform", links: PLATFORM_LINKS },
   {
-    title: "Platform",
+    titleKey: "footer.legal",
     links: [
-      { label: "Explore creators", href: "/explore" },
-      { label: "For creators", href: "/for-creators" },
-      { label: "For supporters", href: "/for-supporters" },
-      { label: "For brands", href: "/for-brands" },
-      { label: "Help center", href: "/help-center" },
-      { label: "Changelog", href: "/changelog" },
-      {
-        label: "Blog",
-        href: "https://medium.com/@agasekeforcreators",
-        external: true,
-      },
+      { href: "/privacy", labelKey: "footer.privacy" },
+      { href: "/terms", labelKey: "footer.terms" },
+      { href: "/content-guidelines", labelKey: "footer.contentGuidelines" },
+      { href: "/payout-policy", labelKey: "footer.payoutPolicy" },
     ],
   },
   {
-    title: "Legal",
-    links: [
-      { label: "Privacy", href: "/privacy" },
-      { label: "Terms", href: "/terms" },
-      { label: "Content guidelines", href: "/content-guidelines" },
-      { label: "Payout policy", href: "/payout-policy" },
-    ],
-  },
-  {
-    title: "Community",
+    titleKey: "footer.community",
     links: [
       {
-        label: "WhatsApp channel",
         href: "https://whatsapp.com/channel/0029Vb9AemqFy72CiwMyQf06",
+        labelKey: "footer.whatsappChannel",
         external: true,
       },
       {
-        label: "WhatsApp group",
         href: "https://chat.whatsapp.com/DSLKCybSApGKrEmn0HvlLx",
+        labelKey: "footer.whatsappGroup",
         external: true,
       },
       {
-        label: "Instagram",
         href: "https://instagram.com/agaseke_support",
+        labelKey: "footer.instagram",
         external: true,
       },
     ],
@@ -58,19 +67,27 @@ const GROUPS = [
 
 const SOCIALS = [
   {
-    label: "Instagram",
+    labelKey: "footer.instagram" as const,
     href: "https://instagram.com/agaseke_support",
     icon: FaInstagram,
   },
-  { label: "X", href: "https://x.com/agaseke_support", icon: FaTwitter },
-  { label: "LinkedIn", href: "https://linkedin.com/company/agaseke", icon: FaLinkedin },
   {
-    label: "YouTube",
+    labelKey: "footer.x" as const,
+    href: "https://x.com/agaseke_support",
+    icon: FaTwitter,
+  },
+  {
+    labelKey: "footer.linkedin" as const,
+    href: "https://linkedin.com/company/agaseke",
+    icon: FaLinkedin,
+  },
+  {
+    labelKey: "footer.youtube" as const,
     href: "https://www.youtube.com/channel/UCeLwxQrpnxYip5G-jXyTRBQ",
     icon: FaYoutube,
   },
   {
-    label: "WhatsApp",
+    labelKey: "footer.whatsapp" as const,
     href: "https://whatsapp.com/channel/0029Vb9AemqFy72CiwMyQf06",
     icon: FaWhatsapp,
   },
@@ -89,19 +106,18 @@ export function PublicFooter() {
               agaseke<span className="text-brand-strong">.me</span>
             </Link>
             <p className="mt-4 text-label leading-relaxed text-muted-fg">
-              The private community platform for creators, artists, podcasters, writers,
-              and community leaders. Fans support your work directly.
+              {t("footer.description")}
             </p>
 
             <div className="mt-6 flex flex-wrap items-center gap-1">
-              {SOCIALS.map(({ label, href, icon: Icon }) => (
+              {SOCIALS.map(({ labelKey, href, icon: Icon }) => (
                 <a
-                  key={label}
+                  key={labelKey}
                   href={href}
                   target="_blank"
                   rel="noreferrer"
-                  aria-label={label}
-                  title={label}
+                  aria-label={t(labelKey)}
+                  title={t(labelKey)}
                   className="inline-flex size-11 items-center justify-center rounded-control text-muted-fg outline-none transition-colors hover:bg-surface-raised hover:text-brand-strong focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-sunken"
                 >
                   <Icon size={18} aria-hidden="true" />
@@ -111,13 +127,13 @@ export function PublicFooter() {
           </div>
 
           {GROUPS.map((group) => (
-            <div key={group.title}>
+            <div key={group.titleKey}>
               <h2 className="text-label font-bold uppercase tracking-wide text-fg">
-                {group.title}
+                {t(group.titleKey)}
               </h2>
               <ul className="mt-4 space-y-1">
                 {group.links.map((link) => (
-                  <li key={link.label}>
+                  <li key={`${group.titleKey}-${link.href}`}>
                     {link.external ? (
                       <a
                         href={link.href}
@@ -125,7 +141,7 @@ export function PublicFooter() {
                         rel="noreferrer"
                         className="inline-flex min-h-11 items-center gap-1 text-label font-medium text-muted-fg outline-none transition-colors hover:text-brand-strong focus-visible:ring-2 focus-visible:ring-focus"
                       >
-                        {link.label}
+                        {t(link.labelKey)}
                         <ArrowUpRight className="size-3.5" aria-hidden="true" />
                       </a>
                     ) : (
@@ -133,7 +149,7 @@ export function PublicFooter() {
                         href={link.href}
                         className="inline-flex min-h-11 items-center text-label font-medium text-muted-fg outline-none transition-colors hover:text-brand-strong focus-visible:ring-2 focus-visible:ring-focus"
                       >
-                        {link.label}
+                        {t(link.labelKey)}
                       </Link>
                     )}
                   </li>
@@ -144,9 +160,9 @@ export function PublicFooter() {
         </div>
 
         <div className="mt-12 flex flex-col gap-4 border-t border-line pt-6 text-caption text-muted-fg sm:flex-row sm:items-center sm:justify-between">
-          <p>© 2026 Agaseke. Made with care in Kigali.</p>
+          <p>{t("footer.madeIn")}</p>
           <p>
-            Powered by{" "}
+            {t("footer.poweredBy")}{" "}
             <Link
               href="https://techinika.co.rw"
               target="_blank"

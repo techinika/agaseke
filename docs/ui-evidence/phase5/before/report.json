@@ -1,0 +1,457 @@
+{
+  "baseUrl": "http://127.0.0.1:3100",
+  "generatedAt": "2026-11-19T05:58:08.686Z",
+  "screenshots": [
+    {
+      "name": "01-login",
+      "route": "/login",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase5/before/01-login-mobile-360-light.png"
+    },
+    {
+      "name": "02-onboarding",
+      "route": "/dev/auth-onboarding",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase5/before/02-onboarding-mobile-360-light.png"
+    },
+    {
+      "name": "03-verify",
+      "route": "/dev/auth-verify",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase5/before/03-verify-mobile-360-light.png"
+    },
+    {
+      "name": "01-login",
+      "route": "/login",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase5/before/01-login-mobile-360-dark.png"
+    },
+    {
+      "name": "02-onboarding",
+      "route": "/dev/auth-onboarding",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase5/before/02-onboarding-mobile-360-dark.png"
+    },
+    {
+      "name": "03-verify",
+      "route": "/dev/auth-verify",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase5/before/03-verify-mobile-360-dark.png"
+    },
+    {
+      "name": "01-login",
+      "route": "/login",
+      "mode": "desktop-1280-light",
+      "file": "docs/ui-evidence/phase5/before/01-login-desktop-1280-light.png"
+    },
+    {
+      "name": "02-onboarding",
+      "route": "/dev/auth-onboarding",
+      "mode": "desktop-1280-light",
+      "file": "docs/ui-evidence/phase5/before/02-onboarding-desktop-1280-light.png"
+    },
+    {
+      "name": "03-verify",
+      "route": "/dev/auth-verify",
+      "mode": "desktop-1280-light",
+      "file": "docs/ui-evidence/phase5/before/03-verify-desktop-1280-light.png"
+    },
+    {
+      "name": "01-login",
+      "route": "/login",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase5/before/01-login-desktop-1280-dark.png"
+    },
+    {
+      "name": "02-onboarding",
+      "route": "/dev/auth-onboarding",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase5/before/02-onboarding-desktop-1280-dark.png"
+    },
+    {
+      "name": "03-verify",
+      "route": "/dev/auth-verify",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase5/before/03-verify-desktop-1280-dark.png"
+    }
+  ],
+  "axe": [
+    {
+      "name": "01-login",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "02-onboarding",
+      "mode": "mobile-360-light",
+      "violations": [
+        {
+          "id": "label",
+          "impact": "critical",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "name": "03-verify",
+      "mode": "mobile-360-light",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 7
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "nodes": 3
+        },
+        {
+          "id": "select-name",
+          "impact": "critical",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "name": "01-login",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "02-onboarding",
+      "mode": "mobile-360-dark",
+      "violations": [
+        {
+          "id": "label",
+          "impact": "critical",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "name": "03-verify",
+      "mode": "mobile-360-dark",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 7
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "nodes": 3
+        },
+        {
+          "id": "select-name",
+          "impact": "critical",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "name": "01-login",
+      "mode": "desktop-1280-light",
+      "violations": []
+    },
+    {
+      "name": "02-onboarding",
+      "mode": "desktop-1280-light",
+      "violations": [
+        {
+          "id": "label",
+          "impact": "critical",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "name": "03-verify",
+      "mode": "desktop-1280-light",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 7
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "nodes": 3
+        },
+        {
+          "id": "select-name",
+          "impact": "critical",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "name": "01-login",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "02-onboarding",
+      "mode": "desktop-1280-dark",
+      "violations": [
+        {
+          "id": "label",
+          "impact": "critical",
+          "nodes": 1
+        }
+      ]
+    },
+    {
+      "name": "03-verify",
+      "mode": "desktop-1280-dark",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 7
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "nodes": 3
+        },
+        {
+          "id": "select-name",
+          "impact": "critical",
+          "nodes": 1
+        }
+      ]
+    }
+  ],
+  "overflow": [
+    {
+      "name": "01-login",
+      "mode": "mobile-360-light",
+      "overflow": 0
+    },
+    {
+      "name": "02-onboarding",
+      "mode": "mobile-360-light",
+      "overflow": 0
+    },
+    {
+      "name": "03-verify",
+      "mode": "mobile-360-light",
+      "overflow": 0
+    },
+    {
+      "name": "01-login",
+      "mode": "mobile-360-dark",
+      "overflow": 0
+    },
+    {
+      "name": "02-onboarding",
+      "mode": "mobile-360-dark",
+      "overflow": 0
+    },
+    {
+      "name": "03-verify",
+      "mode": "mobile-360-dark",
+      "overflow": 0
+    },
+    {
+      "name": "01-login",
+      "mode": "desktop-1280-light",
+      "overflow": 0
+    },
+    {
+      "name": "02-onboarding",
+      "mode": "desktop-1280-light",
+      "overflow": 0
+    },
+    {
+      "name": "03-verify",
+      "mode": "desktop-1280-light",
+      "overflow": 0
+    },
+    {
+      "name": "01-login",
+      "mode": "desktop-1280-dark",
+      "overflow": 0
+    },
+    {
+      "name": "02-onboarding",
+      "mode": "desktop-1280-dark",
+      "overflow": 0
+    },
+    {
+      "name": "03-verify",
+      "mode": "desktop-1280-dark",
+      "overflow": 0
+    }
+  ],
+  "smallTargets": [
+    {
+      "name": "01-login",
+      "mode": "mobile-360-light",
+      "targets": [
+        {
+          "tag": "a",
+          "label": "Skip to content",
+          "width": 1,
+          "height": 1
+        },
+        {
+          "tag": "a",
+          "label": "Terms of Service",
+          "width": 131,
+          "height": 34
+        },
+        {
+          "tag": "a",
+          "label": "Privacy Policy",
+          "width": 77,
+          "height": 14
+        }
+      ]
+    },
+    {
+      "name": "02-onboarding",
+      "mode": "mobile-360-light",
+      "targets": []
+    },
+    {
+      "name": "03-verify",
+      "mode": "mobile-360-light",
+      "targets": []
+    },
+    {
+      "name": "01-login",
+      "mode": "mobile-360-dark",
+      "targets": [
+        {
+          "tag": "a",
+          "label": "Skip to content",
+          "width": 1,
+          "height": 1
+        },
+        {
+          "tag": "a",
+          "label": "Terms of Service",
+          "width": 131,
+          "height": 34
+        },
+        {
+          "tag": "a",
+          "label": "Privacy Policy",
+          "width": 77,
+          "height": 14
+        }
+      ]
+    },
+    {
+      "name": "02-onboarding",
+      "mode": "mobile-360-dark",
+      "targets": []
+    },
+    {
+      "name": "03-verify",
+      "mode": "mobile-360-dark",
+      "targets": []
+    },
+    {
+      "name": "01-login",
+      "mode": "desktop-1280-light",
+      "targets": [
+        {
+          "tag": "a",
+          "label": "Skip to content",
+          "width": 1,
+          "height": 1
+        },
+        {
+          "tag": "a",
+          "label": "Terms of Service",
+          "width": 209,
+          "height": 34
+        },
+        {
+          "tag": "a",
+          "label": "Privacy Policy",
+          "width": 77,
+          "height": 14
+        }
+      ]
+    },
+    {
+      "name": "02-onboarding",
+      "mode": "desktop-1280-light",
+      "targets": []
+    },
+    {
+      "name": "03-verify",
+      "mode": "desktop-1280-light",
+      "targets": []
+    },
+    {
+      "name": "01-login",
+      "mode": "desktop-1280-dark",
+      "targets": [
+        {
+          "tag": "a",
+          "label": "Skip to content",
+          "width": 1,
+          "height": 1
+        },
+        {
+          "tag": "a",
+          "label": "Terms of Service",
+          "width": 209,
+          "height": 34
+        },
+        {
+          "tag": "a",
+          "label": "Privacy Policy",
+          "width": 77,
+          "height": 14
+        }
+      ]
+    },
+    {
+      "name": "02-onboarding",
+      "mode": "desktop-1280-dark",
+      "targets": []
+    },
+    {
+      "name": "03-verify",
+      "mode": "desktop-1280-dark",
+      "targets": []
+    }
+  ],
+  "console": [
+    {
+      "mode": "mobile-360-light",
+      "errors": [
+        "TypeError: Cannot read properties of null (reading 'currentUser')"
+      ]
+    },
+    {
+      "mode": "mobile-360-dark",
+      "errors": [
+        "TypeError: Cannot read properties of null (reading 'currentUser')"
+      ]
+    },
+    {
+      "mode": "desktop-1280-light",
+      "errors": [
+        "TypeError: Cannot read properties of null (reading 'currentUser')"
+      ]
+    },
+    {
+      "mode": "desktop-1280-dark",
+      "errors": [
+        "TypeError: Cannot read properties of null (reading 'currentUser')"
+      ]
+    }
+  ],
+  "notes": [
+    "Onboarding and verification are captured through gated /dev preview routes; no real Firebase data or secrets are used."
+  ]
+}

@@ -10,6 +10,7 @@ export interface AppShellProps {
   topbar?: ReactNode;
   bottomNav?: ReactNode;
   width?: AppShellWidth;
+  padded?: boolean;
   className?: string;
   mainClassName?: string;
 }
@@ -26,6 +27,7 @@ export function AppShell({
   topbar,
   bottomNav,
   width = "default",
+  padded = true,
   className,
   mainClassName,
 }: AppShellProps) {
@@ -50,7 +52,8 @@ export function AppShell({
             id="main-content"
             tabIndex={-1}
             className={cn(
-              "flex-1 px-4 py-6 outline-none sm:px-6 lg:px-8",
+              "flex-1 outline-none",
+              padded && "px-4 py-6 sm:px-6 lg:px-8",
               bottomNav ? "pb-24 lg:pb-8" : undefined,
               mainClassName,
             )}

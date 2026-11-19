@@ -1,9 +1,9 @@
 # Agaseke Full-App Redesign — Coverage Matrix
 
-**Phase:** 4 (public creator pages)
+**Phase:** 6A (creator dashboard core)
 **Branch:** `design/full-app-redesign`
-**Updated:** 2026-11-18
-**Status:** Phase 2 shell/navigation work is complete. Phase 4 creator profile sub-pages, detail routes, payment routes, and action overlays are token-migrated and evidence-captured; seeded-data states and full primitive adoption remain partial. Valid production Lighthouse runs show 100 performance with LCP ≤ 1.1 s on preview and error-state routes; seeded real creator routes still need a final pass. Authenticated dashboard visuals still need seed/test accounts.
+**Updated:** 2026-11-19
+**Status:** Phases 2, 4, and 5 are complete. Phase 5 rebuilt login, onboarding, and verification; Phase 6A migrated the creator home, payouts, settings, sales, and supporters surfaces to shared primitives with semantic tokens. Gated preview evidence at 360×640 and 1280×800 in light/dark is axe-clean with production Lighthouse performance ≥ 96; real Firebase/auth/upload states remain unverified without seed/test accounts. Remaining creator routes are still unchecked.
 
 This matrix is the release checklist for the redesign. A route is not “done” until every applicable column is checked and evidence is linked in `docs/REDESIGN_LOG.md`.
 
@@ -38,10 +38,15 @@ This matrix is the release checklist for the redesign. A route is not “done”
 - Phase 2 production Lighthouse: `docs/ui-evidence/phase2-shells/lighthouse/`; before/after bundle report: `docs/ui-evidence/phase2-shells/bundle-report.json`.
 - Phase 4 before/after screenshots and axe reports: `docs/ui-evidence/phase4/before/`, `docs/ui-evidence/phase4/after/`; summary: `docs/ui-evidence/phase4/summary.md`. The `before` run used invalid `/demo/*` placeholders; the corrected `after` run uses real `/aline/...` route patterns.
 - Phase 4 valid production Lighthouse: `docs/ui-evidence/phase4/lighthouse-prod-v2/`; bundle report: `docs/ui-evidence/phase4/bundle-report.json`. Older `lighthouse/` and `lighthouse-prod/` runs are superseded.
-- Lighthouse values below are prior mobile runs unless a Phase 4 preview route is linked in `docs/REDESIGN_LOG.md`.
+- Phase 5 before/after screenshots and axe reports: `docs/ui-evidence/phase5/before/`, `docs/ui-evidence/phase5/after/`; summary: `docs/ui-evidence/phase5/summary.md`.
+- Phase 5 production Lighthouse: `docs/ui-evidence/phase5/lighthouse-prod/`; bundle report: `docs/ui-evidence/phase5/bundle-report.json`.
+- Phase 6A after screenshots/axe: `docs/ui-evidence/phase6a/after/`; summary: `docs/ui-evidence/phase6a/summary.md`.
+- Phase 6A production Lighthouse: `docs/ui-evidence/phase6a/lighthouse-prod/`; bundle report: `docs/ui-evidence/phase6a/bundle-report.json`.
+- Phase 6A uses a gated preview because the real creator routes require Firebase auth/seed data; no separate before screenshots were captured after code changes, so the baseline is the static audit counts recorded in `docs/REDESIGN_LOG.md`.
+- Lighthouse values below are prior mobile runs unless a Phase 4, Phase 5, or Phase 6A preview route is linked in `docs/REDESIGN_LOG.md`.
 - Full-input screenshots at 360×640 and 1280×800 in both themes are blocked by missing Firebase emulator/seed/test accounts and provider sandboxes. See `docs/screens/before/README.md`.
 
-## Routes — 82 `page.tsx`
+## Routes — 85 `page.tsx` (82 product + 3 gated previews)
 
 | Route | Component file | Role | Mobile layout done | Desktop layout done | Dark mode checked | Skeleton | Empty state | Error state | Uses only ui primitives | axe clean | Lighthouse (mobile) | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -77,7 +82,7 @@ This matrix is the release checklist for the redesign. A route is not “done”
 | `/community/manage` | `app/(main)/community/manage/page.tsx` | account | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Auth/data capture. |
 | `/community/manage/[subscriptionId]` | `app/(main)/community/manage/[subscriptionId]/page.tsx` | account | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Auth/tier data capture. |
 | `/content-guidelines` | `components/pages/Legal/ContentGuidelinesPage` | public | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Public; long-form legal. |
-| `/creator` | `features/creator-home/CreatorHome.tsx` | creator | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Auth/data capture; money cards. |
+| `/creator` | `features/creator-home/CreatorHome.tsx` | creator | ✅ | ✅ | ✅ | n/a | n/a | ✅ | ✅ | ✅ | 97/100/96/66 | Phase 6A gated preview; shared `ErrorState`/`Button`/`Card`/`Badge`, consolidated share action, 0 axe/overflow/targets. Real auth/data states still need seed accounts. |
 | `/creator/bookings` | `components/pages/Dashboards/BookingsPage` | creator | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Auth/data capture; 812 lines; 32 orange. |
 | `/creator/community` | `components/pages/Dashboards/CommunityPage` | creator | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Auth/data capture. |
 | `/creator/community/chat/[tierId]` | `components/parts/community/CommunityChatView` | creator | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Auth/data capture; chat viewport. |
@@ -95,18 +100,21 @@ This matrix is the release checklist for the redesign. A route is not “done”
 | `/creator/notices` | `components/pages/Dashboards/NoticesPage` | creator | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Auth/data capture. |
 | `/creator/partners` | `components/pages/Dashboards/PartnersPage` | creator | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Auth/data capture. |
 | `/creator/partners/new` | `components/parts/dashboard/PartnerForm` | creator | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Auth required; logo upload. |
-| `/creator/payouts` | `components/pages/Dashboards/PayoutsPage` | creator | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Auth/data capture; money; 25 orange. |
-| `/creator/sales` | `components/pages/Dashboards/SalesPage` | creator | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Auth/data capture; table/filter. |
-| `/creator/settings` | `components/pages/Dashboards/SettingsPage` | creator | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Auth/data capture; 1,081 lines; 60 orange. |
+| `/creator/payouts` | `components/pages/Dashboards/PayoutsPage` | creator | ✅ | ✅ | ✅ | ~ | ✅ | ~ | ✅ | ✅ | 96/100/96/66 | Phase 6A gated preview; `Button`/`Input`/`Card`/`Tabs`/`StatusScreen`/`Badge`, semantic spinner, withdrawal logic unchanged. Real money/auth states need seed accounts. |
+| `/creator/sales` | `components/pages/Dashboards/SalesPage` | creator | ✅ | ✅ | ✅ | ✅ | ✅ | ~ | ✅ | ✅ | 96/100/96/66 | Phase 6A gated preview; shared cards, badges, search/select, avatars, currency formatter; subscription logic unchanged. Real order data needs seed accounts. |
+| `/creator/settings` | `components/pages/Dashboards/SettingsPage` | creator | ✅ | ✅ | ✅ | ✅ | n/a | ~ | ✅ | ✅ | 98/100/96/66 | Phase 6A gated preview; `Tabs`, form primitives, `Switch`, `Card`, `MediaImage`, `Badge`, `Skeleton`; write/upload logic unchanged. Real auth/uploads need seed accounts. |
 | `/creator/store` | `components/pages/Dashboards/StorePage` | creator | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Auth/data capture; store overlays. |
 | `/creator/store/coupons/new` | `components/parts/dashboard/CouponForm` | creator | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Auth required; currency-aware. |
 | `/creator/store/folders/new` | `components/parts/dashboard/FolderForm` | creator | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Auth required. |
 | `/creator/store/orders/new` | `components/parts/dashboard/OrderForm` | creator | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Auth required; money. |
 | `/creator/store/products/new` | `components/parts/dashboard/ProductForm` | creator | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Auth required; media upload. |
-| `/creator/supporters` | `components/pages/Dashboards/SupportersPage` | creator | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Auth/data capture; broadcast overlay. |
-| `/creator/verify` | `components/pages/Dashboards/VerifyPage` | creator | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Auth/data capture; upload/status. |
+| `/creator/supporters` | `components/pages/Dashboards/SupportersPage` | creator | ✅ | ✅ | ✅ | ✅ | ✅ | ~ | ✅ | ✅ | 100/100/96/66 | Phase 6A gated preview including broadcast dialog; shared `Dialog`, form primitives, `Avatar`, `EmptyState`, `Card`, `Badge`, `Skeleton`; Firestore subscriptions/comms unchanged. |
+| `/creator/verify` | `features/verification/VerificationFlow` | creator | ✅ | ✅ | ✅ | ✅ | n/a | ✅ | ✅ | ✅ | 99/100/96/66 | Thin `VerifyPage` wrapper; gated preview axe/evidence passed. Real auth, uploads, OTP, and payout status still need seed/test accounts. |
 | `/dev/actions` | `app/dev/actions/Preview.tsx` | internal | ~ | ☐ | ~ | n/a | n/a | ~ | ~ | ✅ | 100/100/96/66 | Phase 4 sheet captures at 360 light/dark; LCP 0.9 s, TBT 0 ms. Exclude from production nav. |
+| `/dev/auth-onboarding` | `app/dev/auth-onboarding/Preview.tsx` | internal | ✅ | ✅ | ✅ | n/a | n/a | ✅ | ✅ | ✅ | 97/100/96/66 | Phase 5 gated preview; 12 screenshots across 4 modes, zero axe/overflow/targets, LCP 0.9 s. `noindex`; exclude from production nav. |
+| `/dev/auth-verify` | `app/dev/auth-verify/Preview.tsx` | internal | ✅ | ✅ | ✅ | ✅ | n/a | ✅ | ✅ | ✅ | 99/100/96/66 | Phase 5 gated preview; 12 screenshots across 4 modes, zero axe/overflow/targets, LCP 0.9 s. `noindex`; exclude from production nav. |
 | `/dev/components` | `app/dev/components/ComponentGallery.tsx` | internal | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | B | TBD | Internal gallery; primary system verification surface. |
+| `/dev/creator-core` | `app/dev/creator-core/Preview.tsx` | internal | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 96–100/100/96/66 | Phase 6A gated mock-data preview for 5 creator core surfaces plus `?dialog=broadcast`; 24 screenshots across 4 modes, `noindex`; exclude from production nav. |
 | `/dev/creator-page` | `app/dev/creator-page/Preview.tsx` | internal | ✅ | ✅ | ✅ | ~ | ~ | ~ | ~ | ✅ | 100/100/96/66 | Phase 4 all-mode screenshots and axe; preview, not real `[username]`. LCP 0.9 s, TBT 0 ms. SEO 66 is expected. |
 | `/explore` | `components/pages/ExplorePage` | public | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | B | TBD | Public baseline. |
 | `/explore/posts` | `components/pages/ExplorePostsPage` | public | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | B | 86/100/100/100 | Public baseline. |
@@ -115,8 +123,8 @@ This matrix is the release checklist for the redesign. A route is not “done”
 | `/for-creators` | `app/(main)/for-creators/page.tsx` | public | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | B | 91/100/100/100 | Public baseline. |
 | `/for-supporters` | `app/(main)/for-supporters/page.tsx` | public | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | B | TBD | Public baseline. |
 | `/help-center` | `components/pages/HelpCenterPage` | public | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | B | TBD | Public baseline. |
-| `/login` | `components/pages/LoginPage` | auth | ✅ | ✅ | ✅ | n/a | n/a | n/a | ✅ | ✅ | 93/100/96/66 | Phase 2 auth shell/axe/screenshots verified; dark brand-token contrast and heading order fixed. Baseline production score was 67/97/92/69. |
-| `/onboarding` | `components/pages/StartPage` | auth | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | 869 lines; 27 orange; onboarding state. |
+| `/login` | `components/pages/LoginPage` | auth | ✅ | ✅ | ✅ | n/a | n/a | ✅ | ✅ | ✅ | 99/100/96/66 | Phase 5 tokenized form, inline `role="alert"` errors, and 44 px legal links; production score improved from 93/100/96/66. Original baseline was 67/97/92/69. |
+| `/onboarding` | `features/onboarding/OnboardingFlow` | auth | ✅ | ✅ | ✅ | n/a | n/a | ✅ | ✅ | ✅ | 97/100/96/66 | Thin `StartPage` wrapper; six guided steps, validation, and `sessionStorage` draft. Gated preview axe/evidence passed; real Firebase profile write needs seed/test account. |
 | `/payment` | `components/parts/PaymentCallback` | public | ~ | ~ | ~ | ~ | ~ | ~ | ~ | ✅ | 100/100/96/66 | Phase 4 token/money migration; provider callback not live. LCP 0.9 s, TBT 0 ms. SEO 66 is expected on preview/callback routes. |
 | `/payout-policy` | `components/pages/Legal/PayoutPolicyPage` | public | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | TBD | Public; long-form legal. |
 | `/privacy` | `components/pages/Legal/PrivacyPage` | public | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | B | TBD | Public baseline. |
@@ -175,7 +183,7 @@ These are part of the matrix because they carry money, checkout, booking, giveaw
 | Folder modal | `components/pages/Dashboards/storepage/FolderModal.tsx` | Creator store | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | 351 lines. |
 | Create order modal | `components/pages/Dashboards/storepage/CreateOrderModal.tsx` | Creator store | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | Money; confirm orphan/removal. |
 | Partner modal | `components/pages/Dashboards/partnerspage/PartnerModal.tsx` | Creator partners | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | Logo upload. |
-| Broadcast email modal | `components/pages/Dashboards/supporterspage/BroadcastEmailModal.tsx` | Creator supporters | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | Audience/preview. |
+| Broadcast email modal | `components/pages/Dashboards/supporterspage/BroadcastEmailModal.tsx` | Creator supporters | ✅ | ✅ | ✅ | ~ | ✅ | ✅ | Phase 6A uses shared `Dialog`, `Input`, `Textarea`, and `Button`; gated preview evidence captured. Real audience/comms delivery needs seed accounts. |
 | Check-in modal | `components/parts/dashboard/gatherings/CheckInModal.tsx` | Creator gatherings | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | QR/search. |
 | Confirm modal | `components/ui/ConfirmModal.tsx` | Global | ☐ | ☐ | ☐ | ☐ | ☐ | TBD | Existing primitive; rename/upgrade to dialog semantics. |
 

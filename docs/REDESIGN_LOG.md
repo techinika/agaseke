@@ -349,3 +349,112 @@
 
 1. Re-run Lighthouse against seeded real creator routes once Firebase emulator/seed data exists; current real-route captures are error states.
 2. Consider a CI performance floor using the valid route set and Lighthouse mobile performance ≥ 95 once fixtures are available.
+
+## 2026-11-19 — Phase 5 auth login, onboarding, and verification
+
+**Branch:** `design/full-app-redesign`
+**Status:** Login, onboarding, and verification rebuilt with shared primitives and centralized copy. Before/after evidence, axe, Lighthouse, unit tests, and e2e checks pass. Real Firebase auth/upload states still need seed/test accounts; human visual sign-off from screenshots is pending.
+
+### Done
+
+- Rewrote `components/pages/LoginPage.tsx` with tokenized surfaces, centralized auth copy, inline `role="alert"` submit errors, and 44 px legal links; all buttons/links stay in the shared system.
+- Added `features/onboarding/` with `useOnboarding`, six guided steps, step progress, validation, review summary, and `sessionStorage` draft persistence under `agaseke_onboarding_draft`; `components/pages/StartPage.tsx` is now a thin wrapper.
+- Added `features/verification/` with `useVerification`, a status banner, progress steps, payout/phone cards, skeleton, and local OTP/upload error states; `components/pages/Dashboards/VerifyPage.tsx` is now a thin wrapper with an auth-loading skeleton.
+- Added `auth.login`, `onboarding`, `onboarding.title`, and `verification` copy to `lib/i18n/en.ts`; no user-facing strings remain hard-coded in the new flows.
+- Added gated `app/dev/auth-onboarding/` and `app/dev/auth-verify/` previews wrapped in `AuthShell`; both are `noindex` and excluded from production navigation.
+- Added `scripts/phase5-evidence.mjs`, `tests/unit/phase5-auth.test.tsx`, and `e2e/phase5-auth.spec.ts`; extended `scripts/design-lint.mjs` and `package.json` lint/format globs for Phase 5 paths.
+- No Firestore rules, data model, route behavior, payment logic, pricing, fee, or payout behavior changed.
+
+### Verification
+
+- `npm run typecheck` — passed.
+- `npm run lint:ci` — passed, including `npm run lint:design` with zero violations.
+- `npm test -- --reporter=dot` — **28 files, 168 tests passed**.
+- `npx playwright test e2e/phase5-auth.spec.ts e2e/phase2-shells.spec.ts e2e/mobile-routes.spec.ts` — **54/54 passed**.
+- `CHROMIUM_PATH=/usr/bin/chromium OUT_DIR=docs/ui-evidence/phase5/before node scripts/phase5-evidence.mjs` — 12 screenshots, **16 serious/critical axe violation entries** (48 affected nodes), 4 preview console errors, 3 small-target findings per login mode.
+- `CHROMIUM_PATH=/usr/bin/chromium OUT_DIR=docs/ui-evidence/phase5/after node scripts/phase5-evidence.mjs` — 12 screenshots, **0 serious/critical axe findings**, 0 console errors, 0 overflow, 0 small targets.
+- Production Lighthouse 13.6.0 from `docs/ui-evidence/phase5/lighthouse-prod/`:
+  - `/login`: 99/100/96/66, LCP 0.9 s, TBT 100 ms, CLS 0.
+  - `/dev/auth-onboarding`: 97/100/96/66, LCP 0.9 s, TBT 190 ms, CLS 0.
+  - `/dev/auth-verify`: 99/100/96/66, LCP 0.9 s, TBT 110 ms, CLS 0.
+  - SEO is 66 on these intentionally `noindex` routes; `/login` improved from Phase 2's 93/100/96/66.
+- Bundle after: 201 files, 4,500 KB raw / 1,410 KB gzip in `docs/ui-evidence/phase5/bundle-report.json`; reference-only delta from Phase 4 is +5 files, +41 KB raw, +14 KB gzip.
+- All Phase 5 files were formatted individually with Prettier; no commits were made, and unrelated uncommitted dashboard/shell files were left untouched.
+
+### Evidence
+
+- Summary and screenshot index: `docs/ui-evidence/phase5/summary.md`.
+- Before/after screenshots and axe: `docs/ui-evidence/phase5/before/`, `docs/ui-evidence/phase5/after/`.
+- Production Lighthouse JSON: `docs/ui-evidence/phase5/lighthouse-prod/`.
+- Bundle report: `docs/ui-evidence/phase5/bundle-report.json`.
+- Coverage matrix update: `docs/REDESIGN_COVERAGE.md`.
+
+### Follow-ups / rollout
+
+1. Capture real `/onboarding` and `/creator/verify` states once Firebase emulator/seed/test accounts and provider sandboxes exist.
+2. Complete human visual sign-off from the captured 360×640 and 1280×800 light/dark screenshots.
+3. Connect the reserved-handle check and final profile write to the existing server-side claim path before production use.
+4. Keep preview routes gated; delete or rotate them only after the founder confirms no external links depend on them.
+5. Add CI budgets for zero serious/critical axe findings and Lighthouse mobile performance ≥ 85 on touched auth routes.
+
+### Founder questions
+
+1. Should onboarding resume across devices after sign-in, or is `sessionStorage` draft persistence sufficient for launch?
+2. Should verification require document upload in this phase, or ship with the current phone/payout/OTP readiness states only?
+3. Can we get seeded auth/creator accounts so the real onboarding and verification routes can replace the gated previews in final evidence?
+
+## 2026-11-19 — Phase 6A creator dashboard core
+
+**Branch:** `design/full-app-redesign`
+**Status:** Creator home, payouts, settings, sales, and supporters now use shared primitives and semantic tokens through a gated mock-data preview. Gated axe/Lighthouse/e2e checks pass; real Firebase/auth/money/upload states still need seed/test accounts. Human visual sign-off from screenshots is pending.
+
+### Done
+
+- Polished `features/creator-home/CreatorHome.tsx` with shared `ErrorState`, `Button`, `buttonClasses`, `Card`, and `Badge`; consolidated duplicate share actions into `shareCreatorLink` while preserving the unrendered checklist hrefs.
+- Migrated `components/pages/Dashboards/PayoutsPage.tsx` and its empty state to `Button`, `Input`, `Card`, `Tabs`, `StatusScreen`, `Badge`, and a semantic spinner; withdrawal flows and amounts were not changed. Unsafe `AmountInput` migration was skipped.
+- Migrated `components/pages/Dashboards/SettingsPage.tsx` to `Tabs`, button/input/select/textarea/form-field primitives, `Switch`, `Card`, `MediaImage`, `Badge`, and `Skeleton`; profile writes, uploads, reference-data loading, and bulk updates were not changed. Unsafe `EmptyState`/`ErrorState`/`Avatar` migrations were skipped.
+- Migrated `components/pages/Dashboards/SalesPage.tsx` to `Card`, `Badge`, `Skeleton`, `EmptyState`, `SearchInput`, `Select`, and avatars; money formatting uses the existing `formatCurrency` behavior. Fixed a missing `creator.handle` effect dependency and removed two unused totals.
+- Migrated `components/pages/Dashboards/SupportersPage.tsx` and `BroadcastEmailModal.tsx` to shared `Dialog`, form primitives, `SearchInput`, `Select`, `Avatar`, `EmptyState`, `Card`, `Badge`, and `Skeleton`; Firestore subscriptions, profile enrichment, and comms delivery were not changed.
+- Added gated `app/dev/creator-core/` with `noindex`, five mock surfaces, and `?dialog=broadcast`; added `scripts/phase6a-evidence.mjs`, `tests/unit/phase6a-creator-core.test.tsx`, and `e2e/phase6a-creator-core.spec.ts`.
+- Extended `scripts/design-lint.mjs` and `package.json` lint/format globs for Phase 6A paths. All 7 implementation files have 0 palette/hex/tiny-text/arbitrary-radius matches.
+- No Firestore rules, data model, route behavior, payment logic, pricing, fee, payout behavior, or seeded data changed.
+
+### Verification
+
+- `npm run typecheck` — passed.
+- `npm run lint:ci` — passed, including `npm run lint:design` with zero violations.
+- `npm test -- --reporter=dot` — **29 files, 173 tests passed**.
+- `npx playwright test e2e/phase6a-creator-core.spec.ts` — **16/16 passed** across configured mobile projects.
+- `npx playwright test e2e/phase5-auth.spec.ts e2e/phase6a-creator-core.spec.ts e2e/phase2-shells.spec.ts e2e/mobile-routes.spec.ts` — **70/70 passed**; server-side Firebase initialization warnings on `/` are pre-existing and did not fail tests.
+- `CHROMIUM_PATH=/usr/bin/chromium OUT_DIR=docs/ui-evidence/phase6a/after node scripts/phase6a-evidence.mjs` — 24 screenshots, **0 serious/critical axe findings**, 0 console errors, 0 overflow, 0 small targets.
+- Production Lighthouse 13.6.0 from `docs/ui-evidence/phase6a/lighthouse-prod/`:
+  - Home: 97/100/96/66, LCP 0.9 s, TBT 200 ms, CLS 0.
+  - Payouts: 96/100/96/66, LCP 0.9 s, TBT 250 ms, CLS 0.
+  - Settings: 98/100/96/66, LCP 0.9 s, TBT 160 ms, CLS 0.
+  - Sales: 96/100/96/66, LCP 0.9 s, TBT 210 ms, CLS 0.
+  - Supporters: 100/100/96/66, LCP 0.9 s, TBT 90 ms, CLS 0.
+  - SEO is 66 on these intentionally `noindex` preview routes.
+- Bundle after: 204 files, 4,530 KB raw / 1,424 KB gzip in `docs/ui-evidence/phase6a/bundle-report.json`; reference-only delta from Phase 5 is +3 files, +30 KB raw, +14 KB gzip.
+- All Phase 6A files were formatted individually with Prettier; no commits were made, and unrelated uncommitted dashboard/shell files were left untouched.
+
+### Evidence
+
+- Summary and screenshot index: `docs/ui-evidence/phase6a/summary.md`.
+- After screenshots and axe: `docs/ui-evidence/phase6a/after/`.
+- Production Lighthouse JSON: `docs/ui-evidence/phase6a/lighthouse-prod/`.
+- Bundle report: `docs/ui-evidence/phase6a/bundle-report.json`.
+- Coverage matrix update: `docs/REDESIGN_COVERAGE.md`.
+
+### Follow-ups / rollout
+
+1. Capture real authenticated creator home/payouts/settings/sales/supporters states once Firebase emulator/seed/test accounts and provider sandboxes exist.
+2. Complete human visual sign-off from the captured 360×640 and 1280×800 light/dark screenshots, including the broadcast dialog.
+3. Migrate the remaining creator dashboard routes outside Phase 6A; they remain unchecked in `docs/REDESIGN_COVERAGE.md`.
+4. Keep the `/dev/creator-core` preview gated; delete or rotate it only after the founder confirms no external links depend on it.
+5. Add CI budgets for zero serious/critical axe findings and Lighthouse mobile performance ≥ 85 on touched creator preview routes.
+
+### Founder questions
+
+1. Should the Phase 6A preview remain available after real seeded creator routes are captured?
+2. Should the next tranche prioritize creator commerce routes (store/orders/products/coupons) or content/gatherings/giveaways?
+3. Can we get seeded auth/creator accounts with real payout and supporter data so the gated preview can be replaced in final evidence?

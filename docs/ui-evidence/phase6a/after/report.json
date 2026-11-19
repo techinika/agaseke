@@ -1,0 +1,537 @@
+{
+  "baseUrl": "http://127.0.0.1:3100",
+  "generatedAt": "2026-11-19T08:21:20.353Z",
+  "screenshots": [
+    {
+      "name": "01-home",
+      "route": "/dev/creator-core?surface=home",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase6a/after/01-home-mobile-360-light.png"
+    },
+    {
+      "name": "02-payouts",
+      "route": "/dev/creator-core?surface=payouts",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase6a/after/02-payouts-mobile-360-light.png"
+    },
+    {
+      "name": "03-settings",
+      "route": "/dev/creator-core?surface=settings",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase6a/after/03-settings-mobile-360-light.png"
+    },
+    {
+      "name": "04-sales",
+      "route": "/dev/creator-core?surface=sales",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase6a/after/04-sales-mobile-360-light.png"
+    },
+    {
+      "name": "05-supporters",
+      "route": "/dev/creator-core?surface=supporters",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase6a/after/05-supporters-mobile-360-light.png"
+    },
+    {
+      "name": "06-broadcast-dialog",
+      "route": "/dev/creator-core?surface=supporters&dialog=broadcast",
+      "mode": "mobile-360-light",
+      "file": "docs/ui-evidence/phase6a/after/06-broadcast-dialog-mobile-360-light.png"
+    },
+    {
+      "name": "01-home",
+      "route": "/dev/creator-core?surface=home",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase6a/after/01-home-mobile-360-dark.png"
+    },
+    {
+      "name": "02-payouts",
+      "route": "/dev/creator-core?surface=payouts",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase6a/after/02-payouts-mobile-360-dark.png"
+    },
+    {
+      "name": "03-settings",
+      "route": "/dev/creator-core?surface=settings",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase6a/after/03-settings-mobile-360-dark.png"
+    },
+    {
+      "name": "04-sales",
+      "route": "/dev/creator-core?surface=sales",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase6a/after/04-sales-mobile-360-dark.png"
+    },
+    {
+      "name": "05-supporters",
+      "route": "/dev/creator-core?surface=supporters",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase6a/after/05-supporters-mobile-360-dark.png"
+    },
+    {
+      "name": "06-broadcast-dialog",
+      "route": "/dev/creator-core?surface=supporters&dialog=broadcast",
+      "mode": "mobile-360-dark",
+      "file": "docs/ui-evidence/phase6a/after/06-broadcast-dialog-mobile-360-dark.png"
+    },
+    {
+      "name": "01-home",
+      "route": "/dev/creator-core?surface=home",
+      "mode": "desktop-1280-light",
+      "file": "docs/ui-evidence/phase6a/after/01-home-desktop-1280-light.png"
+    },
+    {
+      "name": "02-payouts",
+      "route": "/dev/creator-core?surface=payouts",
+      "mode": "desktop-1280-light",
+      "file": "docs/ui-evidence/phase6a/after/02-payouts-desktop-1280-light.png"
+    },
+    {
+      "name": "03-settings",
+      "route": "/dev/creator-core?surface=settings",
+      "mode": "desktop-1280-light",
+      "file": "docs/ui-evidence/phase6a/after/03-settings-desktop-1280-light.png"
+    },
+    {
+      "name": "04-sales",
+      "route": "/dev/creator-core?surface=sales",
+      "mode": "desktop-1280-light",
+      "file": "docs/ui-evidence/phase6a/after/04-sales-desktop-1280-light.png"
+    },
+    {
+      "name": "05-supporters",
+      "route": "/dev/creator-core?surface=supporters",
+      "mode": "desktop-1280-light",
+      "file": "docs/ui-evidence/phase6a/after/05-supporters-desktop-1280-light.png"
+    },
+    {
+      "name": "06-broadcast-dialog",
+      "route": "/dev/creator-core?surface=supporters&dialog=broadcast",
+      "mode": "desktop-1280-light",
+      "file": "docs/ui-evidence/phase6a/after/06-broadcast-dialog-desktop-1280-light.png"
+    },
+    {
+      "name": "01-home",
+      "route": "/dev/creator-core?surface=home",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase6a/after/01-home-desktop-1280-dark.png"
+    },
+    {
+      "name": "02-payouts",
+      "route": "/dev/creator-core?surface=payouts",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase6a/after/02-payouts-desktop-1280-dark.png"
+    },
+    {
+      "name": "03-settings",
+      "route": "/dev/creator-core?surface=settings",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase6a/after/03-settings-desktop-1280-dark.png"
+    },
+    {
+      "name": "04-sales",
+      "route": "/dev/creator-core?surface=sales",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase6a/after/04-sales-desktop-1280-dark.png"
+    },
+    {
+      "name": "05-supporters",
+      "route": "/dev/creator-core?surface=supporters",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase6a/after/05-supporters-desktop-1280-dark.png"
+    },
+    {
+      "name": "06-broadcast-dialog",
+      "route": "/dev/creator-core?surface=supporters&dialog=broadcast",
+      "mode": "desktop-1280-dark",
+      "file": "docs/ui-evidence/phase6a/after/06-broadcast-dialog-desktop-1280-dark.png"
+    }
+  ],
+  "axe": [
+    {
+      "name": "01-home",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "02-payouts",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "03-settings",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "04-sales",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "05-supporters",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "06-broadcast-dialog",
+      "mode": "mobile-360-light",
+      "violations": []
+    },
+    {
+      "name": "01-home",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "02-payouts",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "03-settings",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "04-sales",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "05-supporters",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "06-broadcast-dialog",
+      "mode": "mobile-360-dark",
+      "violations": []
+    },
+    {
+      "name": "01-home",
+      "mode": "desktop-1280-light",
+      "violations": []
+    },
+    {
+      "name": "02-payouts",
+      "mode": "desktop-1280-light",
+      "violations": []
+    },
+    {
+      "name": "03-settings",
+      "mode": "desktop-1280-light",
+      "violations": []
+    },
+    {
+      "name": "04-sales",
+      "mode": "desktop-1280-light",
+      "violations": []
+    },
+    {
+      "name": "05-supporters",
+      "mode": "desktop-1280-light",
+      "violations": []
+    },
+    {
+      "name": "06-broadcast-dialog",
+      "mode": "desktop-1280-light",
+      "violations": []
+    },
+    {
+      "name": "01-home",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "02-payouts",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "03-settings",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "04-sales",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "05-supporters",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    },
+    {
+      "name": "06-broadcast-dialog",
+      "mode": "desktop-1280-dark",
+      "violations": []
+    }
+  ],
+  "overflow": [
+    {
+      "name": "01-home",
+      "mode": "mobile-360-light",
+      "overflow": 0
+    },
+    {
+      "name": "02-payouts",
+      "mode": "mobile-360-light",
+      "overflow": 0
+    },
+    {
+      "name": "03-settings",
+      "mode": "mobile-360-light",
+      "overflow": 0
+    },
+    {
+      "name": "04-sales",
+      "mode": "mobile-360-light",
+      "overflow": 0
+    },
+    {
+      "name": "05-supporters",
+      "mode": "mobile-360-light",
+      "overflow": 0
+    },
+    {
+      "name": "06-broadcast-dialog",
+      "mode": "mobile-360-light",
+      "overflow": 0
+    },
+    {
+      "name": "01-home",
+      "mode": "mobile-360-dark",
+      "overflow": 0
+    },
+    {
+      "name": "02-payouts",
+      "mode": "mobile-360-dark",
+      "overflow": 0
+    },
+    {
+      "name": "03-settings",
+      "mode": "mobile-360-dark",
+      "overflow": 0
+    },
+    {
+      "name": "04-sales",
+      "mode": "mobile-360-dark",
+      "overflow": 0
+    },
+    {
+      "name": "05-supporters",
+      "mode": "mobile-360-dark",
+      "overflow": 0
+    },
+    {
+      "name": "06-broadcast-dialog",
+      "mode": "mobile-360-dark",
+      "overflow": 0
+    },
+    {
+      "name": "01-home",
+      "mode": "desktop-1280-light",
+      "overflow": 0
+    },
+    {
+      "name": "02-payouts",
+      "mode": "desktop-1280-light",
+      "overflow": 0
+    },
+    {
+      "name": "03-settings",
+      "mode": "desktop-1280-light",
+      "overflow": 0
+    },
+    {
+      "name": "04-sales",
+      "mode": "desktop-1280-light",
+      "overflow": 0
+    },
+    {
+      "name": "05-supporters",
+      "mode": "desktop-1280-light",
+      "overflow": 0
+    },
+    {
+      "name": "06-broadcast-dialog",
+      "mode": "desktop-1280-light",
+      "overflow": 0
+    },
+    {
+      "name": "01-home",
+      "mode": "desktop-1280-dark",
+      "overflow": 0
+    },
+    {
+      "name": "02-payouts",
+      "mode": "desktop-1280-dark",
+      "overflow": 0
+    },
+    {
+      "name": "03-settings",
+      "mode": "desktop-1280-dark",
+      "overflow": 0
+    },
+    {
+      "name": "04-sales",
+      "mode": "desktop-1280-dark",
+      "overflow": 0
+    },
+    {
+      "name": "05-supporters",
+      "mode": "desktop-1280-dark",
+      "overflow": 0
+    },
+    {
+      "name": "06-broadcast-dialog",
+      "mode": "desktop-1280-dark",
+      "overflow": 0
+    }
+  ],
+  "smallTargets": [
+    {
+      "name": "01-home",
+      "mode": "mobile-360-light",
+      "targets": []
+    },
+    {
+      "name": "02-payouts",
+      "mode": "mobile-360-light",
+      "targets": []
+    },
+    {
+      "name": "03-settings",
+      "mode": "mobile-360-light",
+      "targets": []
+    },
+    {
+      "name": "04-sales",
+      "mode": "mobile-360-light",
+      "targets": []
+    },
+    {
+      "name": "05-supporters",
+      "mode": "mobile-360-light",
+      "targets": []
+    },
+    {
+      "name": "06-broadcast-dialog",
+      "mode": "mobile-360-light",
+      "targets": []
+    },
+    {
+      "name": "01-home",
+      "mode": "mobile-360-dark",
+      "targets": []
+    },
+    {
+      "name": "02-payouts",
+      "mode": "mobile-360-dark",
+      "targets": []
+    },
+    {
+      "name": "03-settings",
+      "mode": "mobile-360-dark",
+      "targets": []
+    },
+    {
+      "name": "04-sales",
+      "mode": "mobile-360-dark",
+      "targets": []
+    },
+    {
+      "name": "05-supporters",
+      "mode": "mobile-360-dark",
+      "targets": []
+    },
+    {
+      "name": "06-broadcast-dialog",
+      "mode": "mobile-360-dark",
+      "targets": []
+    },
+    {
+      "name": "01-home",
+      "mode": "desktop-1280-light",
+      "targets": []
+    },
+    {
+      "name": "02-payouts",
+      "mode": "desktop-1280-light",
+      "targets": []
+    },
+    {
+      "name": "03-settings",
+      "mode": "desktop-1280-light",
+      "targets": []
+    },
+    {
+      "name": "04-sales",
+      "mode": "desktop-1280-light",
+      "targets": []
+    },
+    {
+      "name": "05-supporters",
+      "mode": "desktop-1280-light",
+      "targets": []
+    },
+    {
+      "name": "06-broadcast-dialog",
+      "mode": "desktop-1280-light",
+      "targets": []
+    },
+    {
+      "name": "01-home",
+      "mode": "desktop-1280-dark",
+      "targets": []
+    },
+    {
+      "name": "02-payouts",
+      "mode": "desktop-1280-dark",
+      "targets": []
+    },
+    {
+      "name": "03-settings",
+      "mode": "desktop-1280-dark",
+      "targets": []
+    },
+    {
+      "name": "04-sales",
+      "mode": "desktop-1280-dark",
+      "targets": []
+    },
+    {
+      "name": "05-supporters",
+      "mode": "desktop-1280-dark",
+      "targets": []
+    },
+    {
+      "name": "06-broadcast-dialog",
+      "mode": "desktop-1280-dark",
+      "targets": []
+    }
+  ],
+  "console": [
+    {
+      "mode": "mobile-360-light",
+      "errors": []
+    },
+    {
+      "mode": "mobile-360-dark",
+      "errors": []
+    },
+    {
+      "mode": "desktop-1280-light",
+      "errors": []
+    },
+    {
+      "mode": "desktop-1280-dark",
+      "errors": []
+    }
+  ],
+  "notes": [
+    "Creator dashboard core is captured through a gated /dev preview with mock data; no real Firebase data or secrets are used."
+  ]
+}

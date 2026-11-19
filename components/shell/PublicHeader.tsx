@@ -11,13 +11,17 @@ import {
   LayoutDashboard,
   LogIn,
   LogOut,
-  Megaphone,
   Menu,
-  Receipt,
-  User,
 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
-import { getNavItems, isNavLink, type NavItem, type NavRole } from "@/config/navigation";
+import {
+  getNavItems,
+  isNavLink,
+  NAV_ITEMS,
+  type NavItem,
+  type NavLinkItem,
+  type NavRole,
+} from "@/config/navigation";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { Avatar } from "@/components/ui/Avatar";
@@ -157,6 +161,14 @@ export function PublicHeader() {
     ...getNavItems({ surface: "public", role, slot: "more" }),
   ].filter((item) => item.id !== "login");
   const signedIn = Boolean(auth?.user && auth?.isLoggedIn);
+  const accountItems = [
+    "supporter-notices",
+    "public-transactions",
+    "public-bookings",
+    "public-account",
+  ]
+    .map((id) => NAV_ITEMS.find((item) => item.id === id))
+    .filter((item): item is NavLinkItem => Boolean(item && isNavLink(item)));
 
   useEffect(() => {
     if (!userMenuOpen) return;
@@ -211,6 +223,12 @@ export function PublicHeader() {
 
   return (
     <>
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[var(--ag-z-sheet)] focus:rounded-control focus:bg-surface focus:px-4 focus:py-3 focus:text-body focus:font-bold focus:text-fg focus:shadow-float"
+      >
+        {t("a11y.skipToContent")}
+      </a>
       <header className="sticky top-0 z-50 border-b border-line bg-surface/90 backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-8">
@@ -304,30 +322,18 @@ export function PublicHeader() {
                         label={t("nav.workspace")}
                         onClick={closeMenus}
                       />
-                      <DropdownItem
-                        href="/supporter/notices"
-                        icon={<Megaphone className="size-4" />}
-                        label={t("nav.notices")}
-                        onClick={closeMenus}
-                      />
-                      <DropdownItem
-                        href="/transactions"
-                        icon={<Receipt className="size-4" />}
-                        label={t("nav.transactions")}
-                        onClick={closeMenus}
-                      />
-                      <DropdownItem
-                        href="/bookings"
-                        icon={<Calendar className="size-4" />}
-                        label={t("nav.bookings")}
-                        onClick={closeMenus}
-                      />
-                      <DropdownItem
-                        href="/profile"
-                        icon={<User className="size-4" />}
-                        label={t("nav.accountSettings")}
-                        onClick={closeMenus}
-                      />
+                      {accountItems.map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <DropdownItem
+                            key={item.id}
+                            href={item.href}
+                            icon={<Icon className="size-4" aria-hidden="true" />}
+                            label={t(item.labelKey)}
+                            onClick={closeMenus}
+                          />
+                        );
+                      })}
 
                       <div className="my-2 h-px bg-line" />
                       <button

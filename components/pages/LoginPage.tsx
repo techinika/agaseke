@@ -8,6 +8,7 @@ import { PerkItem } from "./loginpage/index";
 import { sanitizeRedirectPath } from "@/lib/safeRedirect";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { t } from "@/lib/i18n";
 
 function getFallbackRedirect(): string | null {
   if (typeof window === "undefined") return null;
@@ -30,61 +31,78 @@ export default function LoginPage({
   redirectParam = null,
 }: LoginPageProps) {
   const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState(false);
   const redirect = sanitizeRedirectPath(redirectParam || getFallbackRedirect());
 
+  const signIn = async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      const { handleGoogleLogin } = await import("@/db/functions/GoogleLogin");
+      await handleGoogleLogin(
+        reservedUsername ?? null,
+        referralCreator ?? null,
+        redirect,
+      );
+    } catch (signInError) {
+      console.error(signInError);
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="flex min-h-screen flex-col-reverse bg-canvas lg:flex-row">
+    <div className="flex min-h-dvh flex-col-reverse bg-canvas lg:flex-row">
       <section className="relative flex flex-col justify-between overflow-hidden border-b border-line bg-surface-sunken p-6 sm:p-10 lg:w-1/2 lg:border-b-0 lg:border-r lg:p-16">
         <div className="pointer-events-none absolute -right-32 -top-32 size-64 rounded-pill bg-brand/10 blur-3xl" />
 
         <div>
           <Link
             href="/"
-            className="mb-12 inline-flex min-h-11 items-center gap-2 text-title font-bold text-brand-strong transition-opacity hover:opacity-80"
+            className="mb-12 inline-flex min-h-12 items-center gap-2 text-title font-bold text-brand-strong transition-opacity hover:opacity-80"
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
-            agaseke.me
+            {t("auth.login.home")}
           </Link>
 
           <h1 className="text-display font-black leading-tight text-fg sm:text-hero">
-            One account for <br />
-            <span className="text-brand-strong">every creator you love.</span>
+            {t("auth.login.promise")}
           </h1>
 
           <div className="mt-10 space-y-8">
             <PerkItem
               icon={<Wallet className="size-5" aria-hidden="true" />}
-              title="Manage your Wallet"
-              desc="Track your support history and withdraw your own earnings to MoMo."
+              title={t("auth.login.walletTitle")}
+              desc={t("auth.login.walletBody")}
             />
             <PerkItem
               icon={<Star className="size-5" aria-hidden="true" />}
-              title="Follow your Favorites"
-              desc="Get notified when the creators you support post exclusive content."
+              title={t("auth.login.favoritesTitle")}
+              desc={t("auth.login.favoritesBody")}
             />
             <PerkItem
               icon={<UserPlus className="size-5" aria-hidden="true" />}
-              title="Create your Agaseke"
-              desc="Set up your own agaseke.me/name and start receiving support instantly."
+              title={t("auth.login.createTitle")}
+              desc={t("auth.login.createBody")}
             />
           </div>
         </div>
 
         <p className="mt-12 border-t border-line pt-8 text-caption text-muted-fg">
-          © 2026 Agaseke. Supporting African Creativity.
+          {t("auth.login.footer")}
         </p>
       </section>
 
       <section className="flex items-center justify-center bg-canvas p-6 sm:p-8 lg:w-1/2">
-        <Card className="w-full max-w-sm p-8 text-center shadow-card sm:p-10">
+        <Card className="w-full max-w-sm p-6 text-center shadow-card sm:p-10">
           <div className="mb-8">
             <span className="mx-auto mb-4 flex size-16 items-center justify-center rounded-control bg-brand-soft text-brand-strong">
               <Zap className="size-8" fill="currentColor" aria-hidden="true" />
             </span>
-            <h2 className="text-heading font-bold text-fg">Welcome Back</h2>
-            <p className="mt-2 text-label text-muted-fg">
-              Sign in to manage your Agaseke
-            </p>
+            <h2 className="text-heading font-bold text-fg">
+              {t("auth.login.subheading")}
+            </h2>
           </div>
 
           <Button
@@ -102,30 +120,36 @@ export default function LoginPage({
                 aria-hidden="true"
               />
             }
-            onClick={async () => {
-              setLoading(true);
-              const { handleGoogleLogin } = await import("@/db/functions/GoogleLogin");
-              await handleGoogleLogin(
-                reservedUsername ?? null,
-                referralCreator ?? null,
-                redirect,
-              );
-              setLoading(false);
-            }}
+            onClick={signIn}
           >
-            Continue with Google
+            {t("auth.login.cta")}
           </Button>
 
-          <p className="mt-8 px-4 text-caption leading-relaxed text-muted-fg">
-            By continuing, you agree to Agaseke&apos;s
-            <Link href="/terms" className="mx-1 underline">
-              Terms of Service
+          {error && (
+            <p
+              role="alert"
+              className="mt-4 rounded-control bg-danger-bg p-3 text-caption text-danger"
+            >
+              {t("auth.login.signInError")}
+            </p>
+          )}
+
+          <p className="mt-8 px-2 text-caption leading-relaxed text-muted-fg">
+            {t("auth.login.agreementBefore")}
+            <Link
+              href="/terms"
+              className="mx-1 inline-flex min-h-12 items-center underline"
+            >
+              {t("auth.login.terms")}
             </Link>
-            and
-            <Link href="/privacy" className="mx-1 underline">
-              Privacy Policy
+            {t("auth.login.agreementMiddle")}
+            <Link
+              href="/privacy"
+              className="mx-1 inline-flex min-h-12 items-center underline"
+            >
+              {t("auth.login.privacy")}
             </Link>
-            .
+            {t("auth.login.agreementAfter")}
           </p>
         </Card>
       </section>

@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @next/next/no-img-element -- public media URLs are signed/arbitrary */
 "use client";
 
 import { useEffect, useState } from "react";
@@ -20,16 +21,23 @@ import {
   Globe,
   ChevronLeft,
   ChevronRight,
-  Loader,
-  User,
   ArrowRight,
   Eye,
   Calendar,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
-import ExplorePostsSchema from "@/components/seo/ExplorePostsSchema";
-import MobileBottomBar from "@/components/parts/MobileBottomBar";
 import { LinkifyText } from "@/components/ui/LinkifyText";
+import { Avatar } from "@/components/ui/Avatar";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Dialog } from "@/components/ui/Dialog";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { SearchInput } from "@/components/ui/SearchInput";
+import { Skeleton, SkeletonText } from "@/components/ui/Skeleton";
+import { cn } from "@/lib/cn";
+
 const extractYouTubeId = (url: string): string | null => {
   const patterns = [
     /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]+)/,
@@ -44,8 +52,7 @@ const extractYouTubeId = (url: string): string | null => {
 };
 
 const hasYouTubeLink = (text: string): string | null => {
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const urls = text.match(urlRegex);
+  const urls = text.match(/(https?:\/\/[^\s]+)/g);
   if (!urls) return null;
   for (const url of urls) {
     if (extractYouTubeId(url)) return url;
@@ -54,6 +61,20 @@ const hasYouTubeLink = (text: string): string | null => {
 };
 
 const ITEMS_PER_PAGE = 10;
+
+const FILTERS = [
+  { key: "all", label: "All" },
+  { key: "posts", label: "Posts" },
+  { key: "articles", label: "Articles" },
+] as const;
+
+function typeLabel(type?: string) {
+  if (type === "video") return "Video";
+  if (type === "image") return "Image";
+  if (type === "document") return "Document";
+  if (type === "article") return "Article";
+  return "Post";
+}
 
 export default function ExplorePostsPage() {
   const [posts, setPosts] = useState<any[]>([]);
@@ -67,7 +88,10 @@ export default function ExplorePostsPage() {
   const [typeFilter, setTypeFilter] = useState<"all" | "articles" | "posts">("all");
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
   const [documentIndex, setDocumentIndex] = useState<Record<string, number>>({});
-  const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [viewingImage, setViewingImage] = useState<{
+    url: string;
+    title: string;
+  } | null>(null);
   const [viewingDocument, setViewingDocument] = useState<{
     url: string;
     title: string;
@@ -85,19 +109,18 @@ export default function ExplorePostsPage() {
         orderBy("createdAt", "desc"),
         limit(ITEMS_PER_PAGE),
       );
-      if (cursor) {
-        q = query(q, startAfter(cursor));
-      }
+      if (cursor) q = query(q, startAfter(cursor));
+
       const snap = await getDocs(q);
       const fetched = snap.docs
-        .filter((d) => d.data().status !== "draft")
-        .map((d) => {
-          const data = d.data();
+        .filter((doc) => doc.data().status !== "draft")
+        .map((doc) => {
+          const data = doc.data();
           const creatorId = data.creatorId || data.creatorUid || "";
           const creator =
             cmap.get(creatorId) || cmap.get(data.creatorUid) || cmap.get(data.creatorId);
           return {
-            id: d.id,
+            id: doc.id,
             ...data,
             authorName: creator?.name || creatorId.substring(0, 8) || "Unknown",
             authorHandle: creator?.handle || creatorId,
@@ -109,18 +132,14 @@ export default function ExplorePostsPage() {
             (b.publishedAt?.toMillis?.() ?? b.createdAt?.toMillis?.() ?? 0) -
             (a.publishedAt?.toMillis?.() ?? a.createdAt?.toMillis?.() ?? 0),
         );
-      if (!cursor) {
-        setPosts(fetched);
-      } else {
-        setPosts((prev) => [...prev, ...fetched]);
-      }
-      const lastDoc = snap.docs[snap.docs.length - 1];
-      setLastVisible(lastDoc || null);
-      if (snap.docs.length < ITEMS_PER_PAGE) {
-        setHasMore(false);
-      }
-    } catch (e) {
-      console.error("Error fetching posts:", e);
+
+      if (!cursor) setPosts(fetched);
+      else setPosts((prev) => [...prev, ...fetched]);
+
+      setLastVisible(snap.docs[snap.docs.length - 1] || null);
+      if (snap.docs.length < ITEMS_PER_PAGE) setHasMore(false);
+    } catch (error) {
+      console.error("Error fetching posts:", error);
     }
   };
 
@@ -129,22 +148,23 @@ export default function ExplorePostsPage() {
       setLoading(true);
       const creatorsSnap = await getDocs(collection(db, "creators"));
       const map = new Map<string, any>();
-      creatorsSnap.docs.forEach((d) => {
-        const data = d.data();
+      creatorsSnap.docs.forEach((doc) => {
+        const data = doc.data();
         const entry = {
-          name: data.name || d.id,
-          handle: d.id,
+          name: data.name || doc.id,
+          handle: doc.id,
           uid: data.uid,
           photoURL: data.profilePicture || data.photoURL || null,
         };
-        map.set(d.id, entry);
+        map.set(doc.id, entry);
         if (data.uid) map.set(data.uid, entry);
       });
       setCreatorMap(map);
       await fetchPosts(map, null);
       setLoading(false);
     }
-    init();
+    void init();
+    // Fetch once on mount; later pages are triggered by the load-more button.
   }, []);
 
   const loadMore = async () => {
@@ -170,180 +190,170 @@ export default function ExplorePostsPage() {
 
   const filteredPosts = (() => {
     let result = posts;
-    if (typeFilter === "articles") {
-      result = result.filter((p) => p.type === "article");
-    } else if (typeFilter === "posts") {
-      result = result.filter((p) => p.type !== "article");
-    }
+    if (typeFilter === "articles") result = result.filter((p) => p.type === "article");
+    else if (typeFilter === "posts") result = result.filter((p) => p.type !== "article");
+
     if (searchTerm) {
+      const term = searchTerm.toLowerCase();
       result = result.filter(
-        (p) =>
-          (p.title || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (p.description || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (p.authorName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (p.authorHandle || "").toLowerCase().includes(searchTerm.toLowerCase()),
+        (post) =>
+          (post.title || "").toLowerCase().includes(term) ||
+          (post.description || "").toLowerCase().includes(term) ||
+          (post.authorName || "").toLowerCase().includes(term) ||
+          (post.authorHandle || "").toLowerCase().includes(term),
       );
     }
     return result;
   })();
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20">
-      <ExplorePostsSchema />
-      <header className="pt-20 pb-12 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tighter mb-6">
-            Discover{" "}
-            <span className="text-orange-600 underline decoration-orange-100">Posts</span>
+    <div className="min-h-screen bg-canvas pb-20 text-fg">
+      <section className="border-b border-line bg-surface-sunken px-4 pb-12 pt-16 sm:px-6 sm:pb-16 sm:pt-20 lg:px-8">
+        <div className="mx-auto w-full max-w-4xl text-center">
+          <Badge tone="brand" className="mb-4 px-3 py-1">
+            <Sparkles className="size-3.5" aria-hidden="true" />
+            Public content
+          </Badge>
+          <h1 className="text-display font-black text-fg sm:text-hero">
+            Discover <span className="text-brand-strong">posts</span>
           </h1>
-          <p className="text-muted-foreground font-medium text-lg max-w-xl mx-auto mb-10">
-            Explore stories, videos, and content from creators across Agaseke.
+          <p className="mx-auto mt-4 max-w-xl text-body-lg text-muted-fg">
+            Explore stories, videos, and creative work shared publicly by creators across
+            Agaseke.
           </p>
-          <div className="max-w-2xl mx-auto relative group">
-            <Search
-              className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-orange-600 transition-colors"
-              size={20}
-            />
-            <input
-              type="text"
-              placeholder="Search posts by title, content, or creator..."
+
+          <div className="mx-auto mt-8 max-w-2xl text-left">
+            <SearchInput
+              label="Search posts"
+              placeholder="Search by title, content, or creator..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-card border border-border shadow-xl shadow-border rounded-lg py-6 pl-14 pr-6 text-lg outline-none focus:ring-4 focus:ring-orange-50 transition-all font-medium"
+              onChange={(event) => setSearchTerm(event.target.value)}
+              onClear={() => setSearchTerm("")}
+              autoComplete="off"
             />
           </div>
 
-          <div className="mt-6 inline-flex items-center gap-1 bg-card border border-border rounded-full p-1 shadow-sm">
-            {(
-              [
-                { key: "all", label: "All" },
-                { key: "posts", label: "Posts" },
-                { key: "articles", label: "Articles" },
-              ] as const
-            ).map(({ key, label }) => (
+          <div
+            className="mx-auto mt-6 inline-flex items-center gap-1 rounded-pill border border-line bg-surface p-1 shadow-sm"
+            role="group"
+            aria-label="Filter content"
+          >
+            {FILTERS.map(({ key, label }) => (
               <button
                 key={key}
+                type="button"
                 onClick={() => setTypeFilter(key)}
-                className={`inline-flex min-h-11 items-center px-5 py-2 rounded-full text-sm font-semibold transition-colors ${
+                aria-pressed={typeFilter === key}
+                className={cn(
+                  "inline-flex min-h-11 items-center rounded-pill px-5 text-label font-semibold transition-colors",
                   typeFilter === key
-                    ? "bg-orange-600 text-white"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+                    ? "bg-brand-strong text-on-brand"
+                    : "text-muted-fg hover:bg-surface-raised hover:text-fg",
+                )}
               >
                 {label}
               </button>
             ))}
           </div>
         </div>
-      </header>
+      </section>
 
-      <main className="max-w-4xl mx-auto px-6">
+      <main className="mx-auto w-full max-w-4xl px-4 pt-8 sm:px-6 lg:px-8">
         {loading ? (
-          <div className="space-y-6">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-64 bg-muted animate-pulse rounded-2xl" />
+          <div className="space-y-5">
+            {[1, 2, 3].map((item) => (
+              <Card key={item} className="p-5">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="size-10" rounded="full" />
+                  <div className="flex-1">
+                    <SkeletonText lines={2} />
+                  </div>
+                </div>
+                <SkeletonText lines={4} className="mt-5" />
+              </Card>
             ))}
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between mb-8 px-2">
-              <h3 className="text-xs font-bold uppercase tracking-[0.3em] text-muted-foreground">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-2 px-1">
+              <h2 className="text-label font-bold uppercase tracking-wide text-muted-fg">
                 {searchTerm
                   ? `Searching for "${searchTerm}"`
                   : typeFilter === "articles"
-                    ? "Latest Public Articles"
+                    ? "Latest public articles"
                     : typeFilter === "posts"
-                      ? "Latest Public Posts"
-                      : "Latest Public Content"}
-              </h3>
-              <span className="text-xs text-muted-foreground">
-                {filteredPosts.length} item{filteredPosts.length !== 1 ? "s" : ""}
-              </span>
+                      ? "Latest public posts"
+                      : "Latest public content"}
+              </h2>
+              <p aria-live="polite" className="text-label text-muted-fg">
+                {filteredPosts.length} item{filteredPosts.length === 1 ? "" : "s"}
+              </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-6">
+            <div className="space-y-5">
               {filteredPosts.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-card border border-border p-5 rounded-2xl shadow-sm hover:shadow-md transition-shadow"
-                >
-                  {/* Author Header */}
-                  <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border">
+                <Card key={item.id} className="p-5 sm:p-6">
+                  <div className="mb-4 flex items-center gap-3 border-b border-line pb-3">
                     <Link href={`/${item.authorHandle}`} className="shrink-0">
-                      <div className="w-10 h-10 rounded-full bg-muted overflow-hidden">
-                        {item.authorPhoto ? (
-                          <img
-                            src={item.authorPhoto}
-                            alt={item.authorName}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <User size={18} className="text-muted-foreground" />
-                          </div>
-                        )}
-                      </div>
+                      <Avatar src={item.authorPhoto} name={item.authorName} size="sm" />
                     </Link>
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 flex-1">
                       <Link
                         href={`/${item.authorHandle}`}
-                        className="font-bold text-sm hover:text-orange-600 transition-colors"
+                        className="text-label font-bold text-fg transition-colors hover:text-brand-strong"
                       >
                         {item.authorName}
                       </Link>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="truncate text-caption text-muted-fg">
                         @{item.authorHandle}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold bg-muted px-2 py-1 rounded uppercase tracking-widest text-muted-foreground">
-                        {item.type === "video"
-                          ? "Video"
-                          : item.type === "image"
-                            ? "Image"
-                            : item.type === "document"
-                              ? "Document"
-                              : item.type === "article"
-                                ? "Article"
-                                : "Post"}
-                      </span>
-                      <span className="flex items-center gap-1 text-[10px] font-bold bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400 px-2 py-1 rounded uppercase tracking-widest">
-                        <Globe size={10} /> Public
-                      </span>
+                    <div className="flex flex-wrap items-center justify-end gap-1.5">
+                      <Badge tone="neutral">{typeLabel(item.type)}</Badge>
+                      <Badge tone="success">
+                        <Globe className="size-2.5" aria-hidden="true" /> Public
+                      </Badge>
                     </div>
                   </div>
 
-                  {/* Media */}
                   {item.type === "article" && (item.coverUrl || item.contentUrl) && (
-                    <div className="mb-3 rounded-lg overflow-hidden">
+                    <div className="mb-4 overflow-hidden rounded-control">
                       <img
                         src={item.coverUrl || item.contentUrl}
-                        alt={item.title}
-                        className="w-full h-48 object-cover"
+                        alt={item.title || "Article cover"}
+                        className="h-48 w-full object-cover"
+                        loading="lazy"
                       />
                     </div>
                   )}
 
                   {item.type === "image" && item.contentUrl && (
-                    <div
-                      className="mb-3 rounded-lg overflow-hidden cursor-zoom-in"
-                      onClick={() => setViewingImage(item.contentUrl)}
+                    <button
+                      type="button"
+                      className="mb-4 block w-full overflow-hidden rounded-control text-left"
+                      onClick={() =>
+                        setViewingImage({
+                          url: item.contentUrl,
+                          title: item.title || "Post image",
+                        })
+                      }
                     >
                       <img
                         src={item.contentUrl}
-                        alt={item.title}
-                        className="w-full h-48 object-cover hover:opacity-90 transition-opacity"
+                        alt={item.title || "Post image"}
+                        className="h-48 w-full object-cover transition-opacity hover:opacity-90"
+                        loading="lazy"
                       />
-                    </div>
+                    </button>
                   )}
 
                   {item.type === "video" && item.contentUrl && (
-                    <div className="mb-3 rounded-lg overflow-hidden bg-black">
+                    <div className="mb-4 overflow-hidden rounded-control bg-black">
                       <video
                         src={item.contentUrl}
                         controls
                         controlsList="nodownload"
-                        className="w-full aspect-video"
+                        className="aspect-video w-full"
                       />
                     </div>
                   )}
@@ -357,253 +367,227 @@ export default function ExplorePostsPage() {
                       const currentIndex = documentIndex[item.id] || 0;
                       const currentUrl = pages[currentIndex] || pages[0];
                       return (
-                        <div className="mb-3 bg-muted rounded-lg p-4 border border-border">
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                              <FileText size={24} className="text-orange-600" />
-                            </div>
+                        <div className="mb-4 rounded-control border border-line bg-surface-sunken p-4">
+                          <div className="mb-3 flex items-center gap-3">
+                            <span className="flex size-12 items-center justify-center rounded-control bg-brand-soft text-brand-strong">
+                              <FileText className="size-6" aria-hidden="true" />
+                            </span>
                             <div className="flex-1">
-                              <p className="font-medium text-sm text-foreground">
-                                Document
-                              </p>
-                              <p className="text-xs text-muted-foreground">
+                              <p className="text-label font-semibold text-fg">Document</p>
+                              <p className="text-caption text-muted-fg">
                                 {pages.length} page{pages.length > 1 ? "s" : ""}
                               </p>
                             </div>
                           </div>
                           {pages.length > 1 && (
-                            <div className="flex items-center justify-between mb-3">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
+                            <div className="mb-3 flex items-center justify-between">
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                aria-label="Previous document page"
+                                disabled={currentIndex === 0}
+                                onClick={() =>
                                   setDocumentIndex((prev) => ({
                                     ...prev,
                                     [item.id]: Math.max(0, currentIndex - 1),
-                                  }));
-                                }}
-                                disabled={currentIndex === 0}
-                                className="p-1.5 bg-card border rounded-lg disabled:opacity-50"
+                                  }))
+                                }
                               >
-                                <ChevronLeft size={16} />
-                              </button>
-                              <span className="text-sm text-muted-foreground">
+                                <ChevronLeft className="size-4" aria-hidden="true" />
+                              </Button>
+                              <span className="text-label text-muted-fg">
                                 {currentIndex + 1} of {pages.length}
                               </span>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                aria-label="Next document page"
+                                disabled={currentIndex === pages.length - 1}
+                                onClick={() =>
                                   setDocumentIndex((prev) => ({
                                     ...prev,
                                     [item.id]: Math.min(
                                       pages.length - 1,
                                       currentIndex + 1,
                                     ),
-                                  }));
-                                }}
-                                disabled={currentIndex === pages.length - 1}
-                                className="p-1.5 bg-card border rounded-lg disabled:opacity-50"
+                                  }))
+                                }
                               >
-                                <ChevronRight size={16} />
-                              </button>
+                                <ChevronRight className="size-4" aria-hidden="true" />
+                              </Button>
                             </div>
                           )}
-                          <button
+                          <Button
+                            fullWidth
                             onClick={() =>
-                              setViewingDocument({ url: currentUrl, title: item.title })
+                              setViewingDocument({
+                                url: currentUrl,
+                                title: item.title || "Document",
+                              })
                             }
-                            className="block w-full text-center py-2.5 bg-orange-500 text-white rounded-lg font-medium text-sm hover:bg-orange-600 transition"
                           >
-                            Read Document
-                          </button>
+                            Read document
+                          </Button>
                         </div>
                       );
                     })()}
 
-                  {/* Title */}
                   {item.title && (
-                    <Link href={itemHref(item)} className="block group">
-                      <h4 className="font-bold text-lg mb-2 group-hover:text-orange-600 transition-colors">
+                    <Link href={itemHref(item)} className="group block">
+                      <h3 className="text-title font-bold text-fg transition-colors group-hover:text-brand-strong">
                         {item.title}
-                      </h4>
+                      </h3>
                     </Link>
                   )}
 
-                  {/* Description */}
-                  {item.description || item.content ? (
-                    <div className="text-muted-foreground text-sm whitespace-pre-wrap leading-relaxed">
+                  {(item.description || item.content) && (
+                    <div className="mt-2 whitespace-pre-wrap text-label leading-relaxed text-muted-fg">
                       {item.type === "article" ? (
-                        <LinkifyText
-                          text={
-                            (item.description || item.content).length > 200
-                              ? `${(item.description || item.content).slice(0, 200)}...`
-                              : item.description || item.content
-                          }
-                        />
+                        <>
+                          <LinkifyText
+                            text={
+                              (item.description || item.content).length > 200
+                                ? `${(item.description || item.content).slice(0, 200)}...`
+                                : item.description || item.content
+                            }
+                          />
+                          {(item.description || item.content).length > 200 && (
+                            <Link
+                              href={itemHref(item)}
+                              className="ml-1 inline font-semibold text-brand-strong hover:underline"
+                            >
+                              Read more
+                            </Link>
+                          )}
+                        </>
                       ) : (
                         <>
-                          {(item.description || item.content).length > 200 &&
-                          !expandedPosts.has(item.id) ? (
-                            <>
-                              <LinkifyText
-                                text={(item.description || item.content).slice(0, 200)}
-                              />
-                              <span>...</span>
-                              <button
-                                onClick={() => toggleExpand(item.id)}
-                                className="ml-1 text-orange-600 font-medium hover:underline"
-                              >
-                                Read more
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <LinkifyText text={item.description || item.content} />
-                              {(item.description || item.content).length > 200 && (
-                                <button
-                                  onClick={() => toggleExpand(item.id)}
-                                  className="ml-1 text-orange-600 font-medium hover:underline"
-                                >
-                                  Read less
-                                </button>
-                              )}
-                            </>
+                          <LinkifyText
+                            text={
+                              (item.description || item.content).length > 200 &&
+                              !expandedPosts.has(item.id)
+                                ? (item.description || item.content).slice(0, 200)
+                                : item.description || item.content
+                            }
+                          />
+                          {(item.description || item.content).length > 200 && (
+                            <button
+                              type="button"
+                              onClick={() => toggleExpand(item.id)}
+                              className="ml-1 font-semibold text-brand-strong hover:underline"
+                            >
+                              {expandedPosts.has(item.id) ? "Read less" : "Read more"}
+                            </button>
                           )}
                         </>
                       )}
-                      {item.type === "article" &&
-                        (item.description || item.content).length > 200 && (
-                          <Link
-                            href={itemHref(item)}
-                            className="ml-1 text-orange-600 font-medium hover:underline inline"
-                          >
-                            Read more
-                          </Link>
-                        )}
                     </div>
-                  ) : null}
+                  )}
 
-                  {/* YouTube Embed */}
                   {(() => {
                     const text = item.description || item.content || "";
                     const ytLink = hasYouTubeLink(text);
-                    if (!ytLink) return null;
-                    const videoId = extractYouTubeId(ytLink);
+                    const videoId = ytLink ? extractYouTubeId(ytLink) : null;
                     if (!videoId) return null;
                     return (
-                      <div className="mt-3 rounded-lg overflow-hidden bg-black">
+                      <div className="mt-4 overflow-hidden rounded-control bg-black">
                         <iframe
                           src={`https://www.youtube.com/embed/${videoId}`}
-                          className="w-full aspect-video"
+                          className="aspect-video w-full"
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                           allowFullScreen
+                          title={`YouTube video: ${item.title || "Creator post"}`}
                         />
                       </div>
                     );
                   })()}
 
-                  {/* Footer */}
-                  <div className="mt-4 pt-3 border-t border-border flex items-center gap-3 text-xs text-muted-foreground">
+                  <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-line pt-3 text-caption text-muted-fg">
                     <span className="flex items-center gap-1">
-                      <Calendar size={12} />
+                      <Calendar className="size-3" aria-hidden="true" />
                       {item.createdAt?.toDate?.().toLocaleDateString() || "Recently"}
                     </span>
                     {item.views !== undefined && (
                       <span className="flex items-center gap-1">
-                        <Eye size={12} /> {item.views} views
+                        <Eye className="size-3" aria-hidden="true" /> {item.views} views
                       </span>
                     )}
                     <Link
                       href={itemHref(item)}
-                      className="flex items-center gap-1 text-orange-600 font-medium hover:underline ml-auto"
+                      className="ml-auto flex items-center gap-1 font-semibold text-brand-strong hover:underline"
                     >
-                      {item.type === "article" ? "Read Article" : "View Post"}{" "}
-                      <ArrowRight size={12} />
+                      {item.type === "article" ? "Read article" : "View post"}
+                      <ArrowRight className="size-3" aria-hidden="true" />
                     </Link>
                   </div>
-                </div>
+                </Card>
               ))}
             </div>
 
             {filteredPosts.length === 0 && (
-              <div className="py-24 text-center">
-                <div className="w-24 h-24 bg-muted rounded-lg flex items-center justify-center mx-auto mb-8 border border-border">
-                  <Search size={32} className="text-muted-foreground" />
-                </div>
-                <h3 className="text-3xl font-bold tracking-tighter">No posts found</h3>
-                <p className="text-muted-foreground mt-2 font-medium">
-                  {searchTerm
+              <EmptyState
+                icon={<Search className="size-6" aria-hidden="true" />}
+                title="No posts found"
+                description={
+                  searchTerm
                     ? "Try a different search term."
                     : typeFilter === "articles"
                       ? "No public articles have been published yet."
                       : typeFilter === "posts"
                         ? "No public posts have been published yet."
-                        : "No public content has been published yet."}
-                </p>
-              </div>
+                        : "No public content has been published yet."
+                }
+              />
             )}
 
             {hasMore && !searchTerm && (
-              <div className="mt-16 text-center">
-                <button
+              <div className="mt-12 text-center">
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  loading={loadingMore}
                   onClick={loadMore}
-                  disabled={loadingMore}
-                  className="group relative inline-flex items-center gap-3 bg-card border border-border px-12 py-5 rounded-lg font-bold text-xs uppercase tracking-[0.2em] hover:border-orange-600 hover:text-orange-600 transition-all disabled:opacity-50 shadow-sm"
+                  trailingIcon={<ArrowRight className="size-4" aria-hidden="true" />}
                 >
-                  {loadingMore ? (
-                    <Loader size={18} className="animate-spin text-orange-600" />
-                  ) : (
-                    "Load More Posts"
-                  )}
-                </button>
+                  Load more posts
+                </Button>
               </div>
             )}
           </>
         )}
       </main>
 
-      {/* Image Lightbox */}
-      {viewingImage && (
-        <div
-          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
-          onClick={() => setViewingImage(null)}
-        >
+      <Dialog
+        open={!!viewingImage}
+        onClose={() => setViewingImage(null)}
+        title={viewingImage?.title || "Post image"}
+        size="xl"
+        contentClassName="p-2 sm:p-4"
+      >
+        {viewingImage && (
           <img
-            src={viewingImage}
-            alt="Post image"
-            className="max-w-full max-h-full object-contain rounded-lg"
+            src={viewingImage.url}
+            alt={viewingImage.title}
+            className="max-h-[70dvh] w-full rounded-control object-contain"
           />
-        </div>
-      )}
+        )}
+      </Dialog>
 
-      {/* Document Viewer */}
-      {viewingDocument && (
-        <div
-          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
-          onClick={() => setViewingDocument(null)}
-        >
-          <div
-            className="bg-background rounded-xl p-4 w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg truncate">{viewingDocument.title}</h3>
-              <button
-                onClick={() => setViewingDocument(null)}
-                className="p-2 hover:bg-muted rounded-lg"
-              >
-                <ChevronLeft size={20} />
-              </button>
-            </div>
-            <iframe
-              src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocument.url)}&embedded=true`}
-              className="w-full flex-1 min-h-[60vh] rounded-lg border border-border"
-              title={viewingDocument.title}
-            />
-          </div>
-        </div>
-      )}
-
-      <MobileBottomBar />
+      <Dialog
+        open={!!viewingDocument}
+        onClose={() => setViewingDocument(null)}
+        title={viewingDocument?.title || "Document"}
+        size="xl"
+        contentClassName="p-2 sm:p-4"
+      >
+        {viewingDocument && (
+          <iframe
+            src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocument.url)}&embedded=true`}
+            className="h-[60dvh] w-full rounded-control border border-line"
+            title={viewingDocument.title}
+          />
+        )}
+      </Dialog>
     </div>
   );
 }

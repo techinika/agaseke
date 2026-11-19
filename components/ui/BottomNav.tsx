@@ -6,10 +6,11 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 export interface BottomNavItem {
-  href: string;
+  href?: string;
   label: string;
   icon: ReactNode;
   exact?: boolean;
+  onSelect?: () => void;
 }
 
 export interface BottomNavProps {
@@ -37,24 +38,45 @@ export function BottomNav({ items, ariaLabel = "Primary", className }: BottomNav
       >
         {items.map((item) => {
           const exact = item.exact ?? item.href === "/";
-          const active = exact
-            ? pathname === item.href
-            : pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const active = item.href
+            ? exact
+              ? pathname === item.href
+              : pathname === item.href || pathname.startsWith(`${item.href}/`)
+            : false;
+          const className = cn(
+            "flex min-h-12 flex-col items-center justify-center gap-0.5 px-1 py-2 text-caption font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus",
+            active ? "text-brand-strong" : "text-muted-fg hover:text-fg",
+          );
+          const content = (
+            <>
+              <span aria-hidden="true" className="[&>svg]:size-5">
+                {item.icon}
+              </span>
+              <span className="truncate">{item.label}</span>
+            </>
+          );
+
+          if (!item.href) {
+            return (
+              <button
+                key={`action-${item.label}`}
+                type="button"
+                onClick={item.onSelect}
+                className={className}
+              >
+                {content}
+              </button>
+            );
+          }
 
           return (
             <Link
               key={item.href}
               href={item.href}
               aria-current={active ? "page" : undefined}
-              className={cn(
-                "flex min-h-12 flex-col items-center justify-center gap-0.5 px-1 py-2 text-caption font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus",
-                active ? "text-brand-strong" : "text-muted-fg hover:text-fg",
-              )}
+              className={className}
             >
-              <span aria-hidden="true" className="[&>svg]:size-5">
-                {item.icon}
-              </span>
-              <span className="truncate">{item.label}</span>
+              {content}
             </Link>
           );
         })}

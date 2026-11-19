@@ -29,6 +29,13 @@ import { getCurrencyDefinition, type CurrencyCode } from "@/lib/money";
 import { maskPayoutNumber } from "@/lib/format/payout";
 import { fromMajor, toMajor } from "@/lib/money";
 import { parsePayoutCurrency } from "@/lib/payouts/currency";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { StatusScreen } from "@/components/ui/StatusScreen";
+import { Tabs } from "@/components/ui/Tabs";
+import { cn } from "@/lib/cn";
 
 export default function PayoutsPage() {
   const router = useRouter();
@@ -55,9 +62,12 @@ export default function PayoutsPage() {
     (balance) => balance.currency === creatorCurrency,
   );
   const pendingAmount = activeBalance?.pending ?? 0;
-  const totalAvailableInSelected = perCurrencyBalances.reduce((sum, b) => sum + (b.currency === creatorCurrency ? b.pending : 0), 0);
-  const hasOtherCurrencyBalances = perCurrencyBalances.some((b) => b.currency !== creatorCurrency && b.pending > 0);
-  const canWithdraw = withdrawThreshold !== null && (pendingAmount >= withdrawThreshold || hasOtherCurrencyBalances);
+  const hasOtherCurrencyBalances = perCurrencyBalances.some(
+    (b) => b.currency !== creatorCurrency && b.pending > 0,
+  );
+  const canWithdraw =
+    withdrawThreshold !== null &&
+    (pendingAmount >= withdrawThreshold || hasOtherCurrencyBalances);
   const isVerified = creator?.verified || false;
   const payoutPref = String(verificationRequest?.payoutPreference ?? "").toLowerCase();
 
@@ -136,14 +146,20 @@ export default function PayoutsPage() {
   };
 
   const handleGetQuote = async () => {
-    const rawAmount = withdrawType === "all" ? String(pendingAmount || withdrawThreshold || 0) : customAmount.trim();
+    const rawAmount =
+      withdrawType === "all"
+        ? String(pendingAmount || withdrawThreshold || 0)
+        : customAmount.trim();
     if (!rawAmount) {
       toast.error("Enter an amount to convert");
       return;
     }
     setQuoteLoading(true);
     try {
-      const quote = await requestWithdrawalQuote({ amount: rawAmount, payoutCurrency: creatorCurrency });
+      const quote = await requestWithdrawalQuote({
+        amount: rawAmount,
+        payoutCurrency: creatorCurrency,
+      });
       setWithdrawQuote(quote);
       toast.success("Conversion quote locked for 10 minutes");
     } catch (e) {
@@ -182,7 +198,9 @@ export default function PayoutsPage() {
 
     if (!withdrawQuote && finalAmount > pendingAmount) {
       if (hasOtherCurrencyBalances) {
-        toast.error("Get a conversion quote to withdraw using balances in other currencies");
+        toast.error(
+          "Get a conversion quote to withdraw using balances in other currencies",
+        );
         return;
       }
       toast.error("Insufficient available balance");
@@ -221,149 +239,166 @@ export default function PayoutsPage() {
 
   if (loading)
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader className="animate-spin text-orange-600" />
+      <div
+        className="flex min-h-dvh items-center justify-center bg-canvas"
+        role="status"
+        aria-label="Loading payouts"
+      >
+        <Loader className="size-6 animate-spin text-brand-strong" aria-hidden="true" />
       </div>
     );
 
   return (
-    <div className="min-h-screen bg-background flex text-foreground">
-      <main className="flex-1 p-8 max-w-5xl mx-auto">
+    <div className="min-h-dvh bg-canvas text-fg">
+      <main className="mx-auto max-w-5xl p-4 sm:p-8">
         {view === "overview" ? (
           <div className="animate-in fade-in duration-500">
-            <header className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-4">
+            <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <div>
-                <h1 className="text-4xl font-bold tracking-tight uppercase">Payouts</h1>
-                <p className="text-muted-foreground text-sm mt-1">
+                <h1 className="text-display font-bold tracking-tight text-fg">Payouts</h1>
+                <p className="mt-1 text-label text-muted-fg">
                   Simplicity and exclusive incentives.
                 </p>
               </div>
-              <button
+              <Button
+                size="lg"
                 disabled={!canWithdraw}
                 onClick={handleWithdrawInit}
-                className={`px-8 py-4 rounded-lg font-black text-sm transition shadow-xl flex items-center gap-2 ${
-                  canWithdraw
-                    ? "bg-foreground text-background hover:bg-orange-600"
-                    : "bg-border-strong text-muted-foreground cursor-not-allowed"
-                }`}
+                trailingIcon={<ArrowUpRight className="size-4" aria-hidden="true" />}
               >
-                Request to Withdraw <ArrowUpRight size={18} />
-              </button>
+                Request to Withdraw
+              </Button>
             </header>
 
             {!isVerified && (
-              <div className="mb-8 p-6 bg-foreground rounded-lg flex items-center justify-between shadow-2xl">
-                <div className="flex items-center gap-4 text-white">
-                  <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
-                    <AlertCircle size={24} />
+              <Card className="mb-8 flex flex-col gap-4 border-warning/30 bg-warning-bg/60 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-11 shrink-0 items-center justify-center rounded-control bg-warning-bg text-warning">
+                    <AlertCircle className="size-5" aria-hidden="true" />
                   </div>
                   <div>
-                    <h4 className="font-bold">Identity Verification Required</h4>
-                    <p className="text-xs text-muted-foreground">
+                    <h4 className="text-body font-bold text-fg">
+                      Identity Verification Required
+                    </h4>
+                    <p className="text-caption text-muted-fg">
                       Unlock payouts and set your destination.
                     </p>
                   </div>
                 </div>
-                <button
+                <Button
+                  variant="secondary"
+                  className="uppercase"
                   onClick={() => router.push("/creator/verify")}
-                  className="bg-card text-foreground px-6 py-3 rounded-lg text-xs font-black uppercase"
                 >
                   Verify Now
-                </button>
-              </div>
+                </Button>
+              </Card>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-              <div className="bg-card p-8 rounded-lg border border-border shadow-sm">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">
+            <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+              <Card className="p-6">
+                <p className="mb-4 text-caption font-bold uppercase tracking-widest text-muted-fg">
                   Available Balance
                 </p>
                 {perCurrencyBalances.map((b) => (
-                  <h2 key={b.currency} className="text-2xl font-black">
+                  <h2 key={b.currency} className="text-title font-black text-fg">
                     {b.pending.toLocaleString()}{" "}
-                    <span className="text-sm font-bold text-muted-foreground">
+                    <span className="text-label font-bold text-muted-fg">
                       {getCurrencySymbol(b.currency)}
                     </span>
                   </h2>
                 ))}
                 {perCurrencyBalances.length > 1 && (
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    {perCurrencyBalances.map((b) => (
-                      <button
-                        key={b.currency}
-                        type="button"
-                        onClick={() => selectPayoutCurrency(b)}
-                        className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border ${
-                          b.currency === creatorCurrency
-                            ? "border-orange-600 bg-orange-50 text-orange-600"
-                            : "border-border text-muted-foreground hover:border-foreground"
-                        }`}
-                      >
-                        {b.currency}
-                      </button>
-                    ))}
+                  <div
+                    className="mt-4 flex flex-wrap gap-2"
+                    role="group"
+                    aria-label="Select payout currency"
+                  >
+                    {perCurrencyBalances.map((b) => {
+                      const selected = b.currency === creatorCurrency;
+                      return (
+                        <Button
+                          key={b.currency}
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          aria-pressed={selected}
+                          onClick={() => selectPayoutCurrency(b)}
+                          className={cn(
+                            "rounded-pill px-3 text-caption font-black uppercase tracking-widest",
+                            selected &&
+                              "border-brand-strong bg-brand-soft text-brand-strong hover:bg-brand-soft",
+                          )}
+                        >
+                          {b.currency}
+                        </Button>
+                      );
+                    })}
                   </div>
                 )}
                 {hasOtherCurrencyBalances && (
-                  <p className="text-[10px] text-muted-foreground mt-3">
-                    You can convert other currency balances at withdrawal (locked quote, rates shown at request time).
+                  <p className="mt-3 text-caption text-muted-fg">
+                    You can convert other currency balances at withdrawal (locked quote,
+                    rates shown at request time).
                   </p>
                 )}
-              </div>
-              <div className="bg-card p-8 rounded-lg border border-border shadow-sm">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">
+              </Card>
+
+              <Card className="p-6">
+                <p className="mb-4 text-caption font-bold uppercase tracking-widest text-muted-fg">
                   Total Earnings
                 </p>
                 <div className="space-y-1">
                   {perCurrencyBalances.map((b) => (
-                    <h2 key={b.currency} className="text-2xl font-black">
+                    <h2 key={b.currency} className="text-title font-black text-fg">
                       {b.earnings.toLocaleString()}{" "}
-                      <span className="text-sm font-bold text-muted-foreground">
+                      <span className="text-label font-bold text-muted-fg">
                         {getCurrencySymbol(b.currency)}
                       </span>
                     </h2>
                   ))}
                 </div>
-              </div>
-              <div className="bg-card p-8 rounded-lg border border-border shadow-sm">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-4">
+              </Card>
+
+              <Card className="p-6">
+                <p className="mb-4 text-caption font-bold uppercase tracking-widest text-muted-fg">
                   Destination
                 </p>
                 {isVerified && verificationRequest ? (
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center font-black text-xs">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-control bg-brand-soft text-caption font-black text-brand-strong">
                       {prefShort}
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-sm font-bold">
+                      <span className="text-label font-bold text-fg">
                         {verificationRequest.bankName || prefLabel}
                       </span>
                       {verificationRequest.accountName && (
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-caption text-muted-fg">
                           {verificationRequest.accountName}
                         </span>
                       )}
                       {verificationRequest.accountNumber && (
-                        <span className="text-xs text-muted-foreground font-mono">
+                        <span className="font-mono text-caption text-muted-fg">
                           {verificationRequest.accountNumber}
                         </span>
                       )}
                     </div>
                   </div>
                 ) : (
-                  <span
-                    className="text-sm font-bold text-muted-foreground underline cursor-pointer"
+                  <Button
+                    variant="ghost"
+                    className="underline"
                     onClick={() => router.push("/creator/verify")}
                   >
                     Not Verified
-                  </span>
+                  </Button>
                 )}
-              </div>
+              </Card>
             </div>
 
-            {/* Progress to Threshold - Per Currency */}
-            <div className="bg-card p-8 rounded-lg border border-border shadow-sm mb-10 space-y-6">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+            <Card className="mb-8 space-y-6 p-6">
+              <p className="text-caption font-bold uppercase tracking-widest text-muted-fg">
                 Progress to Payout Threshold
               </p>
               {perCurrencyBalances.map((b) => {
@@ -373,24 +408,31 @@ export default function PayoutsPage() {
                     : Math.min((b.pending / b.threshold) * 100, 100);
                 return (
                   <div key={b.currency}>
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm font-bold text-foreground">
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <p className="text-label font-bold text-fg">
                         {b.currency} ({getCurrencySymbol(b.currency)})
                       </p>
-                      <p className="text-sm font-bold text-foreground">
+                      <p className="text-label font-bold text-fg">
                         {b.pending.toLocaleString()}
                         {b.threshold === null
                           ? " / Not configured"
                           : ` / ${b.threshold.toLocaleString()} ${getCurrencySymbol(b.currency)}`}
                       </p>
                     </div>
-                    <div className="w-full bg-muted rounded-full h-3 mb-1">
+                    <div
+                      className="mb-1 h-3 w-full rounded-pill bg-surface-sunken"
+                      role="progressbar"
+                      aria-valuenow={progress}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label={`${b.currency} payout threshold progress`}
+                    >
                       <div
-                        className="bg-orange-600 h-3 rounded-full transition-all duration-500"
+                        className="h-3 rounded-pill bg-brand-strong transition-all duration-500"
                         style={{ width: `${progress}%` }}
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-caption text-muted-fg">
                       {b.threshold === null
                         ? "Withdrawals are not configured for this currency."
                         : b.pending >= b.threshold
@@ -400,28 +442,24 @@ export default function PayoutsPage() {
                   </div>
                 );
               })}
-            </div>
+            </Card>
 
-            {/* History Section */}
-            <div className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
-              <div className="p-8 border-b border-border flex items-center justify-between bg-muted/50">
-                <div className="flex gap-4">
-                  <button
-                    onClick={() => setHistoryTab("payouts")}
-                    className={`text-sm font-black uppercase tracking-widest ${historyTab === "payouts" ? "text-foreground underline underline-offset-8" : "text-muted-foreground"}`}
-                  >
-                    Payouts
-                  </button>
-                  <button
-                    onClick={() => setHistoryTab("requests")}
-                    className={`text-sm font-bold uppercase tracking-widest ${historyTab === "requests" ? "text-foreground underline underline-offset-8" : "text-muted-foreground"}`}
-                  >
-                    Withdraw Requests
-                  </button>
-                </div>
-              </div>
-
-              <div className="divide-y divide-border">
+            <Card className="overflow-hidden">
+              <Tabs
+                ariaLabel="Payout history"
+                value={historyTab}
+                onChange={setHistoryTab}
+                items={[
+                  { id: "payouts", label: "Payouts" },
+                  { id: "requests", label: "Withdraw Requests" },
+                ]}
+                className="bg-surface-raised/60 px-4 sm:px-6"
+              />
+              <div
+                role="tabpanel"
+                aria-label={historyTab === "payouts" ? "Payouts" : "Withdraw Requests"}
+                className="divide-y divide-line"
+              >
                 {historyTab === "payouts" ? (
                   payouts.length === 0 ? (
                     <EmptyState msg="No payout history found" />
@@ -429,23 +467,23 @@ export default function PayoutsPage() {
                     payouts.map((tx) => (
                       <div
                         key={tx.id}
-                        className="p-6 flex items-center justify-between hover:bg-muted transition"
+                        className="flex items-center justify-between gap-4 p-5 transition-colors hover:bg-surface-raised"
                       >
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-lg bg-green-50 text-green-600 flex items-center justify-center">
-                            <CheckCircle2 size={20} />
+                        <div className="flex items-center gap-3">
+                          <div className="flex size-11 shrink-0 items-center justify-center rounded-control bg-success-bg text-success">
+                            <CheckCircle2 className="size-5" aria-hidden="true" />
                           </div>
                           <div>
-                            <p className="text-sm font-bold">
+                            <p className="text-label font-bold text-fg">
                               {tx.method ? `${tx.method} payout` : "Payout"}
                             </p>
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">
+                            <p className="text-caption font-bold uppercase tracking-widest text-muted-fg">
                               {tx.createdAt?.toDate().toLocaleDateString()}
                             </p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-black">
+                          <p className="text-label font-black text-fg tabular-nums">
                             -{tx.amount.toLocaleString()}{" "}
                             {getCurrencySymbol(
                               typeof tx.currency === "string"
@@ -453,9 +491,9 @@ export default function PayoutsPage() {
                                 : creatorCurrency,
                             )}
                           </p>
-                          <p className="text-[10px] text-green-500 font-bold uppercase tracking-widest">
+                          <Badge tone="success" className="mt-1 uppercase">
                             Completed
-                          </p>
+                          </Badge>
                         </div>
                       </div>
                     ))
@@ -466,23 +504,30 @@ export default function PayoutsPage() {
                   requests.map((req) => (
                     <div
                       key={req.id}
-                      className="p-6 flex items-center justify-between hover:bg-muted transition"
+                      className="flex items-center justify-between gap-4 p-5 transition-colors hover:bg-surface-raised"
                     >
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-3">
                         <div
-                          className={`w-12 h-12 rounded-lg flex items-center justify-center ${req.status === "pending" ? "bg-orange-50 text-orange-600" : "bg-muted text-muted-foreground"}`}
+                          className={cn(
+                            "flex size-11 shrink-0 items-center justify-center rounded-control",
+                            req.status === "pending"
+                              ? "bg-warning-bg text-warning"
+                              : "bg-surface-sunken text-muted-fg",
+                          )}
                         >
-                          <Clock size={20} />
+                          <Clock className="size-5" aria-hidden="true" />
                         </div>
                         <div>
-                          <p className="text-sm font-bold">Withdrawal Request</p>
-                          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">
+                          <p className="text-label font-bold text-fg">
+                            Withdrawal Request
+                          </p>
+                          <p className="text-caption font-bold uppercase tracking-widest text-muted-fg">
                             {req.createdAt?.toDate().toLocaleDateString()}
                           </p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-black">
+                        <p className="text-label font-black text-fg tabular-nums">
                           {req.amount.toLocaleString()}{" "}
                           {getCurrencySymbol(
                             typeof req.currency === "string"
@@ -490,152 +535,185 @@ export default function PayoutsPage() {
                               : creatorCurrency,
                           )}
                         </p>
-                        <p
-                          className={`text-[10px] font-bold uppercase tracking-widest ${req.status === "pending" ? "text-orange-600" : req.status === "approved" ? "text-green-500" : "text-red-500"}`}
+                        <Badge
+                          tone={
+                            req.status === "pending"
+                              ? "warning"
+                              : req.status === "approved"
+                                ? "success"
+                                : "danger"
+                          }
+                          className="mt-1 uppercase"
                         >
                           {req.status}
-                        </p>
+                        </Badge>
                       </div>
                     </div>
                   ))
                 )}
               </div>
-            </div>
+            </Card>
           </div>
         ) : (
-          <div className="max-w-md mx-auto py-10 animate-in slide-in-from-bottom-8 duration-500">
-            <button
+          <div className="mx-auto max-w-md py-10 animate-in slide-in-from-bottom-8 duration-500">
+            <Button
+              variant="ghost"
+              className="mb-8 gap-2 uppercase tracking-widest text-muted-fg hover:text-fg"
+              leadingIcon={<ArrowLeft className="size-4" aria-hidden="true" />}
               onClick={() => {
                 setView("overview");
                 setWithdrawStep(1);
                 setWithdrawQuote(null);
               }}
-              className="mb-8 flex items-center gap-2 text-muted-foreground hover:text-foreground font-black text-xs uppercase tracking-widest"
             >
-              <ArrowLeft size={16} /> Go Back
-            </button>
+              Go Back
+            </Button>
 
             {withdrawStep === 1 && (
-              <div className="space-y-8 bg-card p-10 rounded-lg shadow-2xl border border-border">
+              <Card className="space-y-8 p-6 shadow-card sm:p-8">
                 <header>
-                  <h2 className="text-3xl font-black uppercase tracking-tighter">
+                  <h2 className="text-display font-black uppercase tracking-tighter text-fg">
                     Withdraw Funds
                   </h2>
-                  <p className="text-muted-foreground text-sm mt-2 leading-relaxed">
+                  <p className="mt-2 text-label leading-relaxed text-muted-fg">
                     Your request will be reviewed and responded to within <b>48 hours</b>.
                   </p>
                 </header>
 
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => { setWithdrawType("all"); setWithdrawQuote(null); }}
-                      className={`py-4 rounded-lg border-2 font-bold text-sm transition-all ${withdrawType === "all" ? "border-orange-600 bg-orange-50 text-orange-600" : "border-border text-muted-foreground"}`}
+                  <div
+                    className="grid grid-cols-2 gap-3"
+                    role="group"
+                    aria-label="Withdrawal amount type"
+                  >
+                    <Button
+                      variant={withdrawType === "all" ? "primary" : "secondary"}
+                      aria-pressed={withdrawType === "all"}
+                      onClick={() => {
+                        setWithdrawType("all");
+                        setWithdrawQuote(null);
+                      }}
                     >
                       Withdraw All
-                    </button>
-                    <button
-                      onClick={() => { setWithdrawType("custom"); setWithdrawQuote(null); }}
-                      className={`py-4 rounded-lg border-2 font-bold text-sm transition-all ${withdrawType === "custom" ? "border-orange-600 bg-orange-50 text-orange-600" : "border-border text-muted-foreground"}`}
+                    </Button>
+                    <Button
+                      variant={withdrawType === "custom" ? "primary" : "secondary"}
+                      aria-pressed={withdrawType === "custom"}
+                      onClick={() => {
+                        setWithdrawType("custom");
+                        setWithdrawQuote(null);
+                      }}
                     >
                       Custom Amount
-                    </button>
+                    </Button>
                   </div>
 
                   {withdrawType === "custom" && (
-                    <div className="relative">
-                      <input
-                        type="number"
-                        min="0"
-                        step={1 / 10 ** getCurrencyDefinition(creatorCurrency as CurrencyCode).minorUnit}
-                        value={customAmount}
-                        onChange={(e) => { setCustomAmount(e.target.value); setWithdrawQuote(null); }}
-                        placeholder={`Enter amount (${creatorCurrency})`}
-                        className="w-full bg-muted p-4 rounded-lg font-black text-lg outline-none border-2 border-transparent focus:border-orange-600 transition"
-                      />
-                    </div>
+                    <Input
+                      type="number"
+                      min="0"
+                      step={
+                        1 /
+                        10 **
+                          getCurrencyDefinition(creatorCurrency as CurrencyCode).minorUnit
+                      }
+                      value={customAmount}
+                      onChange={(e) => {
+                        setCustomAmount(e.target.value);
+                        setWithdrawQuote(null);
+                      }}
+                      placeholder={`Enter amount (${creatorCurrency})`}
+                      aria-label={`Enter amount (${creatorCurrency})`}
+                      className="text-body-lg font-black"
+                    />
                   )}
 
                   {hasOtherCurrencyBalances && (
-                    <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 space-y-3">
-                      <p className="text-xs font-bold text-orange-800">
-                        You have balances in other currencies. Lock a conversion quote to withdraw them in {creatorCurrency}.
+                    <div className="space-y-3 rounded-control border border-line bg-brand-soft p-4">
+                      <p className="text-caption font-bold text-brand-strong">
+                        You have balances in other currencies. Lock a conversion quote to
+                        withdraw them in {creatorCurrency}.
                       </p>
-                      <button
-                        type="button"
-                        onClick={handleGetQuote}
+                      <Button
+                        fullWidth
                         disabled={quoteLoading}
-                        className="w-full bg-orange-600 text-white py-3 rounded-lg font-black text-sm disabled:opacity-50"
+                        onClick={handleGetQuote}
+                        leadingIcon={
+                          quoteLoading ? (
+                            <Loader className="size-4 animate-spin" aria-hidden="true" />
+                          ) : undefined
+                        }
                       >
                         {quoteLoading ? "Getting quote..." : "Get conversion quote"}
-                      </button>
+                      </Button>
                     </div>
                   )}
 
                   {withdrawQuote && (
-                    <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-2">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Conversion breakdown ({withdrawQuote.payoutCurrency})</p>
-                      <p className="text-sm font-black">Payout: {withdrawQuote.requestedPayoutAmountMajor.toLocaleString()} {getCurrencySymbol(withdrawQuote.payoutCurrency)}</p>
+                    <div className="space-y-2 rounded-control border border-line bg-surface-raised/60 p-4">
+                      <p className="text-caption font-bold uppercase tracking-widest text-muted-fg">
+                        Conversion breakdown ({withdrawQuote.payoutCurrency})
+                      </p>
+                      <p className="text-label font-black text-fg">
+                        Payout:{" "}
+                        {withdrawQuote.requestedPayoutAmountMajor.toLocaleString()}{" "}
+                        {getCurrencySymbol(withdrawQuote.payoutCurrency)}
+                      </p>
                       <div className="space-y-1">
                         {withdrawQuote.sources.map((s, i) => (
-                          <p key={i} className="text-xs text-muted-foreground">
-                            {s.amountMajor.toLocaleString()} {getCurrencySymbol(s.currency)}
-                            {s.currency !== withdrawQuote.payoutCurrency ? ` → ${s.payoutAmountMajor.toLocaleString()} ${getCurrencySymbol(withdrawQuote.payoutCurrency)} (rate ${s.effectiveRate.toFixed(6)})` : " (no conversion)"}
+                          <p key={i} className="text-caption text-muted-fg">
+                            {s.amountMajor.toLocaleString()}{" "}
+                            {getCurrencySymbol(s.currency)}
+                            {s.currency !== withdrawQuote.payoutCurrency
+                              ? ` → ${s.payoutAmountMajor.toLocaleString()} ${getCurrencySymbol(withdrawQuote.payoutCurrency)} (rate ${s.effectiveRate.toFixed(6)})`
+                              : " (no conversion)"}
                           </p>
                         ))}
                       </div>
-                      <p className="text-[10px] text-muted-foreground">Quote expires: {new Date(withdrawQuote.expiresAt).toLocaleString()}</p>
+                      <p className="text-caption text-muted-fg">
+                        Quote expires:{" "}
+                        {new Date(withdrawQuote.expiresAt).toLocaleString()}
+                      </p>
                     </div>
                   )}
                 </div>
 
-                <div className="py-6 border-y border-border">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest text-center mb-1">
+                <div className="border-y border-line py-6">
+                  <p className="mb-1 text-center text-caption font-bold uppercase tracking-widest text-muted-fg">
                     Target Account
                   </p>
-                  <p className="text-center font-black text-foreground">
+                  <p className="text-center font-black text-fg">
                     {maskPayoutNumber(creator?.payoutNumber || "")} ({creator?.network})
                   </p>
                 </div>
 
-                <button
+                <Button
+                  fullWidth
+                  size="lg"
+                  className="py-7 text-body-lg"
                   onClick={submitRequest}
-                  disabled={isSubmitting}
-                  className="w-full bg-foreground text-background py-6 rounded-lg font-black text-xl flex items-center justify-center gap-3 shadow-xl hover:bg-orange-600 transition-all disabled:opacity-50"
+                  loading={isSubmitting}
                 >
-                  {isSubmitting ? (
-                    <Loader className="animate-spin" />
-                  ) : (
-                    "Request to Withdraw"
-                  )}
-                </button>
-              </div>
+                  Request to Withdraw
+                </Button>
+              </Card>
             )}
 
             {withdrawStep === 2 && (
-              <div className="text-center space-y-8 bg-foreground p-12 rounded-lg shadow-2xl text-background">
-                <div className="w-24 h-24 bg-green-500 rounded-lg flex items-center justify-center mx-auto rotate-12">
-                  <CheckCircle2 size={48} />
-                </div>
-                <div>
-                  <h2 className="text-3xl font-black uppercase tracking-tighter">
-                    Request Sent!
-                  </h2>
-                  <p className="text-muted-foreground text-sm mt-4 leading-relaxed">
-                    We have received your request. Our team will verify the data and
-                    process your funds shortly.
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    setView("overview");
-                    setWithdrawStep(1);
+              <Card className="p-6 shadow-card sm:p-8">
+                <StatusScreen
+                  status="success"
+                  title="Request Sent!"
+                  description="We have received your request. Our team will verify the data and process your funds shortly."
+                  primaryAction={{
+                    label: "Done",
+                    onClick: () => {
+                      setView("overview");
+                      setWithdrawStep(1);
+                    },
                   }}
-                  className="w-full bg-card text-foreground py-5 rounded-lg font-black uppercase text-sm hover:bg-orange-500 hover:text-white transition"
-                >
-                  Done
-                </button>
-              </div>
+                />
+              </Card>
             )}
           </div>
         )}

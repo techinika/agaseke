@@ -1,4 +1,3 @@
-import AuthGuard from "@/auth/AuthGuard";
 import SupporterSpace from "@/components/pages/Dashboards/SupporterSpace";
 import { Metadata } from "next";
 
@@ -32,11 +31,7 @@ export const metadata: Metadata = {
 };
 
 function page() {
-  return (
-    <AuthGuard>
-      <SupporterSpace />
-    </AuthGuard>
-  );
+  return <SupporterSpace />;
 }
 
 export default page;

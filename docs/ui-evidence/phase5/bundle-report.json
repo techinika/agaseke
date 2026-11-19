@@ -1,0 +1,27 @@
+{
+  "generatedAt": "2026-11-19T06:21:57.632Z",
+  "branch": "design/full-app-redesign",
+  "scope": ".next/static/chunks/**/*.js",
+  "buildCommand": "ENCRYPTION_KEY=local-build-placeholder NEXT_PUBLIC_DEV_AUTH=1 npm run build -- --webpack",
+  "after": {
+    "files": 201,
+    "rawKB": 4500,
+    "gzipKB": 1410
+  },
+  "reference": {
+    "phase": "Phase 4 after",
+    "files": 196,
+    "rawKB": 4459,
+    "gzipKB": 1396,
+    "source": "docs/ui-evidence/phase4/bundle-report.json"
+  },
+  "delta": {
+    "files": 5,
+    "rawKB": 41,
+    "gzipKB": 14
+  },
+  "notes": [
+    "Reference-only comparison: the working tree contains earlier uncommitted phase work, so this is not an isolated Phase 5 before build.",
+    "No like-for-like Phase 5 before build was captured."
+  ]
+}

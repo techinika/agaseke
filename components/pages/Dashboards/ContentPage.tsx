@@ -471,7 +471,7 @@ export default function ContentManager() {
         </Link>
       </aside>
 
-      <main className="flex-1 p-4 lg:p-6 overflow-hidden">
+      <div className="flex-1 p-4 lg:p-6 overflow-hidden">
         <div className="flex items-center justify-between mb-4 lg:mb-6">
           <div className="flex items-center gap-3">
             <button
@@ -768,7 +768,7 @@ export default function ContentManager() {
             </div>
           </div>
         )}
-      </main>
+      </div>
 
       {editingPost && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">

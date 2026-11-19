@@ -15,7 +15,7 @@ export default function PerkItem({
         {icon}
       </span>
       <div>
-        <h3 className="text-body font-bold text-fg">{title}</h3>
+        <p className="text-body font-bold text-fg">{title}</p>
         <p className="mt-1 text-label leading-relaxed text-muted-fg">{desc}</p>
       </div>
     </div>

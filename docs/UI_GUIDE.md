@@ -54,6 +54,25 @@ Use `CreatorSubpage` from `components/shell` for every `[username]` sub-page. It
 - Money must go through `formatMoney` from `lib/format/money` or the `Money` component; never call a currency formatter inline.
 - Confetti, theme-color, and other non-Tailwind color values must come from tokens or `lib/theme.ts`; `scripts/design-lint.mjs` enforces this across public creator routes and pay routes.
 
+## Auth flows
+
+Login, onboarding, and verification live in `components/pages/LoginPage.tsx`, `features/onboarding/`, and `features/verification/`. Route files stay thin; flow state lives in hooks, and copy lives in `lib/i18n/en.ts`.
+
+- Reuse `AuthShell`; every auth route must expose `#main-content` and a keyboard-visible skip link.
+- Build forms from `FormField`, `Input`, `Select`, `Checkbox`, and `Button`; label every control and show submit errors in a `role="alert"` element.
+- Onboarding uses `useOnboarding` and persists only the draft handle/location/profile/social/payout form state in `sessionStorage` under `agaseke_onboarding_draft`; do not add new Firestore writes here.
+- Verification derives status from the existing creator fields and keeps the `recaptcha-anchor` mount point in the DOM; do not replace the real OTP/upload backend with UI state.
+- `/dev/auth-onboarding` and `/dev/auth-verify` are gated previews with `noindex`. Never add them to production navigation.
+
+## Creator dashboard core
+
+Creator home, payouts, settings, sales, and supporters live in `features/creator-home/` and `components/pages/Dashboards/`. Route files stay thin; page components own presentation and keep Firestore/payment/business logic unchanged.
+
+- Reuse `AppShell`, `PageHeader`, `Card`, `Tabs`, `Button`, `IconButton`, `FormField`, `Input`, `Select`, `Textarea`, `Switch`, `Badge`, `Avatar`, `EmptyState`, `Skeleton`, `SearchInput`, and `Dialog`.
+- Money formatting must use the existing shared formatter path; do not replace payout, fee, or currency logic during presentation work.
+- Destructive payout actions, profile writes/uploads, sales subscriptions, supporter enrichment, and broadcast delivery must keep their existing behavior and permission model.
+- `/dev/creator-core` is a gated mock-data preview with `noindex`; never add it to production navigation.
+
 ## Verification
 
 Run before calling any shell or route done:
@@ -63,8 +82,12 @@ npm run typecheck
 npm run lint:ci
 npm test
 npx playwright test e2e/phase2-shells.spec.ts
+npx playwright test e2e/phase5-auth.spec.ts
+npx playwright test e2e/phase6a-creator-core.spec.ts
 npx playwright test e2e/mobile-routes.spec.ts
 CHROMIUM_PATH=/usr/bin/chromium OUT_DIR=docs/ui-evidence/phase4/after node scripts/phase4-evidence.mjs
+CHROMIUM_PATH=/usr/bin/chromium OUT_DIR=docs/ui-evidence/phase5/after node scripts/phase5-evidence.mjs
+CHROMIUM_PATH=/usr/bin/chromium OUT_DIR=docs/ui-evidence/phase6a/after node scripts/phase6a-evidence.mjs
 ```
 
-Visual evidence belongs in `docs/ui-evidence/phase2-shells/`, with 360×640 and 1280×800 captures in light and dark. Axe must have zero serious/critical violations; 0 moderate is the target on touched routes. Record phase results in `docs/REDESIGN_LOG.md` and `docs/REDESIGN_COVERAGE.md`.
+Visual evidence belongs in `docs/ui-evidence/phase2-shells/`, `docs/ui-evidence/phase4/`, `docs/ui-evidence/phase5/`, and `docs/ui-evidence/phase6a/`, with 360×640 and 1280×800 captures in light and dark. Axe must have zero serious/critical violations; 0 moderate is the target on touched routes. Record phase results in `docs/REDESIGN_LOG.md` and `docs/REDESIGN_COVERAGE.md`.

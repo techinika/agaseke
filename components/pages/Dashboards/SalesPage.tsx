@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { TrendingUp, DollarSign, Package, Users, Loader, Search } from "lucide-react";
+import { TrendingUp, DollarSign, Package, Users } from "lucide-react";
 import { db } from "@/db/firebase";
 import {
   collection,
@@ -14,7 +14,17 @@ import {
   documentId,
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
-import { getCurrencySymbol } from "@/types/currency";
+import { formatCurrency } from "@/types/currency";
+import {
+  Avatar,
+  Badge,
+  Card,
+  EmptyState,
+  MediaImage,
+  SearchInput,
+  Select,
+  Skeleton,
+} from "@/components/ui";
 
 interface SaleRecord {
   id: string;
@@ -149,7 +159,7 @@ export default function SalesPage() {
     });
 
     return () => unsubSales();
-  }, [creator?.uid]);
+  }, [creator?.uid, creator?.handle]);
 
   const filteredSales = sales.filter((sale) => {
     const product = products[sale.productId];
@@ -191,11 +201,6 @@ export default function SalesPage() {
     {},
   );
 
-  const totalSales = filteredSales.reduce((sum, sale) => sum + sale.totalAmount, 0);
-  const totalEarnings = filteredSales.reduce(
-    (sum, sale) => sum + (sale.creatorEarnings || 0),
-    0,
-  );
   const totalOrders = filteredSales.length;
   const uniqueBuyers = new Set(
     filteredSales.map((sale) => sale.buyerId).filter((id) => id !== "anonymous"),
@@ -251,158 +256,181 @@ export default function SalesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader className="w-8 h-8 text-orange-600 animate-spin" />
+      <div className="min-h-screen space-y-6 bg-canvas p-4 text-fg md:p-6">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Card key={index} className="space-y-4 p-5">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-9 w-32" />
+            </Card>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <Card className="space-y-4 p-5 lg:col-span-2">
+            <Skeleton className="h-6 w-40" />
+            {Array.from({ length: 5 }).map((_, index) => (
+              <Skeleton key={index} className="h-12 w-full" />
+            ))}
+          </Card>
+          <Card className="space-y-4 p-5">
+            <Skeleton className="h-6 w-32" />
+            {Array.from({ length: 5 }).map((_, index) => (
+              <Skeleton key={index} className="h-12 w-full" />
+            ))}
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black text-foreground">Sales</h1>
-          <p className="text-muted-foreground mt-1">
-            Track your product sales and earnings
-          </p>
-        </div>
+    <div className="min-h-screen space-y-6 bg-canvas p-4 text-fg md:p-6">
+      <div>
+        <h1 className="text-heading font-bold text-fg md:text-display">Sales</h1>
+        <p className="mt-1 text-label text-muted-fg">
+          Track your product sales and earnings
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-card rounded-2xl p-5 border border-border shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Total Sales</p>
-              <p className="text-2xl md:text-3xl font-black text-foreground mt-1">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-label font-semibold text-muted-fg">Total Sales</p>
+              <p className="mt-1 text-heading font-bold tabular-nums text-fg md:text-display">
                 {Object.entries(salesByCurrency).map(([cur, data]) => (
                   <span key={cur} className="mr-2">
-                    {data.total.toLocaleString()} {getCurrencySymbol(cur)}
+                    {formatCurrency(data.total, cur)}
                   </span>
                 ))}
                 {Object.keys(salesByCurrency).length === 0 && "0"}
               </p>
             </div>
-            <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-orange-600" />
-            </div>
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-control bg-brand-soft text-brand-strong">
+              <DollarSign className="size-6" aria-hidden="true" />
+            </span>
           </div>
-        </div>
+        </Card>
 
-        <div className="bg-card rounded-2xl p-5 border border-border shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Your Earnings</p>
-              <p className="text-2xl md:text-3xl font-black text-foreground mt-1">
+        <Card className="p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-label font-semibold text-muted-fg">Your Earnings</p>
+              <p className="mt-1 text-heading font-bold tabular-nums text-fg md:text-display">
                 {Object.entries(salesByCurrency).map(([cur, data]) => (
                   <span key={cur} className="mr-2">
-                    {data.earnings.toLocaleString()} {getCurrencySymbol(cur)}
+                    {formatCurrency(data.earnings, cur)}
                   </span>
                 ))}
                 {Object.keys(salesByCurrency).length === 0 && "0"}
               </p>
             </div>
-            <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-green-600" />
-            </div>
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-control bg-success-bg text-success">
+              <TrendingUp className="size-6" aria-hidden="true" />
+            </span>
           </div>
-        </div>
+        </Card>
 
-        <div className="bg-card rounded-2xl p-5 border border-border shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Total Orders</p>
-              <p className="text-2xl md:text-3xl font-black text-foreground mt-1">
+        <Card className="p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-label font-semibold text-muted-fg">Total Orders</p>
+              <p className="mt-1 text-heading font-bold tabular-nums text-fg md:text-display">
                 {totalOrders}
               </p>
             </div>
-            <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
-              <Package className="w-6 h-6 text-blue-600" />
-            </div>
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-control bg-info-bg text-info">
+              <Package className="size-6" aria-hidden="true" />
+            </span>
           </div>
-        </div>
+        </Card>
 
-        <div className="bg-card rounded-2xl p-5 border border-border shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Unique Buyers</p>
-              <p className="text-2xl md:text-3xl font-black text-foreground mt-1">
+        <Card className="p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-label font-semibold text-muted-fg">Unique Buyers</p>
+              <p className="mt-1 text-heading font-bold tabular-nums text-fg md:text-display">
                 {uniqueBuyers}
               </p>
             </div>
-            <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center">
-              <Users className="w-6 h-6 text-purple-600" />
-            </div>
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-control bg-warning-bg text-warning">
+              <Users className="size-6" aria-hidden="true" />
+            </span>
           </div>
-        </div>
+        </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-border">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <h2 className="text-lg font-bold text-foreground">Recent Sales</h2>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Card className="overflow-hidden lg:col-span-2">
+          <div className="border-b border-line p-5">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <h2 className="text-title font-bold text-fg">Recent Sales</h2>
               <div className="flex flex-wrap items-center gap-3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <input
-                    type="text"
-                    placeholder="Search sales..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 pr-4 py-2 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
-                  />
-                </div>
-                <select
+                <SearchInput
+                  aria-label="Search sales..."
+                  placeholder="Search sales..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  containerClassName="w-full md:w-64"
+                />
+                <Select
+                  aria-label="Time filter"
                   value={timeFilter}
                   onChange={(e) => setTimeFilter(e.target.value as any)}
-                  className="px-3 py-2 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                  containerClassName="w-full md:w-40"
                 >
                   <option value="all">All Time</option>
                   <option value="week">This Week</option>
                   <option value="month">This Month</option>
                   <option value="year">This Year</option>
-                </select>
+                </Select>
               </div>
             </div>
           </div>
 
           <div className="overflow-x-auto">
             {filteredSales.length === 0 ? (
-              <div className="text-center py-12">
-                <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">No sales found</p>
-              </div>
+              <EmptyState
+                icon={<Package className="size-6" aria-hidden="true" />}
+                title="No sales found"
+                description=""
+                className="m-4"
+              />
             ) : (
               <table className="w-full">
-                <thead className="bg-muted">
+                <thead className="bg-surface-sunken">
                   <tr>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-muted-fg">
                       Product
                     </th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-muted-fg">
                       Buyer
                     </th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-muted-fg">
                       Qty
                     </th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-muted-fg">
                       Type
                     </th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-muted-fg">
                       Total
                     </th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-muted-fg">
                       Earnings
                     </th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-muted-fg">
                       Method
                     </th>
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-muted-fg">
                       Date
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-y divide-line">
                   {filteredSales.slice(0, 50).map((sale) => {
                     const product = products[sale.productId];
                     const profile = profiles[sale.buyerId];
@@ -412,80 +440,65 @@ export default function SalesPage() {
                     const productType = product?.type;
 
                     return (
-                      <tr key={sale.id} className="hover:bg-muted transition-colors">
+                      <tr
+                        key={sale.id}
+                        className="transition-colors hover:bg-surface-sunken"
+                      >
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
                             {product?.imageUrl ? (
-                              <img
+                              <MediaImage
                                 src={product.imageUrl}
                                 alt={productName}
-                                className="w-10 h-10 rounded-lg object-cover"
+                                aspectRatio="1 / 1"
+                                sizes="40px"
+                                unoptimized
+                                className="size-10 shrink-0 rounded-control"
                               />
                             ) : (
-                              <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
-                                <Package className="w-5 h-5 text-muted-foreground" />
-                              </div>
+                              <span className="flex size-10 shrink-0 items-center justify-center rounded-control bg-surface-raised text-muted-fg">
+                                <Package className="size-5" aria-hidden="true" />
+                              </span>
                             )}
-                            <div className="font-medium text-foreground">
-                              {productName}
-                            </div>
+                            <span className="font-semibold text-fg">{productName}</span>
                           </div>
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
-                            {profile?.photoURL ? (
-                              <img
-                                src={profile.photoURL}
-                                alt={buyerName}
-                                className="w-8 h-8 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                                <Users className="w-4 h-4 text-muted-foreground" />
-                              </div>
-                            )}
-                            <div>
-                              <div className="font-medium text-foreground">
-                                {buyerName}
-                              </div>
-                              <div className="text-sm text-muted-foreground">
+                            <Avatar src={profile?.photoURL} name={buyerName} size="sm" />
+                            <div className="min-w-0">
+                              <div className="font-semibold text-fg">{buyerName}</div>
+                              <div className="text-label text-muted-fg">
                                 {profile?.email || sale.buyerEmail || ""}
                               </div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-5 py-4 text-muted-foreground">
-                          {sale.quantity || 1}
-                        </td>
+                        <td className="px-5 py-4 text-muted-fg">{sale.quantity || 1}</td>
                         <td className="px-5 py-4">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium ${
-                              productType === "digital"
-                                ? "bg-blue-50 text-blue-700"
-                                : "bg-amber-50 text-amber-700"
-                            }`}
-                          >
+                          <Badge tone={productType === "digital" ? "info" : "warning"}>
                             {productType === "digital" ? "Digital" : "Physical"}
+                          </Badge>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className="font-bold tabular-nums text-fg">
+                            {formatCurrency(sale.totalAmount ?? 0, sale.currency || "")}
                           </span>
                         </td>
                         <td className="px-5 py-4">
-                          <span className="font-bold text-foreground">
-                            {sale.totalAmount?.toLocaleString() || 0}{" "}
-                            {sale.currency ? getCurrencySymbol(sale.currency as any) : ""}
+                          <span className="font-bold tabular-nums text-success">
+                            {formatCurrency(
+                              sale.creatorEarnings ?? 0,
+                              sale.currency || "",
+                            )}
                           </span>
                         </td>
                         <td className="px-5 py-4">
-                          <span className="font-bold text-green-600">
-                            {sale.creatorEarnings?.toLocaleString() || 0}{" "}
-                            {sale.currency ? getCurrencySymbol(sale.currency as any) : ""}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-muted text-foreground">
+                          <Badge>
                             {paymentMethods[sale.paymentMethod] || sale.paymentMethod}
-                          </span>
+                          </Badge>
                         </td>
-                        <td className="px-5 py-4 text-sm text-muted-foreground">
+                        <td className="whitespace-nowrap px-5 py-4 text-label text-muted-fg">
                           {sale.createdAt
                             ? sale.createdAt.toDate
                               ? new Date(sale.createdAt.toDate()).toLocaleDateString()
@@ -499,62 +512,65 @@ export default function SalesPage() {
               </table>
             )}
           </div>
-        </div>
+        </Card>
 
-        <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-border">
-            <h2 className="text-lg font-bold text-foreground">Top Products</h2>
+        <Card className="overflow-hidden">
+          <div className="border-b border-line p-5">
+            <h2 className="text-title font-bold text-fg">Top Products</h2>
           </div>
 
           {topProducts.length === 0 ? (
-            <div className="text-center py-12">
-              <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No product sales yet</p>
-            </div>
+            <EmptyState
+              icon={<Package className="size-6" aria-hidden="true" />}
+              title="No product sales yet"
+              description=""
+              className="m-5"
+            />
           ) : (
-            <div className="p-5 space-y-4">
+            <div className="space-y-4 p-5">
               {topProducts.map((product, index) => (
                 <div
                   key={product.id}
-                  className="flex items-center justify-between p-3 rounded-xl bg-muted hover:bg-muted transition-colors"
+                  className="flex items-center justify-between gap-3 rounded-control bg-surface-sunken p-3"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="relative shrink-0">
                       {product.imageUrl ? (
-                        <img
+                        <MediaImage
                           src={product.imageUrl}
                           alt={product.name}
-                          className="w-12 h-12 rounded-xl object-cover"
+                          aspectRatio="1 / 1"
+                          sizes="48px"
+                          unoptimized
+                          className="size-12 rounded-control"
                         />
                       ) : (
-                        <div className="w-12 h-12 rounded-xl bg-border-strong flex items-center justify-center">
-                          <Package className="w-6 h-6 text-muted-foreground" />
-                        </div>
+                        <span className="flex size-12 items-center justify-center rounded-control bg-line-strong text-muted-fg">
+                          <Package className="size-6" aria-hidden="true" />
+                        </span>
                       )}
-                      <div
-                        className={`absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                      <span
+                        className={`absolute -top-1.5 -left-1.5 flex size-5 items-center justify-center rounded-pill text-caption font-bold ${
                           index === 0
-                            ? "bg-orange-500 text-white"
+                            ? "bg-brand-strong text-on-brand"
                             : index === 1
-                              ? "bg-muted text-white"
-                              : "bg-amber-500 text-white"
+                              ? "bg-surface-raised text-fg"
+                              : "bg-warning-bg text-warning"
                         }`}
                       >
                         {index + 1}
-                      </div>
+                      </span>
                     </div>
-                    <div>
-                      <p className="font-medium text-foreground text-sm">
+                    <div className="min-w-0">
+                      <p className="truncate text-label font-semibold text-fg">
                         {product.name}
                       </p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2 text-caption text-muted-fg">
                         <span>{product.quantity} units sold</span>
-                        <span>•</span>
+                        <span aria-hidden="true">•</span>
                         <span
                           className={
-                            product.type === "digital"
-                              ? "text-blue-600"
-                              : "text-amber-600"
+                            product.type === "digital" ? "text-info" : "text-warning"
                           }
                         >
                           {product.type === "digital" ? "Digital" : "Physical"}
@@ -563,20 +579,18 @@ export default function SalesPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-foreground">
-                      {product.total.toLocaleString()}{" "}
-                      {getCurrencySymbol(product.primaryCurrency)}
+                    <p className="font-bold tabular-nums text-fg">
+                      {formatCurrency(product.total, product.primaryCurrency)}
                     </p>
-                    <p className="text-xs text-green-600">
-                      Earned: {product.earnings.toLocaleString()}{" "}
-                      {getCurrencySymbol(product.primaryCurrency)}
+                    <p className="text-caption text-success">
+                      Earned: {formatCurrency(product.earnings, product.primaryCurrency)}
                     </p>
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );

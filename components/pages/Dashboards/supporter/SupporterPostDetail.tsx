@@ -12,7 +12,6 @@ import {
   FileText,
   ChevronLeft,
   ChevronRight,
-  X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -35,8 +34,10 @@ import {
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { LinkifyText } from "@/components/ui/LinkifyText";
+import { Avatar } from "@/components/ui/Avatar";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import RichContentRenderer from "@/components/ui/RichContentRenderer";
-import Navbar from "@/components/parts/Navigation";
 import { SupportModal } from "@/components/parts/public/SupportModal";
 import { MediaAsset } from "@/components/parts/public/MediaAsset";
 import { usePostMediaSrc } from "@/lib/usePostMediaSrc";
@@ -237,10 +238,9 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-muted">
-        <Navbar />
+      <div className="min-h-screen bg-canvas text-fg">
         <div className="flex items-center justify-center h-[60vh]">
-          <Loader className="animate-spin text-orange-500" size={32} />
+          <Loader className="animate-spin text-brand-strong" size={32} />
         </div>
       </div>
     );
@@ -248,16 +248,16 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
 
   if (!post) {
     return (
-      <div className="min-h-screen bg-muted">
-        <Navbar />
+      <div className="min-h-screen bg-canvas text-fg">
         <div className="max-w-2xl mx-auto px-4 pt-24 text-center">
-          <p className="text-muted-foreground">Post not found</p>
-          <button
+          <p className="text-muted-fg">Post not found</p>
+          <Button
+            type="button"
             onClick={() => router.push("/supporter")}
-            className="mt-4 text-orange-500 font-medium"
+            variant="secondary"
           >
             Go Back
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -272,34 +272,33 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
   const documentSrc = mediaSrc(pages[documentIndex]);
 
   return (
-    <div className="min-h-screen bg-muted">
-      <Navbar />
-      <div className="max-w-3xl mx-auto px-4 pt-20 pb-24">
+    <div className="min-h-screen bg-canvas text-fg">
+      <div className="max-w-3xl mx-auto px-4 pt-8 pb-8">
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition mb-6"
+          className="flex items-center gap-2 text-muted-fg hover:text-fg transition mb-6"
         >
           <ArrowLeft size={20} />
           <span className="font-medium">Back</span>
         </button>
 
-        <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
+        <div className="bg-surface rounded-control shadow-sm border border-line overflow-hidden">
           <div className="p-6">
             <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
               <div className="flex items-center gap-3">
                 <Link href={`/${post.creatorId}`} className="shrink-0">
-                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-medium">
+                  <div className="w-10 h-10 rounded-full bg-surface-sunken flex items-center justify-center text-muted-fg font-medium">
                     {creator?.name?.[0] || "?"}
                   </div>
                 </Link>
                 <div>
                   <Link
                     href={`/${post.creatorId}`}
-                    className="font-semibold text-foreground hover:text-blue-600"
+                    className="font-semibold text-fg hover:text-info"
                   >
                     {creator?.name || post.creatorId}
                   </Link>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-fg">
                     @{post.creatorId} ·{" "}
                     {post.createdAt?.toDate?.()?.toLocaleDateString()}
                   </p>
@@ -307,14 +306,14 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
               </div>
               <button
                 onClick={() => setSupportOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary hover:bg-primary/20 transition-colors rounded-lg font-semibold text-sm shrink-0"
+                className="flex items-center gap-2 px-4 py-2 bg-brand-soft text-brand-strong hover:bg-brand-strong/10 transition-colors rounded-control font-semibold text-sm shrink-0"
               >
                 <Heart size={16} className="fill-current" />
                 Support
               </button>
             </div>
 
-            <h1 className="text-2xl font-bold text-foreground mb-3">
+            <h1 className="text-2xl font-bold text-fg mb-3">
               {post.title}
             </h1>
 
@@ -326,18 +325,18 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
                     isPrivate={!!post.isPrivate}
                     url={post.coverUrl || post.contentUrl}
                     alt={post.title}
-                    className="w-full max-h-[420px] object-cover rounded-xl mb-4"
+                    className="w-full max-h-[420px] object-cover rounded-card mb-4"
                   />
                 )}
                 {post.shortDescription && (
-                  <p className="text-sm text-muted-foreground italic mb-4">
+                  <p className="text-sm text-muted-fg italic mb-4">
                     {post.shortDescription}
                   </p>
                 )}
                 <RichContentRenderer html={post.htmlContent || ""} />
               </div>
             ) : (
-              <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed mb-4">
+              <div className="text-muted-fg whitespace-pre-wrap leading-relaxed mb-4">
                 <LinkifyText text={post.description || post.content} />
               </div>
             )}
@@ -345,7 +344,7 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
             {post.type === "image" &&
               !Array.isArray(post.contentUrl) &&
               post.contentUrl && (
-                <div className="rounded-lg overflow-hidden bg-muted mb-4">
+                <div className="rounded-control overflow-hidden bg-surface-sunken mb-4">
                   <MediaAsset
                     postId={post.id}
                     isPrivate={!!post.isPrivate}
@@ -357,7 +356,7 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
               )}
 
             {post.type === "video" && post.contentUrl && (
-              <div className="rounded-lg overflow-hidden bg-black mb-4">
+              <div className="rounded-control overflow-hidden bg-black mb-4">
                 <MediaAsset
                   postId={post.id}
                   isPrivate={!!post.isPrivate}
@@ -371,16 +370,16 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
             )}
 
             {post.type === "document" && pages.length > 0 && (
-              <div className="bg-muted rounded-lg p-4 border border-border mb-4">
+              <div className="bg-surface-sunken rounded-control p-4 border border-line mb-4">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                    <FileText size={24} className="text-orange-600" />
+                  <div className="w-12 h-12 bg-brand-soft rounded-control flex items-center justify-center">
+                    <FileText size={24} className="text-brand-strong" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium text-sm text-foreground">
+                    <p className="font-medium text-sm text-fg">
                       Document
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-fg">
                       {pages.length} page{pages.length > 1 ? "s" : ""}
                     </p>
                   </div>
@@ -388,25 +387,29 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
                 {pages.length > 1 && (
                   <div className="flex items-center justify-between mb-3">
                     <button
+                      type="button"
+                      aria-label="Previous document page"
                       onClick={() =>
                         setDocumentIndex((i) => Math.max(0, i - 1))
                       }
                       disabled={documentIndex === 0}
-                      className="p-1.5 bg-card border rounded-lg disabled:opacity-50"
+                      className="p-1.5 bg-surface border border-line rounded-control disabled:opacity-50"
                     >
                       <ChevronLeft size={16} />
                     </button>
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-sm text-muted-fg">
                       {documentIndex + 1} of {pages.length}
                     </span>
                     <button
+                      type="button"
+                      aria-label="Next document page"
                       onClick={() =>
                         setDocumentIndex((i) =>
                           Math.min(pages.length - 1, i + 1),
                         )
                       }
                       disabled={documentIndex === pages.length - 1}
-                      className="p-1.5 bg-card border rounded-lg disabled:opacity-50"
+                      className="p-1.5 bg-surface border border-line rounded-control disabled:opacity-50"
                     >
                       <ChevronRight size={16} />
                     </button>
@@ -415,72 +418,71 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
                 {documentSrc ? (
                   <iframe
                     src={`https://docs.google.com/viewer?url=${encodeURIComponent(documentSrc)}&embedded=true`}
-                    className="w-full h-[500px] rounded-lg bg-card"
+                    className="w-full h-[500px] rounded-control bg-surface"
                     title="Document"
                   />
                 ) : (
-                  <div className="w-full h-[500px] rounded-lg bg-card flex items-center justify-center text-sm text-muted-foreground">
+                  <div className="w-full h-[500px] rounded-control bg-surface flex items-center justify-center text-sm text-muted-fg">
                     Preparing document...
                   </div>
                 )}
               </div>
             )}
 
-            <div className="flex items-center gap-4 pt-4 border-t border-border text-sm text-muted-foreground">
+            <div className="flex items-center gap-4 pt-4 border-t border-line text-sm text-muted-fg">
               <span className="flex items-center gap-1.5">
                 <Eye size={16} /> {post.views || 0}
               </span>
             </div>
 
             <div className="flex items-center gap-4 mt-4">
-              <button
+              <Button
                 onClick={handleLike}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition ${liked ? "bg-red-50 text-red-500" : "bg-muted text-muted-foreground hover:bg-gray-200"}`}
+                variant="secondary"
+                size="sm"
+                aria-pressed={liked}
+                leadingIcon={
+                  <Heart size={18} className={liked ? "fill-current text-danger" : ""} aria-hidden="true" />
+                }
               >
-                <Heart size={18} className={liked ? "fill-current" : ""} />{" "}
                 {likeCount}
-              </button>
-              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-muted text-muted-foreground">
+              </Button>
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-control text-sm font-medium bg-surface-sunken text-muted-fg">
                 <MessageCircle size={18} /> {comments.length}
               </span>
               <button
                 onClick={() => setSupportOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-control text-sm font-semibold bg-brand-soft text-brand-strong hover:bg-brand-strong/10 transition"
               >
                 <Heart size={18} className="fill-current" /> Support
               </button>
             </div>
           </div>
 
-          <div className="border-t border-border p-6">
-            <h3 className="font-semibold text-foreground mb-4">
+          <div className="border-t border-line p-6">
+            <h3 className="font-semibold text-fg mb-4">
               Comments ({comments.length})
             </h3>
             <div className="space-y-4">
               {comments.map((comment) => (
-                <div key={comment.id} className="bg-muted rounded-lg p-3">
+                <div key={comment.id} className="bg-surface-sunken rounded-control p-3">
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-muted-foreground shrink-0 overflow-hidden">
-                      {comment.userPhoto ? (
-                        <img
-                          src={comment.userPhoto}
-                          alt=""
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        comment.userName?.[0] || "?"
-                      )}
-                    </div>
+                    <Avatar
+                      src={comment.userPhoto}
+                      name={comment.userName}
+                      size="md"
+                      className="size-8 text-caption"
+                    />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-sm">
                           {comment.userName}
                         </span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-muted-fg">
                           {comment.createdAt?.toDate?.()?.toLocaleDateString()}
                         </span>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-0.5 whitespace-pre-wrap">
+                      <p className="text-sm text-muted-fg mt-0.5 whitespace-pre-wrap">
                         <LinkifyText text={comment.text} />
                       </p>
                       <button
@@ -489,13 +491,14 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
                             replyingTo === comment.id ? null : comment.id,
                           )
                         }
-                        className="text-xs text-blue-500 mt-1"
+                        className="text-xs text-info mt-1"
                       >
                         Reply
                       </button>
                       {replyingTo === comment.id && (
                         <div className="mt-2 flex gap-2">
-                          <input
+                          <Input
+                            aria-label="Write a reply"
                             value={replyText[comment.id] || ""}
                             onChange={(e) =>
                               setReplyText((p) => ({
@@ -504,14 +507,15 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
                               }))
                             }
                             placeholder="Write a reply..."
-                            className="flex-1 text-xs px-3 py-1.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            containerClassName="flex-1"
+                            className="text-label"
                           />
-                          <button
+                          <Button
                             onClick={() => handleReply(comment.id)}
-                            className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs"
+                            size="sm"
                           >
                             Send
-                          </button>
+                          </Button>
                         </div>
                       )}
                       {comment.replies && comment.replies.length > 0 && (
@@ -519,24 +523,19 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
                           {comment.replies.map((reply) => (
                             <div
                               key={reply.id}
-                              className="flex items-start gap-2 pl-2 border-l-2 border-border"
+                              className="flex items-start gap-2 pl-2 border-l-2 border-line"
                             >
-                              <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-muted-foreground shrink-0 overflow-hidden">
-                                {reply.userPhoto ? (
-                                  <img
-                                    src={reply.userPhoto}
-                                    alt=""
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  reply.userName?.[0] || "?"
-                                )}
-                              </div>
+                              <Avatar
+                                src={reply.userPhoto}
+                                name={reply.userName}
+                                size="sm"
+                                className="size-6 text-caption"
+                              />
                               <div>
                                 <span className="font-medium text-xs">
                                   {reply.userName}
                                 </span>
-                                <p className="text-xs text-muted-foreground whitespace-pre-wrap">
+                                <p className="text-xs text-muted-fg whitespace-pre-wrap">
                                   <LinkifyText text={reply.text} />
                                 </p>
                               </div>
@@ -549,27 +548,29 @@ export default function SupporterPostDetail({ postId }: { postId: string }) {
                 </div>
               ))}
               {comments.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">
+                <p className="text-sm text-muted-fg text-center py-4">
                   No comments yet
                 </p>
               )}
             </div>
 
             <div className="mt-4 flex gap-2">
-              <input
+              <Input
+                aria-label="Write a comment"
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
                 placeholder="Write a comment..."
-                className="flex-1 text-sm px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                containerClassName="flex-1"
                 onKeyDown={(e) => e.key === "Enter" && handleComment()}
               />
-              <button
+              <Button
                 onClick={handleComment}
                 disabled={!commentText.trim()}
-                className="px-4 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition disabled:opacity-50"
+                aria-label="Send comment"
+                className="size-12 px-0"
               >
-                <Send size={16} />
-              </button>
+                <Send size={16} aria-hidden="true" />
+              </Button>
             </div>
           </div>
         </div>

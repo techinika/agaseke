@@ -1,0 +1,175 @@
+npm notice run agaseke@0.1.0 build
+npm notice run next build
+▲ Next.js 16.1.3 (Turbopack)
+- Experiments (use with caution):
+  · serverActions
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 21.2s
+  Running TypeScript ...
+  Collecting page data using 11 workers ...
+  Generating static pages using 11 workers (0/77) ...
+  Generating static pages using 11 workers (19/77) 
+Error generating creators sitemap: Error: The default Firebase app does not exist. Make sure you call initializeApp() before using any of the Firebase services.
+    at Object.get (.next/server/chunks/[root-of-the-server]__6106e9f3._.js:1:1378)
+    at R (.next/server/chunks/[root-of-the-server]__b2a7de3e._.js:16:1938)
+    at x (.next/server/chunks/[root-of-the-server]__b2a7de3e._.js:16:1695)
+    at U (.next/server/chunks/[root-of-the-server]__b2a7de3e._.js:16:5078) {
+  errorInfo: [Object],
+  codePrefix: 'app'
+}
+Error generating products sitemap: Error: The default Firebase app does not exist. Make sure you call initializeApp() before using any of the Firebase services.
+    at Object.get (.next/server/chunks/[root-of-the-server]__6106e9f3._.js:1:1378)
+    at E (.next/server/chunks/[root-of-the-server]__b2a7de3e._.js:16:2795)
+    at x (.next/server/chunks/[root-of-the-server]__b2a7de3e._.js:16:1716)
+    at async U (.next/server/chunks/[root-of-the-server]__b2a7de3e._.js:16:5072) {
+  errorInfo: [Object],
+  codePrefix: 'app'
+}
+Error generating posts sitemap: Error: The default Firebase app does not exist. Make sure you call initializeApp() before using any of the Firebase services.
+    at Object.get (.next/server/chunks/[root-of-the-server]__6106e9f3._.js:1:1378)
+    at _ (.next/server/chunks/[root-of-the-server]__b2a7de3e._.js:16:3259)
+    at x (.next/server/chunks/[root-of-the-server]__b2a7de3e._.js:16:1737)
+    at async U (.next/server/chunks/[root-of-the-server]__b2a7de3e._.js:16:5072) {
+  errorInfo: [Object],
+  codePrefix: 'app'
+}
+Error generating articles sitemap: Error: The default Firebase app does not exist. Make sure you call initializeApp() before using any of the Firebase services.
+    at Object.get (.next/server/chunks/[root-of-the-server]__6106e9f3._.js:1:1378)
+    at A (.next/server/chunks/[root-of-the-server]__b2a7de3e._.js:16:3771)
+    at x (.next/server/chunks/[root-of-the-server]__b2a7de3e._.js:16:1758)
+    at async U (.next/server/chunks/[root-of-the-server]__b2a7de3e._.js:16:5072) {
+  errorInfo: [Object],
+  codePrefix: 'app'
+}
+Error generating giveaways sitemap: Error: The default Firebase app does not exist. Make sure you call initializeApp() before using any of the Firebase services.
+    at Object.get (.next/server/chunks/[root-of-the-server]__6106e9f3._.js:1:1378)
+    at q (.next/server/chunks/[root-of-the-server]__b2a7de3e._.js:16:4161)
+    at x (.next/server/chunks/[root-of-the-server]__b2a7de3e._.js:16:1779)
+    at async U (.next/server/chunks/[root-of-the-server]__b2a7de3e._.js:16:5072) {
+  errorInfo: [Object],
+  codePrefix: 'app'
+}
+Error generating gatherings sitemap: Error: The default Firebase app does not exist. Make sure you call initializeApp() before using any of the Firebase services.
+    at Object.get (.next/server/chunks/[root-of-the-server]__6106e9f3._.js:1:1378)
+    at D (.next/server/chunks/[root-of-the-server]__b2a7de3e._.js:16:4603)
+    at x (.next/server/chunks/[root-of-the-server]__b2a7de3e._.js:16:1800)
+    at async U (.next/server/chunks/[root-of-the-server]__b2a7de3e._.js:16:5072) {
+  errorInfo: [Object],
+  codePrefix: 'app'
+}
+  Generating static pages using 11 workers (38/77) 
+  Generating static pages using 11 workers (57/77) 
+Error fetching featured creators: Error: The default Firebase app does not exist. Make sure you call initializeApp() before using any of the Firebase services.
+    at Object.get (.next/server/chunks/ssr/[root-of-the-server]__edfd6c4e._.js:1:976)
+    at g (.next/server/chunks/ssr/[root-of-the-server]__5bf1619a._.js:1:6762)
+    at i (.next/server/chunks/ssr/[root-of-the-server]__5bf1619a._.js:1:8682) {
+  errorInfo: [Object],
+  codePrefix: 'app'
+}
+✓ Generating static pages using 11 workers (77/77) in 1792.5ms
+  Finalizing page optimization ...
+
+Route (app)                                Revalidate  Expire
+┌ ○ /                                              5m      1y
+├ ○ /_not-found
+├ ƒ /[username]
+├ ƒ /[username]/booking
+├ ƒ /[username]/community
+├ ƒ /[username]/community/[postId]
+├ ƒ /[username]/community/chat/[tierId]
+├ ƒ /[username]/gatherings
+├ ƒ /[username]/gatherings/[gatheringId]
+├ ƒ /[username]/giveaways
+├ ƒ /[username]/giveaways/[giveawayId]
+├ ƒ /[username]/messaging
+├ ƒ /[username]/store
+├ ƒ /[username]/store/[productId]
+├ ○ /admin
+├ ○ /admin/categories
+├ ○ /admin/changelog
+├ ○ /admin/comms
+├ ○ /admin/countries
+├ ○ /admin/country-currencies
+├ ○ /admin/currencies
+├ ○ /admin/feedback
+├ ○ /admin/logs
+├ ○ /admin/payouts
+├ ○ /admin/users
+├ ƒ /api/admin/fx/health
+├ ƒ /api/admin/notifications/new-creator
+├ ƒ /api/admin/notifications/new-user
+├ ƒ /api/admin/payouts/withdrawals
+├ ƒ /api/admin/users/role
+├ ƒ /api/creators/check-username
+├ ƒ /api/decrypt
+├ ƒ /api/encrypt
+├ ƒ /api/media/sign
+├ ƒ /api/media/stream
+├ ƒ /api/payouts/withdraw
+├ ƒ /api/payouts/withdraw/quote
+├ ○ /articles
+├ ƒ /articles/[slug]
+├ ƒ /booking/pay/[bookingId]
+├ ○ /bookings
+├ ○ /changelog
+├ ○ /community/manage
+├ ƒ /community/manage/[subscriptionId]
+├ ○ /content-guidelines
+├ ○ /creator
+├ ○ /creator/bookings
+├ ○ /creator/community
+├ ƒ /creator/community/chat/[tierId]
+├ ○ /creator/content
+├ ○ /creator/content/articles
+├ ƒ /creator/content/articles/[articleId]
+├ ○ /creator/content/articles/new
+├ ○ /creator/content/new
+├ ○ /creator/gatherings
+├ ƒ /creator/gatherings/[id]/edit
+├ ○ /creator/gatherings/new
+├ ○ /creator/giveaways
+├ ○ /creator/giveaways/new
+├ ○ /creator/messages
+├ ○ /creator/notices
+├ ○ /creator/partners
+├ ○ /creator/partners/new
+├ ○ /creator/payouts
+├ ○ /creator/sales
+├ ○ /creator/settings
+├ ○ /creator/store
+├ ○ /creator/store/coupons/new
+├ ○ /creator/store/folders/new
+├ ○ /creator/store/orders/new
+├ ○ /creator/store/products/new
+├ ○ /creator/supporters
+├ ○ /creator/verify
+├ ○ /dev/actions
+├ ○ /dev/components
+├ ○ /dev/creator-page
+├ ○ /explore
+├ ○ /explore/posts
+├ ƒ /explore/posts/[post-id]
+├ ○ /for-brands
+├ ○ /for-creators
+├ ○ /for-supporters
+├ ○ /help-center
+├ ƒ /login
+├ ○ /onboarding
+├ ○ /payment
+├ ○ /payout-policy
+├ ○ /privacy
+├ ○ /profile
+├ ○ /robots.txt
+├ ○ /sitemap.xml
+├ ƒ /store/pay/[orderId]
+├ ○ /supporter
+├ ƒ /supporter/[postId]
+├ ○ /supporter/notices
+├ ○ /terms
+└ ○ /transactions
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

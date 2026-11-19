@@ -9,7 +9,9 @@ export default function RootLayout({
   return (
     <div className="min-h-dvh bg-canvas text-fg">
       <PublicHeader />
-      {children}
+      <main id="main-content" tabIndex={-1} className="flex-1 outline-none">
+        {children}
+      </main>
       <PublicFooter />
     </div>
   );

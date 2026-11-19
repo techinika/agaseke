@@ -59,7 +59,7 @@ export default function AdminFeedbackPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
-      <main className="max-w-7xl mx-auto px-6 mt-12">
+      <div className="max-w-7xl mx-auto px-6 mt-12">
         <header className="mb-8">
           <h1 className="text-4xl font-bold tracking-tight text-foreground uppercase">
             User Feedback
@@ -159,7 +159,7 @@ export default function AdminFeedbackPage() {
             </div>
           )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }

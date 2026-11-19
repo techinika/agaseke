@@ -60,6 +60,7 @@ interface NavItemBase {
   exact?: boolean;
   feature?: NavFeature;
   external?: boolean;
+  group?: TranslationKey;
 }
 
 export interface NavLinkItem extends NavItemBase {
@@ -177,6 +178,24 @@ export const NAV_ITEMS: NavItem[] = [
     surface: "public",
     slots: ["mobile"],
   },
+  {
+    id: "public-transactions",
+    href: "/transactions",
+    labelKey: "nav.transactions",
+    icon: Receipt,
+    roles: SIGNED_IN,
+    surface: "public",
+    slots: ["more"],
+  },
+  {
+    id: "public-bookings",
+    href: "/bookings",
+    labelKey: "nav.bookings",
+    icon: Calendar,
+    roles: SIGNED_IN,
+    surface: "public",
+    slots: ["more"],
+  },
 
   // Supporter
   {
@@ -274,6 +293,7 @@ export const NAV_ITEMS: NavItem[] = [
     surface: "creator",
     slots: ["desktop", "more"],
     feature: "store",
+    group: "nav.store",
   },
   {
     id: "creator-sales",
@@ -284,6 +304,7 @@ export const NAV_ITEMS: NavItem[] = [
     surface: "creator",
     slots: ["desktop", "more"],
     feature: "store",
+    group: "nav.store",
   },
   {
     id: "creator-bookings",
@@ -294,6 +315,7 @@ export const NAV_ITEMS: NavItem[] = [
     surface: "creator",
     slots: ["desktop", "more"],
     feature: "bookings",
+    group: "nav.community",
   },
   {
     id: "creator-gatherings",
@@ -304,6 +326,7 @@ export const NAV_ITEMS: NavItem[] = [
     surface: "creator",
     slots: ["desktop", "more"],
     feature: "gatherings",
+    group: "nav.community",
   },
   {
     id: "creator-giveaways",
@@ -314,6 +337,7 @@ export const NAV_ITEMS: NavItem[] = [
     surface: "creator",
     slots: ["desktop", "more"],
     feature: "giveaways",
+    group: "nav.community",
   },
   {
     id: "creator-messages",
@@ -324,6 +348,7 @@ export const NAV_ITEMS: NavItem[] = [
     surface: "creator",
     slots: ["desktop", "more"],
     feature: "messaging",
+    group: "nav.community",
   },
   {
     id: "creator-supporters",
@@ -333,6 +358,7 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["creator"],
     surface: "creator",
     slots: ["desktop", "more"],
+    group: "nav.community",
   },
   {
     id: "creator-partners",
@@ -342,6 +368,7 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["creator"],
     surface: "creator",
     slots: ["desktop", "more"],
+    group: "nav.content",
   },
   {
     id: "creator-notices",
@@ -351,6 +378,7 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["creator"],
     surface: "creator",
     slots: ["desktop", "more"],
+    group: "nav.content",
   },
   {
     id: "creator-verification",
@@ -360,6 +388,7 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["creator"],
     surface: "creator",
     slots: ["desktop", "more"],
+    group: "nav.settings",
   },
   {
     id: "creator-settings",
@@ -369,6 +398,7 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["creator"],
     surface: "creator",
     slots: ["desktop", "more"],
+    group: "nav.settings",
   },
 
   // Admin
@@ -426,6 +456,7 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["admin"],
     surface: "admin",
     slots: ["desktop", "more"],
+    group: "nav.groupCommunication",
   },
   {
     id: "admin-changelog",
@@ -435,6 +466,7 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["admin"],
     surface: "admin",
     slots: ["desktop", "more"],
+    group: "nav.groupCommunication",
   },
   {
     id: "admin-feedback",
@@ -444,6 +476,7 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["admin"],
     surface: "admin",
     slots: ["desktop", "more"],
+    group: "nav.groupCommunication",
   },
   {
     id: "admin-countries",
@@ -453,6 +486,7 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["admin"],
     surface: "admin",
     slots: ["desktop", "more"],
+    group: "nav.config",
   },
   {
     id: "admin-currencies",
@@ -462,6 +496,7 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["admin"],
     surface: "admin",
     slots: ["desktop", "more"],
+    group: "nav.config",
   },
   {
     id: "admin-currency-map",
@@ -471,6 +506,7 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["admin"],
     surface: "admin",
     slots: ["desktop", "more"],
+    group: "nav.config",
   },
   {
     id: "admin-categories",
@@ -480,6 +516,7 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["admin"],
     surface: "admin",
     slots: ["desktop", "more"],
+    group: "nav.config",
   },
   {
     id: "admin-logs",
@@ -489,6 +526,7 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["admin"],
     surface: "admin",
     slots: ["desktop", "more"],
+    group: "nav.activityLogs",
   },
 ];
 

@@ -1,0 +1,20 @@
+{
+  "before": {
+    "files": 146,
+    "rawBytes": 5300442,
+    "rawKB": 5176,
+    "gzipBytes": 1621306,
+    "gzipKB": 1583
+  },
+  "after": {
+    "files": 142,
+    "rawBytes": 5332936,
+    "rawKB": 5208,
+    "gzipBytes": 1634716,
+    "gzipKB": 1596
+  },
+  "delta": {
+    "rawKB": 32,
+    "gzipKB": 13
+  }
+}

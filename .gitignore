@@ -51,3 +51,5 @@ workers/*/.wrangler/
 workers/*/dist/
 
 internal_auth_secret.txt
+
+test-results

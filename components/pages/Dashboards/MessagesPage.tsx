@@ -479,7 +479,7 @@ export default function MessagesPage() {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col bg-card">
+      <div className="flex-1 flex flex-col bg-card">
         {selectedChatroom ? (
           <>
             <header className="p-4 md:p-6 border-b border-border flex justify-between items-center bg-gradient-to-r from-muted to-orange-50">
@@ -668,7 +668,7 @@ export default function MessagesPage() {
             </p>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }
