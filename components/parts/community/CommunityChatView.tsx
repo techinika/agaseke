@@ -14,6 +14,10 @@ import {
   Crown,
   Users,
 } from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { IconButton } from "@/components/ui/IconButton";
+import { Input } from "@/components/ui/Input";
 import { LinkifyText } from "@/components/ui/LinkifyText";
 import { MediaPreview } from "./MediaPreview";
 import {
@@ -206,12 +210,9 @@ export function CommunityChatView({
         <p className="text-sm text-muted-fg mb-6">
           You need an active subscription to access this community chat.
         </p>
-        <button
-          onClick={onBack}
-          className="text-brand-strong font-medium underline text-sm"
-        >
+        <Button variant="ghost" size="sm" onClick={onBack} className="underline">
           Go back
-        </button>
+        </Button>
       </div>
     );
   }
@@ -219,12 +220,13 @@ export function CommunityChatView({
   return (
     <div className="flex flex-col h-[calc(100dvh-4rem)] max-h-[calc(100dvh-4rem)] bg-canvas">
       <div className="sticky top-0 z-10 bg-surface border-b border-line px-4 py-3 flex items-center gap-3 shrink-0">
-        <button
+        <IconButton
+          label="Back"
+          icon={<ArrowLeft />}
+          size="sm"
+          className="-ml-1"
           onClick={onBack}
-          className="p-1.5 hover:bg-surface-sunken rounded-control transition -ml-1"
-        >
-          <ArrowLeft size={20} />
-        </button>
+        />
         <div className="flex-1 min-w-0">
           <h2 className="font-bold text-sm truncate">
             {chatTierName || "Community"} Chat
@@ -234,9 +236,9 @@ export function CommunityChatView({
             {memberCount} {memberCount === 1 ? "member" : "members"}
           </p>
         </div>
-        <span className="text-caption font-bold bg-brand-soft dark:bg-brand-strong text-brand-strong dark:text-brand-strong px-2 py-1 rounded uppercase tracking-wider">
+        <Badge tone="brand" className="uppercase tracking-wider">
           {isCreator ? "Creator" : "Member"}
-        </span>
+        </Badge>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
@@ -326,7 +328,10 @@ export function CommunityChatView({
                   ))}
                 </div>
                 <span className="text-caption text-muted-fg mt-1 px-1">
-                  {(() => { const c = msg.createdAt as { toDate?: () => Date } | null | undefined; return c?.toDate ? formatTime(c.toDate()) : ""; })()}
+                  {(() => {
+                    const c = msg.createdAt as { toDate?: () => Date } | null | undefined;
+                    return c?.toDate ? formatTime(c.toDate()) : "";
+                  })()}
                 </span>
               </div>
             );
@@ -344,16 +349,18 @@ export function CommunityChatView({
         )}
         <div className="flex items-end gap-2">
           <div className="relative">
-            <button
-              onClick={() => setShowAttachMenu(!showAttachMenu)}
+            <IconButton
+              label="Attach file"
+              icon={<Paperclip className="text-muted-fg" />}
+              size="sm"
               disabled={uploading || sending}
-              className="p-2.5 hover:bg-surface-sunken rounded-full transition disabled:opacity-50"
-            >
-              <Paperclip size={20} className="text-muted-fg" />
-            </button>
+              onClick={() => setShowAttachMenu(!showAttachMenu)}
+            />
             {showAttachMenu && (
               <div className="absolute bottom-full left-0 mb-2 bg-surface border border-line rounded-control shadow-xl p-2 flex gap-1">
-                <button
+                <Button
+                  variant="ghost"
+                  className="flex-col py-2 text-muted-fg"
                   onClick={() => {
                     fileInputRef.current!.accept = "image/*";
                     (
@@ -362,12 +369,13 @@ export function CommunityChatView({
                     fileInputRef.current!.click();
                     setShowAttachMenu(false);
                   }}
-                  className="p-3 hover:bg-surface-sunken rounded-control transition flex flex-col items-center gap-1"
                 >
                   <ImageIcon size={20} className="text-info" />
-                  <span className="text-caption text-muted-fg">Photo</span>
-                </button>
-                <button
+                  <span>Photo</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="flex-col py-2 text-muted-fg"
                   onClick={() => {
                     fileInputRef.current!.accept = "video/*";
                     (
@@ -376,12 +384,13 @@ export function CommunityChatView({
                     fileInputRef.current!.click();
                     setShowAttachMenu(false);
                   }}
-                  className="p-3 hover:bg-surface-sunken rounded-control transition flex flex-col items-center gap-1"
                 >
                   <Video size={20} className="text-chart-5" />
-                  <span className="text-caption text-muted-fg">Video</span>
-                </button>
-                <button
+                  <span>Video</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="flex-col py-2 text-muted-fg"
                   onClick={() => {
                     fileInputRef.current!.accept =
                       ".pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx";
@@ -389,11 +398,10 @@ export function CommunityChatView({
                     fileInputRef.current!.click();
                     setShowAttachMenu(false);
                   }}
-                  className="p-3 hover:bg-surface-sunken rounded-control transition flex flex-col items-center gap-1"
                 >
                   <FileText size={20} className="text-brand-strong" />
-                  <span className="text-caption text-muted-fg">File</span>
-                </button>
+                  <span>File</span>
+                </Button>
               </div>
             )}
             <input
@@ -403,28 +411,29 @@ export function CommunityChatView({
               onChange={handleFileSelect}
             />
           </div>
-          <div className="flex-1 relative">
-            <input
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendText();
-                }
-              }}
-              placeholder="Type a message..."
-              disabled={uploading || sending}
-              className="w-full bg-surface-sunken rounded-control px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-strong/50 transition disabled:opacity-50"
-            />
-          </div>
-          <button
-            onClick={handleSendText}
+          <Input
+            containerClassName="flex-1 min-w-0"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSendText();
+              }
+            }}
+            placeholder="Type a message..."
+            disabled={uploading || sending}
+            className="bg-surface-sunken py-2.5"
+          />
+          <IconButton
+            label="Send message"
+            icon={<Send />}
+            variant="primary"
+            size="sm"
+            loading={sending}
             disabled={!inputText.trim() || sending || uploading}
-            className="p-2.5 bg-brand-strong text-on-brand rounded-full hover:bg-brand-strong transition disabled:opacity-50 shrink-0"
-          >
-            {sending ? <Loader className="animate-spin" size={18} /> : <Send size={18} />}
-          </button>
+            onClick={handleSendText}
+          />
         </div>
       </div>
 

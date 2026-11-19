@@ -16,6 +16,7 @@ const ROOTS = [
   "app/dev/auth-onboarding",
   "app/dev/auth-verify",
   "app/dev/creator-core",
+  "app/dev/creator-community",
   "app/(dashboards)/admin/layout.tsx",
   "app/(dashboards)/creator/layout.tsx",
   "app/(dashboards)/supporter/layout.tsx",
@@ -50,6 +51,11 @@ const ROOTS = [
   "components/pages/Dashboards/SalesPage.tsx",
   "components/pages/Dashboards/SupportersPage.tsx",
   "components/pages/Dashboards/supporterspage/BroadcastEmailModal.tsx",
+  "components/pages/Dashboards/CommunityPage.tsx",
+  "components/pages/Dashboards/MessagesPage.tsx",
+  "components/pages/Dashboards/NoticesPage.tsx",
+  "components/parts/community/CommunityChatView.tsx",
+  "app/(dashboards)/creator/community/chat/[tierId]/page.tsx",
 ];
 const EXTENSIONS = new Set([".ts", ".tsx"]);
 

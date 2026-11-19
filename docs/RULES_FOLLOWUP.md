@@ -166,3 +166,12 @@ The creator dashboard core redesign did not change Firestore rules, data collect
 - Sales and supporters still rely on the existing Firestore subscriptions and profile enrichment; client-side filtering/mocking in `/dev/creator-core` does not expose new data paths.
 - The broadcast modal uses the same comms delivery path as before; no new recipient fields or client-authorised send path was added.
 - `/dev/creator-core` is a `noindex` preview with mock data only; exclude it from production nav and rules review.
+
+## Phase 6B creator community and communications (added 2026-11-19)
+
+The creator community/chat/messages/notices redesign did not change Firestore rules, data collections, payment logic, pricing, fees, payouts, server endpoints, or seeded data.
+
+- Community tier/member/earning views still rely on the existing subscriptions and client-side presentation; the UI migration did not expose new fields or new client-write paths.
+- Chat still uses the existing tier access checks, message subscription, and send path. The preview's local messages are mock data only and do not create documents.
+- Messages and notices still use the existing read-state and notification paths; no new recipient fields, batch writes, or client-authorised delivery path was added.
+- `/dev/creator-community` is a `noindex` preview with mock data only; exclude it from production nav and rules review.

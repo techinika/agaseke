@@ -70,7 +70,7 @@ export function Tabs({
             onClick={() => onChange(item.id)}
             onKeyDown={(event) => handleKeyDown(event, index)}
             className={cn(
-              "relative flex min-h-12 shrink-0 items-center justify-center gap-1.5 px-3 text-label font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
+              "relative flex min-h-12 min-w-12 shrink-0 items-center justify-center gap-1.5 px-3 text-label font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
               variant === "segmented" && "flex-1 rounded-pill",
               active ? "text-fg" : "text-muted-fg hover:text-fg",
               variant === "underline" &&

@@ -435,7 +435,7 @@
   - Supporters: 100/100/96/66, LCP 0.9 s, TBT 90 ms, CLS 0.
   - SEO is 66 on these intentionally `noindex` preview routes.
 - Bundle after: 204 files, 4,530 KB raw / 1,424 KB gzip in `docs/ui-evidence/phase6a/bundle-report.json`; reference-only delta from Phase 5 is +3 files, +30 KB raw, +14 KB gzip.
-- All Phase 6A files were formatted individually with Prettier; no commits were made, and unrelated uncommitted dashboard/shell files were left untouched.
+- All Phase 6A files were formatted individually with Prettier; Phase 5 and Phase 6A were subsequently committed as `e567dc5` and pushed to `origin/design/full-app-redesign` at the user's request.
 
 ### Evidence
 
@@ -458,3 +458,60 @@
 1. Should the Phase 6A preview remain available after real seeded creator routes are captured?
 2. Should the next tranche prioritize creator commerce routes (store/orders/products/coupons) or content/gatherings/giveaways?
 3. Can we get seeded auth/creator accounts with real payout and supporter data so the gated preview can be replaced in final evidence?
+
+## 2026-11-19 — Phase 6B creator community and communications
+
+**Branch:** `design/full-app-redesign`
+**Status:** Creator community, chat, messages, and notices now use shared primitives and semantic tokens through a gated mock-data preview. Gated axe/Lighthouse/e2e checks pass; real Firebase/auth/tier/chat/notification states still need seed/test accounts. Human visual sign-off from screenshots is pending.
+
+### Done
+
+- Migrated `components/pages/Dashboards/CommunityPage.tsx` to `PageHeader`, `Button`/`IconButton`, `Input`/`Select`/`Textarea`, `Tabs`, `Card`/`EmptyState`, and `Badge`; removed 27 raw palette shades and dead imports.
+- Fixed the `defaultCurrency` effect dependency with `defaultCurrencyRef` so Firestore subscriptions are not recreated on the full page's favourites path.
+- Migrated `components/parts/community/CommunityChatView.tsx` to `Button`/`IconButton`, `Input`, and `Badge`; skipped the full-bleed image-preview button, hidden file input, in-chat wrapper header, and `Textarea`/`FormField` swaps as unsafe.
+- Migrated `components/pages/Dashboards/MessagesPage.tsx` to `Skeleton`, `SearchInput`, `Avatar`, `EmptyState`, `Badge`, `IconButton`/`Button`, and `Input`; removed 20 raw palette shades and 4 tiny-text uses.
+- Migrated `components/pages/Dashboards/NoticesPage.tsx` notice rows and dialog body to `Button` and `Card`; existing `PageHeader`/`Badge`/`EmptyState`/`Dialog` usage was preserved.
+- Added a shared 48 px minimum width to `components/ui/Tabs.tsx` so narrow filter tabs satisfy 44×44 target sizing.
+- Added gated `app/dev/creator-community/` with `noindex`, four mock surfaces, and `?dialog=notice`; added `scripts/phase6b-evidence.mjs`, `tests/unit/phase6b-community.test.tsx`, and `e2e/phase6b-community.spec.ts`.
+- Extended `scripts/design-lint.mjs` and `package.json` lint/format globs for Phase 6B implementation and preview paths. All four implementation files have 0 palette/hex/tiny-text/arbitrary-radius matches.
+- No Firestore rules, data model, route behavior, payment logic, pricing, fees, payout behavior, messaging/notification delivery, or seeded data changed.
+
+### Verification
+
+- `npm run typecheck` — passed.
+- `npm run lint:ci` — passed, including `npm run lint:design` with zero violations.
+- `npm test -- --reporter=dot` — **30 files, 179 tests passed**.
+- `npx playwright test e2e/phase6b-community.spec.ts` — **14/14 passed** across configured mobile projects.
+- `PLAYWRIGHT_SKIP_WEBSERVER=1 npx playwright test e2e/phase5-auth.spec.ts e2e/phase6a-creator-core.spec.ts e2e/phase6b-community.spec.ts e2e/phase2-shells.spec.ts e2e/mobile-routes.spec.ts --workers=4` — **84/84 passed** after clearing stale `.next` dev artifacts (the first combined run hit a pre-existing Turbopack `/login` compile hang and `net::ERR_ABORTED`; server-side Firebase warnings were unrelated and did not fail tests).
+- `CHROMIUM_PATH=/usr/bin/chromium OUT_DIR=docs/ui-evidence/phase6b/after node scripts/phase6b-evidence.mjs` — 20 screenshots, **0 serious/critical axe findings**, 0 console errors, 0 overflow, 0 small targets.
+- Production Lighthouse 13.6.0 from `docs/ui-evidence/phase6b/lighthouse-prod/`:
+  - Community: 96/100/96/66, LCP 0.9 s, TBT 240 ms, CLS 0.
+  - Chat: 95/100/96/66, LCP 0.9 s, TBT 260 ms, CLS 0.
+  - Messages: 99/100/96/66, LCP 0.9 s, TBT 150 ms, CLS 0.
+  - Notices: 99/100/96/66, LCP 0.9 s, TBT 110 ms, CLS 0.
+  - Notice dialog: 98/100/96/66, LCP 0.9 s, TBT 150 ms, CLS 0.
+  - SEO is 66 on these intentionally `noindex` preview routes.
+- Bundle after: 205 files, 4,594 KB raw / 1,442 KB gzip in `docs/ui-evidence/phase6b/bundle-report.json`; reference-only delta from Phase 6A is +1 file, +64 KB raw, +18 KB gzip.
+- Next build emitted the pre-existing protobuf critical-dependency warning plus sitemap/homepage Firebase init warnings because no service account is configured; the production build completed successfully.
+
+### Evidence
+
+- Summary and screenshot index: `docs/ui-evidence/phase6b/summary.md`.
+- After screenshots and axe: `docs/ui-evidence/phase6b/after/`.
+- Production Lighthouse JSON: `docs/ui-evidence/phase6b/lighthouse-prod/`.
+- Bundle report: `docs/ui-evidence/phase6b/bundle-report.json`.
+- Coverage matrix update: `docs/REDESIGN_COVERAGE.md`.
+
+### Follow-ups / rollout
+
+1. Capture real authenticated community/chat/messages/notices states once Firebase emulator/seed/test accounts exist.
+2. Complete human visual sign-off from the captured 360×640 and 1280×800 light/dark screenshots, including the notice dialog.
+3. Keep the `/dev/creator-community` preview gated; delete or rotate it only after the founder confirms no external links depend on it.
+4. Re-check the shared `CommunityPage`/`CommunityChatView` usage on public `[username]` routes with seeded tier/message data.
+5. Migrate the remaining creator dashboard routes outside Phase 6B; they remain unchecked in `docs/REDESIGN_COVERAGE.md`.
+
+### Founder questions
+
+1. Should the Phase 6B preview remain available after real seeded creator routes are captured?
+2. Should the next tranche prioritize creator commerce routes (store/orders/products/coupons) or content/gatherings/giveaways?
+3. Can we get seeded creator/community accounts with tier membership, live chat, messages, and notices so the gated preview can be replaced in final evidence?

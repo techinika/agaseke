@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/auth/AuthContext";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/db/firebase";
@@ -15,24 +15,38 @@ import {
   Check,
   Loader,
   Crown,
-  Calendar,
-  Clock,
   MessageCircle,
   ToggleLeft,
   ToggleRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  getCommunityTiers,
   saveCommunityTiers,
   getCommunityMembers,
   type CommunityTier,
   type MemberInfo,
 } from "@/lib/communityService";
 import { formatCurrency } from "@/types/currency";
-import { buildPriceMap, getPrice, parsePriceCurrency, type PriceMap } from "@/lib/priceMap";
+import {
+  buildPriceMap,
+  getPrice,
+  parsePriceCurrency,
+  type PriceMap,
+} from "@/lib/priceMap";
 import PriceEditor from "@/components/money/PriceEditor";
 import type { CurrencyCode } from "@/lib/money/registry.generated";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  IconButton,
+  Input,
+  Select,
+  Tabs,
+  Textarea,
+} from "@/components/ui";
+import { PageHeader } from "@/components/shell/PageHeader";
 
 interface CommunitySettings {
   enabled: boolean;
@@ -55,7 +69,9 @@ function emptyTier(defaultCurrency: CurrencyCode): CommunityTier {
 
 export default function CommunityPage() {
   const { creator } = useAuth();
-  const defaultCurrency: CurrencyCode = (parsePriceCurrency(creator?.currency) ?? ("RWF" as CurrencyCode));
+  const defaultCurrency: CurrencyCode =
+    parsePriceCurrency(creator?.currency) ?? ("RWF" as CurrencyCode);
+  const defaultCurrencyRef = useRef(defaultCurrency);
   const [settings, setSettings] = useState<CommunitySettings>({
     enabled: false,
     tiers: [],
@@ -69,25 +85,31 @@ export default function CommunityPage() {
   const [newBenefit, setNewBenefit] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    defaultCurrencyRef.current = defaultCurrency;
+  }, [defaultCurrency]);
+
+  useEffect(() => {
     if (!creator?.handle) return;
 
     const unsub = onSnapshot(doc(db, "creators", creator.handle), (docSnap) => {
       if (!docSnap.exists()) return;
       const data = docSnap.data();
       const communityTiers = ((data.communityTiers || []) as CommunityTier[]).map((t) => {
-        const currency = parsePriceCurrency(t.currency) || defaultCurrency;
+        const currency = parsePriceCurrency(t.currency) || defaultCurrencyRef.current;
         const prices = buildPriceMap({ prices: t.prices as PriceMap, price: t.price });
         return {
           ...t,
           currency,
           prices,
           price: prices.RWF ?? getPrice({ prices, currency }, currency),
-
         } as CommunityTier;
       });
       setSettings({
         enabled: !!data.communityEnabled,
-        tiers: communityTiers.length > 0 ? communityTiers : [emptyTier(defaultCurrency)],
+        tiers:
+          communityTiers.length > 0
+            ? communityTiers
+            : [emptyTier(defaultCurrencyRef.current)],
       });
       setLoading(false);
     });
@@ -161,7 +183,7 @@ export default function CommunityPage() {
     try {
       const validTiers = settings.tiers
         .map((t) => {
-          const currency = parsePriceCurrency(t.currency) || defaultCurrency;
+          const currency = parsePriceCurrency(t.currency) || defaultCurrencyRef.current;
           const prices = buildPriceMap({ prices: t.prices as PriceMap, price: t.price });
           const primary = getPrice({ prices, currency }, currency);
           return {
@@ -169,7 +191,6 @@ export default function CommunityPage() {
             currency,
             prices,
             price: prices.RWF ?? primary,
-  
           } as CommunityTier;
         })
         .filter((t) => t.name.trim() && getPrice(t, t.currency as CurrencyCode) > 0);
@@ -189,139 +210,126 @@ export default function CommunityPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader className="animate-spin text-orange-500" size={32} />
+      <div className="flex min-h-[400px] items-center justify-center" role="status">
+        <Loader className="size-8 animate-spin text-brand-strong" aria-hidden="true" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4 md:p-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-3">
-            <Crown className="text-orange-500" size={28} />
-            Community
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Create subscription tiers for your most dedicated supporters
-          </p>
-        </div>
-        <button
-          onClick={() => setSettings((prev) => ({ ...prev, enabled: !prev.enabled }))}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-bold transition-colors ${
-            settings.enabled
-              ? "bg-orange-50 border-orange-200 text-orange-700"
-              : "bg-muted border-border text-muted-foreground"
-          }`}
-        >
-          {settings.enabled ? (
-            <ToggleRight size={18} className="text-orange-500" />
-          ) : (
-            <ToggleLeft size={18} />
-          )}
-          {settings.enabled ? "Enabled" : "Disabled"}
-        </button>
-      </div>
+    <div className="mx-auto max-w-4xl bg-canvas p-4 text-fg md:p-8">
+      <PageHeader
+        title="Community"
+        description="Create subscription tiers for your most dedicated supporters"
+        className="mb-8"
+        actions={
+          <Button
+            variant={settings.enabled ? "primary" : "secondary"}
+            aria-pressed={settings.enabled}
+            onClick={() => setSettings((prev) => ({ ...prev, enabled: !prev.enabled }))}
+            leadingIcon={
+              settings.enabled ? (
+                <ToggleRight className="size-4" aria-hidden="true" />
+              ) : (
+                <ToggleLeft className="size-4" aria-hidden="true" />
+              )
+            }
+          >
+            {settings.enabled ? "Enabled" : "Disabled"}
+          </Button>
+        }
+      />
 
       {!settings.enabled && (
-        <div className="bg-muted border border-border rounded-lg p-12 text-center">
-          <Crown size={48} className="mx-auto text-muted-foreground mb-4" />
-          <h2 className="text-lg font-bold mb-2">Community Subscriptions</h2>
-          <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-            Enable community subscriptions to offer monthly or yearly membership tiers.
-            Supporters subscribe to get exclusive benefits and access.
-          </p>
-          <button
-            onClick={() => setSettings((prev) => ({ ...prev, enabled: true }))}
-            className="px-6 py-3 bg-orange-600 text-white rounded-lg text-sm font-bold hover:bg-orange-700 transition"
-          >
-            Enable Community
-          </button>
-        </div>
+        <EmptyState
+          icon={<Crown className="size-6" aria-hidden="true" />}
+          title="Community Subscriptions"
+          description="Enable community subscriptions to offer monthly or yearly membership tiers. Supporters subscribe to get exclusive benefits and access."
+          action={
+            <Button onClick={() => setSettings((prev) => ({ ...prev, enabled: true }))}>
+              Enable Community
+            </Button>
+          }
+          className="py-12"
+        />
       )}
 
       {settings.enabled && (
         <>
-          <div className="flex gap-1 mb-8 bg-muted rounded-lg p-1 w-max md:w-fit overflow-x-auto no-scrollbar">
-            {(["settings", "members", "earnings"] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-md text-xs font-bold capitalize transition whitespace-nowrap shrink-0 ${
-                  activeTab === tab
-                    ? "bg-card shadow-sm text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {tab === "settings" && (
-                  <>
-                    <Shield size={14} className="inline mr-1" /> Tiers
-                  </>
-                )}
-                {tab === "members" && (
-                  <>
-                    <Users size={14} className="inline mr-1" /> Members
-                  </>
-                )}
-                {tab === "earnings" && (
-                  <>
-                    <DollarSign size={14} className="inline mr-1" /> Earnings
-                  </>
-                )}
-              </button>
-            ))}
-          </div>
+          <Tabs
+            ariaLabel="Community sections"
+            variant="segmented"
+            value={activeTab}
+            onChange={(id) => setActiveTab(id as "settings" | "members" | "earnings")}
+            items={[
+              {
+                id: "settings",
+                label: "Tiers",
+                icon: <Shield className="size-4" aria-hidden="true" />,
+              },
+              {
+                id: "members",
+                label: "Members",
+                icon: <Users className="size-4" aria-hidden="true" />,
+              },
+              {
+                id: "earnings",
+                label: "Earnings",
+                icon: <DollarSign className="size-4" aria-hidden="true" />,
+              },
+            ]}
+            className="mb-8 w-max overflow-x-auto no-scrollbar md:w-fit"
+          />
 
           {activeTab === "settings" && (
             <div className="space-y-6">
               {settings.tiers.map((tier, idx) => (
-                <div
-                  key={tier.id}
-                  className="bg-card border border-border rounded-lg p-6"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-xs font-bold text-muted-foreground uppercase">
+                <Card key={tier.id} className="p-6">
+                  <div className="mb-4 flex items-center justify-between">
+                    <span className="text-caption font-bold uppercase tracking-widest text-muted-fg">
                       Tier {idx + 1}
                     </span>
                     <div className="flex items-center gap-2">
                       {tier.name.trim() && (
                         <Link
                           href={`/creator/community/chat/${tier.id}`}
-                          className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 transition"
+                          className="inline-flex items-center gap-1 text-caption font-bold text-brand-strong transition hover:text-brand-hover"
                         >
-                          <MessageCircle size={14} />
+                          <MessageCircle className="size-3.5" aria-hidden="true" />
                           Chat
                         </Link>
                       )}
                       {settings.tiers.length > 1 && (
-                        <button
+                        <IconButton
+                          label="Remove tier"
+                          icon={<X />}
+                          variant="ghost"
+                          size="sm"
                           onClick={() => removeTier(idx)}
-                          className="p-1 hover:bg-red-50 rounded text-red-400 hover:text-red-600 transition"
-                        >
-                          <X size={16} />
-                        </button>
+                          className="text-danger hover:bg-danger-bg hover:text-danger"
+                        />
                       )}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className="text-xs font-bold text-muted-foreground mb-1 block">
-                        Name
-                      </label>
-                      <input
-                        value={tier.name}
-                        onChange={(e) => updateTier(idx, "name", e.target.value)}
-                        placeholder="e.g. Bronze, Silver, Podcast Insiders"
-                        className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm"
-                      />
-                    </div>
+                  <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <Input
+                      label="Name"
+                      value={tier.name}
+                      onChange={(e) => updateTier(idx, "name", e.target.value)}
+                      placeholder="e.g. Bronze, Silver, Podcast Insiders"
+                    />
                     <div className="space-y-4">
-                      <div className="p-3 bg-muted/40 rounded-lg border border-border">
+                      <div className="rounded-control border border-line bg-surface-raised/40 p-3">
                         <PriceEditor
-                          currency={(parsePriceCurrency(tier.currency) || defaultCurrency) as CurrencyCode}
-                          prices={buildPriceMap({ prices: tier.prices as PriceMap, price: tier.price })}
+                          currency={
+                            (parsePriceCurrency(tier.currency) ||
+                              defaultCurrency) as CurrencyCode
+                          }
+                          prices={buildPriceMap({
+                            prices: tier.prices as PriceMap,
+                            price: tier.price,
+                          })}
                           preferredCurrencies={[defaultCurrency, "RWF", "USD"]}
                           onChange={({ currency, prices }) => {
                             const primary = getPrice({ prices, currency }, currency);
@@ -332,65 +340,63 @@ export default function CommunityPage() {
                                 currency,
                                 prices,
                                 price: prices.RWF ?? primary,
-                      
                               };
                               return { ...prev, tiers };
                             });
                           }}
                         />
                       </div>
-                      <div>
-                        <label className="text-xs font-bold text-muted-foreground mb-1 block">
-                          Interval
-                        </label>
-                        <select
-                          value={tier.interval}
-                          onChange={(e) => updateTier(idx, "interval", e.target.value)}
-                          className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm"
-                        >
-                          <option value="monthly">Monthly</option>
-                          <option value="yearly">Yearly</option>
-                        </select>
-                      </div>
+                      <Select
+                        label="Interval"
+                        value={tier.interval}
+                        onChange={(e) => updateTier(idx, "interval", e.target.value)}
+                      >
+                        <option value="monthly">Monthly</option>
+                        <option value="yearly">Yearly</option>
+                      </Select>
                     </div>
                   </div>
 
                   <div className="mb-4">
-                    <label className="text-xs font-bold text-muted-foreground mb-1 block">
-                      Description
-                    </label>
-                    <textarea
+                    <Textarea
+                      label="Description"
                       value={tier.description}
                       onChange={(e) => updateTier(idx, "description", e.target.value)}
                       placeholder="What do members get?"
                       rows={2}
-                      className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm resize-none"
+                      className="resize-none"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-bold text-muted-foreground mb-1 block">
+                    <label className="mb-1 block text-caption font-bold uppercase tracking-widest text-muted-fg">
                       Benefits
                     </label>
-                    <div className="space-y-2 mb-2">
+                    <div className="mb-2 space-y-2">
                       {(tier.benefits || []).map((benefit, bIdx) => (
                         <div
                           key={bIdx}
-                          className="flex items-center gap-2 bg-muted rounded-lg px-3 py-2"
+                          className="flex items-center gap-2 rounded-control bg-surface-raised px-3 py-2"
                         >
-                          <Check size={14} className="text-green-500 shrink-0" />
-                          <span className="text-sm flex-1">{benefit}</span>
-                          <button
+                          <Check
+                            className="size-3.5 shrink-0 text-success"
+                            aria-hidden="true"
+                          />
+                          <span className="flex-1 text-label">{benefit}</span>
+                          <IconButton
+                            label="Remove benefit"
+                            icon={<X />}
+                            variant="ghost"
+                            size="sm"
                             onClick={() => removeBenefit(idx, bIdx)}
-                            className="text-muted-foreground hover:text-red-500 transition"
-                          >
-                            <X size={14} />
-                          </button>
+                            className="hover:text-danger"
+                          />
                         </div>
                       ))}
                     </div>
                     <div className="flex gap-2">
-                      <input
+                      <Input
+                        containerClassName="flex-1"
                         value={newBenefit[idx] || ""}
                         onChange={(e) =>
                           setNewBenefit((prev) => ({ ...prev, [idx]: e.target.value }))
@@ -402,63 +408,63 @@ export default function CommunityPage() {
                           }
                         }}
                         placeholder="Add a benefit..."
-                        className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-sm"
                       />
-                      <button
+                      <IconButton
+                        label="Add benefit"
+                        icon={<Plus />}
+                        variant="primary"
+                        size="sm"
                         onClick={() => addBenefit(idx)}
-                        className="px-3 py-2 bg-orange-600 text-white rounded-lg text-sm font-bold hover:bg-orange-700 transition"
-                      >
-                        <Plus size={16} />
-                      </button>
+                      />
                     </div>
                   </div>
-                </div>
+                </Card>
               ))}
 
               {settings.tiers.length < 2 && (
-                <button
+                <Button
+                  variant="secondary"
+                  fullWidth
                   onClick={addTier}
-                  className="w-full py-4 border-2 border-dashed border-border rounded-lg text-sm font-bold text-muted-foreground hover:border-orange-300 hover:text-orange-600 transition"
+                  leadingIcon={<Plus className="size-4" aria-hidden="true" />}
+                  className="border-dashed py-4 text-muted-fg hover:border-brand-strong hover:text-brand-strong"
                 >
-                  <Plus size={18} className="inline mr-1" /> Add Tier
-                </button>
+                  Add Tier
+                </Button>
               )}
 
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="px-6 py-3 bg-orange-600 text-white rounded-lg text-sm font-bold hover:bg-orange-700 transition disabled:opacity-50"
-              >
+              <Button onClick={handleSave} loading={saving}>
                 {saving ? "Saving..." : "Save Changes"}
-              </button>
+              </Button>
             </div>
           )}
 
           {activeTab === "members" && (
-            <div className="bg-card border border-border rounded-lg">
+            <Card className="overflow-hidden">
               {members.length === 0 ? (
-                <div className="p-12 text-center">
-                  <Users size={40} className="mx-auto text-muted-foreground mb-3" />
-                  <p className="text-sm text-muted-foreground">No members yet</p>
-                </div>
+                <EmptyState
+                  icon={<Users className="size-6" aria-hidden="true" />}
+                  title="No members yet"
+                  className="border-0 py-12"
+                />
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-label">
                     <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left p-4 text-xs font-bold text-muted-foreground uppercase">
+                      <tr className="border-b border-line bg-surface-sunken">
+                        <th className="p-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
                           Member
                         </th>
-                        <th className="text-left p-4 text-xs font-bold text-muted-foreground uppercase">
+                        <th className="p-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
                           Tier
                         </th>
-                        <th className="text-left p-4 text-xs font-bold text-muted-foreground uppercase">
+                        <th className="p-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
                           Status
                         </th>
-                        <th className="text-left p-4 text-xs font-bold text-muted-foreground uppercase">
+                        <th className="p-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
                           Amount
                         </th>
-                        <th className="text-left p-4 text-xs font-bold text-muted-foreground uppercase">
+                        <th className="p-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
                           Expires
                         </th>
                       </tr>
@@ -467,32 +473,35 @@ export default function CommunityPage() {
                       {members.map((m) => (
                         <tr
                           key={m.subscriptionId}
-                          className="border-b border-border last:border-0"
+                          className="border-b border-line last:border-0"
                         >
                           <td className="p-4">
                             <p className="font-medium">{m.userName || m.userEmail}</p>
                           </td>
-                          <td className="p-4 text-muted-foreground">{m.tierName}</td>
+                          <td className="p-4 text-muted-fg">{m.tierName}</td>
                           <td className="p-4">
-                            <span
-                              className={`text-xs font-bold px-2 py-1 rounded ${
+                            <Badge
+                              tone={
                                 m.status === "active"
-                                  ? "bg-green-50 text-green-700"
+                                  ? "success"
                                   : m.status === "cancelled"
-                                    ? "bg-yellow-50 text-yellow-700"
-                                    : "bg-gray-50 text-gray-500"
-                              }`}
+                                    ? "warning"
+                                    : "neutral"
+                              }
+                              className="uppercase"
                             >
                               {m.status}
-                            </span>
+                            </Badge>
                           </td>
                           <td className="p-4 font-medium">
-                            {m.currency ? formatCurrency(m.amount, m.currency as any) : m.amount}
-                            <span className="text-muted-foreground text-xs ml-1">
+                            {m.currency
+                              ? formatCurrency(m.amount, m.currency as any)
+                              : m.amount}
+                            <span className="ml-1 text-caption text-muted-fg">
                               /{m.interval === "yearly" ? "yr" : "mo"}
                             </span>
                           </td>
-                          <td className="p-4 text-xs text-muted-foreground">
+                          <td className="p-4 text-caption text-muted-fg">
                             {m.expiresAt
                               ? new Date(m.expiresAt).toLocaleDateString()
                               : "-"}
@@ -503,16 +512,19 @@ export default function CommunityPage() {
                   </table>
                 </div>
               )}
-            </div>
+            </Card>
           )}
 
           {activeTab === "earnings" && (
-            <div className="bg-card border border-border rounded-lg p-12 text-center">
-              <DollarSign size={40} className="mx-auto text-muted-foreground mb-3" />
-              <p className="text-sm text-muted-foreground">
+            <Card className="p-12 text-center">
+              <DollarSign
+                className="mx-auto mb-3 size-10 text-muted-fg"
+                aria-hidden="true"
+              />
+              <p className="text-label text-muted-fg">
                 Community earnings will appear here once subscriptions start rolling in.
               </p>
-            </div>
+            </Card>
           )}
         </>
       )}

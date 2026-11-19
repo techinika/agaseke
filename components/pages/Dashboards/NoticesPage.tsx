@@ -8,6 +8,7 @@ import { useAuth } from "@/auth/AuthContext";
 import Loading from "@/app/loading";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -117,16 +118,14 @@ export default function NoticesPage() {
           ) : (
             <div className="space-y-4">
               {filteredNotices.map((notice) => (
-                <button
+                <Button
                   key={notice.id}
-                  type="button"
+                  variant="secondary"
+                  fullWidth
                   onClick={() => setSelectedNotice(notice)}
                   className={cn(
-                    "w-full rounded-card border-2 bg-surface p-5 text-left outline-none transition-colors",
-                    "focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas",
-                    notice.read
-                      ? "border-line hover:border-line-strong"
-                      : "border-brand-strong/20 shadow-sm hover:border-brand-strong/40",
+                    "flex-col items-stretch justify-start px-5 py-5 text-left",
+                    !notice.read && "shadow-sm",
                   )}
                 >
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -163,7 +162,7 @@ export default function NoticesPage() {
                       {formatDate(notice.createdAt)}
                     </span>
                   </div>
-                </button>
+                </Button>
               ))}
             </div>
           )}
@@ -190,11 +189,11 @@ export default function NoticesPage() {
                 {formatDate(selectedNotice.createdAt)}
               </span>
             </div>
-            <div className="rounded-card border border-line bg-surface-sunken p-5">
+            <Card className="bg-surface-sunken p-5">
               <p className="whitespace-pre-wrap text-label font-medium leading-relaxed text-fg">
                 {personalizeMessage(selectedNotice.message)}
               </p>
-            </div>
+            </Card>
           </div>
         )}
       </Dialog>

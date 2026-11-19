@@ -73,6 +73,15 @@ Creator home, payouts, settings, sales, and supporters live in `features/creator
 - Destructive payout actions, profile writes/uploads, sales subscriptions, supporter enrichment, and broadcast delivery must keep their existing behavior and permission model.
 - `/dev/creator-core` is a gated mock-data preview with `noindex`; never add it to production navigation.
 
+## Creator community and communications
+
+Creator community, chat, messages, and notices live in `components/pages/Dashboards/` and `components/parts/community/`. Route files stay thin; page components own presentation and keep Firestore subscriptions, tier access, read receipts, and notification delivery unchanged.
+
+- Reuse `PageHeader`, `AppShell`, `Card`, `Tabs`, `Button`, `IconButton`, `FormField`, `Input`, `Select`, `Textarea`, `Badge`, `Avatar`, `EmptyState`, `Skeleton`, `SearchInput`, and `Dialog`.
+- Chat composer controls must use `IconButton` for icon-only actions; `Button` has no `size="icon"` variant.
+- `Tabs` enforces a 48 px minimum target width; do not replace it with raw buttons for filter tabs.
+- `/dev/creator-community` is a gated mock-data preview with `noindex`; never add it to production navigation.
+
 ## Verification
 
 Run before calling any shell or route done:
@@ -84,10 +93,12 @@ npm test
 npx playwright test e2e/phase2-shells.spec.ts
 npx playwright test e2e/phase5-auth.spec.ts
 npx playwright test e2e/phase6a-creator-core.spec.ts
+npx playwright test e2e/phase6b-community.spec.ts
 npx playwright test e2e/mobile-routes.spec.ts
 CHROMIUM_PATH=/usr/bin/chromium OUT_DIR=docs/ui-evidence/phase4/after node scripts/phase4-evidence.mjs
 CHROMIUM_PATH=/usr/bin/chromium OUT_DIR=docs/ui-evidence/phase5/after node scripts/phase5-evidence.mjs
 CHROMIUM_PATH=/usr/bin/chromium OUT_DIR=docs/ui-evidence/phase6a/after node scripts/phase6a-evidence.mjs
+CHROMIUM_PATH=/usr/bin/chromium OUT_DIR=docs/ui-evidence/phase6b/after node scripts/phase6b-evidence.mjs
 ```
 
-Visual evidence belongs in `docs/ui-evidence/phase2-shells/`, `docs/ui-evidence/phase4/`, `docs/ui-evidence/phase5/`, and `docs/ui-evidence/phase6a/`, with 360×640 and 1280×800 captures in light and dark. Axe must have zero serious/critical violations; 0 moderate is the target on touched routes. Record phase results in `docs/REDESIGN_LOG.md` and `docs/REDESIGN_COVERAGE.md`.
+Visual evidence belongs in `docs/ui-evidence/phase2-shells/`, `docs/ui-evidence/phase4/`, `docs/ui-evidence/phase5/`, `docs/ui-evidence/phase6a/`, and `docs/ui-evidence/phase6b/`, with 360×640 and 1280×800 captures in light and dark. Axe must have zero serious/critical violations; 0 moderate is the target on touched routes. Record phase results in `docs/REDESIGN_LOG.md` and `docs/REDESIGN_COVERAGE.md`.
