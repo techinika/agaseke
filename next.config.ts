@@ -19,7 +19,6 @@ const CONTENT_SECURITY_POLICY = [
 ].join("; ");
 
 const ENFORCED_CONTENT_SECURITY_POLICY = [
-  "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
   "object-src 'none'",
@@ -37,10 +36,6 @@ const SECURITY_HEADERS = [
   {
     key: "X-Content-Type-Options",
     value: "nosniff",
-  },
-  {
-    key: "X-Frame-Options",
-    value: "DENY",
   },
   {
     key: "Referrer-Policy",
@@ -73,6 +68,7 @@ const SECURITY_HEADERS = [
 ];
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   experimental: {
     serverActions: {
       bodySizeLimit: "60mb",
