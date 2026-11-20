@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Bell,
   Briefcase,
   Check,
   ChevronDown,
@@ -47,6 +46,7 @@ import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Drawer } from "@/components/ui/Drawer";
 import { IconButton } from "@/components/ui/IconButton";
+import { NotificationBellButton } from "@/components/ui/NotificationBellButton";
 import { Textarea } from "@/components/ui/Textarea";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
@@ -326,7 +326,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </h1>
             </div>
 
-            <div className="flex items-center gap-1 sm:gap-2">
+            <div className="flex shrink-0 items-center gap-1 sm:gap-2">
               <IconButton
                 label={t("creator.shareMyLink")}
                 icon={<Share2 />}
@@ -340,27 +340,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 onClick={() => setShowFeedback(true)}
                 className="hidden md:inline-flex"
               />
-              <div className="relative">
-                <IconButton
-                  label={t("nav.notifications")}
-                  icon={<Bell />}
-                  variant="ghost"
-                  onClick={() => setShowNotifications(true)}
-                />
-                {unreadCount > 0 && (
-                  <span className="pointer-events-none absolute right-1.5 top-1.5 flex min-w-[1.125rem] items-center justify-center rounded-full bg-brand-strong px-1 text-caption font-bold leading-4 text-on-brand">
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </span>
-                )}
-              </div>
+              <NotificationBellButton
+                unreadCount={unreadCount}
+                onClick={() => setShowNotifications(true)}
+              />
 
-              <div className="relative" ref={dropdownRef}>
+              <div className="relative shrink-0" ref={dropdownRef}>
                 <button
                   type="button"
                   onClick={() => setShowDropdown((value) => !value)}
                   aria-expanded={showDropdown}
                   aria-haspopup="menu"
-                  className="flex min-h-11 items-center gap-2 rounded-control p-1 pr-2 outline-none transition-colors hover:bg-surface-raised focus-visible:ring-2 focus-visible:ring-focus"
+                  className="flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-control p-1 pr-2 outline-none transition-colors hover:bg-surface-raised focus-visible:ring-2 focus-visible:ring-focus"
                 >
                   <span className="hidden text-right md:block">
                     <span className="block text-caption font-bold leading-tight text-fg">
@@ -377,7 +368,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   />
                   <ChevronDown
                     className={cn(
-                      "size-3.5 text-muted-fg transition-transform",
+                      "size-3.5 shrink-0 text-muted-fg transition-transform",
                       showDropdown && "rotate-180",
                     )}
                     aria-hidden="true"

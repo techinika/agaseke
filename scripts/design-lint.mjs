@@ -20,6 +20,7 @@ const ROOTS = [
   "app/(dashboards)/admin/layout.tsx",
   "app/(dashboards)/creator/layout.tsx",
   "app/(dashboards)/supporter/layout.tsx",
+  "app/(supporter_portal)/layout.tsx",
   "app/(main)/layout.tsx",
   "app/(public_profile)/layout.tsx",
   "components/parts/dashboard/Layout.tsx",

@@ -73,21 +73,21 @@ export default function RootLayout({
           />
         }
         topbar={
-          <div className="mx-auto flex h-16 w-full max-w-app items-center justify-between gap-2 px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto flex h-16 w-full max-w-app items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-2">
-              <span className="rounded-pill bg-brand-soft px-2 py-1 text-caption font-bold uppercase tracking-wide text-brand-strong">
+              <span className="shrink-0 whitespace-nowrap rounded-pill bg-brand-soft px-2 py-1 text-caption font-bold uppercase tracking-wide text-brand-strong">
                 {t("nav.admin")}
               </span>
               <h1 className="truncate text-label font-bold capitalize text-fg sm:text-body">
                 {pageTitle}
               </h1>
             </div>
-            <div className="flex items-center gap-1 sm:gap-2">
+            <div className="flex shrink-0 items-center gap-1 sm:gap-2">
               <Link
                 href="/creator"
-                className="inline-flex min-h-11 items-center gap-2 rounded-control px-3 text-label font-semibold text-muted-fg transition-colors hover:bg-surface-raised hover:text-fg"
+                className="inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-control px-3 text-label font-semibold text-muted-fg transition-colors hover:bg-surface-raised hover:text-fg"
               >
-                <ArrowLeft className="size-4" aria-hidden="true" />
+                <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
                 <span className="hidden sm:inline">{t("adminLayout.backToCreator")}</span>
               </Link>
               <IconButton

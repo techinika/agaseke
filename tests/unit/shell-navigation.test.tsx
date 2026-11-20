@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { DashboardMobileNav } from "@/components/shell/DashboardMobileNav";
 import { Sidebar } from "@/components/shell/Sidebar";
+import { NotificationBellButton } from "@/components/ui/NotificationBellButton";
 import { getNavItems } from "@/config/navigation";
 
 vi.mock("next/navigation", () => ({
@@ -71,6 +72,46 @@ describe("DashboardMobileNav", () => {
       "/admin/logs",
     );
   });
+
+  it("exposes Feed, Explore, Library, Notices, and all account destinations in supporter mobile nav", () => {
+    render(<DashboardMobileNav surface="supporter" role="supporter" />);
+
+    expect(screen.getByRole("link", { name: "Feed" })).toHaveAttribute(
+      "href",
+      "/supporter",
+    );
+    expect(screen.getByRole("link", { name: "Explore" })).toHaveAttribute(
+      "href",
+      "/explore",
+    );
+    expect(screen.getByRole("link", { name: "Library" })).toHaveAttribute(
+      "href",
+      "/explore/posts",
+    );
+    expect(screen.getByRole("link", { name: "Notices" })).toHaveAttribute(
+      "href",
+      "/supporter/notices",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+
+    expect(screen.getByRole("link", { name: "Memberships" })).toHaveAttribute(
+      "href",
+      "/community/manage",
+    );
+    expect(screen.getByRole("link", { name: "Bookings" })).toHaveAttribute(
+      "href",
+      "/bookings",
+    );
+    expect(screen.getByRole("link", { name: "Transactions" })).toHaveAttribute(
+      "href",
+      "/transactions",
+    );
+    expect(screen.getByRole("link", { name: "Account" })).toHaveAttribute(
+      "href",
+      "/profile",
+    );
+  });
 });
 
 describe("Sidebar", () => {
@@ -102,10 +143,32 @@ describe("Sidebar", () => {
     expect(screen.getAllByText("Store")[0].tagName).toBe("P");
     expect(screen.getAllByText("Settings")[0].tagName).toBe("P");
   });
+
+  it("includes every supporter workspace page in the supporter desktop sidebar", () => {
+    const items = getNavItems({
+      surface: "supporter",
+      role: "supporter",
+      slot: "desktop",
+    });
+    const hrefs = items
+      .map((item) => ("href" in item ? item.href : undefined))
+      .filter(Boolean);
+
+    expect(hrefs).toEqual([
+      "/supporter",
+      "/explore",
+      "/explore/posts",
+      "/supporter/notices",
+      "/community/manage",
+      "/bookings",
+      "/transactions",
+      "/profile",
+    ]);
+  });
 });
 
 describe("Public navigation simplification", () => {
-  it("exposes Explore, Posts, and Help without audience marketing links", () => {
+  it("exposes Explore, Posts, and Help without audience marketing links for guests", () => {
     const desktop = getNavItems({
       surface: "public",
       role: "guest",
@@ -119,6 +182,46 @@ describe("Public navigation simplification", () => {
     expect(hrefs).not.toContain("/for-creators");
     expect(hrefs).not.toContain("/for-supporters");
     expect(hrefs).not.toContain("/for-brands");
+  });
+
+  it("includes Feed for signed-in users on the public header", () => {
+    const desktop = getNavItems({
+      surface: "public",
+      role: "supporter",
+      slot: "desktop",
+    });
+    const hrefs = desktop
+      .map((item) => ("href" in item ? item.href : undefined))
+      .filter(Boolean);
+
+    expect(hrefs).toEqual([
+      "/supporter",
+      "/explore",
+      "/explore/posts",
+      "/help-center",
+    ]);
+  });
+});
+
+describe("NotificationBellButton", () => {
+  it("renders two-digit and overflow counts on a single non-wrapping line", () => {
+    const { rerender } = render(
+      <NotificationBellButton unreadCount={42} onClick={() => {}} />,
+    );
+
+    const badge42 = screen.getByText("42");
+    expect(badge42).toHaveClass("whitespace-nowrap", "tabular-nums", "leading-none");
+    expect(
+      screen.getByRole("button", { name: "Notifications (42)" }),
+    ).toBeInTheDocument();
+
+    rerender(<NotificationBellButton unreadCount={150} onClick={() => {}} />);
+
+    const badge99Plus = screen.getByText("99+");
+    expect(badge99Plus).toHaveClass("whitespace-nowrap", "tabular-nums", "leading-none");
+    expect(
+      screen.getByRole("button", { name: "Notifications (99+)" }),
+    ).toBeInTheDocument();
   });
 });
 

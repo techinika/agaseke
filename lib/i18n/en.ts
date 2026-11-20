@@ -31,6 +31,7 @@ export const en = {
   nav: {
     primary: "Primary",
     home: "Home",
+    feed: "Feed",
     explore: "Explore",
     posts: "Posts",
     library: "Library",
@@ -38,6 +39,7 @@ export const en = {
     content: "Content",
     earnings: "Earnings",
     community: "Community",
+    memberships: "Memberships",
     settings: "Settings",
     supporting: "Supporting",
     notices: "Notices",
@@ -466,6 +468,8 @@ export const en = {
   supporterLayout: {
     title: "Supporter space",
     explorePublic: "Explore public site",
+    creatorStudio: "Creator studio",
+    startCreatorPage: "Start creator page",
   },
   adminLayout: {
     backToCreator: "Back to creator space",

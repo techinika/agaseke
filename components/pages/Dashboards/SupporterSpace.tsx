@@ -338,7 +338,7 @@ export default function SupporterSpace() {
   const firstName = auth.profile?.displayName?.split(" ")[0] || "Supporter";
 
   return (
-    <div className="min-h-screen bg-canvas pb-20 text-fg">
+    <div className="bg-canvas pb-10 text-fg">
       <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-6 lg:px-8 lg:pt-8">
         <header className="flex flex-col gap-4 border-b border-line pb-6 sm:flex-row sm:items-center sm:justify-between">
           <div>

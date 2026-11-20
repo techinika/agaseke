@@ -5,8 +5,8 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import {
-  Bell,
   ChevronDown,
+  Home,
   LayoutDashboard,
   LogIn,
   LogOut,
@@ -15,6 +15,7 @@ import {
 import { useAuth } from "@/auth/AuthContext";
 import {
   getNavItems,
+  isNavItemActive,
   isNavLink,
   NAV_ITEMS,
   type NavItem,
@@ -27,6 +28,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { buttonClasses } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
+import { NotificationBellButton } from "@/components/ui/NotificationBellButton";
 import { Sheet } from "@/components/ui/Sheet";
 
 const NotificationDrawer = dynamic(() => import("@/components/ui/NotificationDrawer"), {
@@ -44,7 +46,7 @@ function Brand() {
   return (
     <Link
       href="/"
-      className="flex min-h-11 items-center text-title font-black uppercase tracking-tight text-fg outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+      className="flex min-h-11 shrink-0 items-center whitespace-nowrap text-title font-black uppercase tracking-tight text-fg outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
     >
       agaseke<span className="text-brand-strong">.me</span>
     </Link>
@@ -71,14 +73,14 @@ function HeaderLink({
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex min-h-11 items-center gap-2 rounded-control px-3 text-label font-semibold outline-none transition-colors",
+        "flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-control px-3 text-label font-semibold outline-none transition-colors",
         "focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
         active
           ? "bg-brand-soft text-brand-strong"
           : "text-muted-fg hover:bg-surface-raised hover:text-fg",
       )}
     >
-      <Icon className="size-4" aria-hidden="true" />
+      <Icon className="size-4 shrink-0" aria-hidden="true" />
       <span>{t(item.labelKey)}</span>
     </Link>
   );
@@ -162,13 +164,15 @@ export function PublicHeader() {
   ].filter((item) => item.id !== "login");
   const signedIn = Boolean(auth?.user && auth?.isLoggedIn);
   const accountItems = [
+    "public-memberships",
     "supporter-notices",
-    "public-transactions",
     "public-bookings",
+    "public-transactions",
     "public-account",
   ]
     .map((id) => NAV_ITEMS.find((item) => item.id === id))
     .filter((item): item is NavLinkItem => Boolean(item && isNavLink(item)));
+  const effectiveUnreadCount = signedIn ? unreadCount : 0;
 
   useEffect(() => {
     if (!userMenuOpen) return;
@@ -230,49 +234,34 @@ export function PublicHeader() {
         {t("a11y.skipToContent")}
       </a>
       <header className="sticky top-0 z-50 border-b border-line bg-surface/90 backdrop-blur">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
-          <div className="flex min-w-0 items-center gap-8">
+        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
+          <div className="flex min-w-0 items-center gap-4 xl:gap-8">
             <Brand />
             <nav
               aria-label={t("nav.publicNavigation")}
               className="hidden items-center gap-0.5 lg:flex"
             >
               {desktopItems.map((item) => {
-                const active =
-                  isNavLink(item) &&
-                  (item.href === "/explore"
-                    ? pathname === "/explore"
-                    : pathname === item.href || pathname.startsWith(`${item.href}/`));
+                const active = isNavLink(item) && isNavItemActive(item, pathname);
                 return <HeaderLink key={item.id} item={item} active={active} />;
               })}
             </nav>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             {signedIn ? (
               <>
-                <IconButton
-                  label={t("nav.notifications")}
-                  icon={
-                    <span className="relative">
-                      <Bell />
-                      {unreadCount > 0 && (
-                        <span className="absolute -right-2 -top-2 flex min-w-5 items-center justify-center rounded-pill bg-brand-strong px-1 text-caption font-bold leading-5 text-on-brand">
-                          {unreadCount > 99 ? "99+" : unreadCount}
-                        </span>
-                      )}
-                    </span>
-                  }
+                <NotificationBellButton
+                  unreadCount={effectiveUnreadCount}
                   onClick={() => setShowNotifications(true)}
-                  className="hidden sm:inline-flex"
                 />
 
-                <div className="relative" ref={dropdownRef}>
+                <div className="relative shrink-0" ref={dropdownRef}>
                   <button
                     type="button"
                     aria-expanded={userMenuOpen}
                     onClick={() => setUserMenuOpen((open) => !open)}
-                    className="flex min-h-11 items-center gap-2 rounded-control border border-line bg-surface px-1.5 pr-2.5 outline-none transition-colors hover:bg-surface-raised focus-visible:ring-2 focus-visible:ring-focus"
+                    className="flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-control border border-line bg-surface px-1.5 pr-2.5 outline-none transition-colors hover:bg-surface-raised focus-visible:ring-2 focus-visible:ring-focus"
                   >
                     <Avatar
                       src={auth?.profile?.photoURL || auth?.user?.photoURL}
@@ -286,7 +275,7 @@ export function PublicHeader() {
                     </span>
                     <ChevronDown
                       className={cn(
-                        "size-4 text-muted-fg transition-transform",
+                        "size-4 shrink-0 text-muted-fg transition-transform",
                         userMenuOpen && "rotate-180",
                       )}
                       aria-hidden="true"
@@ -304,27 +293,35 @@ export function PublicHeader() {
                         </p>
                       </div>
 
+                      <DropdownItem
+                        href="/supporter"
+                        icon={<Home className="size-4 shrink-0" aria-hidden="true" />}
+                        label={t("nav.feed")}
+                        onClick={closeMenus}
+                      />
+                      {auth?.isCreator && (
+                        <DropdownItem
+                          href="/creator"
+                          icon={<LayoutDashboard className="size-4 shrink-0" aria-hidden="true" />}
+                          label={t("supporterLayout.creatorStudio")}
+                          onClick={closeMenus}
+                        />
+                      )}
                       {auth?.isAdmin && (
                         <DropdownItem
                           href="/admin"
-                          icon={<LayoutDashboard className="size-4" />}
+                          icon={<LayoutDashboard className="size-4 shrink-0" aria-hidden="true" />}
                           label={t("nav.adminDashboard")}
                           onClick={closeMenus}
                         />
                       )}
-                      <DropdownItem
-                        href={auth?.isCreator ? "/creator" : "/supporter"}
-                        icon={<LayoutDashboard className="size-4" />}
-                        label={t("nav.workspace")}
-                        onClick={closeMenus}
-                      />
                       {accountItems.map((item) => {
                         const Icon = item.icon;
                         return (
                           <DropdownItem
                             key={item.id}
                             href={item.href}
-                            icon={<Icon className="size-4" aria-hidden="true" />}
+                            icon={<Icon className="size-4 shrink-0" aria-hidden="true" />}
                             label={t(item.labelKey)}
                             onClick={closeMenus}
                           />

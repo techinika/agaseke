@@ -72,8 +72,8 @@ export default function NoticesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-canvas pb-8 text-fg">
-      <div className="mx-auto max-w-4xl px-4 pt-8 sm:px-6">
+    <div className="bg-canvas pb-10 text-fg">
+      <div className="mx-auto max-w-4xl px-4 pt-6 sm:px-6 sm:pt-8">
         <PageHeader
           title="Notices"
           description="Important announcements from the admin team."

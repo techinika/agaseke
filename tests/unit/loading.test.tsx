@@ -4,7 +4,7 @@ import Loading from "@/app/loading";
 import CreatorLoading from "@/app/(dashboards)/creator/loading";
 import SupporterLoading from "@/app/(dashboards)/supporter/loading";
 import AdminLoading from "@/app/(dashboards)/admin/loading";
-import ExploreLoading from "@/app/(main)/explore/loading";
+import ExploreLoading from "@/app/(supporter_portal)/explore/loading";
 import ProfileLoading from "@/app/(public_profile)/[username]/loading";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { getNavItems } from "@/config/navigation";

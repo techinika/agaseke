@@ -140,8 +140,8 @@ export default function ProfileEditPage() {
   if (loading) return <LoadingState variant="form" label="Loading profile settings" />;
 
   return (
-    <div className="min-h-screen bg-canvas pb-20 text-fg">
-      <main className="mx-auto max-w-3xl px-4 pt-12 sm:px-6">
+    <div className="bg-canvas pb-12 text-fg">
+      <div className="mx-auto max-w-4xl px-4 pt-6 sm:px-6 sm:pt-8">
         <div className="mb-8">
           <p className="text-caption font-semibold uppercase tracking-wider text-brand-strong">
             Account
@@ -271,7 +271,7 @@ export default function ProfileEditPage() {
             </Button>
           </section>
         </div>
-      </main>
+      </div>
 
       <Dialog
         open={isDeleteModalOpen}

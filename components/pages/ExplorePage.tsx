@@ -122,8 +122,8 @@ export default function ExplorePage({
   }, [debouncedSearch, hasInitial]);
 
   return (
-    <div className="min-h-screen bg-canvas pb-20 text-fg">
-      <section className="border-b border-line bg-surface-sunken px-4 pb-10 pt-12 sm:px-6 sm:pb-12 sm:pt-16 lg:px-8">
+    <div className="bg-canvas pb-12 text-fg">
+      <section className="border-b border-line bg-surface-sunken px-4 pb-10 pt-8 sm:px-6 sm:pb-12 sm:pt-12 lg:px-8">
         <div className="mx-auto w-full max-w-6xl">
           <div className="max-w-2xl">
             <p className="text-caption font-semibold text-brand-strong">
