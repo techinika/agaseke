@@ -16,6 +16,7 @@ import {
   UserCircle,
 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
+import { AgasekeLogo } from "@/components/brand/AgasekeLogo";
 import { AppShell } from "@/components/shell/AppShell";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { DashboardMobileNav } from "@/components/shell/DashboardMobileNav";
@@ -195,19 +196,9 @@ export function SupporterShell({ children }: { children: ReactNode }) {
             brand={
               <Link
                 href="/supporter"
-                className="inline-flex min-h-11 items-center gap-2 rounded-control outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                className="inline-flex min-h-11 items-center rounded-control outline-none focus-visible:ring-2 focus-visible:ring-focus"
               >
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-control bg-brand-strong text-label font-black text-on-brand">
-                  A
-                </span>
-                <span className="min-w-0">
-                  <span className="block truncate text-label font-black uppercase tracking-tight text-fg">
-                    agaseke.me
-                  </span>
-                  <span className="block truncate text-caption font-semibold text-muted-fg">
-                    {t("supporterLayout.title")}
-                  </span>
-                </span>
+                <AgasekeLogo size="sm" subtitle={t("supporterLayout.title")} />
               </Link>
             }
             footer={sidebarFooter}

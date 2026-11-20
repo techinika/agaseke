@@ -53,7 +53,7 @@ export function CreatorHeader({
 
   return (
     <header>
-      <div className="w-full lg:max-w-[1200px] lg:mx-auto">
+      <div className="relative z-0 w-full lg:mx-auto lg:max-w-[1200px]">
         {bannerURL ? (
           <MediaImage
             src={bannerURL}
@@ -70,7 +70,7 @@ export function CreatorHeader({
         )}
       </div>
 
-      <div className="mx-auto max-w-2xl px-4">
+      <div className="relative z-10 mx-auto max-w-2xl px-4">
         <div className="-mt-10 flex items-end justify-between gap-3">
           <Avatar
             src={photoURL}
@@ -84,7 +84,7 @@ export function CreatorHeader({
             onClick={onShare}
             leadingIcon={<Share2 className="size-4" aria-hidden="true" />}
             aria-label={t("creator.shareProfile")}
-            className="mb-1"
+            className="mb-1 shadow-sm"
           >
             {t("common.share")}
           </Button>
@@ -159,7 +159,7 @@ export function CreatorHeader({
               })}
             >
               <Calendar className="size-5" aria-hidden="true" />
-              {t("creator.events")}
+              {t("creator.booking")}
             </Link>
           )}
         </div>

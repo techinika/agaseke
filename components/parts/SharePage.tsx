@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/auth/AuthContext";
+import { AgasekeLogo } from "@/components/brand/AgasekeLogo";
 import { toPng } from "html-to-image";
 
 const QRCodeCanvas = dynamic(() => import("qrcode.react").then((mod) => mod.QRCodeCanvas), { ssr: false });
@@ -242,15 +243,10 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
               </div>
 
               <div
-                className="py-2 border-t border-border text-center"
-                style={{ backgroundColor: lightVariant }}
+                className="flex items-center justify-center py-2.5 border-t border-border text-center"
+                style={{ backgroundColor: lightVariant, color: accentColor }}
               >
-                <span
-                  className="text-lg font-bold"
-                  style={{ color: accentColor }}
-                >
-                  agaseke.me
-                </span>
+                <AgasekeLogo size="sm" tone="current" />
               </div>
             </div>
           </div>

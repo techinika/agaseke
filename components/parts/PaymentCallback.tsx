@@ -13,6 +13,7 @@ import {
   MapPin,
 } from "lucide-react";
 import Link from "next/link";
+import { AgasekeLogo } from "@/components/brand/AgasekeLogo";
 import { fetchGatheringById, subscribeToTransactionByRef } from "@/lib/transactions";
 import { formatMoney as formatCurrency } from "@/lib/format/money";
 import { getCurrencyDefinition } from "@/lib/money/registry.generated";
@@ -293,9 +294,7 @@ export default function PaymentCallback() {
           <span className="text-caption font-bold text-muted-fg uppercase tracking-[0.2em]">
             Powered by
           </span>
-          <span className="text-xs font-bold text-fg tracking-tighter">
-            agaseke.me
-          </span>
+          <AgasekeLogo size="xs" />
         </div>
       </div>
     </div>

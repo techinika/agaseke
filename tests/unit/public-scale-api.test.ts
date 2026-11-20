@@ -158,6 +158,7 @@ describe("/api/public/explore", () => {
           creatorId: "aline",
           title: "Kigali Sketchbook",
           description: "Notes from Nyamirambo",
+          content: "<p>Exploring ink wash techniques and Kigali street murals.</p>",
           type: "article",
           slug: "kigali-sketchbook",
           status: "published",
@@ -172,6 +173,17 @@ describe("/api/public/explore", () => {
           creatorId: "aline",
           title: "Unpublished Draft",
           status: "draft",
+        }),
+      },
+      {
+        id: "p3",
+        data: () => ({
+          creatorId: "keza",
+          title: "Studio Session",
+          content: "Recording acoustic percussion layers in Remera.",
+          type: "text",
+          status: "published",
+          views: 19,
         }),
       },
     ];
@@ -199,11 +211,33 @@ describe("/api/public/explore", () => {
       items: Array<{ id: string; likesCount: number; authorName: string }>;
     };
     expect(postsRes.status).toBe(200);
-    expect(postsJson.items).toHaveLength(1);
+    expect(postsJson.items).toHaveLength(2);
     expect(postsJson.items[0]).toMatchObject({
       id: "p1",
       likesCount: 12,
       authorName: "Aline Uwase",
     });
+
+    const contentSearchRes = await GET(
+      new NextRequest(
+        "http://localhost/api/public/explore?kind=posts&q=percussion%20keza",
+      ),
+    );
+    const contentSearchJson = (await contentSearchRes.json()) as {
+      items: Array<{ id: string; authorHandle: string }>;
+    };
+    expect(contentSearchRes.status).toBe(200);
+    expect(contentSearchJson.items.map((item) => item.id)).toEqual(["p3"]);
+
+    const htmlSearchRes = await GET(
+      new NextRequest(
+        "http://localhost/api/public/explore?kind=posts&type=articles&q=murals",
+      ),
+    );
+    const htmlSearchJson = (await htmlSearchRes.json()) as {
+      items: Array<{ id: string }>;
+    };
+    expect(htmlSearchRes.status).toBe(200);
+    expect(htmlSearchJson.items.map((item) => item.id)).toEqual(["p1"]);
   });
 });

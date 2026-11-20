@@ -312,9 +312,11 @@ export default function TransactionsPage() {
             size="sm"
             onClick={refreshTransactions}
             loading={refreshing}
-            leadingIcon={<RefreshCw className="size-3.5" aria-hidden="true" />}
+            aria-label="Refresh transactions"
+            leadingIcon={<RefreshCw className="size-4" aria-hidden="true" />}
+            className="shrink-0 min-w-11 px-0 sm:px-3"
           >
-            Refresh
+            <span className="hidden sm:inline">Refresh</span>
           </Button>
         )}
       </div>

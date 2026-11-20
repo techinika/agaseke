@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { isNavItemActive, isNavLink, type NavItem } from "@/config/navigation";
+import { AgasekeMark } from "@/components/brand/AgasekeLogo";
 import { IconButton } from "@/components/ui/IconButton";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
@@ -45,9 +46,7 @@ export function Sidebar({
         )}
       >
         {collapsed ? (
-          <span className="flex size-8 items-center justify-center rounded-control bg-brand-strong text-label font-black text-on-brand">
-            A
-          </span>
+          <AgasekeMark className="size-8 shrink-0" />
         ) : (
           <div className="min-w-0 flex-1">{brand}</div>
         )}

@@ -116,7 +116,6 @@ export const en = {
     description:
       "The private community platform for creators, artists, podcasters, writers, and community leaders. Fans support your work directly.",
     madeIn: "© 2026 Agaseke. Made with care in Kigali.",
-    poweredBy: "Powered by",
   },
   support: {
     sheetTitle: "Support {name}",
@@ -387,6 +386,7 @@ export const en = {
     store: "Store",
     giveaways: "Giveaways",
     events: "Events",
+    booking: "Book a meeting",
     message: "Message",
     partners: "Partners & collaborations",
     visitWebsite: "Visit website",
@@ -500,9 +500,10 @@ export const en = {
   },
   auth: {
     login: {
-      home: "agaseke.me",
-      promise: "One account for every creator you love.",
-      subheading: "Sign in to manage your Agaseke",
+      home: "AGASEKE",
+      promise: "Log in to receive your support, or to support creators you love.",
+      subheading: "Log in to Agaseke",
+      cardSubtitle: "Receive support from your fans or support creators you love.",
       cta: "Continue with Google",
       signingIn: "Signing in…",
       signInError: "We couldn't sign you in. Try again.",

@@ -13,6 +13,7 @@ import {
   Menu,
 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
+import { AgasekeLogo } from "@/components/brand/AgasekeLogo";
 import {
   getNavItems,
   isNavItemActive,
@@ -46,9 +47,10 @@ function Brand() {
   return (
     <Link
       href="/"
-      className="flex min-h-11 shrink-0 items-center whitespace-nowrap text-title font-black uppercase tracking-tight text-fg outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+      aria-label="Agaseke home"
+      className="flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-control outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
     >
-      agaseke<span className="text-brand-strong">.me</span>
+      <AgasekeLogo size="md" />
     </Link>
   );
 }

@@ -1,11 +1,12 @@
 "use client";
 
-import { ArrowLeft, Star, UserPlus, Wallet, Zap } from "lucide-react";
+import { ArrowLeft, Star, UserPlus, Wallet } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
 import Link from "next/link";
 import React from "react";
 import { PerkItem } from "./loginpage/index";
 import { sanitizeRedirectPath } from "@/lib/safeRedirect";
+import { AgasekeLogo, AgasekeMark } from "@/components/brand/AgasekeLogo";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { t } from "@/lib/i18n";
@@ -58,10 +59,11 @@ export default function LoginPage({
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link
             href="/"
-            className="inline-flex min-h-11 items-center gap-2 text-title font-black tracking-tight text-brand-strong transition-opacity hover:opacity-80"
+            aria-label="Back to Agaseke home"
+            className="inline-flex min-h-11 items-center gap-2 rounded-control text-muted-fg transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
           >
-            <ArrowLeft className="size-4" aria-hidden="true" />
-            <span>{t("auth.login.home")}</span>
+            <ArrowLeft className="size-4 shrink-0" aria-hidden="true" />
+            <AgasekeLogo size="sm" />
           </Link>
           <span className="text-caption text-muted-fg">Secure sign-in</span>
         </div>
@@ -72,12 +74,13 @@ export default function LoginPage({
         <section className="flex items-center justify-center lg:order-2 lg:col-span-5">
           <Card className="w-full max-w-md p-6 shadow-card sm:p-8">
             <div className="text-center">
-              <span className="mx-auto mb-4 flex size-14 items-center justify-center rounded-control bg-brand-soft text-brand-strong">
-                <Zap className="size-7" fill="currentColor" aria-hidden="true" />
-              </span>
+              <AgasekeMark className="mx-auto mb-4 size-14 shadow-sm" />
               <h1 className="text-heading font-black tracking-tight text-fg [text-wrap:balance]">
                 {t("auth.login.subheading")}
               </h1>
+              <p className="mt-2 text-body text-muted-fg [text-wrap:balance]">
+                {t("auth.login.cardSubtitle")}
+              </p>
               {reservedUsername && (
                 <p className="mt-2 text-label font-medium text-brand-strong">
                   Claiming agaseke.me/{reservedUsername}
@@ -125,7 +128,7 @@ export default function LoginPage({
           </Card>
         </section>
 
-        <section className="flex flex-col justify-center rounded-card border border-line bg-surface-sunken p-6 sm:p-10 lg:order-1 lg:col-span-7">
+        <section className="hidden flex-col justify-center rounded-card border border-line bg-surface-sunken p-6 sm:p-10 lg:order-1 lg:col-span-7 lg:flex">
           <h2 className="text-display font-black leading-tight text-fg sm:text-hero [text-wrap:balance]">
             {t("auth.login.promise")}
           </h2>

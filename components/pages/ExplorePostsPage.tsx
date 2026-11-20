@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element -- public media URLs are signed/arbitrary */
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ArrowRight,
   ChevronLeft,
@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { Skeleton, SkeletonText } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/cn";
@@ -91,6 +92,8 @@ export default function ExplorePostsPage({
   const [loading, setLoading] = useState(!hasInitial);
   const [loadingMore, setLoadingMore] = useState(false);
   const [remoteHasMore, setRemoteHasMore] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [reloadNonce, setReloadNonce] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "articles" | "posts">("all");
@@ -113,63 +116,80 @@ export default function ExplorePostsPage({
   useEffect(() => {
     const trimmed = searchTerm.trim();
     const timer = setTimeout(() => {
-      setDebouncedSearch(trimmed);
       if (!trimmed && typeFilter === "all" && hasInitial) {
+        setDebouncedSearch("");
         setRemotePosts(null);
+        setFetchError(null);
         setLoading(false);
-      } else if (trimmed !== debouncedSearch) {
-        setLoading(true);
+        return;
       }
+      setDebouncedSearch((prev) => {
+        if (prev !== trimmed) {
+          setLoading(true);
+          setFetchError(null);
+        }
+        return trimmed;
+      });
     }, 250);
     return () => clearTimeout(timer);
-  }, [searchTerm, typeFilter, hasInitial, debouncedSearch]);
+  }, [searchTerm, typeFilter, hasInitial]);
 
-  const fetchPosts = async (
-    queryText: string,
-    filter: "all" | "articles" | "posts",
-    offset: number,
-    append: boolean,
-  ) => {
-    try {
-      if (append) setLoadingMore(true);
+  const fetchPosts = useCallback(
+    async (
+      queryText: string,
+      filter: "all" | "articles" | "posts",
+      offset: number,
+      append: boolean,
+    ) => {
+      try {
+        if (append) setLoadingMore(true);
+        setFetchError(null);
 
-      const params = new URLSearchParams({
-        kind: "posts",
-        type: filter,
-        offset: String(offset),
-        limit: String(ITEMS_PER_PAGE),
-      });
-      if (queryText) params.set("q", queryText);
-
-      const response = await fetch(`/api/public/explore?${params.toString()}`);
-      if (!response.ok) throw new Error("Failed to load posts");
-      const data = (await response.json()) as {
-        items?: any[];
-        hasMore?: boolean;
-      };
-      const items = Array.isArray(data.items) ? data.items : [];
-
-      if (append) {
-        setRemotePosts((prev) => {
-          const base = prev ?? initialPosts;
-          const seen = new Set(base.map((p) => p.id));
-          return [...base, ...items.filter((p) => !seen.has(p.id))];
+        const params = new URLSearchParams({
+          kind: "posts",
+          type: filter,
+          offset: String(offset),
+          limit: String(ITEMS_PER_PAGE),
         });
-      } else {
-        setRemotePosts(items);
+        if (queryText) params.set("q", queryText);
+
+        const response = await fetch(`/api/public/explore?${params.toString()}`);
+        if (!response.ok) throw new Error("Failed to load posts");
+        const data = (await response.json()) as {
+          items?: any[];
+          hasMore?: boolean;
+        };
+        const items = Array.isArray(data.items) ? data.items : [];
+
+        if (append) {
+          setRemotePosts((prev) => {
+            const base = prev ?? initialPosts;
+            const seen = new Set(base.map((p) => p.id));
+            return [...base, ...items.filter((p) => !seen.has(p.id))];
+          });
+        } else {
+          setRemotePosts(items);
+        }
+        setRemoteHasMore(Boolean(data.hasMore));
+      } catch (error) {
+        console.error("Error fetching posts:", error);
+        if (!append) {
+          setFetchError("We couldn't complete your search. Please try again.");
+        }
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
       }
-      setRemoteHasMore(Boolean(data.hasMore));
-    } catch (error) {
-      console.error("Error fetching posts:", error);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  };
+    },
+    [initialPosts],
+  );
 
   useEffect(() => {
-    if (!debouncedSearch && typeFilter === "all" && hasInitial) return;
-    let cancelled = false;
+    if (!debouncedSearch && typeFilter === "all" && hasInitial) {
+      return;
+    }
+
+    const controller = new AbortController();
 
     async function load() {
       try {
@@ -180,27 +200,33 @@ export default function ExplorePostsPage({
           limit: String(ITEMS_PER_PAGE),
         });
         if (debouncedSearch) params.set("q", debouncedSearch);
-        const response = await fetch(`/api/public/explore?${params.toString()}`);
+        const response = await fetch(`/api/public/explore?${params.toString()}`, {
+          signal: controller.signal,
+        });
         if (!response.ok) throw new Error("Failed to load posts");
         const data = (await response.json()) as {
           items?: any[];
           hasMore?: boolean;
         };
-        if (cancelled) return;
+        if (controller.signal.aborted) return;
         setRemotePosts(Array.isArray(data.items) ? data.items : []);
         setRemoteHasMore(Boolean(data.hasMore));
       } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
         console.error("Error fetching posts:", error);
+        if (!controller.signal.aborted) {
+          setFetchError("We couldn't complete your search. Please try again.");
+        }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     }
 
     void load();
     return () => {
-      cancelled = true;
+      controller.abort();
     };
-  }, [debouncedSearch, typeFilter, hasInitial]);
+  }, [debouncedSearch, typeFilter, hasInitial, reloadNonce]);
 
   const itemHref = (item: any): string =>
     item.type === "article" && item.slug
@@ -226,15 +252,43 @@ export default function ExplorePostsPage({
 
           <div className="mt-7 flex flex-col gap-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <SearchInput
-                label="Search posts"
-                placeholder="Search by title, keyword, or creator…"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                onClear={() => setSearchTerm("")}
-                autoComplete="off"
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const trimmed = searchTerm.trim();
+                  if (!trimmed && typeFilter === "all" && hasInitial) {
+                    setDebouncedSearch("");
+                    setRemotePosts(null);
+                    setFetchError(null);
+                    setLoading(false);
+                  } else {
+                    setLoading(true);
+                    setFetchError(null);
+                    setDebouncedSearch(trimmed);
+                  }
+                }}
                 className="w-full sm:max-w-md"
-              />
+              >
+                <SearchInput
+                  label="Search posts"
+                  placeholder="Search by title, keyword, or creator…"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  onClear={() => {
+                    setSearchTerm("");
+                    setDebouncedSearch("");
+                    if (typeFilter === "all" && hasInitial) {
+                      setRemotePosts(null);
+                      setFetchError(null);
+                      setLoading(false);
+                    } else {
+                      setLoading(true);
+                      setFetchError(null);
+                    }
+                  }}
+                  autoComplete="off"
+                />
+              </form>
 
               <nav
                 aria-label="Explore sections"
@@ -268,9 +322,11 @@ export default function ExplorePostsPage({
                     setTypeFilter(key);
                     if (key === "all" && !debouncedSearch && hasInitial) {
                       setRemotePosts(null);
+                      setFetchError(null);
                       setLoading(false);
                     } else if (key !== typeFilter) {
                       setLoading(true);
+                      setFetchError(null);
                     }
                   }}
                   aria-pressed={typeFilter === key}
@@ -304,6 +360,16 @@ export default function ExplorePostsPage({
               </Card>
             ))}
           </div>
+        ) : fetchError ? (
+          <ErrorState
+            title="Could not load matching posts"
+            description={fetchError}
+            onRetry={() => {
+              setLoading(true);
+              setFetchError(null);
+              setReloadNonce((n) => n + 1);
+            }}
+          />
         ) : (
           <>
             <div className="mb-5 flex flex-wrap items-center justify-between gap-2">

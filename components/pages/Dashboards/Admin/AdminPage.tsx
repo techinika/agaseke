@@ -955,11 +955,13 @@ export default function AdminDashboard() {
             </p>
           </div>
           <button
+            type="button"
             onClick={fetchData}
-            className="flex items-center gap-2 px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:bg-card transition"
+            aria-label="Refresh dashboard"
+            className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 self-start rounded-lg bg-foreground px-3 py-2 text-sm font-medium text-background transition hover:bg-card sm:self-auto"
           >
-            <Loader size={16} />
-            Refresh
+            <Loader size={16} aria-hidden="true" />
+            <span className="hidden sm:inline">Refresh</span>
           </button>
         </header>
 

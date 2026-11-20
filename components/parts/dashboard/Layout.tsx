@@ -32,6 +32,7 @@ const NotificationDrawer = dynamic(() => import("@/components/ui/NotificationDra
   ssr: false,
 });
 import { AppShell } from "@/components/shell/AppShell";
+import { AgasekeLogo } from "@/components/brand/AgasekeLogo";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { DashboardMobileNav } from "@/components/shell/DashboardMobileNav";
 import {
@@ -298,14 +299,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             brand={
               <Link
                 href="/creator"
-                className="inline-flex min-h-11 items-center gap-2 rounded-control outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                className="inline-flex min-h-11 items-center rounded-control outline-none focus-visible:ring-2 focus-visible:ring-focus"
               >
-                <span className="flex size-8 items-center justify-center rounded-control bg-brand-strong text-label font-black text-on-brand">
-                  A
-                </span>
-                <span className="font-bold uppercase tracking-tight text-fg">
-                  agaseke.me
-                </span>
+                <AgasekeLogo size="sm" />
               </Link>
             }
             footer={sidebarFooter}

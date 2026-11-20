@@ -31,6 +31,19 @@ function toIso(value: unknown): string | null {
   return null;
 }
 
+function stripHtml(value: unknown): string {
+  if (typeof value !== "string" || !value) return "";
+  return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function matchesQuery(haystack: string, q: string): boolean {
+  if (!q) return true;
+  const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+  if (terms.length === 0) return true;
+  const normalized = haystack.toLowerCase();
+  return terms.every((term) => normalized.includes(term));
+}
+
 async function getCreatorDirectory(): Promise<{
   list: CachedCreatorSummary[];
   byKey: Map<string, CachedCreatorSummary>;
@@ -93,12 +106,11 @@ export async function GET(request: NextRequest) {
 
     if (kind === "creators") {
       const matched = q
-        ? list.filter(
-            (creator) =>
-              creator.handle.toLowerCase().includes(q) ||
-              creator.name.toLowerCase().includes(q) ||
-              creator.bio.toLowerCase().includes(q) ||
-              creator.focus.some((topic) => topic.toLowerCase().includes(q)),
+        ? list.filter((creator) =>
+            matchesQuery(
+              [creator.handle, creator.name, creator.bio, ...creator.focus].join(" "),
+              q,
+            ),
           )
         : list;
 
@@ -176,7 +188,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Search or filtered query across recent public posts (bounded window)
-    const searchSnap = await postsQuery.limit(120).get();
+    const searchSnap = await postsQuery.limit(300).get();
     const filtered = searchSnap.docs
       .filter((doc) => {
         const data = doc.data();
@@ -191,23 +203,20 @@ export async function GET(request: NextRequest) {
           byKey.get(String(data.creatorUid || "")) ||
           byKey.get(String(data.creatorId || ""));
 
-        return (
-          String(data.title || "")
-            .toLowerCase()
-            .includes(q) ||
-          String(data.description || "")
-            .toLowerCase()
-            .includes(q) ||
-          String(data.shortDescription || "")
-            .toLowerCase()
-            .includes(q) ||
-          String(author?.name || "")
-            .toLowerCase()
-            .includes(q) ||
-          String(author?.handle || creatorKey)
-            .toLowerCase()
-            .includes(q)
-        );
+        const haystack = [
+          data.title,
+          data.description,
+          data.shortDescription,
+          stripHtml(data.content),
+          data.slug,
+          author?.name,
+          author?.handle,
+          creatorKey,
+        ]
+          .filter(Boolean)
+          .join(" ");
+
+        return matchesQuery(haystack, q);
       })
       .map((doc) => {
         const data = doc.data();

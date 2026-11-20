@@ -7,6 +7,7 @@ import {
   FaYoutube,
 } from "react-icons/fa";
 import { ArrowUpRight } from "lucide-react";
+import { AgasekeLogo } from "@/components/brand/AgasekeLogo";
 import { getNavItems, isNavLink } from "@/config/navigation";
 import { t, type TranslationKey } from "@/lib/i18n";
 
@@ -101,9 +102,10 @@ export function PublicFooter() {
           <div className="max-w-sm">
             <Link
               href="/"
-              className="inline-flex min-h-11 items-center text-title font-black uppercase tracking-tight text-fg outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-sunken"
+              aria-label="Agaseke home"
+              className="inline-flex min-h-11 items-center rounded-control outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-sunken"
             >
-              agaseke<span className="text-brand-strong">.me</span>
+              <AgasekeLogo size="md" />
             </Link>
             <p className="mt-4 text-label leading-relaxed text-muted-fg">
               {t("footer.description")}
@@ -159,19 +161,8 @@ export function PublicFooter() {
           ))}
         </div>
 
-        <div className="mt-12 flex flex-col gap-4 border-t border-line pt-6 text-caption text-muted-fg sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-12 border-t border-line pt-6 text-caption text-muted-fg">
           <p>{t("footer.madeIn")}</p>
-          <p>
-            {t("footer.poweredBy")}{" "}
-            <Link
-              href="https://techinika.co.rw"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex min-h-11 items-center font-semibold text-fg underline-offset-4 hover:text-brand-strong hover:underline"
-            >
-              Techinika
-            </Link>
-          </p>
         </div>
       </div>
     </footer>

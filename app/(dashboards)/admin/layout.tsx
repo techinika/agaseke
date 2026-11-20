@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, LogOut, Shield } from "lucide-react";
+import { ArrowLeft, LogOut } from "lucide-react";
 import AuthGuard from "@/auth/AuthGuard";
 import { handleLogout } from "@/db/functions/LogOut";
+import { AgasekeLogo } from "@/components/brand/AgasekeLogo";
 import { AppShell } from "@/components/shell/AppShell";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { DashboardMobileNav } from "@/components/shell/DashboardMobileNav";
@@ -46,19 +47,9 @@ export default function RootLayout({
             brand={
               <Link
                 href="/admin"
-                className="inline-flex min-h-11 items-center gap-2 rounded-control outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                className="inline-flex min-h-11 items-center rounded-control outline-none focus-visible:ring-2 focus-visible:ring-focus"
               >
-                <span className="flex size-8 items-center justify-center rounded-control bg-brand-strong text-on-brand">
-                  <Shield className="size-4" aria-hidden="true" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-label font-black uppercase tracking-tight text-fg">
-                    agaseke.me
-                  </span>
-                  <span className="block text-caption font-semibold text-muted-fg">
-                    {t("nav.admin")}
-                  </span>
-                </span>
+                <AgasekeLogo size="sm" subtitle={t("nav.admin")} />
               </Link>
             }
             footer={
