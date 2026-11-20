@@ -116,7 +116,7 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="apple-touch-icon" href="/agaseke.png" />
-        <link rel="manifest" href="/manifest.json" />
+        <link rel="manifest" href="/manifest.json" crossOrigin="use-credentials" />
         <meta name="application-name" content="Agaseke" />
         <meta name="apple-mobile-web-app-title" content="Agaseke" />
         <meta name="apple-mobile-web-app-capable" content="yes" />

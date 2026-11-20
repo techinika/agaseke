@@ -116,12 +116,12 @@ export async function initiateMomoPayment(
 ): Promise<MomoInitResponse> {
   const headers = await getAuthHeaders();
   const key = idempotencyKey || data.idempotencyKey;
-  if (key) headers["Idempotency-Key"] = key;
+  const payload = key ? { ...data, idempotencyKey: key } : data;
 
   const res = await fetch(`${PAYMENTS_WORKER_URL}/api/payments/momo/initiate`, {
     method: "POST",
     headers,
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
@@ -142,12 +142,12 @@ export async function initiateCardPayment(
 ): Promise<CardInitResponse> {
   const headers = await getAuthHeaders();
   const key = idempotencyKey || data.idempotencyKey;
-  if (key) headers["Idempotency-Key"] = key;
+  const payload = key ? { ...data, idempotencyKey: key } : data;
 
   const res = await fetch(`${PAYMENTS_WORKER_URL}/api/payments/card/initiate`, {
     method: "POST",
     headers,
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) {

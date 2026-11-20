@@ -45,6 +45,7 @@ function isRateLimited(
   windowMs = 60000,
   identity?: string,
 ): Response | null {
+  const origin = request.headers.get("origin");
   const key = identity || getClientIp(request);
   const path = new URL(request.url).pathname;
   const result = checkRateLimit(`${key}:${path}`, maxRequests, windowMs);
@@ -54,6 +55,7 @@ function isRateLimited(
       headers: {
         "content-type": "application/json",
         "retry-after": String(Math.ceil((result.resetAt - Date.now()) / 1000)),
+        ...corsHeaders(origin),
       },
     });
   }

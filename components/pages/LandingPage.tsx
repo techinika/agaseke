@@ -8,11 +8,11 @@ import { toast } from "sonner";
 import {
   ArrowRight,
   Banknote,
-  CalendarCheck,
   CalendarDays,
   Check,
   CheckCircle2,
   CreditCard,
+  Heart,
   Loader2,
   Lock,
   ShieldCheck,
@@ -70,9 +70,14 @@ const FALLBACK_CREATORS: FeaturedCreator[] = [
 
 const FEATURES = [
   {
+    icon: Heart,
+    title: "Direct fan support",
+    text: "Accept tips and one-off contributions in seconds via Mobile Money or card.",
+  },
+  {
     icon: Users,
     title: "Private community",
-    text: "Host your biggest supporters in tiers you control — free from social feeds.",
+    text: "Host your biggest supporters in tiers you control — free from noisy feeds.",
   },
   {
     icon: Lock,
@@ -80,24 +85,19 @@ const FEATURES = [
     text: "Publish essays, audio, video, and downloads for everyone or members only.",
   },
   {
-    icon: Store,
-    title: "Built-in storefront",
-    text: "Sell digital files or physical merchandise directly from your Agaseke page.",
-  },
-  {
-    icon: CalendarCheck,
-    title: "Paid bookings",
-    text: "Offer coaching, consulting, or feedback sessions on your schedule.",
-  },
-  {
     icon: CalendarDays,
-    title: "Gatherings & giveaways",
-    text: "Sell event tickets with QR check-in and run verified supporter giveaways.",
+    title: "Bookings & gatherings",
+    text: "Host paid coaching sessions, event tickets with QR check-in, and giveaways.",
   },
   {
     icon: Wallet,
     title: "Local payouts",
-    text: "Receive support via Mobile Money or card and withdraw to Mobile Money or bank.",
+    text: "Withdraw earnings directly to Mobile Money or bank with transparent fees.",
+  },
+  {
+    icon: Store,
+    title: "Creator store",
+    text: "Optionally sell digital downloads or merchandise right from your page.",
   },
 ];
 
@@ -263,12 +263,13 @@ export default function LandingPage({
               Built for African creators
             </p>
             <h1 className="mt-3 max-w-2xl text-display font-black tracking-tight text-fg sm:text-hero">
-              Your community, content, and store —{" "}
+              Your community and creative work —{" "}
               <span className="text-brand-strong">paid directly.</span>
             </h1>
             <p className="mt-5 max-w-xl text-body-lg leading-relaxed text-muted-fg">
-              One home for your supporters. Share exclusive posts, sell products, book
-              sessions, and accept Mobile Money or card payments with zero monthly fee.
+              One home for your biggest supporters. Receive direct support, run memberships,
+              share exclusive posts, and accept Mobile Money or card payments with zero
+              monthly fee.
             </p>
 
             <div className="mt-8 max-w-xl">
@@ -473,7 +474,7 @@ export default function LandingPage({
               },
               {
                 title: "Earn directly",
-                text: "Accept tips, memberships, bookings, and store orders with 90% going to you.",
+                text: "Accept support, memberships, bookings, and more with 90% going to you.",
               },
             ].map(({ title, text }, index) => (
               <li key={title}>
