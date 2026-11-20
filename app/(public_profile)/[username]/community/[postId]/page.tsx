@@ -164,7 +164,7 @@ export default async function CreatorPostPage({
           article={serializeReaderArticle(post)}
           creator={serializedCreator}
           moreContent={moreContent}
-          backHref={`/${username}/community`}
+          backHref={`/${username}`}
           backLabel={`Back to ${displayName}`}
         />
       </>
@@ -197,7 +197,7 @@ export default async function CreatorPostPage({
           breadcrumbs={[
             { name: "Home", url: "/" },
             { name: displayName, url: `/${username}` },
-            { name: "Community", url: `/${username}/community` },
+            { name: "Community", url: `/${username}?tab=community` },
             { name: title, url: canonical },
           ]}
         />

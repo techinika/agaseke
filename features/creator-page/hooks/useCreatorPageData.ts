@@ -39,8 +39,8 @@ export function useCreatorPageData(username: string, initial: CreatorPageInitial
   const [referralId, setReferralId] = useState<string | null>(initial.referralId ?? null);
 
   const hasInitialCreator = Boolean(initial.creator);
-  const hasInitialPosts = Boolean(initial.publicPosts?.length);
-  const hasInitialPartners = Boolean(initial.partners?.length);
+  const hasInitialPosts = initial.publicPosts !== undefined;
+  const hasInitialPartners = initial.partners !== undefined;
 
   useEffect(() => {
     if (hasInitialCreator || !username) return;
@@ -88,7 +88,7 @@ export function useCreatorPageData(username: string, initial: CreatorPageInitial
             setPublicPosts(
               posts
                 .sort((a, b) => postTime(b) - postTime(a))
-                .slice(0, 3)
+                .slice(0, 6)
                 .map(normalizePost),
             );
           }
@@ -113,7 +113,7 @@ export function useCreatorPageData(username: string, initial: CreatorPageInitial
           setPrivatePosts(
             posts
               .sort((a, b) => postTime(b) - postTime(a))
-              .slice(0, 3)
+              .slice(0, 6)
               .map(normalizePost),
           );
         }

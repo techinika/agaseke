@@ -100,6 +100,7 @@ export default function ProfileEditPage() {
         location,
         phoneNumber: phone,
       });
+      window.dispatchEvent(new Event("agaseke:refresh-auth"));
       toast.success("Profile updated successfully!");
     } catch (error) {
       console.error("Update error:", error);

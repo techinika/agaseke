@@ -3,7 +3,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { DocumentData, QueryDocumentSnapshot } from "firebase/firestore";
 import {
   ArrowRight,
   ChevronLeft,
@@ -83,24 +82,17 @@ function formatPostDate(value: any): string {
 
 export default function ExplorePostsPage({
   initialPosts = [],
-  initialCreatorEntries = [],
 }: {
   initialPosts?: any[];
   initialCreatorEntries?: Array<[string, any]>;
 }) {
   const hasInitial = initialPosts.length > 0;
-  const [posts, setPosts] = useState<any[]>(initialPosts);
-  const [creatorMap, setCreatorMap] = useState<Map<string, any>>(
-    () => new Map(initialCreatorEntries),
-  );
+  const [remotePosts, setRemotePosts] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(!hasInitial);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [lastVisible, setLastVisible] =
-    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
-  const [hasMore, setHasMore] = useState(
-    !hasInitial || initialPosts.length >= ITEMS_PER_PAGE,
-  );
+  const [remoteHasMore, setRemoteHasMore] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "articles" | "posts">("all");
   const [documentIndex, setDocumentIndex] = useState<Record<string, number>>({});
   const [viewingImage, setViewingImage] = useState<{
@@ -112,114 +104,103 @@ export default function ExplorePostsPage({
     title: string;
   } | null>(null);
 
-  const ensureCreators = async (currentMap: Map<string, any>) => {
-    if (currentMap.size > 0 && hasInitial) {
-      return currentMap;
-    }
-    const [{ collection, getDocs }, { db }] = await Promise.all([
-      import("firebase/firestore"),
-      import("@/db/firebase"),
-    ]);
-    const creatorsSnap = await getDocs(collection(db, "creators"));
-    const map = new Map<string, any>(currentMap);
-    creatorsSnap.docs.forEach((doc) => {
-      const data = doc.data();
-      const entry = {
-        name: data.name || doc.id,
-        handle: doc.id,
-        uid: data.uid,
-        photoURL: data.profilePicture || data.photoURL || null,
-      };
-      map.set(doc.id, entry);
-      if (data.uid) map.set(data.uid, entry);
-    });
-    setCreatorMap(map);
-    return map;
-  };
+  const posts = remotePosts ?? initialPosts;
+  const hasMore =
+    remotePosts !== null
+      ? remoteHasMore
+      : !hasInitial || initialPosts.length >= ITEMS_PER_PAGE;
+
+  useEffect(() => {
+    const trimmed = searchTerm.trim();
+    const timer = setTimeout(() => {
+      setDebouncedSearch(trimmed);
+      if (!trimmed && typeFilter === "all" && hasInitial) {
+        setRemotePosts(null);
+        setLoading(false);
+      } else if (trimmed !== debouncedSearch) {
+        setLoading(true);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchTerm, typeFilter, hasInitial, debouncedSearch]);
 
   const fetchPosts = async (
-    cmap: Map<string, any>,
-    cursor: QueryDocumentSnapshot<DocumentData> | null,
-    pageLimit = ITEMS_PER_PAGE,
+    queryText: string,
+    filter: "all" | "articles" | "posts",
+    offset: number,
+    append: boolean,
   ) => {
     try {
-      const [{ collection, query, where, orderBy, limit, getDocs, startAfter }, { db }] =
-        await Promise.all([import("firebase/firestore"), import("@/db/firebase")]);
+      if (append) setLoadingMore(true);
 
-      const postsRef = collection(db, "creatorContent");
-      let q = query(
-        postsRef,
-        where("isPrivate", "==", false),
-        orderBy("createdAt", "desc"),
-        limit(pageLimit),
-      );
-      if (cursor) q = query(q, startAfter(cursor));
+      const params = new URLSearchParams({
+        kind: "posts",
+        type: filter,
+        offset: String(offset),
+        limit: String(ITEMS_PER_PAGE),
+      });
+      if (queryText) params.set("q", queryText);
 
-      const snap = await getDocs(q);
-      const fetched = snap.docs
-        .filter((doc) => doc.data().status !== "draft")
-        .map((doc) => {
-          const data = doc.data();
-          const creatorId = data.creatorId || data.creatorUid || "";
-          const creator =
-            cmap.get(creatorId) || cmap.get(data.creatorUid) || cmap.get(data.creatorId);
-          return {
-            id: doc.id,
-            ...data,
-            authorName: creator?.name || creatorId.substring(0, 8) || "Creator",
-            authorHandle: creator?.handle || creatorId,
-            authorPhoto: creator?.photoURL || null,
-          };
-        })
-        .sort(
-          (a: any, b: any) =>
-            (toMillis(b.publishedAt) || toMillis(b.createdAt)) -
-            (toMillis(a.publishedAt) || toMillis(a.createdAt)),
-        );
+      const response = await fetch(`/api/public/explore?${params.toString()}`);
+      if (!response.ok) throw new Error("Failed to load posts");
+      const data = (await response.json()) as {
+        items?: any[];
+        hasMore?: boolean;
+      };
+      const items = Array.isArray(data.items) ? data.items : [];
 
-      if (!cursor) {
-        setPosts(fetched);
-      } else {
-        setPosts((prev) => {
-          const seen = new Set(prev.map((p) => p.id));
-          return [...prev, ...fetched.filter((p) => !seen.has(p.id))];
+      if (append) {
+        setRemotePosts((prev) => {
+          const base = prev ?? initialPosts;
+          const seen = new Set(base.map((p) => p.id));
+          return [...base, ...items.filter((p) => !seen.has(p.id))];
         });
+      } else {
+        setRemotePosts(items);
       }
-
-      setLastVisible(snap.docs[snap.docs.length - 1] || null);
-      if (snap.docs.length < pageLimit) setHasMore(false);
+      setRemoteHasMore(Boolean(data.hasMore));
     } catch (error) {
       console.error("Error fetching posts:", error);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
     }
   };
 
   useEffect(() => {
-    if (hasInitial) return;
-    async function init() {
-      setLoading(true);
-      const map = await ensureCreators(new Map());
-      await fetchPosts(map, null);
-      setLoading(false);
-    }
-    void init();
-    // Fetch once on mount only when SSR data is absent.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasInitial]);
+    if (!debouncedSearch && typeFilter === "all" && hasInitial) return;
+    let cancelled = false;
 
-  const loadMore = async () => {
-    if (!hasMore) return;
-    setLoadingMore(true);
-    const map =
-      creatorMap.size > 0 && !hasInitial
-        ? creatorMap
-        : await ensureCreators(creatorMap);
-    await fetchPosts(
-      map,
-      lastVisible,
-      lastVisible ? ITEMS_PER_PAGE : posts.length + ITEMS_PER_PAGE,
-    );
-    setLoadingMore(false);
-  };
+    async function load() {
+      try {
+        const params = new URLSearchParams({
+          kind: "posts",
+          type: typeFilter,
+          offset: "0",
+          limit: String(ITEMS_PER_PAGE),
+        });
+        if (debouncedSearch) params.set("q", debouncedSearch);
+        const response = await fetch(`/api/public/explore?${params.toString()}`);
+        if (!response.ok) throw new Error("Failed to load posts");
+        const data = (await response.json()) as {
+          items?: any[];
+          hasMore?: boolean;
+        };
+        if (cancelled) return;
+        setRemotePosts(Array.isArray(data.items) ? data.items : []);
+        setRemoteHasMore(Boolean(data.hasMore));
+      } catch (error) {
+        console.error("Error fetching posts:", error);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedSearch, typeFilter, hasInitial]);
 
   const itemHref = (item: any): string =>
     item.type === "article" && item.slug
@@ -228,33 +209,13 @@ export default function ExplorePostsPage({
         ? `/${item.authorHandle}/community/${item.id}`
         : `/explore/posts/${item.id}`;
 
-  const filteredPosts = (() => {
-    let result = posts;
-    if (typeFilter === "articles") result = result.filter((p) => p.type === "article");
-    else if (typeFilter === "posts") result = result.filter((p) => p.type !== "article");
-
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      result = result.filter(
-        (post) =>
-          (post.title || "").toLowerCase().includes(term) ||
-          (post.description || "").toLowerCase().includes(term) ||
-          (post.authorName || "").toLowerCase().includes(term) ||
-          (post.authorHandle || "").toLowerCase().includes(term),
-      );
-    }
-    return result;
-  })();
-
   return (
     <div className="min-h-screen bg-canvas pb-20 text-fg">
-      <section className="border-b border-line bg-surface-sunken px-4 pb-10 pt-14 sm:px-6 sm:pb-12 sm:pt-16 lg:px-8">
+      <section className="border-b border-line bg-surface-sunken px-4 pb-10 pt-12 sm:px-6 sm:pb-12 sm:pt-16 lg:px-8">
         <div className="mx-auto w-full max-w-4xl">
           <div className="max-w-2xl">
-            <p className="text-caption font-bold uppercase tracking-[0.16em] text-brand-strong">
-              Public feed
-            </p>
-            <h1 className="mt-2 text-display font-black tracking-tight text-fg sm:text-hero">
+            <p className="text-caption font-semibold text-brand-strong">Public feed</p>
+            <h1 className="mt-2 text-display font-black tracking-tight text-fg sm:text-hero [text-wrap:balance]">
               Posts & articles
             </h1>
             <p className="mt-3 text-body-lg text-muted-fg">
@@ -281,13 +242,13 @@ export default function ExplorePostsPage({
               >
                 <Link
                   href="/explore"
-                  className="inline-flex min-h-10 items-center rounded-control px-4 text-label font-semibold text-muted-fg transition-colors hover:bg-surface-raised hover:text-fg"
+                  className="inline-flex min-h-10 items-center whitespace-nowrap rounded-control px-4 text-label font-semibold text-muted-fg transition-colors hover:bg-surface-raised hover:text-fg"
                 >
                   Creators
                 </Link>
                 <span
                   aria-current="page"
-                  className="inline-flex min-h-10 items-center rounded-control bg-brand-strong px-4 text-label font-semibold text-on-brand"
+                  className="inline-flex min-h-10 items-center whitespace-nowrap rounded-control bg-brand-strong px-4 text-label font-semibold text-on-brand"
                 >
                   Posts & articles
                 </span>
@@ -303,10 +264,18 @@ export default function ExplorePostsPage({
                 <button
                   key={key}
                   type="button"
-                  onClick={() => setTypeFilter(key)}
+                  onClick={() => {
+                    setTypeFilter(key);
+                    if (key === "all" && !debouncedSearch && hasInitial) {
+                      setRemotePosts(null);
+                      setLoading(false);
+                    } else if (key !== typeFilter) {
+                      setLoading(true);
+                    }
+                  }}
                   aria-pressed={typeFilter === key}
                   className={cn(
-                    "inline-flex min-h-9 items-center rounded-control px-4 text-label font-semibold transition-colors",
+                    "inline-flex min-h-10 items-center whitespace-nowrap rounded-control px-4 text-label font-semibold transition-colors",
                     typeFilter === key
                       ? "bg-brand-soft text-brand-strong"
                       : "text-muted-fg hover:bg-surface-raised hover:text-fg",
@@ -338,26 +307,29 @@ export default function ExplorePostsPage({
         ) : (
           <>
             <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-caption font-bold uppercase tracking-wider text-muted-fg">
-                {searchTerm
-                  ? `Results for "${searchTerm}"`
+              <h2 className="text-caption font-semibold text-muted-fg">
+                {debouncedSearch
+                  ? `Results for "${debouncedSearch}"`
                   : typeFilter === "articles"
                     ? "Latest articles"
                     : typeFilter === "posts"
                       ? "Latest posts"
                       : "Latest public feed"}
               </h2>
-              <p aria-live="polite" className="text-label text-muted-fg">
-                {filteredPosts.length} item{filteredPosts.length === 1 ? "" : "s"}
+              <p aria-live="polite" className="text-label tabular-nums text-muted-fg">
+                {posts.length} item{posts.length === 1 ? "" : "s"}
               </p>
             </div>
 
             <div className="space-y-5">
-              {filteredPosts.map((item) => {
+              {posts.map((item) => {
                 const postUrl = itemHref(item);
-                const bodyText = item.shortDescription || item.description || item.content || "";
+                const bodyText =
+                  item.shortDescription || item.description || item.content || "";
                 const excerpt =
-                  bodyText.length > 220 ? `${bodyText.slice(0, 220).trimEnd()}…` : bodyText;
+                  bodyText.length > 220
+                    ? `${bodyText.slice(0, 220).trimEnd()}…`
+                    : bodyText;
 
                 return (
                   <Card key={item.id} className="overflow-hidden p-5 sm:p-6">
@@ -450,7 +422,9 @@ export default function ExplorePostsPage({
                                 <FileText className="size-5" aria-hidden="true" />
                               </span>
                               <div className="flex-1">
-                                <p className="text-label font-semibold text-fg">Document</p>
+                                <p className="text-label font-semibold text-fg">
+                                  Document
+                                </p>
                                 <p className="text-caption text-muted-fg">
                                   {pages.length} page{pages.length > 1 ? "s" : ""}
                                 </p>
@@ -471,7 +445,7 @@ export default function ExplorePostsPage({
                                   >
                                     <ChevronLeft className="size-4" aria-hidden="true" />
                                   </Button>
-                                  <span className="text-caption font-semibold text-muted-fg">
+                                  <span className="text-caption font-semibold tabular-nums text-muted-fg">
                                     {currentIndex + 1}/{pages.length}
                                   </span>
                                   <Button
@@ -542,7 +516,7 @@ export default function ExplorePostsPage({
                     })()}
 
                     <div className="mt-5 flex items-center justify-between border-t border-line pt-3 text-caption text-muted-fg">
-                      <span className="inline-flex items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1.5 tabular-nums">
                         {typeof item.views === "number" ? (
                           <>
                             <Eye className="size-3.5" aria-hidden="true" /> {item.views}{" "}
@@ -565,25 +539,45 @@ export default function ExplorePostsPage({
               })}
             </div>
 
-            {filteredPosts.length === 0 && (
+            {posts.length === 0 && (
               <EmptyState
                 icon={<Search className="size-6" aria-hidden="true" />}
                 title="No posts found"
                 description={
-                  searchTerm
+                  debouncedSearch
                     ? "Try a different search keyword."
                     : "No public content has been published yet."
+                }
+                action={
+                  searchTerm || typeFilter !== "all" ? (
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        setSearchTerm("");
+                        setDebouncedSearch("");
+                        setTypeFilter("all");
+                        if (hasInitial) {
+                          setRemotePosts(null);
+                          setLoading(false);
+                        }
+                      }}
+                    >
+                      Reset filters
+                    </Button>
+                  ) : undefined
                 }
               />
             )}
 
-            {hasMore && !searchTerm && (
+            {hasMore && (
               <div className="mt-12 text-center">
                 <Button
                   variant="secondary"
                   size="lg"
                   loading={loadingMore}
-                  onClick={loadMore}
+                  onClick={() =>
+                    void fetchPosts(debouncedSearch, typeFilter, posts.length, true)
+                  }
                   trailingIcon={<ArrowRight className="size-4" aria-hidden="true" />}
                 >
                   Load more

@@ -5,31 +5,37 @@ import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import {
   FileText,
   Lock,
-  Globe,
   Heart,
   ArrowRight,
   MessageCircle,
-  X,
   ChevronLeft,
   ChevronRight,
   Crown,
   Check,
+  ChevronDown,
 } from "lucide-react";
 import Link from "next/link";
 import { LinkifyText } from "@/components/ui/LinkifyText";
 import { MediaAsset } from "@/components/parts/public/MediaAsset";
-import { db } from "@/db/firebase";
-import { collection, getCountFromServer, doc, updateDoc, increment } from "firebase/firestore";
+import { Avatar } from "@/components/ui/Avatar";
+import { Button, buttonClasses } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { Dialog } from "@/components/ui/Dialog";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/auth/AuthContext";
 import { getMySubscriptions } from "@/lib/communityService";
 import { formatMoney as formatCurrency } from "@/lib/format/money";
 import { getPrice, type PriceMap } from "@/lib/priceMap";
+import { trackView } from "@/lib/viewTracker";
+
 function tierAmount(tier: Pick<CommunityTier, "price" | "prices" | "currency">): number {
   return getPrice(tier);
 }
 
 const LazySupportModal = lazy(() =>
-  import("@/components/parts/public/SupportModal").then((m) => ({ default: m.SupportModal })),
+  import("@/components/parts/public/SupportModal").then((m) => ({
+    default: m.SupportModal,
+  })),
 );
 
 interface CommunityTier {
@@ -37,7 +43,6 @@ interface CommunityTier {
   name: string;
   description: string;
   price: number;
-
   prices?: PriceMap;
   currency?: string;
   interval: "monthly" | "yearly";
@@ -58,6 +63,51 @@ interface CommunityTabProps {
   onSubscribe?: (tier: CommunityTier) => void;
 }
 
+function postTypeLabel(type?: string): string {
+  if (type === "video") return "Video";
+  if (type === "image") return "Image";
+  if (type === "document") return "Document";
+  if (type === "article") return "Article";
+  return "Post";
+}
+
+function formatPostDate(createdAt: any): string {
+  const ms =
+    typeof createdAt?.toMillis === "function"
+      ? createdAt.toMillis()
+      : typeof createdAt === "string"
+        ? Date.parse(createdAt)
+        : createdAt instanceof Date
+          ? createdAt.getTime()
+          : null;
+  if (ms == null || !Number.isFinite(ms)) return "Recently";
+  return new Date(ms).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function extractYouTubeId(url: string): string | null {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s?]+)/,
+    /youtube\.com\/shorts\/([^&\s?]+)/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+function hasYouTubeLink(text: string): string | null {
+  const urlPattern =
+    /https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)[^\s]+/gi;
+  const match = text.match(urlPattern);
+  return match ? match[0] : null;
+}
+
 export const CommunityTab = ({
   publicPosts,
   privatePosts,
@@ -71,10 +121,12 @@ export const CommunityTab = ({
   onSubscribe,
 }: CommunityTabProps) => {
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
+  const [showAllPosts, setShowAllPosts] = useState(!compact);
   const [viewingImage, setViewingImage] = useState<{
     url: string;
     postId: string;
     isPrivate: boolean;
+    title: string;
   } | null>(null);
   const [viewingDocument, setViewingDocument] = useState<{
     url: string;
@@ -86,44 +138,36 @@ export const CommunityTab = ({
   const [supportItem, setSupportItem] = useState<any>(null);
   const { user } = useAuth();
   const [subscribedTierIds, setSubscribedTierIds] = useState<Set<string>>(new Set());
-
-  const extractYouTubeId = (url: string): string | null => {
-    const patterns = [
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s?]+)/,
-      /youtube\.com\/shorts\/([^&\s?]+)/,
-    ];
-    for (const pattern of patterns) {
-      const match = url.match(pattern);
-      if (match) return match[1];
-    }
-    return null;
-  };
-
-  const hasYouTubeLink = (text: string): string | null => {
-    const urlPattern = /https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/|youtube\.com\/embed\/)[^\s]+/gi;
-    const match = text.match(urlPattern);
-    if (match) return match[0];
-    return null;
-  };
+  const viewedPosts = useRef<Set<string>>(new Set());
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const toggleExpand = (postId: string) => {
     setExpandedPosts((prev) => {
       const next = new Set(prev);
-      if (next.has(postId)) {
-        next.delete(postId);
-      } else {
-        next.add(postId);
-      }
+      if (next.has(postId)) next.delete(postId);
+      else next.add(postId);
       return next;
     });
   };
 
+  // Gate subscription check so visitors on creators without memberships avoid an extra API call
   useEffect(() => {
-    if (!user) return;
-    getMySubscriptions().then((subs) => {
-      setSubscribedTierIds(new Set(subs.filter((s) => s.status === "active").map((s) => s.tierId)));
-    }).catch((err) => { console.error("Failed to fetch subscriptions", err); });
-  }, [user]);
+    if (!user || !communityEnabled || communityTiers.length === 0) return;
+    let cancelled = false;
+    getMySubscriptions()
+      .then((subs) => {
+        if (cancelled) return;
+        setSubscribedTierIds(
+          new Set(subs.filter((s) => s.status === "active").map((s) => s.tierId)),
+        );
+      })
+      .catch((err) => {
+        console.error("Failed to fetch subscriptions", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, communityEnabled, communityTiers.length]);
 
   const allPosts = useMemo(
     () =>
@@ -138,35 +182,12 @@ export const CommunityTab = ({
   );
 
   const displayPosts = useMemo(
-    () => (compact ? allPosts.slice(0, 2) : allPosts),
-    [allPosts, compact],
+    () => (showAllPosts ? allPosts : allPosts.slice(0, 3)),
+    [allPosts, showAllPosts],
   );
-  const hasMorePosts = allPosts.length > 2;
-  const visiblePrivatePosts = privatePosts.length;
+  const hasMorePosts = !showAllPosts && allPosts.length > 3;
 
-  const [counts, setCounts] = useState<Record<string, { likes: number; comments: number }>>({});
-  const viewedPosts = useRef<Set<string>>(new Set());
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const fetchCounts = async () => {
-      const newCounts: Record<string, { likes: number; comments: number }> = {};
-      await Promise.all(
-        displayPosts.map(async (post) => {
-          try {
-            const [likesSnap, commentsSnap] = await Promise.all([
-              getCountFromServer(collection(db, "creatorContent", post.id, "likes")),
-              getCountFromServer(collection(db, "creatorContent", post.id, "comments")),
-            ]);
-            newCounts[post.id] = { likes: likesSnap.data().count, comments: commentsSnap.data().count };
-          } catch { newCounts[post.id] = { likes: 0, comments: 0 }; }
-        }),
-      );
-      setCounts(newCounts);
-    };
-    if (displayPosts.length > 0) fetchCounts();
-  }, [displayPosts]);
-
+  // Batched beacon view tracking — eliminates hot direct Firestore writes from clients
   useEffect(() => {
     const container = containerRef.current;
     if (!container || displayPosts.length === 0) return;
@@ -178,8 +199,7 @@ export const CommunityTab = ({
           const postId = entry.target.getAttribute("data-post-id");
           if (!postId || viewedPosts.current.has(postId)) continue;
           viewedPosts.current.add(postId);
-          const postRef = doc(db, "creatorContent", postId);
-          updateDoc(postRef, { views: increment(1) }).catch((err) => { console.error("Failed to update view count", err); });
+          trackView("post", postId);
         }
       },
       { threshold: 0.3 },
@@ -187,349 +207,426 @@ export const CommunityTab = ({
 
     const cards = container.querySelectorAll("[data-post-id]");
     cards.forEach((card) => observer.observe(card));
-
     return () => observer.disconnect();
   }, [displayPosts]);
 
   if (allPosts.length === 0 && !communityEnabled) {
     return (
-      <div className="animate-in fade-in duration-500">
-        <div className="text-center py-20 bg-surface-raised rounded-card border-2 border-dashed border-line-strong">
-          <div className="bg-surface w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-            <FileText className="text-muted-fg" size={24} />
-          </div>
-          <h3 className="font-bold text-fg">No posts yet</h3>
-          <p className="text-muted-fg text-sm">
-            When {name} shares updates, they will appear here.
-          </p>
-        </div>
-      </div>
+      <EmptyState
+        icon={<FileText className="size-6" aria-hidden="true" />}
+        title="No posts yet"
+        description={`When ${name} shares updates, they will appear here.`}
+      />
     );
   }
 
   return (
-    <div className="animate-in fade-in duration-500 space-y-8">
+    <div className="space-y-6">
       {communityEnabled && communityTiers.length > 0 && (
-        <div className="bg-surface border border-line p-6">
-          <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-            <Crown size={20} className="text-brand-strong" />
-            Membership
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {communityTiers.map((tier) => (
-              <div
-                key={tier.id}
-                className="bg-surface-raised border border-line p-5 hover:border-brand-strong transition"
-              >
-                <h4 className="font-bold text-sm mb-1">{tier.name}</h4>
-                <p className="text-2xl font-bold text-brand-strong mb-2">
-                  {tier.currency ? formatCurrency(tierAmount(tier), tier.currency as any) : tierAmount(tier)}
-                  <span className="text-xs font-normal text-muted-fg ml-1">
-                    /{tier.interval === "yearly" ? "year" : "month"}
-                  </span>
-                </p>
-                {tier.description && (
-                  <p className="text-xs text-muted-fg mb-3">{tier.description}</p>
-                )}
-                {tier.benefits?.length > 0 && (
-                  <ul className="space-y-1 mb-4">
-                    {tier.benefits.map((b, i) => (
-                      <li key={i} className="text-xs text-muted-fg flex items-center gap-2">
-                        <Check size={12} className="text-success shrink-0" />
-                        {b}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {subscribedTierIds.has(tier.id) ? (
-                  <Link
-                    href={`/${username}/community/chat/${tier.id}`}
-                    className="flex items-center justify-center gap-2 w-full py-2 bg-success text-on-brand text-xs font-bold hover:opacity-90 transition rounded-control"
-                  >
-                    <MessageCircle size={14} />
-                    Open Chat
-                  </Link>
-                ) : (
-                  <button
-                    onClick={() => onSubscribe?.(tier)}
-                    className="w-full py-2 bg-brand-strong text-on-brand text-xs font-bold hover:bg-brand-hover transition"
-                  >
-                    Join
-                  </button>
-                )}
-              </div>
-            ))}
+        <section aria-labelledby="membership-heading" className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Crown className="size-4 text-brand-strong" aria-hidden="true" />
+            <h3 id="membership-heading" className="text-title font-bold text-fg">
+              Membership
+            </h3>
           </div>
-        </div>
-      )}
-
-      {isSupporter && visiblePrivatePosts > 0 && (
-        <div className="bg-brand-soft p-4 rounded-control border border-brand-soft flex items-center gap-3">
-          <Heart size={20} className="text-brand-strong fill-brand-strong" />
-          <p className="text-sm text-brand-strong font-medium">
-            You have access to {visiblePrivatePosts} supporter-only{" "}
-            {visiblePrivatePosts === 1 ? "post" : "posts"}!
-          </p>
-        </div>
-      )}
-
-      <div ref={containerRef} className="grid grid-cols-1 gap-6">
-        {displayPosts.map((item) => (
-          <div
-            key={item.id}
-            data-post-id={item.id}
-            className="bg-surface border border-line p-5 rounded-card shadow-sm hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-caption font-bold bg-surface-raised px-2 py-1 rounded uppercase tracking-widest text-muted-fg">
-                {item.type === "video"
-                  ? "Video"
-                  : item.type === "image"
-                    ? "Image"
-                    : item.type === "document"
-                      ? "Document"
-                      : item.type === "article"
-                        ? "Article"
-                        : "Post"}
-              </span>
-              <span
-                className={`flex items-center gap-1 text-caption font-bold px-2 py-1 rounded uppercase tracking-widest ${
-                  item.isPrivate
-                    ? "bg-warning-bg text-warning"
-                    : "bg-success-bg text-success"
-                }`}
-              >
-                {item.isPrivate ? (
-                  <>
-                    <Lock size={10} /> Supporters Only
-                  </>
-                ) : (
-                  <>
-                    <Globe size={10} /> Public
-                  </>
-                )}
-              </span>
-            </div>
-
-            {item.type === "article" && (item.coverUrl || item.contentUrl) && (
-              <div className="mb-3 rounded-control overflow-hidden">
-                <MediaAsset
-                  postId={item.id}
-                  isPrivate={!!item.isPrivate}
-                  url={item.coverUrl || item.contentUrl}
-                  alt={item.title}
-                  className="w-full h-48 object-cover"
-                />
-              </div>
-            )}
-
-            {item.type === "image" && item.contentUrl && (
-              <div className="mb-3 rounded-control overflow-hidden cursor-zoom-in" onClick={() => setViewingImage({ url: item.contentUrl, postId: item.id, isPrivate: !!item.isPrivate })}>
-                <MediaAsset
-                  postId={item.id}
-                  isPrivate={!!item.isPrivate}
-                  url={item.contentUrl}
-                  alt={item.title}
-                  className="w-full h-48 object-cover hover:opacity-90 transition-opacity"
-                />
-              </div>
-            )}
-
-            {item.type === "video" && item.contentUrl && (
-              <div className="mb-3 rounded-control overflow-hidden bg-black">
-                <MediaAsset postId={item.id} isPrivate={!!item.isPrivate} url={item.contentUrl} as="video" controls controlsList="nodownload" className="w-full aspect-video" />
-              </div>
-            )}
-
-            {item.type === "document" && item.contentUrl && (() => {
-              const pages = Array.isArray(item.contentUrl) ? item.contentUrl : [item.contentUrl];
-              const currentIndex = documentIndex[item.id] || 0;
-              const currentUrl = pages[currentIndex] || pages[0];
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {communityTiers.map((tier) => {
+              const joined = subscribedTierIds.has(tier.id);
               return (
-                <div className="mb-3 bg-surface-raised rounded-control p-4 border border-line">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-12 h-12 bg-brand-soft rounded-control flex items-center justify-center">
-                      <FileText size={24} className="text-brand-strong" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-sm text-fg">Document</p>
-                      <p className="text-xs text-muted-fg">{pages.length} page{pages.length > 1 ? "s" : ""}</p>
-                    </div>
-                  </div>
-                  {pages.length > 1 && (
-                    <div className="flex items-center justify-between mb-3">
-                      <button aria-label="Previous page" onClick={(e) => { e.stopPropagation(); setDocumentIndex((prev) => ({ ...prev, [item.id]: Math.max(0, currentIndex - 1) })); }} disabled={currentIndex === 0} className="p-1.5 bg-surface border rounded-control disabled:opacity-50"><ChevronLeft size={16} /></button>
-                      <span className="text-sm text-muted-fg">{currentIndex + 1} of {pages.length}</span>
-                      <button aria-label="Next page" onClick={(e) => { e.stopPropagation(); setDocumentIndex((prev) => ({ ...prev, [item.id]: Math.min(pages.length - 1, currentIndex + 1) })); }} disabled={currentIndex === pages.length - 1} className="p-1.5 bg-surface border rounded-control disabled:opacity-50"><ChevronRight size={16} /></button>
-                    </div>
-                  )}
-                  <button
-                    onClick={() => setViewingDocument({ url: currentUrl, title: item.title, postId: item.id, isPrivate: !!item.isPrivate })}
-                    className="block w-full text-center py-2.5 bg-brand-strong text-on-brand rounded-control font-medium text-sm hover:bg-brand-hover transition"
-                  >
-                    Read Document
-                  </button>
-                </div>
-              );
-            })()}
-
-            {item.title && (
-              <Link href={`/${username}/community/${item.id}`} className="block group">
-                <h4 className="font-bold text-lg mb-2 group-hover:text-brand-strong transition-colors">{item.title}</h4>
-              </Link>
-            )}
-            {item.description || item.content ? (
-              <div className="text-muted-fg text-sm whitespace-pre-wrap leading-relaxed">
-                {(item.description || item.content).length > 200 &&
-                !expandedPosts.has(item.id) ? (
-                  <>
-                    <LinkifyText text={(item.description || item.content).slice(0, 200)} />
-                    <span>...</span>
-                    <button
-                      onClick={() => toggleExpand(item.id)}
-                      className="ml-1 text-brand-strong font-medium hover:underline"
-                    >
-                      Read more
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <LinkifyText text={item.description || item.content} />
-                    {(item.description || item.content).length > 200 && (
-                      <button
-                        onClick={() => toggleExpand(item.id)}
-                        className="ml-1 text-brand-strong font-medium hover:underline"
-                      >
-                        Read less
-                      </button>
+                <Card
+                  key={tier.id}
+                  className="flex flex-col justify-between p-5 transition-colors hover:border-brand-strong"
+                >
+                  <div>
+                    <h4 className="text-body font-bold text-fg">{tier.name}</h4>
+                    <p className="mt-1 text-heading font-black tabular-nums text-brand-strong">
+                      {tier.currency
+                        ? formatCurrency(tierAmount(tier), tier.currency as any)
+                        : tierAmount(tier)}
+                      <span className="ml-1 text-caption font-normal text-muted-fg">
+                        /{tier.interval === "yearly" ? "year" : "month"}
+                      </span>
+                    </p>
+                    {tier.description && (
+                      <p className="mt-2 text-label leading-relaxed text-muted-fg">
+                        {tier.description}
+                      </p>
                     )}
-                  </>
-                )}
-              </div>
-            ) : null}
+                    {tier.benefits?.length > 0 && (
+                      <ul className="mt-3 space-y-1.5">
+                        {tier.benefits.map((b, i) => (
+                          <li
+                            key={i}
+                            className="flex items-start gap-2 text-caption text-muted-fg"
+                          >
+                            <Check
+                              className="mt-0.5 size-3.5 shrink-0 text-success"
+                              aria-hidden="true"
+                            />
+                            <span>{b}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
 
-            {(() => {
-              const text = item.description || item.content || "";
-              const youtubeUrl = hasYouTubeLink(text);
-              if (!youtubeUrl) return null;
-              const videoId = extractYouTubeId(youtubeUrl);
-              if (!videoId) return null;
-              return (
-                <div className="mt-3 rounded-control overflow-hidden bg-black">
-                  <iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full aspect-video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-                </div>
+                  <div className="mt-5">
+                    {joined ? (
+                      <Link
+                        href={`/${username}/community/chat/${tier.id}`}
+                        className={buttonClasses({
+                          variant: "secondary",
+                          size: "md",
+                          fullWidth: true,
+                        })}
+                      >
+                        <MessageCircle className="size-4" aria-hidden="true" />
+                        Open Chat
+                      </Link>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        size="md"
+                        fullWidth
+                        onClick={() => onSubscribe?.(tier)}
+                      >
+                        Join
+                      </Button>
+                    )}
+                  </div>
+                </Card>
               );
-            })()}
+            })}
+          </div>
+        </section>
+      )}
 
-            <div className="mt-4 pt-3 border-t border-line flex items-center gap-3 text-xs text-muted-fg">
-              <span>
-                {(() => {
-                  const ms =
-                    typeof item.createdAt?.toMillis === "function"
-                      ? item.createdAt.toMillis()
-                      : typeof item.createdAt === "string"
-                        ? Date.parse(item.createdAt)
-                        : item.createdAt instanceof Date
-                          ? item.createdAt.getTime()
-                          : null;
-                  return ms != null && Number.isFinite(ms)
-                    ? new Date(ms).toLocaleDateString("en-US", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                        timeZone: "UTC",
-                      })
-                    : "Recently";
-                })()}
-              </span>
-              {item.views && (
-                <span>{item.views} views</span>
+      {isSupporter && privatePosts.length > 0 && (
+        <Card className="flex items-center gap-3 border-brand/25 bg-brand-soft p-4">
+          <Avatar name={name} size="sm" />
+          <p className="text-label font-semibold text-brand-strong">
+            You have access to {privatePosts.length} supporter-only{" "}
+            {privatePosts.length === 1 ? "post" : "posts"}.
+          </p>
+        </Card>
+      )}
+
+      <div ref={containerRef} className="space-y-5">
+        {displayPosts.map((item) => {
+          const likesCount =
+            typeof item.stats?.likes === "number"
+              ? item.stats.likes
+              : typeof item.likesCount === "number"
+                ? item.likesCount
+                : typeof item.likes === "number"
+                  ? item.likes
+                  : 0;
+          const commentCount =
+            typeof item.commentCount === "number" ? item.commentCount : 0;
+          const postHref =
+            item.type === "article" && item.slug
+              ? `/articles/${item.slug}`
+              : `/${username}/community/${item.id}`;
+          const textBody = item.shortDescription || item.description || item.content || "";
+          const youtubeUrl = hasYouTubeLink(textBody);
+          const youtubeId = youtubeUrl ? extractYouTubeId(youtubeUrl) : null;
+
+          return (
+            <Card key={item.id} data-post-id={item.id} className="p-5 sm:p-6">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-caption text-muted-fg">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-brand-strong">
+                    {postTypeLabel(item.type)}
+                  </span>
+                  <span aria-hidden="true">·</span>
+                  <span>{formatPostDate(item.publishedAt || item.createdAt)}</span>
+                </div>
+                <span className="inline-flex items-center gap-1 font-medium">
+                  {item.isPrivate ? (
+                    <>
+                      <Lock className="size-3.5 text-warning" aria-hidden="true" />
+                      <span className="text-warning">Supporters only</span>
+                    </>
+                  ) : (
+                    <span>Public</span>
+                  )}
+                </span>
+              </div>
+
+              {item.type === "article" && (item.coverUrl || item.contentUrl) && (
+                <Link
+                  href={postHref}
+                  className="mb-4 block overflow-hidden rounded-control bg-surface-raised"
+                >
+                  <MediaAsset
+                    postId={item.id}
+                    isPrivate={!!item.isPrivate}
+                    url={item.coverUrl || item.contentUrl}
+                    alt={item.title || "Article cover"}
+                    className="aspect-video w-full object-cover transition-transform duration-200 hover:scale-[1.01]"
+                  />
+                </Link>
               )}
-              {counts[item.id] && (
-                <div className="flex items-center gap-3 ml-auto">
-                  <span className="flex items-center gap-1">
-                    <Heart size={12} /> {counts[item.id].likes}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <MessageCircle size={12} /> {counts[item.id].comments}
-                  </span>
+
+              {item.type === "image" && item.contentUrl && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setViewingImage({
+                      url: item.contentUrl,
+                      postId: item.id,
+                      isPrivate: !!item.isPrivate,
+                      title: item.title || "Post image",
+                    })
+                  }
+                  className="mb-4 block w-full overflow-hidden rounded-control bg-surface-raised text-left outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                >
+                  <MediaAsset
+                    postId={item.id}
+                    isPrivate={!!item.isPrivate}
+                    url={item.contentUrl}
+                    alt={item.title || "Post image"}
+                    className="max-h-72 w-full object-cover transition-opacity hover:opacity-90"
+                  />
+                </button>
+              )}
+
+              {item.type === "video" && item.contentUrl && (
+                <div className="mb-4 overflow-hidden rounded-control bg-black">
+                  <MediaAsset
+                    postId={item.id}
+                    isPrivate={!!item.isPrivate}
+                    url={item.contentUrl}
+                    as="video"
+                    controls
+                    controlsList="nodownload"
+                    className="aspect-video w-full"
+                  />
                 </div>
               )}
-              <button
-                aria-label="Support this post"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setSupportItem(item);
-                }}
-                className="flex items-center gap-1 text-xs sm:text-sm px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded-control bg-brand-soft text-brand-strong hover:bg-brand-strong/10 transition-colors font-medium"
-              >
-                <Heart size={12} className="sm:size-[14]" />
-              </button>
-              <Link
-                href={`/${username}/community/${item.id}`}
-                className="flex items-center gap-1 text-brand-strong font-medium hover:underline"
-              >
-                View Post <ArrowRight size={12} />
-              </Link>
-            </div>
-          </div>
-        ))}
+
+              {item.type === "document" &&
+                item.contentUrl &&
+                (() => {
+                  const pages = Array.isArray(item.contentUrl)
+                    ? item.contentUrl
+                    : [item.contentUrl];
+                  const currentIndex = documentIndex[item.id] || 0;
+                  const currentUrl = pages[currentIndex] || pages[0];
+                  return (
+                    <div className="mb-4 rounded-control border border-line bg-surface-sunken p-4">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="flex size-11 items-center justify-center rounded-control bg-brand-soft text-brand-strong">
+                          <FileText className="size-5" aria-hidden="true" />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-label font-semibold text-fg">Document</p>
+                          <p className="text-caption tabular-nums text-muted-fg">
+                            {pages.length} page{pages.length > 1 ? "s" : ""}
+                          </p>
+                        </div>
+                        {pages.length > 1 && (
+                          <div className="flex items-center gap-1.5">
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              aria-label="Previous document page"
+                              disabled={currentIndex === 0}
+                              onClick={() =>
+                                setDocumentIndex((prev) => ({
+                                  ...prev,
+                                  [item.id]: Math.max(0, currentIndex - 1),
+                                }))
+                              }
+                            >
+                              <ChevronLeft className="size-4" aria-hidden="true" />
+                            </Button>
+                            <span className="text-caption font-semibold tabular-nums text-muted-fg">
+                              {currentIndex + 1}/{pages.length}
+                            </span>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              aria-label="Next document page"
+                              disabled={currentIndex === pages.length - 1}
+                              onClick={() =>
+                                setDocumentIndex((prev) => ({
+                                  ...prev,
+                                  [item.id]: Math.min(pages.length - 1, currentIndex + 1),
+                                }))
+                              }
+                            >
+                              <ChevronRight className="size-4" aria-hidden="true" />
+                            </Button>
+                          </div>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          onClick={() =>
+                            setViewingDocument({
+                              url: currentUrl,
+                              title: item.title || "Document",
+                              postId: item.id,
+                              isPrivate: !!item.isPrivate,
+                            })
+                          }
+                        >
+                          Read Document
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+              {item.title && (
+                <Link href={postHref} className="group block">
+                  <h4 className="text-title font-bold tracking-tight text-fg transition-colors group-hover:text-brand-strong">
+                    {item.title}
+                  </h4>
+                </Link>
+              )}
+
+              {textBody && (
+                <div className="mt-2 whitespace-pre-wrap text-label leading-relaxed text-muted-fg">
+                  {textBody.length > 220 && !expandedPosts.has(item.id) ? (
+                    <>
+                      <LinkifyText text={textBody.slice(0, 220).trimEnd()} />
+                      <span>… </span>
+                      <button
+                        type="button"
+                        onClick={() => toggleExpand(item.id)}
+                        className="font-semibold text-brand-strong hover:underline"
+                      >
+                        Read more
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <LinkifyText text={textBody} />
+                      {textBody.length > 220 && (
+                        <button
+                          type="button"
+                          onClick={() => toggleExpand(item.id)}
+                          className="ml-1.5 font-semibold text-brand-strong hover:underline"
+                        >
+                          Read less
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {youtubeId && (
+                <div className="mt-4 overflow-hidden rounded-control bg-black">
+                  <iframe
+                    src={`https://www.youtube.com/embed/${youtubeId}`}
+                    className="aspect-video w-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    title={item.title || "Embedded video"}
+                  />
+                </div>
+              )}
+
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3 text-caption text-muted-fg">
+                <div className="flex items-center gap-4 tabular-nums">
+                  <span className="inline-flex items-center gap-1">
+                    <Heart className="size-3.5" aria-hidden="true" />
+                    {likesCount}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <MessageCircle className="size-3.5" aria-hidden="true" />
+                    {commentCount}
+                  </span>
+                  {typeof item.views === "number" && (
+                    <span>{item.views} views</span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    aria-label="Support this post"
+                    onClick={() => setSupportItem(item)}
+                    leadingIcon={<Heart className="size-3.5" aria-hidden="true" />}
+                  >
+                    Support
+                  </Button>
+                  <Link
+                    href={postHref}
+                    className="inline-flex min-h-11 items-center gap-1 px-2 text-label font-semibold text-brand-strong hover:underline"
+                  >
+                    {item.type === "article" ? "Read" : "View Post"}
+                    <ArrowRight className="size-3.5" aria-hidden="true" />
+                  </Link>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
       </div>
 
-      {compact && hasMorePosts && (
+      {hasMorePosts && (
         <div className="text-center">
-          <Link
-            href={`/${username}/community`}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-brand-strong text-on-brand rounded-control font-bold text-sm hover:bg-brand-hover transition shadow-lg"
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={() => setShowAllPosts(true)}
+            trailingIcon={<ChevronDown className="size-4" aria-hidden="true" />}
           >
-            See All Posts <ArrowRight size={16} />
-          </Link>
+            Show all {allPosts.length} posts
+          </Button>
         </div>
       )}
 
-      {viewingImage && (
-        <div className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setViewingImage(null)}>
-          <button aria-label="Close image" className="absolute top-4 right-4 p-3 bg-black/50 hover:bg-black/70 rounded-full text-white transition" onClick={() => setViewingImage(null)}>
-            <X size={28} />
-          </button>
+      <Dialog
+        open={!!viewingImage}
+        onClose={() => setViewingImage(null)}
+        title={viewingImage?.title || "Post image"}
+        size="xl"
+        contentClassName="p-2 sm:p-4"
+      >
+        {viewingImage && (
           <MediaAsset
             postId={viewingImage.postId}
             isPrivate={viewingImage.isPrivate}
             url={viewingImage.url}
-            alt="Full size"
-            className="max-w-full max-h-full object-contain animate-in zoom-in-95 duration-200"
+            alt={viewingImage.title}
+            className="max-h-[75dvh] w-full rounded-control object-contain"
           />
-        </div>
-      )}
+        )}
+      </Dialog>
 
-      {viewingDocument && (
-        <div className="fixed inset-0 z-[100] bg-fg/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200" onClick={() => setViewingDocument(null)}>
-          <div className="bg-surface w-full max-w-4xl rounded-card overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="p-4 border-b border-line flex items-center justify-between">
-              <h3 className="font-bold text-fg truncate">{viewingDocument.title}</h3>
-              <div className="flex items-center gap-2">
-                {!viewingDocument.isPrivate && (
-                  <a href={viewingDocument.url} target="_blank" rel="noopener noreferrer" className="text-xs text-brand-strong font-medium hover:underline">Open original</a>
-                )}
-                <button aria-label="Close document" onClick={() => setViewingDocument(null)} className="p-2 hover:bg-surface-raised rounded-full"><X size={20} /></button>
-              </div>
+      <Dialog
+        open={!!viewingDocument}
+        onClose={() => setViewingDocument(null)}
+        title={viewingDocument?.title || "Document"}
+        size="xl"
+        contentClassName="p-2 sm:p-4"
+      >
+        {viewingDocument &&
+          (viewingDocument.isPrivate ? (
+            <div className="flex max-h-[75dvh] items-start justify-center overflow-auto rounded-control bg-surface-raised p-4">
+              <MediaAsset
+                postId={viewingDocument.postId}
+                isPrivate
+                url={viewingDocument.url}
+                alt={viewingDocument.title}
+                className="max-w-full object-contain"
+              />
             </div>
-            {viewingDocument.isPrivate ? (
-              <div className="w-full h-[80vh] bg-surface-raised overflow-auto flex items-start justify-center p-4">
-                <MediaAsset
-                  postId={viewingDocument.postId}
-                  isPrivate
-                  url={viewingDocument.url}
-                  alt={viewingDocument.title}
-                  className="max-w-full object-contain"
-                />
-              </div>
-            ) : (
-              <iframe src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocument.url)}&embedded=true`} className="w-full h-[80vh] bg-surface" title="Document Viewer" />
-            )}
-          </div>
-        </div>
-      )}
+          ) : (
+            <iframe
+              src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingDocument.url)}&embedded=true`}
+              className="h-[68dvh] w-full rounded-control border border-line bg-surface"
+              title={viewingDocument.title}
+            />
+          ))}
+      </Dialog>
 
       {supportItem && (
         <Suspense fallback={null}>

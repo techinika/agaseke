@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import type { DocumentData, QueryDocumentSnapshot } from "firebase/firestore";
+import { useEffect, useState } from "react";
 import { ArrowRight, CheckCircle2, ChevronDown, Search } from "lucide-react";
 import Link from "next/link";
 import { Creator } from "@/types/creator";
@@ -20,59 +19,66 @@ export default function ExplorePage({
   initialCreators?: Creator[];
 }) {
   const hasInitial = initialCreators.length > 0;
-  const [creators, setCreators] = useState<Creator[]>(initialCreators);
+  const [remoteCreators, setRemoteCreators] = useState<Creator[] | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [loading, setLoading] = useState(!hasInitial);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [lastVisible, setLastVisible] =
-    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
-  const [hasMore, setHasMore] = useState(
-    !hasInitial || initialCreators.length >= ITEMS_PER_PAGE,
-  );
+  const [remoteHasMore, setRemoteHasMore] = useState(false);
 
-  const fetchCreators = async (isInitial = false) => {
+  const creators = remoteCreators ?? initialCreators;
+  const hasMore =
+    remoteCreators !== null
+      ? remoteHasMore
+      : !hasInitial || initialCreators.length >= ITEMS_PER_PAGE;
+
+  useEffect(() => {
+    const trimmed = searchTerm.trim();
+    const timer = setTimeout(() => {
+      setDebouncedSearch(trimmed);
+      if (!trimmed && hasInitial) {
+        setRemoteCreators(null);
+        setLoading(false);
+      } else if (trimmed !== debouncedSearch) {
+        setLoading(true);
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchTerm, hasInitial, debouncedSearch]);
+
+  const fetchDirectory = async (
+    queryText: string,
+    offset: number,
+    append: boolean,
+  ) => {
     try {
-      if (isInitial) setLoading(true);
-      else setLoadingMore(true);
+      if (append) setLoadingMore(true);
 
-      const [{ collection, query, limit, getDocs, startAfter, orderBy }, { db }] =
-        await Promise.all([import("firebase/firestore"), import("@/db/firebase")]);
+      const params = new URLSearchParams({
+        kind: "creators",
+        offset: String(offset),
+        limit: String(ITEMS_PER_PAGE),
+      });
+      if (queryText) params.set("q", queryText);
 
-      const creatorsRef = collection(db, "creators");
-      const batchSize =
-        !isInitial && !lastVisible && creators.length > 0
-          ? creators.length + ITEMS_PER_PAGE
-          : ITEMS_PER_PAGE;
+      const response = await fetch(`/api/public/explore?${params.toString()}`);
+      if (!response.ok) throw new Error("Failed to load creators");
+      const data = (await response.json()) as {
+        items?: Creator[];
+        hasMore?: boolean;
+      };
+      const items = Array.isArray(data.items) ? data.items : [];
 
-      let q = query(creatorsRef, orderBy("name"), limit(batchSize));
-
-      if (!isInitial && lastVisible) {
-        q = query(
-          creatorsRef,
-          orderBy("name"),
-          startAfter(lastVisible),
-          limit(ITEMS_PER_PAGE),
-        );
-      }
-
-      const querySnapshot = await getDocs(q);
-      const fetched = querySnapshot.docs.map((doc) => ({
-        handle: doc.id,
-        ...doc.data(),
-      })) as Creator[];
-
-      if (isInitial || !lastVisible) {
-        setCreators(fetched);
-      } else {
-        setCreators((prev) => {
-          const seen = new Set(prev.map((c) => c.handle));
-          return [...prev, ...fetched.filter((c) => !seen.has(c.handle))];
+      if (append) {
+        setRemoteCreators((prev) => {
+          const base = prev ?? initialCreators;
+          const seen = new Set(base.map((c) => c.handle));
+          return [...base, ...items.filter((c) => !seen.has(c.handle))];
         });
+      } else {
+        setRemoteCreators(items);
       }
-
-      const lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1] ?? null;
-      setLastVisible(lastDoc);
-      if (querySnapshot.docs.length < batchSize) setHasMore(false);
+      setRemoteHasMore(Boolean(data.hasMore));
     } catch (error) {
       console.error("Error loading creators:", error);
     } finally {
@@ -82,35 +88,48 @@ export default function ExplorePage({
   };
 
   useEffect(() => {
-    if (hasInitial) return;
-    queueMicrotask(() => {
-      void fetchCreators(true);
-    });
-    // Initial load only when SSR data is absent; pagination is triggered explicitly.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasInitial]);
+    if (!debouncedSearch && hasInitial) return;
+    let cancelled = false;
 
-  const filteredCreators = useMemo(() => {
-    if (!searchTerm) return creators;
-    const term = searchTerm.toLowerCase();
-    return creators.filter(
-      (creator) =>
-        creator.handle.toLowerCase().includes(term) ||
-        (creator.name && creator.name.toLowerCase().includes(term)) ||
-        (creator.bio && creator.bio.toLowerCase().includes(term)) ||
-        (creator.focus && creator.focus.some((f) => f.toLowerCase().includes(term))),
-    );
-  }, [searchTerm, creators]);
+    async function load() {
+      try {
+        const params = new URLSearchParams({
+          kind: "creators",
+          offset: "0",
+          limit: String(ITEMS_PER_PAGE),
+        });
+        if (debouncedSearch) params.set("q", debouncedSearch);
+        const response = await fetch(`/api/public/explore?${params.toString()}`);
+        if (!response.ok) throw new Error("Failed to load creators");
+        const data = (await response.json()) as {
+          items?: Creator[];
+          hasMore?: boolean;
+        };
+        if (cancelled) return;
+        setRemoteCreators(Array.isArray(data.items) ? data.items : []);
+        setRemoteHasMore(Boolean(data.hasMore));
+      } catch (error) {
+        console.error("Error loading creators:", error);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedSearch, hasInitial]);
 
   return (
     <div className="min-h-screen bg-canvas pb-20 text-fg">
-      <section className="border-b border-line bg-surface-sunken px-4 pb-10 pt-14 sm:px-6 sm:pb-12 sm:pt-16 lg:px-8">
+      <section className="border-b border-line bg-surface-sunken px-4 pb-10 pt-12 sm:px-6 sm:pb-12 sm:pt-16 lg:px-8">
         <div className="mx-auto w-full max-w-6xl">
           <div className="max-w-2xl">
-            <p className="text-caption font-bold uppercase tracking-[0.16em] text-brand-strong">
+            <p className="text-caption font-semibold text-brand-strong">
               Creator directory
             </p>
-            <h1 className="mt-2 text-display font-black tracking-tight text-fg sm:text-hero">
+            <h1 className="mt-2 text-display font-black tracking-tight text-fg sm:text-hero [text-wrap:balance]">
               Explore creators
             </h1>
             <p className="mt-3 text-body-lg text-muted-fg">
@@ -136,13 +155,13 @@ export default function ExplorePage({
             >
               <span
                 aria-current="page"
-                className="inline-flex min-h-10 items-center rounded-control bg-brand-strong px-4 text-label font-semibold text-on-brand"
+                className="inline-flex min-h-10 items-center whitespace-nowrap rounded-control bg-brand-strong px-4 text-label font-semibold text-on-brand"
               >
                 Creators
               </span>
               <Link
                 href="/explore/posts"
-                className="inline-flex min-h-10 items-center rounded-control px-4 text-label font-semibold text-muted-fg transition-colors hover:bg-surface-raised hover:text-fg"
+                className="inline-flex min-h-10 items-center whitespace-nowrap rounded-control px-4 text-label font-semibold text-muted-fg transition-colors hover:bg-surface-raised hover:text-fg"
               >
                 Posts & articles
               </Link>
@@ -170,17 +189,16 @@ export default function ExplorePage({
         ) : (
           <>
             <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-caption font-bold uppercase tracking-wider text-muted-fg">
-                {searchTerm ? `Results for "${searchTerm}"` : "All creators"}
+              <h2 className="text-caption font-semibold text-muted-fg">
+                {debouncedSearch ? `Results for "${debouncedSearch}"` : "All creators"}
               </h2>
-              <p aria-live="polite" className="text-label text-muted-fg">
-                {filteredCreators.length} creator
-                {filteredCreators.length === 1 ? "" : "s"}
+              <p aria-live="polite" className="text-label tabular-nums text-muted-fg">
+                {creators.length} creator{creators.length === 1 ? "" : "s"}
               </p>
             </div>
 
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-              {filteredCreators.map((creator) => {
+              {creators.map((creator) => {
                 const focusLine = creator.focus?.slice(0, 3).join(" · ");
                 return (
                   <Card
@@ -223,12 +241,12 @@ export default function ExplorePage({
                         </div>
                       </div>
 
-                      <p className="mt-4 line-clamp-3 text-label leading-relaxed text-muted-fg">
+                      <p className="mt-4 line-clamp-2 text-label leading-relaxed text-muted-fg">
                         {creator.bio || "Creator building on Agaseke."}
                       </p>
                     </div>
 
-                    <div className="mt-6 flex items-center justify-between border-t border-line pt-4">
+                    <div className="mt-5 flex items-center justify-between border-t border-line pt-4">
                       <span className="text-label font-semibold text-muted-fg group-hover:text-fg">
                         Visit page
                       </span>
@@ -242,21 +260,30 @@ export default function ExplorePage({
               })}
             </div>
 
-            {filteredCreators.length === 0 && (
+            {creators.length === 0 && (
               <EmptyState
                 icon={<Search className="size-6" aria-hidden="true" />}
                 title="No creators found"
                 description="Try another name, handle, or keyword."
+                action={
+                  searchTerm ? (
+                    <Button variant="secondary" onClick={() => setSearchTerm("")}>
+                      Clear search
+                    </Button>
+                  ) : undefined
+                }
               />
             )}
 
-            {hasMore && !searchTerm && (
+            {hasMore && (
               <div className="mt-12 text-center">
                 <Button
                   variant="secondary"
                   size="lg"
                   loading={loadingMore}
-                  onClick={() => fetchCreators()}
+                  onClick={() =>
+                    void fetchDirectory(debouncedSearch, creators.length, true)
+                  }
                   trailingIcon={<ChevronDown className="size-4" aria-hidden="true" />}
                 >
                   Load more creators

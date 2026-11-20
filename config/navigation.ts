@@ -187,6 +187,36 @@ export const NAV_ITEMS: NavItem[] = [
     surface: "supporter",
     slots: ["desktop", "mobile"],
   },
+  {
+    id: "supporter-memberships",
+    href: "/community/manage",
+    labelKey: "nav.community",
+    icon: Users,
+    roles: ["supporter", "creator", "admin"],
+    surface: "supporter",
+    slots: ["desktop"],
+    group: "nav.personalSpace",
+  },
+  {
+    id: "supporter-bookings",
+    href: "/bookings",
+    labelKey: "nav.bookings",
+    icon: Calendar,
+    roles: ["supporter", "creator", "admin"],
+    surface: "supporter",
+    slots: ["desktop"],
+    group: "nav.personalSpace",
+  },
+  {
+    id: "supporter-transactions",
+    href: "/transactions",
+    labelKey: "nav.transactions",
+    icon: Receipt,
+    roles: ["supporter", "creator", "admin"],
+    surface: "supporter",
+    slots: ["desktop"],
+    group: "nav.personalSpace",
+  },
 
   // Creator
   {

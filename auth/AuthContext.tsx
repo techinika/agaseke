@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { User } from "firebase/auth";
 import type { Creator } from "@/types/creator";
 import type { Profile } from "@/types/profile";
@@ -13,6 +13,7 @@ interface AuthContextType {
   isLoggedIn: boolean;
   isAdmin: boolean;
   isCreator: boolean;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -23,7 +24,14 @@ const AuthContext = createContext<AuthContextType>({
   isLoggedIn: false,
   isAdmin: false,
   isCreator: false,
+  refreshProfile: async () => {},
 });
+
+export function triggerAuthRefresh() {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("agaseke:refresh-auth"));
+  }
+}
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -31,6 +39,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [creator, setCreator] = useState<Creator | null>(null);
   const [isAdminClaim, setIsAdminClaim] = useState(false);
   const [loading, setLoading] = useState(true);
+  const activeUidRef = useRef<string | null>(null);
+
+  const hydrateUserDocs = useCallback(async (uid: string) => {
+    const [{ doc, getDoc }, { db }] = await Promise.all([
+      import("firebase/firestore"),
+      import("@/db/firebase"),
+    ]);
+    if (!db || activeUidRef.current !== uid) return;
+
+    const userSnap = await getDoc(doc(db, "profiles", uid));
+    if (activeUidRef.current !== uid) return;
+
+    if (!userSnap.exists()) {
+      setProfile(null);
+      setCreator(null);
+      setLoading(false);
+      return;
+    }
+
+    const userData = userSnap.data() as Profile;
+    setProfile(userData);
+
+    if (userData.type === "creator" && userData.username) {
+      const creatorSnap = await getDoc(doc(db, "creators", userData.username));
+      if (activeUidRef.current !== uid) return;
+      setCreator(creatorSnap.exists() ? (creatorSnap.data() as Creator) : null);
+    } else {
+      setCreator(null);
+    }
+    setLoading(false);
+  }, []);
+
+  const refreshProfile = useCallback(async () => {
+    const uid = activeUidRef.current;
+    if (!uid) return;
+    try {
+      await hydrateUserDocs(uid);
+    } catch (error) {
+      console.error("Failed to refresh auth profile:", error);
+    }
+  }, [hydrateUserDocs]);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,6 +98,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       unsubscribeAuth = onIdTokenChanged(auth, async (currentUser) => {
+        const nextUid = currentUser?.uid ?? null;
+        const uidChanged = activeUidRef.current !== nextUid;
+        activeUidRef.current = nextUid;
         setUser(currentUser);
 
         if (!currentUser) {
@@ -59,9 +111,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           return;
         }
 
-        setProfile(null);
-        setCreator(null);
-        setLoading(true);
+        if (uidChanged) {
+          setProfile(null);
+          setCreator(null);
+          setLoading(true);
+        }
 
         try {
           const tokenResult = await currentUser.getIdTokenResult();
@@ -73,6 +127,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } catch {
           if (auth.currentUser?.uid === currentUser.uid) setIsAdminClaim(false);
         }
+
+        if (uidChanged) {
+          try {
+            await hydrateUserDocs(currentUser.uid);
+          } catch (error) {
+            console.error("Failed to hydrate auth profile:", error);
+            if (activeUidRef.current === currentUser.uid) setLoading(false);
+          }
+        }
       });
     })();
 
@@ -80,63 +143,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       cancelled = true;
       unsubscribeAuth?.();
     };
-  }, []);
+  }, [hydrateUserDocs]);
 
   useEffect(() => {
-    if (!user) {
-      return;
-    }
-
-    let cancelled = false;
-    let unsubscribeProfile: (() => void) | undefined;
-    let unsubscribeCreator: (() => void) | undefined;
-
-    (async () => {
-      const [{ doc, onSnapshot }, { db }] = await Promise.all([
-        import("firebase/firestore"),
-        import("@/db/firebase"),
-      ]);
-      if (cancelled || !db) {
-        return;
-      }
-
-      const userRef = doc(db, "profiles", user.uid);
-
-      unsubscribeProfile = onSnapshot(userRef, (userSnap) => {
-        if (unsubscribeCreator) {
-          unsubscribeCreator();
-          unsubscribeCreator = undefined;
-        }
-
-        if (!userSnap.exists()) {
-          setProfile(null);
-          setCreator(null);
-          setLoading(false);
-          return;
-        }
-
-        const userData = userSnap.data();
-        setProfile(userData as Profile);
-
-        if (userData.type === "creator" && userData.username) {
-          const creatorRef = doc(db, "creators", userData.username);
-          unsubscribeCreator = onSnapshot(creatorRef, (creatorSnap) => {
-            setCreator(creatorSnap.exists() ? (creatorSnap.data() as Creator) : null);
-            setLoading(false);
-          });
-        } else {
-          setCreator(null);
-          setLoading(false);
-        }
-      });
-    })();
-
-    return () => {
-      cancelled = true;
-      unsubscribeProfile?.();
-      unsubscribeCreator?.();
+    const handleRefresh = () => {
+      void refreshProfile();
     };
-  }, [user]);
+    window.addEventListener("agaseke:refresh-auth", handleRefresh);
+    return () => {
+      window.removeEventListener("agaseke:refresh-auth", handleRefresh);
+    };
+  }, [refreshProfile]);
 
   return (
     <AuthContext.Provider
@@ -148,6 +165,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         isLoggedIn: !!user,
         isAdmin: isAdminClaim,
         isCreator: profile?.type === "creator",
+        refreshProfile,
       }}
     >
       {children}

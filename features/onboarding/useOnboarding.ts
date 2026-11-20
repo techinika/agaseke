@@ -298,6 +298,7 @@ export function useOnboarding(): OnboardingFlowProps {
         country: selectedCountry,
         currency: selectedCurrency,
       });
+      window.dispatchEvent(new Event("agaseke:refresh-auth"));
 
       try {
         await sendCommsEmail("welcome_creator", {

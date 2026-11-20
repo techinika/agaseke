@@ -3,10 +3,8 @@ import {
   doc,
   getDoc,
   getDocs,
-  increment,
   limit,
   query,
-  updateDoc,
   where,
 } from "firebase/firestore";
 import { db } from "@/db/firebase";
@@ -120,8 +118,6 @@ export async function fetchFeaturedPartners(
 }
 
 export async function countCreatorView(username: string): Promise<void> {
-  const database = requireDb();
-  await updateDoc(doc(database, "creators", username), {
-    views: increment(1),
-  });
+  const { trackView } = await import("@/lib/viewTracker");
+  trackView("creator", username);
 }

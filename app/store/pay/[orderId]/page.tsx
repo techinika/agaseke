@@ -1,7 +1,7 @@
 import { Metadata } from "next";
 import PayClient from "./PayClient";
-import Navbar from "@/components/parts/Navigation";
-import Footer from "@/components/parts/Footer";
+import { PublicHeader } from "@/components/shell/PublicHeader";
+import { PublicFooter } from "@/components/shell/PublicFooter";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -9,10 +9,12 @@ export const metadata: Metadata = {
 
 export default function PayStoreOrderPage() {
   return (
-    <>
-      <Navbar />
-      <PayClient />
-      <Footer />
-    </>
+    <div className="flex min-h-screen flex-col bg-canvas">
+      <PublicHeader />
+      <main id="main-content" className="flex-1">
+        <PayClient />
+      </main>
+      <PublicFooter />
+    </div>
   );
 }

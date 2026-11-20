@@ -2,287 +2,210 @@ import { MetadataRoute } from "next";
 import { adminDb } from "@/db/firebaseAdmin";
 import { baseUrl } from "@/lib/baseUrl";
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const entries: MetadataRoute.Sitemap = [];
-
-  entries.push(...getStaticPages());
-  entries.push(...(await getCreatorPages()));
-  entries.push(...(await getProductPages()));
-  entries.push(...(await getPostPages()));
-  entries.push(...(await getArticlePages()));
-  entries.push(...(await getGiveawayPages()));
-  entries.push(...(await getGatheringPages()));
-
-  return entries;
-}
+export const revalidate = 3600;
 
 const lastMod = (
   data:
     | { updatedAt?: { toDate?: () => Date }; createdAt?: { toDate?: () => Date } }
     | undefined,
-): Date =>
-  data?.updatedAt?.toDate?.() || data?.createdAt?.toDate?.() || new Date();
+): Date => data?.updatedAt?.toDate?.() || data?.createdAt?.toDate?.() || new Date();
 
 function getStaticPages(): MetadataRoute.Sitemap {
   return [
     {
       url: baseUrl,
       lastModified: new Date(),
-      changeFrequency: "daily" as const,
+      changeFrequency: "daily",
       priority: 1,
     },
     {
       url: `${baseUrl}/explore`,
       lastModified: new Date(),
-      changeFrequency: "daily" as const,
+      changeFrequency: "daily",
       priority: 0.9,
     },
     {
       url: `${baseUrl}/explore/posts`,
       lastModified: new Date(),
-      changeFrequency: "daily" as const,
+      changeFrequency: "daily",
       priority: 0.9,
     },
     {
       url: `${baseUrl}/help-center`,
       lastModified: new Date(),
-      changeFrequency: "monthly" as const,
+      changeFrequency: "monthly",
       priority: 0.5,
     },
     {
       url: `${baseUrl}/login`,
       lastModified: new Date(),
-      changeFrequency: "monthly" as const,
+      changeFrequency: "monthly",
       priority: 0.3,
     },
     {
       url: `${baseUrl}/privacy`,
       lastModified: new Date(),
-      changeFrequency: "yearly" as const,
+      changeFrequency: "yearly",
       priority: 0.3,
     },
     {
       url: `${baseUrl}/terms`,
       lastModified: new Date(),
-      changeFrequency: "yearly" as const,
+      changeFrequency: "yearly",
       priority: 0.3,
     },
     {
       url: `${baseUrl}/payout-policy`,
       lastModified: new Date(),
-      changeFrequency: "yearly" as const,
+      changeFrequency: "yearly",
       priority: 0.3,
     },
     {
       url: `${baseUrl}/content-guidelines`,
       lastModified: new Date(),
-      changeFrequency: "yearly" as const,
+      changeFrequency: "yearly",
       priority: 0.3,
     },
     {
       url: `${baseUrl}/changelog`,
       lastModified: new Date(),
-      changeFrequency: "monthly" as const,
+      changeFrequency: "monthly",
       priority: 0.4,
     },
   ];
 }
 
-async function getCreatorPages(): Promise<MetadataRoute.Sitemap> {
-  const entries: MetadataRoute.Sitemap = [];
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const entries: MetadataRoute.Sitemap = [...getStaticPages()];
+
   try {
-    const creatorsSnap = await adminDb.collection("creators").get();
+    const creatorsSnap = await adminDb
+      .collection("creators")
+      .select("name", "uid", "bookingEnabled", "updatedAt", "createdAt")
+      .get();
+
+    const uidToUsername = new Map<string, string>();
+
     for (const doc of creatorsSnap.docs) {
       const data = doc.data();
       const username = doc.id;
       if (!data?.name || !data?.uid) continue;
 
+      uidToUsername.set(String(data.uid), username);
+      uidToUsername.set(username, username);
+
       entries.push({
         url: `${baseUrl}/${username}`,
         lastModified: lastMod(data),
-        changeFrequency: "weekly" as const,
+        changeFrequency: "weekly",
         priority: 0.8,
       });
-      entries.push({
-        url: `${baseUrl}/${username}/community`,
-        lastModified: lastMod(data),
-        changeFrequency: "weekly" as const,
-        priority: 0.6,
-      });
-      if (data.storeEnabled) {
-        entries.push({
-          url: `${baseUrl}/${username}/store`,
-          lastModified: lastMod(data),
-          changeFrequency: "daily" as const,
-          priority: 0.7,
-        });
-      }
-      if (data.gatheringsEnabled) {
-        entries.push({
-          url: `${baseUrl}/${username}/gatherings`,
-          lastModified: lastMod(data),
-          changeFrequency: "weekly" as const,
-          priority: 0.6,
-        });
-      }
-      if (data.giveawayEnabled) {
-        entries.push({
-          url: `${baseUrl}/${username}/giveaways`,
-          lastModified: lastMod(data),
-          changeFrequency: "weekly" as const,
-          priority: 0.6,
-        });
-      }
+
       if (data.bookingEnabled) {
         entries.push({
           url: `${baseUrl}/${username}/booking`,
           lastModified: lastMod(data),
-          changeFrequency: "monthly" as const,
+          changeFrequency: "monthly",
+          priority: 0.5,
+        });
+      }
+    }
+
+    const [productSnap, contentSnap, giveawaySnap, gatheringSnap] = await Promise.all([
+      adminDb
+        .collection("storeProducts")
+        .where("active", "==", true)
+        .select("creatorId", "updatedAt", "createdAt")
+        .get()
+        .catch(() => null),
+      adminDb
+        .collection("creatorContent")
+        .where("isPrivate", "==", false)
+        .select("creatorId", "type", "slug", "status", "updatedAt", "createdAt")
+        .get()
+        .catch(() => null),
+      adminDb
+        .collection("giveaways")
+        .select("creatorId", "updatedAt", "createdAt")
+        .get()
+        .catch(() => null),
+      adminDb
+        .collection("creatorGatherings")
+        .select("creatorId", "updatedAt", "createdAt")
+        .get()
+        .catch(() => null),
+    ]);
+
+    if (productSnap) {
+      for (const doc of productSnap.docs) {
+        const data = doc.data();
+        const username = uidToUsername.get(String(data.creatorId || ""));
+        if (!username) continue;
+        entries.push({
+          url: `${baseUrl}/${username}/store/${doc.id}`,
+          lastModified: lastMod(data),
+          changeFrequency: "weekly",
+          priority: 0.6,
+        });
+      }
+    }
+
+    if (contentSnap) {
+      for (const doc of contentSnap.docs) {
+        const data = doc.data();
+        if (data.status === "draft") continue;
+
+        if (data.type === "article" && data.slug) {
+          entries.push({
+            url: `${baseUrl}/articles/${data.slug}`,
+            lastModified: lastMod(data),
+            changeFrequency: "monthly",
+            priority: 0.7,
+          });
+          continue;
+        }
+
+        const username = uidToUsername.get(String(data.creatorId || ""));
+        if (!username) continue;
+        entries.push({
+          url: `${baseUrl}/${username}/community/${doc.id}`,
+          lastModified: lastMod(data),
+          changeFrequency: "monthly",
+          priority: 0.5,
+        });
+      }
+    }
+
+    if (giveawaySnap) {
+      for (const doc of giveawaySnap.docs) {
+        const data = doc.data();
+        const username = uidToUsername.get(String(data.creatorId || ""));
+        if (!username) continue;
+        entries.push({
+          url: `${baseUrl}/${username}/giveaways/${doc.id}`,
+          lastModified: lastMod(data),
+          changeFrequency: "monthly",
+          priority: 0.5,
+        });
+      }
+    }
+
+    if (gatheringSnap) {
+      for (const doc of gatheringSnap.docs) {
+        const data = doc.data();
+        const username = uidToUsername.get(String(data.creatorId || ""));
+        if (!username) continue;
+        entries.push({
+          url: `${baseUrl}/${username}/gatherings/${doc.id}`,
+          lastModified: lastMod(data),
+          changeFrequency: "monthly",
           priority: 0.5,
         });
       }
     }
   } catch (error) {
-    console.error("Error generating creators sitemap:", error);
+    console.error("Error generating sitemap:", error);
   }
-  return entries;
-}
 
-async function getProductPages(): Promise<MetadataRoute.Sitemap> {
-  const entries: MetadataRoute.Sitemap = [];
-  try {
-    const creatorsSnap = await adminDb.collection("creators").get();
-    const uidToUsername = new Map<string, string>();
-    for (const doc of creatorsSnap.docs) {
-      const data = doc.data();
-      if (data?.uid) uidToUsername.set(data.uid, doc.id);
-    }
-
-    const productSnap = await adminDb
-      .collection("storeProducts")
-      .where("active", "==", true)
-      .get();
-    for (const doc of productSnap.docs) {
-      const data = doc.data();
-      const username = uidToUsername.get(data.creatorId);
-      if (!username) continue;
-      entries.push({
-        url: `${baseUrl}/${username}/store/${doc.id}`,
-        lastModified: lastMod(data),
-        changeFrequency: "weekly" as const,
-        priority: 0.6,
-      });
-    }
-  } catch (error) {
-    console.error("Error generating products sitemap:", error);
-  }
-  return entries;
-}
-
-async function getPostPages(): Promise<MetadataRoute.Sitemap> {
-  const entries: MetadataRoute.Sitemap = [];
-  try {
-    const creatorsSnap = await adminDb.collection("creators").get();
-    const uidToUsername = new Map<string, string>();
-    for (const doc of creatorsSnap.docs) {
-      const data = doc.data();
-      if (data?.uid) uidToUsername.set(data.uid, doc.id);
-    }
-
-    const postSnap = await adminDb
-      .collection("creatorContent")
-      .where("isPrivate", "==", false)
-      .get();
-    for (const doc of postSnap.docs) {
-      const data = doc.data();
-      if (data.type === "article") continue;
-      const username = uidToUsername.get(data.creatorId);
-      if (!username) continue;
-      entries.push({
-        url: `${baseUrl}/${username}/community/${doc.id}`,
-        lastModified: lastMod(data),
-        changeFrequency: "monthly" as const,
-        priority: 0.5,
-      });
-    }
-  } catch (error) {
-    console.error("Error generating posts sitemap:", error);
-  }
-  return entries;
-}
-
-async function getArticlePages(): Promise<MetadataRoute.Sitemap> {
-  const entries: MetadataRoute.Sitemap = [];
-  try {
-    const articleSnap = await adminDb.collection("creatorContent").get();
-    for (const doc of articleSnap.docs) {
-      const data = doc.data();
-      if (data.type !== "article" || !data.slug || data.status === "draft") continue;
-      entries.push({
-        url: `${baseUrl}/articles/${data.slug}`,
-        lastModified: data.updatedAt?.toDate?.() || data.createdAt?.toDate?.() || new Date(),
-        changeFrequency: "monthly" as const,
-        priority: 0.7,
-      });
-    }
-  } catch (error) {
-    console.error("Error generating articles sitemap:", error);
-  }
-  return entries;
-}
-
-async function getGiveawayPages(): Promise<MetadataRoute.Sitemap> {
-  const entries: MetadataRoute.Sitemap = [];
-  try {
-    const creatorsSnap = await adminDb.collection("creators").get();
-    const uidToUsername = new Map<string, string>();
-    for (const doc of creatorsSnap.docs) {
-      const data = doc.data();
-      if (data?.uid) uidToUsername.set(data.uid, doc.id);
-    }
-
-    const giveawaySnap = await adminDb.collection("giveaways").get();
-    for (const doc of giveawaySnap.docs) {
-      const data = doc.data();
-      const username = uidToUsername.get(data.creatorId);
-      if (!username) continue;
-      entries.push({
-        url: `${baseUrl}/${username}/giveaways/${doc.id}`,
-        lastModified: lastMod(data),
-        changeFrequency: "monthly" as const,
-        priority: 0.5,
-      });
-    }
-  } catch (error) {
-    console.error("Error generating giveaways sitemap:", error);
-  }
-  return entries;
-}
-
-async function getGatheringPages(): Promise<MetadataRoute.Sitemap> {
-  const entries: MetadataRoute.Sitemap = [];
-  try {
-    const creatorsSnap = await adminDb.collection("creators").get();
-    const uidToUsername = new Map<string, string>();
-    for (const doc of creatorsSnap.docs) {
-      const data = doc.data();
-      if (data?.uid) uidToUsername.set(data.uid, doc.id);
-    }
-
-    const gatheringSnap = await adminDb.collection("creatorGatherings").get();
-    for (const doc of gatheringSnap.docs) {
-      const data = doc.data();
-      const username = uidToUsername.get(data.creatorId);
-      if (!username) continue;
-      entries.push({
-        url: `${baseUrl}/${username}/gatherings/${doc.id}`,
-        lastModified: lastMod(data),
-        changeFrequency: "monthly" as const,
-        priority: 0.5,
-      });
-    }
-  } catch (error) {
-    console.error("Error generating gatherings sitemap:", error);
-  }
   return entries;
 }

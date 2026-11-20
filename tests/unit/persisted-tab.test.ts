@@ -8,6 +8,7 @@ const VALID = ["community", "store"] as const;
 describe("usePersistedTab", () => {
   beforeEach(() => {
     window.localStorage.clear();
+    window.history.replaceState(null, "", "/aline");
   });
 
   it("starts on the fallback and persists a valid tab", () => {
@@ -27,5 +28,19 @@ describe("usePersistedTab", () => {
     const { result } = renderHook(() => usePersistedTab(KEY, "community", VALID));
 
     expect(result.current[0]).toBe("community");
+  });
+
+  it("honors a valid ?tab= URL query parameter over localStorage and keeps it synced", () => {
+    window.localStorage.setItem(KEY, "community");
+    window.history.replaceState(null, "", "/aline?tab=store");
+
+    const { result } = renderHook(() => usePersistedTab(KEY, "community", VALID));
+
+    expect(result.current[0]).toBe("store");
+
+    act(() => result.current[1]("community"));
+
+    expect(result.current[0]).toBe("community");
+    expect(window.location.search).toBe("?tab=community");
   });
 });

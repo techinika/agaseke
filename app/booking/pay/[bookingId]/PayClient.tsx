@@ -21,8 +21,8 @@ import { toast } from "sonner";
 import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService";
 import { isCurrencySupportedByMethod } from "@/lib/money/rails";
 import Link from "next/link";
-import Navbar from "@/components/parts/Navigation";
-import Footer from "@/components/parts/Footer";
+import { PublicHeader as Navbar } from "@/components/shell/PublicHeader";
+import { PublicFooter as Footer } from "@/components/shell/PublicFooter";
 import { logError } from "@/lib/logger";
 import { formatMoney as formatCurrency } from "@/lib/format/money";
 

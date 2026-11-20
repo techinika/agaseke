@@ -108,6 +108,41 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    const profilePrefix =
+      ":username((?!creator|admin|supporter|api|dev|explore|store|booking|community|articles|login|onboarding|help-center|privacy|terms|payout-policy|content-guidelines|changelog|profile|bookings|transactions|payment)[^/]+)";
+    return [
+      { source: "/for-creators", destination: "/", permanent: true },
+      { source: "/for-brands", destination: "/", permanent: true },
+      { source: "/for-supporters", destination: "/explore", permanent: true },
+      { source: "/articles", destination: "/explore/posts", permanent: true },
+      {
+        source: `/${profilePrefix}/community`,
+        destination: "/:username?tab=community",
+        permanent: false,
+      },
+      {
+        source: `/${profilePrefix}/store`,
+        destination: "/:username?tab=store",
+        permanent: false,
+      },
+      {
+        source: `/${profilePrefix}/gatherings`,
+        destination: "/:username?tab=gatherings",
+        permanent: false,
+      },
+      {
+        source: `/${profilePrefix}/giveaways`,
+        destination: "/:username?tab=giveaways",
+        permanent: false,
+      },
+      {
+        source: `/${profilePrefix}/messaging`,
+        destination: "/:username?tab=message",
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [
       {

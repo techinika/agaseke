@@ -1,16 +1,11 @@
 import React from "react";
-import Navbar from "@/components/parts/Navigation";
 import { ShieldCheck, MessageCircle } from "lucide-react";
-import Footer from "@/components/parts/Footer";
 
 export default function PrivacyPage() {
   const lastUpdated = "February 02, 2026";
 
   return (
-    <div className="min-h-screen bg-canvas text-fg pb-20">
-      <Navbar />
-
-      <main className="max-w-3xl mx-auto px-6 py-16">
+    <article className="mx-auto max-w-3xl px-6 py-16 pb-20 text-fg">
         <header className="mb-12">
           <div className="w-12 h-12 bg-brand-soft rounded-control flex items-center justify-center text-brand-strong mb-6">
             <ShieldCheck size={28} />
@@ -107,9 +102,6 @@ export default function PrivacyPage() {
             </div>
           </section>
         </div>
-      </main>
-
-      <Footer />
-    </div>
+    </article>
   );
 }

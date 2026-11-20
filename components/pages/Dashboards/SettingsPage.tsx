@@ -226,6 +226,7 @@ export default function CreatorSettings() {
       };
 
       await updateDoc(doc(db, "creators", creator.handle), updateData);
+      window.dispatchEvent(new Event("agaseke:refresh-auth"));
       toast.success("Settings updated successfully!");
     } catch (error) {
       console.error("Save error:", error);

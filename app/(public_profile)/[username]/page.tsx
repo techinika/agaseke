@@ -1,7 +1,6 @@
 export const revalidate = 300;
 
 import { cache } from "react";
-import PublicProfile from "@/components/pages/PublicProfile";
 import CreatorPage from "@/features/creator-page/CreatorPage";
 import CreatorSchema from "@/components/seo/CreatorSchma";
 import type { CreatorPageCreator } from "@/features/creator-page/types";
@@ -96,16 +95,19 @@ async function getPublicProfileData(username: string) {
     ? partnersSnap.docs.map((d) => ({ id: d.id, ...d.data() }))
     : [];
   const rawPosts = postsSnap?.docs
-    ? postsSnap.docs.map((d) => {
-        const post = d.data();
-        return {
-          id: d.id,
-          ...post,
-          createdAt: post.createdAt?.toDate?.()?.toISOString() ?? null,
-          updatedAt: post.updatedAt?.toDate?.()?.toISOString() ?? null,
-          publishedAt: post.publishedAt?.toDate?.()?.toISOString() ?? null,
-        };
-      }).filter((p: any) => p.status !== "draft")
+    ? postsSnap.docs
+        .map((d) => {
+          const post = d.data();
+          return {
+            id: d.id,
+            ...post,
+            status: typeof post.status === "string" ? post.status : undefined,
+            createdAt: post.createdAt?.toDate?.()?.toISOString() ?? null,
+            updatedAt: post.updatedAt?.toDate?.()?.toISOString() ?? null,
+            publishedAt: post.publishedAt?.toDate?.()?.toISOString() ?? null,
+          };
+        })
+        .filter((p) => p.status !== "draft")
     : [];
   const publicPosts = rawPosts
     .sort(
@@ -113,7 +115,7 @@ async function getPublicProfileData(username: string) {
         (b.createdAt ? new Date(b.createdAt).getTime() : 0) -
         (a.createdAt ? new Date(a.createdAt).getTime() : 0),
     )
-    .slice(0, 3);
+    .slice(0, 6);
   const referralId = referralSnap?.exists
     ? (referralSnap.data()?.uid as string) || null
     : null;
@@ -217,41 +219,22 @@ export async function generateMetadata({
 async function page({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
   const data = await getPublicProfileData(username);
-  const useCreatorPageV2 = process.env.NEXT_PUBLIC_CREATOR_PAGE_V2 !== "0";
-
   if (!data) {
-    return useCreatorPageV2 ? (
-      <CreatorPage username={username} />
-    ) : (
-      <PublicProfile username={username} />
-    );
-  }
-
-  if (useCreatorPageV2) {
-    return (
-      <>
-        <CreatorSchema creator={data.creator} handle={username} />
-        <CreatorPage
-          username={username}
-          creator={data.creator as CreatorPageCreator}
-          profile={data.profile}
-          partners={data.partners}
-          publicPosts={data.publicPosts}
-          referralId={data.referralId}
-        />
-      </>
-    );
+    return <CreatorPage username={username} />;
   }
 
   return (
-    <PublicProfile
-      username={username}
-      initialCreator={data.creator}
-      initialProfile={data.profile}
-      initialPartners={data.partners}
-      initialPublicPosts={data.publicPosts}
-      initialReferralId={data.referralId}
-    />
+    <>
+      <CreatorSchema creator={data.creator} handle={username} />
+      <CreatorPage
+        username={username}
+        creator={data.creator as CreatorPageCreator}
+        profile={data.profile}
+        partners={data.partners}
+        publicPosts={data.publicPosts}
+        referralId={data.referralId}
+      />
+    </>
   );
 }
 

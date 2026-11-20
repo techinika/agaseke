@@ -1,16 +1,11 @@
 import React from "react";
-import Navbar from "@/components/parts/Navigation";
 import { Mail, Instagram, Twitter, MessageCircle } from "lucide-react";
-import Footer from "@/components/parts/Footer";
 
 export default function TermsPage() {
   const lastUpdated = "May 24, 2026";
 
   return (
-    <div className="min-h-screen bg-canvas text-fg pb-20">
-      <Navbar />
-
-      <main className="max-w-3xl mx-auto px-6 py-16">
+    <article className="mx-auto max-w-3xl px-6 py-16 pb-20 text-fg">
         <header className="mb-12">
           <h1 className="text-display font-bold mb-4">Terms of Service</h1>
           <p className="text-muted-fg font-medium">Last updated: {lastUpdated}</p>
@@ -134,9 +129,6 @@ export default function TermsPage() {
             </div>
           </section>
         </div>
-      </main>
-
-      <Footer />
-    </div>
+      </article>
   );
 }

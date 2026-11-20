@@ -273,9 +273,9 @@ export default function PostDetailPage({
     if (typeof window !== "undefined" && sessionStorage.getItem(key)) return;
     if (typeof window !== "undefined") sessionStorage.setItem(key, "1");
     viewCounted.current = true;
-    updateDoc(doc(db, "creatorContent", post.id), {
-      views: increment(1),
-    }).catch(() => {});
+    import("@/lib/viewTracker")
+      .then(({ trackView }) => trackView("post", post.id))
+      .catch(() => {});
   }, [loading, post?.id]);
 
   useEffect(() => {

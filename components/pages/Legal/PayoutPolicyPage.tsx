@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Navbar from "@/components/parts/Navigation";
 import {
   Wallet,
   Calendar,
@@ -11,7 +10,6 @@ import {
   Loader2,
   MessageCircle,
 } from "lucide-react";
-import Footer from "@/components/parts/Footer";
 import { db } from "@/db/firebase";
 import { collection, getDocs } from "firebase/firestore";
 import { getCurrencySymbol } from "@/types/currency";
@@ -53,10 +51,7 @@ export default function PayoutPolicy() {
     payoutCurrencies.find((c) => c.code === "RWF")?.payoutThreshold ?? null;
 
   return (
-    <div className="min-h-screen bg-canvas text-fg pb-20">
-      <Navbar />
-
-      <main className="max-w-3xl mx-auto px-6 py-16">
+    <article className="mx-auto max-w-3xl px-6 py-16 pb-20 text-fg">
         <header className="mb-12">
           <div className="w-12 h-12 bg-success-bg rounded-control flex items-center justify-center text-success mb-6">
             <Wallet size={28} />
@@ -98,7 +93,7 @@ export default function PayoutPolicy() {
                       .map((c) => (
                         <span
                           key={c.code}
-                          className="text-[11px] bg-surface-sunken px-2.5 py-1 rounded-pill font-bold text-muted-fg"
+                          className="text-caption bg-surface-sunken px-2.5 py-1 rounded-control font-semibold text-muted-fg tabular-nums"
                         >
                           {c.code}: {c.payoutThreshold.toLocaleString()}{" "}
                           {getCurrencySymbol(c.code)}
@@ -198,9 +193,6 @@ export default function PayoutPolicy() {
             </div>
           </section>
         </div>
-      </main>
-
-      <Footer />
-    </div>
+    </article>
   );
 }
