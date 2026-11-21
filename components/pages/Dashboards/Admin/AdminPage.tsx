@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { sendCommsEmail } from "@/lib/commsService";
 import { auth, db } from "@/db/firebase";
 import {
@@ -24,7 +25,6 @@ import {
   DollarSign,
   UserCheck,
   BarChart3,
-  CheckCircle2,
   XCircle,
   ShieldAlert,
   Wallet,
@@ -32,10 +32,14 @@ import {
   ShoppingBag,
   Activity,
   Clock,
-  Loader,
+  RefreshCw,
+  ArrowUpRight,
 } from "lucide-react";
 import { LoadingState } from "@/components/ui/LoadingState";
-import { StatCard } from "@/components/parts/dashboard/StatCard";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { Dialog } from "@/components/ui/Dialog";
+import { Button } from "@/components/ui/Button";
+import { Avatar } from "@/components/ui/Avatar";
 import { RankRow } from "@/components/parts/dashboard/RankRow";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/logger";
@@ -46,6 +50,7 @@ import {
 } from "@/lib/payouts/currency";
 import { PAYMENT_RAIL_PROVIDER_LIST } from "@/lib/money";
 import { formatCurrency } from "@/types/currency";
+import { cn } from "@/lib/cn";
 
 const TOP_EARNER_CURRENCIES = Array.from(
   new Set(
@@ -55,30 +60,66 @@ const TOP_EARNER_CURRENCIES = Array.from(
   ),
 );
 
-function totalsValue(totals: Record<string, number>): string {
-  const entries = Object.entries(totals);
-  if (entries.length === 0) return "0";
-  if (entries.length === 1) return formatCurrency(entries[0][1], entries[0][0]);
-  return "Multi-currency";
+function toDateSafe(value: any): Date | null {
+  if (!value) return null;
+  if (typeof value?.toDate === "function") return value.toDate();
+  if (value instanceof Date) return value;
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  if (typeof value === "object" && typeof value.seconds === "number") {
+    return new Date(value.seconds * 1000);
+  }
+  return null;
 }
 
-function totalsDetail(totals: Record<string, number>, empty = "No activity yet"): string {
-  const entries = Object.entries(totals).sort(([left], [right]) => left.localeCompare(right));
+function currencyCodeOf(raw: any): string {
+  return typeof raw?.currency === "string" && raw.currency.trim()
+    ? raw.currency.trim().toUpperCase()
+    : "RWF";
+}
+
+function formatCurrencyTotals(totals: Record<string, number>, empty = "0"): string {
+  const entries = Object.entries(totals)
+    .filter(([, amount]) => Number(amount) > 0)
+    .sort(([a], [b]) => a.localeCompare(b));
   if (entries.length === 0) return empty;
+  return entries.map(([code, amount]) => formatCurrency(amount, code)).join(" · ");
+}
+
+function primaryCurrencyValue(totals: Record<string, number>, empty = "0"): string {
+  const entries = Object.entries(totals)
+    .filter(([, amount]) => Number(amount) > 0)
+    .sort(([a], [b]) => {
+      if (a === "RWF") return -1;
+      if (b === "RWF") return 1;
+      return a.localeCompare(b);
+    });
+  if (entries.length === 0) return empty;
+  return formatCurrency(entries[0][1], entries[0][0]);
+}
+
+function secondaryCurrencyDetail(totals: Record<string, number>, empty = "No activity yet"): string {
+  const entries = Object.entries(totals)
+    .filter(([, amount]) => Number(amount) > 0)
+    .sort(([a], [b]) => a.localeCompare(b));
+  if (entries.length === 0) return empty;
+  if (entries.length === 1) return `${entries[0][0]} total`;
   return entries.map(([code, amount]) => formatCurrency(amount, code)).join(" · ");
 }
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [stats, setStats] = useState({
-    totalPlatformIncome: 0,
-    totalPayoutsProcessed: 0,
-    totalPendingPayouts: 0,
     incomeByCurrency: {} as Record<string, number>,
     payoutsByCurrency: {} as Record<string, number>,
     pendingByCurrency: {} as Record<string, number>,
     transactionsByCurrency: {} as Record<string, number>,
+    avgByCurrency: {} as Record<string, number>,
     profileCount: 0,
     creatorCount: 0,
     totalViews: 0,
@@ -86,17 +127,15 @@ export default function AdminDashboard() {
     totalProducts: 0,
     totalGiveaways: 0,
     totalOrders: 0,
-    recentGrowth: 0,
-    totalTransactionAmount: 0,
+    newProfiles30d: 0,
+    prevProfiles30d: 0,
     successfulTransactionCount: 0,
-    averageTransactionAmount: 0,
     failedTransactionCount: 0,
-    failedTransactionAmount: 0,
     pendingTransactionCount: 0,
-    pendingTransactionAmount: 0,
   });
   const [rejectionReason, setRejectionReason] = useState("");
-  const [transactionFilter, setTransactionFilter] = useState<"day" | "week" | "month" | "annual">("month"); // New state for transaction amount filter
+  const [timeframeFilter, setTimeframeFilter] = useState<"day" | "week" | "month" | "annual">("month");
+  const [selectedCurrency, setSelectedCurrency] = useState<string>("RWF");
 
   const [topEarnerGroups, setTopEarnerGroups] = useState<
     Array<{ currency: PayoutCurrency; earners: any[] }>
@@ -107,295 +146,300 @@ export default function AdminDashboard() {
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [fxHealth, setFxHealth] = useState<any>(null);
 
-  const [growthFilter, setGrowthFilter] = useState<"7d" | "weekly" | "monthly" | "annual" | "yoy">("7d");
-  const [userGrowthData, setUserGrowthData] = useState<{
-    labels: string[];
-    current: number[];
-    previous: number[];
-  }>({ labels: [], current: [], previous: [] });
-
-  // Raw data for transaction chart
+  const [growthFilter, setGrowthFilter] = useState<"7d" | "weekly" | "monthly" | "annual">("7d");
+  const [rawProfiles, setRawProfiles] = useState<any[]>([]);
   const [rawIncome, setRawIncome] = useState<any[]>([]);
   const [rawPayouts, setRawPayouts] = useState<any[]>([]);
   const [rawTransactions, setRawTransactions] = useState<any[]>([]);
-
-  // Process transaction chart data based on filter
-  const monthlyData = useMemo<
-    { month: string; income: number; payouts: number }[]
-  >(() => {
-    if (rawIncome.length === 0 && rawPayouts.length === 0) return [];
-
-    const now = new Date();
-    const newData: { month: string; income: number; payouts: number }[] = [];
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-    if (transactionFilter === "day") {
-      // Last 7 days
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(d.getDate() - i);
-        const label = d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-        
-        let income = 0, payouts = 0;
-        rawIncome.forEach((inc: any) => {
-          if (inc.createdAt?.toDate) {
-            const docDate = inc.createdAt.toDate();
-            if (docDate.toDateString() === d.toDateString()) income += inc.amount || 0;
-          }
-        });
-        rawPayouts.forEach((p: any) => {
-          if (p.createdAt?.toDate) {
-            const docDate = p.createdAt.toDate();
-            if (docDate.toDateString() === d.toDateString()) payouts += p.amount || 0;
-          }
-        });
-        newData.push({ month: label, income, payouts });
-      }
-    } else if (transactionFilter === "week") {
-      // Last 5 weeks
-      for (let i = 4; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(d.getDate() - (i * 7));
-        const label = `Week ${5 - i}`;
-        
-        let income = 0, payouts = 0;
-        rawIncome.forEach((inc: any) => {
-          if (inc.createdAt?.toDate) {
-            const docDate = inc.createdAt.toDate();
-            const diffTime = now.getTime() - docDate.getTime();
-            const diffWeeks = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000));
-            if (diffWeeks === 4 - i) income += inc.amount || 0;
-          }
-        });
-        rawPayouts.forEach((p: any) => {
-          if (p.createdAt?.toDate) {
-             const docDate = p.createdAt.toDate();
-            const diffTime = now.getTime() - docDate.getTime();
-            const diffWeeks = Math.floor(diffTime / (7 * 24 * 60 * 60 * 1000));
-            if (diffWeeks === 4 - i) payouts += p.amount || 0;
-          }
-        });
-        newData.push({ month: label, income, payouts });
-      }
-    } else if (transactionFilter === "month") {
-      // Last 6 months
-      const currentMonth = now.getMonth();
-      const currentYear = now.getFullYear();
-      for (let i = 5; i >= 0; i--) {
-        const monthIndex = (currentMonth - i + 12) % 12;
-        const yearOffset = currentMonth - i < 0 ? -1 : 0;
-        const year = currentYear + yearOffset;
-        
-        let income = 0, payouts = 0;
-        rawIncome.forEach((inc: any) => {
-          if (inc.createdAt?.toDate) {
-            const docDate = inc.createdAt.toDate();
-            if (docDate.getMonth() === monthIndex && docDate.getFullYear() === year) income += inc.amount || 0;
-          }
-        });
-        rawPayouts.forEach((p: any) => {
-          if (p.createdAt?.toDate) {
-            const docDate = p.createdAt.toDate();
-            if (docDate.getMonth() === monthIndex && docDate.getFullYear() === year) payouts += p.amount || 0;
-          }
-        });
-        newData.push({ month: months[monthIndex], income, payouts });
-      }
-    } else if (transactionFilter === "annual") {
-      // Last 12 months (Year view)
-      const currentYear = now.getFullYear();
-      for (let i = 11; i >= 0; i--) {
-        const year = currentYear - i;
-        let income = 0, payouts = 0;
-        rawIncome.forEach((inc: any) => {
-          if (inc.createdAt?.toDate && inc.createdAt.toDate().getFullYear() === year) income += inc.amount || 0;
-        });
-        rawPayouts.forEach((p: any) => {
-          if (p.createdAt?.toDate && p.createdAt.toDate().getFullYear() === year) payouts += p.amount || 0;
-        });
-        newData.push({ month: year.toString(), income, payouts });
-      }
-    }
-
-    return newData;
-  }, [transactionFilter, rawIncome, rawPayouts]);
-
-  // Process transaction breakdown by type, status, and time period
-  const txBreakdown = useMemo<{
-    support: { successful: number; failed: number; pending: number };
-    store: { successful: number; failed: number; pending: number };
-    booking: { successful: number; failed: number; pending: number };
-    gathering: { successful: number; failed: number; pending: number };
-  }>(() => {
-    if (rawTransactions.length === 0)
-      return {
-        support: { successful: 0, failed: 0, pending: 0 },
-        store: { successful: 0, failed: 0, pending: 0 },
-        booking: { successful: 0, failed: 0, pending: 0 },
-        gathering: { successful: 0, failed: 0, pending: 0 },
-      };
-    const now = new Date();
-    const breakdown = {
-      support: { successful: 0, failed: 0, pending: 0 },
-      store: { successful: 0, failed: 0, pending: 0 },
-      booking: { successful: 0, failed: 0, pending: 0 },
-      gathering: { successful: 0, failed: 0, pending: 0 },
-    };
-
-    rawTransactions.forEach((tx: any) => {
-      const txType = tx.type || "support";
-      if (!["support", "store", "booking", "gathering"].includes(txType)) return;
-
-      let inRange = false;
-      if (tx.createdAt?.toDate) {
-        const d = tx.createdAt.toDate();
-        const diff = now.getTime() - d.getTime();
-
-        if (transactionFilter === "day") {
-          inRange = diff <= 7 * 24 * 60 * 60 * 1000; // last 7 days
-        } else if (transactionFilter === "week") {
-          inRange = diff <= 5 * 7 * 24 * 60 * 60 * 1000; // last 5 weeks
-        } else if (transactionFilter === "month") {
-          inRange = diff <= 6 * 30 * 24 * 60 * 60 * 1000; // last 6 months
-        } else if (transactionFilter === "annual") {
-          inRange = d.getFullYear() >= now.getFullYear() - 2; // last 3 years
-        }
-      } else {
-        inRange = true; // no date = include
-      }
-      if (!inRange) return;
-
-      const isSuccess = tx.status === "successful" || tx.status === "success";
-      const isFailed = tx.status === "failed";
-      const isPending = tx.status === "pending";
-      if (!isSuccess && !isFailed && !isPending) return;
-
-      const amt = Number(tx.amount) || 0;
-      if (isSuccess) breakdown[txType as keyof typeof breakdown].successful += amt;
-      else if (isFailed) breakdown[txType as keyof typeof breakdown].failed += amt;
-      else if (isPending) breakdown[txType as keyof typeof breakdown].pending += amt;
-    });
-
-    return breakdown;
-  }, [transactionFilter, rawTransactions]);
+  const [dataLoadedAt, setDataLoadedAt] = useState<number>(0);
 
   const [modal, setModal] = useState<{
-    show: boolean;
     type: "approve" | "reject";
     target: any;
     category: "withdrawal" | "verification";
   } | null>(null);
 
-  const fetchData = async () => {
+  const availableCurrencies = useMemo(() => {
+    const set = new Set<string>(["RWF"]);
+    rawIncome.forEach((inc) => set.add(currencyCodeOf(inc)));
+    rawPayouts.forEach((p) => set.add(currencyCodeOf(p)));
+    rawTransactions.forEach((tx) => set.add(currencyCodeOf(tx)));
+    return Array.from(set).sort((a, b) => (a === "RWF" ? -1 : b === "RWF" ? 1 : a.localeCompare(b)));
+  }, [rawIncome, rawPayouts, rawTransactions]);
+
+  const activeCurrency = availableCurrencies.includes(selectedCurrency)
+    ? selectedCurrency
+    : availableCurrencies[0] || "RWF";
+
+  const userGrowthData = useMemo(() => {
+    const now = new Date();
+    const labels: string[] = [];
+    const current: number[] = [];
+    const previous: number[] = [];
+
+    const countInRange = (start: Date, end: Date) =>
+      rawProfiles.filter((p) => {
+        const created = toDateSafe(p.createdAt);
+        return created ? created >= start && created < end : false;
+      }).length;
+
+    if (growthFilter === "7d") {
+      for (let i = 6; i >= 0; i--) {
+        const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+        const dayEnd = new Date(dayStart.getFullYear(), dayStart.getMonth(), dayStart.getDate() + 1);
+        const prevStart = new Date(dayStart.getFullYear(), dayStart.getMonth(), dayStart.getDate() - 7);
+        const prevEnd = new Date(prevStart.getFullYear(), prevStart.getMonth(), prevStart.getDate() + 1);
+        labels.push(dayStart.toLocaleDateString("en-US", { weekday: "short" }));
+        current.push(countInRange(dayStart, dayEnd));
+        previous.push(countInRange(prevStart, prevEnd));
+      }
+    } else if (growthFilter === "weekly") {
+      for (let i = 7; i >= 0; i--) {
+        const weekEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1 - i * 7);
+        const weekStart = new Date(weekEnd.getTime() - 7 * 86_400_000);
+        const prevEnd = new Date(weekStart);
+        const prevStart = new Date(weekStart.getTime() - 7 * 86_400_000);
+        labels.push(
+          weekStart.toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
+        );
+        current.push(countInRange(weekStart, weekEnd));
+        previous.push(countInRange(prevStart, prevEnd));
+      }
+    } else if (growthFilter === "monthly") {
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const currentMonth = now.getMonth();
+      for (let i = 11; i >= 0; i--) {
+        const monthIndex = (currentMonth - i + 12) % 12;
+        const yearOffset = currentMonth - i < 0 ? -1 : 0;
+        const year = now.getFullYear() + yearOffset;
+        const monthStart = new Date(year, monthIndex, 1);
+        const monthEnd = new Date(year, monthIndex + 1, 1);
+        const prevMonthStart = new Date(year - 1, monthIndex, 1);
+        const prevMonthEnd = new Date(year - 1, monthIndex + 1, 1);
+        labels.push(months[monthIndex]);
+        current.push(countInRange(monthStart, monthEnd));
+        previous.push(countInRange(prevMonthStart, prevMonthEnd));
+      }
+    } else {
+      for (let i = 4; i >= 0; i--) {
+        const year = now.getFullYear() - i;
+        const yearStart = new Date(year, 0, 1);
+        const yearEnd = new Date(year + 1, 0, 1);
+        const prevStart = new Date(year - 1, 0, 1);
+        labels.push(String(year));
+        current.push(countInRange(yearStart, yearEnd));
+        previous.push(countInRange(prevStart, yearStart));
+      }
+    }
+
+    return { labels, current, previous };
+  }, [growthFilter, rawProfiles]);
+
+  const monthlyData = useMemo(() => {
+    const scopedIncome = rawIncome.filter((inc) => currencyCodeOf(inc) === activeCurrency);
+    const scopedPayouts = rawPayouts.filter((p) => currencyCodeOf(p) === activeCurrency);
+    const now = new Date();
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const result: { label: string; income: number; payouts: number }[] = [];
+
+    const sumInRange = (items: any[], start: Date, end: Date) =>
+      items.reduce((sum, item) => {
+        const d = toDateSafe(item.createdAt);
+        return d && d >= start && d < end ? sum + (Number(item.amount) || 0) : sum;
+      }, 0);
+
+    if (timeframeFilter === "day") {
+      for (let i = 6; i >= 0; i--) {
+        const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+        const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1);
+        result.push({
+          label: start.toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
+          income: sumInRange(scopedIncome, start, end),
+          payouts: sumInRange(scopedPayouts, start, end),
+        });
+      }
+    } else if (timeframeFilter === "week") {
+      for (let i = 5; i >= 0; i--) {
+        const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1 - i * 7);
+        const start = new Date(end.getTime() - 7 * 86_400_000);
+        result.push({
+          label: start.toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
+          income: sumInRange(scopedIncome, start, end),
+          payouts: sumInRange(scopedPayouts, start, end),
+        });
+      }
+    } else if (timeframeFilter === "month") {
+      const currentMonth = now.getMonth();
+      for (let i = 5; i >= 0; i--) {
+        const monthIndex = (currentMonth - i + 12) % 12;
+        const yearOffset = currentMonth - i < 0 ? -1 : 0;
+        const year = now.getFullYear() + yearOffset;
+        const start = new Date(year, monthIndex, 1);
+        const end = new Date(year, monthIndex + 1, 1);
+        result.push({
+          label: months[monthIndex],
+          income: sumInRange(scopedIncome, start, end),
+          payouts: sumInRange(scopedPayouts, start, end),
+        });
+      }
+    } else {
+      for (let i = 3; i >= 0; i--) {
+        const year = now.getFullYear() - i;
+        const start = new Date(year, 0, 1);
+        const end = new Date(year + 1, 0, 1);
+        result.push({
+          label: String(year),
+          income: sumInRange(scopedIncome, start, end),
+          payouts: sumInRange(scopedPayouts, start, end),
+        });
+      }
+    }
+
+    return result;
+  }, [timeframeFilter, rawIncome, rawPayouts, activeCurrency]);
+
+  const txBreakdown = useMemo(() => {
+    const windowMs =
+      timeframeFilter === "day"
+        ? 7 * 86_400_000
+        : timeframeFilter === "week"
+          ? 35 * 86_400_000
+          : timeframeFilter === "month"
+            ? 180 * 86_400_000
+            : 3 * 365 * 86_400_000;
+
+    const breakdown: Record<
+      "support" | "store" | "booking" | "gathering" | "community",
+      { successful: number; failed: number; pending: number; count: number }
+    > = {
+      support: { successful: 0, failed: 0, pending: 0, count: 0 },
+      community: { successful: 0, failed: 0, pending: 0, count: 0 },
+      store: { successful: 0, failed: 0, pending: 0, count: 0 },
+      booking: { successful: 0, failed: 0, pending: 0, count: 0 },
+      gathering: { successful: 0, failed: 0, pending: 0, count: 0 },
+    };
+
+    rawTransactions.forEach((tx) => {
+      if (currencyCodeOf(tx) !== activeCurrency) return;
+      const rawType = String(tx.type || "support");
+      if (!(rawType in breakdown)) return;
+      const d = toDateSafe(tx.createdAt);
+      if (d && dataLoadedAt > 0 && dataLoadedAt - d.getTime() > windowMs) return;
+
+      const amt = Number(tx.amount) || 0;
+      const row = breakdown[rawType as keyof typeof breakdown];
+      row.count += 1;
+      if (tx.status === "successful" || tx.status === "success") row.successful += amt;
+      else if (tx.status === "failed") row.failed += amt;
+      else if (tx.status === "pending") row.pending += amt;
+    });
+
+    return breakdown;
+  }, [timeframeFilter, rawTransactions, activeCurrency, dataLoadedAt]);
+
+  const fetchData = useCallback(async (isManual = false) => {
+    if (isManual) {
+      setRefreshing(true);
+      setLoadError(false);
+    }
+
     try {
-      // Get platform income
-      const incomeSnap = await getDocs(collection(db, "platformIncome"));
-      let totalIncome = 0;
+      const [
+        incomeSnap,
+        profilesSnap,
+        creatorsSnap,
+        supportsSnap,
+        productsSnap,
+        giveawaysSnap,
+        ordersSnap,
+        payoutsSnap,
+        transactionsSnap,
+        viewsSnap,
+      ] = await Promise.all([
+        getDocs(collection(db, "platformIncome")),
+        getDocs(collection(db, "profiles")),
+        getDocs(collection(db, "creators")),
+        getDocs(collection(db, "supportedCreators")),
+        getDocs(collection(db, "storeProducts")),
+        getDocs(collection(db, "giveaways")),
+        getDocs(collection(db, "storeOrders")),
+        getDocs(collection(db, "payouts")),
+        getDocs(collection(db, "transactions")),
+        getDocs(query(collection(db, "creators"), orderBy("views", "desc"), limit(5))),
+      ]);
+
+      const incomeDocs = incomeSnap.docs.map((d) => d.data());
       const incomeByCurrency: Record<string, number> = {};
-      incomeSnap.forEach((doc) => {
-        const data = doc.data();
-        const amount = Number(data.amount) || 0;
-        const code = typeof data.currency === "string" && data.currency ? data.currency : "RWF";
-        totalIncome += amount;
-        incomeByCurrency[code] = (incomeByCurrency[code] || 0) + amount;
+      incomeDocs.forEach((data) => {
+        const code = currencyCodeOf(data);
+        incomeByCurrency[code] = (incomeByCurrency[code] || 0) + (Number(data.amount) || 0);
       });
 
-      // Get profiles count
-      const profilesSnap = await getDocs(collection(db, "profiles"));
+      const allProfiles = profilesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const nowMs = Date.now();
+      const thirtyDaysMs = 30 * 86_400_000;
+      let newProfiles30d = 0;
+      let prevProfiles30d = 0;
+      allProfiles.forEach((p: any) => {
+        const d = toDateSafe(p.createdAt);
+        if (!d) return;
+        const age = nowMs - d.getTime();
+        if (age >= 0 && age <= thirtyDaysMs) newProfiles30d += 1;
+        else if (age > thirtyDaysMs && age <= 2 * thirtyDaysMs) prevProfiles30d += 1;
+      });
 
-      // Get creators
-      const creatorsSnap = await getDocs(collection(db, "creators"));
       let totalViews = 0;
-      creatorsSnap.forEach((doc) => {
-        totalViews += doc.data().views || 0;
-      });
-
-      // Get supports
-      const supportsSnap = await getDocs(collection(db, "supportedCreators"));
-      const totalSupports = supportsSnap.size;
-
-      // Get products
-      const productsSnap = await getDocs(collection(db, "storeProducts"));
-      const totalProducts = productsSnap.size;
-
-      // Get giveaways
-      const giveawaysSnap = await getDocs(collection(db, "giveaways"));
-      const totalGiveaways = giveawaysSnap.size;
-
-      // Get orders
-      const ordersSnap = await getDocs(collection(db, "storeOrders"));
-      const totalOrders = ordersSnap.size;
-
-      // Get total payouts processed (from payouts collection)
-      const payoutsSnap = await getDocs(collection(db, "payouts"));
-      let totalPayoutsProcessed = 0;
-      const payoutsByCurrency: Record<string, number> = {};
-      payoutsSnap.forEach((doc) => {
-        const data = doc.data();
-        const amount = Number(data.amount) || 0;
-        const code = typeof data.currency === "string" && data.currency ? data.currency : "RWF";
-        totalPayoutsProcessed += amount;
-        payoutsByCurrency[code] = (payoutsByCurrency[code] || 0) + amount;
-      });
-
-      // Get total pending payouts (sum of pendingPayout* fields from all creators)
-      let totalPendingPayouts = 0;
       const pendingByCurrency: Record<string, number> = {};
-      creatorsSnap.forEach((doc) => {
-        const data = doc.data();
+      creatorsSnap.forEach((cDoc) => {
+        const data = cDoc.data();
+        totalViews += Number(data.views) || 0;
         const rwfPending = Number(data.pendingPayout) || 0;
-        if (rwfPending) {
-          totalPendingPayouts += rwfPending;
+        if (rwfPending > 0) {
           pendingByCurrency.RWF = (pendingByCurrency.RWF || 0) + rwfPending;
         }
         for (const [key, value] of Object.entries(data)) {
           const match = key.match(/^pendingPayout([A-Z]{3})$/);
           if (!match) continue;
           const amount = Number(value) || 0;
-          if (!amount) continue;
-          totalPendingPayouts += amount;
-          pendingByCurrency[match[1]] = (pendingByCurrency[match[1]] || 0) + amount;
+          if (amount > 0) {
+            pendingByCurrency[match[1]] = (pendingByCurrency[match[1]] || 0) + amount;
+          }
         }
       });
 
-      // Get monthly data for charts from platformIncome and payouts collections
-      const platformIncomeSnap = await getDocs(
-        collection(db, "platformIncome"),
-      );
-      const allPlatformIncome = platformIncomeSnap.docs.map((d) => d.data());
       const allPayouts = payoutsSnap.docs.map((d) => d.data());
+      const payoutsByCurrency: Record<string, number> = {};
+      allPayouts.forEach((data) => {
+        const code = currencyCodeOf(data);
+        payoutsByCurrency[code] = (payoutsByCurrency[code] || 0) + (Number(data.amount) || 0);
+      });
 
-      // Store raw data for transaction filtering
-      setRawIncome(allPlatformIncome);
-      setRawPayouts(allPayouts);
-
-      // Get transaction counts and aggregates by type from transactions collection
-      const transactionsSnap = await getDocs(collection(db, "transactions"));
       const allTransactions = transactionsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      let totalSuccessfulAmount = 0;
-      let successfulCount = 0;
       const transactionsByCurrency: Record<string, number> = {};
+      const countsByCurrency: Record<string, number> = {};
+      let successfulCount = 0;
       let failedCount = 0;
-      let failedAmount = 0;
       let pendingCount = 0;
-      let pendingAmount = 0;
+
       allTransactions.forEach((tx: any) => {
         if (tx.status === "successful" || tx.status === "success") {
-          const amount = Number(tx.amount) || 0;
-          const code = typeof tx.currency === "string" && tx.currency ? tx.currency : "RWF";
-          totalSuccessfulAmount += amount;
+          const code = currencyCodeOf(tx);
+          transactionsByCurrency[code] =
+            (transactionsByCurrency[code] || 0) + (Number(tx.amount) || 0);
+          countsByCurrency[code] = (countsByCurrency[code] || 0) + 1;
           successfulCount += 1;
-          transactionsByCurrency[code] = (transactionsByCurrency[code] || 0) + amount;
         } else if (tx.status === "failed") {
           failedCount += 1;
-          failedAmount += Number(tx.amount) || 0;
         } else if (tx.status === "pending") {
           pendingCount += 1;
-          pendingAmount += Number(tx.amount) || 0;
         }
       });
-      const avgAmount = successfulCount > 0 ? Math.round(totalSuccessfulAmount / successfulCount) : 0;
-      setRawTransactions(allTransactions);
+
+      const avgByCurrency: Record<string, number> = {};
+      for (const [code, sum] of Object.entries(transactionsByCurrency)) {
+        const count = countsByCurrency[code] || 1;
+        avgByCurrency[code] = Math.round(sum / count);
+      }
 
       const earnerGroups = (
         await Promise.all(
@@ -403,11 +447,7 @@ export default function AdminDashboard() {
             const field = totalEarningsField(currency);
             try {
               const snap = await getDocs(
-                query(
-                  collection(db, "creators"),
-                  orderBy(field, "desc"),
-                  limit(5),
-                ),
+                query(collection(db, "creators"), orderBy(field, "desc"), limit(5)),
               );
               return {
                 currency,
@@ -422,88 +462,34 @@ export default function AdminDashboard() {
         )
       ).filter((group) => group.earners.length > 0);
 
-      // Top viewed
-      const viewsQuery = query(
-        collection(db, "creators"),
-        orderBy("views", "desc"),
-        limit(5),
-      );
-      const viewsSnap = await getDocs(viewsQuery);
-
-      // Pending withdrawals
-      const withdrawalQuery = query(
-        collection(db, "withdrawRequests"),
-        where("status", "==", "pending"),
-      );
-      const withdrawalSnap = await getDocs(withdrawalQuery);
-
-      // Pending verifications — query the verificationRequests collection (source of truth)
-      const verificationQuery = query(
-        collection(db, "verificationRequests"),
-        where("status", "==", "pending"),
-        orderBy("createdAt", "desc"),
-      );
-      const verificationSnap = await getDocs(verificationQuery);
-      const enrichedAll = await Promise.all(
-        verificationSnap.docs.map(async (d) => {
-          const data = d.data();
-          let creatorData: any = {};
-          if (data.uid) {
-            const creatorQ = query(
-              collection(db, "creators"),
-              where("uid", "==", data.uid),
-              limit(1),
-            );
-            const creatorSnap = await getDocs(creatorQ);
-            if (!creatorSnap.empty) {
-              const c = creatorSnap.docs[0];
-              creatorData = {
-                id: c.id,
-                name: c.data().name || "",
-                handle: c.id,
-                profilePicture: c.data().profilePicture || "",
-              };
-            }
-          }
-          return { id: d.id, ...data, ...creatorData };
-        }),
-      );
+      setLoadError(false);
+      setDataLoadedAt(nowMs);
+      setRawProfiles(allProfiles);
+      setRawIncome(incomeDocs);
+      setRawPayouts(allPayouts);
+      setRawTransactions(allTransactions);
+      setTopEarnerGroups(earnerGroups);
+      setTopViewed(viewsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
 
       setStats({
-        totalPlatformIncome: totalIncome,
-        totalPayoutsProcessed,
-        totalPendingPayouts,
         incomeByCurrency,
         payoutsByCurrency,
         pendingByCurrency,
         transactionsByCurrency,
+        avgByCurrency,
         profileCount: profilesSnap.size,
         creatorCount: creatorsSnap.size,
         totalViews,
-        totalSupports,
-        totalProducts,
-        totalGiveaways,
-        totalOrders,
-        recentGrowth: Math.floor(Math.random() * 20) + 5,
-        totalTransactionAmount: totalSuccessfulAmount,
+        totalSupports: supportsSnap.size,
+        totalProducts: productsSnap.size,
+        totalGiveaways: giveawaysSnap.size,
+        totalOrders: ordersSnap.size,
+        newProfiles30d,
+        prevProfiles30d,
         successfulTransactionCount: successfulCount,
-        averageTransactionAmount: avgAmount,
         failedTransactionCount: failedCount,
-        failedTransactionAmount: failedAmount,
         pendingTransactionCount: pendingCount,
-        pendingTransactionAmount: pendingAmount,
       });
-      setTopEarnerGroups(earnerGroups);
-      setTopViewed(viewsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-      setWithdrawals(
-        withdrawalSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
-      );
-      const seenUids = new Set<string>();
-      setVerifications(enrichedAll.filter((item) => {
-        if (!item.uid || seenUids.has(item.uid)) return false;
-        seenUids.add(item.uid);
-        return true;
-      }));
 
       try {
         if (auth.currentUser) {
@@ -522,14 +508,14 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       console.error("Error fetching admin stats:", error);
+      setLoadError(true);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
 
-  // Realtime listeners for pending items
   useEffect(() => {
-    // Withdrawal listener
     const withdrawalQuery = query(
       collection(db, "withdrawRequests"),
       where("status", "==", "pending"),
@@ -538,11 +524,9 @@ export default function AdminDashboard() {
       setWithdrawals(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
 
-    // Verification listener — real-time on verificationRequests
     const verificationQuery = query(
       collection(db, "verificationRequests"),
       where("status", "==", "pending"),
-      orderBy("createdAt", "desc"),
     );
     const unsubVerifications = onSnapshot(verificationQuery, (snap) => {
       Promise.all(
@@ -550,12 +534,9 @@ export default function AdminDashboard() {
           const data = d.data();
           let creatorData: any = {};
           if (data.uid) {
-            const creatorQ = query(
-              collection(db, "creators"),
-              where("uid", "==", data.uid),
-              limit(1),
+            const creatorSnap = await getDocs(
+              query(collection(db, "creators"), where("uid", "==", data.uid), limit(1)),
             );
-            const creatorSnap = await getDocs(creatorQ);
             if (!creatorSnap.empty) {
               const c = creatorSnap.docs[0];
               creatorData = {
@@ -570,16 +551,16 @@ export default function AdminDashboard() {
         }),
       ).then((items) => {
         const seen = new Set<string>();
-        const deduped = items.filter((item) => {
-          if (!item.uid || seen.has(item.uid)) return false;
-          seen.add(item.uid);
-          return true;
-        });
-        setVerifications(deduped);
+        setVerifications(
+          items.filter((item) => {
+            if (!item.uid || seen.has(item.uid)) return false;
+            seen.add(item.uid);
+            return true;
+          }),
+        );
       });
     });
 
-    // Activity logs listener (recent 10)
     const logsQuery = query(
       collection(db, "activityLogs"),
       orderBy("createdAt", "desc"),
@@ -589,228 +570,40 @@ export default function AdminDashboard() {
       setRecentActivities(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
 
-    queueMicrotask(() => {
-      void fetchData();
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) {
+        void fetchData(false);
+      }
     });
 
     return () => {
+      cancelled = true;
       unsubWithdrawals();
       unsubVerifications();
       unsubLogs();
     };
-  }, []);
-
-  const calculateUserGrowth = async () => {
-    try {
-      const profilesSnap = await getDocs(collection(db, "profiles"));
-      const allProfiles = profilesSnap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
-
-      const now = new Date();
-      const labels: string[] = [];
-      const current: number[] = [];
-      const previous: number[] = [];
-
-      const getCreationDate = (profile: any): Date | null => {
-        if (profile.createdAt && typeof profile.createdAt.toDate === "function") {
-          return profile.createdAt.toDate();
-        }
-        if (profile.createdAt) {
-          return new Date(profile.createdAt);
-        }
-        return null;
-      };
-
-      if (growthFilter === "7d") {
-        for (let i = 6; i >= 0; i--) {
-          const date = new Date(now);
-          date.setDate(date.getDate() - i);
-          const dateStr = date.toLocaleDateString("en-US", { weekday: "short" });
-          labels.push(dateStr);
-
-          const prevDate = new Date(date);
-          prevDate.setDate(prevDate.getDate() - 7);
-
-          const currentCount = allProfiles.filter((p) => {
-            const created = getCreationDate(p);
-            if (!created) return false;
-            return (
-              created.getFullYear() === date.getFullYear() &&
-              created.getMonth() === date.getMonth() &&
-              created.getDate() === date.getDate()
-            );
-          }).length;
-
-          const prevCount = allProfiles.filter((p) => {
-            const created = getCreationDate(p);
-            if (!created) return false;
-            return (
-              created.getFullYear() === prevDate.getFullYear() &&
-              created.getMonth() === prevDate.getMonth() &&
-              created.getDate() === prevDate.getDate()
-            );
-          }).length;
-
-          current.push(currentCount);
-          previous.push(prevCount);
-        }
-      } else if (growthFilter === "weekly") {
-        const currentWeek = Math.ceil(
-          (now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) /
-            (7 * 24 * 60 * 60 * 1000),
-        );
-        for (let i = 11; i >= 0; i--) {
-          const week = currentWeek - i;
-          if (week < 1) continue;
-          labels.push(`W${week}`);
-
-          const weekStart = new Date(now.getFullYear(), 0, 1 + (week - 1) * 7);
-          const weekEnd = new Date(weekStart);
-          weekEnd.setDate(weekEnd.getDate() + 7);
-
-          const prevWeekStart = new Date(weekStart);
-          prevWeekStart.setDate(prevWeekStart.getDate() - 7);
-          const prevWeekEnd = new Date(weekStart);
-
-          const currentCount = allProfiles.filter((p) => {
-            const created = getCreationDate(p);
-            if (!created) return false;
-            return created >= weekStart && created < weekEnd;
-          }).length;
-
-          const prevCount = allProfiles.filter((p) => {
-            const created = getCreationDate(p);
-            if (!created) return false;
-            return created >= prevWeekStart && created < prevWeekEnd;
-          }).length;
-
-          current.push(currentCount);
-          previous.push(prevCount);
-        }
-      } else if (growthFilter === "monthly") {
-        const months = [
-          "Jan",
-          "Feb",
-          "Mar",
-          "Apr",
-          "May",
-          "Jun",
-          "Jul",
-          "Aug",
-          "Sep",
-          "Oct",
-          "Nov",
-          "Dec",
-        ];
-        const currentMonth = now.getMonth();
-        for (let i = 11; i >= 0; i--) {
-          const monthIndex = (currentMonth - i + 12) % 12;
-          const yearOffset = currentMonth - i < 0 ? -1 : 0;
-          const year = now.getFullYear() + yearOffset;
-          labels.push(months[monthIndex]);
-
-          const monthStart = new Date(year, monthIndex, 1);
-          const monthEnd = new Date(year, monthIndex + 1, 1);
-
-          const prevMonthStart = new Date(year, monthIndex - 1, 1);
-          const prevMonthEnd = monthStart;
-
-          const currentCount = allProfiles.filter((p) => {
-            const created = getCreationDate(p);
-            if (!created) return false;
-            return created >= monthStart && created < monthEnd;
-          }).length;
-
-          const prevCount = allProfiles.filter((p) => {
-            const created = getCreationDate(p);
-            if (!created) return false;
-            return created >= prevMonthStart && created < prevMonthEnd;
-          }).length;
-
-          current.push(currentCount);
-          previous.push(prevCount);
-        }
-      } else if (growthFilter === "annual") {
-        for (let i = 4; i >= 0; i--) {
-          const year = now.getFullYear() - i;
-          labels.push(year.toString());
-
-          const yearStart = new Date(year, 0, 1);
-          const yearEnd = new Date(year + 1, 0, 1);
-
-          const prevYearStart = new Date(year - 1, 0, 1);
-          const prevYearEnd = yearStart;
-
-          const currentCount = allProfiles.filter((p) => {
-            const created = getCreationDate(p);
-            if (!created) return false;
-            return created >= yearStart && created < yearEnd;
-          }).length;
-
-          const prevCount = allProfiles.filter((p) => {
-            const created = getCreationDate(p);
-            if (!created) return false;
-            return created >= prevYearStart && created < prevYearEnd;
-          }).length;
-
-          current.push(currentCount);
-          previous.push(prevCount);
-        }
-      } else if (growthFilter === "yoy") {
-        const currentYear = now.getFullYear();
-        const years = [currentYear - 4, currentYear - 3, currentYear - 2, currentYear - 1, currentYear];
-        
-        for (let i = 0; i < years.length; i++) {
-          const year = years[i];
-          labels.push(year.toString());
-
-          const yearStart = new Date(year, 0, 1);
-          const yearEnd = new Date(year + 1, 0, 1);
-
-          const currentCount = allProfiles.filter((p) => {
-            const created = getCreationDate(p);
-            if (!created) return false;
-            return created >= yearStart && created < yearEnd;
-          }).length;
-
-          current.push(currentCount);
-          previous.push(0);
-        }
-      }
-
-      setUserGrowthData({ labels, current, previous });
-    } catch (error) {
-      console.error("Error calculating user growth:", error);
-    }
-  };
-
-  useEffect(() => {
-    queueMicrotask(calculateUserGrowth);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [growthFilter]);
+  }, [fetchData]);
 
   const handleAction = async () => {
     if (!modal) return;
     setProcessing(true);
     const { target, type, category } = modal;
 
-    let userEmail = "";
-    const profileId = category === "withdrawal" ? target.handle : target.uid;
-    if (profileId) {
-      const profileSnap = await getDoc(doc(db, "profiles", profileId));
-      if (profileSnap.exists()) {
-        userEmail = profileSnap.data().email || "";
-      }
-    }
-
     try {
+      let userEmail = "";
+      const profileId = category === "withdrawal" ? target.handle : target.uid;
+      if (profileId) {
+        const profileSnap = await getDoc(doc(db, "profiles", profileId));
+        if (profileSnap.exists()) {
+          userEmail = profileSnap.data().email || "";
+        }
+      }
+
       if (category === "withdrawal") {
         if (!auth.currentUser) {
           throw new Error("You must be signed in to review withdrawals");
         }
-
         const token = await auth.currentUser.getIdToken();
         const response = await fetch("/api/admin/payouts/withdrawals", {
           method: "POST",
@@ -833,21 +626,15 @@ export default function AdminDashboard() {
           accountNumber?: string;
           creatorName?: string;
         };
-
         if (!response.ok) {
           throw new Error(payload.error || "Withdrawal action failed");
         }
 
         const approvedAmount = Number(payload.amount ?? target.amount);
-        const approvedCurrency =
-          (payload.currency || target.currency) as PayoutCurrency;
+        const approvedCurrency = (payload.currency || target.currency) as PayoutCurrency;
         const approvedMethod = String(payload.method || target.method || "MoMo");
-        const approvedAccount = String(
-          payload.accountNumber || target.accountNumber || "",
-        );
-        const creatorName = String(
-          payload.creatorName || target.creatorName || "",
-        );
+        const approvedAccount = String(payload.accountNumber || target.accountNumber || "");
+        const creatorName = String(payload.creatorName || target.creatorName || "");
 
         if (type === "approve") {
           await sendCommsEmail("payout_processed", {
@@ -863,15 +650,14 @@ export default function AdminDashboard() {
             query(collection(db, "profiles"), where("isAdmin", "==", true)),
           );
           for (const adminDoc of adminsSnap.docs) {
-            const notificationData = {
+            await addDoc(collection(db, "notifications"), {
               userId: adminDoc.id,
               type: category,
               title: "Withdrawal Rejected",
               message: `Withdrawal of ${approvedAmount.toLocaleString()} ${approvedCurrency} for ${creatorName} was rejected`,
               read: false,
               createdAt: serverTimestamp(),
-            };
-            await addDoc(collection(db, "notifications"), notificationData);
+            });
           }
         }
 
@@ -883,9 +669,7 @@ export default function AdminDashboard() {
           creatorHandle: target.creatorHandle,
         });
 
-        toast.success(
-          `Withdrawal ${type === "approve" ? "approved" : "rejected"}`,
-        );
+        toast.success(`Withdrawal ${type === "approve" ? "approved" : "rejected"}`);
       } else {
         const isApprove = type === "approve";
         await updateDoc(doc(db, "creators", target.handle || target.id), {
@@ -893,12 +677,13 @@ export default function AdminDashboard() {
           verificationStatus: isApprove ? "approved" : "rejected",
         });
 
-        const pendingVerifications = query(
-          collection(db, "verificationRequests"),
-          where("uid", "==", target.uid),
-          where("status", "==", "pending"),
+        const pendingSnap = await getDocs(
+          query(
+            collection(db, "verificationRequests"),
+            where("uid", "==", target.uid),
+            where("status", "==", "pending"),
+          ),
         );
-        const pendingSnap = await getDocs(pendingVerifications);
         await Promise.all(
           pendingSnap.docs.map((d) =>
             updateDoc(doc(db, "verificationRequests", d.id), {
@@ -925,13 +710,12 @@ export default function AdminDashboard() {
           creatorHandle: target.handle,
         });
 
-        toast.success(
-          `Verification ${type === "approve" ? "approved" : "rejected"}`,
-        );
+        toast.success(`Verification ${isApprove ? "approved" : "rejected"}`);
       }
+
       setModal(null);
       setRejectionReason("");
-      fetchData();
+      void fetchData(false);
     } catch (error) {
       console.error("Action failed:", error);
       toast.error(error instanceof Error ? error.message : "Action failed");
@@ -940,184 +724,569 @@ export default function AdminDashboard() {
     }
   };
 
-  if (loading) return <LoadingState variant="dashboard" />;
+  if (loading) return <LoadingState variant="dashboard" className="mx-auto max-w-7xl px-6 py-10" />;
+
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-4xl px-6 py-16">
+        <ErrorState
+          title="Couldn't load admin overview"
+          description="Check your permissions and network connection, then try again."
+          onRetry={() => void fetchData(false)}
+        />
+      </div>
+    );
+  }
+
+  const growthPercent =
+    stats.prevProfiles30d > 0
+      ? Math.round(((stats.newProfiles30d - stats.prevProfiles30d) / stats.prevProfiles30d) * 100)
+      : null;
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20 relative">
-      <div className="max-w-7xl mx-auto px-6 mt-12">
-        <header className="mb-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="min-h-screen bg-canvas pb-20 text-fg">
+      <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
+        <header className="mb-8 flex flex-col gap-4 border-b border-line pb-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight text-foreground uppercase">
-              Platform Control
+            <p className="text-caption font-semibold text-brand-strong">Operations</p>
+            <h1 className="mt-1 text-heading font-black tracking-tight text-fg">
+              Platform overview
             </h1>
-            <p className="text-muted-foreground font-medium">
-              Manage growth, verify creators, and process payouts.
+            <p className="mt-1 text-label text-muted-fg">
+              Monitor revenue, review payouts and identity checks, and track platform health.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={fetchData}
-            aria-label="Refresh dashboard"
-            className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 self-start rounded-lg bg-foreground px-3 py-2 text-sm font-medium text-background transition hover:bg-card sm:self-auto"
-          >
-            <Loader size={16} aria-hidden="true" />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/admin/payouts"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-control border border-line bg-surface px-3.5 text-label font-semibold text-fg transition-colors hover:bg-surface-raised"
+            >
+              Payouts
+              <ArrowUpRight className="size-3.5 text-muted-fg" aria-hidden="true" />
+            </Link>
+            <Link
+              href="/admin/users"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-control border border-line bg-surface px-3.5 text-label font-semibold text-fg transition-colors hover:bg-surface-raised"
+            >
+              Users
+              <ArrowUpRight className="size-3.5 text-muted-fg" aria-hidden="true" />
+            </Link>
+            <Button
+              variant="primary"
+              size="sm"
+              loading={refreshing}
+              onClick={() => void fetchData(true)}
+              leadingIcon={<RefreshCw className="size-4" aria-hidden="true" />}
+            >
+              <span className="hidden sm:inline">Refresh</span>
+            </Button>
+          </div>
         </header>
 
-        {/* Total Transaction Amount - Prominent Display */}
-        <div className="mb-8 bg-gradient-to-r from-orange-600 to-orange-500 rounded-2xl p-8 text-white shadow-xl">
-          <div className="flex items-center gap-3 mb-2 opacity-90">
-            <Activity size={20} />
-            <p className="text-xs font-bold uppercase tracking-widest">
-              Total Successful Transactions (All Time)
+        {/* Executive KPI Grid */}
+        <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-card border border-line bg-surface p-5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-caption font-semibold text-muted-fg">Successful volume</p>
+              <Activity className="size-4 text-brand-strong" aria-hidden="true" />
+            </div>
+            <p className="mt-2 text-title font-black tabular-nums text-fg">
+              {primaryCurrencyValue(stats.transactionsByCurrency)}
+            </p>
+            <p className="mt-1 text-caption tabular-nums text-muted-fg">
+              {secondaryCurrencyDetail(stats.transactionsByCurrency)} ·{" "}
+              {stats.successfulTransactionCount.toLocaleString()} paid
             </p>
           </div>
-          <p className="text-5xl font-black tracking-tight">
-            {totalsValue(stats.transactionsByCurrency)}
-          </p>
-          <p className="text-xs font-medium opacity-75 mt-2">
-            {totalsDetail(stats.transactionsByCurrency)} · {stats.successfulTransactionCount} successful transactions
-          </p>
-        </div>
 
-        {/* Main Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard
-            label="Platform Income"
-            value={totalsValue(stats.incomeByCurrency)}
-            detail={totalsDetail(stats.incomeByCurrency, "No platform income yet")}
-            icon={<DollarSign className="text-emerald-600" />}
-            color="bg-emerald-50"
-            trend={
-              stats.recentGrowth > 0
-                ? "+" + stats.recentGrowth + "%"
-                : undefined
-            }
-          />
-          <StatCard
-            label="Payouts Processed"
-            value={totalsValue(stats.payoutsByCurrency)}
-            detail={totalsDetail(stats.payoutsByCurrency, "No payouts yet")}
-            icon={<CheckCircle2 className="text-green-600" />}
-            color="bg-green-50"
-          />
-          <StatCard
-            label="Pending Payouts"
-            value={totalsValue(stats.pendingByCurrency)}
-            detail={totalsDetail(stats.pendingByCurrency, "No pending payouts")}
-            icon={<Clock className="text-amber-600" />}
-            color="bg-amber-50"
-          />
-          <StatCard
-            label="Profile Visits"
-            value={stats.totalViews.toLocaleString()}
-            icon={<Eye className="text-purple-600" />}
-            color="bg-purple-50"
-          />
-          <StatCard
-            label="Avg Transaction"
-            value={stats.averageTransactionAmount.toLocaleString()}
-            detail="Across currencies"
-            icon={<BarChart3 className="text-sky-600" />}
-            color="bg-sky-50"
-          />
-          <StatCard
-            label="Failed Transactions"
-            value={`${(stats.failedTransactionCount + stats.pendingTransactionCount).toLocaleString()} txs`}
-            icon={<XCircle className="text-red-600" />}
-            color="bg-red-50"
-            detail={`${(stats.failedTransactionAmount + stats.pendingTransactionAmount).toLocaleString()} across currencies`}
-          />
-        </div>
+          <div className="rounded-card border border-line bg-surface p-5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-caption font-semibold text-muted-fg">Platform income</p>
+              <DollarSign className="size-4 text-success" aria-hidden="true" />
+            </div>
+            <p className="mt-2 text-title font-black tabular-nums text-fg">
+              {primaryCurrencyValue(stats.incomeByCurrency)}
+            </p>
+            <p className="mt-1 text-caption tabular-nums text-muted-fg">
+              {secondaryCurrencyDetail(stats.incomeByCurrency, "No platform income yet")}
+            </p>
+          </div>
 
-        {/* Secondary Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-8">
-          <div className="bg-card rounded-xl border border-border p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Users size={14} className="text-blue-600" />
-              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
-                Profiles
-              </p>
+          <div className="rounded-card border border-line bg-surface p-5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-caption font-semibold text-muted-fg">Pending payouts</p>
+              <Clock className="size-4 text-warning" aria-hidden="true" />
             </div>
-            <p className="text-xl font-bold">{stats.profileCount}</p>
+            <p className="mt-2 text-title font-black tabular-nums text-fg">
+              {primaryCurrencyValue(stats.pendingByCurrency)}
+            </p>
+            <p className="mt-1 text-caption tabular-nums text-muted-fg">
+              Processed: {formatCurrencyTotals(stats.payoutsByCurrency, "0")}
+            </p>
           </div>
-          <div className="bg-card rounded-xl border border-border p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <UserCheck size={14} className="text-orange-600" />
-              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
-                Creators
-              </p>
-            </div>
-            <p className="text-xl font-bold">{stats.creatorCount}</p>
-          </div>
-          <div className="bg-card rounded-xl border border-border p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <ShoppingBag size={14} className="text-cyan-600" />
-              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
-                Store Orders
-              </p>
-            </div>
-            <p className="text-xl font-bold">{stats.totalOrders}</p>
-          </div>
-          <div className="bg-card rounded-xl border border-border p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Gift size={14} className="text-pink-600" />
-              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
-                Supports
-              </p>
-            </div>
-            <p className="text-xl font-bold">{stats.totalSupports}</p>
-          </div>
-          <div className="bg-card rounded-xl border border-border p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <ShoppingBag size={14} className="text-amber-600" />
-              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
-                Products
-              </p>
-            </div>
-            <p className="text-xl font-bold">{stats.totalProducts}</p>
-          </div>
-          <div className="bg-card rounded-xl border border-border p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Gift size={14} className="text-purple-600" />
-              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
-                Giveaways
-              </p>
-            </div>
-            <p className="text-xl font-bold">{stats.totalGiveaways}</p>
-          </div>
-        </div>
 
-        {/* CHARTS SECTION - One per row, horizontally scrollable */}
-        <div className="space-y-8 mb-8">
-          <div className="bg-card rounded-xl border border-border p-6">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-6">
-              User Growth
-            </h3>
-            <div className="flex flex-wrap gap-2 mb-6">
-              {[
-                { key: "7d", label: "7 Days" },
-                { key: "weekly", label: "Weekly" },
-                { key: "monthly", label: "Monthly" },
-                { key: "annual", label: "Annual" },
-                { key: "yoy", label: "Year to Year" },
-              ].map((filter) => (
-                <button
-                  key={filter.key}
-                  onClick={() => setGrowthFilter(filter.key as any)}
-                  className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${
-                    growthFilter === filter.key
-                      ? "bg-foreground text-background"
-                      : "bg-muted text-muted-foreground hover:bg-border-strong"
-                  }`}
-                >
-                  {filter.label}
-                </button>
-              ))}
+          <div className="rounded-card border border-line bg-surface p-5">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-caption font-semibold text-muted-fg">Pending &amp; failed txs</p>
+              <XCircle className="size-4 text-danger" aria-hidden="true" />
             </div>
+            <p className="mt-2 text-title font-black tabular-nums text-fg">
+              {stats.pendingTransactionCount.toLocaleString()} pending ·{" "}
+              {stats.failedTransactionCount.toLocaleString()} failed
+            </p>
+            <p className="mt-1 text-caption tabular-nums text-muted-fg">
+              Avg order: {formatCurrencyTotals(stats.avgByCurrency, "0")}
+            </p>
+          </div>
+        </section>
+
+        {/* Secondary Activity Counts */}
+        <section className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {[
+            {
+              label: "Accounts",
+              value: stats.profileCount.toLocaleString(),
+              sub:
+                growthPercent !== null
+                  ? `${growthPercent >= 0 ? "+" : ""}${growthPercent}% vs prev 30d`
+                  : `${stats.newProfiles30d} in 30d`,
+              icon: Users,
+            },
+            {
+              label: "Creators",
+              value: stats.creatorCount.toLocaleString(),
+              sub: `${stats.totalViews.toLocaleString()} visits`,
+              icon: UserCheck,
+            },
+            {
+              label: "Supports",
+              value: stats.totalSupports.toLocaleString(),
+              sub: "All time",
+              icon: Gift,
+            },
+            {
+              label: "Store orders",
+              value: stats.totalOrders.toLocaleString(),
+              sub: `${stats.totalProducts} products`,
+              icon: ShoppingBag,
+            },
+            {
+              label: "Withdrawals",
+              value: withdrawals.length.toLocaleString(),
+              sub: "Awaiting review",
+              icon: Wallet,
+            },
+            {
+              label: "Verifications",
+              value: verifications.length.toLocaleString(),
+              sub: "Awaiting review",
+              icon: ShieldAlert,
+            },
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <div
+                key={item.label}
+                className="rounded-card border border-line bg-surface p-4"
+              >
+                <div className="flex items-center gap-1.5 text-caption font-medium text-muted-fg">
+                  <Icon className="size-3.5 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{item.label}</span>
+                </div>
+                <p className="mt-1.5 text-title font-bold tabular-nums text-fg">
+                  {item.value}
+                </p>
+                <p className="mt-0.5 truncate text-caption tabular-nums text-muted-fg">
+                  {item.sub}
+                </p>
+              </div>
+            );
+          })}
+        </section>
+
+        {/* Action Queues First: Withdrawals & Verifications */}
+        <section className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="overflow-hidden rounded-card border border-line bg-surface">
+            <div className="flex items-center justify-between border-b border-line px-5 py-4">
+              <div className="flex items-center gap-2.5">
+                <Wallet className="size-4 text-brand-strong" aria-hidden="true" />
+                <h2 className="text-body font-bold text-fg">Withdrawal queue</h2>
+              </div>
+              <span className="text-caption font-semibold tabular-nums text-muted-fg">
+                {withdrawals.length} pending
+              </span>
+            </div>
+            <div className="max-h-96 divide-y divide-line overflow-y-auto">
+              {withdrawals.length === 0 ? (
+                <p className="px-5 py-10 text-center text-label text-muted-fg">
+                  No pending withdrawal requests.
+                </p>
+              ) : (
+                withdrawals.map((req) => (
+                  <div
+                    key={req.id}
+                    className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-surface-raised/60"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-label font-bold text-fg">
+                        {req.creatorName || "Creator"}
+                      </p>
+                      <p className="mt-0.5 text-body font-black tabular-nums text-fg">
+                        {formatCurrency(
+                          Number(req.amount || 0),
+                          req.payoutCurrency || req.currency || "RWF",
+                        )}
+                      </p>
+                      <p className="mt-0.5 truncate text-caption text-muted-fg">
+                        {req.method} · {req.accountNumber}
+                        {req.rail ? ` · ${String(req.rail).replace(/_/g, " ")}` : ""}
+                      </p>
+                      {Array.isArray(req.sourceDebits) && req.sourceDebits.length > 0 && (
+                        <p className="mt-1 text-caption tabular-nums text-muted-fg">
+                          Sources:{" "}
+                          {req.sourceDebits
+                            .map(
+                              (s: any) =>
+                                `${Number(s.amountMajor || 0).toLocaleString()} ${s.currency}`,
+                            )
+                            .join(", ")}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() =>
+                          setModal({
+                            type: "approve",
+                            target: req,
+                            category: "withdrawal",
+                          })
+                        }
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() =>
+                          setModal({
+                            type: "reject",
+                            target: req,
+                            category: "withdrawal",
+                          })
+                        }
+                      >
+                        Reject
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-card border border-line bg-surface">
+            <div className="flex items-center justify-between border-b border-line px-5 py-4">
+              <div className="flex items-center gap-2.5">
+                <ShieldAlert className="size-4 text-info" aria-hidden="true" />
+                <h2 className="text-body font-bold text-fg">Verification queue</h2>
+              </div>
+              <span className="text-caption font-semibold tabular-nums text-muted-fg">
+                {verifications.length} pending
+              </span>
+            </div>
+            <div className="max-h-96 divide-y divide-line overflow-y-auto">
+              {verifications.length === 0 ? (
+                <p className="px-5 py-10 text-center text-label text-muted-fg">
+                  No pending verification requests.
+                </p>
+              ) : (
+                verifications.map((creator) => (
+                  <div
+                    key={creator.id}
+                    className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-surface-raised/60"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Avatar
+                        src={creator.profilePicture}
+                        name={creator.name || creator.handle || "Creator"}
+                        size="md"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-label font-bold text-fg">
+                          {creator.name || "Creator"}
+                        </p>
+                        <p className="truncate text-caption text-muted-fg">
+                          @{creator.handle}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() =>
+                          setModal({
+                            type: "approve",
+                            target: creator,
+                            category: "verification",
+                          })
+                        }
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() =>
+                          setModal({
+                            type: "reject",
+                            target: creator,
+                            category: "verification",
+                          })
+                        }
+                      >
+                        Reject
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* Financial & Growth Reporting */}
+        <section className="mb-8 rounded-card border border-line bg-surface p-5 sm:p-6">
+          <div className="mb-6 flex flex-col gap-4 border-b border-line pb-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-body font-bold text-fg">
+                Revenue &amp; transaction breakdown ({activeCurrency})
+              </h2>
+              <p className="text-caption text-muted-fg">
+                Isolated per currency to prevent multi-currency distortion.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1 rounded-control bg-surface-raised p-1">
+                {availableCurrencies.map((code) => (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => setSelectedCurrency(code)}
+                    className={cn(
+                      "rounded px-2.5 py-1 text-caption font-semibold transition-colors",
+                      activeCurrency === code
+                        ? "bg-surface text-fg shadow-sm"
+                        : "text-muted-fg hover:text-fg",
+                    )}
+                  >
+                    {code}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-1 rounded-control bg-surface-raised p-1">
+                {(
+                  [
+                    { key: "day", label: "7D" },
+                    { key: "week", label: "Weekly" },
+                    { key: "month", label: "Monthly" },
+                    { key: "annual", label: "Annual" },
+                  ] as const
+                ).map((filter) => (
+                  <button
+                    key={filter.key}
+                    type="button"
+                    onClick={() => setTimeframeFilter(filter.key)}
+                    className={cn(
+                      "rounded px-2.5 py-1 text-caption font-semibold transition-colors",
+                      timeframeFilter === filter.key
+                        ? "bg-surface text-fg shadow-sm"
+                        : "text-muted-fg hover:text-fg",
+                    )}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+            {/* Platform income vs payouts chart */}
+            <div className="lg:col-span-5">
+              <p className="mb-3 text-caption font-semibold text-muted-fg">
+                Platform fee vs Creator payouts ({activeCurrency})
+              </p>
+              <div className="overflow-x-auto pb-2">
+                <div className="flex h-44 min-w-max items-end justify-between gap-2">
+                  {monthlyData.map((data) => {
+                    const maxValue = Math.max(
+                      ...monthlyData.map((d) => Math.max(d.income, d.payouts)),
+                      1,
+                    );
+                    const incomeHeight = (data.income / maxValue) * 100;
+                    const payoutHeight = (data.payouts / maxValue) * 100;
+                    return (
+                      <div
+                        key={data.label}
+                        className="flex min-w-10 flex-1 flex-col items-center gap-1.5"
+                      >
+                        <div className="flex h-36 w-full items-end justify-center gap-1">
+                          <div
+                            className="w-4 rounded-t bg-success"
+                            style={{ height: `${Math.max(incomeHeight, 3)}%` }}
+                            title={`Income: ${formatCurrency(data.income, activeCurrency)}`}
+                          />
+                          <div
+                            className="w-4 rounded-t bg-brand-strong"
+                            style={{ height: `${Math.max(payoutHeight, 3)}%` }}
+                            title={`Payouts: ${formatCurrency(data.payouts, activeCurrency)}`}
+                          />
+                        </div>
+                        <span className="text-caption tabular-nums text-muted-fg">
+                          {data.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="mt-3 flex items-center gap-5 text-caption text-muted-fg">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="size-2.5 rounded-sm bg-success" aria-hidden="true" />
+                  Platform income
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="size-2.5 rounded-sm bg-brand-strong" aria-hidden="true" />
+                  Payouts
+                </span>
+              </div>
+            </div>
+
+            {/* Transaction table */}
+            <div className="overflow-x-auto lg:col-span-7">
+              <table className="w-full text-label">
+                <thead>
+                  <tr className="border-b border-line text-caption font-semibold text-muted-fg">
+                    <th className="py-2.5 pr-4 text-left">Type</th>
+                    <th className="px-3 py-2.5 text-right text-success">Successful</th>
+                    <th className="px-3 py-2.5 text-right text-warning">Pending</th>
+                    <th className="px-3 py-2.5 text-right text-danger">Failed</th>
+                    <th className="py-2.5 pl-3 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {(
+                    [
+                      { key: "support", label: "Support" },
+                      { key: "community", label: "Memberships" },
+                      { key: "store", label: "Store" },
+                      { key: "booking", label: "Bookings" },
+                      { key: "gathering", label: "Gatherings" },
+                    ] as const
+                  ).map((row) => {
+                    const data = txBreakdown[row.key];
+                    const total = data.successful + data.failed + data.pending;
+                    return (
+                      <tr key={row.key} className="hover:bg-surface-raised/50">
+                        <td className="py-3 pr-4 font-semibold text-fg">
+                          {row.label}
+                          <span className="ml-1.5 text-caption font-normal tabular-nums text-muted-fg">
+                            ({data.count})
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 text-right font-semibold tabular-nums text-success">
+                          {formatCurrency(data.successful, activeCurrency)}
+                        </td>
+                        <td className="px-3 py-3 text-right font-semibold tabular-nums text-warning">
+                          {formatCurrency(data.pending, activeCurrency)}
+                        </td>
+                        <td className="px-3 py-3 text-right font-semibold tabular-nums text-danger">
+                          {formatCurrency(data.failed, activeCurrency)}
+                        </td>
+                        <td className="py-3 pl-3 text-right font-bold tabular-nums text-fg">
+                          {formatCurrency(total, activeCurrency)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-line font-bold">
+                    <td className="py-3 pr-4 text-fg">All types</td>
+                    <td className="px-3 py-3 text-right tabular-nums text-success">
+                      {formatCurrency(
+                        Object.values(txBreakdown).reduce((s, r) => s + r.successful, 0),
+                        activeCurrency,
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-right tabular-nums text-warning">
+                      {formatCurrency(
+                        Object.values(txBreakdown).reduce((s, r) => s + r.pending, 0),
+                        activeCurrency,
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-right tabular-nums text-danger">
+                      {formatCurrency(
+                        Object.values(txBreakdown).reduce((s, r) => s + r.failed, 0),
+                        activeCurrency,
+                      )}
+                    </td>
+                    <td className="py-3 pl-3 text-right tabular-nums text-fg">
+                      {formatCurrency(
+                        Object.values(txBreakdown).reduce(
+                          (s, r) => s + r.successful + r.pending + r.failed,
+                          0,
+                        ),
+                        activeCurrency,
+                      )}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        {/* User Growth & FX Health */}
+        <section className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <div className="rounded-card border border-line bg-surface p-5 sm:p-6 lg:col-span-7">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-body font-bold text-fg">Account registrations</h2>
+                <p className="text-caption text-muted-fg">Current vs prior period</p>
+              </div>
+              <div className="flex items-center gap-1 rounded-control bg-surface-raised p-1">
+                {(
+                  [
+                    { key: "7d", label: "7D" },
+                    { key: "weekly", label: "Weekly" },
+                    { key: "monthly", label: "Monthly" },
+                    { key: "annual", label: "Annual" },
+                  ] as const
+                ).map((filter) => (
+                  <button
+                    key={filter.key}
+                    type="button"
+                    onClick={() => setGrowthFilter(filter.key)}
+                    className={cn(
+                      "rounded px-2.5 py-1 text-caption font-semibold transition-colors",
+                      growthFilter === filter.key
+                        ? "bg-surface text-fg shadow-sm"
+                        : "text-muted-fg hover:text-fg",
+                    )}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="overflow-x-auto pb-2">
-              <div className="flex items-end justify-between gap-1 h-48 min-w-max">
+              <div className="flex h-44 min-w-max items-end justify-between gap-2">
                 {userGrowthData.labels.map((label, index) => {
                   const maxValue = Math.max(
                     ...userGrowthData.current,
@@ -1128,22 +1297,22 @@ export default function AdminDashboard() {
                   const prevHeight = (userGrowthData.previous[index] / maxValue) * 100;
                   return (
                     <div
-                      key={index}
-                      className="flex flex-col items-center flex-1 gap-1 min-w-[40px]"
+                      key={label + index}
+                      className="flex min-w-10 flex-1 flex-col items-center gap-1"
                     >
-                      <div className="w-full flex items-end justify-center gap-0.5 h-36">
+                      <div className="flex h-36 w-full items-end justify-center gap-1">
                         <div
-                          className="w-3 sm:w-4 md:w-5 lg:w-6 bg-blue-500 rounded-t"
-                          style={{ height: `${Math.max(currentHeight, 2)}%` }}
+                          className="w-3.5 rounded-t bg-info"
+                          style={{ height: `${Math.max(currentHeight, 3)}%` }}
                           title={`Current: ${userGrowthData.current[index]}`}
                         />
                         <div
-                          className="w-3 sm:w-4 md:w-5 lg:w-6 bg-muted-foreground rounded-t"
-                          style={{ height: `${Math.max(prevHeight, 2)}%` }}
+                          className="w-3.5 rounded-t bg-surface-raised"
+                          style={{ height: `${Math.max(prevHeight, 3)}%` }}
                           title={`Previous: ${userGrowthData.previous[index]}`}
                         />
                       </div>
-                      <span className="text-[10px] font-bold text-muted-foreground truncate max-w-[40px]">
+                      <span className="max-w-12 truncate text-caption tabular-nums text-muted-fg">
                         {label}
                       </span>
                     </div>
@@ -1151,432 +1320,94 @@ export default function AdminDashboard() {
                 })}
               </div>
             </div>
-            <div className="flex items-center gap-4 mt-4 justify-center text-xs">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-blue-500 rounded" />
-                <span className="text-muted-foreground">
-                  {growthFilter === "7d" ? "This Week" : growthFilter === "weekly" ? "This Week" : growthFilter === "monthly" ? "This Year" : growthFilter === "annual" ? "Year" : "Year"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-muted-foreground rounded" />
-                <span className="text-muted-foreground">
-                  {growthFilter === "7d" ? "Last Week" : growthFilter === "weekly" ? "Last Week" : growthFilter === "monthly" ? "Last Year" : growthFilter === "annual" ? "Last Year" : "-"}
-                </span>
-              </div>
-            </div>
-          </div>
 
-          <div className="bg-card rounded-xl border border-border p-6">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-4">
-              Platform Income vs Payouts
-            </h3>
-            <div className="flex flex-wrap gap-2 mb-6">
-              {[
-                { key: "day", label: "Daily" },
-                { key: "week", label: "Weekly" },
-                { key: "month", label: "Monthly" },
-                { key: "annual", label: "Annual" },
-              ].map((filter) => (
-                <button
-                  key={filter.key}
-                  onClick={() => setTransactionFilter(filter.key as any)}
-                  className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${
-                    transactionFilter === filter.key
-                      ? "bg-foreground text-background"
-                      : "bg-muted text-muted-foreground hover:bg-border-strong"
-                  }`}
-                >
-                  {filter.label}
-                </button>
-              ))}
-            </div>
-            <div className="overflow-x-auto pb-2">
-              <div className="flex items-end justify-between gap-1 sm:gap-2 h-48 min-w-max">
-                {monthlyData.map((data, index) => {
-                  const maxValue = Math.max(
-                    ...monthlyData.map((d) => Math.max(d.income, d.payouts)),
-                    1,
-                  );
-                  const incomeHeight = (data.income / maxValue) * 100;
-                  const payoutHeight = (data.payouts / maxValue) * 100;
-                  return (
-                    <div
-                      key={index}
-                      className="flex flex-col items-center flex-1 gap-1 min-w-[50px]"
-                    >
-                      <div className="w-full flex items-end justify-center gap-0.5 sm:gap-1 h-36">
-                        <div
-                          className="w-4 sm:w-5 md:w-6 lg:w-8 bg-emerald-500 rounded-t"
-                          style={{ height: `${Math.max(incomeHeight, 2)}%` }}
-                          title={`Income: ${data.income.toLocaleString()} (across currencies)`}
-                        />
-                        <div
-                          className="w-4 sm:w-5 md:w-6 lg:w-8 bg-orange-500 rounded-t"
-                          style={{ height: `${Math.max(payoutHeight, 2)}%` }}
-                          title={`Payouts: ${data.payouts.toLocaleString()} (across currencies)`}
-                        />
-                      </div>
-                      <span className="text-[10px] sm:text-xs font-bold text-muted-foreground">
-                        {data.month}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="flex items-center gap-4 sm:gap-6 mt-4 justify-center flex-wrap">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-emerald-500 rounded" />
-                <span className="text-xs text-muted-foreground">Income</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-orange-500 rounded" />
-                <span className="text-xs text-muted-foreground">Payouts</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-card rounded-xl border border-border p-6">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-6">
-              Transaction Overview
-            </h3>
-            <div className="space-y-6">
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="font-medium">Supports</span>
-                  <span className="font-bold">{stats.totalSupports}</span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-3">
-                  <div
-                    className="bg-pink-500 h-3 rounded-full"
-                    style={{
-                      width: `${Math.min((stats.totalSupports / Math.max(stats.totalSupports + stats.totalOrders, 1)) * 100, 100)}%`,
-                    }}
-                  />
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="font-medium">Products</span>
-                  <span className="font-bold">{stats.totalOrders}</span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-3">
-                  <div
-                    className="bg-cyan-500 h-3 rounded-full"
-                    style={{
-                      width: `${Math.min((stats.totalOrders / Math.max(stats.totalSupports + stats.totalOrders, 1)) * 100, 100)}%`,
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* TRANSACTION BREAKDOWN BY TYPE & STATUS */}
-        <div className="bg-card rounded-xl border border-border p-6 mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-              Transaction Breakdown
-              <span className="ml-2 text-[10px] font-medium normal-case tracking-normal text-muted-foreground">
-                amounts mixed across currencies
+            <div className="mt-3 flex items-center gap-5 text-caption text-muted-fg">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="size-2.5 rounded-sm bg-info" aria-hidden="true" />
+                Current period
               </span>
-            </h3>
-            <div className="flex gap-2">
-              {[
-                { key: "day", label: "Day" },
-                { key: "week", label: "Week" },
-                { key: "month", label: "Month" },
-                { key: "annual", label: "Annual" },
-              ].map((filter) => (
-                <button
-                  key={filter.key}
-                  onClick={() => setTransactionFilter(filter.key as any)}
-                  className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg transition-all ${
-                    transactionFilter === filter.key
-                      ? "bg-foreground text-background"
-                      : "bg-muted text-muted-foreground hover:bg-border-strong"
-                  }`}
-                >
-                  {filter.label}
-                </button>
-              ))}
+              <span className="inline-flex items-center gap-1.5">
+                <span className="size-2.5 rounded-sm bg-surface-raised border border-line" aria-hidden="true" />
+                Prior period
+              </span>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-3 pr-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Type</th>
-                  <th className="text-right py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-emerald-600">Successful</th>
-                  <th className="text-right py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-red-500">Failed</th>
-                  <th className="text-right py-3 px-4 text-[10px] font-bold uppercase tracking-widest text-amber-500">Pending</th>
-                  <th className="text-right py-3 pl-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {([
-                  { key: "support", label: "Support", icon: "💜" },
-                  { key: "store", label: "Store", icon: "🛍" },
-                  { key: "booking", label: "Booking", icon: "📅" },
-                  { key: "gathering", label: "Gathering", icon: "🎪" },
-                ] as const).map((type) => {
-                  const data = txBreakdown[type.key];
-                  const total = data.successful + data.failed + data.pending;
-                  return (
-                    <tr key={type.key} className="border-b border-border/50 last:border-0">
-                      <td className="py-3 pr-4 font-medium text-foreground">{type.label}</td>
-                      <td className="py-3 px-4 text-right font-bold text-emerald-600">{data.successful.toLocaleString()}</td>
-                      <td className="py-3 px-4 text-right font-bold text-red-500">{data.failed.toLocaleString()}</td>
-                      <td className="py-3 px-4 text-right font-bold text-amber-500">{data.pending.toLocaleString()}</td>
-                      <td className="py-3 pl-4 text-right font-bold text-foreground">{total.toLocaleString()}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot>
-                <tr className="border-t-2 border-border">
-                  <td className="py-3 pr-4 font-bold text-foreground">All Types</td>
-                  <td className="py-3 px-4 text-right font-black text-emerald-600">
-                    {Object.values(txBreakdown).reduce((s, t) => s + t.successful, 0).toLocaleString()}
-                  </td>
-                  <td className="py-3 px-4 text-right font-black text-red-500">
-                    {Object.values(txBreakdown).reduce((s, t) => s + t.failed, 0).toLocaleString()}
-                  </td>
-                  <td className="py-3 px-4 text-right font-black text-amber-500">
-                    {Object.values(txBreakdown).reduce((s, t) => s + t.pending, 0).toLocaleString()}
-                  </td>
-                  <td className="py-3 pl-4 text-right font-black text-foreground">
-                    {Object.values(txBreakdown).reduce((s, t) => s + t.successful + t.failed + t.pending, 0).toLocaleString()}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-
-        {/* FX HEALTH & RECONCILIATION */}
-        <div className="bg-card rounded-xl border border-border p-6 mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
-            <div>
-              <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                FX Health & Reconciliation
-              </h3>
-              <p className="text-xs text-muted-foreground mt-1">
-                Cached snapshot status and pending withdrawal exposure by payout currency.
-              </p>
-            </div>
-            <span
-              className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider w-fit ${
-                fxHealth?.ok
-                  ? "bg-emerald-50 text-emerald-700"
-                  : fxHealth
-                    ? "bg-red-50 text-red-600"
-                    : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {fxHealth ? String(fxHealth.status || "unknown") : "loading"}
-            </span>
-          </div>
-          {!fxHealth ? (
-            <p className="text-sm text-muted-foreground">Loading FX health...</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2 text-sm">
-                <p><span className="font-semibold">Source:</span> {fxHealth.source || "—"}</p>
-                <p><span className="font-semibold">Base:</span> {fxHealth.base || "—"}</p>
-                <p><span className="font-semibold">Fetched:</span> {fxHealth.fetchedAt ? new Date(fxHealth.fetchedAt).toLocaleString() : "—"}{fxHealth.ageMinutes != null ? ` (${fxHealth.ageMinutes}m ago)` : ""}</p>
-                <p><span className="font-semibold">Expires:</span> {fxHealth.expiresAt ? new Date(fxHealth.expiresAt).toLocaleString() : "—"}{fxHealth.expiresInMinutes != null ? ` (in ${fxHealth.expiresInMinutes}m)` : ""}</p>
-                <p><span className="font-semibold">Rates:</span> {fxHealth.rateCount ?? "—"} {Array.isArray(fxHealth.currencies) && fxHealth.currencies.length > 0 ? `(${fxHealth.currencies.join(", ")})` : ""}</p>
-                {fxHealth.message && (
-                  <p className={fxHealth.ok ? "text-muted-foreground" : "text-red-600 font-medium"}>{fxHealth.message}</p>
+          <div className="rounded-card border border-line bg-surface p-5 sm:p-6 lg:col-span-5">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-body font-bold text-fg">FX health &amp; exposure</h2>
+                <p className="text-caption text-muted-fg">
+                  Exchange snapshot &amp; pending withdrawal exposure
+                </p>
+              </div>
+              <span
+                className={cn(
+                  "text-caption font-semibold capitalize",
+                  fxHealth?.ok ? "text-success" : "text-danger",
                 )}
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Pending withdrawals (by payout currency)</p>
-                {fxHealth.pendingWithdrawals?.byCurrency && Object.keys(fxHealth.pendingWithdrawals.byCurrency).length > 0 ? (
-                  <div className="space-y-1 text-sm">
-                    {Object.entries(fxHealth.pendingWithdrawals.byCurrency as Record<string, {count:number; amount:number}>).map(([currency, v]) => (
-                      <p key={currency}>
-                        <span className="font-semibold">{currency}:</span> {Number(v.amount || 0).toLocaleString()} ({v.count} request{v.count === 1 ? "" : "s"})
-                      </p>
-                    ))}
-                    <p className="text-xs text-muted-foreground pt-1">Total pending requests: {fxHealth.pendingWithdrawals.total ?? 0}</p>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No pending withdrawal requests.</p>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* PENDING REQUESTS SECTION */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <section className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-border bg-muted/50 flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <Wallet className="text-orange-600" size={20} />
-                <h2 className="font-bold uppercase tracking-tight">
-                  Withdrawal Requests
-                </h2>
-              </div>
-              <span className="bg-orange-100 text-orange-700 text-xs px-2 py-1 rounded-full font-bold">
-                {withdrawals.length}
+              >
+                {fxHealth ? String(fxHealth.status || "unknown") : "Loading"}
               </span>
             </div>
-            <div className="p-2 max-h-[400px] overflow-y-auto">
-              {withdrawals.length === 0 ? (
-                <div className="p-10 text-center text-muted-foreground text-sm">
-                  No pending withdrawals.
-                </div>
-              ) : (
-                withdrawals.map((req) => (
-                  <div
-                    key={req.id}
-                    className="flex items-center justify-between p-4 hover:bg-muted rounded-2xl transition-all"
-                  >
-                    <div>
-                      <p className="font-bold text-sm">
-                        {req.creatorName || "Creator"}
-                      </p>
-                      <p className="text-lg font-black text-foreground">
-                        {Number(req.amount || 0).toLocaleString()} {req.payoutCurrency || req.currency || ""}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
-                        {req.method} • {req.accountNumber}
-                        {req.rail ? ` • ${String(req.rail).replace("_", " ")}` : ""}
-                      </p>
-                      {Array.isArray(req.sourceDebits) && req.sourceDebits.length > 0 && (
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                          Sources: {req.sourceDebits.map((s: any) => `${Number(s.amountMajor || 0).toLocaleString()} ${s.currency}${s.currency !== (req.payoutCurrency || req.currency) ? `→${Number(s.payoutAmountMajor || 0).toLocaleString()} ${req.payoutCurrency || req.currency}` : ""}`).join(", ")}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() =>
-                          setModal({
-                            show: true,
-                            type: "approve",
-                            target: req,
-                            category: "withdrawal",
-                          })
-                        }
-                        className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors"
-                        title="Approve"
-                      >
-                        <CheckCircle2 size={24} />
-                      </button>
-                      <button
-                        onClick={() =>
-                          setModal({
-                            show: true,
-                            type: "reject",
-                            target: req,
-                            category: "withdrawal",
-                          })
-                        }
-                        className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
-                        title="Reject"
-                      >
-                        <XCircle size={24} />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
 
-          <section className="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-border bg-muted/50 flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <ShieldAlert className="text-blue-600" size={20} />
-                <h2 className="font-bold uppercase tracking-tight">
-                  Verification Requests
-                </h2>
-              </div>
-              <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full font-bold">
-                {verifications.length}
-              </span>
-            </div>
-            <div className="p-2 max-h-[400px] overflow-y-auto">
-              {verifications.length === 0 ? (
-                <div className="p-10 text-center text-muted-foreground text-sm">
-                  No pending verifications.
+            {!fxHealth ? (
+              <p className="text-label text-muted-fg">Loading FX snapshot…</p>
+            ) : (
+              <dl className="divide-y divide-line text-label">
+                <div className="flex justify-between gap-4 py-2">
+                  <dt className="text-muted-fg">Source</dt>
+                  <dd className="font-medium text-fg">{fxHealth.source || "—"}</dd>
                 </div>
-              ) : (
-                verifications.map((creator) => (
-                  <div
-                    key={creator.id}
-                    className="flex items-center justify-between p-4 hover:bg-muted rounded-2xl transition-all"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-muted overflow-hidden">
-                        <img
-                          src={creator.profilePicture || ""}
-                          alt={creator.name || "Creator"}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div>
-                        <p className="font-bold text-sm">{creator.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          @{creator.handle}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() =>
-                          setModal({
-                            show: true,
-                            type: "approve",
-                            target: creator,
-                            category: "verification",
-                          })
-                        }
-                        className="bg-foreground text-background text-[10px] font-black uppercase px-4 py-2 rounded-lg hover:bg-emerald-600 transition-all"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() =>
-                          setModal({
-                            show: true,
-                            type: "reject",
-                            target: creator,
-                            category: "verification",
-                          })
-                        }
-                        className="text-red-500 text-[10px] font-black uppercase px-4 py-2 rounded-lg hover:bg-red-50 transition-all"
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-        </div>
+                <div className="flex justify-between gap-4 py-2">
+                  <dt className="text-muted-fg">Base / Rates</dt>
+                  <dd className="font-medium tabular-nums text-fg">
+                    {fxHealth.base || "—"} · {fxHealth.rateCount ?? 0} pairs
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-4 py-2">
+                  <dt className="text-muted-fg">Updated</dt>
+                  <dd className="text-right tabular-nums text-fg">
+                    {fxHealth.fetchedAt
+                      ? new Date(fxHealth.fetchedAt).toLocaleString()
+                      : "—"}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-4 py-2">
+                  <dt className="text-muted-fg">Pending payouts</dt>
+                  <dd className="text-right font-semibold tabular-nums text-fg">
+                    {fxHealth.pendingWithdrawals?.byCurrency &&
+                    Object.keys(fxHealth.pendingWithdrawals.byCurrency).length > 0
+                      ? Object.entries(
+                          fxHealth.pendingWithdrawals.byCurrency as Record<
+                            string,
+                            { count: number; amount: number }
+                          >,
+                        )
+                          .map(
+                            ([currency, v]) =>
+                              `${formatCurrency(Number(v.amount || 0), currency)} (${v.count})`,
+                          )
+                          .join(" · ")
+                      : "None"}
+                  </dd>
+                </div>
+              </dl>
+            )}
+          </div>
+        </section>
 
-        {/* Stats & Activity Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <section className="bg-card p-8 rounded-3xl border border-border shadow-sm">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-foreground rounded-lg text-background">
-                <BarChart3 size={20} />
-              </div>
-              <h2 className="text-xl font-bold uppercase">Top Earners</h2>
+        {/* Rankings & Recent Audit Trail */}
+        <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="rounded-card border border-line bg-surface p-5 sm:p-6">
+            <div className="mb-4 flex items-center gap-2.5">
+              <BarChart3 className="size-4 text-fg" aria-hidden="true" />
+              <h2 className="text-body font-bold text-fg">Top earners</h2>
             </div>
-            <div className="space-y-6">
+            <div className="space-y-5">
               {topEarnerGroups.map((group) => (
                 <div key={group.currency} className="space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  <p className="text-caption font-semibold text-muted-fg">
                     {group.currency}
                   </p>
                   {group.earners.map((creator, i) => {
@@ -1596,135 +1427,137 @@ export default function AdminDashboard() {
                 </div>
               ))}
               {topEarnerGroups.length === 0 && (
-                <p className="text-muted-foreground text-sm text-center py-4">
-                  No data yet
+                <p className="py-6 text-center text-label text-muted-fg">
+                  No creator earnings recorded yet.
                 </p>
               )}
             </div>
-          </section>
+          </div>
 
-          <section className="bg-card p-8 rounded-3xl border border-border shadow-sm">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-orange-600 rounded-lg text-white">
-                <Eye size={20} />
-              </div>
-              <h2 className="text-xl font-bold uppercase">
-                Most Profile Views
-              </h2>
+          <div className="rounded-card border border-line bg-surface p-5 sm:p-6">
+            <div className="mb-4 flex items-center gap-2.5">
+              <Eye className="size-4 text-brand-strong" aria-hidden="true" />
+              <h2 className="text-body font-bold text-fg">Most viewed creators</h2>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {topViewed.map((creator, i) => (
                 <RankRow
                   key={creator.id}
                   rank={i + 1}
                   name={creator.name || creator.id}
-                  subText={`${(creator.views || 0).toLocaleString()} views`}
+                  subText={`${Number(creator.views || 0).toLocaleString()} views`}
                 />
               ))}
               {topViewed.length === 0 && (
-                <p className="text-muted-foreground text-sm text-center py-4">
-                  No data yet
+                <p className="py-6 text-center text-label text-muted-fg">
+                  No view data yet.
                 </p>
               )}
             </div>
-          </section>
+          </div>
 
-          <section className="bg-card p-8 rounded-3xl border border-border shadow-sm">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 bg-green-600 rounded-lg text-white">
-                <Activity size={20} />
+          <div className="rounded-card border border-line bg-surface p-5 sm:p-6">
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <Activity className="size-4 text-success" aria-hidden="true" />
+                <h2 className="text-body font-bold text-fg">Recent activity</h2>
               </div>
-              <h2 className="text-xl font-bold uppercase">Recent Activity</h2>
+              <Link
+                href="/admin/logs"
+                className="text-caption font-semibold text-brand-strong hover:underline"
+              >
+                All logs
+              </Link>
             </div>
-            <div className="space-y-3 max-h-[300px] overflow-y-auto">
+            <div className="max-h-72 space-y-3 overflow-y-auto">
               {recentActivities.slice(0, 8).map((activity) => (
-                <div key={activity.id} className="flex items-start gap-3 p-2">
-                  <div
-                    className={`w-2 h-2 rounded-full mt-1.5 ${
-                      activity.level === "success"
-                        ? "bg-green-500"
-                        : activity.level === "error"
-                          ? "bg-red-500"
-                          : activity.level === "warning"
-                            ? "bg-amber-500"
-                            : "bg-blue-500"
-                    }`}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm truncate">{activity.message}</p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {activity.createdAt?.toDate?.()?.toLocaleTimeString() ||
-                        "Now"}
-                    </p>
-                  </div>
+                <div key={activity.id} className="border-b border-line pb-2.5 last:border-0 last:pb-0">
+                  <p className="truncate text-label text-fg">{activity.message}</p>
+                  <p className="mt-0.5 text-caption tabular-nums text-muted-fg">
+                    {activity.category ? `${activity.category} · ` : ""}
+                    {toDateSafe(activity.createdAt)?.toLocaleTimeString() || "Now"}
+                  </p>
                 </div>
               ))}
               {recentActivities.length === 0 && (
-                <p className="text-muted-foreground text-sm text-center py-4">
-                  No recent activity
+                <p className="py-6 text-center text-label text-muted-fg">
+                  No recent activity.
                 </p>
               )}
             </div>
-          </section>
-        </div>
+          </div>
+        </section>
       </div>
 
-      {modal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-foreground/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-card w-full max-w-md rounded-3xl p-8 shadow-2xl scale-in-center">
-            <div
-              className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 ${modal.type === "approve" ? "bg-emerald-100 text-emerald-600" : "bg-red-100 text-red-600"}`}
-            >
-              {modal.type === "approve" ? (
-                <CheckCircle2 size={32} />
-              ) : (
-                <XCircle size={32} />
-              )}
-            </div>
-            <h3 className="text-2xl font-black uppercase tracking-tight mb-2">
-              Confirm Action?
-            </h3>
-            <p className="text-muted-foreground mb-8 font-medium">
-              Are you sure you want to{" "}
-              <span className="font-bold text-foreground">{modal.type}</span>{" "}
-              this {modal.category} request for{" "}
-              <span className="font-bold text-foreground">
+      <Dialog
+        open={!!modal}
+        onClose={() => {
+          if (!processing) {
+            setModal(null);
+            setRejectionReason("");
+          }
+        }}
+        title={
+          modal
+            ? `${modal.type === "approve" ? "Approve" : "Reject"} ${modal.category}`
+            : "Confirm action"
+        }
+        description={
+          modal
+            ? `${modal.target.name || modal.target.creatorName || "User"}`
+            : undefined
+        }
+        size="sm"
+        footer={
+          modal ? (
+            <>
+              <Button
+                variant="secondary"
+                disabled={processing}
+                onClick={() => {
+                  setModal(null);
+                  setRejectionReason("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant={modal.type === "approve" ? "primary" : "danger"}
+                loading={processing}
+                onClick={() => void handleAction()}
+              >
+                {modal.type === "approve" ? "Approve" : "Reject"}
+              </Button>
+            </>
+          ) : undefined
+        }
+      >
+        {modal && (
+          <div className="space-y-4">
+            <p className="text-label text-muted-fg">
+              Confirm whether you want to {modal.type} this {modal.category} request for{" "}
+              <span className="font-semibold text-fg">
                 {modal.target.name || modal.target.creatorName || "this user"}
               </span>
-              ? This action cannot be undone.
+              .
             </p>
             {modal.type === "reject" && (
-              <div className="mb-6 animate-in slide-in-from-top-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 block">
-                  Rejection Reason (Sent to Creator)
+              <div>
+                <label className="mb-1.5 block text-caption font-semibold text-fg">
+                  Reason (sent to creator)
                 </label>
                 <textarea
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}
-                  placeholder="e.g. ID document is too blurry to read."
-                  className="w-full bg-muted border-2 border-border rounded-2xl p-4 text-sm focus:border-red-500 outline-none transition-all h-28 resize-none"
+                  placeholder="e.g. Identity document image is unreadable."
+                  rows={3}
+                  className="w-full rounded-control border border-line bg-surface p-3 text-label text-fg outline-none focus:border-focus"
                 />
               </div>
             )}
-            <div className="flex gap-3">
-              <button
-                onClick={() => setModal(null)}
-                disabled={processing}
-                className="flex-1 px-6 py-4 rounded-xl font-bold text-muted-foreground hover:bg-muted transition-all uppercase text-xs tracking-widest"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAction}
-                disabled={processing}
-                className={`flex-1 px-6 py-4 rounded-xl font-black text-white transition-all uppercase text-xs tracking-widest shadow-lg ${modal.type === "approve" ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200" : "bg-red-600 hover:bg-red-700 shadow-red-200"}`}
-              >
-                {processing ? "Processing..." : `Yes, ${modal.type}`}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
+      </Dialog>
     </div>
   );
 }

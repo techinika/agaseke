@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Crown,
   Eye,
   FileText,
   Heart,
@@ -43,8 +44,13 @@ import { db } from "@/db/firebase";
 import { useAuth } from "@/auth/AuthContext";
 import { baseUrl } from "@/lib/baseUrl";
 import type { MoreCreatorItem, ReaderCreator, ReaderPost } from "@/lib/articleReader";
+import {
+  formatVisibilityLabel,
+  resolvePostVisibility,
+} from "@/lib/contentAccess";
 import { usePostMediaSrc } from "@/lib/usePostMediaSrc";
-import { SupportModal } from "@/components/parts/public/SupportModal";
+import { SupportSheet } from "@/features/support";
+import { CommunityJoinSheet, type CommunityTierView } from "@/features/community";
 import { MediaAsset } from "@/components/parts/public/MediaAsset";
 import RichContentRenderer from "@/components/ui/RichContentRenderer";
 import { Avatar } from "@/components/ui/Avatar";
@@ -136,13 +142,14 @@ export default function PostDetailPage({
   backHref,
   backLabel,
 }: PostDetailPageProps) {
-  const { user: currentUser, profile } = useAuth();
+  const { user: currentUser, profile, isLoggedIn } = useAuth();
   const [loading, setLoading] = useState(!initialPost);
   const [post, setPost] = useState<any>(initialPost);
   const [creatorData, setCreatorData] = useState<any>(initialCreator);
   const [access, setAccess] = useState<"checking" | "locked" | "unlocked">(
     initialPost && !initialPost.isPrivate ? "unlocked" : "checking",
   );
+  const [accessRefreshKey, setAccessRefreshKey] = useState(0);
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [likes, setLikes] = useState<Set<string>>(new Set());
   const [userLiked, setUserLiked] = useState(false);
@@ -158,43 +165,74 @@ export default function PostDetailPage({
   const [documentIndex, setDocumentIndex] = useState(0);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
   const [supportOpen, setSupportOpen] = useState(false);
+  const [joinOpen, setJoinOpen] = useState(false);
   const viewCounted = useRef(false);
 
   const { mediaSrc } = usePostMediaSrc(post?.id, !!post?.isPrivate);
 
   useEffect(() => {
-    if (initialPost && !initialPost.isPrivate && initialCreator) return;
-
     let cancelled = false;
     const load = async () => {
       try {
         let loadedPost: any = initialPost;
-        if (!loadedPost || loadedPost.isPrivate) {
-          const postSnap = await getDoc(doc(db, "creatorContent", postId));
-          if (postSnap.exists()) {
-            const data = postSnap.data() as any;
-            if (data.status !== "draft") {
-              loadedPost = { id: postSnap.id, ...data };
-              if (!cancelled) setPost(loadedPost);
-            }
-          }
-        }
+        const isInitialGated =
+          !loadedPost || resolvePostVisibility(loadedPost) !== "public";
 
-        if (!loadedPost) {
-          if (!cancelled) setLoading(false);
-          return;
+        if (isInitialGated) {
+          const headers: Record<string, string> = {};
+          if (currentUser) {
+            const token = await currentUser.getIdToken();
+            headers["Authorization"] = `Bearer ${token}`;
+          }
+          const res = await fetch(`/api/content/${encodeURIComponent(postId)}`, {
+            headers,
+            cache: "no-store",
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.unlocked && data.post) {
+              loadedPost = data.post;
+              if (!cancelled) {
+                setPost(loadedPost);
+                setAccess("unlocked");
+              }
+            }
+          } else if (res.status === 403) {
+            const errData = await res.json().catch(() => null);
+            if (!cancelled) {
+              if (errData && loadedPost) {
+                setPost((prev: any) => ({
+                  ...prev,
+                  visibility: errData.visibility || prev?.visibility,
+                  requiredTierIds:
+                    errData.requiredTierIds ?? prev?.requiredTierIds,
+                  requiredTierNames:
+                    errData.requiredTierNames ?? prev?.requiredTierNames,
+                }));
+              }
+              setAccess("locked");
+            }
+          } else if (res.status === 404 && !loadedPost) {
+            if (!cancelled) setLoading(false);
+            return;
+          }
+        } else {
+          if (!cancelled) setAccess("unlocked");
         }
 
         const handleToLookup =
-          username || loadedPost.creatorId || creatorData?.handle || "";
-        if (!creatorData && handleToLookup) {
+          username || loadedPost?.creatorId || creatorData?.handle || "";
+        const needsCreatorDetails =
+          !creatorData || !Array.isArray(creatorData.communityTiers);
+
+        if (handleToLookup && needsCreatorDetails) {
           const creatorSnap = await getDoc(doc(db, "creators", handleToLookup));
           if (creatorSnap.exists() && !cancelled) {
             setCreatorData({
               handle: creatorSnap.id,
               ...creatorSnap.data(),
             });
-          } else if (loadedPost.creatorUid) {
+          } else if (!creatorData && loadedPost?.creatorUid) {
             const profileSnap = await getDoc(
               doc(db, "profiles", loadedPost.creatorUid),
             );
@@ -211,7 +249,10 @@ export default function PostDetailPage({
         }
       } catch (e) {
         console.error("Failed to load post:", e);
-        toast.error("Failed to load post");
+        if (!initialPost) toast.error("Failed to load post");
+        if (initialPost && resolvePostVisibility(initialPost) !== "public" && !cancelled) {
+          setAccess("locked");
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -220,9 +261,8 @@ export default function PostDetailPage({
     return () => {
       cancelled = true;
     };
-    // Initial SSR hydration + client fallback on postId/username/user sign-in changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [postId, username, currentUser?.uid]);
+  }, [postId, username, currentUser?.uid, accessRefreshKey]);
 
   const creatorHandle =
     creatorData?.handle || username || post?.creatorId || "";
@@ -230,42 +270,6 @@ export default function PostDetailPage({
   const creatorPhoto =
     creatorData?.photoURL || creatorData?.profilePicture || null;
   const creatorUid = creatorData?.uid || post?.creatorUid || "";
-
-  useEffect(() => {
-    let cancelled = false;
-    const checkAccess = async () => {
-      if (!post) return;
-      const isOwner =
-        Boolean(creatorUid) &&
-        Boolean(currentUser?.uid) &&
-        creatorUid === currentUser?.uid;
-
-      if (!post.isPrivate || isOwner) {
-        if (!cancelled) setAccess("unlocked");
-        return;
-      }
-      if (!currentUser?.uid || !creatorHandle) {
-        if (!cancelled) setAccess("locked");
-        return;
-      }
-      try {
-        const supportRef = collection(db, "supportedCreators");
-        const q = query(
-          supportRef,
-          where("supporterId", "==", currentUser.uid),
-          where("creatorId", "==", creatorHandle),
-        );
-        const snap = await getDocs(q);
-        if (!cancelled) setAccess(!snap.empty ? "unlocked" : "locked");
-      } catch {
-        if (!cancelled) setAccess("locked");
-      }
-    };
-    void checkAccess();
-    return () => {
-      cancelled = true;
-    };
-  }, [post, creatorUid, creatorHandle, currentUser?.uid]);
 
   useEffect(() => {
     if (loading || !post?.id || viewCounted.current) return;
@@ -667,12 +671,15 @@ export default function PostDetailPage({
                   </span>
                 </>
               )}
-              {post.isPrivate && (
+              {resolvePostVisibility(post) !== "public" && (
                 <>
                   <span aria-hidden="true">·</span>
                   <span className="inline-flex items-center gap-1 text-warning">
                     <Lock className="size-3.5" aria-hidden="true" />
-                    Supporters only
+                    {formatVisibilityLabel(
+                      resolvePostVisibility(post),
+                      post.requiredTierNames,
+                    )}
                   </span>
                 </>
               )}
@@ -721,45 +728,89 @@ export default function PostDetailPage({
             </div>
 
             {!unlocked ? (
-              <div className="py-10 text-center">
-                <span className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-brand-soft text-brand-strong">
-                  <Lock className="size-6" aria-hidden="true" />
-                </span>
-                <h2 className="text-title font-bold text-fg">
-                  {currentUser
-                    ? `Supporters-only post by ${creatorName}`
-                    : "Sign in to view this post"}
-                </h2>
-                <p className="mx-auto mt-2 max-w-md text-body text-muted-fg">
-                  {currentUser
-                    ? `Support ${creatorName} on Agaseke to unlock this post and future supporter-only releases.`
-                    : `Log in to check access or support ${creatorName}.`}
-                </p>
-                {currentUser ? (
-                  <Button
-                    className="mt-6"
-                    size="lg"
-                    onClick={() => setSupportOpen(true)}
-                    leadingIcon={
-                      <Heart className="size-5 fill-current" aria-hidden="true" />
-                    }
-                  >
-                    Support {creatorName}
-                  </Button>
-                ) : (
-                  <Link
-                    href={loginHref}
-                    className={buttonClasses({
-                      variant: "primary",
-                      size: "lg",
-                      className: "mt-6",
-                    })}
-                  >
-                    <LogIn className="size-5" aria-hidden="true" />
-                    Log in
-                  </Link>
-                )}
-              </div>
+              (() => {
+                const vis = resolvePostVisibility(post);
+                const requiresMembership = vis === "members" || vis === "tier";
+                const allActiveTiers: CommunityTierView[] = (
+                  creatorData?.communityTiers || []
+                ).filter((t: CommunityTierView) => t.isActive !== false);
+                const requiredSet = new Set<string>(post.requiredTierIds || []);
+                const matchingTiers =
+                  vis === "tier" && requiredSet.size > 0
+                    ? allActiveTiers.filter((t) => requiredSet.has(t.id))
+                    : allActiveTiers;
+                const tierNamesLabel =
+                  Array.isArray(post.requiredTierNames) &&
+                  post.requiredTierNames.length > 0
+                    ? post.requiredTierNames.join(" / ")
+                    : "community";
+
+                return (
+                  <div className="py-10 text-center">
+                    <span className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-brand-soft text-brand-strong">
+                      {requiresMembership ? (
+                        <Crown className="size-6" aria-hidden="true" />
+                      ) : (
+                        <Lock className="size-6" aria-hidden="true" />
+                      )}
+                    </span>
+                    <h2 className="text-title font-bold text-fg">
+                      {!currentUser
+                        ? "Sign in to view this post"
+                        : vis === "tier"
+                          ? `${tierNamesLabel} members only`
+                          : vis === "members"
+                            ? `Community members-only post by ${creatorName}`
+                            : `Supporters-only post by ${creatorName}`}
+                    </h2>
+                    <p className="mx-auto mt-2 max-w-md text-body text-muted-fg">
+                      {!currentUser
+                        ? `Log in to check your access or unlock this post by ${creatorName}.`
+                        : requiresMembership
+                          ? `Join ${creatorName}'s ${vis === "tier" ? tierNamesLabel : "community"} membership to unlock this post.`
+                          : `Support ${creatorName} on Agaseke to unlock this post and future supporter-only releases.`}
+                    </p>
+                    {currentUser ? (
+                      requiresMembership && matchingTiers.length > 0 ? (
+                        <div className="mt-6 flex flex-wrap justify-center gap-3">
+                          <Button
+                            size="lg"
+                            onClick={() => setJoinOpen(true)}
+                            leadingIcon={
+                              <Crown className="size-5" aria-hidden="true" />
+                            }
+                          >
+                            Join to unlock
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          className="mt-6"
+                          size="lg"
+                          onClick={() => setSupportOpen(true)}
+                          leadingIcon={
+                            <Heart className="size-5 fill-current" aria-hidden="true" />
+                          }
+                        >
+                          Support {creatorName}
+                        </Button>
+                      )
+                    ) : (
+                      <Link
+                        href={loginHref}
+                        className={buttonClasses({
+                          variant: "primary",
+                          size: "lg",
+                          className: "mt-6",
+                        })}
+                      >
+                        <LogIn className="size-5" aria-hidden="true" />
+                        Log in
+                      </Link>
+                    )}
+                  </div>
+                );
+              })()
             ) : (
               <div className="mt-6 space-y-6">
                 {post.type === "article" ? (
@@ -1202,16 +1253,52 @@ export default function PostDetailPage({
       />
 
       {creatorHandle && (
-        <SupportModal
-          isOpen={supportOpen}
+        <SupportSheet
+          open={supportOpen}
           onClose={() => setSupportOpen(false)}
-          creatorName={creatorName}
-          creatorId={creatorHandle}
-          uid={creatorUid}
-          includeReferral={false}
+          creator={{
+            uid: creatorUid,
+            handle: creatorHandle,
+            name: creatorName,
+            photoURL: creatorPhoto,
+            verified: Boolean(creatorData?.verified),
+            currency: creatorData?.currency,
+          }}
+          isLoggedIn={isLoggedIn}
+          user={currentUser}
           defaultMessage={
             post.title ? `I love this post! "${post.title}"` : "I love this post!"
           }
+          onSuccess={() => setAccessRefreshKey((k) => k + 1)}
+        />
+      )}
+
+      {creatorHandle && joinOpen && (
+        <CommunityJoinSheet
+          open={joinOpen}
+          onClose={() => setJoinOpen(false)}
+          creatorName={creatorName}
+          creatorPhotoURL={creatorPhoto}
+          creatorVerified={Boolean(creatorData?.verified)}
+          creatorHandle={creatorHandle}
+          creatorUid={creatorUid}
+          tiers={(() => {
+            const allActive: CommunityTierView[] = (
+              creatorData?.communityTiers || []
+            ).filter((t: CommunityTierView) => t.isActive !== false);
+            const vis = resolvePostVisibility(post);
+            const reqSet = new Set<string>(post.requiredTierIds || []);
+            if (vis === "tier" && reqSet.size > 0) {
+              const filtered = allActive.filter((t) => reqSet.has(t.id));
+              if (filtered.length > 0) return filtered;
+            }
+            return allActive;
+          })()}
+          initialTierId={post.requiredTierIds?.[0] || null}
+          user={currentUser}
+          displayName={profile?.displayName}
+          defaultPhone={profile?.phoneNumber}
+          onJoined={() => setAccessRefreshKey((k) => k + 1)}
         />
       )}
     </div>

@@ -3,25 +3,56 @@ import ExplorePostsSchema from "@/components/seo/ExplorePostsSchema";
 import { Metadata } from "next";
 import { baseUrl } from "@/lib/baseUrl";
 import { adminDb } from "@/db/firebaseAdmin";
+import { isGatedVisibility, resolvePostVisibility } from "@/lib/contentAccess";
+import { estimateReadingMinutes } from "@/lib/readingTime";
 
 export const revalidate = 120;
 
 async function getInitialExplorePosts() {
   try {
-    const snap = await adminDb
-      .collection("creatorContent")
-      .where("isPrivate", "==", false)
-      .orderBy("createdAt", "desc")
-      .limit(10)
-      .get();
+    let docs: FirebaseFirestore.QueryDocumentSnapshot[];
+    try {
+      const snap = await adminDb
+        .collection("creatorContent")
+        .where("isPrivate", "==", false)
+        .orderBy("createdAt", "desc")
+        .limit(12)
+        .get();
+      docs = snap.docs;
+    } catch {
+      const fallbackSnap = await adminDb
+        .collection("creatorContent")
+        .where("isPrivate", "==", false)
+        .limit(50)
+        .get();
+      docs = [...fallbackSnap.docs].sort((a, b) => {
+        const bMs =
+          b.data().publishedAt?.toMillis?.() ?? b.data().createdAt?.toMillis?.() ?? 0;
+        const aMs =
+          a.data().publishedAt?.toMillis?.() ?? a.data().createdAt?.toMillis?.() ?? 0;
+        return bMs - aMs;
+      });
+    }
 
-    const rawDocs = snap.docs
-      .filter((doc) => doc.data().status !== "draft")
+    const rawDocs = docs
+      .filter((doc) => {
+        const d = doc.data();
+        return d.status !== "draft" && !isGatedVisibility(d);
+      })
+      .slice(0, 10)
       .map((doc) => {
         const data = doc.data();
+        const type = String(data.type || "text");
         return {
           id: doc.id,
           ...data,
+          visibility: resolvePostVisibility(data),
+          readingMinutes:
+            type === "article"
+              ? estimateReadingMinutes(
+                  String(data.htmlContent || data.shortDescription || data.description || ""),
+                )
+              : undefined,
           createdAt: data.createdAt?.toDate?.()?.toISOString() ?? null,
           updatedAt: data.updatedAt?.toDate?.()?.toISOString() ?? null,
           publishedAt: data.publishedAt?.toDate?.()?.toISOString() ?? null,

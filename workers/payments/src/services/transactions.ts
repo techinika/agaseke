@@ -27,6 +27,8 @@ export interface UserTransaction {
   communityTierId: string;
   communityInterval: string;
   communitySubscriptionId: string;
+  redirectUrl: string;
+  phone: string;
 }
 
 const MAX_TRANSACTIONS = 100;
@@ -131,6 +133,8 @@ export async function getUserTransactions(
       communityTierId: toString(t.communityTierId),
       communityInterval: toString(t.communityInterval),
       communitySubscriptionId: toString(t.communitySubscriptionId),
+      redirectUrl: toString(t.redirectUrl),
+      phone: toString(t.phone),
     };
   });
 

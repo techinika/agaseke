@@ -220,65 +220,70 @@ export default function NotificationDrawer({
             <div
               key={notification.id}
               onClick={() => handleNotificationClick(notification)}
-              className={`group flex cursor-pointer gap-4 px-5 py-4 transition-colors ${
+              className={`group flex cursor-pointer items-start gap-3 px-4 py-3.5 transition-colors ${
                 !notification.read
-                  ? "bg-brand-strong/5 hover:bg-brand-strong/10"
+                  ? "bg-brand-soft/40 hover:bg-brand-soft/60"
                   : "hover:bg-surface-raised"
               }`}
             >
-              <div className="relative shrink-0">
+              <div className="shrink-0 pt-0.5">
                 {notification.imageUrl ? (
                   <Avatar
                     src={notification.imageUrl}
                     name={notification.title}
                     size="md"
-                    className="shadow-sm"
                   />
                 ) : (
                   <div
-                    className={`flex size-12 items-center justify-center rounded-card ${
-                      !notification.read ? "bg-surface shadow-sm" : "bg-surface-raised"
+                    className={`flex size-10 items-center justify-center rounded-control border border-line ${
+                      !notification.read ? "bg-surface" : "bg-surface-raised"
                     }`}
                   >
                     {getIcon(notification.type as NotificationType)}
                   </div>
                 )}
-                {!notification.read && (
-                  <span className="absolute -right-1 -top-1 size-3 rounded-full border-2 border-surface bg-brand-strong" />
-                )}
               </div>
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
-                  <p
-                    className={`text-body ${
-                      !notification.read ? "font-bold text-fg" : "font-medium text-fg"
-                    }`}
-                  >
-                    {notification.title}
-                  </p>
+                  <div className="flex min-w-0 items-center gap-2">
+                    {!notification.read && (
+                      <span
+                        className="size-2 shrink-0 rounded-full bg-brand-strong"
+                        aria-hidden="true"
+                      />
+                    )}
+                    <p
+                      className={`truncate text-label ${
+                        !notification.read ? "font-bold text-fg" : "font-semibold text-fg"
+                      }`}
+                    >
+                      {notification.title}
+                    </p>
+                  </div>
                   {!notification.read && (
                     <button
                       type="button"
                       onClick={(e) => markAsRead(notification.id, e)}
                       aria-label={translate("notifications.markAsRead")}
-                      className="flex size-11 shrink-0 items-center justify-center rounded-control text-muted-fg outline-none transition-colors hover:text-fg focus-visible:ring-2 focus-visible:ring-focus"
+                      title={translate("notifications.markAsRead")}
+                      className="-my-1 -mr-1.5 flex size-9 shrink-0 items-center justify-center rounded-control text-muted-fg outline-none transition-colors hover:bg-surface hover:text-fg focus-visible:ring-2 focus-visible:ring-focus"
                     >
-                      <CheckCircle size={16} aria-hidden="true" />
+                      <CheckCircle size={15} aria-hidden="true" />
                     </button>
                   )}
                 </div>
 
-                <p className="mt-1 line-clamp-2 text-caption text-muted-fg">
+                <p className="mt-0.5 line-clamp-2 text-caption leading-relaxed text-muted-fg">
                   {notification.message}
                 </p>
 
-                <div className="mt-2 flex items-center justify-between">
-                  <span className="text-caption font-medium text-muted-fg">
+                <div className="mt-1.5 flex items-center justify-between gap-2">
+                  <span className="text-caption tabular-nums text-muted-fg">
                     {formatTime(notification.createdAt)}
                   </span>
                   {notification.link && (
-                    <span className="flex items-center gap-1 text-caption font-medium text-brand-strong opacity-0 transition-opacity group-hover:opacity-100">
+                    <span className="inline-flex items-center gap-1 text-caption font-semibold text-brand-strong transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
                       {translate("notifications.view")}
                       <ArrowRight size={12} aria-hidden="true" />
                     </span>

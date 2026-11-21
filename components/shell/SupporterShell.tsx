@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ChevronDown,
+  ExternalLink,
   Globe,
   HelpCircle,
   LayoutDashboard,
@@ -108,7 +109,8 @@ function SupporterNavDrawerList({
 
 export function SupporterShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { user, profile, isCreator, isAdmin } = useAuth();
+  const { user, profile, creator, isCreator, isAdmin } = useAuth();
+  const creatorHandle = creator?.handle || profile?.username;
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -314,6 +316,18 @@ export function SupporterShell({ children }: { children: ReactNode }) {
                       </span>
                     </Link>
 
+                    {isCreator && creatorHandle && (
+                      <Link
+                        href={`/${creatorHandle}`}
+                        role="menuitem"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex min-h-11 items-center gap-3 rounded-control px-3 text-label font-semibold text-muted-fg transition-colors hover:bg-surface-raised hover:text-fg"
+                      >
+                        <ExternalLink className="size-4 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{t("nav.viewMyPage")}</span>
+                      </Link>
+                    )}
+
                     <Link
                       href="/profile"
                       role="menuitem"
@@ -382,6 +396,16 @@ export function SupporterShell({ children }: { children: ReactNode }) {
                 : t("supporterLayout.startCreatorPage")}
             </span>
           </Link>
+          {isCreator && creatorHandle && (
+            <Link
+              href={`/${creatorHandle}`}
+              onClick={() => setMobileNavOpen(false)}
+              className="flex min-h-11 items-center gap-2 rounded-control px-3 text-label font-semibold text-muted-fg transition-colors hover:bg-surface-raised hover:text-fg"
+            >
+              <ExternalLink className="size-4 shrink-0" aria-hidden="true" />
+              <span className="truncate">{t("nav.viewMyPage")}</span>
+            </Link>
+          )}
           <Link
             href="/"
             onClick={() => setMobileNavOpen(false)}

@@ -12,7 +12,10 @@ export function SupporterPortalShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const auth = useAuth();
   const isDiscoveryRoute =
-    pathname === "/explore" || pathname.startsWith("/explore/");
+    pathname === "/explore" ||
+    pathname.startsWith("/explore/") ||
+    pathname === "/articles" ||
+    pathname.startsWith("/articles/");
   const signedIn = Boolean(auth.isLoggedIn && auth.user);
 
   if (signedIn) {

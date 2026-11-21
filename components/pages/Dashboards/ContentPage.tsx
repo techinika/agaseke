@@ -25,6 +25,7 @@ import {
   Heart,
   Menu,
   BookOpen,
+  ExternalLink,
 } from "lucide-react";
 import { db, auth } from "@/db/firebase";
 import {
@@ -32,11 +33,11 @@ import {
   addDoc,
   doc,
   getDocs,
+  increment,
   orderBy,
   query,
   serverTimestamp,
   updateDoc,
-  where,
 } from "firebase/firestore";
 import {
   deleteCreatorPost,
@@ -57,9 +58,17 @@ import {
 import { MediaAsset } from "@/components/parts/public/MediaAsset";
 import { usePostMediaSrc } from "@/lib/usePostMediaSrc";
 
+import { AudienceSelector } from "@/components/parts/dashboard/AudienceSelector";
+import {
+  formatVisibilityLabel,
+  resolvePostVisibility,
+  type PostVisibility,
+} from "@/lib/contentAccess";
+
 interface Comment {
   id: string;
-  text: string;
+  content?: string;
+  text?: string;
   userId: string;
   userName: string;
   userPhoto?: string;
@@ -101,11 +110,20 @@ export default function ContentManager() {
   const [replyingTo, setReplyingTo] = useState<Record<string, string | null>>({});
   const [loadingComments, setLoadingComments] = useState(false);
 
-  const [newPost, setNewPost] = useState({
+  const [newPost, setNewPost] = useState<{
+    title: string;
+    description: string;
+    type: string;
+    visibility: PostVisibility;
+    requiredTierIds: string[];
+    requiredTierNames: string[];
+  }>({
     title: "",
     description: "",
     type: "text",
-    isPrivate: true,
+    visibility: "supporters",
+    requiredTierIds: [],
+    requiredTierNames: [],
   });
 
   useEffect(() => {
@@ -118,10 +136,10 @@ export default function ContentManager() {
   }, [creator?.handle]);
 
   const fetchComments = async (postId: string) => {
+    setLoadingComments(true);
     try {
       const q = query(
-        collection(db, "postComments"),
-        where("postId", "==", postId),
+        collection(db, "creatorContent", postId, "comments"),
         orderBy("createdAt", "desc"),
       );
       const snap = await getDocs(q);
@@ -146,45 +164,55 @@ export default function ContentManager() {
       setComments((prev) => ({ ...prev, [postId]: organizedComments }));
     } catch (e) {
       console.error("Failed to load comments", e);
+    } finally {
+      setLoadingComments(false);
     }
   };
 
   const handleAddComment = async (postId: string) => {
-    if (!commentText[postId]?.trim() || !profile?.displayName) return;
+    const trimmed = commentText[postId]?.trim();
+    if (!trimmed) return;
+    const displayName = profile?.displayName || creator?.name || "Creator";
     try {
       const newComment = {
-        postId,
-        text: commentText[postId],
-        userId: creator?.uid || auth.currentUser?.uid || "",
-        userName: profile.displayName,
-        userPhoto: profile.photoURL || null,
+        content: trimmed,
+        userId: auth.currentUser?.uid || creator?.uid || "",
+        userName: displayName,
+        userPhoto: profile?.photoURL || null,
         createdAt: serverTimestamp(),
       };
-      await addDoc(collection(db, "postComments"), newComment);
+      await addDoc(collection(db, "creatorContent", postId, "comments"), newComment);
+      await updateDoc(doc(db, "creatorContent", postId), {
+        commentCount: increment(1),
+      });
       setCommentText((prev) => ({ ...prev, [postId]: "" }));
       fetchComments(postId);
-    } catch (e) {
+    } catch {
       toast.error("Failed to add comment");
     }
   };
 
   const handleAddReply = async (postId: string, parentId: string) => {
-    if (!replyText[parentId]?.trim() || !profile?.displayName) return;
+    const trimmed = replyText[parentId]?.trim();
+    if (!trimmed) return;
+    const displayName = profile?.displayName || creator?.name || "Creator";
     try {
       const newReply = {
-        postId,
         parentId,
-        text: replyText[parentId],
-        userId: creator?.uid || auth.currentUser?.uid || "",
-        userName: profile.displayName,
-        userPhoto: profile.photoURL || null,
+        content: trimmed,
+        userId: auth.currentUser?.uid || creator?.uid || "",
+        userName: displayName,
+        userPhoto: profile?.photoURL || null,
         createdAt: serverTimestamp(),
       };
-      await addDoc(collection(db, "postComments"), newReply);
+      await addDoc(collection(db, "creatorContent", postId, "comments"), newReply);
+      await updateDoc(doc(db, "creatorContent", postId), {
+        commentCount: increment(1),
+      });
       setReplyText((prev) => ({ ...prev, [parentId]: "" }));
       setReplyingTo((prev) => ({ ...prev, [parentId]: null }));
       fetchComments(postId);
-    } catch (e) {
+    } catch {
       toast.error("Failed to add reply");
     }
   };
@@ -219,7 +247,7 @@ export default function ContentManager() {
         assetType,
         creator?.handle || "",
         undefined,
-        newPost.isPrivate ? "private" : "public",
+        newPost.visibility !== "public" ? "private" : "public",
       );
       const stored = storedAssetValue(data);
       if (stored) {
@@ -243,36 +271,50 @@ export default function ContentManager() {
   const handleAddContent = async () => {
     const user = auth.currentUser;
     if (!user || !newPost.title || !creator?.handle) return;
-    if (newPost.isPrivate && uploadedUrl && uploadedVisibility !== "private") {
-      toast.error("Re-upload the file now that the post is supporters-only.");
+    const isGated = newPost.visibility !== "public";
+    if (newPost.visibility === "tier" && newPost.requiredTierIds.length === 0) {
+      toast.error("Select at least one membership tier.");
       return;
     }
-    if (!newPost.isPrivate && uploadedVisibility === "private") {
+    if (isGated && uploadedUrl && uploadedVisibility !== "private") {
+      toast.error("Re-upload the file so it is stored privately for gated access.");
+      return;
+    }
+    if (!isGated && uploadedVisibility === "private") {
       toast.error("Re-upload the file now that the post is public.");
       return;
     }
 
     setIsUploading(true);
     try {
-      const contentData = {
-        creatorId: creator.handle,
-        creatorUid: creator.uid,
+      const sharedFields = {
         title: newPost.title,
         description: newPost.description,
         type: newPost.type,
-        contentUrl: uploadedUrl,
-        isPrivate: newPost.isPrivate,
-        createdAt: serverTimestamp(),
-        views: 0,
+        contentUrl: uploadedUrl || null,
+        isPrivate: isGated,
+        visibility: newPost.visibility,
+        requiredTierIds:
+          newPost.visibility === "tier" ? newPost.requiredTierIds : [],
+        requiredTierNames:
+          newPost.visibility === "tier" ? newPost.requiredTierNames : [],
+        updatedAt: serverTimestamp(),
       };
 
       if (editingPost) {
-        await updateDoc(doc(db, "creatorContent", editingPost.id), contentData);
+        await updateDoc(doc(db, "creatorContent", editingPost.id), sharedFields);
+        setSelectedPost((prev: any) =>
+          prev?.id === editingPost.id ? { ...prev, ...sharedFields } : prev,
+        );
         toast.success("Post updated!");
       } else {
         const docRef = await addDoc(collection(db, "creatorContent"), {
-          ...contentData,
+          ...sharedFields,
+          creatorId: creator.handle,
+          creatorUid: creator.uid,
+          createdAt: serverTimestamp(),
           publishedAt: serverTimestamp(),
+          views: 0,
         });
         toast.success("Content published!");
 
@@ -283,7 +325,7 @@ export default function ContentManager() {
             creatorHandle: creator?.handle,
             contentTitle: newPost.title,
             contentDescription: newPost.description,
-            contentType: newPost.isPrivate ? "private" : "public",
+            contentType: isGated ? "private" : "public",
             contentId: docRef.id,
           });
           if (response.success && response.recipientCount > 0) {
@@ -312,17 +354,30 @@ export default function ContentManager() {
     }
     setEditingPost(post);
     setNewPost({
-      title: post.title,
-      description: post.description,
-      type: post.type,
-      isPrivate: post.isPrivate,
+      title: post.title || "",
+      description: post.description || "",
+      type: post.type || "text",
+      visibility: resolvePostVisibility(post),
+      requiredTierIds: Array.isArray(post.requiredTierIds)
+        ? post.requiredTierIds
+        : [],
+      requiredTierNames: Array.isArray(post.requiredTierNames)
+        ? post.requiredTierNames
+        : [],
     });
-    setUploadedUrl(post.contentUrl);
-    setUploadedVisibility(storedAssetVisibility(post.contentUrl));
+    setUploadedUrl(post.contentUrl || "");
+    setUploadedVisibility(storedAssetVisibility(post.contentUrl || ""));
   };
 
   const resetForm = () => {
-    setNewPost({ title: "", description: "", type: "text", isPrivate: true });
+    setNewPost({
+      title: "",
+      description: "",
+      type: "text",
+      visibility: "supporters",
+      requiredTierIds: [],
+      requiredTierNames: [],
+    });
     setFilePreview(null);
     setUploadedUrl("");
     setUploadedVisibility(null);
@@ -439,9 +494,18 @@ export default function ContentManager() {
                     <p className="text-sm font-medium text-foreground truncate">
                       {post.title}
                     </p>
-                    <p className="text-xs text-muted-foreground flex items-center gap-2">
-                      {post.isPrivate ? <Lock size={10} /> : <Globe size={10} />}
-                      {post.isPrivate ? "Supporters" : "Public"}
+                    <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      {resolvePostVisibility(post) !== "public" ? (
+                        <Lock size={10} />
+                      ) : (
+                        <Globe size={10} />
+                      )}
+                      <span className="truncate">
+                        {formatVisibilityLabel(
+                          resolvePostVisibility(post),
+                          post.requiredTierNames,
+                        )}
+                      </span>
                     </p>
                   </div>
                 </div>
@@ -512,31 +576,51 @@ export default function ContentManager() {
                 <h1 className="text-lg lg:text-xl font-bold text-foreground truncate">
                   {selectedPost.title}
                 </h1>
-                <p className="text-xs lg:text-sm text-muted-foreground flex flex-wrap items-center gap-1 lg:gap-2 mt-1">
-                  {selectedPost.isPrivate ? (
+                <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground lg:gap-2 lg:text-sm">
+                  {resolvePostVisibility(selectedPost) !== "public" ? (
                     <Lock size={14} className="text-amber-500" />
                   ) : (
                     <Globe size={14} className="text-green-500" />
                   )}
-                  <span className="hidden sm:inline">
-                    {selectedPost.isPrivate ? "Supporters Only" : "Public"}
+                  <span>
+                    {formatVisibilityLabel(
+                      resolvePostVisibility(selectedPost),
+                      selectedPost.requiredTierNames,
+                    )}
                   </span>
-                  <span className="text-muted-foreground">|</span>
-                  {selectedPost.views || 0} views
-                  <span className="text-muted-foreground">|</span>
-                  {selectedPost.likes || selectedPost.stats?.likes || 0} likes
+                  <span className="text-muted-foreground">·</span>
+                  <span className="tabular-nums">{selectedPost.views || 0} views</span>
+                  <span className="text-muted-foreground">·</span>
+                  <span className="tabular-nums">
+                    {selectedPost.likes || selectedPost.stats?.likes || 0} likes
+                  </span>
                 </p>
               </div>
-              <div className="flex gap-2 shrink-0">
+              <div className="flex shrink-0 items-center gap-2">
+                {selectedPost.status !== "draft" && (
+                  <Link
+                    href={
+                      selectedPost.type === "article" && selectedPost.slug
+                        ? `/articles/${selectedPost.slug}`
+                        : `/${creator?.handle}/community/${selectedPost.id}`
+                    }
+                    className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-xs font-medium text-foreground hover:bg-muted transition"
+                  >
+                    <ExternalLink size={14} />
+                    View live
+                  </Link>
+                )}
                 <button
                   onClick={() => startEdit(selectedPost)}
                   className="p-2 bg-muted rounded-lg hover:bg-muted transition"
+                  aria-label="Edit post"
                 >
                   <Edit3 size={18} className="text-muted-foreground" />
                 </button>
                 <button
                   onClick={() => setDeletePostId(selectedPost.id)}
                   className="p-2 bg-muted rounded-lg hover:bg-red-50 transition"
+                  aria-label="Delete post"
                 >
                   <Trash2
                     size={18}
@@ -646,7 +730,7 @@ export default function ContentManager() {
                             </span>
                           </div>
                           <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">
-                            <LinkifyText text={comment.text} />
+                            <LinkifyText text={comment.content || comment.text || ""} />
                           </p>
                           <button
                             onClick={() =>
@@ -713,7 +797,7 @@ export default function ContentManager() {
                                     </span>
                                   )}
                                   <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                    <LinkifyText text={reply.text} />
+                                    <LinkifyText text={reply.content || reply.text || ""} />
                                   </p>
                                 </div>
                               </div>
@@ -802,25 +886,23 @@ export default function ContentManager() {
                 className="w-full h-32 px-4 py-3 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
               />
 
-              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`p-2 rounded-lg ${newPost.isPrivate ? "bg-amber-100 text-amber-600" : "bg-green-100 text-green-600"}`}
-                  >
-                    {newPost.isPrivate ? <Lock size={18} /> : <Globe size={18} />}
-                  </div>
-                  <span className="text-sm font-medium">
-                    {newPost.isPrivate ? "Supporters Only" : "Public"}
-                  </span>
-                </div>
-                <button
-                  onClick={() =>
-                    setNewPost({ ...newPost, isPrivate: !newPost.isPrivate })
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Who can see this post?
+                </label>
+                <AudienceSelector
+                  visibility={newPost.visibility}
+                  requiredTierIds={newPost.requiredTierIds}
+                  tiers={creator?.communityTiers || []}
+                  onChange={(next) =>
+                    setNewPost((prev) => ({
+                      ...prev,
+                      visibility: next.visibility,
+                      requiredTierIds: next.requiredTierIds,
+                      requiredTierNames: next.requiredTierNames,
+                    }))
                   }
-                  className="text-xs text-orange-600 font-medium px-3 py-1.5 bg-card border border-orange-200 rounded-lg hover:bg-orange-50"
-                >
-                  Change
-                </button>
+                />
               </div>
 
               <button

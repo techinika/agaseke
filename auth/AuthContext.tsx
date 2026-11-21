@@ -61,6 +61,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const userData = userSnap.data() as Profile;
     setProfile(userData);
 
+    if (userData.isAdmin) {
+      try {
+        const { auth } = await import("@/db/firebase");
+        if (auth?.currentUser?.uid === uid) {
+          const fresh = await auth.currentUser.getIdTokenResult();
+          if (fresh.claims.admin === true || fresh.claims.isAdmin === true) {
+            setIsAdminClaim(true);
+          }
+        }
+      } catch {
+        // Fallback to profile.isAdmin when token claim check fails
+      }
+    }
+
     if (userData.type === "creator" && userData.username) {
       const creatorSnap = await getDoc(doc(db, "creators", userData.username));
       if (activeUidRef.current !== uid) return;
@@ -163,7 +177,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         creator,
         loading,
         isLoggedIn: !!user,
-        isAdmin: isAdminClaim,
+        isAdmin: isAdminClaim || profile?.isAdmin === true,
         isCreator: profile?.type === "creator",
         refreshProfile,
       }}

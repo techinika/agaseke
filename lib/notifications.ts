@@ -88,8 +88,6 @@ import {
   updateDoc,
   getDocs,
   writeBatch,
-  orderBy,
-  limit,
   type Unsubscribe,
 } from "firebase/firestore";
 import { db } from "@/db/firebase";
@@ -99,6 +97,7 @@ export function subscribeToNotifications(
   onData: (notifications: Notification[]) => void,
   onError?: (error: Error) => void,
 ): Unsubscribe {
+  if (!db) return () => {};
   const q = query(collection(db, "notifications"), where("userId", "==", userId));
   return onSnapshot(
     q,
@@ -116,10 +115,12 @@ export function subscribeToNotifications(
 }
 
 export async function markNotificationAsRead(notificationId: string): Promise<void> {
+  if (!db) return;
   await updateDoc(doc(db, "notifications", notificationId), { read: true });
 }
 
 export async function markAllNotificationsAsRead(userId: string): Promise<void> {
+  if (!db) return;
   const q = query(collection(db, "notifications"), where("userId", "==", userId));
   const snapshot = await getDocs(q);
   const unreadDocs = snapshot.docs.filter((d) => !d.data().read);
@@ -136,6 +137,7 @@ export function subscribeToUnreadNotificationCount(
   onCount: (count: number) => void,
   onError?: (error: Error) => void,
 ): Unsubscribe {
+  if (!db) return () => {};
   const q = query(collection(db, "notifications"), where("userId", "==", userId));
   return onSnapshot(
     q,
@@ -148,24 +150,39 @@ export function subscribeToUnreadNotificationCount(
   );
 }
 
+function createdAtMillis(value: unknown): number {
+  if (!value) return 0;
+  if (typeof value === "object" && "toMillis" in value && typeof (value as { toMillis: () => number }).toMillis === "function") {
+    return (value as { toMillis: () => number }).toMillis();
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    const ms = new Date(value).getTime();
+    return Number.isFinite(ms) ? ms : 0;
+  }
+  return 0;
+}
+
 export function subscribeToBroadcastNotices(
   userId: string,
   onData: (notices: Array<Record<string, unknown>>) => void,
   onError?: (error: Error) => void,
 ): Unsubscribe {
-  const q = query(
-    collection(db, "notifications"),
-    where("userId", "==", userId),
-    where("type", "==", "broadcast_received"),
-    orderBy("createdAt", "desc"),
-    limit(100),
-  );
+  if (!db) return () => {};
+  const q = query(collection(db, "notifications"), where("userId", "==", userId));
   return onSnapshot(
     q,
     (snap) => {
-      onData(
-        snap.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) })),
-      );
+      const items = snap.docs
+        .map(
+          (d): Record<string, unknown> => ({
+            id: d.id,
+            ...(d.data() as Record<string, unknown>),
+          }),
+        )
+        .filter((item) => item.type === "broadcast_received")
+        .sort((a, b) => createdAtMillis(b.createdAt) - createdAtMillis(a.createdAt))
+        .slice(0, 100);
+      onData(items);
     },
     (error) => onError?.(error),
   );

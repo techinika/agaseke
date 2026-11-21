@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Loader,
@@ -8,15 +8,17 @@ import {
   ArrowLeft,
   CreditCard,
   AlertCircle,
+  ExternalLink,
+  XCircle,
 } from "lucide-react";
 import { db } from "@/db/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService";
+import { subscribeToTransactionByRef } from "@/lib/transactions";
 import Link from "next/link";
 import { formatMoney as formatCurrency } from "@/lib/format/money";
-import { getCurrencySymbol } from "@/types/currency";
 import { isCurrencySupportedByMethod } from "@/lib/money/rails";
 
 const platformSharePercentage =
@@ -32,16 +34,36 @@ export default function PayClient() {
   const [products, setProducts] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
-  const [paid, setPaid] = useState(false);
+  const [paymentPhase, setPaymentPhase] = useState<
+    "idle" | "waiting" | "confirmed" | "failed"
+  >("idle");
+  const [paymentError, setPaymentError] = useState("");
+  const [cardRedirectUrl, setCardRedirectUrl] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"momo" | "card">("momo");
   const [phone, setPhone] = useState("");
-  const [isPaid, setIsPaid] = useState(false);
   const [creatorHandle, setCreatorHandle] = useState("");
+  const unsubTxRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    const fetchOrder = async () => {
-      if (!orderId) return;
+    return () => {
+      unsubTxRef.current?.();
+      unsubTxRef.current = null;
+    };
+  }, []);
 
+  useEffect(() => {
+    if (!orderId) return;
+
+    const unsubOrder = onSnapshot(doc(db, "storeOrders", orderId), (snap) => {
+      if (!snap.exists()) return;
+      const data: any = { id: snap.id, ...snap.data() };
+      setOrder(data);
+      if (data.status === "paid" || data.paymentStatus === "paid") {
+        setPaymentPhase("confirmed");
+      }
+    });
+
+    const fetchOrder = async () => {
       const snap = await getDoc(doc(db, "storeOrders", orderId));
       if (!snap.exists()) {
         setLoading(false);
@@ -50,7 +72,12 @@ export default function PayClient() {
 
       const data: any = { id: snap.id, ...snap.data() };
       setOrder(data);
-      setIsPaid(data.status === "paid");
+      if (data.status === "paid" || data.paymentStatus === "paid") {
+        setPaymentPhase("confirmed");
+      }
+      if (data.shippingAddress?.phone) {
+        setPhone((prev) => prev || String(data.shippingAddress.phone));
+      }
 
       const orderItems: any[] = data.items || [];
       const map: Record<string, any> = {};
@@ -64,7 +91,6 @@ export default function PayClient() {
       }
       setProducts(map);
 
-      // resolve creator handle from uid (profiles/{uid} doc has username field)
       const firstItem = orderItems[0];
       const pData = map[firstItem?.productId];
       const uid =
@@ -84,12 +110,22 @@ export default function PayClient() {
         }
       }
 
-      const derivedCurrency = (data.currency || (data.items||[])[0]?.currency || "") as string;
-      if (derivedCurrency && !isCurrencySupportedByMethod("momo", derivedCurrency as any)) setPaymentMethod("card");
+      const derivedCurrency = (
+        data.currency ||
+        (data.items || [])[0]?.currency ||
+        "RWF"
+      ) as string;
+      if (
+        derivedCurrency &&
+        !isCurrencySupportedByMethod("momo", derivedCurrency as any)
+      ) {
+        setPaymentMethod("card");
+      }
       setLoading(false);
     };
 
-    fetchOrder();
+    void fetchOrder();
+    return () => unsubOrder();
   }, [orderId]);
 
   const items: any[] = order?.items || [];
@@ -109,18 +145,48 @@ export default function PayClient() {
   const totalWithPlatformFee = finalTotal + platformFee;
   const amountToPay = buyerPaysMore ? totalWithPlatformFee : finalTotal;
 
+  const currency = (
+    order?.currency ||
+    items[0]?.currency ||
+    items[0]?.productCurrency ||
+    "RWF"
+  ) as string;
+  const momoSupported = currency
+    ? isCurrencySupportedByMethod("momo", currency as any)
+    : false;
+  const activeMethod = momoSupported ? paymentMethod : "card";
+
+  const watchTransaction = (txRef: string) => {
+    unsubTxRef.current?.();
+    const unsub = subscribeToTransactionByRef(txRef, (tx) => {
+      if (!tx) return;
+      if (tx.status === "successful" || tx.status === "success") {
+        setPaymentPhase("confirmed");
+        toast.success("Payment confirmed!");
+        unsub();
+      } else if (tx.status === "failed") {
+        setPaymentPhase("failed");
+        setPaymentError("The payment was declined or cancelled.");
+        toast.error("Payment failed. Please try again.");
+        unsub();
+      }
+    });
+    unsubTxRef.current = unsub;
+  };
+
   const handlePay = async () => {
     if (!order || !currentUser?.uid) {
       toast.error("Please log in");
       return;
     }
 
-    if (paymentMethod === "momo" && !phone.trim()) {
+    if (activeMethod === "momo" && !phone.trim()) {
       toast.error("Please enter your phone number");
       return;
     }
 
     setPaying(true);
+    setPaymentError("");
 
     try {
       const firstItem = items[0];
@@ -141,29 +207,31 @@ export default function PayClient() {
         idempotencyKey: crypto.randomUUID(),
       };
 
-      if (paymentMethod === "momo") {
-        await initiateMomoPayment(payload as any);
-        toast.success("Payment initiated! Check your phone to complete.");
+      if (activeMethod === "momo") {
+        const res = await initiateMomoPayment(payload as any);
+        setCardRedirectUrl(null);
+        setPaymentPhase("waiting");
+        watchTransaction(res.ref);
+        toast.success("Payment prompt sent! Confirm on your phone.");
       } else {
         const data = await initiateCardPayment(payload as any);
+        setCardRedirectUrl(data.redirect_url || null);
+        setPaymentPhase("waiting");
+        watchTransaction(data.merchant_reference || data.ref);
         if (data.redirect_url) {
-          window.open(data.redirect_url, "_blank");
-          return;
+          window.open(data.redirect_url, "_blank", "noopener,noreferrer");
         }
       }
-
-      setPaid(true);
-      setIsPaid(true);
     } catch (error) {
       console.error("Payment error:", error);
-      toast.error("Payment failed");
+      const message =
+        error instanceof Error ? error.message : "Payment failed to start";
+      setPaymentError(message);
+      toast.error(message);
     } finally {
       setPaying(false);
     }
   };
-
-  const currency = (order?.currency || items[0]?.currency || items[0]?.productCurrency || "") as string;
-  const momoSupported = currency ? isCurrencySupportedByMethod("momo", currency as any) : false;
 
   if (loading) {
     return (
@@ -189,6 +257,11 @@ export default function PayClient() {
     );
   }
 
+  const isConfirmed =
+    paymentPhase === "confirmed" ||
+    order.status === "paid" ||
+    order.paymentStatus === "paid";
+
   return (
     <div className="min-h-[60vh] bg-surface-sunken/30">
       <div className="max-w-lg mx-auto px-4 pt-10 pb-24">
@@ -203,7 +276,6 @@ export default function PayClient() {
         )}
 
         <div className="bg-surface rounded-control shadow-lg p-6 space-y-6">
-          {/* Header */}
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold">Order Details</h1>
@@ -211,15 +283,14 @@ export default function PayClient() {
                 Order #{order.id.slice(0, 8)}
               </p>
             </div>
-            {isPaid && (
-              <span className="flex items-center gap-1.5 bg-success-bg text-success text-xs font-bold px-3 py-1.5 rounded-full">
+            {isConfirmed && (
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-success">
                 <Check size={14} />
                 Paid
               </span>
             )}
           </div>
 
-          {/* Order Summary */}
           <div className="bg-surface-sunken rounded-control p-4 space-y-2">
             <h4 className="font-bold text-sm">Order Summary</h4>
             {items.length > 0 ? (
@@ -232,32 +303,37 @@ export default function PayClient() {
                       "Product"}
                     {item.selectedSize && ` (${item.selectedSize})`}
                   </span>
-                  <span className="font-medium">
-                    {currency ? formatCurrency(item.price * item.quantity, currency) : (item.price * item.quantity).toLocaleString()}
+                  <span className="font-medium tabular-nums">
+                    {currency
+                      ? formatCurrency(item.price * item.quantity, currency)
+                      : (item.price * item.quantity).toLocaleString()}
                   </span>
                 </div>
               ))
             ) : (
               <div className="flex justify-between text-sm">
                 <span>{order.productName || "Product"}</span>
-                <span className="font-medium">
-                  {currency ? formatCurrency(order.productPrice || order.total || 0, currency) : (order.productPrice || order.total || 0).toLocaleString()}
+                <span className="font-medium tabular-nums">
+                  {currency
+                    ? formatCurrency(order.productPrice || order.total || 0, currency)
+                    : (order.productPrice || order.total || 0).toLocaleString()}
                 </span>
               </div>
             )}
             <div className="border-t border-line pt-2 flex justify-between font-bold">
               <span>Total</span>
-              <span>{currency ? formatCurrency(order.total || 0, currency) : (order.total || 0).toLocaleString()}</span>
+              <span className="tabular-nums">
+                {currency
+                  ? formatCurrency(order.total || 0, currency)
+                  : (order.total || 0).toLocaleString()}
+              </span>
             </div>
           </div>
 
-          {/* Buyer Info */}
           <div className="bg-surface-sunken rounded-control p-4 space-y-1">
             <h4 className="font-bold text-sm mb-2">Buyer</h4>
             <p className="text-sm">{order.buyerName || "N/A"}</p>
-            <p className="text-sm text-muted-fg">
-              {order.buyerEmail || ""}
-            </p>
+            <p className="text-sm text-muted-fg">{order.buyerEmail || ""}</p>
             {order.shippingAddress && (
               <>
                 <p className="text-sm text-muted-fg mt-2">
@@ -271,8 +347,7 @@ export default function PayClient() {
             )}
           </div>
 
-          {/* Payment section - only if not already paid */}
-          {isPaid ? (
+          {isConfirmed ? (
             <div className="bg-success-bg rounded-control p-4 flex items-start gap-3">
               <Check size={20} className="text-success mt-0.5 shrink-0" />
               <div>
@@ -284,54 +359,77 @@ export default function PayClient() {
                 </p>
               </div>
             </div>
-          ) : paid ? (
-            <div className="bg-success-bg rounded-control p-4 flex items-start gap-3">
-              <Check size={20} className="text-success mt-0.5 shrink-0" />
-              <div>
-                <p className="text-sm font-bold text-success">
-                  Payment Initiated
+          ) : paymentPhase === "waiting" ? (
+            <div className="bg-warning-bg rounded-control p-4 flex items-start gap-3">
+              <Loader
+                size={20}
+                className="animate-spin text-warning mt-0.5 shrink-0"
+              />
+              <div className="flex-1">
+                <p className="text-sm font-bold text-warning">
+                  Waiting for Payment Confirmation
                 </p>
-                <p className="text-xs text-success mt-1">
-                  {paymentMethod === "momo"
-                    ? "Check your phone to complete the payment."
-                    : "You will be redirected to complete your payment."}
+                <p className="text-xs text-warning mt-1">
+                  {activeMethod === "momo"
+                    ? "Check your phone and enter your PIN to confirm payment."
+                    : "Complete your payment in the checkout tab."}
                 </p>
+                {cardRedirectUrl && (
+                  <a
+                    href={cardRedirectUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-brand-strong hover:underline"
+                  >
+                    Open checkout page <ExternalLink size={14} />
+                  </a>
+                )}
               </div>
             </div>
           ) : (
             <>
-              {/* Payment Method */}
+              {paymentPhase === "failed" && paymentError && (
+                <div className="bg-danger-bg rounded-control p-4 flex items-start gap-3">
+                  <XCircle size={20} className="text-danger mt-0.5 shrink-0" />
+                  <p className="text-sm font-medium text-danger">{paymentError}</p>
+                </div>
+              )}
+
               <div className="space-y-3">
                 <p className="font-bold text-sm">Payment Method</p>
                 {!momoSupported ? (
-                  <p className="text-sm text-muted-fg">Mobile money is not available for {currency || "this currency"}. Card payment is required.</p>
+                  <p className="text-sm text-muted-fg">
+                    Mobile money is not available for {currency || "this currency"}. Card payment is required.
+                  </p>
                 ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => setPaymentMethod("momo")}
-                    className={`py-3 px-4 rounded-control border-2 font-bold text-sm transition-all ${
-                      paymentMethod === "momo"
-                        ? "border-brand-strong bg-brand-soft text-brand-strong"
-                        : "border-line text-muted-fg"
-                    }`}
-                  >
-                    Mobile Money
-                  </button>
-                  <button
-                    onClick={() => setPaymentMethod("card")}
-                    className={`py-3 px-4 rounded-control border-2 font-bold text-sm transition-all ${
-                      paymentMethod === "card"
-                        ? "border-brand-strong bg-brand-soft text-brand-strong"
-                        : "border-line text-muted-fg"
-                    }`}
-                  >
-                    Card Payment
-                  </button>
-                </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("momo")}
+                      className={`py-3 px-4 rounded-control border-2 font-bold text-sm transition-all ${
+                        paymentMethod === "momo"
+                          ? "border-brand-strong bg-brand-soft text-brand-strong"
+                          : "border-line text-muted-fg"
+                      }`}
+                    >
+                      Mobile Money
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("card")}
+                      className={`py-3 px-4 rounded-control border-2 font-bold text-sm transition-all ${
+                        paymentMethod === "card"
+                          ? "border-brand-strong bg-brand-soft text-brand-strong"
+                          : "border-line text-muted-fg"
+                      }`}
+                    >
+                      Card Payment
+                    </button>
+                  </div>
                 )}
               </div>
 
-              {paymentMethod === "momo" && (
+              {activeMethod === "momo" && (
                 <div className="bg-warning-bg rounded-control p-4 flex items-start gap-3">
                   <AlertCircle
                     size={20}
@@ -344,10 +442,10 @@ export default function PayClient() {
                 </div>
               )}
 
-              {paymentMethod === "momo" && (
+              {activeMethod === "momo" && (
                 <div className="space-y-2">
                   <label className="text-sm font-bold">
-                    MTN Mobile Money Number
+                    Mobile Money Number
                   </label>
                   <input
                     type="tel"
@@ -359,7 +457,7 @@ export default function PayClient() {
                 </div>
               )}
 
-              {paymentMethod === "card" && (
+              {activeMethod === "card" && (
                 <div className="bg-info-bg rounded-control p-4 flex items-start gap-3">
                   <CreditCard
                     size={20}
@@ -373,8 +471,9 @@ export default function PayClient() {
               )}
 
               <button
+                type="button"
                 onClick={handlePay}
-                disabled={paying || (paymentMethod === "momo" && !phone.trim())}
+                disabled={paying || (activeMethod === "momo" && !phone.trim())}
                 className="w-full bg-success text-on-success py-4 rounded-control font-bold hover:bg-success transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {paying ? (
@@ -385,7 +484,10 @@ export default function PayClient() {
                 ) : (
                   <>
                     <Check size={20} />
-                    Pay {currency ? formatCurrency(amountToPay, currency) : amountToPay.toLocaleString()}
+                    Pay{" "}
+                    {currency
+                      ? formatCurrency(amountToPay, currency)
+                      : amountToPay.toLocaleString()}
                   </>
                 )}
               </button>

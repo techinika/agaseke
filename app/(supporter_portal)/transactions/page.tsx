@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/auth/AuthContext";
 import {
   getUserTransactions,
+  resumeTransaction,
   retryTransaction,
   type UserTransaction,
 } from "@/lib/paymentsService";
@@ -14,7 +15,9 @@ import { formatCurrency } from "@/types/currency";
 import { getCurrencyDefinition } from "@/lib/money/registry.generated";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/Card";
+import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Input } from "@/components/ui/Input";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { Button, buttonClasses } from "@/components/ui/Button";
 import {
@@ -150,6 +153,12 @@ export default function TransactionsPage() {
   const [error, setError] = useState("");
 
   const [activeRetry, setActiveRetry] = useState<ActiveRetry | null>(null);
+  const [momoDialogTx, setMomoDialogTx] = useState<{
+    tx: UserTransaction;
+    mode: "resume" | "retry";
+  } | null>(null);
+  const [momoPhone, setMomoPhone] = useState("");
+  const [submittingMomoDialog, setSubmittingMomoDialog] = useState(false);
   const unsubscribeRetryRef = useRef<(() => void) | null>(null);
 
   const stopListening = () => {
@@ -236,17 +245,24 @@ export default function TransactionsPage() {
     });
   };
 
-  const handleRetry = async (tx: UserTransaction) => {
+  const executeResumeOrRetry = async (
+    tx: UserTransaction,
+    mode: "resume" | "retry",
+    phone?: string,
+  ) => {
     stopListening();
     setActiveRetry({
       oldRef: tx.ref,
       newRef: "",
-      method: tx.paymentMethod,
+      method: tx.paymentMethod || "momo",
       phase: "initiating",
     });
     let newRef = "";
     try {
-      const result = await retryTransaction(tx.ref);
+      const result =
+        mode === "resume"
+          ? await resumeTransaction(tx.ref, phone)
+          : await retryTransaction(tx.ref, phone);
       newRef = result.ref;
       if (result.method === "card") {
         setActiveRetry({
@@ -257,6 +273,9 @@ export default function TransactionsPage() {
           phase: "confirming",
           message: "Complete your card payment in the checkout link below.",
         });
+        if (result.redirect_url && typeof window !== "undefined") {
+          window.open(result.redirect_url, "_blank", "noopener,noreferrer");
+        }
         listenForPayment(result.ref, tx.ref, "card", result.redirect_url);
       } else {
         setActiveRetry({
@@ -272,12 +291,52 @@ export default function TransactionsPage() {
       setActiveRetry({
         oldRef: tx.ref,
         newRef,
-        method: tx.paymentMethod,
+        method: tx.paymentMethod || "momo",
         phase: "failed",
-        message: err instanceof Error ? err.message : "Failed to retry payment",
+        message: err instanceof Error ? err.message : "Failed to process payment",
       });
-      toast.error(err instanceof Error ? err.message : "Failed to retry payment");
+      toast.error(err instanceof Error ? err.message : "Failed to process payment");
     }
+  };
+
+  const handleActionClick = (tx: UserTransaction, mode: "resume" | "retry") => {
+    if (tx.paymentMethod === "card") {
+      if (mode === "resume" && tx.redirectUrl) {
+        stopListening();
+        setActiveRetry({
+          oldRef: tx.ref,
+          newRef: tx.ref,
+          method: "card",
+          redirectUrl: tx.redirectUrl,
+          phase: "confirming",
+          message: "Complete your card payment in the checkout link below.",
+        });
+        if (typeof window !== "undefined") {
+          window.open(tx.redirectUrl, "_blank", "noopener,noreferrer");
+        }
+        listenForPayment(tx.ref, tx.ref, "card", tx.redirectUrl);
+        return;
+      }
+      void executeResumeOrRetry(tx, mode);
+      return;
+    }
+
+    setMomoPhone(tx.phone || "");
+    setMomoDialogTx({ tx, mode });
+  };
+
+  const submitMomoDialog = async () => {
+    if (!momoDialogTx) return;
+    const cleaned = momoPhone.replace(/\s+/g, "").trim();
+    if (!cleaned || cleaned.length < 9) {
+      toast.error("Enter a valid Mobile Money phone number");
+      return;
+    }
+    setSubmittingMomoDialog(true);
+    const { tx, mode } = momoDialogTx;
+    setMomoDialogTx(null);
+    await executeResumeOrRetry(tx, mode, cleaned);
+    setSubmittingMomoDialog(false);
   };
 
   const cancelRetry = () => {
@@ -505,10 +564,16 @@ export default function TransactionsPage() {
                           {formatDate(tx.createdAt)} · {tx.ref}
                         </p>
                       </div>
-                      {tx.status === "failed" && (
+                      {(tx.status === "failed" || tx.status === "pending") && (
                         <Button
                           size="sm"
-                          onClick={() => handleRetry(tx)}
+                          variant={tx.status === "pending" ? "secondary" : "primary"}
+                          onClick={() =>
+                            handleActionClick(
+                              tx,
+                              tx.status === "pending" ? "resume" : "retry",
+                            )
+                          }
                           loading={isRetryingThis}
                           leadingIcon={
                             tx.paymentMethod === "card" ? (
@@ -518,7 +583,11 @@ export default function TransactionsPage() {
                             )
                           }
                         >
-                          {isRetryingThis ? "Retrying…" : "Pay again"}
+                          {isRetryingThis
+                            ? "Processing…"
+                            : tx.status === "pending"
+                              ? "Complete payment"
+                              : "Pay again"}
                         </Button>
                       )}
                     </div>
@@ -542,6 +611,60 @@ export default function TransactionsPage() {
           )}
         </>
       )}
+
+      <Dialog
+        open={!!momoDialogTx}
+        onClose={() => setMomoDialogTx(null)}
+        title={
+          momoDialogTx?.mode === "resume"
+            ? "Complete Mobile Money payment"
+            : "Retry Mobile Money payment"
+        }
+        description="Confirm or enter the Mobile Money number where you want to receive the payment prompt."
+        size="sm"
+        footer={
+          <div className="flex gap-3">
+            <Button
+              variant="secondary"
+              className="flex-1"
+              onClick={() => setMomoDialogTx(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="flex-1"
+              loading={submittingMomoDialog}
+              onClick={() => void submitMomoDialog()}
+              disabled={!momoPhone.trim()}
+            >
+              Send prompt
+            </Button>
+          </div>
+        }
+      >
+        {momoDialogTx && (
+          <div className="space-y-4">
+            <div className="rounded-control border border-line bg-surface-raised p-3 text-label">
+              <p className="font-semibold text-fg">
+                {transactionTitle(momoDialogTx.tx)}
+              </p>
+              <p className="mt-0.5 font-bold tabular-nums text-brand-strong">
+                {formatCurrency(momoDialogTx.tx.amount, momoDialogTx.tx.currency)}
+              </p>
+            </div>
+            <Input
+              label="Mobile Money phone number"
+              hint="Example: 078 000 0000"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="078 000 0000"
+              value={momoPhone}
+              onChange={(e) => setMomoPhone(e.target.value)}
+            />
+          </div>
+        )}
+      </Dialog>
     </div>
   );
 }

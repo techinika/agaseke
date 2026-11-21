@@ -1,5 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { adminDb } from "@/db/firebaseAdmin";
+import {
+  formatVisibilityLabel,
+  isGatedVisibility,
+  resolvePostVisibility,
+  type PostVisibility,
+} from "@/lib/contentAccess";
+import { estimateReadingMinutes } from "@/lib/readingTime";
+
+export { estimateReadingMinutes };
 
 export interface ReaderArticle {
   id: string;
@@ -9,6 +18,10 @@ export interface ReaderArticle {
   coverUrl: string;
   slug: string;
   isPrivate: boolean;
+  visibility: PostVisibility;
+  requiredTierIds: string[];
+  requiredTierNames: string[];
+  readingMinutes: number;
   commentCount: number;
   views: number;
   createdAt: string | null;
@@ -26,6 +39,10 @@ export interface ReaderPost {
   contentUrl: string | string[] | null;
   slug: string;
   isPrivate: boolean;
+  visibility: PostVisibility;
+  requiredTierIds: string[];
+  requiredTierNames: string[];
+  readingMinutes: number;
   creatorId: string;
   creatorUid: string;
   commentCount: number;
@@ -50,8 +67,25 @@ export interface MoreCreatorItem {
   coverUrl: string;
   type: string;
   slug: string;
+  readingMinutes?: number;
   createdAt: string | null;
   publishedAt?: string | null;
+}
+
+export interface PublicArticleListItem {
+  id: string;
+  title: string;
+  shortDescription: string;
+  coverUrl: string;
+  slug: string;
+  readingMinutes: number;
+  views: number;
+  commentCount: number;
+  createdAt: string | null;
+  creatorName: string;
+  creatorHandle: string;
+  creatorAvatar: string | null;
+  creatorVerified: boolean;
 }
 
 export async function getArticlePost(postId: string) {
@@ -62,6 +96,27 @@ export async function getArticlePost(postId: string) {
     if (data.type !== "article" || !data.slug || data.status === "draft")
       return null;
     return { id: snap.id, ...data };
+  } catch {
+    return null;
+  }
+}
+
+export async function getArticleBySlug(slug: string) {
+  try {
+    if (!slug) return null;
+    const snap = await adminDb
+      .collection("creatorContent")
+      .where("slug", "==", slug)
+      .limit(5)
+      .get();
+
+    for (const doc of snap.docs) {
+      const data = doc.data() as any;
+      if (data.type === "article" && data.status !== "draft") {
+        return { id: doc.id, ...data };
+      }
+    }
+    return null;
   } catch {
     return null;
   }
@@ -132,16 +187,37 @@ export async function getMoreCreatorPosts(
 ): Promise<MoreCreatorItem[]> {
   if (!creatorHandle) return [];
   try {
-    const snap = await adminDb
-      .collection("creatorContent")
-      .where("creatorId", "==", creatorHandle)
-      .where("isPrivate", "==", false)
-      .orderBy("createdAt", "desc")
-      .limit(maxItems + 3)
-      .get();
+    let docs: FirebaseFirestore.QueryDocumentSnapshot[];
+    try {
+      const snap = await adminDb
+        .collection("creatorContent")
+        .where("creatorId", "==", creatorHandle)
+        .where("isPrivate", "==", false)
+        .orderBy("createdAt", "desc")
+        .limit(maxItems + 3)
+        .get();
+      docs = snap.docs;
+    } catch {
+      const fallbackSnap = await adminDb
+        .collection("creatorContent")
+        .where("creatorId", "==", creatorHandle)
+        .where("isPrivate", "==", false)
+        .limit(20)
+        .get();
+      docs = [...fallbackSnap.docs].sort(
+        (a, b) =>
+          (b.data().createdAt?.toMillis?.() ?? 0) -
+          (a.data().createdAt?.toMillis?.() ?? 0),
+      );
+    }
 
-    return snap.docs
-      .filter((doc) => doc.id !== excludePostId && doc.data().status !== "draft")
+    return docs
+      .filter(
+        (doc) =>
+          doc.id !== excludePostId &&
+          doc.data().status !== "draft" &&
+          !isGatedVisibility(doc.data()),
+      )
       .slice(0, maxItems)
       .map((doc) => {
         const d = doc.data() as any;
@@ -159,6 +235,12 @@ export async function getMoreCreatorPosts(
           coverUrl: cover,
           type: (d.type as string) || "post",
           slug: (d.slug as string) || "",
+          readingMinutes:
+            d.type === "article"
+              ? estimateReadingMinutes(
+                  String(d.htmlContent || d.shortDescription || ""),
+                )
+              : undefined,
           createdAt: d.createdAt?.toDate?.()?.toISOString?.() ?? null,
           publishedAt: d.publishedAt?.toDate?.()?.toISOString?.() ?? null,
         };
@@ -168,16 +250,116 @@ export async function getMoreCreatorPosts(
   }
 }
 
+export async function getPublicArticles(
+  limitCount = 40,
+): Promise<PublicArticleListItem[]> {
+  try {
+    let docs: FirebaseFirestore.QueryDocumentSnapshot[];
+    try {
+      const snap = await adminDb
+        .collection("creatorContent")
+        .where("type", "==", "article")
+        .where("isPrivate", "==", false)
+        .orderBy("createdAt", "desc")
+        .limit(limitCount)
+        .get();
+      docs = snap.docs;
+    } catch {
+      const fallback = await adminDb
+        .collection("creatorContent")
+        .where("type", "==", "article")
+        .limit(limitCount * 2)
+        .get();
+      docs = [...fallback.docs].sort(
+        (a, b) =>
+          (b.data().createdAt?.toMillis?.() ?? 0) -
+          (a.data().createdAt?.toMillis?.() ?? 0),
+      );
+    }
+
+    const publicDocs = docs.filter((doc) => {
+      const d = doc.data();
+      return (
+        d.status !== "draft" &&
+        typeof d.slug === "string" &&
+        Boolean(d.slug) &&
+        !isGatedVisibility(d)
+      );
+    });
+
+    const creatorCache = new Map<string, any>();
+    const handlesToFetch = [
+      ...new Set(
+        publicDocs
+          .map((d) => String(d.data().creatorId || ""))
+          .filter(Boolean),
+      ),
+    ];
+
+    await Promise.all(
+      handlesToFetch.slice(0, 50).map(async (handle) => {
+        const snap = await adminDb.collection("creators").doc(handle).get();
+        if (snap.exists) {
+          creatorCache.set(handle, { handle: snap.id, ...snap.data() });
+        }
+      }),
+    );
+
+    return publicDocs.slice(0, limitCount).map((doc) => {
+      const d = doc.data() as any;
+      const handle = String(d.creatorId || "");
+      const creator = creatorCache.get(handle);
+      const plainSummary = String(d.shortDescription || d.description || "")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      return {
+        id: doc.id,
+        title: (d.title as string) || "Untitled article",
+        shortDescription: plainSummary.slice(0, 200),
+        coverUrl:
+          typeof d.coverUrl === "string"
+            ? d.coverUrl
+            : typeof d.contentUrl === "string"
+              ? d.contentUrl
+              : "",
+        slug: String(d.slug),
+        readingMinutes: estimateReadingMinutes(
+          String(d.htmlContent || d.shortDescription || ""),
+        ),
+        views: typeof d.views === "number" ? d.views : 0,
+        commentCount: typeof d.commentCount === "number" ? d.commentCount : 0,
+        createdAt: d.createdAt?.toDate?.()?.toISOString?.() ?? null,
+        creatorName: creator?.name || handle || "Creator",
+        creatorHandle: creator?.handle || handle,
+        creatorAvatar: creator?.profilePicture || creator?.photoURL || null,
+        creatorVerified: Boolean(creator?.verified),
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
 /**
- * Serializes an article for SSR pages. For supporters-only (`isPrivate`) articles,
- * protected body HTML, dek, and asset URLs are omitted from public SSR payloads
- * and only fetched client-side after supporter entitlement verification.
+ * Serializes an article for SSR pages. For gated articles (`supporters`,
+ * `members`, `tier`), protected body HTML, dek, and asset URLs are omitted from
+ * public SSR payloads and only fetched client-side after entitlement check.
  */
 export function serializeReaderArticle(post: any): ReaderArticle {
-  const isPrivate = !!post.isPrivate;
+  const visibility = resolvePostVisibility(post);
+  const isPrivate = visibility !== "public";
+  const requiredTierIds = Array.isArray(post.requiredTierIds)
+    ? post.requiredTierIds.filter((t: unknown): t is string => typeof t === "string")
+    : [];
+  const requiredTierNames = Array.isArray(post.requiredTierNames)
+    ? post.requiredTierNames.filter((t: unknown): t is string => typeof t === "string")
+    : [];
+  const label = formatVisibilityLabel(visibility, requiredTierNames);
+
   return {
     id: (post.id as string) || "",
-    title: isPrivate ? "Supporters-only article" : (post.title as string) || "Untitled",
+    title: isPrivate ? `${label} article` : (post.title as string) || "Untitled",
     shortDescription: isPrivate
       ? ""
       : ((post.shortDescription || post.description || "") as string),
@@ -185,6 +367,12 @@ export function serializeReaderArticle(post: any): ReaderArticle {
     coverUrl: isPrivate ? "" : ((post.coverUrl || post.contentUrl || "") as string),
     slug: (post.slug as string) || "",
     isPrivate,
+    visibility,
+    requiredTierIds,
+    requiredTierNames,
+    readingMinutes: estimateReadingMinutes(
+      String(post.htmlContent || post.shortDescription || post.description || ""),
+    ),
     commentCount: (post.commentCount as number) || 0,
     views: (post.views as number) || 0,
     createdAt: post.createdAt?.toDate?.()?.toISOString?.() ?? null,
@@ -192,15 +380,24 @@ export function serializeReaderArticle(post: any): ReaderArticle {
 }
 
 /**
- * Serializes a post for SSR pages. For supporters-only (`isPrivate`) posts,
- * protected body copy and asset URLs are omitted from public SSR payloads so
- * content only loads after client-side supporter entitlement verification.
+ * Serializes a post for SSR pages. For gated posts (`supporters`, `members`,
+ * `tier`), protected body copy and asset URLs are omitted from public SSR
+ * payloads so content only loads after entitlement verification.
  */
 export function serializeReaderPost(post: any): ReaderPost {
-  const isPrivate = !!post.isPrivate;
+  const visibility = resolvePostVisibility(post);
+  const isPrivate = visibility !== "public";
+  const requiredTierIds = Array.isArray(post.requiredTierIds)
+    ? post.requiredTierIds.filter((t: unknown): t is string => typeof t === "string")
+    : [];
+  const requiredTierNames = Array.isArray(post.requiredTierNames)
+    ? post.requiredTierNames.filter((t: unknown): t is string => typeof t === "string")
+    : [];
+  const label = formatVisibilityLabel(visibility, requiredTierNames);
+
   return {
     id: (post.id as string) || "",
-    title: isPrivate ? "Supporters-only post" : (post.title as string) || "",
+    title: isPrivate ? `${label} post` : (post.title as string) || "",
     description: isPrivate ? "" : ((post.description as string) || ""),
     content: isPrivate ? "" : ((post.content as string) || ""),
     shortDescription: isPrivate ? "" : ((post.shortDescription as string) || ""),
@@ -210,6 +407,12 @@ export function serializeReaderPost(post: any): ReaderPost {
     contentUrl: isPrivate ? null : (post.contentUrl ?? null),
     slug: (post.slug as string) || "",
     isPrivate,
+    visibility,
+    requiredTierIds,
+    requiredTierNames,
+    readingMinutes: estimateReadingMinutes(
+      String(post.htmlContent || post.content || post.description || ""),
+    ),
     creatorId: (post.creatorId as string) || "",
     creatorUid: (post.creatorUid as string) || "",
     commentCount: (post.commentCount as number) || 0,

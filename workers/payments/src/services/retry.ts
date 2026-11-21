@@ -97,10 +97,16 @@ function buildPayload(tx: Record<string, unknown>): InitRequest {
   return payload as InitRequest;
 }
 
+export interface RetryOptions {
+  allowPending?: boolean;
+  phone?: string;
+}
+
 export async function retryTransaction(
   env: Env,
   uid: string,
   ref: string,
+  options: RetryOptions = {},
 ): Promise<RetryResult> {
   if (!ref) throw new RetryError("Transaction reference is required", 400);
 
@@ -119,25 +125,35 @@ export async function retryTransaction(
   }
 
   const status = toString(tx.status) || "pending";
-  if (status === "successful") {
+  if (status === "successful" || status === "success") {
     throw new RetryError("This transaction already completed", 409);
-  }
-  if (status === "pending") {
-    throw new RetryError(
-      "This transaction is still pending and may still complete. Wait a few minutes before retrying.",
-      409,
-    );
-  }
-
-  if (tx.retriedRef) {
-    throw new RetryError(
-      `A retry was already initiated for this transaction. Retry the new reference (${toString(tx.retriedRef)}) instead.`,
-      409,
-    );
   }
 
   const method: "momo" | "card" =
     toString(tx.paymentMethod) === "card" ? "card" : "momo";
+
+  if (status === "pending" && !options.allowPending) {
+    throw new RetryError(
+      "This transaction is still pending. Use resume to complete the payment.",
+      409,
+    );
+  }
+
+  // Pending card payment with an existing checkout link can be reopened directly.
+  if (
+    options.allowPending &&
+    status === "pending" &&
+    method === "card" &&
+    toString(tx.redirectUrl)
+  ) {
+    return {
+      ref: toString(tx.ref),
+      method: "card",
+      redirect_url: toString(tx.redirectUrl),
+      merchant_reference: toString(tx.orderTrackingId || tx.ref),
+    };
+  }
+
   const currency = toString(tx.currency);
   if (!currency) {
     throw new RetryError("Transaction is missing currency and cannot be retried", 400);
@@ -150,7 +166,18 @@ export async function retryTransaction(
   }
 
   const payload = buildPayload(tx);
-  const idempotencyKey = `retry_${docId}`;
+  const overridePhone = options.phone?.trim();
+  if (overridePhone) {
+    payload.phone = overridePhone;
+  }
+
+  if (method === "momo" && !toString(payload.phone).trim()) {
+    throw new RetryError("A Mobile Money phone number is required to complete this payment.", 400);
+  }
+
+  const attemptNumber = Number(tx.retryCount || 0) + 1;
+  const prefix = options.allowPending ? "resume" : "retry";
+  const idempotencyKey = `${prefix}_${docId}_${attemptNumber}`;
 
   let result: {
     ref: string;
@@ -172,6 +199,8 @@ export async function retryTransaction(
       retried: true,
       retriedAt: new Date().toISOString(),
       retriedRef: result.ref,
+      retryCount: attemptNumber,
+      ...(overridePhone ? { phone: overridePhone } : {}),
     }),
   );
 

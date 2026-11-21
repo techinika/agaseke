@@ -7,8 +7,10 @@ import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   Bell,
+  BookOpen,
   Calendar,
   Compass,
+  ExternalLink,
   FileText,
   Heart,
   Lock,
@@ -35,16 +37,23 @@ import { Button, buttonClasses } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { Tabs, type TabItem } from "@/components/ui/Tabs";
 import { LinkifyText } from "@/components/ui/LinkifyText";
 import { MediaAsset } from "@/components/parts/public/MediaAsset";
+import {
+  formatVisibilityLabel,
+  isGatedVisibility,
+  resolvePostVisibility,
+} from "@/lib/contentAccess";
+import { estimateReadingMinutes } from "@/lib/readingTime";
 import { formatMoney as formatCurrency } from "@/lib/format/money";
 
-const LazySupportModal = lazy(() =>
-  import("@/components/parts/public/SupportModal").then((m) => ({
-    default: m.SupportModal,
+const LazySupportSheet = lazy(() =>
+  import("@/features/support").then((m) => ({
+    default: m.SupportSheet,
   })),
 );
 
@@ -108,6 +117,8 @@ export default function SupporterSpace() {
   const [followingPosts, setFollowingPosts] = useState<any[]>([]);
   const [discoverPosts, setDiscoverPosts] = useState<any[]>([]);
   const [discoverHasMore, setDiscoverHasMore] = useState(false);
+  const [discoverError, setDiscoverError] = useState(false);
+  const [loadingDiscover, setLoadingDiscover] = useState(false);
   const [loadingMoreDiscover, setLoadingMoreDiscover] = useState(false);
   const [purchases, setPurchases] = useState<any[]>([]);
   const [supportItem, setSupportItem] = useState<any>(null);
@@ -120,9 +131,17 @@ export default function SupporterSpace() {
 
   const loadDiscoverPosts = useCallback(async (offset: number, append: boolean) => {
     try {
-      if (append) setLoadingMoreDiscover(true);
+      if (append) {
+        setLoadingMoreDiscover(true);
+      } else {
+        setLoadingDiscover(true);
+        setDiscoverError(false);
+      }
       const res = await fetch(`/api/public/explore?kind=posts&limit=10&offset=${offset}`);
-      if (!res.ok) return;
+      if (!res.ok) {
+        if (!append) setDiscoverError(true);
+        return;
+      }
       const data = (await res.json()) as { items?: any[]; hasMore?: boolean };
       const items = Array.isArray(data.items) ? data.items : [];
       setDiscoverPosts((prev) => {
@@ -131,9 +150,12 @@ export default function SupporterSpace() {
         return [...prev, ...items.filter((item) => !seen.has(item.id))];
       });
       setDiscoverHasMore(Boolean(data.hasMore));
+      setDiscoverError(false);
     } catch (error) {
       console.error("Error loading discover posts:", error);
+      if (!append) setDiscoverError(true);
     } finally {
+      setLoadingDiscover(false);
       setLoadingMoreDiscover(false);
     }
   }, []);
@@ -336,6 +358,7 @@ export default function SupporterSpace() {
   }
 
   const firstName = auth.profile?.displayName?.split(" ")[0] || "Supporter";
+  const creatorHandle = auth.creator?.handle || auth.profile?.username;
 
   return (
     <div className="bg-canvas pb-10 text-fg">
@@ -351,6 +374,15 @@ export default function SupporterSpace() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {auth.isCreator && creatorHandle && (
+              <Link
+                href={`/${creatorHandle}`}
+                className={buttonClasses({ variant: "secondary", size: "md" })}
+              >
+                <ExternalLink className="size-4" aria-hidden="true" />
+                View my page
+              </Link>
+            )}
             <Link
               href="/explore"
               className={buttonClasses({ variant: "secondary", size: "md" })}
@@ -392,38 +424,59 @@ export default function SupporterSpace() {
 
             {activeTab === "feed" && (
               <div className="space-y-5">
-                <div
-                  className="inline-flex items-center gap-1 rounded-control border border-line bg-surface p-1"
-                  role="group"
-                  aria-label="Feed source"
-                >
-                  <button
-                    type="button"
-                    onClick={() => setFeedScope("following")}
-                    aria-pressed={feedScope === "following"}
-                    className={`min-h-10 rounded-control px-4 text-label font-semibold transition-colors ${
-                      feedScope === "following"
-                        ? "bg-brand-soft text-brand-strong"
-                        : "text-muted-fg hover:text-fg"
-                    }`}
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div
+                    className="inline-flex items-center gap-1 rounded-control border border-line bg-surface p-1"
+                    role="group"
+                    aria-label="Feed source"
                   >
-                    Following ({followingPosts.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFeedScope("discover")}
-                    aria-pressed={feedScope === "discover"}
-                    className={`min-h-10 rounded-control px-4 text-label font-semibold transition-colors ${
-                      feedScope === "discover"
-                        ? "bg-brand-soft text-brand-strong"
-                        : "text-muted-fg hover:text-fg"
-                    }`}
+                    <button
+                      type="button"
+                      onClick={() => setFeedScope("following")}
+                      aria-pressed={feedScope === "following"}
+                      className={`min-h-10 rounded-control px-4 text-label font-semibold transition-colors ${
+                        feedScope === "following"
+                          ? "bg-brand-soft text-brand-strong"
+                          : "text-muted-fg hover:text-fg"
+                      }`}
+                    >
+                      Following ({followingPosts.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFeedScope("discover");
+                        if (discoverPosts.length === 0 && !loadingDiscover) {
+                          void loadDiscoverPosts(0, false);
+                        }
+                      }}
+                      aria-pressed={feedScope === "discover"}
+                      className={`min-h-10 rounded-control px-4 text-label font-semibold transition-colors ${
+                        feedScope === "discover"
+                          ? "bg-brand-soft text-brand-strong"
+                          : "text-muted-fg hover:text-fg"
+                      }`}
+                    >
+                      Public feed
+                    </button>
+                  </div>
+
+                  <Link
+                    href="/articles"
+                    className="inline-flex min-h-10 items-center gap-1.5 text-label font-semibold text-brand-strong hover:underline"
                   >
-                    Public feed
-                  </button>
+                    <BookOpen className="size-4" aria-hidden="true" />
+                    Browse all articles
+                  </Link>
                 </div>
 
-                {filteredPosts.length === 0 ? (
+                {feedScope === "discover" && discoverError && discoverPosts.length === 0 ? (
+                  <ErrorState
+                    title="Could not load public feed"
+                    description="Something interrupted loading recent public posts. Try again in a moment."
+                    onRetry={() => void loadDiscoverPosts(0, false)}
+                  />
+                ) : filteredPosts.length === 0 ? (
                   <EmptyState
                     icon={<FileText className="size-6" aria-hidden="true" />}
                     title={
@@ -452,12 +505,30 @@ export default function SupporterSpace() {
                   <div className="space-y-4">
                     {filteredPosts.map((item) => {
                       const handle = item.authorHandle || item.creatorId || "";
+                      const isArticle = item.type === "article";
                       const postHref =
-                        item.type === "article" && item.slug
+                        isArticle && item.slug
                           ? `/articles/${item.slug}`
                           : handle
                             ? `/${handle}/community/${item.id}`
                             : `/explore/posts/${item.id}`;
+                      const visibility = resolvePostVisibility(item);
+                      const gated = isGatedVisibility(item);
+                      const lockLabel = formatVisibilityLabel(
+                        visibility,
+                        item.requiredTierNames,
+                      );
+                      const readingMinutes = isArticle
+                        ? item.readingMinutes ||
+                          estimateReadingMinutes(
+                            String(
+                              item.htmlContent ||
+                                item.shortDescription ||
+                                item.description ||
+                                "",
+                            ),
+                          )
+                        : undefined;
                       const excerptText =
                         item.shortDescription || item.description || item.content || "";
                       const excerpt =
@@ -466,7 +537,14 @@ export default function SupporterSpace() {
                           : excerptText;
 
                       return (
-                        <Card key={item.id} className="p-5 sm:p-6">
+                        <Card
+                          key={item.id}
+                          className={
+                            isArticle
+                              ? "border-l-4 border-l-brand-strong p-5 sm:p-6"
+                              : "p-5 sm:p-6"
+                          }
+                        >
                           <div className="mb-3 flex items-center gap-3">
                             <Link
                               href={handle ? `/${handle}` : "/explore"}
@@ -492,18 +570,27 @@ export default function SupporterSpace() {
                                   </span>
                                 )}
                               </div>
-                              <p className="text-caption text-muted-fg">
-                                <span className="font-semibold text-brand-strong">
+                              <p className="flex flex-wrap items-center gap-x-1.5 text-caption text-muted-fg">
+                                <span className="inline-flex items-center gap-1 font-semibold text-brand-strong">
+                                  {isArticle && (
+                                    <BookOpen className="size-3.5" aria-hidden="true" />
+                                  )}
                                   {typeLabel(item.type)}
                                 </span>
-                                {" · "}
-                                <span>{formatDate(item.publishedAt || item.createdAt)}</span>
-                                {item.isPrivate && (
+                                {readingMinutes ? (
                                   <>
-                                    {" · "}
+                                    <span>·</span>
+                                    <span className="tabular-nums">{readingMinutes} min read</span>
+                                  </>
+                                ) : null}
+                                <span>·</span>
+                                <span>{formatDate(item.publishedAt || item.createdAt)}</span>
+                                {gated && (
+                                  <>
+                                    <span>·</span>
                                     <span className="inline-flex items-center gap-1 font-medium text-warning">
                                       <Lock className="size-3" aria-hidden="true" />
-                                      Supporters only
+                                      {lockLabel}
                                     </span>
                                   </>
                                 )}
@@ -511,7 +598,7 @@ export default function SupporterSpace() {
                             </div>
                           </div>
 
-                          {(item.type === "article" || item.type === "image") &&
+                          {(isArticle || item.type === "image") &&
                             (item.coverUrl || item.contentUrl) && (
                               <button
                                 type="button"
@@ -520,7 +607,7 @@ export default function SupporterSpace() {
                                     ? setViewingImage({
                                         url: item.contentUrl,
                                         postId: item.id,
-                                        isPrivate: !!item.isPrivate,
+                                        isPrivate: gated,
                                         title: item.title || "Post image",
                                       })
                                     : router.push(postHref)
@@ -529,10 +616,14 @@ export default function SupporterSpace() {
                               >
                                 <MediaAsset
                                   postId={item.id}
-                                  isPrivate={!!item.isPrivate}
+                                  isPrivate={gated}
                                   url={item.coverUrl || item.contentUrl}
                                   alt={item.title || "Post media"}
-                                  className="max-h-72 w-full object-cover"
+                                  className={
+                                    isArticle
+                                      ? "aspect-[16/9] w-full object-cover"
+                                      : "max-h-72 w-full object-cover"
+                                  }
                                 />
                               </button>
                             )}
@@ -541,7 +632,7 @@ export default function SupporterSpace() {
                             <div className="mb-4 overflow-hidden rounded-control bg-black">
                               <MediaAsset
                                 postId={item.id}
-                                isPrivate={!!item.isPrivate}
+                                isPrivate={gated}
                                 url={item.contentUrl}
                                 as="video"
                                 controls
@@ -584,7 +675,7 @@ export default function SupporterSpace() {
                                 href={postHref}
                                 className="inline-flex min-h-11 items-center gap-1 px-2 text-label font-semibold text-brand-strong hover:underline"
                               >
-                                {item.type === "article" ? "Read" : "Open"}
+                                {isArticle ? "Read article" : "Open post"}
                                 <ArrowRight className="size-3.5" aria-hidden="true" />
                               </Link>
                             </div>
@@ -810,12 +901,18 @@ export default function SupporterSpace() {
 
       {supportItem && (
         <Suspense fallback={null}>
-          <LazySupportModal
-            isOpen={!!supportItem}
+          <LazySupportSheet
+            open={!!supportItem}
             onClose={() => setSupportItem(null)}
-            creatorName={supportItem.authorName || supportItem.authorHandle || "Creator"}
-            creatorId={supportItem.authorHandle || supportItem.creatorId || ""}
-            uid={supportItem.creatorUid || ""}
+            creator={{
+              handle: supportItem.authorHandle || supportItem.creatorId || "",
+              uid: supportItem.creatorUid || "",
+              name: supportItem.authorName || supportItem.authorHandle || "Creator",
+              photoURL: supportItem.authorPhoto || null,
+              verified: Boolean(supportItem.authorVerified),
+            }}
+            isLoggedIn={auth.isLoggedIn}
+            user={auth.user}
             defaultMessage={
               supportItem.title
                 ? `I love this post! "${supportItem.title}"`

@@ -221,6 +221,7 @@ export async function initiateCardPayment(
     const txFields: Record<string, unknown> = {
       ref: merchantRef,
       orderTrackingId: payData.order_tracking_id || "",
+      redirectUrl: payData.redirect_url,
       amount: resolved.totalAmount,
       currency: resolved.currency,
       creatorId: resolved.creatorHandle,

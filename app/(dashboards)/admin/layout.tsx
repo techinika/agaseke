@@ -65,11 +65,12 @@ export default function RootLayout({
         }
         topbar={
           <div className="mx-auto flex h-16 w-full max-w-app items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
-            <div className="flex min-w-0 items-center gap-2">
-              <span className="shrink-0 whitespace-nowrap rounded-pill bg-brand-soft px-2 py-1 text-caption font-bold uppercase tracking-wide text-brand-strong">
+            <div className="flex min-w-0 items-center gap-2 text-label">
+              <span className="shrink-0 whitespace-nowrap font-semibold text-muted-fg">
                 {t("nav.admin")}
               </span>
-              <h1 className="truncate text-label font-bold capitalize text-fg sm:text-body">
+              <span className="text-muted-fg/60" aria-hidden="true">/</span>
+              <h1 className="truncate font-bold capitalize text-fg sm:text-body">
                 {pageTitle}
               </h1>
             </div>

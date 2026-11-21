@@ -51,6 +51,7 @@ export interface UseSupportFlowOptions {
   isLoggedIn: boolean;
   user: User | null;
   resumeReference?: string | null;
+  defaultMessage?: string;
   onSuccess?: () => void;
   onClose: () => void;
 }
@@ -89,6 +90,7 @@ interface InitialFlowState {
 function computeInitialState(
   handle: string,
   resumeReference?: string | null,
+  defaultMessage?: string,
 ): InitialFlowState {
   const pending = readPendingSupport(handle);
   const matchesResume = !resumeReference || pending?.reference === resumeReference;
@@ -112,7 +114,7 @@ function computeInitialState(
   if (draft) {
     return {
       amount: draft.amount,
-      message: draft.message,
+      message: draft.message || defaultMessage || "",
       method: draft.method,
       network: draft.network,
       phone: draft.phone,
@@ -127,7 +129,7 @@ function computeInitialState(
   const last = readLastChoice();
   return {
     amount: last?.amount ?? "",
-    message: "",
+    message: defaultMessage ?? "",
     method: last?.method ?? "momo",
     network: "MTN",
     phone: "",
@@ -145,10 +147,13 @@ export function useSupportFlow({
   isLoggedIn,
   user,
   resumeReference,
+  defaultMessage,
   onSuccess,
   onClose,
 }: UseSupportFlowOptions) {
-  const [initial] = useState(() => computeInitialState(creator.handle, resumeReference));
+  const [initial] = useState(() =>
+    computeInitialState(creator.handle, resumeReference, defaultMessage),
+  );
   const [config, setConfig] = useState<SupportConfig>(() => buildSupportConfig(creator));
   const [step, setStep] = useState<SupportStep>(initial.step);
   const [status, setStatus] = useState<SupportStatus>(initial.status);
@@ -206,6 +211,11 @@ export function useSupportFlow({
       cancelled = true;
     };
   }, [open, creator.handle]);
+
+  useEffect(() => {
+    if (!open || !defaultMessage) return;
+    setMessage((prev) => (prev ? prev : defaultMessage));
+  }, [open, defaultMessage]);
 
   useEffect(() => {
     if (!open || isLoggedIn) return;

@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ArrowRight,
+  BookOpen,
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -22,6 +23,7 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { Skeleton, SkeletonText } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/cn";
+import { estimateReadingMinutes } from "@/lib/readingTime";
 
 const extractYouTubeId = (url: string): string | null => {
   const patterns = [
@@ -306,6 +308,12 @@ export default function ExplorePostsPage({
                 >
                   Posts & articles
                 </span>
+                <Link
+                  href="/articles"
+                  className="inline-flex min-h-10 items-center whitespace-nowrap rounded-control px-4 text-label font-semibold text-muted-fg transition-colors hover:bg-surface-raised hover:text-fg"
+                >
+                  Articles
+                </Link>
               </nav>
             </div>
 
@@ -390,6 +398,13 @@ export default function ExplorePostsPage({
             <div className="space-y-5">
               {posts.map((item) => {
                 const postUrl = itemHref(item);
+                const isArticle = item.type === "article";
+                const readingMinutes = isArticle
+                  ? item.readingMinutes ||
+                    estimateReadingMinutes(
+                      String(item.htmlContent || item.shortDescription || item.description || ""),
+                    )
+                  : undefined;
                 const bodyText =
                   item.shortDescription || item.description || item.content || "";
                 const excerpt =
@@ -398,7 +413,13 @@ export default function ExplorePostsPage({
                     : bodyText;
 
                 return (
-                  <Card key={item.id} className="overflow-hidden p-5 sm:p-6">
+                  <Card
+                    key={item.id}
+                    className={cn(
+                      "overflow-hidden p-5 sm:p-6",
+                      isArticle && "border-l-4 border-l-brand-strong",
+                    )}
+                  >
                     <div className="mb-4 flex items-center gap-3">
                       <Link
                         href={item.authorHandle ? `/${item.authorHandle}` : "/explore"}
@@ -418,17 +439,26 @@ export default function ExplorePostsPage({
                             @{item.authorHandle}
                           </span>
                         </div>
-                        <p className="text-caption text-muted-fg">
-                          <span className="font-semibold text-brand-strong">
+                        <p className="flex flex-wrap items-center gap-x-1.5 text-caption text-muted-fg">
+                          <span className="inline-flex items-center gap-1 font-semibold text-brand-strong">
+                            {isArticle && (
+                              <BookOpen className="size-3.5" aria-hidden="true" />
+                            )}
                             {typeLabel(item.type)}
                           </span>
-                          {" · "}
-                          {formatPostDate(item.publishedAt || item.createdAt)}
+                          {readingMinutes ? (
+                            <>
+                              <span>·</span>
+                              <span className="tabular-nums">{readingMinutes} min read</span>
+                            </>
+                          ) : null}
+                          <span>·</span>
+                          <span>{formatPostDate(item.publishedAt || item.createdAt)}</span>
                         </p>
                       </div>
                     </div>
 
-                    {item.type === "article" && (item.coverUrl || item.contentUrl) && (
+                    {isArticle && (item.coverUrl || item.contentUrl) && (
                       <Link
                         href={postUrl}
                         className="mb-4 block overflow-hidden rounded-control bg-surface-raised"
@@ -436,7 +466,7 @@ export default function ExplorePostsPage({
                         <img
                           src={item.coverUrl || item.contentUrl}
                           alt={item.title || "Article cover"}
-                          className="aspect-video w-full object-cover transition-transform duration-300 hover:scale-[1.02]"
+                          className="aspect-[16/9] w-full object-cover transition-transform duration-300 hover:scale-[1.02]"
                           loading="lazy"
                         />
                       </Link>

@@ -12,6 +12,8 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 
+import type { PostVisibility } from "@/lib/contentAccess";
+
 export interface PublishContentInput {
   creatorHandle: string;
   creatorUid: string;
@@ -20,17 +22,28 @@ export interface PublishContentInput {
   type: string;
   contentUrl?: string | null;
   isPrivate: boolean;
+  visibility?: PostVisibility;
+  requiredTierIds?: string[];
+  requiredTierNames?: string[];
 }
 
 export async function publishCreatorContent(input: PublishContentInput): Promise<string> {
+  const visibility: PostVisibility =
+    input.visibility || (input.isPrivate ? "supporters" : "public");
+  const isPrivate = visibility !== "public";
   const contentData = {
     creatorId: input.creatorHandle,
     creatorUid: input.creatorUid,
     title: input.title,
     description: input.description,
     type: input.type,
-    contentUrl: input.contentUrl,
-    isPrivate: input.isPrivate,
+    contentUrl: input.contentUrl ?? null,
+    isPrivate,
+    visibility,
+    requiredTierIds:
+      visibility === "tier" ? input.requiredTierIds || [] : [],
+    requiredTierNames:
+      visibility === "tier" ? input.requiredTierNames || [] : [],
     createdAt: serverTimestamp(),
     publishedAt: serverTimestamp(),
     views: 0,

@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
+  Crown,
   Eye,
   MessageCircle,
   Heart,
@@ -25,8 +26,6 @@ import {
   updateDoc,
   collection,
   query,
-  where,
-  getDocs,
   orderBy,
   addDoc,
   deleteDoc,
@@ -35,10 +34,16 @@ import {
 } from "firebase/firestore";
 import { db } from "@/db/firebase";
 import RichContentRenderer from "@/components/ui/RichContentRenderer";
-import { SupportModal } from "@/components/parts/public/SupportModal";
+import { SupportSheet } from "@/features/support";
+import { CommunityJoinSheet, type CommunityTierView } from "@/features/community";
 import { MediaAsset } from "@/components/parts/public/MediaAsset";
 import { useAuth } from "@/auth/AuthContext";
 import { baseUrl } from "@/lib/baseUrl";
+import {
+  formatVisibilityLabel,
+  resolvePostVisibility,
+  type PostVisibility,
+} from "@/lib/contentAccess";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button, buttonClasses } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -53,6 +58,10 @@ interface ArticleReaderData {
   coverUrl: string;
   slug: string;
   isPrivate: boolean;
+  visibility?: PostVisibility;
+  requiredTierIds?: string[];
+  requiredTierNames?: string[];
+  readingMinutes?: number;
   commentCount: number;
   views: number;
   createdAt: string | null;
@@ -65,6 +74,9 @@ interface CreatorReaderData {
   uid: string;
   photoURL: string | null;
   bio: string;
+  verified?: boolean;
+  currency?: string;
+  communityTiers?: CommunityTierView[];
 }
 
 interface MoreCreatorItem {
@@ -90,18 +102,21 @@ export default function ArticleReaderPage({
   backHref?: string;
   backLabel?: string;
 }) {
-  const { user: currentUser, profile } = useAuth();
+  const { user: currentUser, profile, isLoggedIn } = useAuth();
   const [unlockedOverride, setUnlockedOverride] =
-    useState<Partial<ArticleReaderData> & { id: string } | null>(null);
+    useState<(Partial<ArticleReaderData> & { id: string }) | null>(null);
   const articleData: ArticleReaderData =
     unlockedOverride?.id === article.id
       ? { ...article, ...unlockedOverride }
       : article;
+  const [creatorFull, setCreatorFull] = useState<CreatorReaderData>(creator);
   const [supportOpen, setSupportOpen] = useState(false);
+  const [joinOpen, setJoinOpen] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [access, setAccess] = useState<"checking" | "locked" | "unlocked">(
     article.isPrivate ? "checking" : "unlocked",
   );
+  const [accessRefreshKey, setAccessRefreshKey] = useState(0);
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -126,60 +141,83 @@ export default function ArticleReaderPage({
   }, [article.id]);
 
   useEffect(() => {
+    if (!creator.handle || creatorFull.communityTiers) return;
     let cancelled = false;
-    const checkAccess = async () => {
-      const isOwner =
-        !!creator.uid && !!currentUser?.uid && creator.uid === currentUser.uid;
-
-      if (!article.isPrivate || isOwner) {
-        setAccess("unlocked");
-        return;
-      }
-      if (!currentUser?.uid) {
-        setAccess("locked");
-        return;
-      }
-      try {
-        const supportRef = collection(db, "supportedCreators");
-        const q = query(
-          supportRef,
-          where("supporterId", "==", currentUser.uid),
-          where("creatorId", "==", creator.handle),
-        );
-        const snap = await getDocs(q);
-        if (!cancelled) setAccess(!snap.empty ? "unlocked" : "locked");
-      } catch {
-        if (!cancelled) setAccess("locked");
-      }
-    };
-    void checkAccess();
-    return () => {
-      cancelled = true;
-    };
-  }, [article.id, article.isPrivate, creator.handle, creator.uid, currentUser?.uid]);
-
-  useEffect(() => {
-    if (!article.isPrivate || access !== "unlocked" || articleData.htmlContent) {
-      return;
-    }
-    let cancelled = false;
-    getDoc(doc(db, "creatorContent", article.id))
+    getDoc(doc(db, "creators", creator.handle))
       .then((snap) => {
         if (cancelled || !snap.exists()) return;
-        const d = snap.data() as any;
-        setUnlockedOverride({
-          id: article.id,
-          title: (d.title as string) || article.title,
-          shortDescription: (d.shortDescription || d.description || "") as string,
-          htmlContent: (d.htmlContent as string) || "",
-          coverUrl: (d.coverUrl || d.contentUrl || "") as string,
-        });
+        const c = snap.data() as any;
+        setCreatorFull((prev) => ({
+          ...prev,
+          verified: Boolean(c.verified),
+          currency: c.currency,
+          communityTiers: Array.isArray(c.communityTiers) ? c.communityTiers : [],
+        }));
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [access, article.id, article.isPrivate, article.title, articleData.htmlContent]);
+  }, [creator.handle, creatorFull.communityTiers]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const checkAndUnlock = async () => {
+      if (!article.isPrivate) {
+        if (!cancelled) setAccess("unlocked");
+        return;
+      }
+      if (!currentUser) {
+        if (!cancelled) setAccess("locked");
+        return;
+      }
+      try {
+        const token = await currentUser.getIdToken();
+        const res = await fetch(`/api/content/${encodeURIComponent(article.id)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => null);
+          if (!cancelled) {
+            if (errData) {
+              setUnlockedOverride((prev) => ({
+                id: article.id,
+                ...prev,
+                visibility: errData.visibility || article.visibility,
+                requiredTierIds: errData.requiredTierIds ?? article.requiredTierIds,
+                requiredTierNames:
+                  errData.requiredTierNames ?? article.requiredTierNames,
+              }));
+            }
+            setAccess("locked");
+          }
+          return;
+        }
+        const data = await res.json();
+        if (!cancelled && data.unlocked && data.post) {
+          setUnlockedOverride({
+            id: article.id,
+            title: (data.post.title as string) || article.title,
+            shortDescription:
+              (data.post.shortDescription || data.post.description || "") as string,
+            htmlContent: (data.post.htmlContent as string) || "",
+            coverUrl: (data.post.coverUrl || data.post.contentUrl || "") as string,
+            visibility: data.post.visibility,
+            requiredTierIds: data.post.requiredTierIds,
+            requiredTierNames: data.post.requiredTierNames,
+          });
+          setAccess("unlocked");
+        }
+      } catch {
+        if (!cancelled) setAccess("locked");
+      }
+    };
+    void checkAndUnlock();
+    return () => {
+      cancelled = true;
+    };
+  }, [article.id, article.isPrivate, article.requiredTierIds, article.requiredTierNames, article.title, article.visibility, currentUser, accessRefreshKey]);
 
   useEffect(() => {
     if (!article.id) return;
@@ -344,7 +382,19 @@ export default function ArticleReaderPage({
               <span aria-hidden="true">·</span>
               <span>{formatDate(articleData.publishedAt || articleData.createdAt)}</span>
               <span aria-hidden="true">·</span>
-              <span>{readingMinutes} min read</span>
+              <span>{articleData.readingMinutes || readingMinutes} min read</span>
+              {resolvePostVisibility(articleData) !== "public" && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="inline-flex items-center gap-1 text-warning">
+                    <Lock className="size-3.5" aria-hidden="true" />
+                    {formatVisibilityLabel(
+                      resolvePostVisibility(articleData),
+                      articleData.requiredTierNames,
+                    )}
+                  </span>
+                </>
+              )}
               <span aria-hidden="true">·</span>
               <span className="inline-flex items-center gap-1">
                 <Eye className="size-3.5" aria-hidden="true" /> {articleData.views}
@@ -386,65 +436,92 @@ export default function ArticleReaderPage({
               {unlocked ? (
                 <RichContentRenderer html={articleData.htmlContent} />
               ) : (
-                <div>
-                  <div className="relative">
-                    <div className="pointer-events-none max-h-[25rem] select-none overflow-hidden">
-                      <RichContentRenderer html={articleData.htmlContent} />
-                    </div>
+                (() => {
+                  const vis = resolvePostVisibility(articleData);
+                  const requiresMembership = vis === "members" || vis === "tier";
+                  const allActiveTiers: CommunityTierView[] = (
+                    creatorFull.communityTiers || []
+                  ).filter((t) => t.isActive !== false);
+                  const reqSet = new Set<string>(articleData.requiredTierIds || []);
+                  const matchingTiers =
+                    vis === "tier" && reqSet.size > 0
+                      ? allActiveTiers.filter((t) => reqSet.has(t.id))
+                      : allActiveTiers;
+                  const tierLabel =
+                    articleData.requiredTierNames?.length
+                      ? articleData.requiredTierNames.join(" / ")
+                      : "community";
 
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[30rem]">
-                      <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-surface via-surface/80 to-transparent" />
-                      <div className="absolute inset-x-0 bottom-0 h-24 backdrop-blur-[2px]" />
-                      <div className="absolute inset-x-0 bottom-16 h-16 backdrop-blur-[6px]" />
-                      <div className="absolute inset-x-0 bottom-28 h-20 backdrop-blur-[10px]" />
-                      <div className="absolute inset-x-0 bottom-44 h-20 backdrop-blur-[14px]" />
-                      <div className="absolute inset-x-0 bottom-60 h-24 backdrop-blur-[18px]" />
-                    </div>
-                  </div>
-
-                  <Card className="relative -mt-10 border-line-strong p-6 text-center shadow-sheet sm:p-8">
-                    <span className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-brand-soft text-brand-strong">
-                      <Lock className="size-6" aria-hidden="true" />
-                    </span>
-                    <h2 className="text-title font-bold text-fg">
-                      {currentUser
-                        ? `This story is for ${creator.name}'s supporters`
-                        : "Keep reading this story"}
-                    </h2>
-                    <p className="mx-auto mt-2 max-w-md text-body text-muted-fg">
-                      {currentUser
-                        ? `You've read the preview. The rest of "${article.title}" is exclusive to ${creator.name}'s supporters.`
-                        : `Log in to keep reading "${article.title}" by ${creator.name}.`}
-                    </p>
-                    {currentUser ? (
-                      <Button
-                        className="mt-6"
-                        size="lg"
-                        onClick={() => setSupportOpen(true)}
-                        leadingIcon={
-                          <Heart className="size-5 fill-current" aria-hidden="true" />
-                        }
-                      >
-                        Support {creator.name} to read
-                      </Button>
-                    ) : (
-                      <Link
-                        href={loginHref}
-                        className={buttonClasses({
-                          size: "lg",
-                          className: "mt-6",
-                        })}
-                      >
-                        <LogIn className="size-5" aria-hidden="true" />
-                        Log in to continue reading
-                      </Link>
-                    )}
-                    <p className="mt-4 flex items-center justify-center gap-1.5 text-caption text-muted-fg">
-                      <Sparkles className="size-3.5" aria-hidden="true" />
-                      Backing a creator unlocks all their exclusive content
-                    </p>
-                  </Card>
-                </div>
+                  return (
+                    <Card className="border-line-strong p-6 text-center shadow-sheet sm:p-8">
+                      <span className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-brand-soft text-brand-strong">
+                        {requiresMembership ? (
+                          <Crown className="size-6" aria-hidden="true" />
+                        ) : (
+                          <Lock className="size-6" aria-hidden="true" />
+                        )}
+                      </span>
+                      <h2 className="text-title font-bold text-fg">
+                        {!currentUser
+                          ? "Sign in to read this article"
+                          : vis === "tier"
+                            ? `${tierLabel} members only`
+                            : vis === "members"
+                              ? `Community members-only story by ${creator.name}`
+                              : `This story is for ${creator.name}'s supporters`}
+                      </h2>
+                      <p className="mx-auto mt-2 max-w-md text-body text-muted-fg">
+                        {!currentUser
+                          ? `Log in to check access or unlock "${articleData.title}" by ${creator.name}.`
+                          : requiresMembership
+                            ? `Join ${creator.name}'s ${vis === "tier" ? tierLabel : "community"} membership to unlock this article.`
+                            : `Support ${creator.name} to read this article and unlock future supporter-only stories.`}
+                      </p>
+                      {currentUser ? (
+                        requiresMembership && matchingTiers.length > 0 ? (
+                          <Button
+                            className="mt-6"
+                            size="lg"
+                            onClick={() => setJoinOpen(true)}
+                            leadingIcon={
+                              <Crown className="size-5" aria-hidden="true" />
+                            }
+                          >
+                            Join to read
+                          </Button>
+                        ) : (
+                          <Button
+                            className="mt-6"
+                            size="lg"
+                            onClick={() => setSupportOpen(true)}
+                            leadingIcon={
+                              <Heart className="size-5 fill-current" aria-hidden="true" />
+                            }
+                          >
+                            Support {creator.name} to read
+                          </Button>
+                        )
+                      ) : (
+                        <Link
+                          href={loginHref}
+                          className={buttonClasses({
+                            size: "lg",
+                            className: "mt-6",
+                          })}
+                        >
+                          <LogIn className="size-5" aria-hidden="true" />
+                          Log in to continue reading
+                        </Link>
+                      )}
+                      <p className="mt-4 flex items-center justify-center gap-1.5 text-caption text-muted-fg">
+                        <Sparkles className="size-3.5" aria-hidden="true" />
+                        {requiresMembership
+                          ? "Active members get instant access to gated releases"
+                          : "Backing a creator unlocks their supporter-only releases"}
+                      </p>
+                    </Card>
+                  );
+                })()
               )}
             </div>
           </div>
@@ -674,19 +751,55 @@ export default function ArticleReaderPage({
         )}
       </div>
 
-      <SupportModal
-        isOpen={supportOpen}
+      <SupportSheet
+        open={supportOpen}
         onClose={() => setSupportOpen(false)}
-        creatorName={creator.name}
-        creatorId={creator.handle}
-        uid={creator.uid}
-        includeReferral={false}
+        creator={{
+          uid: creator.uid,
+          handle: creator.handle,
+          name: creator.name,
+          photoURL: creator.photoURL,
+          verified: Boolean(creatorFull.verified),
+          currency: creatorFull.currency,
+        }}
+        isLoggedIn={isLoggedIn}
+        user={currentUser}
         defaultMessage={
           article.title
             ? `I love this article! "${article.title}"`
             : "I love this article!"
         }
+        onSuccess={() => setAccessRefreshKey((k) => k + 1)}
       />
+
+      {joinOpen && (
+        <CommunityJoinSheet
+          open={joinOpen}
+          onClose={() => setJoinOpen(false)}
+          creatorName={creator.name}
+          creatorPhotoURL={creator.photoURL}
+          creatorVerified={Boolean(creatorFull.verified)}
+          creatorHandle={creator.handle}
+          creatorUid={creator.uid}
+          tiers={(() => {
+            const allActive: CommunityTierView[] = (
+              creatorFull.communityTiers || []
+            ).filter((t) => t.isActive !== false);
+            const vis = resolvePostVisibility(articleData);
+            const reqSet = new Set<string>(articleData.requiredTierIds || []);
+            if (vis === "tier" && reqSet.size > 0) {
+              const filtered = allActive.filter((t) => reqSet.has(t.id));
+              if (filtered.length > 0) return filtered;
+            }
+            return allActive;
+          })()}
+          initialTierId={articleData.requiredTierIds?.[0] || null}
+          user={currentUser}
+          displayName={profile?.displayName}
+          defaultPhone={profile?.phoneNumber}
+          onJoined={() => setAccessRefreshKey((k) => k + 1)}
+        />
+      )}
 
       <ConfirmDialog
         open={!!deleteCommentId}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/authMiddleware";
+import { formatVisibilityLabel } from "@/lib/contentAccess";
 import { checkPostMediaAccess, isServableMediaKey } from "@/lib/mediaAccess";
 import { mediaTtlSeconds, signMediaPost } from "@/lib/mediaSigning";
 
@@ -34,8 +35,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
     if (!access.allowed) {
+      const label = formatVisibilityLabel(
+        access.visibility,
+        access.requiredTierNames,
+      );
       return NextResponse.json(
-        { error: "This content is available to supporters only" },
+        { error: `This content is available to ${label.toLowerCase()}` },
         { status: 403 },
       );
     }

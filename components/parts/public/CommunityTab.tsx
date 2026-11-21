@@ -4,6 +4,7 @@
 import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import {
   FileText,
+  BookOpen,
   Lock,
   Heart,
   ArrowRight,
@@ -24,6 +25,12 @@ import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/auth/AuthContext";
 import { getMySubscriptions } from "@/lib/communityService";
+import {
+  canViewerAccessPost,
+  formatVisibilityLabel,
+  resolvePostVisibility,
+} from "@/lib/contentAccess";
+import { estimateReadingMinutes } from "@/lib/readingTime";
 import { formatMoney as formatCurrency } from "@/lib/format/money";
 import { getPrice, type PriceMap } from "@/lib/priceMap";
 import { trackView } from "@/lib/viewTracker";
@@ -32,9 +39,9 @@ function tierAmount(tier: Pick<CommunityTier, "price" | "prices" | "currency">):
   return getPrice(tier);
 }
 
-const LazySupportModal = lazy(() =>
-  import("@/components/parts/public/SupportModal").then((m) => ({
-    default: m.SupportModal,
+const LazySupportSheet = lazy(() =>
+  import("@/features/support").then((m) => ({
+    default: m.SupportSheet,
   })),
 );
 
@@ -136,7 +143,7 @@ export const CommunityTab = ({
   } | null>(null);
   const [documentIndex, setDocumentIndex] = useState<Record<string, number>>({});
   const [supportItem, setSupportItem] = useState<any>(null);
-  const { user } = useAuth();
+  const { user, isLoggedIn } = useAuth();
   const [subscribedTierIds, setSubscribedTierIds] = useState<Set<string>>(new Set());
   const viewedPosts = useRef<Set<string>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
@@ -150,7 +157,6 @@ export const CommunityTab = ({
     });
   };
 
-  // Gate subscription check so visitors on creators without memberships avoid an extra API call
   useEffect(() => {
     if (!user || !communityEnabled || communityTiers.length === 0) return;
     let cancelled = false;
@@ -158,7 +164,11 @@ export const CommunityTab = ({
       .then((subs) => {
         if (cancelled) return;
         setSubscribedTierIds(
-          new Set(subs.filter((s) => s.status === "active").map((s) => s.tierId)),
+          new Set(
+            subs
+              .filter((s) => s.status === "active" && (!s.creatorHandle || s.creatorHandle === username))
+              .map((s) => s.tierId),
+          ),
         );
       })
       .catch((err) => {
@@ -167,25 +177,23 @@ export const CommunityTab = ({
     return () => {
       cancelled = true;
     };
-  }, [user, communityEnabled, communityTiers.length]);
+  }, [user, username, communityEnabled, communityTiers.length]);
 
   const allPosts = useMemo(
     () =>
-      isSupporter
-        ? [...privatePosts, ...publicPosts].sort(
-            (a, b) =>
-              (b.publishedAt?.toMillis?.() ?? b.createdAt?.toMillis?.() ?? 0) -
-              (a.publishedAt?.toMillis?.() ?? a.createdAt?.toMillis?.() ?? 0),
-          )
-        : publicPosts,
-    [isSupporter, privatePosts, publicPosts],
+      [...privatePosts, ...publicPosts].sort(
+        (a, b) =>
+          (b.publishedAt?.toMillis?.() ?? b.createdAt?.toMillis?.() ?? 0) -
+          (a.publishedAt?.toMillis?.() ?? a.createdAt?.toMillis?.() ?? 0),
+      ),
+    [privatePosts, publicPosts],
   );
 
   const displayPosts = useMemo(
-    () => (showAllPosts ? allPosts : allPosts.slice(0, 3)),
+    () => (showAllPosts ? allPosts : allPosts.slice(0, 4)),
     [allPosts, showAllPosts],
   );
-  const hasMorePosts = !showAllPosts && allPosts.length > 3;
+  const hasMorePosts = !showAllPosts && allPosts.length > 4;
 
   // Batched beacon view tracking — eliminates hot direct Firestore writes from clients
   useEffect(() => {
@@ -331,28 +339,93 @@ export const CommunityTab = ({
           const textBody = item.shortDescription || item.description || item.content || "";
           const youtubeUrl = hasYouTubeLink(textBody);
           const youtubeId = youtubeUrl ? extractYouTubeId(youtubeUrl) : null;
+          const vis = resolvePostVisibility(item);
+          const isUnlocked = canViewerAccessPost({
+            post: item,
+            isOwner: Boolean(user?.uid && uid && user.uid === uid),
+            isSupporter,
+            activeTierIds: subscribedTierIds,
+          });
+          const requiresMembership = vis === "members" || vis === "tier";
+          const reqSet = new Set<string>(item.requiredTierIds || []);
+          const matchingTier =
+            (vis === "tier" && reqSet.size > 0
+              ? communityTiers.find((t) => reqSet.has(t.id))
+              : communityTiers[0]) || null;
 
           return (
             <Card key={item.id} data-post-id={item.id} className="p-5 sm:p-6">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-caption text-muted-fg">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-brand-strong">
+                  <span className="inline-flex items-center gap-1 font-semibold text-brand-strong">
+                    {item.type === "article" && (
+                      <BookOpen className="size-3.5" aria-hidden="true" />
+                    )}
                     {postTypeLabel(item.type)}
                   </span>
+                  {item.type === "article" && (
+                    <>
+                      <span aria-hidden="true">·</span>
+                      <span>
+                        {estimateReadingMinutes(item.htmlContent || textBody)} min read
+                      </span>
+                    </>
+                  )}
                   <span aria-hidden="true">·</span>
                   <span>{formatPostDate(item.publishedAt || item.createdAt)}</span>
                 </div>
                 <span className="inline-flex items-center gap-1 font-medium">
-                  {item.isPrivate ? (
+                  {vis !== "public" ? (
                     <>
                       <Lock className="size-3.5 text-warning" aria-hidden="true" />
-                      <span className="text-warning">Supporters only</span>
+                      <span className="text-warning">
+                        {formatVisibilityLabel(vis, item.requiredTierNames)}
+                      </span>
                     </>
                   ) : (
                     <span>Public</span>
                   )}
                 </span>
               </div>
+
+              {!isUnlocked ? (
+                <div className="rounded-control border border-dashed border-line bg-surface-raised p-5 text-center">
+                  <span className="mx-auto mb-2.5 flex size-10 items-center justify-center rounded-full bg-brand-soft text-brand-strong">
+                    {requiresMembership ? (
+                      <Crown className="size-5" aria-hidden="true" />
+                    ) : (
+                      <Lock className="size-5" aria-hidden="true" />
+                    )}
+                  </span>
+                  {item.title && (
+                    <h4 className="text-title font-bold text-fg">{item.title}</h4>
+                  )}
+                  <p className="mt-1 text-caption text-muted-fg">
+                    Available to{" "}
+                    {formatVisibilityLabel(vis, item.requiredTierNames).toLowerCase()}.
+                  </p>
+                  <div className="mt-4 flex flex-wrap justify-center gap-2">
+                    {requiresMembership && matchingTier && onSubscribe ? (
+                      <Button
+                        size="sm"
+                        onClick={() => onSubscribe(matchingTier)}
+                        leadingIcon={<Crown className="size-4" aria-hidden="true" />}
+                      >
+                        Join {matchingTier.name}
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={() => setSupportItem(item)}
+                        leadingIcon={<Heart className="size-4" aria-hidden="true" />}
+                      >
+                        Support {name}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <>
 
               {item.type === "article" && (item.coverUrl || item.contentUrl) && (
                 <Link
@@ -530,6 +603,8 @@ export const CommunityTab = ({
                   />
                 </div>
               )}
+                </>
+              )}
 
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3 text-caption text-muted-fg">
                 <div className="flex items-center gap-4 tabular-nums">
@@ -560,7 +635,7 @@ export const CommunityTab = ({
                     href={postHref}
                     className="inline-flex min-h-11 items-center gap-1 px-2 text-label font-semibold text-brand-strong hover:underline"
                   >
-                    {item.type === "article" ? "Read" : "View Post"}
+                    {item.type === "article" ? "Read article" : "View Post"}
                     <ArrowRight className="size-3.5" aria-hidden="true" />
                   </Link>
                 </div>
@@ -630,12 +705,17 @@ export const CommunityTab = ({
 
       {supportItem && (
         <Suspense fallback={null}>
-          <LazySupportModal
-            isOpen={!!supportItem}
+          <LazySupportSheet
+            open={!!supportItem}
             onClose={() => setSupportItem(null)}
-            creatorName={name}
-            creatorId={username}
-            uid={uid}
+            creator={{
+              uid,
+              handle: username,
+              name,
+              photoURL: null,
+            }}
+            isLoggedIn={isLoggedIn}
+            user={user}
             defaultMessage={
               supportItem?.title
                 ? `I love this post! "${supportItem.title}"`

@@ -1,4 +1,4 @@
-import { adminAuth } from "@/db/firebaseAdmin";
+import { adminAuth, adminDb } from "@/db/firebaseAdmin";
 import { NextResponse } from "next/server";
 
 export interface AuthUser {
@@ -19,10 +19,17 @@ export async function verifyAuthToken(request: Request): Promise<AuthUser | null
 
   try {
     const decoded = await adminAuth.verifyIdToken(token);
+    let isAdmin = decoded.admin === true || decoded.isAdmin === true;
+    if (!isAdmin) {
+      const profileSnap = await adminDb.collection("profiles").doc(decoded.uid).get();
+      if (profileSnap.exists && profileSnap.data()?.isAdmin === true) {
+        isAdmin = true;
+      }
+    }
     return {
       uid: decoded.uid,
       email: decoded.email || null,
-      isAdmin: decoded.admin === true || decoded.isAdmin === true,
+      isAdmin,
     };
   } catch {
     return null;

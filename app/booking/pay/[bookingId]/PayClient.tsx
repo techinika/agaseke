@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Loader,
@@ -13,12 +13,15 @@ import {
   MapPin,
   Video,
   Star,
+  ExternalLink,
+  XCircle,
 } from "lucide-react";
 import { db } from "@/db/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
 import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService";
+import { subscribeToTransactionByRef } from "@/lib/transactions";
 import { isCurrencySupportedByMethod } from "@/lib/money/rails";
 import Link from "next/link";
 import { PublicHeader as Navbar } from "@/components/shell/PublicHeader";
@@ -35,14 +38,38 @@ export default function BookingPayClient() {
   const [booking, setBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
-  const [paid, setPaid] = useState(false);
-  const [confirmed, setConfirmed] = useState(false);
+  const [paymentPhase, setPaymentPhase] = useState<
+    "idle" | "waiting" | "confirmed" | "failed"
+  >("idle");
+  const [paymentError, setPaymentError] = useState("");
+  const [cardRedirectUrl, setCardRedirectUrl] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"momo" | "card">("momo");
   const [phone, setPhone] = useState("");
+  const unsubTxRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
+    return () => {
+      unsubTxRef.current?.();
+      unsubTxRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!bookingId) return;
+
+    const unsubBooking = onSnapshot(
+      doc(db, "bookingRequests", bookingId),
+      (snap) => {
+        if (!snap.exists()) return;
+        const data: any = { id: snap.id, ...snap.data() };
+        setBooking(data);
+        if (data.paymentStatus === "paid") {
+          setPaymentPhase("confirmed");
+        }
+      },
+    );
+
     const fetchBooking = async () => {
-      if (!bookingId) return;
       const snap = await getDoc(doc(db, "bookingRequests", bookingId));
       if (!snap.exists()) {
         setLoading(false);
@@ -55,39 +82,50 @@ export default function BookingPayClient() {
       }
       const data: any = { id: snap.id, ...snap.data() };
       setBooking(data);
-      if (data.currency && !isCurrencySupportedByMethod("momo", data.currency)) setPaymentMethod("card");
-      if (data.paymentStatus === "paid") { setPaid(true); setConfirmed(true); }
+      if (data.bookerPhone) {
+        setPhone((prev) => prev || String(data.bookerPhone));
+      }
+      const derivedCurrency = String(data.currency || "RWF").toUpperCase();
+      if (!isCurrencySupportedByMethod("momo", derivedCurrency)) {
+        setPaymentMethod("card");
+      }
+      if (data.paymentStatus === "paid") {
+        setPaymentPhase("confirmed");
+      }
       if (!data.paymentAmount || data.paymentAmount <= 0) {
         router.push(`/${data.creatorHandle || ""}/booking`);
         return;
       }
       setLoading(false);
     };
-    fetchBooking();
+
+    void fetchBooking();
+    return () => unsubBooking();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingId]);
 
-  // Poll Firestore for payment confirmation after initiating payment
-  useEffect(() => {
-    if (!paid || confirmed || !bookingId) return;
-    const interval = setInterval(async () => {
-      try {
-        const snap = await getDoc(doc(db, "bookingRequests", bookingId));
-        if (snap.exists() && snap.data().paymentStatus === "paid") {
-          setConfirmed(true);
-          setBooking((prev: any) => ({ ...prev, paymentStatus: "paid" }));
-          clearInterval(interval);
-        }
-      } catch {
-        logError("payment", "PayClient: Polling error while waiting for payment confirmation", {
-          userId: currentUser?.uid || undefined,
-          userEmail: currentUser?.email || undefined,
-          userName: currentUser?.displayName || undefined,
-          metadata: { bookingId, creatorHandle: booking?.creatorHandle, creatorName: booking?.creatorName },
-        });
+  const currency = String(booking?.currency || "RWF").toUpperCase();
+  const momoSupported = isCurrencySupportedByMethod("momo", currency);
+  const activeMethod = momoSupported ? paymentMethod : "card";
+
+  const watchTransaction = (txRef: string) => {
+    unsubTxRef.current?.();
+    const unsub = subscribeToTransactionByRef(txRef, (tx) => {
+      if (!tx) return;
+      if (tx.status === "successful" || tx.status === "success") {
+        setPaymentPhase("confirmed");
+        setBooking((prev: any) => (prev ? { ...prev, paymentStatus: "paid" } : prev));
+        toast.success("Booking payment confirmed!");
+        unsub();
+      } else if (tx.status === "failed") {
+        setPaymentPhase("failed");
+        setPaymentError("The payment was declined or cancelled.");
+        toast.error("Payment failed. Please try again.");
+        unsub();
       }
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [paid, confirmed, bookingId]);
+    });
+    unsubTxRef.current = unsub;
+  };
 
   const handlePay = async () => {
     if (!booking || !currentUser?.uid) {
@@ -95,12 +133,13 @@ export default function BookingPayClient() {
       return;
     }
 
-    if (paymentMethod === "momo" && !phone.trim()) {
+    if (activeMethod === "momo" && !phone.trim()) {
       toast.error("Please enter your phone number");
       return;
     }
 
     setPaying(true);
+    setPaymentError("");
 
     try {
       const payload: Record<string, any> = {
@@ -109,36 +148,48 @@ export default function BookingPayClient() {
         bookingId: booking.id,
         phone: phone.replace(/\s/g, ""),
         email: currentUser.email || booking.bookerEmail || "",
-        firstName: currentUser.displayName?.split(" ")[0] || booking.bookerName || "Customer",
+        firstName:
+          currentUser.displayName?.split(" ")[0] || booking.bookerName || "Customer",
         lastName: currentUser.displayName?.split(" ")[1] || "",
         buyerName: currentUser.displayName || booking.bookerName || "Customer",
         buyerEmail: currentUser.email || booking.bookerEmail || "",
-        ...(booking.currency ? { currency: booking.currency } : {}),
+        currency,
         idempotencyKey: crypto.randomUUID(),
       };
 
-      if (paymentMethod === "momo") {
-        await initiateMomoPayment(payload as any);
+      if (activeMethod === "momo") {
+        const res = await initiateMomoPayment(payload as any);
+        setCardRedirectUrl(null);
+        setPaymentPhase("waiting");
+        watchTransaction(res.ref);
         toast.success("Payment initiated! Check your phone to complete.");
       } else {
         const data = await initiateCardPayment(payload as any);
+        setCardRedirectUrl(data.redirect_url || null);
+        setPaymentPhase("waiting");
+        watchTransaction(data.merchant_reference || data.ref);
         if (data.redirect_url) {
-          window.open(data.redirect_url, "_blank");
+          window.open(data.redirect_url, "_blank", "noopener,noreferrer");
           toast.success("Payment page opened in a new tab");
-          setPaid(true);
-          return;
         }
       }
-
-      setPaid(true);
     } catch (error) {
       console.error("Payment error:", error);
-      toast.error("Payment failed");
+      const message = error instanceof Error ? error.message : "Payment failed";
+      setPaymentError(message);
+      toast.error(message);
       logError("payment", "PayClient: Payment initiation threw exception", {
         userId: currentUser?.uid || undefined,
         userEmail: currentUser?.email || undefined,
         userName: currentUser?.displayName || undefined,
-        metadata: { bookingId, creatorHandle: booking?.creatorHandle, creatorName: booking?.creatorName, paymentMethod, amount: booking?.paymentAmount, error: String(error) },
+        metadata: {
+          bookingId,
+          creatorHandle: booking?.creatorHandle,
+          creatorName: booking?.creatorName,
+          paymentMethod: activeMethod,
+          amount: booking?.paymentAmount,
+          error: String(error),
+        },
       });
     } finally {
       setPaying(false);
@@ -178,9 +229,7 @@ export default function BookingPayClient() {
   }
 
   const handle = booking.creatorHandle;
-  const isPaid = booking.paymentStatus === "paid";
-  const momoSupported = booking?.currency ? isCurrencySupportedByMethod("momo", booking.currency) : false;
-
+  const isPaid = booking.paymentStatus === "paid" || paymentPhase === "confirmed";
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -197,7 +246,6 @@ export default function BookingPayClient() {
         )}
 
         <div className="bg-surface rounded-control shadow-lg p-6 space-y-6">
-          {/* Header */}
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl font-bold">Complete Payment</h1>
@@ -206,14 +254,13 @@ export default function BookingPayClient() {
               </p>
             </div>
             {isPaid && (
-              <span className="flex items-center gap-1.5 bg-success-bg text-success text-xs font-bold px-3 py-1.5 rounded-full">
+              <span className="flex items-center gap-1.5 text-success text-xs font-bold">
                 <Check size={14} />
                 Paid
               </span>
             )}
           </div>
 
-          {/* Booking Summary */}
           <div className="bg-surface-sunken rounded-control p-4 space-y-3">
             <h4 className="font-bold text-sm">Booking Summary</h4>
             {booking.tierName && (
@@ -253,13 +300,12 @@ export default function BookingPayClient() {
             )}
             <div className="border-t border-line pt-3 flex justify-between font-bold">
               <span>Amount</span>
-              <span className="text-brand-strong">
-                {booking.currency ? formatCurrency(booking.paymentAmount || 0, booking.currency) : `${booking.paymentAmount || 0}`}
+              <span className="text-brand-strong tabular-nums">
+                {formatCurrency(booking.paymentAmount || 0, currency)}
               </span>
             </div>
           </div>
 
-          {/* Booker Info */}
           <div className="bg-surface-sunken rounded-control p-4 space-y-1">
             <h4 className="font-bold text-sm mb-2">Your Information</h4>
             <p className="text-sm">{booking.bookerName}</p>
@@ -269,8 +315,7 @@ export default function BookingPayClient() {
             )}
           </div>
 
-          {/* Payment section */}
-          {isPaid || confirmed ? (
+          {isPaid ? (
             <div className="bg-success-bg rounded-control p-4 flex items-start gap-3">
               <Check size={20} className="text-success mt-0.5 shrink-0" />
               <div>
@@ -282,32 +327,52 @@ export default function BookingPayClient() {
                 </p>
               </div>
             </div>
-          ) : paid ? (
+          ) : paymentPhase === "waiting" ? (
             <div className="bg-warning-bg rounded-control p-4 flex items-start gap-3">
-              <Loader size={20} className="animate-spin text-warning mt-0.5 shrink-0" />
-              <div>
+              <Loader
+                size={20}
+                className="animate-spin text-warning mt-0.5 shrink-0"
+              />
+              <div className="flex-1">
                 <p className="text-sm font-bold text-warning">
                   Waiting for Payment Confirmation
                 </p>
                 <p className="text-xs text-warning mt-1">
-                  {paymentMethod === "momo"
+                  {activeMethod === "momo"
                     ? "Please check your phone to complete the payment. Waiting for confirmation..."
-                    : "Waiting for card payment confirmation..."}
+                    : "Complete payment in the checkout tab."}
                 </p>
+                {cardRedirectUrl && (
+                  <a
+                    href={cardRedirectUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-brand-strong hover:underline"
+                  >
+                    Open checkout page <ExternalLink size={14} />
+                  </a>
+                )}
               </div>
             </div>
           ) : (
             <>
-              {/* Payment Method */}
+              {paymentPhase === "failed" && paymentError && (
+                <div className="bg-danger-bg rounded-control p-4 flex items-start gap-3">
+                  <XCircle size={20} className="text-danger mt-0.5 shrink-0" />
+                  <p className="text-sm font-medium text-danger">{paymentError}</p>
+                </div>
+              )}
+
               <div className="space-y-3">
                 <p className="font-bold text-sm">Payment Method</p>
                 {!momoSupported ? (
                   <p className="text-sm text-muted-fg">
-                    Mobile money is not available for {booking.currency || "this currency"}. Card payment is required.
+                    Mobile money is not available for {currency}. Card payment is required.
                   </p>
                 ) : (
                   <div className="grid grid-cols-2 gap-3">
                     <button
+                      type="button"
                       onClick={() => setPaymentMethod("momo")}
                       className={`py-3 px-4 rounded-control border-2 font-bold text-sm transition-all ${
                         paymentMethod === "momo"
@@ -318,6 +383,7 @@ export default function BookingPayClient() {
                       Mobile Money
                     </button>
                     <button
+                      type="button"
                       onClick={() => setPaymentMethod("card")}
                       className={`py-3 px-4 rounded-control border-2 font-bold text-sm transition-all ${
                         paymentMethod === "card"
@@ -331,7 +397,7 @@ export default function BookingPayClient() {
                 )}
               </div>
 
-              {momoSupported && paymentMethod === "momo" && (
+              {activeMethod === "momo" && (
                 <div className="bg-warning-bg rounded-control p-4 flex items-start gap-3">
                   <AlertCircle
                     size={20}
@@ -344,10 +410,10 @@ export default function BookingPayClient() {
                 </div>
               )}
 
-              {momoSupported && paymentMethod === "momo" && (
+              {activeMethod === "momo" && (
                 <div className="space-y-2">
                   <label className="text-sm font-bold">
-                    MTN Mobile Money Number
+                    Mobile Money Number
                   </label>
                   <input
                     type="tel"
@@ -359,7 +425,7 @@ export default function BookingPayClient() {
                 </div>
               )}
 
-              {paymentMethod === "card" && (
+              {activeMethod === "card" && (
                 <div className="bg-info-bg rounded-control p-4 flex items-start gap-3">
                   <CreditCard
                     size={20}
@@ -373,8 +439,9 @@ export default function BookingPayClient() {
               )}
 
               <button
+                type="button"
                 onClick={handlePay}
-                disabled={!booking.currency || paying || (paymentMethod === "momo" && !phone.trim())}
+                disabled={paying || (activeMethod === "momo" && !phone.trim())}
                 className="w-full bg-success text-on-success py-4 rounded-control font-bold hover:bg-success transition disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {paying ? (
@@ -385,7 +452,7 @@ export default function BookingPayClient() {
                 ) : (
                   <>
                     <Check size={20} />
-                    Pay {booking.currency ? formatCurrency(booking.paymentAmount || 0, booking.currency) : `${booking.paymentAmount || 0}`}
+                    Pay {formatCurrency(booking.paymentAmount || 0, currency)}
                   </>
                 )}
               </button>

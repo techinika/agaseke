@@ -226,9 +226,34 @@ export default {
             `${auth.uid}:${getClientIp(request)}`,
           );
           if (limited) return limited;
-          const body = (await request.json()) as { ref?: string };
+          const body = (await request.json()) as { ref?: string; phone?: string };
           try {
-            const result = await retryTransaction(env, auth.uid, body.ref || "");
+            const result = await retryTransaction(env, auth.uid, body.ref || "", {
+              phone: body.phone,
+            });
+            return json(result, 200, origin);
+          } catch (err) {
+            if (err instanceof RetryError) {
+              return json({ error: err.message }, err.statusCode, origin);
+            }
+            throw err;
+          }
+        }
+
+        if (path === "/api/payments/transactions/resume") {
+          const limited = isRateLimited(
+            request,
+            10,
+            60000,
+            `${auth.uid}:${getClientIp(request)}`,
+          );
+          if (limited) return limited;
+          const body = (await request.json()) as { ref?: string; phone?: string };
+          try {
+            const result = await retryTransaction(env, auth.uid, body.ref || "", {
+              allowPending: true,
+              phone: body.phone,
+            });
             return json(result, 200, origin);
           } catch (err) {
             if (err instanceof RetryError) {

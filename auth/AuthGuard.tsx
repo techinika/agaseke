@@ -43,9 +43,11 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   const isAuthPage = !isLoggedIn;
   const isCreatorPage = pathname.startsWith("/creator");
+  const isAdminPage = pathname.startsWith("/admin");
 
   if (isAuthPage) return null;
   if (isCreatorPage && !isCreator) return null;
+  if (isAdminPage && !isAdmin) return null;
 
   return <>{children}</>;
 }

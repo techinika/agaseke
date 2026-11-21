@@ -27,12 +27,6 @@ const LazySupportSheet = lazy(() =>
     default: module.SupportSheet,
   })),
 );
-const LazySupportModal = lazy(() =>
-  import("@/components/parts/public/SupportModal").then((module) => ({
-    default: module.SupportModal,
-  })),
-);
-const SUPPORT_SHEET_V2 = process.env.NEXT_PUBLIC_SUPPORT_SHEET_V2 !== "0";
 const PENDING_FRESH_MS = 30 * 60 * 1000;
 const LazyStoreTab = lazy(() =>
   import("@/components/parts/public/StoreTab").then((module) => ({
@@ -377,28 +371,15 @@ export default function CreatorPage({
 
       {supportOpen && (
         <Suspense fallback={null}>
-          {SUPPORT_SHEET_V2 ? (
-            <LazySupportSheet
-              open={supportOpen}
-              onClose={closeSupport}
-              creator={supportCreator}
-              isLoggedIn={isLoggedIn}
-              user={user}
-              resumeReference={resumeReference}
-              onSuccess={data.retry}
-            />
-          ) : (
-            <LazySupportModal
-              isOpen={supportOpen}
-              onClose={closeSupport}
-              creatorName={displayName}
-              creatorId={handle}
-              uid={creator.uid}
-              includeReferral={data.profile?.referralCreator != null}
-              referralUid={data.referralId}
-              referralId={data.profile?.referralCreator}
-            />
-          )}
+          <LazySupportSheet
+            open={supportOpen}
+            onClose={closeSupport}
+            creator={supportCreator}
+            isLoggedIn={isLoggedIn}
+            user={user}
+            resumeReference={resumeReference}
+            onSuccess={data.retry}
+          />
         </Suspense>
       )}
     </>

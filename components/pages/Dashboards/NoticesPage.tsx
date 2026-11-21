@@ -2,15 +2,15 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Megaphone, Bell, Calendar } from "lucide-react";
-import { subscribeToBroadcastNotices } from "@/lib/notifications";
+import { Megaphone, Calendar } from "lucide-react";
+import { markNotificationAsRead, subscribeToBroadcastNotices } from "@/lib/notifications";
 import { useAuth } from "@/auth/AuthContext";
 import { LoadingState } from "@/components/ui/LoadingState";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { cn } from "@/lib/cn";
 
@@ -30,20 +30,34 @@ interface Notice {
 export default function NoticesPage() {
   const { user, profile } = useAuth();
   const [notices, setNotices] = useState<Notice[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
 
-  useEffect(() => {
-    if (!user) return;
+  const subscriptionKey = user?.uid ? `${user.uid}:${retryKey}` : null;
+  const loading = Boolean(subscriptionKey) && loadedKey !== subscriptionKey;
 
-    const unsubscribe = subscribeToBroadcastNotices(user.uid, (items) => {
-      setNotices(items as unknown as Notice[]);
-      setLoading(false);
-    });
+  useEffect(() => {
+    if (!user?.uid || !subscriptionKey) return;
+
+    const unsubscribe = subscribeToBroadcastNotices(
+      user.uid,
+      (items) => {
+        setNotices(items as unknown as Notice[]);
+        setLoadedKey(subscriptionKey);
+        setLoadError(false);
+      },
+      (err) => {
+        console.error("Failed to load broadcast notices:", err);
+        setLoadError(true);
+        setLoadedKey(subscriptionKey);
+      },
+    );
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user?.uid, subscriptionKey]);
 
   const filteredNotices =
     filter === "unread" ? notices.filter((notice) => !notice.read) : notices;
@@ -67,6 +81,13 @@ export default function NoticesPage() {
     return message.replace(/\[NAME\]/g, name).replace(/\[HANDLE\]/g, handle);
   };
 
+  const openNotice = (notice: Notice) => {
+    setSelectedNotice(notice);
+    if (!notice.read) {
+      void markNotificationAsRead(notice.id).catch(() => {});
+    }
+  };
+
   if (loading) {
     return <LoadingState variant="list" />;
   }
@@ -80,15 +101,14 @@ export default function NoticesPage() {
           eyebrow="Inbox"
           actions={
             unreadCount > 0 ? (
-              <Badge tone="brand" className="gap-2 px-3 py-2">
-                <Bell className="size-4" aria-hidden="true" />
+              <span className="text-label font-semibold tabular-nums text-brand-strong">
                 {unreadCount} unread
-              </Badge>
+              </span>
             ) : undefined
           }
         />
 
-        <div className="mt-8 flex flex-wrap gap-3">
+        <div className="mt-6 flex flex-wrap gap-2">
           <Button
             size="sm"
             variant={filter === "all" ? "primary" : "secondary"}
@@ -108,7 +128,13 @@ export default function NoticesPage() {
         </div>
 
         <div className="mt-6">
-          {filteredNotices.length === 0 ? (
+          {loadError ? (
+            <ErrorState
+              title="Couldn't load notices"
+              description="Check your connection and try again."
+              onRetry={() => setRetryKey((n) => n + 1)}
+            />
+          ) : filteredNotices.length === 0 ? (
             <EmptyState
               icon={<Megaphone className="size-6" aria-hidden="true" />}
               title="No notices yet"
@@ -116,53 +142,57 @@ export default function NoticesPage() {
               className="py-16"
             />
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {filteredNotices.map((notice) => (
-                <Button
+                <button
                   key={notice.id}
-                  variant="secondary"
-                  fullWidth
-                  onClick={() => setSelectedNotice(notice)}
+                  type="button"
+                  onClick={() => openNotice(notice)}
                   className={cn(
-                    "flex-col items-stretch justify-start px-5 py-5 text-left",
-                    !notice.read && "shadow-sm",
+                    "w-full rounded-card border border-line bg-surface px-5 py-4 text-left transition-colors hover:bg-surface-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+                    !notice.read && "bg-brand-soft/30",
                   )}
                 >
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex min-w-0 items-start gap-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex min-w-0 items-start gap-3.5">
                       <span
                         className={cn(
-                          "flex size-11 shrink-0 items-center justify-center rounded-control",
+                          "flex size-10 shrink-0 items-center justify-center rounded-control",
                           notice.read
                             ? "bg-surface-raised text-muted-fg"
                             : "bg-brand-soft text-brand-strong",
                         )}
                       >
-                        <Megaphone className="size-5" aria-hidden="true" />
+                        <Megaphone className="size-4" aria-hidden="true" />
                       </span>
                       <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2 text-caption text-muted-fg">
                           <h2
                             className={cn(
-                              "text-body-lg font-bold",
-                              notice.read ? "text-muted-fg" : "text-fg",
+                              "text-body font-bold",
+                              notice.read ? "text-fg" : "text-fg",
                             )}
                           >
                             {notice.title}
                           </h2>
-                          {!notice.read && <Badge tone="brand">NEW</Badge>}
+                          {!notice.read && (
+                            <>
+                              <span aria-hidden="true">·</span>
+                              <span className="font-semibold text-brand-strong">Unread</span>
+                            </>
+                          )}
                         </div>
-                        <p className="mt-1 max-w-2xl text-label leading-relaxed text-muted-fg">
+                        <p className="mt-1 line-clamp-2 max-w-2xl text-label leading-relaxed text-muted-fg">
                           {personalizeMessage(notice.message)}
                         </p>
                       </div>
                     </div>
-                    <span className="flex shrink-0 items-center gap-2 text-caption font-medium text-muted-fg">
-                      <Calendar className="size-4" aria-hidden="true" />
+                    <span className="flex shrink-0 items-center gap-1.5 text-caption tabular-nums text-muted-fg">
+                      <Calendar className="size-3.5" aria-hidden="true" />
                       {formatDate(notice.createdAt)}
                     </span>
                   </div>
-                </Button>
+                </button>
               ))}
             </div>
           )}
@@ -177,20 +207,15 @@ export default function NoticesPage() {
         size="lg"
       >
         {selectedNotice && (
-          <div className="space-y-5">
-            <div className="flex flex-wrap items-center gap-2">
-              {selectedNotice.read ? (
-                <Badge>Read</Badge>
-              ) : (
-                <Badge tone="brand">NEW</Badge>
-              )}
-              <span className="flex items-center gap-2 text-caption font-medium text-muted-fg">
-                <Calendar className="size-4" aria-hidden="true" />
-                {formatDate(selectedNotice.createdAt)}
-              </span>
-            </div>
+          <div className="space-y-4">
+            <p className="flex items-center gap-2 text-caption tabular-nums text-muted-fg">
+              <span>{selectedNotice.read ? "Read" : "Unread"}</span>
+              <span aria-hidden="true">·</span>
+              <Calendar className="size-3.5" aria-hidden="true" />
+              <span>{formatDate(selectedNotice.createdAt)}</span>
+            </p>
             <Card className="bg-surface-sunken p-5">
-              <p className="whitespace-pre-wrap text-label font-medium leading-relaxed text-fg">
+              <p className="whitespace-pre-wrap text-label leading-relaxed text-fg">
                 {personalizeMessage(selectedNotice.message)}
               </p>
             </Card>

@@ -18,6 +18,7 @@ import {
   FilePlus2,
   Copy,
   Check,
+  ExternalLink,
 } from "lucide-react";
 import { deleteCreatorContent, subscribeToCreatorArticles } from "@/features/content";
 import { toast } from "sonner";
@@ -27,6 +28,10 @@ import { useRouter } from "next/navigation";
 import { slugify } from "@/lib/slug";
 import { baseUrl } from "@/lib/baseUrl";
 import { MediaAsset } from "@/components/parts/public/MediaAsset";
+import {
+  formatVisibilityLabel,
+  resolvePostVisibility,
+} from "@/lib/contentAccess";
 
 export default function ArticlesPage() {
   const { creator } = useAuth();
@@ -187,30 +192,30 @@ export default function ArticlesPage() {
                   )}
                 </div>
                 <div className="flex-1 p-5 flex flex-col min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[10px] font-bold bg-orange-50 dark:bg-orange-950 text-orange-600 dark:text-orange-400 px-2 py-1 rounded uppercase tracking-widest">
-                      Article
-                    </span>
+                  <div className="flex flex-wrap items-center gap-2 mb-2 text-xs font-medium">
+                    <span className="text-brand-strong">Article</span>
                     {article.status === "draft" && (
-                      <span className="text-[10px] font-bold bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400 px-2 py-1 rounded uppercase tracking-widest">
-                        Draft
-                      </span>
+                      <>
+                        <span aria-hidden="true">·</span>
+                        <span className="text-warning">Draft</span>
+                      </>
                     )}
+                    <span aria-hidden="true">·</span>
                     <span
-                      className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest ${
-                        article.isPrivate
-                          ? "bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400"
-                          : "bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400"
+                      className={`inline-flex items-center gap-1 ${
+                        resolvePostVisibility(article) !== "public"
+                          ? "text-warning"
+                          : "text-success"
                       }`}
                     >
-                      {article.isPrivate ? (
-                        <>
-                          <Lock size={10} /> Supporters
-                        </>
+                      {resolvePostVisibility(article) !== "public" ? (
+                        <Lock size={12} aria-hidden="true" />
                       ) : (
-                        <>
-                          <Globe size={10} /> Public
-                        </>
+                        <Globe size={12} aria-hidden="true" />
+                      )}
+                      {formatVisibilityLabel(
+                        resolvePostVisibility(article),
+                        article.requiredTierNames,
                       )}
                     </span>
                   </div>
@@ -222,15 +227,25 @@ export default function ArticlesPage() {
                     <span>
                       {article.createdAt?.toDate?.().toLocaleDateString() || "Recently"}
                     </span>
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-1 tabular-nums">
                       <Eye size={12} /> {article.views || 0}
                     </span>
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-1 tabular-nums">
                       <MessageCircle size={12} /> {article.commentCount || 0}
                     </span>
                   </div>
                 </div>
                 <div className="flex sm:flex-col items-center gap-2 p-4 sm:border-l border-border shrink-0">
+                  {article.status !== "draft" && (article.slug || slugify(article.title || "")) && (
+                    <Link
+                      href={`/articles/${article.slug || slugify(article.title || "")}`}
+                      className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg hover:bg-surface-raised transition text-sm"
+                      title="Open live article"
+                    >
+                      <ExternalLink size={16} className="text-muted-foreground" />
+                      <span className="sm:hidden">Open</span>
+                    </Link>
+                  )}
                   <button
                     onClick={() => copyArticleLink(article)}
                     className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg hover:bg-muted transition text-sm"

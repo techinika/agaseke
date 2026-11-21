@@ -36,7 +36,7 @@ export default function ArticleSchema({
 
   const breadcrumbs = getBreadcrumbSchema([
     { name: "Home", url: "/" },
-    { name: "Articles", url: "/explore/posts" },
+    { name: "Articles", url: "/articles" },
     { name: headline, url },
   ]);
 

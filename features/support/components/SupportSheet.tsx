@@ -19,6 +19,7 @@ export interface SupportSheetProps {
   isLoggedIn: boolean;
   user: User | null;
   resumeReference?: string | null;
+  defaultMessage?: string;
   onSuccess?: () => void;
 }
 
@@ -29,6 +30,7 @@ export function SupportSheet({
   isLoggedIn,
   user,
   resumeReference,
+  defaultMessage,
   onSuccess,
 }: SupportSheetProps) {
   const flow = useSupportFlow({
@@ -37,6 +39,7 @@ export function SupportSheet({
     isLoggedIn,
     user,
     resumeReference,
+    defaultMessage,
     onSuccess,
     onClose,
   });

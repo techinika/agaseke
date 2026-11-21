@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/db/firebaseAdmin";
+import { isGatedVisibility, resolvePostVisibility } from "@/lib/contentAccess";
+import { estimateReadingMinutes } from "@/lib/readingTime";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +33,23 @@ function toIso(value: unknown): string | null {
   return null;
 }
 
+function toMillis(value: unknown): number {
+  if (!value) return 0;
+  if (typeof value === "object" && value !== null && "toMillis" in value) {
+    const fn = (value as { toMillis?: () => number }).toMillis;
+    if (typeof fn === "function") return fn();
+  }
+  if (typeof value === "object" && value !== null && "seconds" in value) {
+    const secs = (value as { seconds?: number }).seconds;
+    if (typeof secs === "number") return secs * 1000;
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value).getTime();
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+}
+
 function stripHtml(value: unknown): string {
   if (typeof value !== "string" || !value) return "";
   return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
@@ -53,16 +72,28 @@ async function getCreatorDirectory(): Promise<{
     return creatorCache;
   }
 
-  const snap = await adminDb
-    .collection("creators")
-    .select("name", "uid", "bio", "focus", "profilePicture", "photoURL", "verified")
-    .orderBy("name")
-    .get();
+  let docs: FirebaseFirestore.QueryDocumentSnapshot[];
+  try {
+    const snap = await adminDb
+      .collection("creators")
+      .select("name", "uid", "bio", "focus", "profilePicture", "photoURL", "verified")
+      .orderBy("name")
+      .get();
+    docs = snap.docs;
+  } catch {
+    const snap = await adminDb
+      .collection("creators")
+      .select("name", "uid", "bio", "focus", "profilePicture", "photoURL", "verified")
+      .get();
+    docs = [...snap.docs].sort((a, b) =>
+      String(a.data().name || a.id).localeCompare(String(b.data().name || b.id)),
+    );
+  }
 
   const list: CachedCreatorSummary[] = [];
   const byKey = new Map<string, CachedCreatorSummary>();
 
-  for (const doc of snap.docs) {
+  for (const doc of docs) {
     const data = doc.data();
     const summary: CachedCreatorSummary = {
       handle: doc.id,
@@ -89,6 +120,82 @@ async function getCreatorDirectory(): Promise<{
   };
 
   return creatorCache;
+}
+
+async function fetchPublicPostDocs(): Promise<FirebaseFirestore.QueryDocumentSnapshot[]> {
+  try {
+    const snap = await adminDb
+      .collection("creatorContent")
+      .where("isPrivate", "==", false)
+      .orderBy("createdAt", "desc")
+      .limit(300)
+      .get();
+    return snap.docs;
+  } catch {
+    const fallbackSnap = await adminDb
+      .collection("creatorContent")
+      .where("isPrivate", "==", false)
+      .limit(300)
+      .get();
+    return [...fallbackSnap.docs].sort((a, b) => {
+      const aData = a.data();
+      const bData = b.data();
+      const bTime = toMillis(bData.publishedAt) || toMillis(bData.createdAt);
+      const aTime = toMillis(aData.publishedAt) || toMillis(aData.createdAt);
+      return bTime - aTime;
+    });
+  }
+}
+
+function serializeExplorePost(
+  doc: FirebaseFirestore.QueryDocumentSnapshot,
+  byKey: Map<string, CachedCreatorSummary>,
+) {
+  const data = doc.data();
+  const creatorKey = String(data.creatorId || data.creatorUid || "");
+  const author =
+    byKey.get(creatorKey) ||
+    byKey.get(String(data.creatorUid || "")) ||
+    byKey.get(String(data.creatorId || ""));
+
+  const type = String(data.type || "text");
+  const readingMinutes =
+    type === "article"
+      ? estimateReadingMinutes(
+          String(data.htmlContent || data.shortDescription || data.description || ""),
+        )
+      : undefined;
+
+  return {
+    id: doc.id,
+    title: data.title || "",
+    description: data.description || "",
+    shortDescription: data.shortDescription || "",
+    content: data.content || "",
+    type,
+    slug: data.slug || "",
+    coverUrl: data.coverUrl || "",
+    contentUrl: data.contentUrl || null,
+    visibility: resolvePostVisibility(data),
+    requiredTierNames: Array.isArray(data.requiredTierNames)
+      ? data.requiredTierNames
+      : [],
+    readingMinutes,
+    views: typeof data.views === "number" ? data.views : 0,
+    commentCount: typeof data.commentCount === "number" ? data.commentCount : 0,
+    likesCount:
+      typeof data.stats?.likes === "number"
+        ? data.stats.likes
+        : typeof data.likesCount === "number"
+          ? data.likesCount
+          : 0,
+    createdAt: toIso(data.createdAt),
+    publishedAt: toIso(data.publishedAt),
+    authorName: author?.name || creatorKey.slice(0, 8) || "Creator",
+    authorHandle: author?.handle || creatorKey,
+    authorPhoto: author?.profilePicture || author?.photoURL || null,
+    authorVerified: Boolean(author?.verified),
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -128,71 +235,49 @@ export async function GET(request: NextRequest) {
     }
 
     const typeFilter = params.get("type") || "all";
-    const postsQuery = adminDb
-      .collection("creatorContent")
-      .where("isPrivate", "==", false)
-      .orderBy("createdAt", "desc");
 
     if (!q && typeFilter === "all") {
-      const pageSnap = await postsQuery
-        .offset(offset)
-        .limit(limitCount + 5)
-        .get();
+      try {
+        const pageSnap = await adminDb
+          .collection("creatorContent")
+          .where("isPrivate", "==", false)
+          .orderBy("createdAt", "desc")
+          .offset(offset)
+          .limit(limitCount + 5)
+          .get();
 
-      const published = pageSnap.docs
-        .filter((doc) => doc.data().status !== "draft")
-        .slice(0, limitCount)
-        .map((doc) => {
-          const data = doc.data();
-          const creatorKey = String(data.creatorId || data.creatorUid || "");
-          const author =
-            byKey.get(creatorKey) ||
-            byKey.get(String(data.creatorUid || "")) ||
-            byKey.get(String(data.creatorId || ""));
-
-          return {
-            id: doc.id,
-            title: data.title || "",
-            description: data.description || "",
-            shortDescription: data.shortDescription || "",
-            content: data.content || "",
-            type: data.type || "text",
-            slug: data.slug || "",
-            coverUrl: data.coverUrl || "",
-            contentUrl: data.contentUrl || null,
-            views: typeof data.views === "number" ? data.views : 0,
-            commentCount: typeof data.commentCount === "number" ? data.commentCount : 0,
-            likesCount:
-              typeof data.stats?.likes === "number"
-                ? data.stats.likes
-                : typeof data.likesCount === "number"
-                  ? data.likesCount
-                  : 0,
-            createdAt: toIso(data.createdAt),
-            publishedAt: toIso(data.publishedAt),
-            authorName: author?.name || creatorKey.slice(0, 8) || "Creator",
-            authorHandle: author?.handle || creatorKey,
-            authorPhoto: author?.profilePicture || author?.photoURL || null,
-          };
+        const publishedDocs = pageSnap.docs.filter((doc) => {
+          const d = doc.data();
+          return d.status !== "draft" && !isGatedVisibility(d);
         });
 
-      const hasMore = pageSnap.docs.length > published.length && published.length === limitCount;
-      return NextResponse.json(
-        { items: published, hasMore },
-        {
-          headers: {
-            "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+        const published = publishedDocs
+          .slice(0, limitCount)
+          .map((doc) => serializeExplorePost(doc, byKey));
+
+        const hasMore =
+          publishedDocs.length > limitCount ||
+          (pageSnap.docs.length === limitCount + 5 && published.length === limitCount);
+
+        return NextResponse.json(
+          { items: published, hasMore },
+          {
+            headers: {
+              "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+            },
           },
-        },
-      );
+        );
+      } catch {
+        // Composite index not available — fall through to bounded in-memory query
+      }
     }
 
-    // Search or filtered query across recent public posts (bounded window)
-    const searchSnap = await postsQuery.limit(300).get();
-    const filtered = searchSnap.docs
+    const allDocs = await fetchPublicPostDocs();
+    const filtered = allDocs
       .filter((doc) => {
         const data = doc.data();
         if (data.status === "draft") return false;
+        if (isGatedVisibility(data)) return false;
         if (typeFilter === "articles" && data.type !== "article") return false;
         if (typeFilter === "posts" && data.type === "article") return false;
         if (!q) return true;
@@ -208,6 +293,7 @@ export async function GET(request: NextRequest) {
           data.description,
           data.shortDescription,
           stripHtml(data.content),
+          stripHtml(data.htmlContent),
           data.slug,
           author?.name,
           author?.handle,
@@ -218,39 +304,7 @@ export async function GET(request: NextRequest) {
 
         return matchesQuery(haystack, q);
       })
-      .map((doc) => {
-        const data = doc.data();
-        const creatorKey = String(data.creatorId || data.creatorUid || "");
-        const author =
-          byKey.get(creatorKey) ||
-          byKey.get(String(data.creatorUid || "")) ||
-          byKey.get(String(data.creatorId || ""));
-
-        return {
-          id: doc.id,
-          title: data.title || "",
-          description: data.description || "",
-          shortDescription: data.shortDescription || "",
-          content: data.content || "",
-          type: data.type || "text",
-          slug: data.slug || "",
-          coverUrl: data.coverUrl || "",
-          contentUrl: data.contentUrl || null,
-          views: typeof data.views === "number" ? data.views : 0,
-          commentCount: typeof data.commentCount === "number" ? data.commentCount : 0,
-          likesCount:
-            typeof data.stats?.likes === "number"
-              ? data.stats.likes
-              : typeof data.likesCount === "number"
-                ? data.likesCount
-                : 0,
-          createdAt: toIso(data.createdAt),
-          publishedAt: toIso(data.publishedAt),
-          authorName: author?.name || creatorKey.slice(0, 8) || "Creator",
-          authorHandle: author?.handle || creatorKey,
-          authorPhoto: author?.profilePicture || author?.photoURL || null,
-        };
-      });
+      .map((doc) => serializeExplorePost(doc, byKey));
 
     const items = filtered.slice(offset, offset + limitCount);
     const hasMore = offset + items.length < filtered.length;

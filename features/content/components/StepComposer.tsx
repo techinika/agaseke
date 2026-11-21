@@ -3,9 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
-  Globe,
   Image as ImageIcon,
-  Lock,
   Loader,
   Type as TypeIcon,
   FileText,
@@ -18,6 +16,11 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { uploadFile, storedAssetValue, type AssetVisibility } from "@/lib/uploadService";
 import { sendCommsEmail } from "@/lib/commsService";
+import {
+  formatVisibilityLabel,
+  type PostVisibility,
+} from "@/lib/contentAccess";
+import { AudienceSelector } from "@/components/parts/dashboard/AudienceSelector";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
@@ -25,15 +28,15 @@ import { cn } from "@/lib/cn";
 /* eslint-disable @next/next/no-img-element -- blob preview */
 
 export type ComposerType = "text" | "image" | "video" | "document";
-
-export type ComposerVisibility = "public" | "private";
+export type ComposerVisibility = PostVisibility;
 
 interface ComposerDraft {
   type: ComposerType;
   title: string;
   content: string;
-  visibility: ComposerVisibility;
-  price: string;
+  visibility: PostVisibility;
+  requiredTierIds: string[];
+  requiredTierNames: string[];
 }
 
 const DRAFT_KEY = "agaseke:composer:draft";
@@ -41,7 +44,7 @@ const DRAFT_KEY = "agaseke:composer:draft";
 const STEPS = [
   { id: "type", label: "Type" },
   { id: "content", label: "Content" },
-  { id: "visibility", label: "Visibility" },
+  { id: "visibility", label: "Audience" },
   { id: "preview", label: "Preview" },
 ] as const;
 
@@ -51,25 +54,10 @@ const TYPE_OPTIONS: {
   hint: string;
   icon: typeof TypeIcon;
 }[] = [
-  { id: "text", label: "Text", hint: "A written post", icon: TypeIcon },
-  { id: "image", label: "Image", hint: "Photo post", icon: ImageIcon },
-  { id: "video", label: "Video", hint: "Video post", icon: Video },
+  { id: "text", label: "Text", hint: "A written update or note", icon: TypeIcon },
+  { id: "image", label: "Image", hint: "Photo post with caption", icon: ImageIcon },
+  { id: "video", label: "Video", hint: "Video post with caption", icon: Video },
   { id: "document", label: "Document", hint: "File or PDF", icon: FileText },
-];
-
-const VISIBILITIES: {
-  id: ComposerVisibility;
-  label: string;
-  icon: typeof Globe;
-  description: string;
-}[] = [
-  { id: "public", label: "Public", icon: Globe, description: "Anyone can see it." },
-  {
-    id: "private",
-    label: "Supporters only",
-    icon: Lock,
-    description: "Your supporters pay to unlock it.",
-  },
 ];
 
 function readDraft(): ComposerDraft {
@@ -78,13 +66,25 @@ function readDraft(): ComposerDraft {
     title: "",
     content: "",
     visibility: "public",
-    price: "",
+    requiredTierIds: [],
+    requiredTierNames: [],
   };
   if (typeof window === "undefined") return fallback;
   try {
     const raw = window.localStorage.getItem(DRAFT_KEY);
     if (raw) {
-      const parsed = JSON.parse(raw) as Partial<ComposerDraft>;
+      const parsed = JSON.parse(raw) as Partial<Omit<ComposerDraft, "visibility">> & {
+        visibility?: string;
+      };
+      const rawVis = parsed.visibility;
+      const vis: PostVisibility =
+        rawVis === "supporters" ||
+        rawVis === "members" ||
+        rawVis === "tier"
+          ? rawVis
+          : rawVis === "private"
+            ? "supporters"
+            : "public";
       return {
         type:
           parsed.type && TYPE_OPTIONS.some((t) => t.id === parsed.type)
@@ -92,8 +92,13 @@ function readDraft(): ComposerDraft {
             : "text",
         title: parsed.title ?? "",
         content: parsed.content ?? "",
-        visibility: parsed.visibility === "private" ? "private" : "public",
-        price: parsed.price ?? "",
+        visibility: vis,
+        requiredTierIds: Array.isArray(parsed.requiredTierIds)
+          ? parsed.requiredTierIds
+          : [],
+        requiredTierNames: Array.isArray(parsed.requiredTierNames)
+          ? parsed.requiredTierNames
+          : [],
       };
     }
   } catch {
@@ -116,8 +121,9 @@ export function StepComposer() {
   );
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [visibility, setVisibility] = useState<ComposerVisibility>("public");
-  const [price, setPrice] = useState("");
+  const [visibility, setVisibility] = useState<PostVisibility>("public");
+  const [requiredTierIds, setRequiredTierIds] = useState<string[]>([]);
+  const [requiredTierNames, setRequiredTierNames] = useState<string[]>([]);
   const [isPublishing, setIsPublishing] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -142,14 +148,31 @@ export function StepComposer() {
     setTitle(draft.title);
     setContent(draft.content);
     setVisibility(draft.visibility);
-    setPrice(draft.price);
+    setRequiredTierIds(draft.requiredTierIds);
+    setRequiredTierNames(draft.requiredTierNames);
     setDraftLoaded(true);
   }, []);
 
   useEffect(() => {
     if (!draftLoaded) return;
-    saveDraft({ type, title, content, visibility, price });
-  }, [draftLoaded, saveDraft, type, title, content, visibility, price]);
+    saveDraft({
+      type,
+      title,
+      content,
+      visibility,
+      requiredTierIds,
+      requiredTierNames,
+    });
+  }, [
+    draftLoaded,
+    saveDraft,
+    type,
+    title,
+    content,
+    visibility,
+    requiredTierIds,
+    requiredTierNames,
+  ]);
 
   const resetAll = () => {
     setType("text");
@@ -160,10 +183,13 @@ export function StepComposer() {
     setUploadedVisibility(null);
     setUploadError(null);
     setVisibility("public");
-    setPrice("");
+    setRequiredTierIds([]);
+    setRequiredTierNames([]);
     setStep(0);
     setIsPublishing(false);
   };
+
+  const isGated = visibility !== "public";
 
   const handlePublish = async () => {
     if (!creator?.uid || !creator?.handle) {
@@ -178,11 +204,15 @@ export function StepComposer() {
       toast.error("Please add a media file before publishing.");
       return;
     }
-    if (visibility === "private" && uploadedUrl && uploadedVisibility !== "private") {
-      toast.error("Re-upload the file now that the post is supporters-only.");
+    if (visibility === "tier" && requiredTierIds.length === 0) {
+      toast.error("Select at least one membership tier or change audience.");
       return;
     }
-    if (visibility === "public" && uploadedVisibility === "private") {
+    if (isGated && uploadedUrl && uploadedVisibility !== "private") {
+      toast.error("Re-upload the file so it is stored privately for gated access.");
+      return;
+    }
+    if (!isGated && uploadedVisibility === "private") {
       toast.error("Re-upload the file now that the post is public.");
       return;
     }
@@ -195,8 +225,11 @@ export function StepComposer() {
         title: title.trim(),
         description: content,
         type,
-        contentUrl: uploadedUrl,
-        isPrivate: visibility === "private",
+        contentUrl: uploadedUrl || null,
+        isPrivate: isGated,
+        visibility,
+        requiredTierIds,
+        requiredTierNames,
       });
       toast.success("Content published!");
 
@@ -207,7 +240,7 @@ export function StepComposer() {
           creatorHandle: creator?.handle,
           contentTitle: title.trim(),
           contentDescription: content,
-          contentType: visibility === "private" ? "private" : "public",
+          contentType: isGated ? "private" : "public",
           contentId,
         });
         if (response.success && response.recipientCount > 0) {
@@ -219,7 +252,6 @@ export function StepComposer() {
         }
       } catch (notifyError) {
         console.error("Failed to notify supporters:", notifyError);
-        toast.error("Could not notify supporters: " + String(notifyError));
       }
 
       window.localStorage.removeItem(DRAFT_KEY);
@@ -246,14 +278,17 @@ export function StepComposer() {
     "Who can see it?",
     "Preview & publish",
   ];
+
   const canNext =
     step === 0
       ? true
       : step === 1
-        ? type !== "text"
-          ? Boolean(uploadedUrl)
-          : Boolean(title.trim() && content.trim())
-        : true;
+        ? type === "text"
+          ? Boolean(title.trim() && content.trim())
+          : Boolean(title.trim() && uploadedUrl)
+        : step === 2
+          ? visibility !== "tier" || requiredTierIds.length > 0
+          : true;
 
   const goNext = () => {
     if (!canNext) {
@@ -261,8 +296,10 @@ export function StepComposer() {
         toast.error(
           type === "text"
             ? "Please add a title and content."
-            : "Please add a media file.",
+            : "Please add a title and upload a media file.",
         );
+      } else if (step === 2) {
+        toast.error("Select at least one membership tier.");
       }
       return;
     }
@@ -270,24 +307,25 @@ export function StepComposer() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-canvas">
       <div className="mx-auto max-w-2xl px-4 py-8 pb-24">
-        <div className="flex items-center gap-4 mb-8">
+        <div className="mb-8 flex items-center gap-4">
           <button
+            type="button"
             onClick={() => back()}
-            className="flex min-h-11 min-w-11 items-center justify-center rounded-control text-muted-fg hover:bg-muted focus-visible:ring-2 focus-visible:ring-focus"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-control text-muted-fg hover:bg-surface-raised focus-visible:ring-2 focus-visible:ring-focus"
             aria-label="Back"
             tabIndex={step > 0 ? 0 : -1}
             style={step > 0 ? undefined : { pointerEvents: "none", opacity: 0.5 }}
           >
             <ArrowLeft size={20} aria-hidden="true" />
           </button>
-          <h1 className="text-2xl font-bold uppercase tracking-tight">New Post</h1>
+          <h1 className="text-heading font-bold tracking-tight text-fg">New Post</h1>
         </div>
 
         {step < STEPS.length - 1 && (
           <ol
-            className="flex items-center gap-2 mb-8"
+            className="mb-8 flex items-center gap-2"
             aria-label={STEPS.map((s) => s.label).join(", ")}
           >
             {STEPS.map((s, i) => (
@@ -298,7 +336,7 @@ export function StepComposer() {
               >
                 <span
                   className={cn(
-                    "flex size-7 shrink-0 items-center justify-center rounded-full text-caption font-bold",
+                    "flex size-7 shrink-0 items-center justify-center rounded-full text-caption font-bold tabular-nums",
                     i === step
                       ? "bg-brand-strong text-on-brand"
                       : i < step
@@ -331,7 +369,7 @@ export function StepComposer() {
         )}
 
         {step === 0 && (
-          <Card className="p-4 sm:p-6 space-y-3">
+          <Card className="space-y-3 p-4 sm:p-6">
             <h2 className="text-title font-bold text-fg">{stepTitles[0]}</h2>
             <div className="grid gap-3">
               {TYPE_OPTIONS.map((option) => {
@@ -348,7 +386,7 @@ export function StepComposer() {
                       setStep(1);
                     }}
                     className={cn(
-                      "flex min-h-16 w-full items-center gap-3 rounded-control border px-4 py-3 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
+                      "flex min-h-16 w-full items-center gap-3 rounded-control border px-4 py-3 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus",
                       active
                         ? "border-brand-strong bg-brand/5"
                         : "border-line-strong bg-surface hover:bg-surface-raised",
@@ -380,57 +418,43 @@ export function StepComposer() {
         )}
 
         {step === 1 && (
-          <Card className="p-4 sm:p-6 space-y-4">
+          <Card className="space-y-4 p-4 sm:p-6">
             <h2 className="text-title font-bold text-fg">{stepTitles[1]}</h2>
-            {type === "text" ? (
-              <>
-                <div>
-                  <label
-                    htmlFor="composer-title"
-                    className="text-label font-semibold text-fg"
-                  >
-                    Title
-                  </label>
-                  <input
-                    id="composer-title"
-                    value={title}
-                    onChange={(e) => {
-                      setTitle(e.target.value);
-                      saveDraft({ title: e.target.value });
-                    }}
-                    className="mt-1.5 min-h-12 w-full rounded-control border border-line-strong bg-surface px-4 py-3 text-body text-fg placeholder:text-muted-fg outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
-                    placeholder="Give your post a title"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="composer-content"
-                    className="text-label font-semibold text-fg"
-                  >
-                    Content
-                  </label>
-                  <textarea
-                    id="composer-content"
-                    value={content}
-                    onChange={(e) => {
-                      setContent(e.target.value);
-                      saveDraft({ content: e.target.value });
-                    }}
-                    rows={6}
-                    placeholder="Write your story..."
-                    className="mt-1.5 min-h-32 w-full resize-none rounded-control border border-line-strong bg-surface px-4 py-3 text-body text-fg placeholder:text-muted-fg outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
-                  />
-                </div>
-              </>
-            ) : (
+
+            <div>
+              <label
+                htmlFor="composer-title"
+                className="text-label font-semibold text-fg"
+              >
+                Title
+              </label>
+              <input
+                id="composer-title"
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  saveDraft({ title: e.target.value });
+                }}
+                className="mt-1.5 min-h-12 w-full rounded-control border border-line-strong bg-surface px-4 py-3 text-body text-fg placeholder:text-muted-fg outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                placeholder="Give your post a title"
+              />
+            </div>
+
+            {type !== "text" && (
               <div className="space-y-3">
+                <span className="block text-label font-semibold text-fg">
+                  Upload {type}
+                </span>
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="min-h-40 rounded-control border-2 border-dashed border-line-strong bg-surface p-6 flex flex-col items-center justify-center cursor-pointer hover:border-brand-strong focus-visible:ring-2 focus-visible:ring-focus"
+                  className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-control border-2 border-dashed border-line-strong bg-surface p-6 hover:border-brand-strong focus-visible:ring-2 focus-visible:ring-focus"
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click();
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      fileInputRef.current?.click();
+                    }
                   }}
                 >
                   <input
@@ -447,7 +471,11 @@ export function StepComposer() {
                     onChange={async (e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
-                      setFilePreview(URL.createObjectURL(file));
+                      if (file.type.startsWith("image/")) {
+                        setFilePreview(URL.createObjectURL(file));
+                      } else {
+                        setFilePreview(null);
+                      }
                       setIsUploading(true);
                       setUploadError(null);
                       try {
@@ -462,7 +490,7 @@ export function StepComposer() {
                           assetType,
                           creator?.handle || "",
                           undefined,
-                          visibility === "private" ? "private" : "public",
+                          isGated ? "private" : "public",
                         );
                         const stored = storedAssetValue(data);
                         if (stored) {
@@ -490,7 +518,7 @@ export function StepComposer() {
                       aria-hidden="true"
                     />
                   ) : uploadedUrl ? (
-                    <div className="flex items-center gap-2 text-success font-semibold">
+                    <div className="flex items-center gap-2 font-semibold text-success">
                       <UploadCloud className="size-5" aria-hidden="true" /> File ready
                     </div>
                   ) : (
@@ -522,120 +550,78 @@ export function StepComposer() {
               </div>
             )}
 
-            {type === "text" && (
-              <div>
-                <label
-                  htmlFor="composer-title2"
-                  className="text-label font-semibold text-fg"
-                >
-                  Title
-                </label>
-                <input
-                  id="composer-title2"
-                  value={title}
-                  onChange={(e) => {
-                    setTitle(e.target.value);
-                    saveDraft({ title: e.target.value });
-                  }}
-                  className="mt-1.5 min-h-12 w-full rounded-control border border-line-strong bg-surface px-4 py-3 text-body text-fg placeholder:text-muted-fg outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
-                  placeholder="Give your post a title"
-                />
-              </div>
-            )}
+            <div>
+              <label
+                htmlFor="composer-content"
+                className="text-label font-semibold text-fg"
+              >
+                {type === "text" ? "Content" : "Caption (optional)"}
+              </label>
+              <textarea
+                id="composer-content"
+                value={content}
+                onChange={(e) => {
+                  setContent(e.target.value);
+                  saveDraft({ content: e.target.value });
+                }}
+                rows={type === "text" ? 6 : 3}
+                placeholder={
+                  type === "text"
+                    ? "Write your story..."
+                    : "Add context or a caption for your audience..."
+                }
+                className="mt-1.5 min-h-24 w-full resize-none rounded-control border border-line-strong bg-surface px-4 py-3 text-body text-fg placeholder:text-muted-fg outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              />
+            </div>
           </Card>
         )}
 
         {step === 2 && (
-          <Card className="p-4 sm:p-6 space-y-4">
+          <Card className="space-y-4 p-4 sm:p-6">
             <h2 className="text-title font-bold text-fg">{stepTitles[2]}</h2>
-            <div className="grid gap-3">
-              {VISIBILITIES.map((option) => {
-                const Icon = option.icon;
-                const active = visibility === option.id;
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => {
-                      setVisibility(option.id);
-                      saveDraft({ visibility: option.id });
-                    }}
-                    className={cn(
-                      "flex min-h-14 w-full items-center gap-3 rounded-control border px-4 py-3 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
-                      active
-                        ? "border-brand-strong bg-brand/5"
-                        : "border-line-strong bg-surface hover:bg-surface-raised",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "flex size-11 shrink-0 items-center justify-center rounded-full",
-                        active
-                          ? "bg-brand-strong text-on-brand"
-                          : "bg-surface-raised text-muted-fg",
-                      )}
-                    >
-                      <Icon className="size-5" aria-hidden="true" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-body font-semibold text-fg">
-                        {option.label}
-                      </span>
-                      <span className="block text-caption text-muted-fg">
-                        {option.description}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            {visibility === "private" && (
-              <div>
-                <label
-                  htmlFor="composer-price"
-                  className="text-label font-semibold text-fg"
+            <AudienceSelector
+              visibility={visibility}
+              requiredTierIds={requiredTierIds}
+              tiers={creator?.communityTiers || []}
+              onChange={(nextAudience) => {
+                setVisibility(nextAudience.visibility);
+                setRequiredTierIds(nextAudience.requiredTierIds);
+                setRequiredTierNames(nextAudience.requiredTierNames);
+                saveDraft(nextAudience);
+              }}
+            />
+            {uploadedUrl &&
+              ((isGated && uploadedVisibility !== "private") ||
+                (!isGated && uploadedVisibility === "private")) && (
+                <p
+                  role="alert"
+                  className="rounded-control bg-warning-bg p-3 text-caption font-medium text-warning"
                 >
-                  Support price (optional)
-                </label>
-                <input
-                  id="composer-price"
-                  type="number"
-                  min={0}
-                  step={100}
-                  value={price}
-                  onChange={(e) => {
-                    setPrice(e.target.value);
-                    saveDraft({ price: e.target.value });
-                  }}
-                  className="mt-1.5 min-h-12 w-full rounded-control border border-line-strong bg-surface px-4 py-3 text-body text-fg outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
-                  placeholder="0"
-                />
-                <p className="mt-1 text-caption text-muted-fg">
-                  0 means supporters get it with any support.
+                  Because you changed audience between public and gated, return to Content and re-upload the media file so storage matches.
                 </p>
-              </div>
-            )}
+              )}
           </Card>
         )}
 
         {step === 3 && (
-          <Card className="p-4 sm:p-6 space-y-4">
+          <Card className="space-y-4 p-4 sm:p-6">
             <h2 className="text-title font-bold text-fg">{stepTitles[3]}</h2>
-            <div className="rounded-control border border-line bg-surface-raised p-4 space-y-2">
+            <div className="space-y-2 rounded-control border border-line bg-surface-raised p-4">
               <div className="flex items-center justify-between gap-3 text-label">
                 <span className="text-muted-fg">Type</span>
-                <span className="font-semibold text-fg capitalize">{type}</span>
+                <span className="font-semibold capitalize text-fg">{type}</span>
               </div>
               <div className="flex items-center justify-between gap-3 text-label">
                 <span className="text-muted-fg">Title</span>
                 <span className="font-semibold text-fg">{title || "—"}</span>
               </div>
-              {type === "text" && (
+              {content.trim() && (
                 <div className="flex items-center justify-between gap-3 text-label">
-                  <span className="text-muted-fg">Body</span>
-                  <span className="font-semibold text-fg">
-                    {content.trim() ? content.trim().length + " chars" : "—"}
+                  <span className="text-muted-fg">
+                    {type === "text" ? "Body" : "Caption"}
+                  </span>
+                  <span className="font-semibold tabular-nums text-fg">
+                    {content.trim().length} chars
                   </span>
                 </div>
               )}
@@ -648,19 +634,11 @@ export function StepComposer() {
                 </div>
               )}
               <div className="flex items-center justify-between gap-3 text-label">
-                <span className="text-muted-fg">Visibility</span>
+                <span className="text-muted-fg">Audience</span>
                 <span className="font-semibold text-fg">
-                  {visibility === "private" ? "Supporters only" : "Public"}
+                  {formatVisibilityLabel(visibility, requiredTierNames)}
                 </span>
               </div>
-              {visibility === "private" && (
-                <div className="flex items-center justify-between gap-3 text-label">
-                  <span className="text-muted-fg">Support price</span>
-                  <span className="font-semibold text-fg">
-                    {price ? price + " RWF" : "Free for supporters"}
-                  </span>
-                </div>
-              )}
             </div>
             <Button
               fullWidth

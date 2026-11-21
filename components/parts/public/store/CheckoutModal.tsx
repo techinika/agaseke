@@ -75,8 +75,7 @@ export function CheckoutModal({
   for (const item of cart) {
     const feePayer = item.product.platformFeePayer || "buyer";
     if (feePayer === "buyer") {
-      platformFee +=
-        getItemPrice(item) * item.quantity * platformSharePercentage;
+      platformFee += getItemPrice(item) * platformSharePercentage;
       buyerPaysMore = true;
     }
   }
@@ -183,17 +182,17 @@ export function CheckoutModal({
 
       if (method === "momo") {
         await initiateMomoPayment(productData as any);
+        toast.success(
+          "Payment initiated! Check your phone to complete the payment.",
+        );
       } else {
         const paymentData = await initiateCardPayment(productData as any);
         if (paymentData.redirect_url) {
-          window.open(paymentData.redirect_url, "_blank");
-          return;
+          window.open(paymentData.redirect_url, "_blank", "noopener,noreferrer");
         }
+        toast.success("Card checkout opened. Complete payment in the new tab.");
       }
 
-      toast.success(
-        "Payment initiated! Check your phone to complete the payment.",
-      );
       onSuccess();
     } catch (error) {
       console.error("Error placing order:", error);

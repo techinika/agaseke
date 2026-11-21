@@ -6,8 +6,6 @@ import { sanitizeArticleHtml, articleToPlainText } from "@/lib/articleHtml";
 import {
   Loader,
   ArrowLeft,
-  Lock,
-  Globe,
   ImagePlus,
   X,
   Save,
@@ -42,6 +40,12 @@ import { slugify, fallbackSlug } from "@/lib/slug";
 import { baseUrl } from "@/lib/baseUrl";
 import RichTextEditor from "@/components/parts/dashboard/RichTextEditor";
 
+import { AudienceSelector } from "@/components/parts/dashboard/AudienceSelector";
+import {
+  resolvePostVisibility,
+  type PostVisibility,
+} from "@/lib/contentAccess";
+
 const SHORT_DESC_MAX = 160;
 
 interface ArticleFormProps {
@@ -57,7 +61,10 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
   const [slugTouched, setSlugTouched] = useState(false);
   const [shortDescription, setShortDescription] = useState("");
   const [bodyHtml, setBodyHtml] = useState("");
-  const [isPrivate, setIsPrivate] = useState(false);
+  const [visibility, setVisibility] = useState<PostVisibility>("public");
+  const [requiredTierIds, setRequiredTierIds] = useState<string[]>([]);
+  const [requiredTierNames, setRequiredTierNames] = useState<string[]>([]);
+  const isPrivate = visibility !== "public";
   const [coverUrl, setCoverUrl] = useState("");
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [uploadedVisibility, setUploadedVisibility] =
@@ -95,7 +102,13 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
           data.shortDescription || data.description || "",
         );
         setBodyHtml(data.htmlContent || "");
-        setIsPrivate(!!data.isPrivate);
+        setVisibility(resolvePostVisibility(data));
+        setRequiredTierIds(
+          Array.isArray(data.requiredTierIds) ? data.requiredTierIds : [],
+        );
+        setRequiredTierNames(
+          Array.isArray(data.requiredTierNames) ? data.requiredTierNames : [],
+        );
         const storedCover = data.coverUrl || data.contentUrl || "";
         setCoverPreview(null);
         setCoverUrl(storedCover);
@@ -153,9 +166,14 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
       return;
     }
 
+    if (visibility === "tier" && requiredTierIds.length === 0) {
+      toast.error("Select at least one membership tier or choose another audience.");
+      return;
+    }
+
     const storedVisibility = uploadedVisibility ?? storedAssetVisibility(coverUrl);
     if (isPrivate && coverUrl && storedVisibility !== "private") {
-      toast.error("Re-upload the cover now that the article is supporters-only.");
+      toast.error("Re-upload the cover now that the article has restricted access.");
       return;
     }
     if (!isPrivate && storedVisibility === "private") {
@@ -193,6 +211,9 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
           coverUrl: coverUrl || null,
           contentUrl: coverUrl || null,
           isPrivate,
+          visibility,
+          requiredTierIds: visibility === "tier" ? requiredTierIds : [],
+          requiredTierNames: visibility === "tier" ? requiredTierNames : [],
           status: "published",
           publishedAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -239,7 +260,7 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
         }
 
         if (slugTaken) {
-          const alt = `${finalSlug}-${Math.random().toString(36).slice(2, 8)}`;
+          const alt = `${finalSlug}-${crypto.randomUUID().slice(0, 6)}`;
           toast.warning(
             `Slug "${finalSlug}" is taken — publishing as /articles/${alt}`,
           );
@@ -259,6 +280,9 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
         coverUrl: coverUrl || null,
         contentUrl: coverUrl || null,
         isPrivate,
+        visibility,
+        requiredTierIds: visibility === "tier" ? requiredTierIds : [],
+        requiredTierNames: visibility === "tier" ? requiredTierNames : [],
         status: nextStatus,
         updatedAt: serverTimestamp(),
       };
@@ -625,34 +649,20 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
                 />
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-muted rounded-xl">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`p-2 rounded-lg ${
-                      isPrivate
-                        ? "bg-amber-100 text-amber-600"
-                        : "bg-green-100 text-green-600"
-                    }`}
-                  >
-                    {isPrivate ? <Lock size={18} /> : <Globe size={18} />}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">
-                      {isPrivate ? "Supporters Only" : "Public"}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {isPrivate
-                        ? "Only your supporters can read past the preview"
-                        : "Anyone can read this article"}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setIsPrivate(!isPrivate)}
-                  className="text-xs text-orange-600 font-medium px-3 py-1.5 bg-card border border-orange-200 rounded-lg hover:bg-orange-50"
-                >
-                  Change
-                </button>
+              <div>
+                <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  Who can read this?
+                </label>
+                <AudienceSelector
+                  visibility={visibility}
+                  requiredTierIds={requiredTierIds}
+                  tiers={creator?.communityTiers || []}
+                  onChange={(next) => {
+                    setVisibility(next.visibility);
+                    setRequiredTierIds(next.requiredTierIds);
+                    setRequiredTierNames(next.requiredTierNames);
+                  }}
+                />
               </div>
             </div>
           </div>

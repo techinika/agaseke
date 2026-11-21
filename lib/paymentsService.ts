@@ -83,6 +83,8 @@ export interface UserTransaction {
   communityTierId: string;
   communityInterval: string;
   communitySubscriptionId: string;
+  redirectUrl?: string;
+  phone?: string;
 }
 
 export interface RetryTransactionResponse {
@@ -219,6 +221,7 @@ export async function getUserTransactions(
 
 export async function retryTransaction(
   ref: string,
+  phone?: string,
 ): Promise<RetryTransactionResponse> {
   const headers = await getAuthHeaders();
 
@@ -229,7 +232,7 @@ export async function retryTransaction(
     const res = await fetch(`${PAYMENTS_WORKER_URL}/api/payments/transactions/retry`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ ref }),
+      body: JSON.stringify({ ref, ...(phone ? { phone } : {}) }),
       signal: controller.signal,
     });
 
@@ -241,6 +244,38 @@ export async function retryTransaction(
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") {
       throw new Error("Retry request timed out. Check your connection and try again.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function resumeTransaction(
+  ref: string,
+  phone?: string,
+): Promise<RetryTransactionResponse> {
+  const headers = await getAuthHeaders();
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 25000);
+
+  try {
+    const res = await fetch(`${PAYMENTS_WORKER_URL}/api/payments/transactions/resume`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ ref, ...(phone ? { phone } : {}) }),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      throw new Error(await parseError(res, "Failed to resume payment"));
+    }
+
+    return (await res.json()) as Promise<RetryTransactionResponse>;
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error("Request timed out. Check your connection and try again.");
     }
     throw err;
   } finally {

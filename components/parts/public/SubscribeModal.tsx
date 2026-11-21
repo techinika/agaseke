@@ -48,7 +48,12 @@ export function SubscribeModal({
   const [step, setStep] = useState<"browse" | "payment" | "processing" | "success" | "error">("browse");
   const [errorMessage, setErrorMessage] = useState("");
   const processingRef = useRef<string | null>(null);
+  const stepRef = useRef(step);
   const paymentTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    stepRef.current = step;
+  }, [step]);
 
   /* eslint-disable react-hooks/set-state-in-effect -- load tiers when modal opens */
   useEffect(() => {
@@ -150,14 +155,14 @@ export function SubscribeModal({
       if (paymentTimeoutRef.current) clearTimeout(paymentTimeoutRef.current);
       paymentTimeoutRef.current = setTimeout(() => {
         unsub();
-        if (processingRef.current === subId && step === "processing") {
+        if (processingRef.current === subId && stepRef.current === "processing") {
           setErrorMessage("Payment confirmation timed out. Check your transactions.");
           setStep("error");
         }
       }, 120000);
 
-      if (paymentMethod === "card" && result.paymentUrl) {
-        window.open(result.paymentUrl, "_blank");
+      if (method === "card" && result.paymentUrl) {
+        window.open(result.paymentUrl, "_blank", "noopener,noreferrer");
       }
     } catch (err: any) {
       setErrorMessage(err.message || "Something went wrong");
@@ -375,7 +380,7 @@ export function SubscribeModal({
               <Loader className="animate-spin mx-auto text-brand-strong mb-4" size={40} />
               <p className="font-bold mb-2">Processing Payment</p>
               <p className="text-xs text-muted-fg">
-                {paymentMethod === "momo"
+                {(momoSupported ? paymentMethod : "card") === "momo"
                   ? "Check your phone and enter your PIN to confirm"
                   : "Complete payment in the opened window"}
               </p>

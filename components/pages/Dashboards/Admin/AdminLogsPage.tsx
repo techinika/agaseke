@@ -145,80 +145,72 @@ export default function AdminLogsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20">
-      <div className="max-w-7xl mx-auto px-6 mt-12">
-        <header className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="min-h-screen bg-canvas pb-20 text-fg">
+      <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
+        <header className="mb-8 flex flex-col justify-between gap-4 border-b border-line pb-6 sm:flex-row sm:items-end">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground uppercase">
-              Activity Logs
+            <p className="text-caption font-semibold text-brand-strong">Audit</p>
+            <h1 className="mt-1 text-heading font-black tracking-tight text-fg">
+              Activity logs
             </h1>
-            <p className="text-muted-foreground font-medium mt-1">
-              Monitor all platform activities and events
+            <p className="mt-1 text-label text-muted-fg">
+              Monitor platform activities, payment events, and moderation actions.
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2.5">
             <button
+              type="button"
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-lg text-sm font-medium hover:bg-muted transition"
+              className="inline-flex min-h-11 items-center gap-2 rounded-control border border-line bg-surface px-4 text-label font-semibold text-fg transition-colors hover:bg-surface-raised"
             >
-              <Filter size={16} />
-              Filters
+              <Filter size={16} aria-hidden="true" />
+              <span>Filters</span>
               {(levelFilter !== "all" || categoryFilter !== "all") && (
-                <span className="bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded-full">
-                  Active
-                </span>
+                <span className="text-caption font-semibold text-brand-strong">· Active</span>
               )}
             </button>
             <button
+              type="button"
               onClick={exportLogs}
-              className="flex items-center gap-2 px-4 py-2 bg-foreground text-background rounded-lg text-sm font-medium hover:bg-card transition"
+              className="inline-flex min-h-11 items-center gap-2 rounded-control bg-brand-strong px-4 text-label font-semibold text-on-brand transition-colors hover:bg-brand"
             >
-              <Download size={16} />
-              Export
+              <Download size={16} aria-hidden="true" />
+              Export CSV
             </button>
           </div>
         </header>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-card rounded-xl border border-border p-4">
-            <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
-              Total Logs
-            </p>
-            <p className="text-2xl font-bold text-foreground mt-1">
+        <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="rounded-card border border-line bg-surface p-4">
+            <p className="text-caption font-semibold text-muted-fg">Total logs</p>
+            <p className="mt-1 text-title font-bold tabular-nums text-fg">
               {stats.total.toLocaleString()}
             </p>
           </div>
-          <div className="bg-green-50 rounded-xl border border-green-100 p-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle size={16} className="text-green-600" />
-              <p className="text-[10px] font-bold uppercase text-green-600 tracking-wider">
-                Success
-              </p>
+          <div className="rounded-card border border-line bg-surface p-4">
+            <div className="flex items-center gap-2 text-caption font-semibold text-success">
+              <CheckCircle size={15} aria-hidden="true" />
+              Success
             </div>
-            <p className="text-2xl font-bold text-green-700 mt-1">
+            <p className="mt-1 text-title font-bold tabular-nums text-fg">
               {stats.successes.toLocaleString()}
             </p>
           </div>
-          <div className="bg-amber-50 rounded-xl border border-amber-100 p-4">
-            <div className="flex items-center gap-2">
-              <AlertTriangle size={16} className="text-amber-600" />
-              <p className="text-[10px] font-bold uppercase text-amber-600 tracking-wider">
-                Warnings
-              </p>
+          <div className="rounded-card border border-line bg-surface p-4">
+            <div className="flex items-center gap-2 text-caption font-semibold text-warning">
+              <AlertTriangle size={15} aria-hidden="true" />
+              Warnings
             </div>
-            <p className="text-2xl font-bold text-amber-700 mt-1">
+            <p className="mt-1 text-title font-bold tabular-nums text-fg">
               {stats.warnings.toLocaleString()}
             </p>
           </div>
-          <div className="bg-red-50 rounded-xl border border-red-100 p-4">
-            <div className="flex items-center gap-2">
-              <XCircle size={16} className="text-red-600" />
-              <p className="text-[10px] font-bold uppercase text-red-600 tracking-wider">
-                Errors
-              </p>
+          <div className="rounded-card border border-line bg-surface p-4">
+            <div className="flex items-center gap-2 text-caption font-semibold text-danger">
+              <XCircle size={15} aria-hidden="true" />
+              Errors
             </div>
-            <p className="text-2xl font-bold text-red-700 mt-1">
+            <p className="mt-1 text-title font-bold tabular-nums text-fg">
               {stats.errors.toLocaleString()}
             </p>
           </div>

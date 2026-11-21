@@ -1,4 +1,11 @@
 import { adminDb } from "@/db/firebaseAdmin";
+import {
+  canViewerAccessPost,
+  isGatedVisibility,
+  isSubscriptionActive,
+  resolvePostVisibility,
+  type PostVisibility,
+} from "@/lib/contentAccess";
 import { isBareMediaKey } from "@/lib/mediaKey";
 
 /**
@@ -32,16 +39,20 @@ export function collectPostMediaUrls(data: Record<string, unknown>): string[] {
 export interface MediaAccess {
   allowed: boolean;
   isPrivate: boolean;
+  visibility: PostVisibility;
+  requiredTierIds: string[];
+  requiredTierNames: string[];
   urls: string[];
   title: string;
+  data: Record<string, unknown>;
 }
 
 /**
- * Decide whether `viewer` may load the media attached to a creator post.
+ * Decide whether `viewer` may load the content/media attached to a creator post.
  *
- * Public posts are readable by anyone. Private posts require the creator, an
- * admin, or an existing supporter relationship. The result is authoritative for
- * both issuing a signed URL and streaming it.
+ * Public posts are readable by anyone. Gated posts (`supporters`, `members`,
+ * `tier`) require the creator, an admin, an existing supporter relationship, or
+ * an active community subscription matching the required tier(s).
  */
 export async function checkPostMediaAccess(
   postId: string,
@@ -50,47 +61,114 @@ export async function checkPostMediaAccess(
   const snap = await adminDb.collection("creatorContent").doc(postId).get();
   if (!snap.exists) return null;
 
-  const data = snap.data() || {};
-  const isPrivate = data.isPrivate === true;
+  const data = (snap.data() || {}) as Record<string, unknown>;
+  const visibility = resolvePostVisibility(data);
+  const isPrivate = isGatedVisibility(data);
+  const requiredTierIds = Array.isArray(data.requiredTierIds)
+    ? data.requiredTierIds.filter((t): t is string => typeof t === "string" && Boolean(t))
+    : [];
+  const requiredTierNames = Array.isArray(data.requiredTierNames)
+    ? data.requiredTierNames.filter((t): t is string => typeof t === "string" && Boolean(t))
+    : [];
   const urls = collectPostMediaUrls(data);
   const title = typeof data.title === "string" ? data.title : "";
 
-  if (!isPrivate) return { allowed: true, isPrivate, urls, title };
-  if (!viewer) return { allowed: false, isPrivate, urls, title };
+  const base: Omit<MediaAccess, "allowed"> = {
+    isPrivate,
+    visibility,
+    requiredTierIds,
+    requiredTierNames,
+    urls,
+    title,
+    data,
+  };
 
-  if (viewer.isAdmin) return { allowed: true, isPrivate, urls, title };
+  const isDraft = data.status === "draft";
+  if (!isPrivate && !isDraft) return { ...base, allowed: true };
+  if (!viewer) return { ...base, allowed: false };
+  if (viewer.isAdmin) return { ...base, allowed: true };
 
-  const creatorUid = typeof data.creatorUid === "string" ? data.creatorUid : "";
+  let creatorUid = typeof data.creatorUid === "string" ? data.creatorUid : "";
   const creatorId = typeof data.creatorId === "string" ? data.creatorId : "";
+  let creatorHandle = typeof data.creatorHandle === "string" ? data.creatorHandle : "";
 
   if (creatorUid === viewer.uid || creatorId === viewer.uid) {
-    return { allowed: true, isPrivate, urls, title };
+    return { ...base, allowed: true };
   }
 
   if (creatorId) {
     const creatorSnap = await adminDb.collection("creators").doc(creatorId).get();
-    if (creatorSnap.exists && creatorSnap.data()?.uid === viewer.uid) {
-      return { allowed: true, isPrivate, urls, title };
+    if (creatorSnap.exists) {
+      const cData = creatorSnap.data() || {};
+      if (cData.uid === viewer.uid) {
+        return { ...base, allowed: true };
+      }
+      if (!creatorUid && typeof cData.uid === "string") creatorUid = cData.uid;
+      if (!creatorHandle) creatorHandle = creatorSnap.id;
     }
+  }
+
+  // Drafts are strictly creator/admin only
+  if (isDraft) {
+    return { ...base, allowed: false };
   }
 
   const candidateCreatorIds = [
     creatorId,
-    typeof data.creatorHandle === "string" ? data.creatorHandle : "",
+    creatorHandle,
+    creatorUid,
   ].filter(Boolean);
 
   if (candidateCreatorIds.length === 0) {
-    return { allowed: false, isPrivate, urls, title };
+    return { ...base, allowed: false };
   }
 
-  const supportSnap = await adminDb
-    .collection("supportedCreators")
-    .where("supporterId", "==", viewer.uid)
-    .where("creatorId", "in", [...new Set(candidateCreatorIds)].slice(0, 10))
-    .limit(1)
+  const candidateSet = new Set(candidateCreatorIds);
+
+  // Query active community subscriptions for this viewer (single-field index on userId)
+  const activeTierIds = new Set<string>();
+  const subsSnap = await adminDb
+    .collection("communitySubscriptions")
+    .where("userId", "==", viewer.uid)
     .get();
 
-  return { allowed: !supportSnap.empty, isPrivate, urls, title };
+  for (const subDoc of subsSnap.docs) {
+    const sub = subDoc.data() as Record<string, unknown>;
+    if (!isSubscriptionActive(sub)) continue;
+    const matchesCreator =
+      (typeof sub.creatorHandle === "string" && candidateSet.has(sub.creatorHandle)) ||
+      (typeof sub.creatorId === "string" && candidateSet.has(sub.creatorId)) ||
+      (typeof sub.creatorUid === "string" && candidateSet.has(sub.creatorUid));
+    if (matchesCreator && typeof sub.tierId === "string" && sub.tierId) {
+      activeTierIds.add(sub.tierId);
+    }
+  }
+
+  let isSupporter = activeTierIds.size > 0;
+  if (!isSupporter && visibility === "supporters") {
+    const supportSnap = await adminDb
+      .collection("supportedCreators")
+      .where("supporterId", "==", viewer.uid)
+      .where("creatorId", "in", [...candidateSet].slice(0, 10))
+      .limit(1)
+      .get();
+    isSupporter = !supportSnap.empty;
+  }
+
+  const allowed = canViewerAccessPost({
+    post: {
+      isPrivate,
+      visibility,
+      requiredTierIds,
+      requiredTierNames,
+    },
+    isOwner: false,
+    isAdmin: viewer.isAdmin,
+    isSupporter,
+    activeTierIds,
+  });
+
+  return { ...base, allowed };
 }
 
 const DEFAULT_MEDIA_HOSTS = ["assets.agaseke.me", "res.cloudinary.com"];

@@ -17,6 +17,7 @@ import {
   History,
   Eye,
   Info,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -30,7 +31,6 @@ export default function AdminComms() {
   const [history, setHistory] = useState<any[]>([]);
   const [preview, setPreview] = useState<any>(null);
 
-  // 1. Fetch Broadcast History via Realtime Listener
   useEffect(() => {
     const unsubscribe = subscribeToAdminBroadcasts(setHistory);
     return () => unsubscribe();
@@ -74,67 +74,50 @@ export default function AdminComms() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20">
-      <div className="max-w-7xl mx-auto px-6 pt-12">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+    <div className="min-h-screen bg-canvas pb-20 text-fg">
+      <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
+        <div className="mb-8 flex flex-col justify-between gap-4 border-b border-line pb-6 md:flex-row md:items-end">
           <div>
-            <h1 className="text-4xl font-black uppercase tracking-tight">Comms Center</h1>
-            <p className="text-muted-foreground font-medium">
-              Draft and dispatch platform-wide announcements.
+            <p className="text-caption font-semibold text-brand-strong">Communication</p>
+            <h1 className="mt-1 text-heading font-black tracking-tight text-fg">
+              Broadcast announcements
+            </h1>
+            <p className="mt-1 text-label text-muted-fg">
+              Draft and dispatch platform-wide notices and emails.
             </p>
           </div>
 
-          <div className="flex items-center gap-3 bg-blue-50 text-blue-700 px-4 py-3 rounded-2xl border border-blue-100">
-            <Info size={18} />
-            <p className="text-xs font-bold uppercase tracking-tight">
-              Tip: Use [NAME] or [HANDLE] to personalize
-            </p>
+          <div className="flex items-center gap-2 rounded-control border border-line bg-surface px-3.5 py-2.5 text-caption text-muted-fg">
+            <Info size={16} className="shrink-0 text-info" aria-hidden="true" />
+            <span>Use [NAME] or [HANDLE] to personalize messages.</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-          {/* COMPOSER FORM (Left) */}
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
           <div className="lg:col-span-8">
             <form
               onSubmit={handleSend}
-              className="bg-card border border-border rounded-3xl p-8 shadow-sm space-y-10"
+              className="space-y-6 rounded-card border border-line bg-surface p-6 sm:p-8"
             >
-              {/* Audience Filters */}
               <div>
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4 block">
-                  1. Target Audience
+                <label className="mb-3 block text-caption font-semibold text-muted-fg">
+                  1. Target audience
                 </label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                   {[
-                    {
-                      id: "all",
-                      label: "All Users",
-                      icon: <Users size={18} />,
-                    },
-                    {
-                      id: "creators",
-                      label: "Creators",
-                      icon: <UserCheck size={18} />,
-                    },
-                    {
-                      id: "verified",
-                      label: "Verified",
-                      icon: <ShieldCheck size={18} />,
-                    },
-                    {
-                      id: "not-verified",
-                      label: "Unverified",
-                      icon: <ShieldAlert size={18} />,
-                    },
+                    { id: "all", label: "All Users", icon: <Users size={16} /> },
+                    { id: "creators", label: "Creators", icon: <UserCheck size={16} /> },
+                    { id: "verified", label: "Verified", icon: <ShieldCheck size={16} /> },
+                    { id: "not-verified", label: "Unverified", icon: <ShieldAlert size={16} /> },
                   ].map((item) => (
                     <button
                       key={item.id}
                       type="button"
                       onClick={() => setTarget(item.id as any)}
-                      className={`flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border-2 transition-all font-bold text-xs ${
+                      className={`flex min-h-11 flex-col items-center justify-center gap-1.5 rounded-control border p-3 text-caption font-semibold transition-colors ${
                         target === item.id
-                          ? "border-orange-600 bg-orange-50 text-orange-600 shadow-sm"
-                          : "border-border bg-muted text-muted-foreground hover:border-border"
+                          ? "border-brand-strong bg-brand-soft text-brand-strong"
+                          : "border-line bg-surface-raised text-muted-fg hover:text-fg"
                       }`}
                     >
                       {item.icon}
@@ -144,96 +127,83 @@ export default function AdminComms() {
                 </div>
               </div>
 
-              {/* Content Inputs */}
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 block">
-                    2. Email Subject
+                  <label className="mb-1.5 block text-caption font-semibold text-muted-fg">
+                    2. Subject
                   </label>
                   <input
                     type="text"
                     required
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
-                    placeholder="e.g. Big updates for [NAME]!"
-                    className="w-full bg-muted border-2 border-border rounded-xl p-4 text-sm focus:border-orange-500 outline-none transition-all font-medium"
+                    placeholder="e.g. Updates for [NAME]"
+                    className="w-full rounded-control border border-line bg-surface px-3.5 py-2.5 text-label text-fg outline-none focus:border-focus"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 block">
-                    3. Message Content (HTML Supported)
+                  <label className="mb-1.5 block text-caption font-semibold text-muted-fg">
+                    3. Message
                   </label>
                   <textarea
                     required
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Hello [NAME], we have news regarding your handle @[HANDLE]..."
-                    className="w-full h-80 bg-muted border-2 border-border rounded-xl p-6 text-sm focus:border-orange-500 outline-none transition-all resize-none leading-relaxed"
+                    placeholder="Hello [NAME], we have news regarding @[HANDLE]..."
+                    className="h-72 w-full resize-none rounded-control border border-line bg-surface p-4 text-label leading-relaxed text-fg outline-none focus:border-focus"
                   />
                 </div>
               </div>
 
               <button
                 disabled={sending}
-                className="w-full bg-foreground text-background py-5 rounded-2xl font-black text-lg shadow-xl hover:bg-orange-600 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-control bg-brand-strong px-5 py-3 text-label font-semibold text-on-brand transition-colors hover:bg-brand disabled:opacity-50"
               >
-                {sending ? <Loader className="animate-spin" /> : <Send size={20} />}
-                {sending ? "Processing Batch..." : "Launch Broadcast"}
+                {sending ? <Loader className="size-4 animate-spin" /> : <Send size={16} />}
+                {sending ? "Sending broadcast…" : "Send broadcast"}
               </button>
             </form>
           </div>
 
-          {/* HISTORY SIDEBAR (Right) */}
-          <div className="lg:col-span-4 space-y-6">
-            <div className="flex items-center gap-2 text-foreground px-2">
-              <History size={20} className="text-orange-600" />
-              <h2 className="font-black uppercase tracking-widest text-sm">
-                Recent Broadcasts
-              </h2>
+          <div className="space-y-4 lg:col-span-4">
+            <div className="flex items-center gap-2 px-1 text-fg">
+              <History size={16} className="text-brand-strong" aria-hidden="true" />
+              <h2 className="text-body font-bold">Recent broadcasts</h2>
             </div>
 
-            <div className="space-y-4 max-h-[1000px] overflow-y-auto pr-2 no-scrollbar">
+            <div className="max-h-[760px] space-y-3 overflow-y-auto">
               {history.length === 0 ? (
-                <div className="bg-card border border-dashed border-border p-10 rounded-3xl text-center">
-                  <p className="text-muted-foreground text-sm font-medium">
-                    No logs found.
-                  </p>
+                <div className="rounded-card border border-line bg-surface p-8 text-center">
+                  <p className="text-label text-muted-fg">No broadcasts sent yet.</p>
                 </div>
               ) : (
                 history.map((log) => (
                   <div
                     key={log.id}
-                    className="bg-card border border-border p-5 rounded-2xl shadow-sm hover:shadow-md transition-all group relative"
+                    className="rounded-card border border-line bg-surface p-4"
                   >
-                    <div className="flex justify-between items-start mb-3">
+                    <div className="mb-2 flex items-center justify-between gap-2 text-caption">
                       <span
-                        className={`text-[9px] font-black tracking-tighter px-2 py-0.5 rounded-full ${
-                          log.status === "success"
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-red-100 text-red-700"
+                        className={`font-semibold ${
+                          log.status === "success" ? "text-success" : "text-danger"
                         }`}
                       >
                         {log.targetLabel || "GENERAL"}
                       </span>
                       <button
+                        type="button"
                         onClick={() => setPreview(log)}
-                        className="text-muted-foreground hover:text-orange-600 transition-colors"
+                        aria-label="Preview broadcast"
+                        className="rounded p-1 text-muted-fg transition-colors hover:bg-surface-raised hover:text-fg"
                       >
-                        <Eye size={18} />
+                        <Eye size={16} />
                       </button>
                     </div>
-                    <h3 className="font-bold text-sm text-foreground truncate mb-1 pr-6">
-                      {log.subject}
-                    </h3>
-                    <div className="flex items-center justify-between mt-4 border-t border-border pt-3">
-                      <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
-                        {log.sentAt?.toDate().toLocaleDateString("en-GB")}
-                      </p>
-                      <p className="text-[10px] font-black text-foreground">
-                        {log.sentCount}{" "}
-                        <span className="text-muted-foreground">USERS</span>
-                      </p>
+                    <h3 className="truncate text-label font-bold text-fg">{log.subject}</h3>
+                    <div className="mt-3 flex items-center justify-between border-t border-line pt-2.5 text-caption tabular-nums text-muted-fg">
+                      <span>{log.sentAt?.toDate().toLocaleDateString("en-GB")}</span>
+                      <span className="font-semibold text-fg">{log.sentCount} users</span>
                     </div>
                   </div>
                 ))
@@ -243,40 +213,35 @@ export default function AdminComms() {
         </div>
       </div>
 
-      {/* PREVIEW MODAL */}
       {preview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/60 backdrop-blur-sm p-6 animate-in fade-in duration-200">
-          <div className="bg-card w-full max-w-2xl rounded-[32px] p-8 shadow-2xl scale-in-center overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="flex justify-between items-center mb-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
+          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-card border border-line bg-surface p-6 shadow-float">
+            <div className="mb-6 flex items-center justify-between gap-4 border-b border-line pb-4">
               <div>
-                <h2 className="text-2xl font-black uppercase tracking-tight">
-                  Broadcast Archive
-                </h2>
-                <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest mt-1">
+                <h2 className="text-title font-bold text-fg">Broadcast archive</h2>
+                <p className="mt-0.5 text-caption tabular-nums text-muted-fg">
                   Sent to {preview.sentCount} recipients
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setPreview(null)}
-                className="w-10 h-10 flex items-center justify-center bg-muted rounded-full text-muted-foreground hover:text-foreground transition-all"
+                aria-label="Close preview"
+                className="flex size-10 items-center justify-center rounded-control border border-line bg-surface-raised text-muted-fg transition-colors hover:text-fg"
               >
-                ✕
+                <X size={18} />
               </button>
             </div>
 
-            <div className="space-y-6 overflow-y-auto pr-2 custom-scrollbar">
-              <div className="bg-muted p-4 rounded-xl border border-border">
-                <label className="text-[9px] font-black uppercase text-muted-foreground block mb-1">
-                  Subject
-                </label>
-                <p className="font-bold text-foreground">{preview.subject}</p>
+            <div className="space-y-4 overflow-y-auto">
+              <div className="rounded-control border border-line bg-surface-raised p-4">
+                <p className="mb-1 text-caption font-semibold text-muted-fg">Subject</p>
+                <p className="font-bold text-fg">{preview.subject}</p>
               </div>
 
-              <div className="bg-card p-6 rounded-2xl border border-border">
-                <label className="text-[9px] font-black uppercase text-muted-foreground block mb-4">
-                  Message Body
-                </label>
-                <div className="text-foreground whitespace-pre-wrap text-sm leading-relaxed font-medium">
+              <div className="rounded-control border border-line bg-surface p-5">
+                <p className="mb-2 text-caption font-semibold text-muted-fg">Message</p>
+                <div className="whitespace-pre-wrap text-label leading-relaxed text-fg">
                   {preview.message}
                 </div>
               </div>
