@@ -11,7 +11,7 @@ async function getFeaturedCreators() {
     const snap = await adminDb
       .collection("creators")
       .orderBy("createdAt", "desc")
-      .limit(5)
+      .limit(4)
       .get();
     return snap.docs.map((d) => JSON.parse(JSON.stringify({ id: d.id, ...d.data() })));
   } catch (error) {

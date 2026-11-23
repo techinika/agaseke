@@ -1,5 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Rubik } from "next/font/google";
+import {
+  Bricolage_Grotesque,
+  JetBrains_Mono,
+  Plus_Jakarta_Sans,
+} from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/auth/AuthContext";
 import { ToastViewport } from "@/components/ui/Toast";
@@ -7,9 +11,22 @@ import DeferredAnalytics from "@/components/parts/DeferredAnalytics";
 import PwaRegister from "@/components/parts/PwaRegister";
 import LoginRedirectCapture from "@/auth/LoginRedirectCapture";
 
-const rubik = Rubik({
-  variable: "--font-rubik",
+const displayFont = Bricolage_Grotesque({
+  variable: "--font-display",
   subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
+});
+
+const bodyFont = Plus_Jakarta_Sans({
+  variable: "--font-sans-jakarta",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const monoFont = JetBrains_Mono({
+  variable: "--font-mono-jb",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://agaseke.me";
@@ -123,7 +140,9 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body className={`${rubik.variable} antialiased`}>
+      <body
+        className={`${displayFont.variable} ${bodyFont.variable} ${monoFont.variable} antialiased`}
+      >
         <AuthProvider>
           <ToastViewport />
           {children}

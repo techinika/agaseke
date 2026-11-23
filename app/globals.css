@@ -13,7 +13,6 @@
 }
 
 * {
-  font-family: var(--font-rubik);
   overflow-wrap: anywhere;
   word-break: break-word;
 }
@@ -101,14 +100,22 @@
   --spacing-sidebar: var(--ag-sidebar-width);
   --container-app: var(--ag-content-max);
 
-  --font-sans: var(--font-rubik);
-  --font-mono: var(--font-rubik);
+  --font-sans: var(--font-sans-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), var(--font-sans-jakarta), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-mono-jb), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-rubik);
+  font-family: var(--font-sans-jakarta), ui-sans-serif, system-ui, sans-serif;
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display), var(--font-sans-jakarta), ui-sans-serif, sans-serif;
 }
 
 @utility pb-safe {

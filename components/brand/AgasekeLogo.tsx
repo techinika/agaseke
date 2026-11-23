@@ -74,7 +74,7 @@ export function AgasekeLogo({
       <span className="min-w-0">
         <span
           className={cn(
-            "block truncate font-black uppercase tracking-tight leading-none",
+            "block truncate font-display font-extrabold uppercase tracking-tight leading-none",
             tone === "brand" && "text-fg",
             styles.wordmark,
           )}
