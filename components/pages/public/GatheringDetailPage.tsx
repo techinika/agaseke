@@ -20,7 +20,7 @@ import {
   QrCode,
 } from "lucide-react";
 import { SupportSheet } from "@/features/support";
-import { PaidRsvpSheet } from "@/features/gatherings";
+import { FreeRsvpSheet, PaidRsvpSheet } from "@/features/gatherings";
 import { db } from "@/db/firebase";
 import {
   doc,
@@ -30,6 +30,7 @@ import {
   query,
   where,
   addDoc,
+  increment,
   serverTimestamp,
   updateDoc,
 } from "firebase/firestore";
@@ -59,9 +60,11 @@ export default function GatheringDetailPage({
   const [rsvping, setRsvping] = useState(false);
   const [userTotalSupport, setUserTotalSupport] = useState(0);
   const [payingGathering, setPayingGathering] = useState<Gathering | null>(null);
+  const [freeRsvpOpen, setFreeRsvpOpen] = useState(false);
   const [attendanceDocId, setAttendanceDocId] = useState<string | null>(null);
   const [showTicket, setShowTicket] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const ticketAmount = gathering ? getPrice(gathering) : 0;
 
   const userId = user?.uid;
@@ -141,10 +144,10 @@ export default function GatheringDetailPage({
       setLoading(false);
     };
     void fetchData();
-  }, [username, gatheringId, user, refreshAttendance]);
+  }, [username, gatheringId, user, refreshAttendance, refreshKey]);
 
-  const handleRSVP = async () => {
-    if (!user || !profile || !gathering) {
+  const handleRSVP = () => {
+    if (!user || !gathering) {
       toast.error("Please log in to RSVP");
       return;
     }
@@ -154,14 +157,43 @@ export default function GatheringDetailPage({
       return;
     }
 
+    setFreeRsvpOpen(true);
+  };
+
+  const confirmFreeRsvp = async () => {
+    if (!user || !gathering) {
+      throw new Error("Please log in to RSVP");
+    }
+    if (isRsvped) {
+      return;
+    }
+
     setRsvping(true);
     try {
+      const existingQuery = query(
+        collection(db, "gatheringsAttendance"),
+        where("supporterId", "==", user.uid),
+      );
+      const existingSnap = await getDocs(existingQuery);
+      const alreadyDoc = existingSnap.docs.find(
+        (d) => d.data().gatheringId === gathering.id,
+      );
+      if (alreadyDoc) {
+        setAttendanceDocId(alreadyDoc.id);
+        setIsRsvped(true);
+        return;
+      }
+
+      const supporterName =
+        profile?.displayName || user.displayName || user.email || "Supporter";
+      const supporterPhoto = profile?.photoURL || user.photoURL || "";
+
       const docRef = await addDoc(collection(db, "gatheringsAttendance"), {
         gatheringId: gathering.id,
         supporterId: user.uid,
-        supporterName: profile.displayName || user.email,
+        supporterName,
         supporterEmail: user.email,
-        supporterPhoto: profile.photoURL || "",
+        supporterPhoto,
         creatorHandle: username,
         createdAt: serverTimestamp(),
         checkedIn: false,
@@ -169,10 +201,15 @@ export default function GatheringDetailPage({
       });
       setAttendanceDocId(docRef.id);
       updateDoc(doc(db, "creatorGatherings", gathering.id), {
-        attendeesCount: (gathering.attendeesCount || 0) + 1,
+        attendeesCount: increment(1),
       }).catch((err) => {
         console.error("Failed to update attendees count", err);
       });
+      setGathering((prev) =>
+        prev
+          ? { ...prev, attendeesCount: (prev.attendeesCount || 0) + 1 }
+          : prev,
+      );
       setIsRsvped(true);
 
       logInfo("gathering", `RSVP confirmed for gathering: "${gathering.title}"`, {
@@ -183,7 +220,7 @@ export default function GatheringDetailPage({
       });
 
       sendCommsEmail("gathering_rsvp", {
-        supporterName: profile.displayName || user.email,
+        supporterName,
         supporterEmail: user.email,
         creatorHandle: username,
         creatorId: gathering.creatorId,
@@ -205,6 +242,7 @@ export default function GatheringDetailPage({
         },
       });
       toast.error("Failed to RSVP");
+      throw e;
     } finally {
       setRsvping(false);
     }
@@ -371,24 +409,38 @@ export default function GatheringDetailPage({
                   >
                     <CreditCard size={18} aria-hidden="true" />
                     Buy Ticket (
-                    {gathering?.currency
-                      ? formatCurrency(ticketAmount, gathering.currency as any)
+                    {gathering?.currency || creatorData?.currency
+                      ? formatCurrency(
+                          ticketAmount,
+                          (gathering?.currency || creatorData?.currency) as any,
+                        )
                       : `${ticketAmount}`}
                     )
                   </button>
                 ) : !meetsTier && user ? (
-                  <div className="flex items-center gap-3 rounded-control border border-warning bg-warning-bg p-4">
-                    <Lock size={20} className="text-warning" aria-hidden="true" />
-                    <p className="text-sm font-bold text-warning">
-                      A minimum contribution of{" "}
-                      {gathering?.currency
-                        ? formatCurrency(
-                            gathering.minSupportTier || 0,
-                            gathering.currency as any,
-                          )
-                        : `${gathering.minSupportTier || 0}`}{" "}
-                      is required to attend
-                    </p>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-control border border-warning bg-warning-bg p-4">
+                    <div className="flex items-center gap-3">
+                      <Lock size={20} className="text-warning shrink-0" aria-hidden="true" />
+                      <p className="text-sm font-bold text-warning">
+                        {gathering.eventType === "supporters"
+                          ? "Supporter access is required to attend"
+                          : `A minimum contribution of ${
+                              gathering?.currency || creatorData?.currency
+                                ? formatCurrency(
+                                    gathering.minSupportTier || 0,
+                                    (gathering?.currency || creatorData?.currency) as any,
+                                  )
+                                : `${gathering.minSupportTier || 0}`
+                            } is required to attend`}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsModalOpen(true)}
+                      className="min-h-11 shrink-0 rounded-control bg-brand-strong px-4 py-2 text-sm font-bold text-on-brand transition hover:opacity-90"
+                    >
+                      Support Creator
+                    </button>
                   </div>
                 ) : !user ? (
                   <div className="rounded-control bg-surface-sunken p-4 text-center">
@@ -423,6 +475,21 @@ export default function GatheringDetailPage({
         </div>
       </div>
 
+      {freeRsvpOpen && gathering && (
+        <FreeRsvpSheet
+          open
+          onClose={() => setFreeRsvpOpen(false)}
+          creatorName={creatorData?.name || username}
+          creatorPhotoURL={creatorData?.profilePicture || creatorData?.photoURL}
+          creatorVerified={Boolean(creatorData?.verified)}
+          title={gathering.title}
+          date={gathering.date}
+          time={gathering.time}
+          location={gathering.location}
+          onConfirm={confirmFreeRsvp}
+        />
+      )}
+
       {payingGathering && (
         <PaidRsvpSheet
           open
@@ -432,6 +499,7 @@ export default function GatheringDetailPage({
           creatorVerified={Boolean(creatorData?.verified)}
           creatorHandle={username}
           gathering={payingGathering}
+          creatorCurrency={creatorData?.currency}
           user={user}
           displayName={profile?.displayName}
           defaultPhone={profile?.phoneNumber}
@@ -485,6 +553,7 @@ export default function GatheringDetailPage({
         }}
         isLoggedIn={isLoggedIn}
         user={user}
+        onSuccess={() => setRefreshKey((k) => k + 1)}
       />
     </>
   );

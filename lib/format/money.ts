@@ -1,3 +1,5 @@
+import { getCurrencyDefinition, isCurrencyCode } from "@/lib/money/registry.generated";
+
 export const DEFAULT_CURRENCY = "RWF";
 
 export type MoneyInput = number | string | null | undefined;
@@ -8,20 +10,36 @@ function toNumber(value: MoneyInput): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-/** 1234 -> "1,234" */
-export function formatNumber(value: MoneyInput, locale = "en-RW"): string {
-  return new Intl.NumberFormat(locale, {
-    maximumFractionDigits: 0,
-  }).format(toNumber(value));
+function currencyDecimals(currency?: string | null): number {
+  const code = typeof currency === "string" ? currency.trim().toUpperCase() : "";
+  if (code && isCurrencyCode(code)) {
+    return getCurrencyDefinition(code).minorUnit;
+  }
+  return 0;
 }
 
-/** 1234 -> "1,234 RWF" (RWF is whole-number only). */
+/** 1234 -> "1,234", or 4.99 USD -> "4.99" */
+export function formatNumber(
+  value: MoneyInput,
+  locale = "en-RW",
+  currency?: string,
+): string {
+  const num = toNumber(value);
+  const maxDecimals = currency ? currencyDecimals(currency) : 0;
+  const hasFractional = maxDecimals > 0 && Math.abs(num - Math.trunc(num)) > 1e-9;
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: hasFractional ? maxDecimals : 0,
+    maximumFractionDigits: maxDecimals,
+  }).format(num);
+}
+
+/** 1234 -> "1,234 RWF" or 4.99 USD -> "4.99 USD". */
 export function formatMoney(
   value: MoneyInput,
   currency = DEFAULT_CURRENCY,
   locale = "en-RW",
 ): string {
-  const amount = formatNumber(value, locale);
+  const amount = formatNumber(value, locale, currency);
   return currency ? `${amount} ${currency}` : amount;
 }
 
@@ -31,7 +49,7 @@ export function formatMoneyLeading(
   currency = DEFAULT_CURRENCY,
   locale = "en-RW",
 ): string {
-  const amount = formatNumber(value, locale);
+  const amount = formatNumber(value, locale, currency);
   return currency ? `${currency} ${amount}` : amount;
 }
 

@@ -31,6 +31,7 @@ export interface PaidRsvpSheetProps {
   creatorVerified?: boolean;
   creatorHandle: string;
   gathering: TicketGathering;
+  creatorCurrency?: string;
   user: User | null;
   displayName?: string | null;
   defaultPhone?: string | null;
@@ -49,12 +50,13 @@ export function PaidRsvpSheet({
   creatorVerified,
   creatorHandle,
   gathering,
+  creatorCurrency,
   user,
   displayName,
   defaultPhone,
   onPaid,
 }: PaidRsvpSheetProps) {
-  const currency = gathering.currency || "";
+  const currency = gathering.currency || creatorCurrency || "";
   const requiresCard = !isCurrencySupportedByMethod("momo", currency);
   const amount = ticketAmount(gathering);
   const price = formatMoney(amount, currency);

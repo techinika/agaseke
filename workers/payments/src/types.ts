@@ -47,6 +47,20 @@ export interface Env {
   MAX_SUPPORT_AMOUNT_USD?: string;
 }
 
+export interface StoreCheckoutItem {
+  productId: string;
+  quantity: number;
+  selectedSize?: string;
+}
+
+export interface ShippingAddressInput {
+  fullName?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+}
+
 /**
  * Initiation accepts identifiers and non-authoritative metadata only.
  * The server derives amount, currency, creator UID, fees and referral.
@@ -66,6 +80,9 @@ export interface InitRequest {
   productId?: string;
   quantity?: number;
   selectedSize?: string;
+  items?: StoreCheckoutItem[];
+  shippingAddress?: ShippingAddressInput;
+  orderId?: string;
   couponCode?: string;
   buyerName?: string;
   email?: string;

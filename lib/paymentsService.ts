@@ -11,6 +11,20 @@ export type TransactionType =
   | "store"
   | "community";
 
+export interface StoreCheckoutItem {
+  productId: string;
+  quantity: number;
+  selectedSize?: string;
+}
+
+export interface ShippingAddressInput {
+  fullName?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+}
+
 /**
  * Client-supplied identifiers and non-authoritative metadata only. The worker
  * derives amount, currency, creator UID, fees and referral server-side.
@@ -27,6 +41,9 @@ export interface PaymentInitRequest {
   productId?: string;
   quantity?: number;
   selectedSize?: string;
+  items?: StoreCheckoutItem[];
+  shippingAddress?: ShippingAddressInput;
+  orderId?: string;
   couponCode?: string;
   buyerName?: string;
   email?: string;
@@ -112,6 +129,23 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   return headers;
 }
 
+async function parseError(res: Response, fallback: string): Promise<string> {
+  try {
+    const raw = await res.text();
+    if (!raw) return fallback;
+    try {
+      const parsed = JSON.parse(raw) as { error?: string; message?: string };
+      if (parsed.error) return parsed.error;
+      if (parsed.message) return parsed.message;
+    } catch {}
+    const trimmed = raw.trim();
+    if (trimmed && !trimmed.startsWith("<")) {
+      return trimmed.slice(0, 200);
+    }
+  } catch {}
+  return fallback;
+}
+
 export async function initiateMomoPayment(
   data: MomoInitRequest,
   idempotencyKey?: string,
@@ -127,12 +161,7 @@ export async function initiateMomoPayment(
   });
 
   if (!res.ok) {
-    let errorMessage = "Momo payment failed to initiate";
-    try {
-      const err = await res.json();
-      errorMessage = err.error || errorMessage;
-    } catch {}
-    throw new Error(errorMessage);
+    throw new Error(await parseError(res, "Momo payment failed to initiate"));
   }
 
   return res.json();
@@ -153,26 +182,10 @@ export async function initiateCardPayment(
   });
 
   if (!res.ok) {
-    let errorMessage = "Card payment failed to initiate";
-    try {
-      const err = await res.json();
-      errorMessage = err.error || errorMessage;
-    } catch {}
-    throw new Error(errorMessage);
+    throw new Error(await parseError(res, "Card payment failed to initiate"));
   }
 
   return res.json();
-}
-
-async function parseError(res: Response, fallback: string): Promise<string> {
-  try {
-    const contentType = res.headers.get("content-type") || "";
-    if (contentType.includes("application/json")) {
-      const err = (await res.json()) as { error?: string };
-      if (err.error) return err.error;
-    }
-  } catch {}
-  return fallback;
 }
 
 export interface PaymentMethodOption {

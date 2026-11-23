@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, Heart, Loader, Gift, Star, Trophy, Users, Clock, Share2 } from "lucide-react";
+import { ArrowLeft, Heart, Gift, Star, Trophy, Users, Clock, Share2 } from "lucide-react";
 import { db } from "@/db/firebase";
 import { doc, getDoc, getDocs, collection, query, where, addDoc, Timestamp } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
@@ -12,10 +12,13 @@ import { toast } from "sonner";
 import DetailSkeleton from "@/components/ui/DetailSkeleton";
 import { WinnersModal } from "@/components/parts/public/giveaway";
 import type { Giveaway } from "@/components/parts/public/giveaway";
+import { GiveawayEntrySheet } from "@/features/giveaways";
+import { SupportSheet } from "@/features/support";
+import { formatMoney as formatCurrency } from "@/lib/format/money";
 
 export default function GiveawayDetailPage({ username, giveawayId }: { username: string; giveawayId: string }) {
   const pathname = usePathname();
-  const { user: currentUser, isLoggedIn } = useAuth();
+  const { user: currentUser, profile, isLoggedIn } = useAuth();
   const [loading, setLoading] = useState(true);
   const [giveaway, setGiveaway] = useState<Giveaway | null>(null);
   const [creatorData, setCreatorData] = useState<any>(null);
@@ -24,13 +27,19 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
   const [userTotalSupport, setUserTotalSupport] = useState(0);
   const [participating, setParticipating] = useState(false);
   const [showWinners, setShowWinners] = useState(false);
+  const [entryOpen, setEntryOpen] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchData = async () => {
       try {
         const creatorRef = doc(db, "creators", username);
         const creatorSnap = await getDoc(creatorRef);
-        if (!creatorSnap.exists()) { setLoading(false); return; }
+        if (!creatorSnap.exists()) {
+          setLoading(false);
+          return;
+        }
         const cData = creatorSnap.data() as any;
         setCreatorData(cData);
 
@@ -40,27 +49,42 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
 
         const gRef = doc(db, "giveaways", giveawayId);
         const gSnap = await getDoc(gRef);
-        if (!gSnap.exists()) { setLoading(false); return; }
+        if (!gSnap.exists()) {
+          setLoading(false);
+          return;
+        }
         setGiveaway({ id: gSnap.id, ...gSnap.data() } as Giveaway);
 
         if (currentUser?.uid) {
           const supportRef = collection(db, "supportedCreators");
-          const sq = query(supportRef, where("supporterId", "==", currentUser.uid), where("creatorId", "==", username));
+          const sq = query(supportRef, where("supporterId", "==", currentUser.uid));
           const ss = await getDocs(sq);
-          setIsSupporter(!ss.empty);
-
-          if (userSnap.exists()) setUserTotalSupport(userSnap.data().totalSupport || 0);
+          const creatorSupport = ss.docs.filter((d) => d.data().creatorId === username);
+          setIsSupporter(creatorSupport.length > 0);
+          let total = 0;
+          creatorSupport.forEach((d) => {
+            total += Number(d.data().amount || 0);
+          });
+          setUserTotalSupport(total);
 
           const entriesRef = collection(db, "giveawayEntries");
           const eq = query(entriesRef, where("participantId", "==", currentUser.uid));
           const es = await getDocs(eq);
-          setParticipating(es.docs.some(d => d.data().giveawayId === giveawayId));
+          setParticipating(es.docs.some((d) => d.data().giveawayId === giveawayId));
+        } else {
+          setIsSupporter(false);
+          setUserTotalSupport(0);
+          setParticipating(false);
         }
-      } catch (e) { console.error("Failed to load giveaway", e); toast.error("Failed to load giveaway"); }
-      finally { setLoading(false); }
+      } catch (e) {
+        console.error("Failed to load giveaway", e);
+        toast.error("Failed to load giveaway");
+      } finally {
+        setLoading(false);
+      }
     };
-    fetch();
-  }, [username, giveawayId, currentUser?.uid]);
+    void fetchData();
+  }, [username, giveawayId, currentUser?.uid, refreshKey]);
 
   const canAccess = (g: Giveaway) => {
     if (g.access === "public") return true;
@@ -71,30 +95,53 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
   };
 
   const participate = async () => {
-    if (!giveaway || !currentUser?.uid || !currentUser?.displayName) {
-      toast.error("Please log in to participate"); return;
+    if (!giveaway || !currentUser?.uid) {
+      throw new Error("Please log in to participate");
     }
-    if (!canAccess(giveaway)) { toast.error("You don't meet the requirements"); return; }
-    try {
-      await addDoc(collection(db, "giveawayEntries"), {
-        giveawayId: giveaway.id,
-        participantId: currentUser.uid,
-        participantName: currentUser.displayName,
-        participantEmail: currentUser.email || "",
-        participantPhoto: currentUser.photoURL || null,
-        challengeCompleted: true,
-        enteredAt: new Date(),
-      });
+    if (!canAccess(giveaway)) {
+      throw new Error("You don't meet the requirements");
+    }
+    if (participating) {
+      return;
+    }
+
+    const existingQ = query(
+      collection(db, "giveawayEntries"),
+      where("participantId", "==", currentUser.uid),
+    );
+    const existingSnap = await getDocs(existingQ);
+    if (existingSnap.docs.some((d) => d.data().giveawayId === giveaway.id)) {
       setParticipating(true);
-      toast.success("You're in! Good luck!");
-    } catch { toast.error("Failed to participate"); }
+      return;
+    }
+
+    const participantName =
+      profile?.displayName ||
+      currentUser.displayName ||
+      currentUser.email ||
+      "Supporter";
+
+    await addDoc(collection(db, "giveawayEntries"), {
+      giveawayId: giveaway.id,
+      participantId: currentUser.uid,
+      participantName,
+      participantEmail: currentUser.email || "",
+      participantPhoto: profile?.photoURL || currentUser.photoURL || null,
+      challengeCompleted: true,
+      enteredAt: new Date(),
+    });
+    setParticipating(true);
+    toast.success("You're in! Good luck!");
   };
 
   const shareGiveaway = () => {
     const text = `Enter to win: ${giveaway?.title} by ${creatorData?.name || username}!`;
     const url = `${window.location.origin}/${username}?tab=giveaways`;
     if (navigator.share) navigator.share({ title: giveaway?.title || "", text, url });
-    else { navigator.clipboard.writeText(`${text} ${url}`); toast.success("Link copied!"); }
+    else {
+      navigator.clipboard.writeText(`${text} ${url}`);
+      toast.success("Link copied!");
+    }
   };
 
   if (loading) return <DetailSkeleton />;
@@ -114,24 +161,40 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
   // eslint-disable-next-line react-hooks/purity
   const daysLeft = Math.ceil((endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
   const accessible = canAccess(giveaway);
+  const creatorName = creatorData.name || profileData?.displayName || username;
+  const creatorPhotoURL = creatorData.profilePicture || profileData?.photoURL || null;
 
   return (
     <>
       <div className="max-w-3xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
-          <Link href={`/${username}/giveaways`} className="flex items-center gap-2 text-muted-fg hover:text-fg transition">
+          <Link href={`/${username}/giveaways`} className="flex min-h-11 items-center gap-2 text-muted-fg hover:text-fg transition">
             <ArrowLeft size={20} />
             <span className="font-medium">Back to Giveaways</span>
           </Link>
+
+          <button
+            type="button"
+            onClick={() => setSupportOpen(true)}
+            className="flex min-h-11 items-center gap-2 rounded-control bg-brand-strong px-4 py-2 font-bold text-on-brand transition hover:opacity-90"
+          >
+            <Heart size={18} className="fill-current" />
+            Support
+          </button>
         </div>
 
         <div className="bg-surface rounded-card border border-line overflow-hidden shadow-sm">
           <div className="bg-gradient-to-r from-brand-strong to-warning p-8 text-on-brand">
             <div className="flex items-center justify-between mb-4">
-              <span className="bg-surface/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+              <span className="bg-surface/20 px-3 py-1 rounded-control text-xs font-bold uppercase tracking-wider">
                 {isActive ? "Active" : "Ended"}
               </span>
-              <button onClick={shareGiveaway} className="bg-surface/20 p-2 rounded-full hover:bg-white/30 transition">
+              <button
+                type="button"
+                aria-label="Share giveaway"
+                onClick={shareGiveaway}
+                className="min-h-11 min-w-11 flex items-center justify-center bg-surface/20 rounded-control hover:bg-white/30 transition"
+              >
                 <Share2 size={16} />
               </button>
             </div>
@@ -149,7 +212,7 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2 text-sm text-muted-fg">
                 <Trophy size={16} className="text-brand-strong" />
-                <span className="font-bold">{giveaway.winners.length} / {giveaway.maxWinners} winners</span>
+                <span className="font-bold tabular-nums">{giveaway.winners.length} / {giveaway.maxWinners} winners</span>
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-fg">
                 <Users size={16} className="text-brand-strong" />
@@ -162,7 +225,7 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
                 <p className="text-xs font-bold text-muted-fg uppercase tracking-wider mb-2">Partners</p>
                 <div className="flex flex-wrap gap-2">
                   {giveaway.partners.map((p: any) => (
-                    <span key={p.id} className="bg-surface-sunken px-3 py-1 rounded-full text-xs font-medium text-muted-fg">{p.name}</span>
+                    <span key={p.id} className="bg-surface-sunken px-3 py-1 rounded-control text-xs font-medium text-muted-fg">{p.name}</span>
                   ))}
                 </div>
               </div>
@@ -182,8 +245,11 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
             </div>
 
             {giveaway.winners.length > 0 && (
-              <button onClick={() => setShowWinners(true)}
-                className="w-full py-3 bg-warning-bg text-warning rounded-control font-bold text-sm hover:bg-warning-bg transition flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowWinners(true)}
+                className="min-h-11 w-full py-3 bg-warning-bg text-warning rounded-control font-bold text-sm hover:opacity-90 transition flex items-center justify-center gap-2"
+              >
                 <Trophy size={16} /> View All Winners
               </button>
             )}
@@ -191,17 +257,39 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
             {isActive && (
               <div className="border-t border-line pt-6">
                 {!isLoggedIn ? (
-                  <Link href={`/login?referral=${username}&redirect=${encodeURIComponent(pathname)}`}
-                    className="block w-full py-3 bg-brand-strong text-on-brand rounded-control font-bold text-center hover:bg-brand-strong transition">
+                  <Link
+                    href={`/login?referral=${username}&redirect=${encodeURIComponent(pathname)}`}
+                    className="flex min-h-12 items-center justify-center w-full py-3 bg-brand-strong text-on-brand rounded-control font-bold text-center hover:opacity-90 transition"
+                  >
                     Log in to Enter
                   </Link>
                 ) : !accessible ? (
-                  <p className="text-center text-sm text-muted-fg bg-surface-sunken py-3 rounded-control">This giveaway requires supporter access.</p>
+                  <div className="rounded-control border border-warning bg-warning-bg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <p className="text-sm font-medium text-warning">
+                      {giveaway.access === "tier"
+                        ? `Requires at least ${
+                            creatorData.currency
+                              ? formatCurrency(giveaway.minSupportAmount || 0, creatorData.currency)
+                              : (giveaway.minSupportAmount || 0).toLocaleString()
+                          } in support to unlock.`
+                        : "This giveaway requires supporter access."}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setSupportOpen(true)}
+                      className="min-h-11 shrink-0 rounded-control bg-brand-strong px-4 py-2 text-sm font-bold text-on-brand transition hover:opacity-90"
+                    >
+                      Support Creator
+                    </button>
+                  </div>
                 ) : participating ? (
                   <p className="text-center text-sm text-success bg-success-bg py-3 rounded-control font-bold">You&apos;ve entered! Good luck!</p>
                 ) : (
-                  <button onClick={participate}
-                    className="w-full py-3 bg-brand-strong text-on-brand rounded-control font-bold hover:bg-brand-strong transition flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEntryOpen(true)}
+                    className="min-h-12 w-full py-3 bg-brand-strong text-on-brand rounded-control font-bold hover:opacity-90 transition flex items-center justify-center gap-2"
+                  >
                     <Gift size={18} /> Enter Giveaway
                   </button>
                 )}
@@ -218,6 +306,37 @@ export default function GiveawayDetailPage({ username, giveawayId }: { username:
       {showWinners && giveaway && (
         <WinnersModal giveaway={giveaway} onClose={() => setShowWinners(false)} />
       )}
+
+      {entryOpen && giveaway && (
+        <GiveawayEntrySheet
+          open
+          onClose={() => setEntryOpen(false)}
+          creatorName={creatorName}
+          creatorPhotoURL={creatorPhotoURL}
+          creatorVerified={Boolean(creatorData.verified)}
+          title={giveaway.title}
+          closesAt={giveaway.endDate}
+          maxWinners={giveaway.maxWinners}
+          rewardCount={giveaway.rewards.length}
+          onConfirm={participate}
+        />
+      )}
+
+      <SupportSheet
+        open={supportOpen}
+        onClose={() => setSupportOpen(false)}
+        creator={{
+          uid: creatorData.uid || "",
+          handle: username,
+          name: creatorName,
+          photoURL: creatorPhotoURL,
+          verified: Boolean(creatorData.verified),
+          currency: creatorData.currency,
+        }}
+        isLoggedIn={isLoggedIn}
+        user={currentUser}
+        onSuccess={() => setRefreshKey((k) => k + 1)}
+      />
     </>
   );
 }

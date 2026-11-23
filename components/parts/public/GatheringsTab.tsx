@@ -13,6 +13,7 @@ import {
   getDocs,
   addDoc,
   doc,
+  increment,
   updateDoc,
   serverTimestamp,
 } from "firebase/firestore";
@@ -36,9 +37,10 @@ interface GatheringsTabProps {
   isSupporter: boolean;
   compact?: boolean;
   username?: string;
+  creatorCurrency?: string;
 }
 
-export function GatheringsTab({ creatorId, creatorHandle, creatorName = "the creator", creatorPhotoURL, creatorVerified, isSupporter, compact = false, username = "" }: GatheringsTabProps) {
+export function GatheringsTab({ creatorId, creatorHandle, creatorName = "the creator", creatorPhotoURL, creatorVerified, isSupporter, compact = false, username = "", creatorCurrency }: GatheringsTabProps) {
   const { user, profile } = useAuth();
   const [gatherings, setGatherings] = useState<Gathering[]>([]);
   const [pastGatherings, setPastGatherings] = useState<Gathering[]>([]);
@@ -195,18 +197,39 @@ export function GatheringsTab({ creatorId, creatorHandle, creatorName = "the cre
   };
 
   const confirmFreeRsvp = async (gathering: Gathering) => {
-    if (!user || !profile) {
+    if (!user) {
       throw new Error("Please log in to RSVP");
+    }
+    if (rsvpedIds.has(gathering.id)) {
+      return;
     }
 
     setRsvping(gathering.id);
     try {
+      const existingQuery = query(
+        collection(db, "gatheringsAttendance"),
+        where("supporterId", "==", user.uid),
+      );
+      const existingSnap = await getDocs(existingQuery);
+      const alreadyDoc = existingSnap.docs.find(
+        (d) => d.data().gatheringId === gathering.id,
+      );
+      if (alreadyDoc) {
+        setAttendanceDocIds((prev) => ({ ...prev, [gathering.id]: alreadyDoc.id }));
+        setRsvpedIds((prev) => new Set(prev).add(gathering.id));
+        return;
+      }
+
+      const supporterName =
+        profile?.displayName || user.displayName || user.email || "Supporter";
+      const supporterPhoto = profile?.photoURL || user.photoURL || "";
+
       const docRef = await addDoc(collection(db, "gatheringsAttendance"), {
         gatheringId: gathering.id,
         supporterId: user.uid,
-        supporterName: profile.displayName || user.email,
+        supporterName,
         supporterEmail: user.email,
-        supporterPhoto: profile.photoURL || "",
+        supporterPhoto,
         creatorHandle,
         createdAt: serverTimestamp(),
         checkedIn: false,
@@ -216,9 +239,18 @@ export function GatheringsTab({ creatorId, creatorHandle, creatorName = "the cre
       setAttendanceDocIds((prev) => ({ ...prev, [gathering.id]: docRef.id }));
 
       updateDoc(doc(db, "creatorGatherings", gathering.id), {
-        attendeesCount: (gathering.attendeesCount || 0) + 1,
-      }).catch((err) => { console.error("Failed to update attendees count", err); });
+        attendeesCount: increment(1),
+      }).catch((err) => {
+        console.error("Failed to update attendees count", err);
+      });
 
+      setGatherings((prev) =>
+        prev.map((g) =>
+          g.id === gathering.id
+            ? { ...g, attendeesCount: (g.attendeesCount || 0) + 1 }
+            : g,
+        ),
+      );
       setRsvpedIds((prev) => new Set(prev).add(gathering.id));
 
       logInfo("gathering", `RSVP confirmed for gathering: "${gathering.title}"`, {
@@ -229,7 +261,7 @@ export function GatheringsTab({ creatorId, creatorHandle, creatorName = "the cre
       });
 
       sendCommsEmail("gathering_rsvp", {
-        supporterName: profile.displayName || user.email,
+        supporterName,
         supporterEmail: user.email,
         creatorHandle,
         creatorId,
@@ -237,7 +269,9 @@ export function GatheringsTab({ creatorId, creatorHandle, creatorName = "the cre
         gatheringTitle: gathering.title,
         gatheringDate: gathering.date,
         gatheringTime: gathering.time,
-      }).catch((err) => { console.error("Failed to send RSVP email", err); });
+      }).catch((err) => {
+        console.error("Failed to send RSVP email", err);
+      });
     } catch (error) {
       console.error("RSVP error:", error);
       logError("gathering", "GatheringsTab: RSVP failed", {
@@ -453,6 +487,8 @@ export function GatheringsTab({ creatorId, creatorHandle, creatorName = "the cre
           open
           onClose={() => setFreeRsvpGathering(null)}
           creatorName={creatorName}
+          creatorPhotoURL={creatorPhotoURL}
+          creatorVerified={creatorVerified}
           title={freeRsvpGathering.title}
           date={freeRsvpGathering.date}
           time={freeRsvpGathering.time}
@@ -470,6 +506,7 @@ export function GatheringsTab({ creatorId, creatorHandle, creatorName = "the cre
           creatorVerified={creatorVerified}
           creatorHandle={creatorHandle}
           gathering={payingGathering}
+          creatorCurrency={creatorCurrency}
           user={user}
           displayName={profile?.displayName || user?.email}
           defaultPhone={profile?.phoneNumber}

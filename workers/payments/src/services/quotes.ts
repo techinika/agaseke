@@ -38,12 +38,25 @@ function positiveInt(raw: string | undefined, fallback: number): number {
  */
 export function quoteRequestKey(body: InitRequest): string {
   const raw = body as unknown as Record<string, unknown>;
+  const normalizedItems = Array.isArray(body.items) && body.items.length > 0
+    ? body.items
+        .map((item) => ({
+          productId: str(item?.productId),
+          quantity: Number(item?.quantity) || 1,
+          selectedSize: str(item?.selectedSize),
+        }))
+        .sort((a, b) =>
+          `${a.productId}:${a.selectedSize}`.localeCompare(`${b.productId}:${b.selectedSize}`),
+        )
+    : undefined;
   return JSON.stringify({
     creatorHandle: str(raw.creatorHandle) || str(raw.creatorId),
     type: str(raw.type),
     productId: str(raw.productId),
     quantity: raw.quantity === undefined ? "" : str(raw.quantity),
     selectedSize: str(raw.selectedSize),
+    ...(normalizedItems ? { items: normalizedItems } : {}),
+    ...(str(raw.orderId) ? { orderId: str(raw.orderId) } : {}),
     couponCode: str(raw.couponCode).toUpperCase(),
     bookingId: str(raw.bookingId),
     gatheringId: str(raw.gatheringId),

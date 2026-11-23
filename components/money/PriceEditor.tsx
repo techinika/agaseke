@@ -139,39 +139,51 @@ export default function PriceEditor({
           const def = getCurrencyDefinition(code);
           const value = prices[code];
           const isPrimary = code === currency;
+          const missingPrimary = isPrimary && !(typeof value === "number" && value > 0);
           return (
-            <div key={code} className="flex items-center gap-2">
-              <span
-                className={`w-16 shrink-0 inline-flex justify-center px-2 py-1 rounded-md text-xs font-bold ${
-                  isPrimary ? "bg-orange-100 text-orange-700" : "bg-muted text-muted-foreground"
-                }`}
-                title={isPrimary ? "Primary/listing currency" : undefined}
-              >
-                {code}
-              </span>
-              <input
-                type="number"
-                min={0}
-                step={formatStep(def.minorUnit)}
-                value={value !== undefined && value !== null && value > 0 ? value : ""}
-                onChange={(e) => setAmount(code, e.target.value)}
-                placeholder={isPrimary ? "Required" : "Amount"}
-                className="flex-1 bg-muted p-3 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
-              />
-              <span className="text-xs text-muted-foreground w-12 shrink-0 truncate" title={def.name}>
-                {def.symbol ?? code}
-              </span>
-              {rows.length > 1 ? (
-                <button
-                  type="button"
-                  onClick={() => removeCurrency(code)}
-                  className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-50 rounded-lg"
-                  aria-label={`Remove ${code}`}
+            <div key={code} className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`w-16 shrink-0 inline-flex justify-center px-2 py-1 rounded-md text-xs font-bold ${
+                    isPrimary ? "bg-brand-soft text-brand-strong" : "bg-muted text-muted-foreground"
+                  }`}
+                  title={isPrimary ? "Primary/listing currency" : undefined}
                 >
-                  <X size={16} />
-                </button>
-              ) : (
-                <div className="w-8" />
+                  {code}
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  step={formatStep(def.minorUnit)}
+                  value={value !== undefined && value !== null && value > 0 ? value : ""}
+                  onChange={(e) => setAmount(code, e.target.value)}
+                  placeholder={isPrimary ? `Required (${code})` : "Amount"}
+                  className={`flex-1 bg-muted p-3 rounded-xl text-sm font-bold outline-none focus:ring-2 ${
+                    missingPrimary
+                      ? "border border-danger/60 focus:ring-danger/20"
+                      : "focus:ring-brand-soft"
+                  }`}
+                />
+                <span className="text-xs text-muted-foreground w-12 shrink-0 truncate" title={def.name}>
+                  {def.symbol ?? code}
+                </span>
+                {rows.length > 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => removeCurrency(code)}
+                    className="p-2 text-muted-foreground hover:text-danger hover:bg-danger-bg rounded-lg"
+                    aria-label={`Remove ${code}`}
+                  >
+                    <X size={16} />
+                  </button>
+                ) : (
+                  <div className="w-8" />
+                )}
+              </div>
+              {missingPrimary && pricedCodes.length > 0 && (
+                <p className="text-caption font-medium text-danger pl-18">
+                  Enter your price in {code} (or remove unused currencies).
+                </p>
               )}
             </div>
           );

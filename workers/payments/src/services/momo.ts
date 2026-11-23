@@ -37,7 +37,7 @@ export async function initiateMomoPayment(
 
   try {
     assertMethodSupportsCurrency("momo", resolved.currency);
-  } catch (error) {
+  } catch {
     throw new PaymentRequestError(
       "UNSUPPORTED_METHOD",
       `Mobile Money cannot charge ${resolved.currency}. Use card payment instead.`,
@@ -106,15 +106,19 @@ export async function initiateMomoPayment(
       },
     );
 
-    const payData = (await payRes.json().catch(() => ({}))) as {
-      ref?: string;
-    };
+    const payRawText = await payRes.text();
+    let payData: { ref?: string; message?: string; error?: string } = {};
+    try {
+      payData = JSON.parse(payRawText) as typeof payData;
+    } catch {}
 
     if (!payRes.ok || !payData.ref) {
-      await logActivity(env, "error", "payment", "Momo pay: No ref returned", {
+      const detail = payData.message || payData.error || payRawText || "No ref returned";
+      await logActivity(env, "error", "payment", "Momo pay: Initiation failed", {
         amount: resolved.totalAmount,
         creatorHandle: resolved.creatorHandle,
         status: payRes.status,
+        error: detail.slice(0, 500),
       });
       throw new PaymentRequestError(
         "PROVIDER_INITIATION_FAILED",
@@ -170,12 +174,21 @@ export async function initiateMomoPayment(
     };
 
     if (resolved.type === "store") {
-      txFields.productId = resolved.productId;
-      txFields.productPrice = resolved.productPrice;
+      txFields.productId = resolved.productId || "";
+      txFields.productPrice = resolved.productPrice ?? 0;
       txFields.productName = resolved.productName || "";
-      txFields.quantity = resolved.quantity;
+      txFields.quantity = resolved.quantity ?? 1;
       txFields.selectedSize = resolved.selectedSize || "";
-      txFields.platformFeePayer = resolved.platformFeePayer;
+      if (resolved.items && resolved.items.length > 0) {
+        txFields.items = resolved.items;
+      }
+      if (resolved.shippingAddress) {
+        txFields.shippingAddress = resolved.shippingAddress;
+      }
+      if (resolved.orderId) {
+        txFields.orderId = resolved.orderId;
+      }
+      txFields.platformFeePayer = resolved.platformFeePayer || "buyer";
       txFields.couponCode = resolved.couponCode || "";
       txFields.discount = resolved.discount || 0;
       txFields.buyerName = resolved.buyerName || "";

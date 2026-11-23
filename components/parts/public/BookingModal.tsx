@@ -2,8 +2,9 @@
 "use client";
 
 import { useAuth } from "@/auth/AuthContext";
-import { Calendar, Clock, Video, MapPin, Loader, X, Check, AlertCircle, ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
+import { Calendar, Video, MapPin, Loader, X, Check, AlertCircle, ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Creator } from "@/types/creator";
 import { BookingAvailability, BookingType } from "@/types/booking";
@@ -12,6 +13,13 @@ import { createBooking } from "@/lib/bookingsService";
 
 const DAYS_OF_WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+function toLocalDateKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 
 export function BookingModal({
   isOpen,
@@ -22,8 +30,10 @@ export function BookingModal({
   onClose: () => void;
   creator: Creator;
 }) {
+  const router = useRouter();
   const { user } = useAuth();
   const [step, setStep] = useState<"form" | "success" | "error">("form");
+  const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
@@ -54,7 +64,7 @@ export function BookingModal({
 
     for (let d = new Date(start); d <= endDate; d.setDate(d.getDate() + 1)) {
       if (avail.daysOfWeek.includes(d.getDay())) {
-        dates.push(d.toISOString().split("T")[0]);
+        dates.push(toLocalDateKey(d));
       }
     }
     setCalendarDates(dates);
@@ -82,18 +92,6 @@ export function BookingModal({
   }, [creator]);
 
 
-  const getMonthDates = () => {
-    if (!calendarDates.length) return [];
-    
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    
-    return calendarDates.filter(date => {
-      const d = new Date(date);
-      return d.getFullYear() === year && d.getMonth() === month;
-    });
-  };
-
   const handleSubmit = async () => {
     if (!selectedDate || !selectedTime) {
       toast.error("Please select a date and time");
@@ -104,9 +102,10 @@ export function BookingModal({
       return;
     }
 
+    setSubmitError("");
     setSubmitting(true);
     try {
-      await createBooking({
+      const data = await createBooking({
         creatorHandle: creator.handle,
         bookerId: user?.uid || null,
         bookerName: name,
@@ -118,10 +117,21 @@ export function BookingModal({
         preferredType: selectedType,
       });
 
+      if (data?.paymentRequired && data?.bookingId) {
+        onClose();
+        router.push(`/booking/pay/${data.bookingId}`);
+        return;
+      }
+
       setStep("success");
     } catch (error) {
       console.error("Booking error:", error);
-      toast.error("Something went wrong. Please try again.");
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Something went wrong. Please try again.";
+      setSubmitError(message);
+      toast.error(message);
       setStep("error");
       logError("payment", "BookingModal: Failed to submit booking", {
         userName: user?.displayName || name,
@@ -148,8 +158,6 @@ export function BookingModal({
     return currentMonth.getFullYear() > today.getFullYear() || 
            (currentMonth.getFullYear() === today.getFullYear() && currentMonth.getMonth() > today.getMonth());
   };
-
-  const monthDates = getMonthDates();
 
   if (!isOpen) return null;
 
@@ -376,7 +384,7 @@ export function BookingModal({
             </div>
             <h2 className="text-xl font-bold text-fg mb-2">Something went wrong</h2>
             <p className="text-muted-fg text-sm mb-6">
-              We couldn&apos;t submit your booking request. Please try again.
+              {submitError || "We couldn't submit your booking request. Please try again."}
             </p>
             <button
               onClick={() => setStep("form")}

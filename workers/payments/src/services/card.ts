@@ -18,20 +18,37 @@ function describePayment(
   creatorHandle: string,
   productName?: string,
 ): string {
-  switch (type) {
-    case "store":
-      return `Purchase: ${productName || "Store item"}`;
-    case "booking":
-      return `Booking payment for ${creatorHandle}`;
-    case "gathering":
-      return `Gathering ticket for ${creatorHandle}`;
-    case "community":
-      return `Community subscription to ${creatorHandle}`;
-    case "gift":
-      return `Gift for ${creatorHandle}`;
-    default:
-      return `Support for ${creatorHandle}`;
-  }
+  const raw = (() => {
+    switch (type) {
+      case "store":
+        return `Purchase: ${productName || "Store item"}`;
+      case "booking":
+        return `Booking payment for ${creatorHandle}`;
+      case "gathering":
+        return `Gathering ticket for ${creatorHandle}`;
+      case "community":
+        return `Community subscription to ${creatorHandle}`;
+      case "gift":
+        return `Gift for ${creatorHandle}`;
+      default:
+        return `Support for ${creatorHandle}`;
+    }
+  })();
+  return raw.slice(0, 100);
+}
+
+interface PesapalErrorPayload {
+  type?: string;
+  code?: string;
+  message?: string;
+}
+
+function formatPesapalError(error: PesapalErrorPayload | undefined, fallback: string): string {
+  if (!error) return fallback;
+  const msg = typeof error.message === "string" ? error.message.trim() : "";
+  const code = typeof error.code === "string" ? error.code.trim() : "";
+  if (msg && code) return `${msg} (${code})`;
+  return msg || code || fallback;
 }
 
 export async function initiateCardPayment(
@@ -46,7 +63,7 @@ export async function initiateCardPayment(
 
   try {
     assertMethodSupportsCurrency("card", resolved.currency);
-  } catch (error) {
+  } catch {
     throw new PaymentRequestError(
       "UNSUPPORTED_METHOD",
       `Bank cards cannot charge ${resolved.currency}.`,
@@ -76,25 +93,51 @@ export async function initiateCardPayment(
     resolved.attendeeEmail ||
     "support@agaseke.com";
 
+  const pesapalUrl = (env.PESAPAL_URL || "").trim().replace(/\/+$/, "");
+  const consumerKey = (env.PESAPAL_CONSUMER_KEY || "").trim();
+  const consumerSecret = (env.PESAPAL_CONSUMER_SECRET || "").trim();
+  const appUrl = (env.APP_URL || "").trim().replace(/\/+$/, "");
+  const paymentsWorkerUrl = (env.PAYMENTS_WORKER_URL || "").trim().replace(/\/+$/, "");
+  const fallbackIpnId = (env.PESAPAL_IPN_ID || "").trim();
+
+  if (!pesapalUrl || !consumerKey || !consumerSecret || !appUrl) {
+    await logActivity(env, "error", "payment", "Card pay: Pesapal configuration missing", {
+      hasUrl: Boolean(pesapalUrl),
+      hasKey: Boolean(consumerKey),
+      hasSecret: Boolean(consumerSecret),
+      hasAppUrl: Boolean(appUrl),
+    });
+    throw new PaymentRequestError(
+      "PROVIDER_CONFIG_ERROR",
+      "Card payments are temporarily unavailable",
+      502,
+    );
+  }
+
   try {
-    const authRes = await fetch(`${env.PESAPAL_URL}/api/Auth/RequestToken`, {
+    const authRes = await fetch(`${pesapalUrl}/api/Auth/RequestToken`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
       body: JSON.stringify({
-        consumer_key: env.PESAPAL_CONSUMER_KEY,
-        consumer_secret: env.PESAPAL_CONSUMER_SECRET,
+        consumer_key: consumerKey,
+        consumer_secret: consumerSecret,
       }),
     });
 
-    if (!authRes.ok) {
-      const errText = await authRes.text();
-      console.error("Pesapal auth error:", authRes.status, errText);
+    const authRawText = await authRes.text();
+    let authData: { token?: string; error?: PesapalErrorPayload; message?: string } = {};
+    try {
+      authData = JSON.parse(authRawText) as typeof authData;
+    } catch {}
+
+    if (!authRes.ok || authData.error || !authData.token) {
+      console.error("Pesapal auth error:", authRes.status, authRawText);
       await logActivity(env, "error", "payment", "Card pay: Pesapal auth failed", {
         status: authRes.status,
-        error: errText.slice(0, 500),
+        error: formatPesapalError(authData.error, authRawText).slice(0, 500),
       });
       throw new PaymentRequestError(
         "PROVIDER_AUTH_FAILED",
@@ -103,36 +146,60 @@ export async function initiateCardPayment(
       );
     }
 
-    const { token } = (await authRes.json()) as { token: string };
+    const token = authData.token;
 
     // Unguessable merchant reference; the previous timestamp was predictable.
     const merchantRef = `AGS-CARD-${crypto.randomUUID()}`;
 
-    const ipnRes = await fetch(`${env.PESAPAL_URL}/api/URLSetup/RegisterIPN`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
-        url: `${env.PAYMENTS_WORKER_URL}/api/payments/webhooks/pesapal`,
-        ipn_notification_type: "POST",
-      }),
-    });
+    let notificationId = "";
+    if (paymentsWorkerUrl) {
+      try {
+        const ipnRes = await fetch(`${pesapalUrl}/api/URLSetup/RegisterIPN`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            url: `${paymentsWorkerUrl}/api/payments/webhooks/pesapal`,
+            ipn_notification_type: "POST",
+          }),
+        });
 
-    if (!ipnRes.ok) {
-      const errText = await ipnRes.text();
-      console.error("Pesapal IPN registration error:", ipnRes.status, errText);
+        const ipnRawText = await ipnRes.text();
+        let ipnData: { ipn_id?: string; error?: PesapalErrorPayload } = {};
+        try {
+          ipnData = JSON.parse(ipnRawText) as typeof ipnData;
+        } catch {}
+
+        const registeredId = typeof ipnData.ipn_id === "string" ? ipnData.ipn_id.trim() : "";
+        if (ipnRes.ok && !ipnData.error && registeredId) {
+          notificationId = registeredId;
+        } else {
+          console.warn("Pesapal IPN registration did not return an ID:", ipnRes.status, ipnRawText);
+        }
+      } catch (ipnErr) {
+        console.warn("Pesapal IPN registration request failed:", ipnErr);
+      }
+    }
+
+    if (!notificationId) {
+      notificationId = fallbackIpnId;
+      if (notificationId) {
+        await logActivity(env, "warn", "payment", "Card pay: Falling back to configured PESAPAL_IPN_ID", {
+          merchantRef,
+        });
+      }
+    }
+
+    if (!notificationId) {
       await logActivity(
         env,
         "error",
         "payment",
-        "Card pay: IPN registration failed",
-        {
-          status: ipnRes.status,
-          error: errText.slice(0, 500),
-        },
+        "Card pay: IPN registration failed and no PESAPAL_IPN_ID fallback",
+        { merchantRef },
       );
       throw new PaymentRequestError(
         "PROVIDER_IPN_FAILED",
@@ -141,15 +208,31 @@ export async function initiateCardPayment(
       );
     }
 
-    const ipnData = (await ipnRes.json()) as { ipn_id?: string };
+    const rawBuyerName =
+      (typeof body.buyerName === "string" && body.buyerName.trim()) ||
+      resolved.buyerName ||
+      "";
+    const nameParts = rawBuyerName.split(/\s+/).filter(Boolean);
+    const firstName =
+      (typeof body.firstName === "string" && body.firstName.trim()) ||
+      nameParts[0] ||
+      "Supporter";
+    const lastName =
+      (typeof body.lastName === "string" && body.lastName.trim()) ||
+      (nameParts.length > 1 ? nameParts.slice(1).join(" ") : "Agaseke");
+    const billingPhone =
+      (typeof body.phone === "string" && body.phone.trim()) ||
+      resolved.shippingAddress?.phone ||
+      "";
 
     const payRes = await fetch(
-      `${env.PESAPAL_URL}/api/Transactions/SubmitOrderRequest`,
+      `${pesapalUrl}/api/Transactions/SubmitOrderRequest`,
       {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
+          Accept: "application/json",
         },
         body: JSON.stringify({
           id: merchantRef,
@@ -160,26 +243,38 @@ export async function initiateCardPayment(
             resolved.creatorHandle,
             resolved.productName,
           ),
-          callback_url: `${env.APP_URL}/payment`,
-          notification_id: ipnData.ipn_id ?? env.PESAPAL_IPN_ID,
+          callback_url: `${appUrl}/payment`,
+          notification_id: notificationId,
           billing_address: {
             email_address: email,
-            first_name:
-              (typeof body.firstName === "string" && body.firstName) ||
-              resolved.buyerName ||
-              "Supporter",
-            last_name:
-              (typeof body.lastName === "string" && body.lastName) ||
-              "Agaseke",
+            ...(billingPhone ? { phone_number: billingPhone } : {}),
+            first_name: firstName,
+            last_name: lastName,
             country_code: "RW",
           },
         }),
       },
     );
 
-    if (!payRes.ok) {
-      const errText = await payRes.text();
-      console.error("Pesapal submit order error:", payRes.status, errText);
+    const payRawText = await payRes.text();
+    let payData: {
+      redirect_url?: string;
+      merchant_reference?: string;
+      order_tracking_id?: string;
+      status?: string;
+      message?: string;
+      error?: PesapalErrorPayload;
+    } = {};
+    try {
+      payData = JSON.parse(payRawText) as typeof payData;
+    } catch {}
+
+    if (!payRes.ok || payData.error || !payData.redirect_url) {
+      const detail = formatPesapalError(
+        payData.error,
+        payData.message || payRawText || "Card payment could not be initiated",
+      );
+      console.error("Pesapal submit order error:", payRes.status, detail);
       await logActivity(
         env,
         "error",
@@ -187,29 +282,14 @@ export async function initiateCardPayment(
         "Card pay: Order submission failed",
         {
           status: payRes.status,
-          error: errText.slice(0, 500),
+          error: detail.slice(0, 500),
           merchantRef,
+          type: resolved.type,
+          amount: resolved.totalAmount,
+          currency: resolved.currency,
+          creatorHandle: resolved.creatorHandle,
         },
       );
-      throw new PaymentRequestError(
-        "PROVIDER_INITIATION_FAILED",
-        "Card payment could not be initiated",
-        502,
-      );
-    }
-
-    const payData = (await payRes.json()) as {
-      redirect_url?: string;
-      merchant_reference?: string;
-      order_tracking_id?: string;
-    };
-
-    if (!payData.redirect_url) {
-      await logActivity(env, "error", "payment", "Card pay: No redirect_url", {
-        merchantRef,
-        amount: resolved.totalAmount,
-        creatorHandle: resolved.creatorHandle,
-      });
       throw new PaymentRequestError(
         "PROVIDER_INITIATION_FAILED",
         "Card payment could not be initiated",
@@ -265,12 +345,21 @@ export async function initiateCardPayment(
     };
 
     if (resolved.type === "store") {
-      txFields.productId = resolved.productId;
-      txFields.productPrice = resolved.productPrice;
+      txFields.productId = resolved.productId || "";
+      txFields.productPrice = resolved.productPrice ?? 0;
       txFields.productName = resolved.productName || "";
-      txFields.quantity = resolved.quantity;
+      txFields.quantity = resolved.quantity ?? 1;
       txFields.selectedSize = resolved.selectedSize || "";
-      txFields.platformFeePayer = resolved.platformFeePayer;
+      if (resolved.items && resolved.items.length > 0) {
+        txFields.items = resolved.items;
+      }
+      if (resolved.shippingAddress) {
+        txFields.shippingAddress = resolved.shippingAddress;
+      }
+      if (resolved.orderId) {
+        txFields.orderId = resolved.orderId;
+      }
+      txFields.platformFeePayer = resolved.platformFeePayer || "buyer";
       txFields.couponCode = resolved.couponCode || "";
       txFields.discount = resolved.discount || 0;
       txFields.buyerName = resolved.buyerName || "";

@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { Gift, Loader, Star, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { db } from "@/db/firebase";
 import {
   collection,
@@ -14,7 +15,6 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
-import { ProtectedSection } from "./ProtectedSection";
 import {
   WinnersModal,
   ActiveGiveawayCard,
@@ -66,7 +66,9 @@ export const GiveawayTab = ({
   username = "",
   creatorCurrency,
 }: GiveawayTabProps) => {
-  const { user: currentUser } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const { user: currentUser, profile } = useAuth();
   const [activeGiveaways, setActiveGiveaways] = useState<Giveaway[]>([]);
   const [endedGiveaways, setEndedGiveaways] = useState<Giveaway[]>([]);
   const [loading, setLoading] = useState(true);
@@ -159,7 +161,7 @@ export const GiveawayTab = ({
   };
 
   const participate = async (giveaway: Giveaway) => {
-    if (!currentUser?.uid || !currentUser?.displayName) {
+    if (!currentUser?.uid) {
       throw new Error("Please log in to participate");
     }
 
@@ -167,13 +169,33 @@ export const GiveawayTab = ({
       throw new Error("You don't meet the requirements to participate");
     }
 
+    if (participating.has(giveaway.id)) {
+      return;
+    }
+
     try {
+      const existingQ = query(
+        collection(db, "giveawayEntries"),
+        where("participantId", "==", currentUser.uid),
+      );
+      const existingSnap = await getDocs(existingQ);
+      if (existingSnap.docs.some((d) => d.data().giveawayId === giveaway.id)) {
+        setParticipating((prev) => new Set([...prev, giveaway.id]));
+        return;
+      }
+
+      const participantName =
+        profile?.displayName ||
+        currentUser.displayName ||
+        currentUser.email ||
+        "Supporter";
+
       await addDoc(collection(db, "giveawayEntries"), {
         giveawayId: giveaway.id,
         participantId: currentUser.uid,
-        participantName: currentUser.displayName,
+        participantName,
         participantEmail: currentUser.email || "",
-        participantPhoto: currentUser.photoURL || null,
+        participantPhoto: profile?.photoURL || currentUser.photoURL || null,
         challengeCompleted: true,
         enteredAt: new Date(),
       });
@@ -231,20 +253,6 @@ export const GiveawayTab = ({
     );
   }
 
-  if (!isLoggedIn || !isSupporter) {
-    return (
-      <div className="animate-in fade-in duration-500">
-        <ProtectedSection
-          isLoggedIn={isLoggedIn}
-          type="gift"
-          hasGifted={isSupporter}
-          setIsModalOpen={setIsModalOpen}
-          handle={creatorHandle}
-        />
-      </div>
-    );
-  }
-
   const hasAnyGiveaways =
     activeGiveaways.length > 0 || endedGiveaways.length > 0;
 
@@ -289,8 +297,18 @@ export const GiveawayTab = ({
                 accessible={accessible}
                 hasParticipated={hasParticipated}
                 daysLeft={daysLeft}
-                onParticipate={() => setEntryGiveaway(giveaway)}
+                onParticipate={() => {
+                  if (!isLoggedIn || !currentUser?.uid) {
+                    router.push(
+                      `/login?referral=${creatorHandle}&redirect=${encodeURIComponent(pathname)}`,
+                    );
+                    return;
+                  }
+                  setEntryGiveaway(giveaway);
+                }}
                 onShare={() => shareGiveaway(giveaway)}
+                onSupport={() => setIsModalOpen(true)}
+                isLoggedIn={isLoggedIn}
                 creatorHandle={creatorHandle}
                 currency={creatorCurrency}
               />

@@ -28,7 +28,14 @@ function sanitizePrices(raw: unknown): Record<string, number> {
 }
 
 function primaryAmount(tier: TierData, prices: Record<string, number>): number {
-  if (tier.currency && prices[tier.currency] != null) return prices[tier.currency];
+  const currency = typeof tier.currency === "string" ? tier.currency.toUpperCase() : "";
+  if (currency) {
+    if (prices[currency] != null) return prices[currency];
+    return num(tier.price);
+  }
+  if (Object.keys(prices).length === 0) {
+    return num(tier.price);
+  }
   const first = Object.values(prices)[0];
   return typeof first === "number" ? first : 0;
 }
@@ -46,11 +53,16 @@ export async function getTiers(
   const data = convertFromFields(fields);
   const communityEnabled = !!data.communityEnabled;
   const tiers = ((data.communityTiers as Array<Record<string, unknown>>) || [])
-    .filter((t: any) => t.isActive !== false)
-    .map((t: any) => {
+    .filter((t) => t.isActive !== false)
+    .map((t) => {
       const prices = sanitizePrices(t.prices);
       const currency = typeof t.currency === "string" ? t.currency.toUpperCase() : undefined;
-      const price = currency && prices[currency] != null ? prices[currency] : num(t.price);
+      const price =
+        currency && prices[currency] != null
+          ? prices[currency]
+          : currency && Object.keys(prices).length > 0
+            ? 0
+            : num(t.price);
       return {
         id: String(t.id || ""),
         name: String(t.name || ""),
@@ -85,8 +97,11 @@ export async function saveTiers(
     communityEnabled: enabled,
     communityTiers: tiers.map((t) => {
       const prices = sanitizePrices(t.prices);
-      const currency = t.currency && isCurrencyCode(t.currency) ? t.currency : undefined;
-      const price = primaryAmount(t, prices) || num(t.price);
+      const currency = t.currency && isCurrencyCode(t.currency.toUpperCase())
+        ? t.currency.toUpperCase()
+        : undefined;
+      const normalizedTier = currency ? { ...t, currency } : t;
+      const price = primaryAmount(normalizedTier, prices);
       return {
         id: t.id,
         name: t.name,

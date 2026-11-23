@@ -13,7 +13,6 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
-import { Timestamp } from "firebase/firestore";
 import { Giveaway } from "./types";
 import { formatMoney as formatCurrency } from "@/lib/format/money";
 
@@ -24,6 +23,8 @@ export function ActiveGiveawayCard({
   daysLeft,
   onParticipate,
   onShare,
+  onSupport,
+  isLoggedIn = true,
   creatorHandle,
   currency,
 }: {
@@ -33,6 +34,8 @@ export function ActiveGiveawayCard({
   daysLeft: number;
   onParticipate: () => void;
   onShare: () => void;
+  onSupport?: () => void;
+  isLoggedIn?: boolean;
   creatorHandle?: string;
   currency?: string;
 }) {
@@ -142,20 +145,31 @@ export function ActiveGiveawayCard({
         </Link>
 
         {!accessible ? (
-          <div className="bg-warning-bg border border-warning-bg rounded-control p-4 flex items-start gap-3">
-            <Lock size={20} className="text-warning mt-0.5" />
-            <div>
-              <p className="font-bold text-warning">Restricted Access</p>
-              <p className="text-xs text-warning mt-1">
-                {giveaway.access === "supporters"
-                  ? "This giveaway is only for supporters."
-                  : `You need to support with at least ${
-                      currency
-                        ? formatCurrency(giveaway.minSupportAmount || 0, currency)
-                        : (giveaway.minSupportAmount || 0).toLocaleString()
-                    } to participate.`}
-              </p>
+          <div className="bg-warning-bg border border-warning-bg rounded-control p-4 flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <Lock size={20} className="text-warning mt-0.5 shrink-0" />
+              <div>
+                <p className="font-bold text-warning">Restricted Access</p>
+                <p className="text-xs text-warning mt-1">
+                  {giveaway.access === "supporters"
+                    ? "This giveaway is only for supporters."
+                    : `You need to support with at least ${
+                        currency
+                          ? formatCurrency(giveaway.minSupportAmount || 0, currency)
+                          : (giveaway.minSupportAmount || 0).toLocaleString()
+                      } to participate.`}
+                </p>
+              </div>
             </div>
+            {onSupport && (
+              <button
+                type="button"
+                onClick={onSupport}
+                className="min-h-11 shrink-0 rounded-control bg-brand-strong px-4 py-2 text-xs font-bold text-on-brand transition hover:opacity-90"
+              >
+                Support
+              </button>
+            )}
           </div>
         ) : hasParticipated ? (
           <div className="bg-success-bg border border-success-bg rounded-control p-4 flex items-center gap-3">
@@ -171,10 +185,11 @@ export function ActiveGiveawayCard({
           </div>
         ) : (
           <button
+            type="button"
             onClick={onParticipate}
-            className="w-full py-4 bg-gradient-to-r from-brand-strong to-warning text-on-brand rounded-control font-bold hover:opacity-90 transition shadow-lg"
+            className="min-h-12 w-full py-4 bg-gradient-to-r from-brand-strong to-warning text-on-brand rounded-control font-bold hover:opacity-90 transition shadow-lg"
           >
-            Enter Giveaway
+            {isLoggedIn ? "Enter Giveaway" : "Log in to Enter"}
           </button>
         )}
       </div>

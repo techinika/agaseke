@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CreditCard, Smartphone, TicketPercent } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -119,6 +119,12 @@ export function CheckoutSheet({
     onSuccess: () => onPaid?.(),
   });
 
+  useEffect(() => {
+    if (open) {
+      keyRef.current = newKey();
+    }
+  }, [open]);
+
   const updateShipping = (patch: Partial<ShippingAddress>) => {
     setShippingAddress((prev) => ({ ...prev, ...patch }));
     setError(null);
@@ -153,12 +159,29 @@ export function CheckoutSheet({
     setError(null);
     const firstItem = cart[0];
     const phone = normalizeRwandaPhone(shippingAddress.phone) || shippingAddress.phone;
+    const items = cart.map((item) => ({
+      productId: item.product.id,
+      quantity: item.quantity,
+      ...(item.selectedSize ? { selectedSize: item.selectedSize } : {}),
+    }));
+    const trimmedShipping = hasPhysicalProducts
+      ? {
+          fullName: shippingAddress.fullName.trim(),
+          phone,
+          address: shippingAddress.address.trim(),
+          city: shippingAddress.city.trim(),
+          country: shippingAddress.country.trim() || "Rwanda",
+        }
+      : undefined;
+
     const payload = {
       type: "store" as const,
       creatorHandle,
+      items,
       productId: firstItem?.product.id,
       quantity: itemCount,
       selectedSize: firstItem?.selectedSize,
+      ...(trimmedShipping ? { shippingAddress: trimmedShipping } : {}),
       couponCode: appliedCoupon || undefined,
       buyerEmail: currentUser.email || "",
       buyerName: currentUser.displayName || "Customer",

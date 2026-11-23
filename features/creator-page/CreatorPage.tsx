@@ -321,6 +321,7 @@ export default function CreatorPage({
               isSupporter={data.isSupporter}
               compact
               username={username}
+              creatorCurrency={creator.currency}
             />
           </Suspense>
         );

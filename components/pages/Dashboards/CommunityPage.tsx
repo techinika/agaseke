@@ -96,12 +96,12 @@ export default function CommunityPage() {
       const data = docSnap.data();
       const communityTiers = ((data.communityTiers || []) as CommunityTier[]).map((t) => {
         const currency = parsePriceCurrency(t.currency) || defaultCurrencyRef.current;
-        const prices = buildPriceMap({ prices: t.prices as PriceMap, price: t.price });
+        const prices = buildPriceMap({ prices: t.prices as PriceMap, price: t.price, currency });
         return {
           ...t,
           currency,
           prices,
-          price: prices.RWF ?? getPrice({ prices, currency }, currency),
+          price: getPrice({ prices, currency }, currency),
         } as CommunityTier;
       });
       setSettings({
@@ -181,19 +181,34 @@ export default function CommunityPage() {
     if (!creator?.handle) return;
     setSaving(true);
     try {
-      const validTiers = settings.tiers
-        .map((t) => {
-          const currency = parsePriceCurrency(t.currency) || defaultCurrencyRef.current;
-          const prices = buildPriceMap({ prices: t.prices as PriceMap, price: t.price });
-          const primary = getPrice({ prices, currency }, currency);
-          return {
-            ...t,
-            currency,
-            prices,
-            price: prices.RWF ?? primary,
-          } as CommunityTier;
-        })
-        .filter((t) => t.name.trim() && getPrice(t, t.currency as CurrencyCode) > 0);
+      const normalizedTiers = settings.tiers.map((t) => {
+        const currency = parsePriceCurrency(t.currency) || defaultCurrencyRef.current;
+        const prices = buildPriceMap({ prices: t.prices as PriceMap, price: t.price, currency });
+        const primary = getPrice({ prices, currency }, currency);
+        return {
+          ...t,
+          currency,
+          prices,
+          price: primary,
+        } as CommunityTier;
+      });
+
+      if (settings.enabled) {
+        const missingPriceTier = normalizedTiers.find(
+          (t) => t.name.trim() && getPrice(t, t.currency as CurrencyCode) <= 0,
+        );
+        if (missingPriceTier) {
+          toast.error(
+            `Enter a valid ${missingPriceTier.currency} price for "${missingPriceTier.name.trim()}"`,
+          );
+          setSaving(false);
+          return;
+        }
+      }
+
+      const validTiers = normalizedTiers.filter(
+        (t) => t.name.trim() && getPrice(t, t.currency as CurrencyCode) > 0,
+      );
       if (validTiers.length === 0 && settings.enabled) {
         toast.error("Add at least one tier with a name and price");
         setSaving(false);
@@ -329,6 +344,9 @@ export default function CommunityPage() {
                           prices={buildPriceMap({
                             prices: tier.prices as PriceMap,
                             price: tier.price,
+                            currency:
+                              (parsePriceCurrency(tier.currency) ||
+                                defaultCurrency) as CurrencyCode,
                           })}
                           preferredCurrencies={[defaultCurrency, "RWF", "USD"]}
                           onChange={({ currency, prices }) => {
@@ -339,7 +357,7 @@ export default function CommunityPage() {
                                 ...tiers[idx],
                                 currency,
                                 prices,
-                                price: prices.RWF ?? primary,
+                                price: primary,
                               };
                               return { ...prev, tiers };
                             });

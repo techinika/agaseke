@@ -1,5 +1,11 @@
 import type { Env } from "../types";
-import { firestoreGet, firestorePost, extractFirestoreDocument, firestoreApplyPayment } from "../firestore";
+import {
+  firestoreGet,
+  firestorePost,
+  firestorePatch,
+  extractFirestoreDocument,
+  firestoreApplyPayment,
+} from "../firestore";
 import { buildPaymentLedger, isMoneyLedgerEnabled, ledgerMarkerFields } from "../money/ledger";
 import { logActivity } from "../logger";
 import { createNotification } from "../adminNotifications";
@@ -9,6 +15,83 @@ function numberValue(value: unknown): Record<string, unknown> {
   return Number.isInteger(num) ? { integerValue: String(num) } : { doubleValue: num };
 }
 
+interface CallbackStoreItem {
+  productId: string;
+  productName: string;
+  productType?: string;
+  productPrice: number;
+  quantity: number;
+  selectedSize?: string;
+}
+
+function normalizeCallbackItems(txData: Record<string, unknown>): CallbackStoreItem[] {
+  if (Array.isArray(txData.items) && txData.items.length > 0) {
+    return txData.items
+      .filter((entry): entry is Record<string, unknown> => Boolean(entry && typeof entry === "object"))
+      .map((entry) => ({
+        productId: String(entry.productId || ""),
+        productName: String(entry.productName || ""),
+        productType: typeof entry.productType === "string" ? entry.productType : undefined,
+        productPrice: Number(entry.productPrice || 0),
+        quantity: Number(entry.quantity) || 1,
+        selectedSize: typeof entry.selectedSize === "string" ? entry.selectedSize : "",
+      }))
+      .filter((item) => Boolean(item.productId));
+  }
+
+  const productId = String(txData.productId || "");
+  if (!productId) return [];
+  return [
+    {
+      productId,
+      productName: String(txData.productName || ""),
+      productPrice: Number(txData.productPrice || 0),
+      quantity: Number(txData.quantity) || 1,
+      selectedSize: typeof txData.selectedSize === "string" ? txData.selectedSize : "",
+    },
+  ];
+}
+
+function toOrderItemsField(items: CallbackStoreItem[], currency: string): Record<string, unknown> {
+  return {
+    arrayValue: {
+      values: items.map((item) => ({
+        mapValue: {
+          fields: {
+            productId: { stringValue: item.productId },
+            productName: { stringValue: item.productName },
+            quantity: { integerValue: String(item.quantity) },
+            price: numberValue(item.productPrice),
+            currency: { stringValue: currency },
+            ...(item.selectedSize ? { selectedSize: { stringValue: item.selectedSize } } : {}),
+          },
+        },
+      })),
+    },
+  };
+}
+
+function toShippingField(raw: unknown): Record<string, unknown> | null {
+  if (!raw || typeof raw !== "object") return null;
+  const addr = raw as Record<string, unknown>;
+  const fullName = String(addr.fullName || "");
+  const phone = String(addr.phone || "");
+  const address = String(addr.address || "");
+  const city = String(addr.city || "");
+  const country = String(addr.country || "");
+  if (!fullName && !phone && !address && !city) return null;
+  return {
+    mapValue: {
+      fields: {
+        fullName: { stringValue: fullName },
+        phone: { stringValue: phone },
+        address: { stringValue: address },
+        city: { stringValue: city },
+        country: { stringValue: country },
+      },
+    },
+  };
+}
 
 export async function handleStoreCallback(
   env: Env,
@@ -31,14 +114,16 @@ export async function handleStoreCallback(
   const payoutField = currency === "RWF" ? "pendingPayout" : `pendingPayout${currency}`;
   const earningsField = currency === "RWF" ? "totalEarnings" : `totalEarnings${currency}`;
 
-  const productId = txData.productId as string | undefined;
-  const quantity = Number(txData.quantity) || 1;
+  const items = normalizeCallbackItems(txData);
+  const productId = items[0]?.productId || (txData.productId as string | undefined);
+  const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0) || (Number(txData.quantity) || 1);
 
-  let productData: Record<string, unknown> | null = null;
-  if (productId) {
-    const productSnap = await firestoreGet(env, `storeProducts/${productId}`);
-    if (productSnap) {
-      productData = extractFirestoreDocument(productSnap.fields as Record<string, unknown>);
+  const uniqueProductIds = Array.from(new Set(items.map((item) => item.productId)));
+  const productMap = new Map<string, Record<string, unknown>>();
+  for (const id of uniqueProductIds) {
+    const productSnap = await firestoreGet(env, `storeProducts/${id}`);
+    if (productSnap?.fields) {
+      productMap.set(id, extractFirestoreDocument(productSnap.fields as Record<string, unknown>));
     }
   }
 
@@ -98,40 +183,94 @@ export async function handleStoreCallback(
     });
   }
 
-  await firestorePost(env, "storeOrders", {
-    fields: {
-      txRef: { stringValue: paymentRef },
-      buyerId: { stringValue: txData.buyerId as string },
-      buyerName: { stringValue: (txData.buyerName as string) || "" },
-      creatorId: { stringValue: txData.creatorId as string },
-      creatorUid: { stringValue: txData.creatorUid as string },
-      productId: { stringValue: productId || "" },
-      productName: { stringValue: (txData.productName as string) || "" },
-      selectedSize: { stringValue: (txData.selectedSize as string) || "" },
-      quantity: { integerValue: String(quantity) },
-      productPrice: numberValue(txData.productPrice),
-      platformFee: numberValue(platformShare),
-      totalAmount: numberValue(totalAmount),
-      platformFeePayer: { stringValue: (txData.platformFeePayer as string) || "buyer" },
-      status: { stringValue: "paid" },
-      paymentMethod: { stringValue: paymentMethod },
-      currency: { stringValue: currency },
-      createdAt: { timestampValue: now },
-    },
-  });
+  const shippingField = toShippingField(txData.shippingAddress);
+  const existingOrderId = typeof txData.orderId === "string" ? txData.orderId.trim() : "";
+
+  if (existingOrderId) {
+    const existingOrder = await firestoreGet(env, `storeOrders/${existingOrderId}`);
+    if (existingOrder) {
+      await firestorePatch(env, `storeOrders/${existingOrderId}`, {
+        txRef: { stringValue: paymentRef },
+        status: { stringValue: "paid" },
+        paymentStatus: { stringValue: "paid" },
+        paymentMethod: { stringValue: paymentMethod },
+        platformFee: numberValue(platformShare),
+        total: numberValue(totalAmount),
+        totalAmount: numberValue(totalAmount),
+        currency: { stringValue: currency },
+        updatedAt: { timestampValue: now },
+        ...(shippingField ? { shippingAddress: shippingField } : {}),
+      });
+    } else {
+      await firestorePost(env, "storeOrders", {
+        fields: {
+          txRef: { stringValue: paymentRef },
+          buyerId: { stringValue: (txData.buyerId as string) || "" },
+          buyerName: { stringValue: (txData.buyerName as string) || "" },
+          buyerEmail: { stringValue: (txData.buyerEmail as string) || "" },
+          creatorId: { stringValue: txData.creatorId as string },
+          creatorUid: { stringValue: txData.creatorUid as string },
+          productId: { stringValue: productId || "" },
+          productName: { stringValue: (txData.productName as string) || items[0]?.productName || "" },
+          selectedSize: { stringValue: (txData.selectedSize as string) || items[0]?.selectedSize || "" },
+          quantity: { integerValue: String(totalQuantity) },
+          productPrice: numberValue(txData.productPrice ?? items[0]?.productPrice ?? 0),
+          items: toOrderItemsField(items, currency),
+          ...(shippingField ? { shippingAddress: shippingField } : {}),
+          platformFee: numberValue(platformShare),
+          total: numberValue(totalAmount),
+          totalAmount: numberValue(totalAmount),
+          platformFeePayer: { stringValue: (txData.platformFeePayer as string) || "buyer" },
+          status: { stringValue: "paid" },
+          paymentMethod: { stringValue: paymentMethod },
+          currency: { stringValue: currency },
+          createdAt: { timestampValue: now },
+          updatedAt: { timestampValue: now },
+        },
+      });
+    }
+  } else {
+    await firestorePost(env, "storeOrders", {
+      fields: {
+        txRef: { stringValue: paymentRef },
+        buyerId: { stringValue: (txData.buyerId as string) || "" },
+        buyerName: { stringValue: (txData.buyerName as string) || "" },
+        buyerEmail: { stringValue: (txData.buyerEmail as string) || "" },
+        creatorId: { stringValue: txData.creatorId as string },
+        creatorUid: { stringValue: txData.creatorUid as string },
+        productId: { stringValue: productId || "" },
+        productName: { stringValue: (txData.productName as string) || items[0]?.productName || "" },
+        selectedSize: { stringValue: (txData.selectedSize as string) || items[0]?.selectedSize || "" },
+        quantity: { integerValue: String(totalQuantity) },
+        productPrice: numberValue(txData.productPrice ?? items[0]?.productPrice ?? 0),
+        items: toOrderItemsField(items, currency),
+        ...(shippingField ? { shippingAddress: shippingField } : {}),
+        platformFee: numberValue(platformShare),
+        total: numberValue(totalAmount),
+        totalAmount: numberValue(totalAmount),
+        platformFeePayer: { stringValue: (txData.platformFeePayer as string) || "buyer" },
+        status: { stringValue: "paid" },
+        paymentMethod: { stringValue: paymentMethod },
+        currency: { stringValue: currency },
+        createdAt: { timestampValue: now },
+        updatedAt: { timestampValue: now },
+      },
+    });
+  }
 
   await firestorePost(env, "sales", {
     fields: {
       txRef: { stringValue: paymentRef },
-      buyerId: { stringValue: txData.buyerId as string },
+      buyerId: { stringValue: (txData.buyerId as string) || "" },
       buyerName: { stringValue: (txData.buyerName as string) || "" },
       buyerEmail: { stringValue: (txData.buyerEmail as string) || "" },
       creatorId: { stringValue: txData.creatorId as string },
       creatorUid: { stringValue: txData.creatorUid as string },
       productId: { stringValue: productId || "" },
-      productName: { stringValue: (txData.productName as string) || "" },
-      quantity: { integerValue: String(quantity) },
-      productPrice: numberValue(txData.productPrice),
+      productName: { stringValue: (txData.productName as string) || items[0]?.productName || "" },
+      quantity: { integerValue: String(totalQuantity) },
+      productPrice: numberValue(txData.productPrice ?? items[0]?.productPrice ?? 0),
+      items: toOrderItemsField(items, currency),
       totalAmount: numberValue(totalAmount),
       platformFee: numberValue(platformShare),
       creatorEarnings: numberValue(creatorShare),
@@ -144,15 +283,18 @@ export async function handleStoreCallback(
     },
   });
 
-  if (
-    productId &&
-    productData?.type === "physical" &&
-    productData?.stock !== undefined
-  ) {
-    increments.push({
-      path: `storeProducts/${productId}`,
-      fields: { stock: -quantity },
-    });
+  const qtyByProduct = new Map<string, number>();
+  for (const item of items) {
+    qtyByProduct.set(item.productId, (qtyByProduct.get(item.productId) || 0) + item.quantity);
+  }
+  for (const [id, soldQty] of qtyByProduct.entries()) {
+    const pData = productMap.get(id);
+    if (pData?.type === "physical" && pData?.stock !== undefined) {
+      increments.push({
+        path: `storeProducts/${id}`,
+        fields: { stock: -soldQty },
+      });
+    }
   }
 
   const buyerId = txData.buyerId as string | undefined;

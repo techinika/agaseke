@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Trophy, Star, Sparkles, ArrowRight } from "lucide-react";
+import { Trophy, Sparkles, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 export function EndedGiveawayCard({
@@ -17,25 +17,27 @@ export function EndedGiveawayCard({
 }) {
   return (
     <div className="bg-surface border border-line rounded-card overflow-hidden shadow-sm">
-      <div className="bg-gradient-to-r from-surface-sunken to-surface-sunken p-6 text-on-brand">
+      <div className="bg-surface-sunken border-b border-line p-6 text-fg">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold">
+            <span className="bg-surface border border-line px-3 py-1 rounded-control text-xs font-bold text-fg">
               {giveaway.type === "random" ? "Lucky Draw" : "Challenge"}
             </span>
-            <span className="bg-surface-raised/80 px-2 py-1 rounded-full text-xs font-bold">
+            <span className="bg-surface border border-line px-2.5 py-1 rounded-control text-xs font-bold text-muted-fg">
               Ended
             </span>
           </div>
           <button
+            type="button"
+            aria-label="View winners"
             onClick={onViewWinners}
-            className="p-2 bg-white/20 rounded-full hover:bg-white/30 transition"
+            className="min-h-11 min-w-11 flex items-center justify-center bg-surface border border-line rounded-control hover:bg-surface-raised transition text-fg"
           >
             <Trophy size={18} />
           </button>
         </div>
-        <h3 className="text-xl font-bold mb-2">{giveaway.title}</h3>
-        <p className="text-on-brand/80 text-sm">{giveaway.description}</p>
+        <h3 className="text-xl font-bold mb-2 text-fg">{giveaway.title}</h3>
+        <p className="text-muted-fg text-sm">{giveaway.description}</p>
       </div>
 
       <div className="p-6">

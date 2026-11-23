@@ -12,17 +12,66 @@ import {
   XCircle,
 } from "lucide-react";
 import { db } from "@/db/firebase";
-import { doc, getDoc, onSnapshot } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, limit, onSnapshot, query, where } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
-import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService";
+import { initiateMomoPayment, initiateCardPayment, type PaymentInitRequest } from "@/lib/paymentsService";
 import { subscribeToTransactionByRef } from "@/lib/transactions";
 import Link from "next/link";
 import { formatMoney as formatCurrency } from "@/lib/format/money";
 import { isCurrencySupportedByMethod } from "@/lib/money/rails";
+import type { CurrencyCode } from "@/lib/money/registry.generated";
 
 const platformSharePercentage =
   Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
+
+interface StoreOrderItem {
+  productId: string;
+  productName?: string;
+  quantity: number;
+  price: number;
+  selectedSize?: string;
+  currency?: string;
+  productCurrency?: string;
+}
+
+interface StoreOrderShippingAddress {
+  fullName?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+}
+
+interface StoreOrderRecord {
+  id: string;
+  status?: string;
+  paymentStatus?: string;
+  currency?: string;
+  total?: number;
+  totalAmount?: number;
+  creatorHandle?: string;
+  creatorUid?: string;
+  creatorId?: string;
+  buyerName?: string;
+  buyerEmail?: string;
+  couponCode?: string;
+  productId?: string;
+  productName?: string;
+  productPrice?: number;
+  quantity?: number;
+  selectedSize?: string;
+  shippingAddress?: StoreOrderShippingAddress;
+  items?: StoreOrderItem[];
+}
+
+interface StoreProductRecord {
+  id: string;
+  name?: string;
+  creatorUid?: string;
+  creatorId?: string;
+  platformFeePayer?: "buyer" | "creator";
+}
 
 export default function PayClient() {
   const params = useParams();
@@ -30,8 +79,8 @@ export default function PayClient() {
   const orderId = params.orderId as string;
   const { user: currentUser } = useAuth();
 
-  const [order, setOrder] = useState<any>(null);
-  const [products, setProducts] = useState<Record<string, any>>({});
+  const [order, setOrder] = useState<StoreOrderRecord | null>(null);
+  const [products, setProducts] = useState<Record<string, StoreProductRecord>>({});
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [paymentPhase, setPaymentPhase] = useState<
@@ -42,6 +91,7 @@ export default function PayClient() {
   const [paymentMethod, setPaymentMethod] = useState<"momo" | "card">("momo");
   const [phone, setPhone] = useState("");
   const [creatorHandle, setCreatorHandle] = useState("");
+  const [creatorCurrency, setCreatorCurrency] = useState("");
   const unsubTxRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
@@ -56,7 +106,10 @@ export default function PayClient() {
 
     const unsubOrder = onSnapshot(doc(db, "storeOrders", orderId), (snap) => {
       if (!snap.exists()) return;
-      const data: any = { id: snap.id, ...snap.data() };
+      const data: StoreOrderRecord = {
+        id: snap.id,
+        ...(snap.data() as Omit<StoreOrderRecord, "id">),
+      };
       setOrder(data);
       if (data.status === "paid" || data.paymentStatus === "paid") {
         setPaymentPhase("confirmed");
@@ -70,27 +123,36 @@ export default function PayClient() {
         return;
       }
 
-      const data: any = { id: snap.id, ...snap.data() };
+      const data: StoreOrderRecord = {
+        id: snap.id,
+        ...(snap.data() as Omit<StoreOrderRecord, "id">),
+      };
       setOrder(data);
       if (data.status === "paid" || data.paymentStatus === "paid") {
         setPaymentPhase("confirmed");
       }
-      if (data.shippingAddress?.phone) {
-        setPhone((prev) => prev || String(data.shippingAddress.phone));
+      const shippingPhone = data.shippingAddress?.phone;
+      if (shippingPhone) {
+        setPhone((prev) => prev || String(shippingPhone));
       }
 
-      const orderItems: any[] = data.items || [];
-      const map: Record<string, any> = {};
+      const orderItems: StoreOrderItem[] = data.items || [];
+      const map: Record<string, StoreProductRecord> = {};
       for (const item of orderItems) {
         if (item.productId && !map[item.productId]) {
           const pSnap = await getDoc(doc(db, "storeProducts", item.productId));
           if (pSnap.exists()) {
-            map[item.productId] = { id: pSnap.id, ...pSnap.data() };
+            map[item.productId] = {
+              id: pSnap.id,
+              ...(pSnap.data() as Omit<StoreProductRecord, "id">),
+            };
           }
         }
       }
       setProducts(map);
 
+      let resolvedHandle = typeof data.creatorHandle === "string" ? data.creatorHandle : "";
+      let resolvedCurrency = "";
       const firstItem = orderItems[0];
       const pData = map[firstItem?.productId];
       const uid =
@@ -99,25 +161,47 @@ export default function PayClient() {
         pData?.creatorId ||
         data.creatorId ||
         "";
-      if (uid) {
+
+      if (resolvedHandle) {
+        const cSnap = await getDoc(doc(db, "creators", resolvedHandle));
+        if (cSnap.exists()) {
+          resolvedCurrency = String(cSnap.data()?.currency || "");
+        }
+      } else if (uid) {
         const profileSnap = await getDoc(doc(db, "profiles", uid));
         if (profileSnap.exists()) {
           const profile = profileSnap.data();
-          const h = profile.username || "";
-          if (h) setCreatorHandle(h);
-        } else if (uid.length < 20) {
-          setCreatorHandle(uid);
+          if (profile.username) resolvedHandle = String(profile.username);
+        }
+        if (!resolvedHandle) {
+          const cQuery = query(collection(db, "creators"), where("uid", "==", uid), limit(1));
+          const cQuerySnap = await getDocs(cQuery);
+          if (!cQuerySnap.empty) {
+            resolvedHandle = cQuerySnap.docs[0].id;
+            resolvedCurrency = String(cQuerySnap.docs[0].data()?.currency || "");
+          } else if (uid.length < 20) {
+            resolvedHandle = uid;
+          }
+        } else {
+          const cSnap = await getDoc(doc(db, "creators", resolvedHandle));
+          if (cSnap.exists()) {
+            resolvedCurrency = String(cSnap.data()?.currency || "");
+          }
         }
       }
+
+      if (resolvedHandle) setCreatorHandle(resolvedHandle);
+      if (resolvedCurrency) setCreatorCurrency(resolvedCurrency);
 
       const derivedCurrency = (
         data.currency ||
         (data.items || [])[0]?.currency ||
+        resolvedCurrency ||
         "RWF"
       ) as string;
       if (
         derivedCurrency &&
-        !isCurrencySupportedByMethod("momo", derivedCurrency as any)
+        !isCurrencySupportedByMethod("momo", derivedCurrency as CurrencyCode)
       ) {
         setPaymentMethod("card");
       }
@@ -128,7 +212,7 @@ export default function PayClient() {
     return () => unsubOrder();
   }, [orderId]);
 
-  const items: any[] = order?.items || [];
+  const items: StoreOrderItem[] = order?.items || [];
 
   let platformFee = 0;
   let buyerPaysMore = false;
@@ -141,7 +225,7 @@ export default function PayClient() {
     }
   }
 
-  const finalTotal = order?.total || 0;
+  const finalTotal = order?.total ?? order?.totalAmount ?? 0;
   const totalWithPlatformFee = finalTotal + platformFee;
   const amountToPay = buyerPaysMore ? totalWithPlatformFee : finalTotal;
 
@@ -149,10 +233,11 @@ export default function PayClient() {
     order?.currency ||
     items[0]?.currency ||
     items[0]?.productCurrency ||
+    creatorCurrency ||
     "RWF"
   ) as string;
   const momoSupported = currency
-    ? isCurrencySupportedByMethod("momo", currency as any)
+    ? isCurrencySupportedByMethod("momo", currency as CurrencyCode)
     : false;
   const activeMethod = momoSupported ? paymentMethod : "card";
 
@@ -190,31 +275,51 @@ export default function PayClient() {
 
     try {
       const firstItem = items[0];
+      const checkoutItems =
+        items.length > 0
+          ? items.map((item) => ({
+              productId: item.productId,
+              quantity: Math.max(1, Number(item.quantity) || 1),
+              ...(item.selectedSize ? { selectedSize: item.selectedSize } : {}),
+            }))
+          : order.productId
+            ? [
+                {
+                  productId: order.productId,
+                  quantity: Math.max(1, Number(order.quantity) || 1),
+                  ...(order.selectedSize ? { selectedSize: order.selectedSize } : {}),
+                },
+              ]
+            : [];
 
-      const payload: Record<string, any> = {
+      const payload: PaymentInitRequest = {
         type: "store",
+        orderId: order.id,
         ...(currency ? { currency } : {}),
         creatorHandle,
-        productId: firstItem?.productId,
-        quantity: items.reduce((s: number, i: any) => s + (i.quantity || 0), 0),
-        selectedSize: firstItem?.selectedSize,
+        items: checkoutItems,
+        productId: firstItem?.productId || order.productId,
+        quantity: checkoutItems.reduce((s, i) => s + i.quantity, 0) || 1,
+        selectedSize: firstItem?.selectedSize || order.selectedSize,
+        ...(order.shippingAddress ? { shippingAddress: order.shippingAddress } : {}),
+        ...(order.couponCode ? { couponCode: order.couponCode } : {}),
         buyerEmail: currentUser.email || order.buyerEmail || "",
         buyerName: currentUser.displayName || order.buyerName || "Customer",
         phone: phone.replace(/\s/g, ""),
-        email: currentUser.email || "",
+        email: currentUser.email || order.buyerEmail || "",
         firstName: currentUser.displayName?.split(" ")[0] || "Customer",
         lastName: currentUser.displayName?.split(" ")[1] || "",
         idempotencyKey: crypto.randomUUID(),
       };
 
       if (activeMethod === "momo") {
-        const res = await initiateMomoPayment(payload as any);
+        const res = await initiateMomoPayment(payload);
         setCardRedirectUrl(null);
         setPaymentPhase("waiting");
         watchTransaction(res.ref);
         toast.success("Payment prompt sent! Confirm on your phone.");
       } else {
-        const data = await initiateCardPayment(payload as any);
+        const data = await initiateCardPayment(payload);
         setCardRedirectUrl(data.redirect_url || null);
         setPaymentPhase("waiting");
         watchTransaction(data.merchant_reference || data.ref);
@@ -226,6 +331,7 @@ export default function PayClient() {
       console.error("Payment error:", error);
       const message =
         error instanceof Error ? error.message : "Payment failed to start";
+      setPaymentPhase("failed");
       setPaymentError(message);
       toast.error(message);
     } finally {
@@ -294,7 +400,7 @@ export default function PayClient() {
           <div className="bg-surface-sunken rounded-control p-4 space-y-2">
             <h4 className="font-bold text-sm">Order Summary</h4>
             {items.length > 0 ? (
-              items.map((item: any, idx: number) => (
+              items.map((item, idx: number) => (
                 <div key={idx} className="flex justify-between text-sm">
                   <span>
                     {item.quantity}x{" "}
@@ -315,8 +421,8 @@ export default function PayClient() {
                 <span>{order.productName || "Product"}</span>
                 <span className="font-medium tabular-nums">
                   {currency
-                    ? formatCurrency(order.productPrice || order.total || 0, currency)
-                    : (order.productPrice || order.total || 0).toLocaleString()}
+                    ? formatCurrency(order.productPrice || finalTotal, currency)
+                    : (order.productPrice || finalTotal).toLocaleString()}
                 </span>
               </div>
             )}
@@ -324,8 +430,8 @@ export default function PayClient() {
               <span>Total</span>
               <span className="tabular-nums">
                 {currency
-                  ? formatCurrency(order.total || 0, currency)
-                  : (order.total || 0).toLocaleString()}
+                  ? formatCurrency(finalTotal, currency)
+                  : finalTotal.toLocaleString()}
               </span>
             </div>
           </div>
@@ -379,11 +485,24 @@ export default function PayClient() {
                     href={cardRedirectUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-brand-strong hover:underline"
+                    className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-xs font-bold text-brand-strong hover:underline"
                   >
                     Open checkout page <ExternalLink size={14} />
                   </a>
                 )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    unsubTxRef.current?.();
+                    unsubTxRef.current = null;
+                    setCardRedirectUrl(null);
+                    setPaymentError("");
+                    setPaymentPhase("idle");
+                  }}
+                  className="mt-2 block min-h-11 text-xs font-semibold text-muted-fg underline hover:text-fg"
+                >
+                  Change payment method or retry
+                </button>
               </div>
             </div>
           ) : (

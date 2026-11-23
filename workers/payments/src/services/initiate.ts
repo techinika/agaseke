@@ -43,6 +43,15 @@ export function buildRetryPayload(
     if (resolved.selectedSize) payload.selectedSize = resolved.selectedSize;
     if (resolved.couponCode) payload.couponCode = resolved.couponCode;
   }
+  if (resolved.items && resolved.items.length > 0) {
+    payload.items = resolved.items.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      ...(item.selectedSize ? { selectedSize: item.selectedSize } : {}),
+    }));
+  }
+  if (resolved.shippingAddress) payload.shippingAddress = resolved.shippingAddress;
+  if (resolved.orderId) payload.orderId = resolved.orderId;
   if (resolved.bookingId) payload.bookingId = resolved.bookingId;
   if (resolved.gatheringId) {
     payload.gatheringId = resolved.gatheringId;
@@ -78,6 +87,12 @@ export async function beginIdempotentAttempt(
     currency: resolved.currency,
     amount: resolved.totalAmount,
     productId: resolved.productId,
+    items: resolved.items?.map((i) => ({
+      productId: i.productId,
+      quantity: i.quantity,
+      selectedSize: i.selectedSize,
+    })),
+    orderId: resolved.orderId,
     bookingId: resolved.bookingId,
     gatheringId: resolved.gatheringId,
     communityTierId: resolved.communityTierId,

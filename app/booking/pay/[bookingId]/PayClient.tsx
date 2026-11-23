@@ -20,7 +20,7 @@ import { db } from "@/db/firebase";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
-import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService";
+import { initiateMomoPayment, initiateCardPayment, type PaymentInitRequest } from "@/lib/paymentsService";
 import { subscribeToTransactionByRef } from "@/lib/transactions";
 import { isCurrencySupportedByMethod } from "@/lib/money/rails";
 import Link from "next/link";
@@ -29,13 +29,30 @@ import { PublicFooter as Footer } from "@/components/shell/PublicFooter";
 import { logError } from "@/lib/logger";
 import { formatMoney as formatCurrency } from "@/lib/format/money";
 
+interface BookingRecord {
+  id: string;
+  creatorHandle?: string;
+  creatorName?: string;
+  tierName?: string;
+  preferredDate?: string;
+  preferredTime?: string;
+  preferredType?: string;
+  meetingLocation?: string;
+  paymentAmount?: number;
+  currency?: string;
+  paymentStatus?: string;
+  bookerName?: string;
+  bookerEmail?: string;
+  bookerPhone?: string;
+}
+
 export default function BookingPayClient() {
   const params = useParams();
   const router = useRouter();
   const bookingId = params.bookingId as string;
   const { user: currentUser } = useAuth();
 
-  const [booking, setBooking] = useState<any>(null);
+  const [booking, setBooking] = useState<BookingRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [paymentPhase, setPaymentPhase] = useState<
@@ -61,7 +78,7 @@ export default function BookingPayClient() {
       doc(db, "bookingRequests", bookingId),
       (snap) => {
         if (!snap.exists()) return;
-        const data: any = { id: snap.id, ...snap.data() };
+        const data: BookingRecord = { id: snap.id, ...(snap.data() as Omit<BookingRecord, "id">) };
         setBooking(data);
         if (data.paymentStatus === "paid") {
           setPaymentPhase("confirmed");
@@ -80,7 +97,7 @@ export default function BookingPayClient() {
         });
         return;
       }
-      const data: any = { id: snap.id, ...snap.data() };
+      const data: BookingRecord = { id: snap.id, ...(snap.data() as Omit<BookingRecord, "id">) };
       setBooking(data);
       if (data.bookerPhone) {
         setPhone((prev) => prev || String(data.bookerPhone));
@@ -114,7 +131,7 @@ export default function BookingPayClient() {
       if (!tx) return;
       if (tx.status === "successful" || tx.status === "success") {
         setPaymentPhase("confirmed");
-        setBooking((prev: any) => (prev ? { ...prev, paymentStatus: "paid" } : prev));
+        setBooking((prev) => (prev ? { ...prev, paymentStatus: "paid" } : prev));
         toast.success("Booking payment confirmed!");
         unsub();
       } else if (tx.status === "failed") {
@@ -142,7 +159,7 @@ export default function BookingPayClient() {
     setPaymentError("");
 
     try {
-      const payload: Record<string, any> = {
+      const payload: PaymentInitRequest = {
         type: "booking",
         creatorHandle: booking.creatorHandle,
         bookingId: booking.id,
@@ -158,13 +175,13 @@ export default function BookingPayClient() {
       };
 
       if (activeMethod === "momo") {
-        const res = await initiateMomoPayment(payload as any);
+        const res = await initiateMomoPayment(payload);
         setCardRedirectUrl(null);
         setPaymentPhase("waiting");
         watchTransaction(res.ref);
         toast.success("Payment initiated! Check your phone to complete.");
       } else {
-        const data = await initiateCardPayment(payload as any);
+        const data = await initiateCardPayment(payload);
         setCardRedirectUrl(data.redirect_url || null);
         setPaymentPhase("waiting");
         watchTransaction(data.merchant_reference || data.ref);

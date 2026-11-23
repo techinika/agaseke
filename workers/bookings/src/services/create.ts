@@ -53,7 +53,7 @@ function resolveTierPrice(tier: BookingTier): { currency: string; amount: number
   }
 
   // Legacy compatibility: primary price belongs to declared tier currency only.
-  const legacy = num((tier as any).price);
+  const legacy = num((tier as BookingTier & { price?: unknown }).price);
   if (legacy > 0 && hasSupportedPrecision(legacy, currency)) {
     return { currency, amount: legacy };
   }
@@ -285,9 +285,7 @@ export async function createBooking(
   if (isPaidTier && !currency) {
     return { error: "A currency is required for paid bookings" };
   }
-  const txRef = isPaidTier
-    ? `AGS-BOOK-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-    : "";
+  const txRef = "";
 
   const preferredType = body.preferredType || "both";
   const meetingLocation = getMeetingLocation(effectiveAvail, preferredType);
@@ -325,25 +323,6 @@ export async function createBooking(
   }
 
   const bookingId = getDocumentId(bookingResult) || "";
-
-  if (isPaidTier && txRef) {
-    const txFields: Record<string, unknown> = {
-      type: { stringValue: "booking" },
-      status: { stringValue: "pending" },
-      amount: amountField(verifiedPaymentAmount),
-      currency: { stringValue: currency },
-      creatorId: { stringValue: body.creatorHandle },
-      creatorUid: { stringValue: String(creatorData.uid || "") },
-      supporterId: { stringValue: body.bookerId || auth.uid },
-      ref: { stringValue: txRef },
-      bookingId: { stringValue: bookingId },
-      tierName: { stringValue: body.tierName || "" },
-      initiatedAt: { timestampValue: now },
-      createdAt: { timestampValue: now },
-    };
-
-    await firestorePost(env, "transactions", { fields: txFields });
-  }
 
   await createNotification(env, {
     userId: String(creatorData.uid || ""),

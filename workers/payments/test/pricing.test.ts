@@ -805,3 +805,241 @@ describe("server-authoritative payment pricing", () => {
       ),
     ).rejects.toMatchObject({ code: "QUOTE_EXPIRED" });
   });
+
+describe("multi-item store cart and USD community tiers", () => {
+  it("resolves USD community tiers accurately without falling back to 1000 RWF", async () => {
+    const docs = {
+      ...baseDocs,
+      "creators/alice": {
+        uid: "uid-alice",
+        currency: "RWF",
+        communityTiers: [
+          {
+            id: "tier-usd",
+            price: 4.99,
+            prices: { USD: 4.99 },
+            currency: "USD",
+            interval: "monthly",
+            isActive: true,
+          },
+        ],
+      },
+      "communitySubscriptions/sub-usd": {
+        id: "sub-usd",
+        userId: "supporter-1",
+        tierId: "tier-usd",
+        creatorHandle: "alice",
+      },
+    };
+
+    const resolved = await resolvePayment(
+      env,
+      body({
+        creatorHandle: "alice",
+        type: "community",
+        communityTierId: "tier-usd",
+        communitySubscriptionId: "sub-usd",
+        communityInterval: "monthly",
+        currency: "USD",
+      }),
+      "supporter-1",
+      makeRepo(docs),
+    );
+
+    expect(resolved.currency).toBe("USD");
+    expect(resolved.totalAmount).toBe(4.99);
+    expect(resolved.platformFee).toBe(0.75);
+    expect(resolved.creatorEarnings).toBe(3.99);
+  });
+
+  it("resolves multi-item store carts with bulkPricing, per-item fees, shippingAddress, and orderId", async () => {
+    const docs = {
+      ...baseDocs,
+      "storeProducts/p1": {
+        id: "p1",
+        creatorUid: "uid-alice",
+        name: "T-Shirt",
+        price: 1000,
+        currency: "RWF",
+        active: true,
+        type: "physical",
+        stock: 5,
+        bulkPricing: [{ minQuantity: 3, discountPercentage: 10 }],
+      },
+      "storeProducts/p2": {
+        id: "p2",
+        creatorUid: "uid-alice",
+        name: "PDF Guide",
+        price: 2000,
+        currency: "RWF",
+        active: true,
+        type: "digital",
+        platformFeePayer: "creator",
+      },
+      "storeOrders/ord-1": {
+        id: "ord-1",
+        buyerId: "buyer-1",
+        status: "pending",
+      },
+    };
+
+    const resolved = await resolvePayment(
+      env,
+      body({
+        creatorHandle: "alice",
+        items: [
+          { productId: "p1", quantity: 2, selectedSize: "M" },
+          { productId: "p1", quantity: 2, selectedSize: "L" },
+          { productId: "p2", quantity: 1 },
+        ],
+        orderId: "ord-1",
+        shippingAddress: {
+          fullName: "Jane Doe",
+          phone: "0788000000",
+          address: "KG 1 Ave",
+          city: "Kigali",
+          country: "Rwanda",
+        },
+        currency: "RWF",
+      }),
+      "buyer-1",
+      makeRepo(docs),
+    );
+
+    expect(resolved.type).toBe("store");
+    expect(resolved.items).toHaveLength(3);
+    expect(resolved.orderId).toBe("ord-1");
+    expect(resolved.shippingAddress?.city).toBe("Kigali");
+    // p1: two line items qty 2 each (bulk threshold 3 not met per line item): 2000*1.15 + 2000*1.15 = 4600
+    // p2: qty 1 creator pays fee: 2000
+    expect(resolved.totalAmount).toBe(6600);
+    expect(resolved.quantity).toBe(5);
+  });
+
+  it("applies bulkPricing discount per line item and rejects aggregate stock exceedance across size variants", async () => {
+    const docs = {
+      ...baseDocs,
+      "storeProducts/p1": {
+        id: "p1",
+        creatorUid: "uid-alice",
+        name: "Hoodie",
+        price: 1000,
+        currency: "RWF",
+        active: true,
+        type: "physical",
+        stock: 4,
+        bulkPricing: [{ minQuantity: 3, discountPercentage: 20 }],
+      },
+    };
+
+    const bulkResolved = await resolvePayment(
+      env,
+      body({
+        creatorHandle: "alice",
+        type: "store",
+        items: [{ productId: "p1", quantity: 3, selectedSize: "L" }],
+        currency: "RWF",
+      }),
+      "buyer-1",
+      makeRepo(docs),
+    );
+    // 3 * 1000 = 3000 - 20% = 2400; + 15% buyer fee = 2760
+    expect(bulkResolved.totalAmount).toBe(2760);
+
+    await expect(
+      resolvePayment(
+        env,
+        body({
+          creatorHandle: "alice",
+          type: "store",
+          items: [
+            { productId: "p1", quantity: 3, selectedSize: "M" },
+            { productId: "p1", quantity: 2, selectedSize: "L" },
+          ],
+          currency: "RWF",
+        }),
+        "buyer-1",
+        makeRepo(docs),
+      ),
+    ).rejects.toMatchObject({ code: "INSUFFICIENT_STOCK" });
+  });
+
+  it("rejects mixed currencies in a single multi-item store cart and invalid orderId states", async () => {
+    const docs = {
+      ...baseDocs,
+      "storeProducts/p1": {
+        id: "p1",
+        creatorUid: "uid-alice",
+        name: "Local Mug",
+        price: 2000,
+        currency: "RWF",
+        active: true,
+      },
+      "storeProducts/p2": {
+        id: "p2",
+        creatorUid: "uid-alice",
+        name: "Global Ebook",
+        price: 10,
+        currency: "USD",
+        active: true,
+      },
+      "storeOrders/paid-ord": {
+        id: "paid-ord",
+        buyerId: "buyer-1",
+        status: "paid",
+      },
+      "storeOrders/other-ord": {
+        id: "other-ord",
+        buyerId: "someone-else",
+        status: "pending",
+      },
+    };
+
+    await expect(
+      resolvePayment(
+        env,
+        body({
+          creatorHandle: "alice",
+          type: "store",
+          items: [
+            { productId: "p1", quantity: 1 },
+            { productId: "p2", quantity: 1 },
+          ],
+        }),
+        "buyer-1",
+        makeRepo(docs),
+      ),
+    ).rejects.toMatchObject({ code: "MIXED_CURRENCIES" });
+
+    await expect(
+      resolvePayment(
+        env,
+        body({
+          creatorHandle: "alice",
+          type: "store",
+          items: [{ productId: "p1", quantity: 1 }],
+          orderId: "paid-ord",
+          currency: "RWF",
+        }),
+        "buyer-1",
+        makeRepo(docs),
+      ),
+    ).rejects.toMatchObject({ code: "ORDER_ALREADY_PAID" });
+
+    await expect(
+      resolvePayment(
+        env,
+        body({
+          creatorHandle: "alice",
+          type: "store",
+          items: [{ productId: "p1", quantity: 1 }],
+          orderId: "other-ord",
+          currency: "RWF",
+        }),
+        "buyer-1",
+        makeRepo(docs),
+      ),
+    ).rejects.toMatchObject({ code: "ORDER_OWNER_MISMATCH" });
+  });
+});
+

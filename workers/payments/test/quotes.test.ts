@@ -89,4 +89,38 @@ describe("checkout quote loading", () => {
     const quote = await loadCheckoutQuote(repo, "q1", "user-1", baseBody());
     expect(quote?.id).toBe("q1");
   });
+
+  it("canonicalizes multi-item cart order and differentiates orderId in quoteRequestKey", () => {
+    const a = quoteRequestKey({
+      creatorHandle: "alice",
+      type: "store",
+      currency: "USD",
+      items: [
+        { productId: "p2", quantity: 1 },
+        { productId: "p1", quantity: 2, selectedSize: "M" },
+      ],
+    });
+    const b = quoteRequestKey({
+      creatorHandle: "alice",
+      type: "store",
+      currency: "USD",
+      items: [
+        { productId: "p1", quantity: 2, selectedSize: "M" },
+        { productId: "p2", quantity: 1 },
+      ],
+    });
+    const withOrder = quoteRequestKey({
+      creatorHandle: "alice",
+      type: "store",
+      currency: "USD",
+      orderId: "ord-1",
+      items: [
+        { productId: "p1", quantity: 2, selectedSize: "M" },
+        { productId: "p2", quantity: 1 },
+      ],
+    });
+
+    expect(a).toBe(b);
+    expect(withOrder).not.toBe(a);
+  });
 });

@@ -29,8 +29,17 @@ function json(data: unknown, status = 200, origin?: string | null): Response {
   });
 }
 
-function badRequest(message: string, origin?: string | null): Response {
-  return json({ error: message }, 400, origin);
+async function parseJsonBody<T>(request: Request): Promise<T> {
+  try {
+    const parsed = (await request.json()) as T;
+    if (!parsed || typeof parsed !== "object") {
+      throw new PaymentRequestError("INVALID_BODY", "Request body must be a JSON object");
+    }
+    return parsed;
+  } catch (err) {
+    if (err instanceof PaymentRequestError) throw err;
+    throw new PaymentRequestError("INVALID_JSON", "Invalid JSON request body");
+  }
 }
 
 function getClientIp(request: Request): string {
@@ -155,7 +164,7 @@ export default {
             `${auth.uid}:${getClientIp(request)}`,
           );
           if (limited) return limited;
-          const body = (await request.json()) as InitRequest;
+          const body = await parseJsonBody<InitRequest>(request);
           const result = await createCheckoutQuote(
             env,
             body,
@@ -190,7 +199,7 @@ export default {
             `${auth.uid}:${getClientIp(request)}`,
           );
           if (limited) return limited;
-          const body = (await request.json()) as InitRequest;
+          const body = await parseJsonBody<InitRequest>(request);
           const result = await initiateMomoPayment(
             env,
             body,
@@ -208,7 +217,7 @@ export default {
             `${auth.uid}:${getClientIp(request)}`,
           );
           if (limited) return limited;
-          const body = (await request.json()) as InitRequest;
+          const body = await parseJsonBody<InitRequest>(request);
           const result = await initiateCardPayment(
             env,
             body,
@@ -226,7 +235,7 @@ export default {
             `${auth.uid}:${getClientIp(request)}`,
           );
           if (limited) return limited;
-          const body = (await request.json()) as { ref?: string; phone?: string };
+          const body = await parseJsonBody<{ ref?: string; phone?: string }>(request);
           try {
             const result = await retryTransaction(env, auth.uid, body.ref || "", {
               phone: body.phone,
@@ -248,7 +257,7 @@ export default {
             `${auth.uid}:${getClientIp(request)}`,
           );
           if (limited) return limited;
-          const body = (await request.json()) as { ref?: string; phone?: string };
+          const body = await parseJsonBody<{ ref?: string; phone?: string }>(request);
           try {
             const result = await retryTransaction(env, auth.uid, body.ref || "", {
               allowPending: true,

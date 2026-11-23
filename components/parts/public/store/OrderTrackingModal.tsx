@@ -3,7 +3,7 @@ import { Truck, X, Check, Download, Loader } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Timestamp } from "firebase/firestore";
-import { Order, Product, getProductCurrency, getProductPrice } from "./types";
+import { Order, Product, getProductCurrency } from "./types";
 import { downloadProduct } from "@/lib/downloadProduct";
 import { formatMoney as formatCurrency } from "@/lib/format/money";
 
@@ -90,28 +90,56 @@ export function OrderTrackingModal({
             </div>
           ) : (
             orders.map((order) => {
+              const legacyOrder = order as Order & {
+                totalAmount?: number;
+                currency?: string;
+                productId?: string;
+                productName?: string;
+                quantity?: number;
+                productPrice?: number;
+              };
               const safeTotal =
-                typeof order.total === "number"
-                  ? order.total
-                  : typeof (order as any).total === "number"
-                    ? (order as any).total
+                typeof legacyOrder.total === "number"
+                  ? legacyOrder.total
+                  : typeof legacyOrder.totalAmount === "number"
+                    ? legacyOrder.totalAmount
                     : 0;
 
-              const orderItems = order.items
-                ? order.items
+              const orderItems = legacyOrder.items
+                ? legacyOrder.items
                 : [
                     {
-                      productId: (order as any).productId,
-                      productName: (order as any).productName,
-                      quantity: (order as any).quantity,
-                      price: (order as any).productPrice,
+                      productId: legacyOrder.productId || "",
+                      productName: legacyOrder.productName || "Product",
+                      quantity: legacyOrder.quantity ?? 1,
+                      price: legacyOrder.productPrice ?? 0,
                     },
                   ];
+              const explicitOrderCurrency = legacyOrder.currency;
               const orderCurrencies = Array.from(
-                new Set(orderItems.map((item: any) => itemCurrency(item.productId))),
+                new Set(
+                  orderItems.map(
+                    (item) =>
+                      explicitOrderCurrency || itemCurrency(item.productId),
+                  ),
+                ),
               );
               const orderCurrency =
-                orderCurrencies.length === 1 ? orderCurrencies[0] : null;
+                explicitOrderCurrency ||
+                (orderCurrencies.length === 1 ? orderCurrencies[0] : null);
+              const isPaidOrder =
+                order.status === "paid" ||
+                order.status === "processing" ||
+                order.status === "shipped" ||
+                order.status === "delivered";
+
+              const createdDate =
+                order.createdAt instanceof Timestamp
+                  ? order.createdAt.toDate()
+                  : typeof (order.createdAt as unknown as { toDate?: () => Date })?.toDate ===
+                      "function"
+                    ? (order.createdAt as unknown as { toDate: () => Date }).toDate()
+                    : new Date(order.createdAt as unknown as string | number | Date);
 
               return (
                 <div key={order.id} className="bg-surface-sunken rounded-control p-6">
@@ -121,12 +149,7 @@ export function OrderTrackingModal({
                         Order #{order.id.slice(0, 8)}
                       </p>
                       <p className="text-sm text-muted-fg">
-                        {order.createdAt instanceof Timestamp
-                          ? order.createdAt.toDate().toLocaleDateString()
-                          : new Date(
-                              (order.createdAt as any)?.toDate?.() ||
-                                order.createdAt,
-                            ).toLocaleDateString()}
+                        {createdDate.toLocaleDateString()}
                       </p>
                     </div>
                     <span
@@ -137,35 +160,55 @@ export function OrderTrackingModal({
                   </div>
 
                   <div className="space-y-2 mb-4">
-                    {orderItems.map((item: any, idx: number) => (
-                      <div
-                        key={idx}
-                        className="flex justify-between text-sm items-center"
-                      >
-                        <span>
-                          {item.quantity}x {item.productName || "Product"}
-                        </span>
-                        <div className="flex items-center gap-3">
-                          <span className="font-medium">
-                            {formatCurrency(
-                              typeof item.price === "number" ? item.price : 0,
-                              itemCurrency(item.productId),
-                            )}
+                    {orderItems.map((item, idx: number) => {
+                      const productObj = products.find(
+                        (p) => p.id === item.productId,
+                      );
+                      const canDownload =
+                        isPaidOrder &&
+                        Boolean(item.productId) &&
+                        (!productObj ||
+                          productObj.type === "digital" ||
+                          Boolean(productObj.fileUrl));
+                      const isDownloading =
+                        downloadingProduct === item.productId;
+
+                      return (
+                        <div
+                          key={idx}
+                          className="flex justify-between text-sm items-center"
+                        >
+                          <span>
+                            {item.quantity}x {item.productName || "Product"}
                           </span>
-                          {order.status !== "cancelled" && item.productId && (
-                            <button
-                              onClick={() =>
-                                handleDownload(item.productId)
-                              }
-                              className="text-success hover:bg-success-bg p-1 rounded transition"
-                              title="Download"
-                            >
-                              <Download size={14} />
-                            </button>
-                          )}
+                          <div className="flex items-center gap-3">
+                            <span className="font-medium tabular-nums">
+                              {formatCurrency(
+                                typeof item.price === "number" ? item.price : 0,
+                                explicitOrderCurrency ||
+                                  itemCurrency(item.productId),
+                              )}
+                            </span>
+                            {canDownload && (
+                              <button
+                                type="button"
+                                disabled={isDownloading}
+                                onClick={() => handleDownload(item.productId)}
+                                className="text-success hover:bg-success-bg p-1 rounded transition disabled:opacity-50"
+                                title="Download"
+                                aria-label="Download product"
+                              >
+                                {isDownloading ? (
+                                  <Loader size={14} className="animate-spin" />
+                                ) : (
+                                  <Download size={14} />
+                                )}
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   {order.status !== "cancelled" && (

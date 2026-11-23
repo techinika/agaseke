@@ -100,6 +100,8 @@ export const StoreTab = ({
     new Set(),
   );
   const [showMyPurchases, setShowMyPurchases] = useState(false);
+  const [checkoutPaid, setCheckoutPaid] = useState(false);
+  const [ordersRefreshKey, setOrdersRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!canAccess) return;
@@ -197,7 +199,7 @@ export const StoreTab = ({
     };
 
     fetchOrders();
-  }, [currentUser?.uid]);
+  }, [currentUser?.uid, ordersRefreshKey]);
 
   const filteredProducts = products.filter(
     (p) =>
@@ -451,36 +453,38 @@ export const StoreTab = ({
     );
   }
 
-  if (showCheckout) {
-    const currency =
-      cart.length > 0 ? getProductCurrency(cart[0].product) : "RWF";
-    const closeCheckout = () => {
-      setShowCheckout(false);
-      setShowCart(false);
+  const checkoutCurrency =
+    cart.length > 0 ? getProductCurrency(cart[0].product) : "RWF";
+  const closeCheckout = () => {
+    setShowCheckout(false);
+    setShowCart(false);
+    if (checkoutPaid) {
       setCart([]);
-    };
-
-    if (CHECKOUT_SHEET_V2) {
-      return (
-        <CheckoutSheet
-          open
-          onClose={closeCheckout}
-          cart={cart}
-          creatorId={creatorId}
-          creatorName={creatorName}
-          creatorHandle={creatorHandle}
-          creatorPhotoURL={creatorPhotoURL}
-          creatorVerified={creatorVerified}
-          getItemPrice={getItemPrice}
-          total={getCartTotal()}
-          currentUser={currentUser}
-          currency={currency}
-          onPaid={() => toast.success("Order placed successfully!")}
-        />
-      );
+      setCheckoutPaid(false);
     }
-
-    return (
+  };
+  const checkoutOverlay = showCheckout ? (
+    CHECKOUT_SHEET_V2 ? (
+      <CheckoutSheet
+        open
+        onClose={closeCheckout}
+        cart={cart}
+        creatorId={creatorId}
+        creatorName={creatorName}
+        creatorHandle={creatorHandle}
+        creatorPhotoURL={creatorPhotoURL}
+        creatorVerified={creatorVerified}
+        getItemPrice={getItemPrice}
+        total={getCartTotal()}
+        currentUser={currentUser}
+        currency={checkoutCurrency}
+        onPaid={() => {
+          setCheckoutPaid(true);
+          setOrdersRefreshKey((k) => k + 1);
+          toast.success("Order placed successfully!");
+        }}
+      />
+    ) : (
       <CheckoutModal
         cart={cart}
         creatorId={creatorId}
@@ -488,16 +492,20 @@ export const StoreTab = ({
         creatorHandle={creatorHandle}
         onClose={closeCheckout}
         onSuccess={() => {
-          closeCheckout();
+          setShowCheckout(false);
+          setShowCart(false);
+          setCart([]);
+          setCheckoutPaid(false);
+          setOrdersRefreshKey((k) => k + 1);
           toast.success("Order placed successfully!");
         }}
         getItemPrice={getItemPrice}
         total={getCartTotal()}
         currentUser={currentUser}
-        currency={currency}
+        currency={checkoutCurrency}
       />
-    );
-  }
+    )
+  ) : null;
 
   if (showOrderTracking) {
     return (
@@ -698,6 +706,8 @@ export const StoreTab = ({
           uid={currentUser?.uid}
         />
       )}
+
+      {checkoutOverlay}
     </div>
   );
 

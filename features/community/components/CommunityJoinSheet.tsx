@@ -6,7 +6,7 @@ import { Check, CreditCard, Crown, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { formatMoney } from "@/lib/format/money";
-import { getPrice } from "@/lib/priceMap";
+import { getPrice, parsePriceCurrency } from "@/lib/priceMap";
 import { t } from "@/lib/i18n";
 import { isValidRwandaPhone, normalizeRwandaPhone } from "@/lib/format/phone";
 import { initiateSubscription } from "@/lib/communityService";
@@ -32,7 +32,8 @@ export interface CommunityJoinSheetProps {
 }
 
 export function tierAmount(tier: CommunityTierView): number {
-  return getPrice(tier);
+  const code = parsePriceCurrency(tier.currency);
+  return getPrice(tier, code ?? undefined);
 }
 
 export function tierIntervalLabel(tier: CommunityTierView): string {
@@ -56,12 +57,16 @@ export function CommunityJoinSheet({
   defaultPhone,
   onJoined,
 }: CommunityJoinSheetProps) {
-  const [selectedId, setSelectedId] = useState(initialTierId || tiers[0]?.id || "");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [method, setMethod] = useState<"momo" | "card">("momo");
   const [phone, setPhone] = useState(defaultPhone ?? "");
   const [error, setError] = useState<string | null>(null);
 
-  const selectedTier = tiers.find((tier) => tier.id === selectedId) || tiers[0] || null;
+  const selectedTier =
+    (selectedId && tiers.find((tier) => tier.id === selectedId)) ||
+    (initialTierId && tiers.find((tier) => tier.id === initialTierId)) ||
+    tiers[0] ||
+    null;
   const tierCurrency = selectedTier?.currency ? String(selectedTier.currency).toUpperCase() : "";
   const momoSupported = tierCurrency ? isCurrencySupportedByMethod("momo", tierCurrency) : false;
   const requiresCard = !momoSupported;
@@ -88,6 +93,12 @@ export function CommunityJoinSheet({
     setSelectedId(tier.id);
     setError(null);
     if (tier.currency && !isCurrencySupportedByMethod("momo", tier.currency)) setMethod("card");
+  };
+
+  const handleClose = () => {
+    setSelectedId(null);
+    setError(null);
+    onClose();
   };
 
   const join = async () => {
@@ -158,7 +169,7 @@ export function CommunityJoinSheet({
   return (
     <SupporterActionSheet
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       title={t("actions.community.title")}
       description={payment.status === "idle" ? t("actions.community.hint") : undefined}
       status={payment.status}

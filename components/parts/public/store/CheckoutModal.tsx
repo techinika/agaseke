@@ -5,7 +5,6 @@ import {
   CreditCard,
   X,
   AlertCircle,
-  ShoppingCart,
 } from "lucide-react";
 import { toast } from "sonner";
 import { db } from "@/db/firebase";
@@ -15,9 +14,8 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { useAuth } from "@/auth/AuthContext";
 import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService";
-import { CartItem, ShippingAddress, getProductCurrency } from "./types";
+import { CartItem, ShippingAddress } from "./types";
 import { formatMoney as formatCurrency } from "@/lib/format/money";
 import { isCurrencySupportedByMethod } from "@/lib/money/rails";
 
@@ -27,7 +25,6 @@ const platformSharePercentage =
 export function CheckoutModal({
   cart,
   creatorId,
-  creatorName,
   creatorHandle,
   onClose,
   onSuccess,
@@ -44,7 +41,7 @@ export function CheckoutModal({
   onSuccess: () => void;
   getItemPrice: (item: CartItem) => number;
   total: number;
-  currentUser: any;
+  currentUser: { uid?: string; email?: string | null; displayName?: string | null } | null;
   currency?: string;
 }) {
   const momoSupported = isCurrencySupportedByMethod("momo", currency);
@@ -126,7 +123,7 @@ export function CheckoutModal({
       toast.success(
         `Coupon applied! You save ${formatCurrency(discount, currency)}`,
       );
-    } catch (error) {
+    } catch {
       toast.error("Failed to apply coupon");
     } finally {
       setApplyingCoupon(false);
@@ -163,12 +160,29 @@ export function CheckoutModal({
       const phone = shippingAddress.phone.replace(/\s/g, "");
 
       const firstItem = cart[0];
+      const items = cart.map((item) => ({
+        productId: item.product.id,
+        quantity: item.quantity,
+        ...(item.selectedSize ? { selectedSize: item.selectedSize } : {}),
+      }));
+      const trimmedShipping = hasPhysicalProducts
+        ? {
+            fullName: shippingAddress.fullName.trim(),
+            phone,
+            address: shippingAddress.address.trim(),
+            city: shippingAddress.city.trim(),
+            country: shippingAddress.country.trim() || "Rwanda",
+          }
+        : undefined;
+
       const productData = {
         type: "store" as const,
         creatorHandle,
+        items,
         productId: firstItem?.product.id,
         quantity: cart.reduce((sum, item) => sum + item.quantity, 0),
         selectedSize: firstItem?.selectedSize,
+        ...(trimmedShipping ? { shippingAddress: trimmedShipping } : {}),
         couponCode: appliedCoupon || undefined,
         buyerEmail: currentUser.email || "",
         buyerName: currentUser.displayName || "Customer",
@@ -181,12 +195,12 @@ export function CheckoutModal({
       };
 
       if (method === "momo") {
-        await initiateMomoPayment(productData as any);
+        await initiateMomoPayment(productData);
         toast.success(
           "Payment initiated! Check your phone to complete the payment.",
         );
       } else {
-        const paymentData = await initiateCardPayment(productData as any);
+        const paymentData = await initiateCardPayment(productData);
         if (paymentData.redirect_url) {
           window.open(paymentData.redirect_url, "_blank", "noopener,noreferrer");
         }
@@ -196,7 +210,11 @@ export function CheckoutModal({
       onSuccess();
     } catch (error) {
       console.error("Error placing order:", error);
-      toast.error("Failed to place order");
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : "Failed to place order";
+      toast.error(message);
     } finally {
       setProcessing(false);
     }
@@ -223,14 +241,13 @@ export function CheckoutModal({
 
         <div className="p-6 space-y-6 overflow-y-auto flex-1">
           <div className="flex gap-2">
-            {[
-              "info",
-              ...(hasPhysicalProducts ? ["shipping"] : []),
-              "payment",
-            ].map((s) => (
+            {(hasPhysicalProducts
+              ? (["info", "shipping", "payment"] as const)
+              : (["info", "payment"] as const)
+            ).map((s) => (
               <button
                 key={s}
-                onClick={() => setStep(s as any)}
+                onClick={() => setStep(s)}
                 className={`min-h-11 flex-1 rounded-control px-2 py-2 text-xs font-bold capitalize transition ${
                   step === s
                     ? "bg-brand-strong text-on-brand"

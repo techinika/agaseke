@@ -159,6 +159,7 @@ export default function BookingPage({
     name?: string;
     email?: string;
   }>({});
+  const [submitError, setSubmitError] = useState("");
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
     const min = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -285,6 +286,7 @@ export default function BookingPage({
       return;
     }
     setFieldErrors({});
+    setSubmitError("");
     setSubmitting(true);
 
     try {
@@ -310,7 +312,12 @@ export default function BookingPage({
         setStep("success");
       }
     } catch (err) {
-      toast.error("Could not send your booking request.");
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : "Could not send your booking request.";
+      setSubmitError(message);
+      toast.error(message);
       setStep("error");
       logError("payment", "BookingPage: Failed to submit booking", {
         userName: user?.displayName || name,
@@ -844,7 +851,7 @@ export default function BookingPage({
             </div>
             <h2 className="text-heading font-bold text-fg">Something went wrong</h2>
             <p className="mx-auto mt-2 max-w-md text-body text-muted-fg">
-              We couldn&apos;t submit your booking request. Please try again.
+              {submitError || "We couldn't submit your booking request. Please try again."}
             </p>
             <div className="mt-6">
               <Button variant="primary" size="md" onClick={() => setStep("form")}>

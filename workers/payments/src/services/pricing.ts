@@ -6,8 +6,7 @@ import {
   type CurrencyCode,
 } from "../money/registry.generated";
 import { hasCurrencyPrecision, toMinorUnits, fromMinorUnits } from "../money/amount";
-import { assertMethodSupportsCurrency } from "../money/rails";
-import { FxError, isQuoteUsable, type FxQuote } from "../money/fx";
+import { isQuoteUsable, type FxQuote } from "../money/fx";
 
 /**
  * Server-authoritative payment derivation (AGA-PAY-002 / A1).
@@ -96,6 +95,24 @@ export interface ResolvedPaymentQuote {
   expiresAt: string;
 }
 
+export interface ResolvedStoreItem {
+  productId: string;
+  productName: string;
+  productType: string;
+  productPrice: number;
+  quantity: number;
+  selectedSize: string;
+  platformFeePayer: "buyer" | "creator";
+}
+
+export interface ResolvedShippingAddress {
+  fullName: string;
+  phone: string;
+  address: string;
+  city: string;
+  country: string;
+}
+
 export interface ResolvedPayment {
   type: TransactionType;
   creatorHandle: string;
@@ -114,6 +131,9 @@ export interface ResolvedPayment {
   productPrice?: number;
   quantity?: number;
   selectedSize?: string;
+  items?: ResolvedStoreItem[];
+  shippingAddress?: ResolvedShippingAddress;
+  orderId?: string;
   platformFeePayer?: string;
   couponCode?: string;
   discount?: number;
@@ -296,13 +316,14 @@ export function resolveRequestedType(
   body: Record<string, unknown>,
 ): TransactionType {
   const explicit = str(body.type) as TransactionType;
+  const hasItems = Array.isArray(body.items) && body.items.length > 0;
   const inferred: TransactionType = body.communityTierId
     ? "community"
     : body.gatheringId
       ? "gathering"
       : body.bookingId
         ? "booking"
-        : body.productId
+        : body.productId || hasItems
           ? "store"
           : "support";
 
@@ -668,74 +689,184 @@ export async function resolvePayment(
   }
 
   if (type === "store") {
-    const productId = str(body.productId);
-    if (!productId) {
+    const rawItems = Array.isArray(body.items) && body.items.length > 0
+      ? body.items
+      : str(body.productId)
+        ? [
+            {
+              productId: str(body.productId),
+              quantity: body.quantity,
+              selectedSize: str(body.selectedSize),
+            },
+          ]
+        : [];
+
+    if (rawItems.length === 0) {
       throw new PaymentRequestError(
         "MISSING_PRODUCT",
-        "productId is required for store payments",
-      );
-    }
-    const product = await repo.get(`storeProducts/${productId}`);
-    if (!product) {
-      throw new PaymentRequestError(
-        "PRODUCT_NOT_FOUND",
-        "Product not found",
-        404,
-      );
-    }
-    if (product.active === false) {
-      throw new PaymentRequestError(
-        "PRODUCT_UNAVAILABLE",
-        "This product is not available",
+        "At least one product is required for store payments",
       );
     }
 
-    const productOwner =
-      str(product.creatorUid) || str(product.creatorId) || str(product.creatorHandle);
-    if (productOwner !== creatorUid && productOwner !== creatorHandle) {
+    if (rawItems.length > 50) {
       throw new PaymentRequestError(
-        "PRODUCT_CREATOR_MISMATCH",
-        "This product does not belong to the requested creator",
+        "TOO_MANY_ITEMS",
+        "A single store order supports at most 50 line items",
       );
     }
 
-    const currency = await resolveCurrency(repo, product.currency, creator.currency);
+    const parsedItems = rawItems.map((entry) => {
+      const record = entry && typeof entry === "object"
+        ? (entry as unknown as Record<string, unknown>)
+        : {};
+      const itemProductId = str(record.productId);
+      if (!itemProductId) {
+        throw new PaymentRequestError(
+          "MISSING_PRODUCT",
+          "Each item must include a valid productId",
+        );
+      }
+      return {
+        productId: itemProductId,
+        quantity: parseQuantity(record.quantity),
+        selectedSize: str(record.selectedSize),
+      };
+    });
+
+    const uniqueProductIds = Array.from(new Set(parsedItems.map((i) => i.productId)));
+    const productCache = new Map<string, Record<string, unknown>>();
+    await Promise.all(
+      uniqueProductIds.map(async (id) => {
+        const doc = await repo.get(`storeProducts/${id}`);
+        if (!doc) {
+          throw new PaymentRequestError(
+            "PRODUCT_NOT_FOUND",
+            "Product not found",
+            404,
+          );
+        }
+        if (doc.active === false) {
+          throw new PaymentRequestError(
+            "PRODUCT_UNAVAILABLE",
+            `${str(doc.name) || "This product"} is not available`,
+          );
+        }
+        const productOwner =
+          str(doc.creatorUid) || str(doc.creatorId) || str(doc.creatorHandle);
+        if (productOwner !== creatorUid && productOwner !== creatorHandle) {
+          throw new PaymentRequestError(
+            "PRODUCT_CREATOR_MISMATCH",
+            "This product does not belong to the requested creator",
+          );
+        }
+        productCache.set(id, doc);
+      }),
+    );
+
+    const qtyByProduct = new Map<string, number>();
+    for (const item of parsedItems) {
+      qtyByProduct.set(item.productId, (qtyByProduct.get(item.productId) || 0) + item.quantity);
+    }
+
+    let cartCurrency: CurrencyCode | null = null;
+    for (const [id, totalProductQty] of qtyByProduct.entries()) {
+      const product = productCache.get(id)!;
+      const itemCurrency = await resolveCurrency(repo, product.currency, creator.currency);
+      if (!cartCurrency) {
+        cartCurrency = itemCurrency;
+      } else if (cartCurrency !== itemCurrency) {
+        throw new PaymentRequestError(
+          "MIXED_CURRENCIES",
+          `All items in an order must share the same currency (${cartCurrency} and ${itemCurrency} cannot be combined)`,
+        );
+      }
+      if (
+        product.type === "physical" &&
+        product.stock !== undefined &&
+        product.stock !== null &&
+        totalProductQty > num(product.stock)
+      ) {
+        throw new PaymentRequestError(
+          "INSUFFICIENT_STOCK",
+          `Requested quantity for ${str(product.name) || "a product"} is not available`,
+        );
+      }
+    }
+
+    const currency = cartCurrency!;
     if (!quote) assertRequestedCurrency(body.currency, currency);
-    const price = resolveStoredPrice(product, currency, "price");
-    if (price <= 0) {
-      throw new PaymentRequestError(
-        "INVALID_PRODUCT_PRICE",
-        "This product has no valid price",
-      );
+
+    const resolvedItems: ResolvedStoreItem[] = [];
+    let productsTotal = 0;
+    let totalPlatformFee = 0;
+    let totalCreatorEarningsBeforeCoupon = 0;
+    let totalReferralEarnings = 0;
+    let totalAmountBeforeCoupon = 0;
+    let totalQuantity = 0;
+
+    for (const item of parsedItems) {
+      const product = productCache.get(item.productId)!;
+      const baseUnitPrice = resolveStoredPrice(product, currency, "price");
+      if (baseUnitPrice <= 0) {
+        throw new PaymentRequestError(
+          "INVALID_PRODUCT_PRICE",
+          `${str(product.name) || "This product"} has no valid price`,
+        );
+      }
+
+      let lineSubtotal = roundMoney(baseUnitPrice * item.quantity, currency);
+      if (Array.isArray(product.bulkPricing) && product.bulkPricing.length > 0) {
+        const bestBulk = (product.bulkPricing as Array<Record<string, unknown>>)
+          .filter(
+            (b) =>
+              num(b.minQuantity) > 0 &&
+              item.quantity >= num(b.minQuantity) &&
+              num(b.discountPercentage) > 0 &&
+              num(b.discountPercentage) <= 100,
+          )
+          .sort((a, b) => num(b.discountPercentage) - num(a.discountPercentage))[0];
+        if (bestBulk) {
+          const bulkPct = num(bestBulk.discountPercentage);
+          lineSubtotal = roundMoney(lineSubtotal - (lineSubtotal * bulkPct) / 100, currency);
+        }
+      }
+
+      const effectiveUnitPrice = roundMoney(lineSubtotal / item.quantity, currency);
+      const feePayer: "buyer" | "creator" =
+        str(product.platformFeePayer) === "creator" ? "creator" : "buyer";
+      const itemRevenue = calculateStoreRevenue(lineSubtotal, feePayer, env);
+
+      productsTotal += lineSubtotal;
+      totalPlatformFee += roundMoney(itemRevenue.platformFee, currency);
+      totalCreatorEarningsBeforeCoupon += roundMoney(itemRevenue.creatorEarnings, currency);
+      if (referral.includeReferral) {
+        totalReferralEarnings += roundMoney(itemRevenue.referralEarnings, currency);
+      }
+      totalAmountBeforeCoupon += roundMoney(itemRevenue.totalAmount, currency);
+      totalQuantity += item.quantity;
+
+      resolvedItems.push({
+        productId: item.productId,
+        productName: str(product.name),
+        productType: str(product.type) || "digital",
+        productPrice: effectiveUnitPrice,
+        quantity: item.quantity,
+        selectedSize: item.selectedSize,
+        platformFeePayer: feePayer,
+      });
     }
 
-    const quantity = parseQuantity(body.quantity);
-    if (
-      product.type === "physical" &&
-      product.stock !== undefined &&
-      product.stock !== null &&
-      quantity > num(product.stock)
-    ) {
-      throw new PaymentRequestError(
-        "INSUFFICIENT_STOCK",
-        "The requested quantity is not available",
-      );
-    }
-
-    const productTotal = roundMoney(price * quantity, currency);
-    const feePayer =
-      str(product.platformFeePayer) === "creator" ? "creator" : "buyer";
-    const storeRevenue = calculateStoreRevenue(productTotal, feePayer, env);
+    productsTotal = roundMoney(productsTotal, currency);
     const discount = await resolveCouponDiscount(
       repo,
       body.couponCode,
       creatorHandle,
       creatorUid,
-      productTotal,
+      productsTotal,
     );
 
     const totalAmount = roundMoney(
-      Math.max(0, storeRevenue.totalAmount - discount),
+      Math.max(0, totalAmountBeforeCoupon - discount),
       currency,
     );
     if (totalAmount <= 0) {
@@ -745,34 +876,81 @@ export async function resolvePayment(
       );
     }
 
+    const orderId = str(body.orderId);
+    if (orderId) {
+      const existingOrder = await repo.get(`storeOrders/${orderId}`);
+      if (!existingOrder) {
+        throw new PaymentRequestError("ORDER_NOT_FOUND", "Store order not found", 404);
+      }
+      const existingBuyer = str(existingOrder.buyerId);
+      if (existingBuyer && existingBuyer !== uid) {
+        throw new PaymentRequestError(
+          "ORDER_OWNER_MISMATCH",
+          "This order belongs to a different account",
+          403,
+        );
+      }
+      const existingStatus = str(existingOrder.status).toLowerCase();
+      if (["paid", "processing", "shipped", "delivered"].includes(existingStatus)) {
+        throw new PaymentRequestError(
+          "ORDER_ALREADY_PAID",
+          "This order has already been paid",
+        );
+      }
+    }
+
+    const rawShipping =
+      body.shippingAddress && typeof body.shippingAddress === "object"
+        ? body.shippingAddress
+        : null;
+    const shippingAddress: ResolvedShippingAddress | undefined = rawShipping
+      ? {
+          fullName: str(rawShipping.fullName),
+          phone: str(rawShipping.phone),
+          address: str(rawShipping.address),
+          city: str(rawShipping.city),
+          country: str(rawShipping.country),
+        }
+      : undefined;
+
+    const firstResolved = resolvedItems[0];
+    const summaryProductName =
+      resolvedItems.length === 1
+        ? firstResolved.productName
+        : `${firstResolved.productName} (+${resolvedItems.length - 1} more)`;
+    const combinedFeePayer = resolvedItems.every((i) => i.platformFeePayer === "creator")
+      ? "creator"
+      : "buyer";
+
     return finalizePayment({
       type,
       creatorHandle,
       creatorUid,
       currency,
       totalAmount,
-      platformFee: roundMoney(storeRevenue.platformFee, currency),
+      platformFee: roundMoney(totalPlatformFee, currency),
       creatorEarnings: roundMoney(
-        Math.max(0, storeRevenue.creatorEarnings - discount),
+        Math.max(0, totalCreatorEarningsBeforeCoupon - discount),
         currency,
       ),
-      referralEarnings: referral.includeReferral
-        ? roundMoney(storeRevenue.referralEarnings, currency)
-        : 0,
+      referralEarnings: roundMoney(totalReferralEarnings, currency),
       processorCost: roundMoney(
         totalAmount * (num(env.PROCESSOR_FEE_PERCENT) / 100),
         currency,
       ),
       ...referral,
-      productId,
-      productName: str(product.name),
-      productPrice: price,
-      quantity,
-      selectedSize: str(body.selectedSize),
-      platformFeePayer: feePayer,
+      productId: firstResolved.productId,
+      productName: summaryProductName,
+      productPrice: firstResolved.productPrice,
+      quantity: totalQuantity,
+      selectedSize: firstResolved.selectedSize,
+      items: resolvedItems,
+      ...(shippingAddress ? { shippingAddress } : {}),
+      ...(orderId ? { orderId } : {}),
+      platformFeePayer: combinedFeePayer,
       couponCode: discount > 0 ? str(body.couponCode).toUpperCase() : undefined,
       discount: discount > 0 ? roundMoney(discount, currency) : undefined,
-      buyerName: str(body.buyerName),
+      buyerName: str(body.buyerName) || shippingAddress?.fullName || "",
       buyerEmail: str(body.buyerEmail) || str(body.email),
     }, quote, body.currency, env);
   }
