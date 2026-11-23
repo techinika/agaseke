@@ -20,6 +20,7 @@ export type NotificationType =
   | "new_transaction"
   | "withdrawal"
   | "new_like"
+  | "likes_milestone"
   | "new_comment"
   | "booking_reminder";
 
@@ -73,6 +74,7 @@ export function getNotificationIconKey(type: NotificationType): string {
     new_transaction: "creditCard",
     withdrawal: "wallet",
     new_like: "heart",
+    likes_milestone: "sparkles",
     new_comment: "messageSquare",
     booking_reminder: "calendarClock",
   };

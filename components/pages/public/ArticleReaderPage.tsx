@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import {
   doc,
   getDoc,
+  getDocs,
   increment,
   updateDoc,
   collection,
@@ -31,6 +32,7 @@ import {
   deleteDoc,
   onSnapshot,
   serverTimestamp,
+  where,
 } from "firebase/firestore";
 import { db } from "@/db/firebase";
 import RichContentRenderer from "@/components/ui/RichContentRenderer";
@@ -39,6 +41,7 @@ import { CommunityJoinSheet, type CommunityTierView } from "@/features/community
 import { MediaAsset } from "@/components/parts/public/MediaAsset";
 import { useAuth } from "@/auth/AuthContext";
 import { baseUrl } from "@/lib/baseUrl";
+import { cn } from "@/lib/cn";
 import {
   formatVisibilityLabel,
   resolvePostVisibility,
@@ -49,6 +52,9 @@ import { Button, buttonClasses } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Input } from "@/components/ui/Input";
+
+const GENERAL_WORKER_URL =
+  process.env.NEXT_PUBLIC_GENERAL_WORKER_URL || "http://localhost:8787";
 
 interface ArticleReaderData {
   id: string;
@@ -64,6 +70,7 @@ interface ArticleReaderData {
   readingMinutes?: number;
   commentCount: number;
   views: number;
+  likesCount?: number;
   createdAt: string | null;
   publishedAt?: string | null;
 }
@@ -118,6 +125,9 @@ export default function ArticleReaderPage({
   );
   const [accessRefreshKey, setAccessRefreshKey] = useState(0);
   const [comments, setComments] = useState<any[]>([]);
+  const [likes, setLikes] = useState<Set<string>>(new Set());
+  const [userLiked, setUserLiked] = useState(false);
+  const [liking, setLiking] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
@@ -233,12 +243,109 @@ export default function ArticleReaderPage({
     return () => unsub();
   }, [article.id]);
 
+  useEffect(() => {
+    if (!article.id) return;
+    const likesRef = collection(db, "creatorContent", article.id, "likes");
+    const unsub = onSnapshot(
+      likesRef,
+      (snap) => {
+        const nextLikes = new Set<string>(
+          snap.docs.map((d) => String(d.data().userId || "")),
+        );
+        setLikes(nextLikes);
+        if (currentUser?.uid) {
+          setUserLiked(nextLikes.has(currentUser.uid));
+        } else {
+          setUserLiked(false);
+        }
+      },
+      () => {},
+    );
+    return () => unsub();
+  }, [article.id, currentUser?.uid]);
+
+  const handleLike = async () => {
+    if (!currentUser?.uid) {
+      toast.error("Please log in to like this article");
+      return;
+    }
+    if (liking) return;
+    setLiking(true);
+    try {
+      const postRef = doc(db, "creatorContent", article.id);
+      const likeRef = collection(db, "creatorContent", article.id, "likes");
+      const snap = await getDocs(
+        query(likeRef, where("userId", "==", currentUser.uid)),
+      );
+      if (!snap.empty) {
+        await deleteDoc(snap.docs[0].ref);
+        await updateDoc(postRef, { "stats.likes": increment(-1) });
+        setUserLiked(false);
+      } else {
+        await addDoc(likeRef, {
+          postId: article.id,
+          userId: currentUser.uid,
+          createdAt: serverTimestamp(),
+        });
+        await updateDoc(postRef, { "stats.likes": increment(1) });
+        setUserLiked(true);
+
+        const actorName =
+          profile?.displayName || currentUser.displayName || "Someone";
+        currentUser
+          .getIdToken()
+          .then((token) => {
+            if (creator.uid && currentUser.uid !== creator.uid) {
+              fetch(`${GENERAL_WORKER_URL}/api/general/notification`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  userId: creator.uid,
+                  type: "new_like",
+                  title: "New Like!",
+                  message: `${actorName} liked your article${articleData.title ? ` "${articleData.title}"` : ""}`,
+                  link: article.slug
+                    ? `/articles/${article.slug}`
+                    : `/explore/posts/${article.id}`,
+                  actorName,
+                  actorId: currentUser.uid,
+                  metadata: {
+                    postId: article.id,
+                    postTitle: articleData.title,
+                    username: creator.handle,
+                  },
+                }),
+              }).catch(() => {});
+            }
+
+            fetch(`/api/content/${encodeURIComponent(article.id)}/engagement`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ event: "like" }),
+            }).catch(() => {});
+          })
+          .catch(() => {});
+      }
+    } catch {
+      toast.error("Could not update like");
+    } finally {
+      setLiking(false);
+    }
+  };
+
   const handleComment = async () => {
     if (!currentUser?.uid) {
       toast.error("Please log in to comment");
       return;
     }
-    if (!newComment.trim()) return;
+    const trimmed = newComment.trim();
+    if (!trimmed) return;
     setSubmittingComment(true);
     try {
       const commentsRef = collection(db, "creatorContent", article.id, "comments");
@@ -246,13 +353,30 @@ export default function ArticleReaderPage({
         userId: currentUser.uid,
         userName: profile?.displayName || currentUser.displayName || "Anonymous",
         userPhoto: profile?.photoURL || currentUser.photoURL || "",
-        content: newComment.trim(),
+        content: trimmed,
         createdAt: serverTimestamp(),
       });
       await updateDoc(doc(db, "creatorContent", article.id), {
         commentCount: increment(1),
       });
       setNewComment("");
+
+      currentUser
+        .getIdToken()
+        .then((token) =>
+          fetch(`/api/content/${encodeURIComponent(article.id)}/engagement`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              event: "comment",
+              commentText: trimmed,
+            }),
+          }),
+        )
+        .catch(() => {});
     } catch {
       toast.error("Failed to post comment");
     } finally {
@@ -335,6 +459,8 @@ export default function ArticleReaderPage({
         .split(/\s+/)
         .filter(Boolean).length
     : 0;
+  const likeDisplayCount =
+    likes.size > 0 ? likes.size : Number(articleData.likesCount || 0);
   const readingMinutes = Math.max(1, Math.ceil(wordCount / 200));
   const loginHref = `/login?redirect=${encodeURIComponent(`/articles/${article.slug}`)}`;
   const referralLoginHref = `/login?referral=${creator.handle}&redirect=${encodeURIComponent(
@@ -343,8 +469,8 @@ export default function ArticleReaderPage({
 
   return (
     <div className="min-h-screen bg-canvas pb-20 text-fg">
-      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-6 flex items-center justify-between gap-3">
+      <div className="mx-auto max-w-3xl px-4 pb-3 pt-4 sm:px-6 sm:pt-6">
+        <div className="flex items-center justify-between gap-3">
           <Link
             href={backHref ?? "/explore/posts"}
             className="inline-flex min-h-11 items-center gap-2 rounded-control text-label font-semibold text-muted-fg transition-colors hover:text-fg"
@@ -362,10 +488,12 @@ export default function ArticleReaderPage({
             <span className="sr-only sm:hidden">Share</span>
           </Button>
         </div>
+      </div>
 
-        <article className="overflow-hidden rounded-card border border-line bg-surface shadow-card">
-          {articleData.coverUrl && (
-            <div className="aspect-video w-full bg-surface-raised">
+      <article>
+        {articleData.coverUrl && (
+          <div className="mx-auto max-w-3xl sm:px-6">
+            <div className="aspect-video w-full overflow-hidden bg-surface-raised sm:rounded-control">
               <MediaAsset
                 postId={articleData.id}
                 isPrivate={articleData.isPrivate}
@@ -374,41 +502,46 @@ export default function ArticleReaderPage({
                 className="size-full object-cover"
               />
             </div>
-          )}
+          </div>
+        )}
 
-          <div className="p-5 sm:p-8 md:p-10">
-            <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-caption font-semibold text-muted-fg">
-              <span className="uppercase tracking-wider text-brand-strong">Article</span>
-              <span aria-hidden="true">·</span>
-              <span>{formatDate(articleData.publishedAt || articleData.createdAt)}</span>
-              <span aria-hidden="true">·</span>
-              <span>{articleData.readingMinutes || readingMinutes} min read</span>
-              {resolvePostVisibility(articleData) !== "public" && (
-                <>
-                  <span aria-hidden="true">·</span>
-                  <span className="inline-flex items-center gap-1 text-warning">
-                    <Lock className="size-3.5" aria-hidden="true" />
-                    {formatVisibilityLabel(
-                      resolvePostVisibility(articleData),
-                      articleData.requiredTierNames,
-                    )}
-                  </span>
-                </>
-              )}
-              <span aria-hidden="true">·</span>
-              <span className="inline-flex items-center gap-1">
-                <Eye className="size-3.5" aria-hidden="true" /> {articleData.views}
-              </span>
-              <span aria-hidden="true">·</span>
-              <span className="inline-flex items-center gap-1">
-                <MessageCircle className="size-3.5" aria-hidden="true" />{" "}
-                {articleData.commentCount}
-              </span>
-            </div>
+        <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
+          <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-caption font-semibold text-muted-fg">
+            <span className="uppercase tracking-wider text-brand-strong">Article</span>
+            <span aria-hidden="true">·</span>
+            <span>{formatDate(articleData.publishedAt || articleData.createdAt)}</span>
+            <span aria-hidden="true">·</span>
+            <span>{articleData.readingMinutes || readingMinutes} min read</span>
+            {resolvePostVisibility(articleData) !== "public" && (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="inline-flex items-center gap-1 text-warning">
+                  <Lock className="size-3.5" aria-hidden="true" />
+                  {formatVisibilityLabel(
+                    resolvePostVisibility(articleData),
+                    articleData.requiredTierNames,
+                  )}
+                </span>
+              </>
+            )}
+            <span aria-hidden="true">·</span>
+            <span className="inline-flex items-center gap-1">
+              <Eye className="size-3.5" aria-hidden="true" /> {articleData.views}
+            </span>
+            <span aria-hidden="true">·</span>
+            <span className="inline-flex items-center gap-1">
+              <Heart className="size-3.5" aria-hidden="true" /> {likeDisplayCount}
+            </span>
+            <span aria-hidden="true">·</span>
+            <span className="inline-flex items-center gap-1">
+              <MessageCircle className="size-3.5" aria-hidden="true" />{" "}
+              {comments.length || articleData.commentCount}
+            </span>
+          </div>
 
-            <h1 className="font-display text-heading font-bold tracking-tight text-fg [text-wrap:balance] sm:text-display">
-              {articleData.title}
-            </h1>
+          <h1 className="font-display text-heading font-bold tracking-tight text-fg [text-wrap:balance] sm:text-display">
+            {articleData.title}
+          </h1>
 
             <Link
               href={`/${creator.handle}`}
@@ -524,30 +657,65 @@ export default function ArticleReaderPage({
                 })()
               )}
             </div>
-          </div>
+        </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-5 py-5 sm:px-8 md:px-10">
-            <Link
-              href={`/${creator.handle}`}
-              className="inline-flex min-h-11 items-center text-label font-semibold text-brand-strong hover:underline"
-            >
-              View {creator.name}&apos;s profile
-            </Link>
-            <Button
-              variant="secondary"
-              onClick={() => setSupportOpen(true)}
-              leadingIcon={<Heart className="size-4" aria-hidden="true" />}
-            >
-              Support
-            </Button>
-          </div>
-        </article>
+        <div className="mx-auto max-w-3xl border-t border-line px-4 py-5 sm:px-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                aria-pressed={userLiked}
+                disabled={liking}
+                onClick={handleLike}
+                leadingIcon={
+                  <Heart
+                    className={cn(
+                      "size-4",
+                      userLiked && "fill-current text-brand-strong",
+                    )}
+                    aria-hidden="true"
+                  />
+                }
+              >
+                {likeDisplayCount}
+              </Button>
+              <a
+                href="#article-comments"
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-control border border-line bg-surface-raised px-3 text-label font-semibold text-muted-fg transition-colors hover:text-fg"
+              >
+                <MessageCircle className="size-4" aria-hidden="true" />
+                {comments.length || articleData.commentCount}
+              </a>
+            </div>
 
-        <Card className="mt-5 p-5 sm:p-6">
-          <h2 className="flex items-center gap-2 text-title font-bold text-fg">
-            <MessageCircle className="size-5 text-brand-strong" aria-hidden="true" />
-            Comments ({comments.length})
-          </h2>
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                href={`/${creator.handle}`}
+                className="inline-flex min-h-11 items-center text-label font-semibold text-brand-strong hover:underline"
+              >
+                View {creator.name}&apos;s profile
+              </Link>
+              <Button
+                variant="secondary"
+                onClick={() => setSupportOpen(true)}
+                leadingIcon={<Heart className="size-4" aria-hidden="true" />}
+              >
+                Support
+              </Button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <section
+        id="article-comments"
+        className="mx-auto max-w-3xl border-t border-line px-4 py-8 sm:px-6"
+      >
+        <h2 className="flex items-center gap-2 text-title font-bold text-fg">
+          <MessageCircle className="size-5 text-brand-strong" aria-hidden="true" />
+          Comments ({comments.length})
+        </h2>
 
           {currentUser ? (
             <div className="mt-5 flex gap-3">
@@ -668,11 +836,11 @@ export default function ArticleReaderPage({
               ))}
             </div>
           )}
-        </Card>
+      </section>
 
-        {moreContent.length > 0 && (
-          <section className="mt-8">
-            <h2 className="mb-4 text-title font-bold text-fg">
+      {moreContent.length > 0 && (
+        <section className="mx-auto max-w-3xl border-t border-line px-4 py-8 sm:px-6">
+          <h2 className="mb-4 text-title font-bold text-fg">
               More from {creator.name}
             </h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -749,7 +917,6 @@ export default function ArticleReaderPage({
             </div>
           </section>
         )}
-      </div>
 
       <SupportSheet
         open={supportOpen}

@@ -162,11 +162,23 @@ export async function fetchSupporters(
   }
 }
 
-export async function fetchCreatorEmail(creatorId: string, env: Env): Promise<string> {
-  if (!creatorId) return "";
-
+export async function fetchCreatorEmail(
+  creatorId: string,
+  env: Env,
+  creatorHandle?: string,
+): Promise<string> {
   try {
-    const data = await firestoreFetch(env, `profiles/${creatorId}`);
+    let uid = creatorId;
+    if (!uid && creatorHandle) {
+      const creatorDoc = await firestoreFetch(env, `creators/${creatorHandle}`);
+      const creatorFields = creatorDoc?.fields as
+        | Record<string, { stringValue?: string }>
+        | undefined;
+      uid = creatorFields?.uid?.stringValue || "";
+    }
+    if (!uid) return "";
+
+    const data = await firestoreFetch(env, `profiles/${uid}`);
     if (!data) return "";
 
     const fields = data.fields as Record<string, { stringValue?: string }> | undefined;

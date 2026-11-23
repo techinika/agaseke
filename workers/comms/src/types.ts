@@ -19,6 +19,8 @@ export type EmailPurpose =
   | "support_received"
   | "payout_processed"
   | "content_new"
+  | "content_comment"
+  | "content_likes_milestone"
   | "booking_reminder"
   | "verification_request"
   | "withdrawal_request"

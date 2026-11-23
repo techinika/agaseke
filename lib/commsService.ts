@@ -4,7 +4,7 @@ export type EmailPurpose =
   | "welcome_user" | "welcome_creator" | "profile_live" | "booking_request" | "booking_response" | "booking_cancelled"
   | "gathering_created" | "gathering_rsvp" | "gathering_checkin" | "gathering_declined"
   | "gathering_undo" | "message_new" | "message_digest" | "store_order" | "store_status"
-  | "support_received" | "payout_processed" | "content_new" | "verification_request"
+  | "support_received" | "payout_processed" | "content_new" | "content_comment" | "content_likes_milestone" | "verification_request"
   | "withdrawal_request"
   | "verification_feedback" | "broadcast";
 

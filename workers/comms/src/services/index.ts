@@ -7,7 +7,7 @@ import { storeOrder, storeStatus } from "./store";
 import { messageNew, messageDigest } from "./message";
 import { payoutProcessed } from "./payout";
 import { supportReceived } from "./support";
-import { contentNew } from "./content";
+import { contentNew, contentComment, contentLikesMilestone } from "./content";
 import { verificationRequest, verificationFeedback } from "./verification";
 import { withdrawalRequest } from "./withdrawal";
 import { broadcast } from "./broadcast";
@@ -32,6 +32,8 @@ const registry: Partial<Record<EmailPurpose, EmailService>> = {
   payout_processed: payoutProcessed,
   support_received: supportReceived,
   content_new: contentNew,
+  content_comment: contentComment,
+  content_likes_milestone: contentLikesMilestone,
   verification_request: verificationRequest,
   withdrawal_request: withdrawalRequest,
   verification_feedback: verificationFeedback,

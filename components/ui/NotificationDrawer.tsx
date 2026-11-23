@@ -23,6 +23,7 @@ import {
   UserPlus,
   UserCheck,
   CreditCard,
+  Sparkles,
 } from "lucide-react";
 import type { Notification, NotificationType } from "@/lib/notifications";
 import {
@@ -64,6 +65,7 @@ const iconMap: Record<NotificationType, React.ReactNode> = {
   new_transaction: <CreditCard size={18} className="text-chart-5" />,
   withdrawal: <Wallet size={18} className="text-brand-strong" />,
   new_like: <Heart size={18} className="text-danger" />,
+  likes_milestone: <Sparkles size={18} className="text-brand-strong" />,
   new_comment: <MessageSquare size={18} className="text-info" />,
   booking_reminder: <CalendarClock size={18} className="text-chart-2" />,
 };

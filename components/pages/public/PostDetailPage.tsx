@@ -55,7 +55,6 @@ import { MediaAsset } from "@/components/parts/public/MediaAsset";
 import RichContentRenderer from "@/components/ui/RichContentRenderer";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button, buttonClasses } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -358,10 +357,12 @@ export default function PostDetailPage({
         await updateDoc(postRef, { "stats.likes": increment(1) });
         setUserLiked(true);
 
-        if (creatorUid && currentUser.uid !== creatorUid) {
-          currentUser
-            .getIdToken()
-            .then((token) =>
+        const actorName =
+          profile?.displayName || currentUser.displayName || "Someone";
+        currentUser
+          .getIdToken()
+          .then((token) => {
+            if (creatorUid && currentUser.uid !== creatorUid) {
               fetch(`${GENERAL_WORKER_URL}/api/general/notification`, {
                 method: "POST",
                 headers: {
@@ -372,21 +373,27 @@ export default function PostDetailPage({
                   userId: creatorUid,
                   type: "new_like",
                   title: "New Like!",
-                  message: `${profile?.displayName || currentUser.displayName || "Someone"} liked your post${post?.title ? ` "${post.title}"` : ""}`,
+                  message: `${actorName} liked your post${post?.title ? ` "${post.title}"` : ""}`,
                   link: creatorHandle
                     ? `/${creatorHandle}/community/${postId}`
                     : `/explore/posts/${postId}`,
-                  actorName:
-                    profile?.displayName ||
-                    currentUser.displayName ||
-                    "Anonymous",
+                  actorName,
                   actorId: currentUser.uid,
                   metadata: { postId, postTitle: post?.title, username: creatorHandle },
                 }),
-              }),
-            )
-            .catch(() => {});
-        }
+              }).catch(() => {});
+            }
+
+            fetch(`/api/content/${encodeURIComponent(postId)}/engagement`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ event: "like" }),
+            }).catch(() => {});
+          })
+          .catch(() => {});
       }
     } catch {
       toast.error("Could not update like");
@@ -400,7 +407,8 @@ export default function PostDetailPage({
       toast.error("Please log in to comment");
       return;
     }
-    if (!newComment.trim()) return;
+    const trimmed = newComment.trim();
+    if (!trimmed) return;
     setSubmittingComment(true);
     try {
       await addDoc(collection(db, "creatorContent", postId, "comments"), {
@@ -409,7 +417,7 @@ export default function PostDetailPage({
         userName:
           profile?.displayName || currentUser.displayName || "Anonymous",
         userPhoto: profile?.photoURL || currentUser.photoURL || "",
-        content: newComment.trim(),
+        content: trimmed,
         createdAt: serverTimestamp(),
       });
       await updateDoc(doc(db, "creatorContent", postId), {
@@ -417,41 +425,28 @@ export default function PostDetailPage({
       });
       setNewComment("");
 
-      if (creatorUid && currentUser.uid !== creatorUid) {
-        currentUser
-          .getIdToken()
-          .then((token) =>
-            fetch(`${GENERAL_WORKER_URL}/api/general/notification`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({
-                userId: creatorUid,
-                type: "new_comment",
-                title: "New Comment!",
-                message: `${profile?.displayName || currentUser.displayName || "Someone"} commented on your post${post?.title ? ` "${post.title}"` : ""}`,
-                link: creatorHandle
-                  ? `/${creatorHandle}/community/${postId}`
-                  : `/explore/posts/${postId}`,
-                actorName:
-                  profile?.displayName ||
-                  currentUser.displayName ||
-                  "Anonymous",
-                actorId: currentUser.uid,
-                metadata: { postId, postTitle: post?.title, username: creatorHandle },
-              }),
+      currentUser
+        .getIdToken()
+        .then((token) =>
+          fetch(`/api/content/${encodeURIComponent(postId)}/engagement`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              event: "comment",
+              commentText: trimmed,
             }),
-          )
-          .catch(() => {});
-      }
+          }),
+        )
+        .catch(() => {});
     } catch {
       toast.error("Failed to post comment");
     } finally {
       setSubmittingComment(false);
     }
-  }, [currentUser, newComment, postId, profile, creatorUid, post, creatorHandle]);
+  }, [currentUser, newComment, postId, profile]);
 
   const handleReply = async (parentId: string) => {
     if (!currentUser?.uid) {
@@ -476,6 +471,24 @@ export default function PostDetailPage({
       });
       setReplyText((prev) => ({ ...prev, [parentId]: "" }));
       setReplyingTo(null);
+
+      currentUser
+        .getIdToken()
+        .then((token) =>
+          fetch(`/api/content/${encodeURIComponent(postId)}/engagement`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              event: "comment",
+              commentText: text,
+              isReply: true,
+            }),
+          }),
+        )
+        .catch(() => {});
     } catch {
       toast.error("Failed to post reply");
     }
@@ -585,6 +598,7 @@ export default function PostDetailPage({
   );
   const likeDisplayCount =
     likes.size > 0 ? likes.size : Number(post.likesCount || 0);
+  const isArticle = post.type === "article";
   const resolvedBackHref =
     backHref || (username ? `/${username}` : "/explore/posts");
   const resolvedBackLabel =
@@ -593,8 +607,18 @@ export default function PostDetailPage({
 
   return (
     <div className="min-h-screen bg-canvas pb-20 text-fg">
-      <div className="mx-auto max-w-3xl px-4 pt-8 sm:px-6 lg:px-8">
-        <div className="mb-6 flex items-center justify-between gap-3">
+      <div
+        className={cn(
+          "mx-auto max-w-3xl",
+          isArticle ? "px-4 pb-3 pt-4 sm:px-6 sm:pt-6" : "px-4 pt-8 sm:px-6 lg:px-8",
+        )}
+      >
+        <div
+          className={cn(
+            "flex items-center justify-between gap-3",
+            !isArticle && "mb-6",
+          )}
+        >
           <Link
             href={resolvedBackHref}
             className="inline-flex min-h-11 items-center gap-2 rounded-control text-label font-semibold text-muted-fg transition-colors hover:text-fg"
@@ -622,8 +646,29 @@ export default function PostDetailPage({
             )}
           </div>
         </div>
+      </div>
 
-        <article className="overflow-hidden rounded-card border border-line bg-surface shadow-card">
+      <div className={cn(!isArticle && "mx-auto max-w-3xl px-4 sm:px-6 lg:px-8")}>
+        <article
+          className={cn(
+            !isArticle &&
+              "overflow-hidden rounded-card border border-line bg-surface shadow-card",
+          )}
+        >
+          {unlocked && isArticle && (post.coverUrl || post.contentUrl) && (
+            <div className="mx-auto max-w-3xl sm:px-6">
+              <div className="aspect-video w-full overflow-hidden bg-surface-raised sm:rounded-control">
+                <MediaAsset
+                  postId={post.id}
+                  isPrivate={!!post.isPrivate}
+                  url={post.coverUrl || post.contentUrl}
+                  alt={post.title || "Article cover"}
+                  className="size-full object-cover"
+                />
+              </div>
+            </div>
+          )}
+
           {unlocked && post.type === "image" && !Array.isArray(post.contentUrl) && post.contentUrl && (
             <button
               type="button"
@@ -655,7 +700,11 @@ export default function PostDetailPage({
             </div>
           )}
 
-          <div className="p-6 sm:p-8 md:p-10">
+          <div
+            className={cn(
+              isArticle ? "mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8" : "p-6 sm:p-8 md:p-10",
+            )}
+          >
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-caption font-semibold text-muted-fg">
               <span className="uppercase tracking-wider text-brand-strong">
                 {typeLabel(post.type)}
@@ -813,17 +862,8 @@ export default function PostDetailPage({
               })()
             ) : (
               <div className="mt-6 space-y-6">
-                {post.type === "article" ? (
+                {isArticle ? (
                   <>
-                    {(post.coverUrl || post.contentUrl) && (
-                      <MediaAsset
-                        postId={post.id}
-                        isPrivate={!!post.isPrivate}
-                        url={post.coverUrl || post.contentUrl}
-                        alt={post.title || "Article cover"}
-                        className="max-h-[26rem] w-full rounded-control object-cover"
-                      />
-                    )}
                     {post.shortDescription && (
                       <p className="border-y border-line py-4 text-body-lg leading-relaxed text-muted-fg">
                         {post.shortDescription}
@@ -949,7 +989,13 @@ export default function PostDetailPage({
           </div>
         </article>
 
-        <Card className="mt-6 p-5 sm:p-6">
+        <section
+          className={cn(
+            isArticle
+              ? "mx-auto max-w-3xl border-t border-line px-4 py-8 sm:px-6"
+              : "mt-6 rounded-card border border-line bg-surface p-5 shadow-card sm:p-6",
+          )}
+        >
           <h2 className="flex items-center gap-2 text-title font-bold text-fg">
             <MessageCircle className="size-5 text-brand-strong" aria-hidden="true" />
             Comments ({totalCommentsCount})
@@ -1165,10 +1211,16 @@ export default function PostDetailPage({
               No comments yet.
             </p>
           )}
-        </Card>
+        </section>
 
         {initialMoreContent.length > 0 && (
-          <section className="mt-8">
+          <section
+            className={cn(
+              isArticle
+                ? "mx-auto max-w-3xl border-t border-line px-4 py-8 sm:px-6"
+                : "mt-8",
+            )}
+          >
             <h2 className="mb-4 text-title font-bold text-fg">
               More from {creatorName}
             </h2>

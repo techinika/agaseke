@@ -24,6 +24,7 @@ export interface ReaderArticle {
   readingMinutes: number;
   commentCount: number;
   views: number;
+  likesCount: number;
   createdAt: string | null;
 }
 
@@ -375,6 +376,7 @@ export function serializeReaderArticle(post: any): ReaderArticle {
     ),
     commentCount: (post.commentCount as number) || 0,
     views: (post.views as number) || 0,
+    likesCount: (post.stats?.likes as number) || 0,
     createdAt: post.createdAt?.toDate?.()?.toISOString?.() ?? null,
   };
 }
