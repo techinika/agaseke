@@ -2,6 +2,7 @@ import React from "react";
 import { Package, Edit, Trash2 } from "lucide-react";
 import { Product, getProductCurrency, getProductPrice } from "@/types/store";
 import { formatCurrency } from "@/types/currency";
+import { Button, Card, EmptyState, MediaImage } from "@/components/ui";
 
 export default function ProductsList({
   products,
@@ -14,81 +15,80 @@ export default function ProductsList({
 }) {
   if (products.length === 0) {
     return (
-      <div className="text-center py-20 bg-card rounded-lg border border-border">
-        <Package size={48} className="mx-auto text-slate-200 mb-4" />
-        <p className="text-muted-foreground font-medium">No products yet</p>
-        <p className="text-muted-foreground text-sm mt-2">
-          Add your first product to start selling
-        </p>
-      </div>
+      <EmptyState
+        icon={<Package className="size-6" aria-hidden="true" />}
+        title="No products yet"
+        description="Add your first digital or physical product to start selling from your store."
+      />
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {products.map((product) => (
-        <div
-          key={product.id}
-          className="bg-card rounded-lg border border-border overflow-hidden shadow-sm"
-        >
-          <div className="aspect-square bg-muted relative">
+        <Card key={product.id} className="flex flex-col overflow-hidden">
+          <div className="relative aspect-square bg-surface-sunken">
             {product.imageUrl ? (
-              <img
+              <MediaImage
                 src={product.imageUrl}
                 alt={product.name}
-                className="w-full h-full object-cover"
+                aspectRatio="1 / 1"
+                unoptimized
+                className="size-full object-cover"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Package size={48} className="text-slate-200" />
+              <div className="flex size-full items-center justify-center text-muted-fg">
+                <Package className="size-10 opacity-40" aria-hidden="true" />
               </div>
             )}
-            <span
-              className={`absolute top-2 left-2 text-[10px] font-bold px-2 py-1 rounded-full ${
-                product.type === "digital"
-                  ? "bg-orange-100 text-orange-600"
-                  : "bg-blue-100 text-blue-600"
-              }`}
-            >
-              {product.type === "digital" ? "Digital" : "Physical"}
-            </span>
-            {!product.active && (
-              <span className="absolute top-2 right-2 text-[10px] font-bold px-2 py-1 rounded-full bg-border text-muted-foreground">
-                Inactive
-              </span>
-            )}
           </div>
-          <div className="p-4">
-            <h4 className="font-bold text-lg truncate">{product.name}</h4>
-            <p className="text-sm text-muted-foreground truncate mt-1">
-              {product.description}
-            </p>
-            <div className="flex items-center justify-between mt-4">
-              <span className="font-bold text-lg">
-                {formatCurrency(getProductPrice(product), getProductCurrency(product))}
-              </span>
+          <div className="flex flex-1 flex-col p-4">
+            <div className="flex items-center gap-1.5 text-caption text-muted-fg">
+              <span>{product.type === "digital" ? "Digital" : "Physical"}</span>
+              {!product.active && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="font-semibold text-warning">Inactive</span>
+                </>
+              )}
               {product.type === "physical" && (
-                <span className="text-xs text-muted-foreground">
-                  {product.stock} in stock
-                </span>
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="tabular-nums">{product.stock ?? 0} in stock</span>
+                </>
               )}
             </div>
-            <div className="flex gap-2 mt-4">
-              <button
+            <h3 className="mt-1 truncate text-body font-bold text-fg">{product.name}</h3>
+            {product.description && (
+              <p className="mt-1 line-clamp-2 text-caption text-muted-fg">
+                {product.description}
+              </p>
+            )}
+            <p className="mt-auto pt-3 text-body-lg font-bold tabular-nums text-fg">
+              {formatCurrency(getProductPrice(product), getProductCurrency(product))}
+            </p>
+            <div className="mt-4 flex gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => onEdit(product)}
-                className="flex-1 py-2 text-xs font-bold border border-border-strong rounded-lg hover:bg-muted transition"
+                leadingIcon={<Edit className="size-3.5" aria-hidden="true" />}
+                className="flex-1"
               >
-                <Edit size={14} className="inline mr-1" /> Edit
-              </button>
-              <button
+                Edit
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={`Delete ${product.name}`}
                 onClick={() => onDelete(product.id)}
-                className="px-3 py-2 text-xs font-bold border border-red-100 text-red-500 rounded-lg hover:bg-red-50 transition"
+                className="border border-line text-danger hover:bg-danger-bg"
               >
-                <Trash2 size={14} />
-              </button>
+                <Trash2 className="size-4" aria-hidden="true" />
+              </Button>
             </div>
           </div>
-        </div>
+        </Card>
       ))}
     </div>
   );

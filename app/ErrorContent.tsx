@@ -39,10 +39,10 @@ export default function ErrorContent({ error, reset }: ErrorContentProps) {
         <div className="mx-auto flex size-14 items-center justify-center rounded-card bg-danger-bg text-danger">
           <AlertTriangle className="size-6" aria-hidden="true" />
         </div>
-        <p className="mt-5 text-caption font-bold uppercase tracking-[0.16em] text-danger">
+        <p className="mt-5 text-label font-semibold text-danger">
           Unexpected error
         </p>
-        <h1 className="mt-2 text-heading font-black tracking-tight text-fg">
+        <h1 className="mt-2 font-display text-heading font-bold tracking-tight text-fg">
           Something went wrong
         </h1>
         <p className="mt-3 text-body leading-relaxed text-muted-fg">

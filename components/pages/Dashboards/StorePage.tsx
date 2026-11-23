@@ -3,15 +3,15 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { sendCommsEmail } from "@/lib/commsService";
 import {
   Plus,
-  ArrowLeft,
-  Loader,
   Package,
   FileText,
   Tag,
   ShoppingCart,
+  BarChart3,
 } from "lucide-react";
 import { db } from "@/db/firebase";
 import {
@@ -34,7 +34,13 @@ import {
   Coupon,
   getProductCurrency,
 } from "@/types/store";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { buttonClasses } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { Tabs } from "@/components/ui/Tabs";
+import { SalesAnalytics } from "./SalesPage";
 import {
   ProductsList,
   OrdersList,
@@ -45,11 +51,19 @@ import {
   ProductModal,
 } from "./storepage/index";
 
+const STORE_TABS = ["products", "orders", "sales", "coupons", "folders"] as const;
+type StoreTabId = (typeof STORE_TABS)[number];
+
 export default function StorePage() {
   const { creator } = useAuth();
-  const [activeTab, setActiveTab] = useState<
-    "products" | "orders" | "coupons" | "folders"
-  >("products");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const tabFromUrl = searchParams.get("tab");
+  const activeTab: StoreTabId = STORE_TABS.includes(tabFromUrl as StoreTabId)
+    ? (tabFromUrl as StoreTabId)
+    : "products";
+
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -72,6 +86,20 @@ export default function StorePage() {
     imageUrl: "",
     bundlePrice: 0,
   });
+
+  const handleTabChange = (nextTab: string) => {
+    const validTab = STORE_TABS.includes(nextTab as StoreTabId)
+      ? (nextTab as StoreTabId)
+      : "products";
+    const params = new URLSearchParams(searchParams.toString());
+    if (validTab === "products") {
+      params.delete("tab");
+    } else {
+      params.set("tab", validTab);
+    }
+    const qs = params.toString();
+    router.replace(qs ? `/creator/store?${qs}` : "/creator/store", { scroll: false });
+  };
 
   useEffect(() => {
     if (!creator?.uid) return;
@@ -236,14 +264,14 @@ export default function StorePage() {
           ...data,
           updatedAt: serverTimestamp(),
         });
-        toast.success("Folder updated!");
+        toast.success("Bundle updated!");
       } else {
         await addDoc(collection(db, "storeFolders"), {
           ...data,
           creatorId: creator?.uid,
           createdAt: serverTimestamp(),
         });
-        toast.success("Folder created!");
+        toast.success("Bundle created!");
       }
       setEditingFolder(null);
       setFolderFormData({
@@ -258,7 +286,7 @@ export default function StorePage() {
       });
     } catch (error) {
       console.error("Create folder error:", error);
-      toast.error("Failed to save folder");
+      toast.error("Failed to save bundle");
     }
   };
 
@@ -271,10 +299,10 @@ export default function StorePage() {
     setDeleting(true);
     try {
       await deleteDoc(doc(db, "storeFolders", deleteFolderId));
-      toast.success("Folder deleted");
+      toast.success("Bundle deleted");
       setDeleteFolderId(null);
     } catch {
-      toast.error("Failed to delete folder");
+      toast.error("Failed to delete bundle");
     } finally {
       setDeleting(false);
     }
@@ -303,107 +331,112 @@ export default function StorePage() {
           items: order.items,
           total: order.total,
           trackingNumber: order.trackingNumber,
-        }).catch((err) => { console.error("Failed to send store status email", err); });
+        }).catch((err) => {
+          console.error("Failed to send store status email", err);
+        });
       }
     } catch {
       toast.error("Failed to update order");
     }
   };
 
+  const openOrdersCount = orders.filter(
+    (o) => o.status !== "delivered" && o.status !== "cancelled",
+  ).length;
+
+  const primaryActionByTab: Partial<
+    Record<StoreTabId, { href: string; label: string }>
+  > = {
+    products: { href: "/creator/store/products/new", label: "Add Product" },
+    orders: { href: "/creator/store/orders/new", label: "Create Order" },
+    coupons: { href: "/creator/store/coupons/new", label: "Create Coupon" },
+    folders: { href: "/creator/store/folders/new", label: "Create Bundle" },
+  };
+  const primaryAction = primaryActionByTab[activeTab];
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader className="animate-spin text-orange-500" size={40} />
+      <div className="min-h-screen bg-canvas px-4 py-6 text-fg sm:px-6 sm:py-8">
+        <div className="mx-auto max-w-6xl space-y-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="space-y-2">
+              <Skeleton className="h-9 w-48" />
+              <Skeleton className="h-5 w-72" />
+            </div>
+            <Skeleton className="h-11 w-36" rounded="control" />
+          </div>
+          <Skeleton className="h-12 w-full" />
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i} className="space-y-3 p-4">
+                <Skeleton className="aspect-square w-full" />
+                <Skeleton className="h-5 w-2/3" />
+                <Skeleton className="h-4 w-1/2" />
+              </Card>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex">
-      <aside className="w-64 bg-card border-r border-border hidden md:block p-6">
-        <button
-          onClick={() => window.history.back()}
-          className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition font-bold text-xs uppercase tracking-widest"
-        >
-          <ArrowLeft size={16} /> Back
-        </button>
-        <h1 className="text-xl font-bold mb-6 uppercase">Store</h1>
+    <div className="min-h-screen bg-canvas pb-20 text-fg">
+      <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-6 sm:pt-8">
+        <PageHeader
+          title="Store & Sales"
+          description="Manage your products, fulfill customer orders, and track store earnings."
+          className="mb-6 [&_h1]:font-display [&_h1]:text-heading [&_h1]:sm:text-display"
+          actions={
+            primaryAction ? (
+              <Link
+                href={primaryAction.href}
+                className={buttonClasses({ variant: "primary", size: "md" })}
+              >
+                <Plus className="size-4" aria-hidden="true" />
+                <span>{primaryAction.label}</span>
+              </Link>
+            ) : undefined
+          }
+        />
 
-        <nav className="space-y-1">
-          {[
-            { id: "products", label: "Products", icon: Package },
-            { id: "orders", label: "Orders", icon: ShoppingCart },
-            { id: "coupons", label: "Coupons", icon: Tag },
-            { id: "folders", label: "Folders", icon: FileText },
-          ].map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id as any)}
-              className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors ${
-                activeTab === item.id
-                  ? "bg-orange-50 text-orange-600"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              <item.icon size={18} />
-              {item.label}
-              {item.id === "products" && products.length > 0 && (
-                <span className="ml-auto text-[10px] bg-muted px-2 py-0.5 rounded-full">
-                  {products.length}
-                </span>
-              )}
-              {item.id === "orders" &&
-                orders.filter((o) => o.status !== "delivered").length > 0 && (
-                  <span className="ml-auto text-[10px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">
-                    {orders.filter((o) => o.status !== "delivered").length}
-                  </span>
-                )}
-            </button>
-          ))}
-        </nav>
-      </aside>
-
-      <div className="flex-1 p-8">
-        <div className="flex justify-between items-center mb-8">
-          <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-            {activeTab === "products" && "Products"}
-            {activeTab === "orders" && "Orders"}
-            {activeTab === "coupons" && "Coupons"}
-            {activeTab === "folders" && "Folders"}
-          </h3>
-          {activeTab === "products" && (
-            <Link
-              href="/creator/store/products/new"
-              className="bg-orange-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-orange-700 transition"
-            >
-              <Plus size={16} /> Add Product
-            </Link>
-          )}
-          {activeTab === "coupons" && (
-            <Link
-              href="/creator/store/coupons/new"
-              className="bg-orange-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-orange-700 transition"
-            >
-              <Plus size={16} /> Create Coupon
-            </Link>
-          )}
-          {activeTab === "folders" && (
-            <Link
-              href="/creator/store/folders/new"
-              className="bg-orange-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-orange-700 transition"
-            >
-              <Plus size={16} /> Create Folder
-            </Link>
-          )}
-          {activeTab === "orders" && (
-            <Link
-              href="/creator/store/orders/new"
-              className="bg-orange-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-orange-700 transition"
-            >
-              <Plus size={16} /> Create Order
-            </Link>
-          )}
-        </div>
+        <Tabs
+          ariaLabel="Store and sales sections"
+          value={activeTab}
+          onChange={handleTabChange}
+          items={[
+            {
+              id: "products",
+              label: "Products",
+              icon: <Package className="size-4" aria-hidden="true" />,
+              badge: products.length > 0 ? products.length : undefined,
+            },
+            {
+              id: "orders",
+              label: "Orders",
+              icon: <ShoppingCart className="size-4" aria-hidden="true" />,
+              badge: openOrdersCount > 0 ? openOrdersCount : undefined,
+            },
+            {
+              id: "sales",
+              label: "Sales",
+              icon: <BarChart3 className="size-4" aria-hidden="true" />,
+            },
+            {
+              id: "coupons",
+              label: "Coupons",
+              icon: <Tag className="size-4" aria-hidden="true" />,
+              badge: coupons.length > 0 ? coupons.length : undefined,
+            },
+            {
+              id: "folders",
+              label: "Bundles",
+              icon: <FileText className="size-4" aria-hidden="true" />,
+              badge: folders.length > 0 ? folders.length : undefined,
+            },
+          ]}
+          className="mb-6 sm:mb-8"
+        />
 
         {activeTab === "products" && (
           <ProductsList
@@ -421,12 +454,12 @@ export default function StorePage() {
           />
         )}
 
+        {activeTab === "sales" && <SalesAnalytics embedded />}
+
         {activeTab === "coupons" && (
           <CouponsList
             coupons={coupons}
-            onEdit={(coupon: Coupon) => {
-              setEditingCoupon(coupon);
-            }}
+            onEdit={(coupon: Coupon) => setEditingCoupon(coupon)}
             onDelete={handleDeleteCoupon}
             currency={String(creator?.currency || "RWF").toUpperCase()}
           />
@@ -487,8 +520,8 @@ export default function StorePage() {
         isOpen={deleteFolderId !== null}
         onClose={() => setDeleteFolderId(null)}
         onConfirm={confirmDeleteFolder}
-        title="Delete Folder?"
-        message="This will permanently delete this folder. This action cannot be undone."
+        title="Delete Bundle?"
+        message="This will permanently delete this bundle. This action cannot be undone."
         confirmText="Delete"
         loading={deleting}
         variant="danger"
@@ -515,10 +548,6 @@ export default function StorePage() {
           onSave={handleCreateFolder}
         />
       )}
-
-
     </div>
   );
 }
-
-

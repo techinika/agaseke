@@ -1,17 +1,16 @@
 import { Metadata } from "next";
+import React, { Suspense } from "react";
 import CreatorSettings from "@/components/pages/Dashboards/SettingsPage";
-import React from "react";
+import { LoadingState } from "@/components/ui/LoadingState";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-function page() {
+export default function SettingsRoutePage() {
   return (
-    <div>
+    <Suspense fallback={<LoadingState variant="page" />}>
       <CreatorSettings />
-    </div>
+    </Suspense>
   );
 }
-
-export default page;

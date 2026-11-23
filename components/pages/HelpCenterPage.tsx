@@ -101,12 +101,12 @@ export default function HelpCenter() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <section className="border-b border-line bg-surface-sunken px-4 py-14 sm:px-6 sm:py-16 lg:px-8">
+      <section className="border-b border-line bg-canvas px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="text-caption font-bold uppercase tracking-[0.16em] text-brand-strong">
+          <p className="text-label font-semibold text-brand-strong">
             Help center
           </p>
-          <h1 className="mt-2 text-display font-black tracking-tight text-fg sm:text-hero">
+          <h1 className="mt-2 font-display text-display font-bold tracking-tight text-fg [text-wrap:balance] sm:text-hero">
             How can we help?
           </h1>
           <p className="mx-auto mt-3 max-w-xl text-body-lg text-muted-fg">
@@ -115,8 +115,8 @@ export default function HelpCenter() {
         </div>
       </section>
 
-      <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8">
-        <div className="-mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mx-auto w-full max-w-5xl px-4 pt-10 sm:px-6 lg:px-8">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {CONTACTS.map(({ icon: Icon, title, detail, href, label, tone }) => (
             <Card key={title} className="flex flex-col items-center p-6 text-center">
               <span
@@ -163,7 +163,7 @@ export default function HelpCenter() {
         <div className="mx-auto mt-14 max-w-3xl">
           <div className="flex items-center gap-3">
             <HelpCircle className="size-6 text-brand-strong" aria-hidden="true" />
-            <h2 className="text-heading font-black text-fg">
+            <h2 className="font-display text-heading font-bold text-fg">
               Frequently asked questions
             </h2>
           </div>
@@ -171,7 +171,7 @@ export default function HelpCenter() {
           <div className="mt-8 space-y-10">
             {faqs.map((section) => (
               <section key={section.category}>
-                <h3 className="text-caption font-bold uppercase tracking-wider text-muted-fg">
+                <h3 className="font-display text-body-lg font-bold text-fg">
                   {section.category}
                 </h3>
                 <div className="mt-3 space-y-3">

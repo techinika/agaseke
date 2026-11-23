@@ -119,7 +119,7 @@ export default function PayoutsPage() {
   const handleWithdrawInit = () => {
     if (!isVerified) {
       toast.error("Please verify your identity first.");
-      router.push("/creator/verify");
+      router.push("/creator/settings?tab=verification");
       return;
     }
     if (withdrawThreshold === null) {
@@ -288,7 +288,7 @@ export default function PayoutsPage() {
                 <Button
                   variant="secondary"
                   className="uppercase"
-                  onClick={() => router.push("/creator/verify")}
+                  onClick={() => router.push("/creator/settings?tab=verification")}
                 >
                   Verify Now
                 </Button>
@@ -389,7 +389,7 @@ export default function PayoutsPage() {
                   <Button
                     variant="ghost"
                     className="underline"
-                    onClick={() => router.push("/creator/verify")}
+                    onClick={() => router.push("/creator/settings?tab=verification")}
                   >
                     Not Verified
                   </Button>

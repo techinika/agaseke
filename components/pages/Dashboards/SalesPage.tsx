@@ -72,7 +72,7 @@ interface ProfileInfo {
   handle?: string;
 }
 
-export default function SalesPage() {
+export function SalesAnalytics({ embedded = false }: { embedded?: boolean }) {
   const { creator } = useAuth();
   const [sales, setSales] = useState<SaleRecord[]>([]);
   const [products, setProducts] = useState<Record<string, ProductInfo>>({});
@@ -82,7 +82,7 @@ export default function SalesPage() {
   const [timeFilter, setTimeFilter] = useState<"all" | "week" | "month" | "year">("all");
 
   useEffect(() => {
-    if (!creator?.uid) return;
+    if (!creator?.handle) return;
 
     const salesRef = collection(db, "sales");
     const q = query(
@@ -159,7 +159,7 @@ export default function SalesPage() {
     });
 
     return () => unsubSales();
-  }, [creator?.uid, creator?.handle]);
+  }, [creator?.handle]);
 
   const filteredSales = sales.filter((sale) => {
     const product = products[sale.productId];
@@ -256,29 +256,31 @@ export default function SalesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen space-y-6 bg-canvas p-4 text-fg md:p-6">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-40" />
-          <Skeleton className="h-4 w-64" />
-        </div>
+      <div className={embedded ? "space-y-6" : "min-h-screen space-y-6 bg-canvas p-4 text-fg md:p-6"}>
+        {!embedded && (
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+        )}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
-            <Card key={index} className="space-y-4 p-5">
+            <Card key={index} className="space-y-3 p-5">
               <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-9 w-32" />
+              <Skeleton className="h-8 w-32" />
             </Card>
           ))}
         </div>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <Card className="space-y-4 p-5 lg:col-span-2">
             <Skeleton className="h-6 w-40" />
-            {Array.from({ length: 5 }).map((_, index) => (
+            {Array.from({ length: 4 }).map((_, index) => (
               <Skeleton key={index} className="h-12 w-full" />
             ))}
           </Card>
           <Card className="space-y-4 p-5">
             <Skeleton className="h-6 w-32" />
-            {Array.from({ length: 5 }).map((_, index) => (
+            {Array.from({ length: 4 }).map((_, index) => (
               <Skeleton key={index} className="h-12 w-full" />
             ))}
           </Card>
@@ -287,31 +289,33 @@ export default function SalesPage() {
     );
   }
 
-  return (
-    <div className="min-h-screen space-y-6 bg-canvas p-4 text-fg md:p-6">
-      <div>
-        <h1 className="text-heading font-bold text-fg md:text-display">Sales</h1>
-        <p className="mt-1 text-label text-muted-fg">
-          Track your product sales and earnings
-        </p>
-      </div>
+  const content = (
+    <div className="space-y-6">
+      {!embedded && (
+        <div>
+          <h1 className="font-display text-heading font-bold text-fg md:text-display">
+            Sales
+          </h1>
+          <p className="mt-1 text-label text-muted-fg">
+            Track your product sales and earnings
+          </p>
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card className="p-5">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-label font-semibold text-muted-fg">Total Sales</p>
-              <p className="mt-1 text-heading font-bold tabular-nums text-fg md:text-display">
+              <p className="text-caption font-semibold text-muted-fg">Total Sales</p>
+              <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2 text-title font-bold tabular-nums text-fg">
                 {Object.entries(salesByCurrency).map(([cur, data]) => (
-                  <span key={cur} className="mr-2">
-                    {formatCurrency(data.total, cur)}
-                  </span>
+                  <span key={cur}>{formatCurrency(data.total, cur)}</span>
                 ))}
-                {Object.keys(salesByCurrency).length === 0 && "0"}
-              </p>
+                {Object.keys(salesByCurrency).length === 0 && <span>0</span>}
+              </div>
             </div>
-            <span className="flex size-12 shrink-0 items-center justify-center rounded-control bg-brand-soft text-brand-strong">
-              <DollarSign className="size-6" aria-hidden="true" />
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-control bg-brand-soft text-brand-strong">
+              <DollarSign className="size-5" aria-hidden="true" />
             </span>
           </div>
         </Card>
@@ -319,18 +323,16 @@ export default function SalesPage() {
         <Card className="p-5">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-label font-semibold text-muted-fg">Your Earnings</p>
-              <p className="mt-1 text-heading font-bold tabular-nums text-fg md:text-display">
+              <p className="text-caption font-semibold text-muted-fg">Your Earnings</p>
+              <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2 text-title font-bold tabular-nums text-fg">
                 {Object.entries(salesByCurrency).map(([cur, data]) => (
-                  <span key={cur} className="mr-2">
-                    {formatCurrency(data.earnings, cur)}
-                  </span>
+                  <span key={cur}>{formatCurrency(data.earnings, cur)}</span>
                 ))}
-                {Object.keys(salesByCurrency).length === 0 && "0"}
-              </p>
+                {Object.keys(salesByCurrency).length === 0 && <span>0</span>}
+              </div>
             </div>
-            <span className="flex size-12 shrink-0 items-center justify-center rounded-control bg-success-bg text-success">
-              <TrendingUp className="size-6" aria-hidden="true" />
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-control bg-success-bg text-success">
+              <TrendingUp className="size-5" aria-hidden="true" />
             </span>
           </div>
         </Card>
@@ -338,13 +340,13 @@ export default function SalesPage() {
         <Card className="p-5">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-label font-semibold text-muted-fg">Total Orders</p>
-              <p className="mt-1 text-heading font-bold tabular-nums text-fg md:text-display">
+              <p className="text-caption font-semibold text-muted-fg">Total Orders</p>
+              <p className="mt-1.5 text-title font-bold tabular-nums text-fg">
                 {totalOrders}
               </p>
             </div>
-            <span className="flex size-12 shrink-0 items-center justify-center rounded-control bg-info-bg text-info">
-              <Package className="size-6" aria-hidden="true" />
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-control bg-info-bg text-info">
+              <Package className="size-5" aria-hidden="true" />
             </span>
           </div>
         </Card>
@@ -352,13 +354,13 @@ export default function SalesPage() {
         <Card className="p-5">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-label font-semibold text-muted-fg">Unique Buyers</p>
-              <p className="mt-1 text-heading font-bold tabular-nums text-fg md:text-display">
+              <p className="text-caption font-semibold text-muted-fg">Unique Buyers</p>
+              <p className="mt-1.5 text-title font-bold tabular-nums text-fg">
                 {uniqueBuyers}
               </p>
             </div>
-            <span className="flex size-12 shrink-0 items-center justify-center rounded-control bg-warning-bg text-warning">
-              <Users className="size-6" aria-hidden="true" />
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-control bg-warning-bg text-warning">
+              <Users className="size-5" aria-hidden="true" />
             </span>
           </div>
         </Card>
@@ -367,21 +369,21 @@ export default function SalesPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card className="overflow-hidden lg:col-span-2">
           <div className="border-b border-line p-5">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <h2 className="text-title font-bold text-fg">Recent Sales</h2>
-              <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="font-display text-title font-bold text-fg">Recent Sales</h2>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <SearchInput
-                  aria-label="Search sales..."
-                  placeholder="Search sales..."
+                  aria-label="Search sales"
+                  placeholder="Search product or buyer..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  containerClassName="w-full md:w-64"
+                  containerClassName="w-full sm:w-56"
                 />
                 <Select
                   aria-label="Time filter"
                   value={timeFilter}
                   onChange={(e) => setTimeFilter(e.target.value as any)}
-                  containerClassName="w-full md:w-40"
+                  containerClassName="w-full sm:w-36"
                 >
                   <option value="all">All Time</option>
                   <option value="week">This Week</option>
@@ -392,198 +394,250 @@ export default function SalesPage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            {filteredSales.length === 0 ? (
-              <EmptyState
-                icon={<Package className="size-6" aria-hidden="true" />}
-                title="No sales found"
-                description=""
-                className="m-4"
-              />
-            ) : (
-              <table className="w-full">
-                <thead className="bg-surface-sunken">
-                  <tr>
-                    <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-muted-fg">
-                      Product
-                    </th>
-                    <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-muted-fg">
-                      Buyer
-                    </th>
-                    <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-muted-fg">
-                      Qty
-                    </th>
-                    <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-muted-fg">
-                      Type
-                    </th>
-                    <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-muted-fg">
-                      Total
-                    </th>
-                    <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-muted-fg">
-                      Earnings
-                    </th>
-                    <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-muted-fg">
-                      Method
-                    </th>
-                    <th className="px-5 py-3 text-left text-caption font-semibold uppercase tracking-wider text-muted-fg">
-                      Date
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line">
-                  {filteredSales.slice(0, 50).map((sale) => {
-                    const product = products[sale.productId];
-                    const profile = profiles[sale.buyerId];
-                    const buyerName =
-                      profile?.displayName || sale.buyerName || "Anonymous";
-                    const productName = product?.name || sale.productName || "N/A";
-                    const productType = product?.type;
+          {filteredSales.length === 0 ? (
+            <EmptyState
+              icon={<Package className="size-6" aria-hidden="true" />}
+              title="No sales found"
+              description={
+                searchQuery || timeFilter !== "all"
+                  ? "Try clearing your search or selecting a broader time range."
+                  : "Completed purchases from your store will appear here."
+              }
+              className="m-4"
+            />
+          ) : (
+            <>
+              {/* Mobile cards */}
+              <div className="divide-y divide-line md:hidden">
+                {filteredSales.slice(0, 50).map((sale) => {
+                  const product = products[sale.productId];
+                  const profile = profiles[sale.buyerId];
+                  const buyerName =
+                    profile?.displayName || sale.buyerName || "Anonymous";
+                  const productName = product?.name || sale.productName || "N/A";
+                  const dateLabel = sale.createdAt
+                    ? sale.createdAt.toDate
+                      ? new Date(sale.createdAt.toDate()).toLocaleDateString()
+                      : new Date(sale.createdAt).toLocaleDateString()
+                    : "N/A";
 
-                    return (
-                      <tr
-                        key={sale.id}
-                        className="transition-colors hover:bg-surface-sunken"
-                      >
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            {product?.imageUrl ? (
-                              <MediaImage
-                                src={product.imageUrl}
-                                alt={productName}
-                                aspectRatio="1 / 1"
-                                sizes="40px"
-                                unoptimized
-                                className="size-10 shrink-0 rounded-control"
-                              />
-                            ) : (
-                              <span className="flex size-10 shrink-0 items-center justify-center rounded-control bg-surface-raised text-muted-fg">
-                                <Package className="size-5" aria-hidden="true" />
-                              </span>
-                            )}
-                            <span className="font-semibold text-fg">{productName}</span>
+                  return (
+                    <div key={sale.id} className="space-y-3 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          {product?.imageUrl ? (
+                            <MediaImage
+                              src={product.imageUrl}
+                              alt={productName}
+                              aspectRatio="1 / 1"
+                              sizes="40px"
+                              unoptimized
+                              className="size-10 shrink-0 rounded-control"
+                            />
+                          ) : (
+                            <span className="flex size-10 shrink-0 items-center justify-center rounded-control bg-surface-raised text-muted-fg">
+                              <Package className="size-5" aria-hidden="true" />
+                            </span>
+                          )}
+                          <div className="min-w-0">
+                            <p className="truncate text-label font-bold text-fg">
+                              {productName}
+                            </p>
+                            <p className="truncate text-caption text-muted-fg">
+                              {buyerName} · {sale.quantity || 1}x
+                            </p>
                           </div>
-                        </td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <Avatar src={profile?.photoURL} name={buyerName} size="sm" />
-                            <div className="min-w-0">
-                              <div className="font-semibold text-fg">{buyerName}</div>
-                              <div className="text-label text-muted-fg">
-                                {profile?.email || sale.buyerEmail || ""}
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-label font-bold tabular-nums text-fg">
+                            {formatCurrency(sale.totalAmount ?? 0, sale.currency || "")}
+                          </p>
+                          <p className="text-caption font-semibold tabular-nums text-success">
+                            +{formatCurrency(sale.creatorEarnings ?? 0, sale.currency || "")}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-caption text-muted-fg">
+                        <span>
+                          {paymentMethods[sale.paymentMethod] || sale.paymentMethod}
+                        </span>
+                        <span className="tabular-nums">{dateLabel}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full">
+                  <thead className="bg-surface-sunken">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-caption font-semibold text-muted-fg">
+                        Product
+                      </th>
+                      <th className="px-4 py-3 text-left text-caption font-semibold text-muted-fg">
+                        Buyer
+                      </th>
+                      <th className="px-4 py-3 text-right text-caption font-semibold text-muted-fg">
+                        Qty
+                      </th>
+                      <th className="px-4 py-3 text-right text-caption font-semibold text-muted-fg">
+                        Total
+                      </th>
+                      <th className="px-4 py-3 text-right text-caption font-semibold text-muted-fg">
+                        Earned
+                      </th>
+                      <th className="px-4 py-3 text-left text-caption font-semibold text-muted-fg">
+                        Method
+                      </th>
+                      <th className="px-4 py-3 text-right text-caption font-semibold text-muted-fg">
+                        Date
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {filteredSales.slice(0, 50).map((sale) => {
+                      const product = products[sale.productId];
+                      const profile = profiles[sale.buyerId];
+                      const buyerName =
+                        profile?.displayName || sale.buyerName || "Anonymous";
+                      const productName = product?.name || sale.productName || "N/A";
+                      const productType = product?.type;
+
+                      return (
+                        <tr
+                          key={sale.id}
+                          className="transition-colors hover:bg-surface-sunken"
+                        >
+                          <td className="px-4 py-3.5">
+                            <div className="flex items-center gap-3">
+                              {product?.imageUrl ? (
+                                <MediaImage
+                                  src={product.imageUrl}
+                                  alt={productName}
+                                  aspectRatio="1 / 1"
+                                  sizes="36px"
+                                  unoptimized
+                                  className="size-9 shrink-0 rounded-control"
+                                />
+                              ) : (
+                                <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-surface-raised text-muted-fg">
+                                  <Package className="size-4" aria-hidden="true" />
+                                </span>
+                              )}
+                              <div className="min-w-0">
+                                <p className="truncate font-semibold text-fg">
+                                  {productName}
+                                </p>
+                                <p className="text-caption text-muted-fg">
+                                  {productType === "digital" ? "Digital" : "Physical"}
+                                </p>
                               </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-5 py-4 text-muted-fg">{sale.quantity || 1}</td>
-                        <td className="px-5 py-4">
-                          <Badge tone={productType === "digital" ? "info" : "warning"}>
-                            {productType === "digital" ? "Digital" : "Physical"}
-                          </Badge>
-                        </td>
-                        <td className="px-5 py-4">
-                          <span className="font-bold tabular-nums text-fg">
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <div className="flex items-center gap-2.5">
+                              <Avatar src={profile?.photoURL} name={buyerName} size="sm" />
+                              <div className="min-w-0">
+                                <p className="truncate text-label font-semibold text-fg">
+                                  {buyerName}
+                                </p>
+                                {(profile?.email || sale.buyerEmail) && (
+                                  <p className="truncate text-caption text-muted-fg">
+                                    {profile?.email || sale.buyerEmail}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3.5 text-right tabular-nums text-muted-fg">
+                            {sale.quantity || 1}
+                          </td>
+                          <td className="px-4 py-3.5 text-right font-semibold tabular-nums text-fg">
                             {formatCurrency(sale.totalAmount ?? 0, sale.currency || "")}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4">
-                          <span className="font-bold tabular-nums text-success">
+                          </td>
+                          <td className="px-4 py-3.5 text-right font-semibold tabular-nums text-success">
                             {formatCurrency(
                               sale.creatorEarnings ?? 0,
                               sale.currency || "",
                             )}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4">
-                          <Badge>
-                            {paymentMethods[sale.paymentMethod] || sale.paymentMethod}
-                          </Badge>
-                        </td>
-                        <td className="whitespace-nowrap px-5 py-4 text-label text-muted-fg">
-                          {sale.createdAt
-                            ? sale.createdAt.toDate
-                              ? new Date(sale.createdAt.toDate()).toLocaleDateString()
-                              : new Date(sale.createdAt).toLocaleDateString()
-                            : "N/A"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <Badge>
+                              {paymentMethods[sale.paymentMethod] || sale.paymentMethod}
+                            </Badge>
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3.5 text-right text-caption tabular-nums text-muted-fg">
+                            {sale.createdAt
+                              ? sale.createdAt.toDate
+                                ? new Date(sale.createdAt.toDate()).toLocaleDateString()
+                                : new Date(sale.createdAt).toLocaleDateString()
+                              : "N/A"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </Card>
 
         <Card className="overflow-hidden">
           <div className="border-b border-line p-5">
-            <h2 className="text-title font-bold text-fg">Top Products</h2>
+            <h2 className="font-display text-title font-bold text-fg">Top Products</h2>
           </div>
 
           {topProducts.length === 0 ? (
             <EmptyState
               icon={<Package className="size-6" aria-hidden="true" />}
               title="No product sales yet"
-              description=""
+              description="Your best-selling items will rank here once orders are paid."
               className="m-5"
             />
           ) : (
-            <div className="space-y-4 p-5">
+            <div className="divide-y divide-line">
               {topProducts.map((product, index) => (
                 <div
                   key={product.id}
-                  className="flex items-center justify-between gap-3 rounded-control bg-surface-sunken p-3"
+                  className="flex items-center justify-between gap-3 p-4"
                 >
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="relative shrink-0">
-                      {product.imageUrl ? (
-                        <MediaImage
-                          src={product.imageUrl}
-                          alt={product.name}
-                          aspectRatio="1 / 1"
-                          sizes="48px"
-                          unoptimized
-                          className="size-12 rounded-control"
-                        />
-                      ) : (
-                        <span className="flex size-12 items-center justify-center rounded-control bg-line-strong text-muted-fg">
-                          <Package className="size-6" aria-hidden="true" />
-                        </span>
-                      )}
-                      <span
-                        className={`absolute -top-1.5 -left-1.5 flex size-5 items-center justify-center rounded-pill text-caption font-bold ${
-                          index === 0
-                            ? "bg-brand-strong text-on-brand"
-                            : index === 1
-                              ? "bg-surface-raised text-fg"
-                              : "bg-warning-bg text-warning"
-                        }`}
-                      >
-                        {index + 1}
+                    <span className="w-5 shrink-0 text-center font-mono text-caption font-bold tabular-nums text-muted-fg">
+                      0{index + 1}
+                    </span>
+                    {product.imageUrl ? (
+                      <MediaImage
+                        src={product.imageUrl}
+                        alt={product.name}
+                        aspectRatio="1 / 1"
+                        sizes="44px"
+                        unoptimized
+                        className="size-11 shrink-0 rounded-control"
+                      />
+                    ) : (
+                      <span className="flex size-11 shrink-0 items-center justify-center rounded-control bg-surface-raised text-muted-fg">
+                        <Package className="size-5" aria-hidden="true" />
                       </span>
-                    </div>
+                    )}
                     <div className="min-w-0">
                       <p className="truncate text-label font-semibold text-fg">
                         {product.name}
                       </p>
-                      <div className="flex items-center gap-2 text-caption text-muted-fg">
-                        <span>{product.quantity} units sold</span>
-                        <span aria-hidden="true">•</span>
-                        <span
-                          className={
-                            product.type === "digital" ? "text-info" : "text-warning"
-                          }
-                        >
-                          {product.type === "digital" ? "Digital" : "Physical"}
-                        </span>
-                      </div>
+                      <p className="text-caption text-muted-fg">
+                        {product.quantity} sold ·{" "}
+                        {product.type === "digital" ? "Digital" : "Physical"}
+                      </p>
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="shrink-0 text-right">
                     <p className="font-bold tabular-nums text-fg">
                       {formatCurrency(product.total, product.primaryCurrency)}
                     </p>
-                    <p className="text-caption text-success">
-                      Earned: {formatCurrency(product.earnings, product.primaryCurrency)}
+                    <p className="text-caption tabular-nums text-success">
+                      +{formatCurrency(product.earnings, product.primaryCurrency)}
                     </p>
                   </div>
                 </div>
@@ -594,4 +648,16 @@ export default function SalesPage() {
       </div>
     </div>
   );
+
+  if (embedded) return content;
+
+  return (
+    <div className="min-h-screen bg-canvas p-4 text-fg md:p-6">
+      <div className="mx-auto max-w-6xl">{content}</div>
+    </div>
+  );
+}
+
+export default function SalesPage() {
+  return <SalesAnalytics />;
 }

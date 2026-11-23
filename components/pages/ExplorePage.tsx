@@ -122,19 +122,19 @@ export default function ExplorePage({
   }, [debouncedSearch, hasInitial]);
 
   return (
-    <div className="bg-canvas pb-12 text-fg">
-      <section className="border-b border-line bg-surface-sunken px-4 pb-10 pt-8 sm:px-6 sm:pb-12 sm:pt-12 lg:px-8">
+    <div className="bg-canvas pb-14 text-fg">
+      <section className="border-b border-line bg-canvas px-4 pb-10 pt-10 sm:px-6 sm:pb-12 sm:pt-14 lg:px-8">
         <div className="mx-auto w-full max-w-6xl">
           <div className="max-w-2xl">
-            <p className="text-caption font-semibold text-brand-strong">
+            <p className="text-label font-semibold text-brand-strong">
               Creator directory
             </p>
-            <h1 className="mt-2 text-display font-black tracking-tight text-fg sm:text-hero [text-wrap:balance]">
+            <h1 className="mt-2 font-display text-display font-bold tracking-tight text-fg [text-wrap:balance] sm:text-hero">
               Explore creators
             </h1>
             <p className="mt-3 text-body-lg text-muted-fg">
-              Discover artists, writers, podcasters, and builders supported by their
-              communities on Agaseke.
+              Artists, writers, podcasters, and builders supported directly on
+              Agaseke.
             </p>
           </div>
 
@@ -163,7 +163,7 @@ export default function ExplorePage({
                 href="/explore/posts"
                 className="inline-flex min-h-10 items-center whitespace-nowrap rounded-control px-4 text-label font-semibold text-muted-fg transition-colors hover:bg-surface-raised hover:text-fg"
               >
-                Posts & articles
+                Posts &amp; articles
               </Link>
             </nav>
           </div>
@@ -197,13 +197,13 @@ export default function ExplorePage({
               </p>
             </div>
 
-            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {creators.map((creator) => {
-                const focusLine = creator.focus?.slice(0, 3).join(" · ");
+                const focusLine = creator.focus?.slice(0, 2).join(" · ");
                 return (
                   <Card
                     key={creator.handle}
-                    className="group relative flex flex-col justify-between overflow-hidden p-6 transition-shadow hover:shadow-card"
+                    className="group relative flex flex-col justify-between overflow-hidden p-5 transition-colors hover:border-line-strong"
                   >
                     <Link
                       href={`/${creator.handle}`}
@@ -212,7 +212,7 @@ export default function ExplorePage({
                     />
 
                     <div>
-                      <div className="flex items-start gap-4">
+                      <div className="flex items-start gap-3.5">
                         <Avatar
                           src={creator.profilePicture || creator.photoURL}
                           name={creator.name || creator.handle}
@@ -220,7 +220,7 @@ export default function ExplorePage({
                         />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
-                            <h2 className="truncate text-title font-bold text-fg transition-colors group-hover:text-brand-strong">
+                            <h2 className="truncate font-display text-title font-bold text-fg transition-colors group-hover:text-brand-strong">
                               {creator.name || creator.handle}
                             </h2>
                             {creator.verified && (
@@ -230,24 +230,22 @@ export default function ExplorePage({
                               />
                             )}
                           </div>
-                          <p className="mt-0.5 truncate text-caption font-semibold text-brand-strong">
-                            @{creator.handle}
+                          <p className="mt-0.5 truncate font-mono text-caption text-muted-fg">
+                            agaseke.me/{creator.handle}
+                            {focusLine ? ` · ${focusLine}` : ""}
                           </p>
-                          {focusLine && (
-                            <p className="mt-1 truncate text-caption text-muted-fg">
-                              {focusLine}
-                            </p>
-                          )}
                         </div>
                       </div>
 
-                      <p className="mt-4 line-clamp-2 text-label leading-relaxed text-muted-fg">
-                        {creator.bio || "Creator building on Agaseke."}
-                      </p>
+                      {creator.bio && (
+                        <p className="mt-3.5 line-clamp-2 text-label leading-relaxed text-muted-fg">
+                          {creator.bio}
+                        </p>
+                      )}
                     </div>
 
-                    <div className="mt-5 flex items-center justify-between border-t border-line pt-4">
-                      <span className="text-label font-semibold text-muted-fg group-hover:text-fg">
+                    <div className="mt-4 flex items-center justify-between border-t border-line pt-3.5">
+                      <span className="text-label font-semibold text-muted-fg transition-colors group-hover:text-fg">
                         Visit page
                       </span>
                       <ArrowRight

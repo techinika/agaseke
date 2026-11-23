@@ -190,7 +190,7 @@ export const MessageTab = ({
         supporterName: currentUserName,
         message: newMessage.trim(),
         chatroomId,
-        chatroomUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/creator/messages?chat=${chatroomId}`,
+        chatroomUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/creator/supporters?tab=messages&chat=${chatroomId}`,
       }).catch((e) => console.error("Failed to send email notification:", e));
 
       setNewMessage("");

@@ -44,8 +44,8 @@ export function ClaimLinkStep({
         autoCapitalize="none"
         spellCheck={false}
         onChange={(event) => onFieldChange("username", event.target.value)}
-        leading={<span className="text-label font-semibold">agaseke.me/</span>}
-        className="pl-32 font-semibold"
+        leading={<span className="font-mono text-label font-medium">agaseke.me/</span>}
+        className="pl-32 font-mono font-semibold"
         trailing={
           usernameStatus === "checking" ? (
             <Loader2 className="size-5 animate-spin" aria-hidden="true" />
@@ -56,7 +56,7 @@ export function ClaimLinkStep({
           ) : null
         }
       />
-      <p className="mt-3 text-caption text-muted-fg" aria-live="polite">
+      <p className="mt-3 font-mono text-caption text-muted-fg" aria-live="polite">
         agaseke.me/{username || "yourname"}
       </p>
     </section>

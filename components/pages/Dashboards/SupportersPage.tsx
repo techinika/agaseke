@@ -2,15 +2,14 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { sendCommsEmail } from "@/lib/commsService";
 import {
   Users,
-  ArrowLeft,
   Mail,
   Filter,
-  DollarSign,
-  Calendar,
   MessageSquare,
+  HandCoins,
 } from "lucide-react";
 import { db } from "@/db/firebase";
 import {
@@ -27,15 +26,16 @@ import { toast } from "sonner";
 import { Profile } from "@/types/profile";
 import { BroadcastEmailModal } from "./supporterspage/index";
 import { getCurrencySymbol } from "@/types/currency";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { Avatar } from "@/components/ui/Avatar";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { IconButton } from "@/components/ui/IconButton";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { Select } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { Tabs } from "@/components/ui/Tabs";
+import { CreatorMessagesPanel } from "./MessagesPage";
 
 interface SupporterSupport {
   id: string;
@@ -59,18 +59,45 @@ interface AggregatedSupporter {
   lastSupported: any;
 }
 
+type SupportersTabId = "supporters" | "messages";
+
 export default function SupportersPage() {
   const { creator } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const tabFromUrl = searchParams.get("tab");
+  const chatFromUrl = searchParams.get("chat");
+  const activeTab: SupportersTabId =
+    tabFromUrl === "messages" || Boolean(chatFromUrl) ? "messages" : "supporters";
+
   const [supports, setSupports] = useState<SupporterSupport[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterAmount, setFilterAmount] = useState<"all" | "high" | "low">("all");
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [emailForm, setEmailForm] = useState({
     subject: "",
     message: "",
   });
+
+  const handleTabChange = (nextTab: string) => {
+    const validTab: SupportersTabId =
+      nextTab === "messages" ? "messages" : "supporters";
+    const params = new URLSearchParams(searchParams.toString());
+    if (validTab === "supporters") {
+      params.delete("tab");
+      params.delete("chat");
+    } else {
+      params.set("tab", "messages");
+    }
+    const qs = params.toString();
+    router.replace(qs ? `/creator/supporters?${qs}` : "/creator/supporters", {
+      scroll: false,
+    });
+  };
 
   useEffect(() => {
     if (!creator?.handle) return;
@@ -93,6 +120,19 @@ export default function SupportersPage() {
 
     return () => unsub();
   }, [creator?.handle]);
+
+  useEffect(() => {
+    if (!creator?.uid) return;
+    const q = query(collection(db, "chatrooms"), where("creatorId", "==", creator.uid));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const unread = snapshot.docs.reduce((sum, docSnap) => {
+        const count = Number(docSnap.data().unreadCount || 0);
+        return sum + count;
+      }, 0);
+      setUnreadMessagesCount(unread);
+    });
+    return () => unsub();
+  }, [creator?.uid]);
 
   const aggregatedSupporters = useMemo(() => {
     const grouped = new Map<string, AggregatedSupporter>();
@@ -134,7 +174,10 @@ export default function SupportersPage() {
   const [resolvedSupporters, setResolvedSupporters] = useState<AggregatedSupporter[]>([]);
 
   useEffect(() => {
-    if (aggregatedSupporters.length === 0) return;
+    if (aggregatedSupporters.length === 0) {
+      queueMicrotask(() => setResolvedSupporters([]));
+      return;
+    }
 
     const enrich = async () => {
       const enriched = await Promise.all(
@@ -185,6 +228,10 @@ export default function SupportersPage() {
     });
   }, [resolvedSupporters, searchTerm, filterAmount]);
 
+  const emailableCount = filteredSupporters.filter(
+    (s) => s.email && s.originalSupporterId !== "anonymous",
+  ).length;
+
   const handleBroadcastEmail = async () => {
     if (!emailForm.subject.trim() || !emailForm.message.trim()) {
       toast.error("Please fill in subject and message");
@@ -229,9 +276,20 @@ export default function SupportersPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-canvas p-8">
-        <div className="w-full max-w-4xl space-y-4">
-          <Skeleton className="h-9 w-56" />
+      <div className="min-h-screen bg-canvas px-4 py-6 sm:px-6 sm:py-8">
+        <div className="mx-auto max-w-6xl space-y-6">
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-64" />
+            <Skeleton className="h-5 w-80" />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i} className="space-y-2 p-5">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-8 w-32" />
+              </Card>
+            ))}
+          </div>
           <Skeleton className="h-72 w-full" rounded="card" />
         </div>
       </div>
@@ -239,205 +297,315 @@ export default function SupportersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-canvas text-fg">
-      <div className="flex">
-        <aside className="hidden w-64 border-r border-line bg-surface p-6 md:block">
-          <div className="mb-8 flex items-center justify-between">
+    <div className="min-h-screen bg-canvas pb-20 text-fg">
+      <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-6 sm:pt-8">
+        <PageHeader
+          title="Supporters & Messages"
+          description="Track your backers, send email updates, and reply to direct messages."
+          className="mb-6 [&_h1]:font-display [&_h1]:text-heading [&_h1]:sm:text-display"
+          actions={
             <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => window.history.back()}
-              leadingIcon={<ArrowLeft className="size-4" />}
-              className="font-bold uppercase tracking-widest"
-            >
-              Back
-            </Button>
-            <IconButton
-              label="Broadcast Email"
-              icon={<Mail />}
               variant="primary"
-              size="sm"
+              size="md"
+              leadingIcon={<Mail className="size-4" aria-hidden="true" />}
               onClick={() => setShowEmailModal(true)}
-              disabled={filteredSupporters.length === 0}
-            />
-          </div>
-          <h1 className="text-title font-bold uppercase">Supporters</h1>
+              disabled={emailableCount === 0}
+            >
+              Email Supporters
+            </Button>
+          }
+        />
 
-          <div className="mt-6 mb-6 rounded-card bg-brand-soft p-4">
-            <p className="mb-1 text-caption font-bold uppercase tracking-widest text-brand-strong">
-              Total Support
-            </p>
-            {uniqueCurrencies.map((cur) => {
-              const curTotal = filteredSupporters
-                .filter((s) => s.currency === cur)
-                .reduce((sum, s) => sum + s.totalAmount, 0);
-              return (
-                <p key={cur} className="text-title font-bold text-fg">
-                  {curTotal.toLocaleString()} {getCurrencySymbol(cur)}
-                </p>
-              );
-            })}
-          </div>
-
-          <div className="rounded-card bg-surface-sunken p-4">
-            <p className="mb-1 text-caption font-bold uppercase tracking-widest text-muted-fg">
-              Supporters
-            </p>
-            <p className="text-display font-bold text-fg">{filteredSupporters.length}</p>
-          </div>
-        </aside>
-
-        <div className="flex-1 p-8">
-          <div className="mb-8">
-            <h3 className="text-label font-bold uppercase tracking-widest text-muted-fg">
-              All Supporters
-            </h3>
-            <p className="mt-1 text-caption text-muted-fg">
-              {filteredSupporters.length} of {resolvedSupporters.length} supporters
-            </p>
-          </div>
-
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row">
-            <SearchInput
-              containerClassName="max-w-md flex-1"
-              placeholder="Search by name or email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <div className="flex items-center gap-2">
-              <Filter className="size-4 text-muted-fg" aria-hidden="true" />
-              <Select
-                containerClassName="min-w-44"
-                value={filterAmount}
-                onChange={(e) => setFilterAmount(e.target.value as any)}
-              >
-                <option value="all">All Amounts</option>
-                <option value="high">High value</option>
-                <option value="low">Low value</option>
-              </Select>
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Card className="p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-caption font-semibold text-muted-fg">Total Support</p>
+                <div className="mt-1.5 flex flex-wrap items-baseline gap-x-3 text-title font-bold tabular-nums text-fg">
+                  {uniqueCurrencies.length === 0 ? (
+                    <span>0</span>
+                  ) : (
+                    uniqueCurrencies.map((cur) => {
+                      const curTotal = filteredSupporters
+                        .filter((s) => s.currency === cur)
+                        .reduce((sum, s) => sum + s.totalAmount, 0);
+                      return (
+                        <span key={cur}>
+                          {curTotal.toLocaleString()} {getCurrencySymbol(cur)}
+                        </span>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-control bg-brand-soft text-brand-strong">
+                <HandCoins className="size-5" aria-hidden="true" />
+              </span>
             </div>
-          </div>
+          </Card>
 
-          {filteredSupporters.length === 0 ? (
-            <EmptyState
-              icon={<Users className="size-6" aria-hidden="true" />}
-              title={
-                searchTerm || filterAmount !== "all"
-                  ? "No supporters match your filters"
-                  : "No supporters yet"
-              }
-              description={
-                searchTerm || filterAmount !== "all"
-                  ? "Try adjusting your search or filters"
-                  : "Supporters will appear here when people support you"
-              }
-            />
-          ) : (
-            <Card className="overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-line bg-surface-sunken">
-                      <th className="px-6 py-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
-                        Supporter
-                      </th>
-                      <th className="px-6 py-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
-                        Total Support
-                      </th>
-                      <th className="px-6 py-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
-                        Contributions
-                      </th>
-                      <th className="px-6 py-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
-                        Last Supported
-                      </th>
-                      <th className="px-6 py-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredSupporters.map((supporter, index) => (
-                      <tr
-                        key={supporter.supporterId}
-                        className={`border-b border-line last:border-0 hover:bg-surface-raised ${
-                          index % 2 === 0 ? "bg-surface" : "bg-surface-raised"
-                        }`}
-                      >
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
+          <Card className="p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-caption font-semibold text-muted-fg">Supporters</p>
+                <p className="mt-1.5 text-title font-bold tabular-nums text-fg">
+                  {filteredSupporters.length}
+                </p>
+              </div>
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-control bg-info-bg text-info">
+                <Users className="size-5" aria-hidden="true" />
+              </span>
+            </div>
+          </Card>
+
+          <Card className="p-5">
+            <button
+              type="button"
+              onClick={() => handleTabChange("messages")}
+              className="flex w-full items-center justify-between gap-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            >
+              <div className="min-w-0">
+                <p className="text-caption font-semibold text-muted-fg">
+                  Unread Messages
+                </p>
+                <p className="mt-1.5 text-title font-bold tabular-nums text-fg">
+                  {unreadMessagesCount}
+                </p>
+              </div>
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-control bg-surface-raised text-fg">
+                <MessageSquare className="size-5" aria-hidden="true" />
+              </span>
+            </button>
+          </Card>
+        </div>
+
+        <Tabs
+          ariaLabel="Supporters and messages"
+          value={activeTab}
+          onChange={handleTabChange}
+          items={[
+            {
+              id: "supporters",
+              label: "Supporters",
+              icon: <Users className="size-4" aria-hidden="true" />,
+              badge:
+                resolvedSupporters.length > 0 ? resolvedSupporters.length : undefined,
+            },
+            {
+              id: "messages",
+              label: "Messages",
+              icon: <MessageSquare className="size-4" aria-hidden="true" />,
+              badge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined,
+            },
+          ]}
+          className="mb-6"
+        />
+
+        {activeTab === "supporters" ? (
+          <div className="space-y-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+                <SearchInput
+                  aria-label="Search supporters"
+                  containerClassName="w-full sm:max-w-md"
+                  placeholder="Search by name or email..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <div className="flex items-center gap-2">
+                  <Filter className="size-4 shrink-0 text-muted-fg" aria-hidden="true" />
+                  <Select
+                    aria-label="Filter support amount"
+                    containerClassName="w-full sm:w-44"
+                    value={filterAmount}
+                    onChange={(e) => setFilterAmount(e.target.value as any)}
+                  >
+                    <option value="all">All Amounts</option>
+                    <option value="high">High value</option>
+                    <option value="low">Low value</option>
+                  </Select>
+                </div>
+              </div>
+              <p className="text-caption tabular-nums text-muted-fg">
+                {filteredSupporters.length} of {resolvedSupporters.length} supporters
+              </p>
+            </div>
+
+            {filteredSupporters.length === 0 ? (
+              <EmptyState
+                icon={<Users className="size-6" aria-hidden="true" />}
+                title={
+                  searchTerm || filterAmount !== "all"
+                    ? "No supporters match your filters"
+                    : "No supporters yet"
+                }
+                description={
+                  searchTerm || filterAmount !== "all"
+                    ? "Try adjusting your search or filters"
+                    : "Supporters will appear here when people support your page."
+                }
+              />
+            ) : (
+              <>
+                {/* Mobile list */}
+                <Card className="divide-y divide-line overflow-hidden md:hidden">
+                  {filteredSupporters.map((supporter) => {
+                    const isAnon = supporter.originalSupporterId === "anonymous";
+                    const lastDate = supporter.lastSupported?.toDate?.()
+                      ? supporter.lastSupported.toDate().toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })
+                      : "Unknown";
+
+                    return (
+                      <div key={supporter.supporterId} className="space-y-3 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex min-w-0 items-center gap-3">
                             <Avatar
                               src={supporter.photoURL}
                               name={supporter.displayName || supporter.email}
                               size="md"
-                              className="size-10"
                             />
-                            <div>
-                              <p className="text-label font-bold text-fg">
+                            <div className="min-w-0">
+                              <p className="truncate text-label font-bold text-fg">
                                 {supporter.displayName || "Anonymous"}
                               </p>
-                              <p className="text-caption text-muted-fg">
-                                {supporter.email || supporter.supporterId === "anonymous"
+                              <p className="truncate text-caption text-muted-fg">
+                                {isAnon
                                   ? "Anonymous Supporter"
-                                  : "No email"}
+                                  : supporter.email || "No email"}
                               </p>
                             </div>
                           </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            <DollarSign
-                              className="size-3.5 text-brand-strong"
-                              aria-hidden="true"
-                            />
-                            <span className="font-bold text-fg">
-                              {supporter.totalAmount.toLocaleString()}
-                            </span>
-                            <Badge tone="neutral">{supporter.currency}</Badge>
+                          <div className="shrink-0 text-right">
+                            <p className="text-label font-bold tabular-nums text-fg">
+                              {supporter.totalAmount.toLocaleString()}{" "}
+                              {getCurrencySymbol(supporter.currency)}
+                            </p>
+                            <p className="text-caption text-muted-fg">
+                              {supporter.supportCount}x
+                            </p>
                           </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="text-label text-muted-fg">
-                            {supporter.supportCount} time
-                            {supporter.supportCount !== 1 ? "s" : ""}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2 text-caption text-muted-fg">
-                            <Calendar className="size-4" aria-hidden="true" />
-                            {supporter.lastSupported?.toDate?.() ? (
-                              <span>
-                                {supporter.lastSupported
-                                  .toDate()
-                                  .toLocaleDateString("en-US", {
-                                    month: "short",
-                                    day: "numeric",
-                                    year: "numeric",
-                                  })}
-                              </span>
-                            ) : (
-                              <span>Unknown</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          {supporter.email && supporter.supporterId !== "anonymous" && (
+                        </div>
+
+                        <div className="flex items-center justify-between text-caption text-muted-fg">
+                          <span className="tabular-nums">Last supported {lastDate}</span>
+                          {supporter.email && !isAnon && (
                             <a
                               href={`mailto:${supporter.email}`}
-                              className="inline-flex items-center gap-1 text-caption font-bold text-brand-strong transition hover:text-brand-hover"
+                              className="inline-flex items-center gap-1 font-semibold text-brand-strong hover:text-brand-hover"
                             >
-                              <MessageSquare className="size-4" aria-hidden="true" />
-                              Message
+                              <Mail className="size-3.5" aria-hidden="true" />
+                              Email
                             </a>
                           )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-          )}
-        </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </Card>
+
+                {/* Desktop table */}
+                <Card className="hidden overflow-hidden md:block">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-line bg-surface-sunken">
+                          <th className="px-5 py-3.5 text-left text-caption font-semibold text-muted-fg">
+                            Supporter
+                          </th>
+                          <th className="px-5 py-3.5 text-right text-caption font-semibold text-muted-fg">
+                            Total Support
+                          </th>
+                          <th className="px-5 py-3.5 text-right text-caption font-semibold text-muted-fg">
+                            Contributions
+                          </th>
+                          <th className="px-5 py-3.5 text-right text-caption font-semibold text-muted-fg">
+                            Last Supported
+                          </th>
+                          <th className="px-5 py-3.5 text-right text-caption font-semibold text-muted-fg">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-line">
+                        {filteredSupporters.map((supporter) => {
+                          const isAnon = supporter.originalSupporterId === "anonymous";
+                          return (
+                            <tr
+                              key={supporter.supporterId}
+                              className="transition-colors hover:bg-surface-sunken"
+                            >
+                              <td className="px-5 py-4">
+                                <div className="flex items-center gap-3">
+                                  <Avatar
+                                    src={supporter.photoURL}
+                                    name={supporter.displayName || supporter.email}
+                                    size="md"
+                                    className="size-10"
+                                  />
+                                  <div className="min-w-0">
+                                    <p className="truncate text-label font-bold text-fg">
+                                      {supporter.displayName || "Anonymous"}
+                                    </p>
+                                    <p className="truncate text-caption text-muted-fg">
+                                      {isAnon
+                                        ? "Anonymous Supporter"
+                                        : supporter.email || "No email"}
+                                    </p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-5 py-4 text-right font-bold tabular-nums text-fg">
+                                {supporter.totalAmount.toLocaleString()}{" "}
+                                <span className="text-caption font-semibold text-muted-fg">
+                                  {supporter.currency}
+                                </span>
+                              </td>
+                              <td className="px-5 py-4 text-right text-label tabular-nums text-muted-fg">
+                                {supporter.supportCount} time
+                                {supporter.supportCount !== 1 ? "s" : ""}
+                              </td>
+                              <td className="whitespace-nowrap px-5 py-4 text-right text-caption tabular-nums text-muted-fg">
+                                {supporter.lastSupported?.toDate?.()
+                                  ? supporter.lastSupported
+                                      .toDate()
+                                      .toLocaleDateString("en-US", {
+                                        month: "short",
+                                        day: "numeric",
+                                        year: "numeric",
+                                      })
+                                  : "Unknown"}
+                              </td>
+                              <td className="px-5 py-4 text-right">
+                                {supporter.email && !isAnon && (
+                                  <a
+                                    href={`mailto:${supporter.email}`}
+                                    className="inline-flex items-center gap-1.5 text-caption font-semibold text-brand-strong transition-colors hover:text-brand-hover"
+                                  >
+                                    <Mail className="size-3.5" aria-hidden="true" />
+                                    Email
+                                  </a>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
+              </>
+            )}
+          </div>
+        ) : (
+          <CreatorMessagesPanel
+            embedded
+            onUnreadChange={setUnreadMessagesCount}
+          />
+        )}
       </div>
 
       {showEmailModal && (
@@ -447,11 +615,7 @@ export default function SupportersPage() {
           onClose={() => setShowEmailModal(false)}
           onSend={handleBroadcastEmail}
           sending={sendingEmail}
-          recipientCount={
-            filteredSupporters.filter(
-              (s) => s.email && s.originalSupporterId !== "anonymous",
-            ).length
-          }
+          recipientCount={emailableCount}
         />
       )}
     </div>

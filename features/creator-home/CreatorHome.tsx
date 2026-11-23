@@ -103,7 +103,7 @@ export function CreatorHome() {
               {t("creatorHome.verificationHint")}
             </p>
             <Link
-              href="/creator/verify"
+              href="/creator/settings?tab=verification"
               className={buttonClasses({
                 variant: "secondary",
                 size: "sm",
@@ -290,7 +290,7 @@ export function CreatorHome() {
             {
               label: t("creatorHome.verify"),
               hint: t("creatorHome.verifyHint"),
-              href: "/creator/verify",
+              href: "/creator/settings?tab=verification",
               icon: <AlertCircle className="size-5" aria-hidden="true" />,
             },
           ].map((action) => {
@@ -369,7 +369,7 @@ export function CreatorHome() {
               key: "verify",
               label: t("creatorHome.checkVerify"),
               done: Boolean(creator?.verified),
-              href: "/creator/verify",
+              href: "/creator/settings?tab=verification",
             },
           ].map((item) => (
             <div key={item.key} className="flex items-center justify-between gap-3">

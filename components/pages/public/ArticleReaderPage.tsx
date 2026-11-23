@@ -406,7 +406,7 @@ export default function ArticleReaderPage({
               </span>
             </div>
 
-            <h1 className="text-heading font-black tracking-tight text-fg sm:text-display">
+            <h1 className="font-display text-heading font-bold tracking-tight text-fg [text-wrap:balance] sm:text-display">
               {articleData.title}
             </h1>
 

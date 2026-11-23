@@ -65,7 +65,6 @@ function HeaderLink({
   onNavigate?: () => void;
 }) {
   if (!isNavLink(item)) return null;
-  const Icon = item.icon;
 
   return (
     <Link
@@ -75,14 +74,13 @@ function HeaderLink({
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={cn(
-        "flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-control px-3 text-label font-semibold outline-none transition-colors",
+        "flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-control px-3 text-label font-semibold outline-none transition-colors",
         "focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
         active
-          ? "bg-brand-soft text-brand-strong"
+          ? "text-brand-strong"
           : "text-muted-fg hover:bg-surface-raised hover:text-fg",
       )}
     >
-      <Icon className="size-4 shrink-0" aria-hidden="true" />
       <span>{t(item.labelKey)}</span>
     </Link>
   );
@@ -237,11 +235,11 @@ export function PublicHeader() {
       </a>
       <header className="sticky top-0 z-50 border-b border-line bg-surface/90 backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
-          <div className="flex min-w-0 items-center gap-4 xl:gap-8">
+          <div className="flex min-w-0 items-center gap-6 lg:gap-8">
             <Brand />
             <nav
               aria-label={t("nav.publicNavigation")}
-              className="hidden items-center gap-0.5 lg:flex"
+              className="hidden items-center gap-1 lg:flex"
             >
               {desktopItems.map((item) => {
                 const active = isNavLink(item) && isNavItemActive(item, pathname);

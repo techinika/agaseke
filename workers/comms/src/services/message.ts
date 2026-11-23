@@ -18,7 +18,7 @@ export const messageNew: EmailService = {
                <p style="margin:0;color:#555;font-style:italic;">"${preview}${(data.message as string)?.length > 200 ? "..." : ""}"</p>
              </div>`,
       ctaText: "Reply to Message",
-      ctaUrl: `${data.appUrl}/creator/messages`,
+      ctaUrl: `${data.appUrl}/creator/supporters?tab=messages`,
     };
   },
 };
@@ -38,7 +38,7 @@ export const messageDigest: EmailService = {
       title: `You have ${data.unreadCount as string} unread message(s) from ${data.supporterName as string}`,
       body: `<p>You haven't read their latest message yet. Head to your inbox to reply.</p>`,
       ctaText: "View Messages",
-      ctaUrl: `${data.appUrl}/creator/messages`,
+      ctaUrl: `${data.appUrl}/creator/supporters?tab=messages`,
     };
   },
 };

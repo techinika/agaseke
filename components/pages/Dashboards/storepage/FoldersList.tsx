@@ -2,6 +2,7 @@ import React from "react";
 import { FileText, Edit, Trash2 } from "lucide-react";
 import { Product } from "@/types/store";
 import { formatCurrency } from "@/types/currency";
+import { Button, Card, EmptyState, MediaImage } from "@/components/ui";
 
 export interface StoreFolder {
   id: string;
@@ -29,13 +30,11 @@ export default function FoldersList({
 }) {
   if (folders.length === 0) {
     return (
-      <div className="text-center py-20 bg-card rounded-lg border border-border">
-        <FileText size={48} className="mx-auto text-slate-200 mb-4" />
-        <p className="text-muted-foreground font-medium">No folders yet</p>
-        <p className="text-muted-foreground text-sm mt-2">
-          Group products together for bundle sales
-        </p>
-      </div>
+      <EmptyState
+        icon={<FileText className="size-6" aria-hidden="true" />}
+        title="No bundles yet"
+        description="Group products together into folders for discounted bundle sales."
+      />
     );
   }
 
@@ -47,73 +46,79 @@ export default function FoldersList({
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
       {folders.map((folder) => (
-        <div
-          key={folder.id}
-          className="bg-card rounded-lg border border-border overflow-hidden"
-        >
-          <div className="aspect-video bg-gradient-to-br from-orange-50 to-amber-50 relative">
+        <Card key={folder.id} className="flex flex-col overflow-hidden">
+          <div className="relative aspect-video bg-surface-sunken">
             {folder.imageUrl ? (
-              <img
+              <MediaImage
                 src={folder.imageUrl}
                 alt={folder.name}
-                className="w-full h-full object-cover"
+                aspectRatio="16 / 9"
+                unoptimized
+                className="size-full object-cover"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <FileText size={40} className="text-slate-300" />
+              <div className="flex size-full items-center justify-center text-muted-fg">
+                <FileText className="size-10 opacity-40" aria-hidden="true" />
               </div>
             )}
-            <span
-              className={`absolute top-3 right-3 text-[10px] font-bold px-2 py-1 rounded-full ${
-                folder.active
-                  ? "bg-green-100 text-green-600"
-                  : "bg-border text-muted-foreground"
-              }`}
-            >
-              {folder.active ? "ACTIVE" : "INACTIVE"}
-            </span>
           </div>
-          <div className="p-6">
-            <h3 className="font-bold text-lg">{folder.name}</h3>
-            {folder.description && (
-              <p className="text-sm text-muted-foreground mt-1">{folder.description}</p>
-            )}
-            <div className="flex items-center gap-3 mt-3">
-              <p className="text-lg font-bold text-foreground">
+          <div className="flex flex-1 flex-col p-5">
+            <div className="flex flex-wrap items-center gap-1.5 text-caption text-muted-fg">
+              <span className={folder.active ? "font-semibold text-success" : ""}>
+                {folder.active ? "Active" : "Inactive"}
+              </span>
+              <span aria-hidden="true">·</span>
+              <span className="tabular-nums">
                 {folder.productIds?.length || 0} products
-              </p>
+              </span>
               {folder.discountEnabled && (
-                <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-                  {folder.discountPercentage}% OFF
-                </span>
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="font-semibold text-success">
+                    {folder.discountPercentage}% off
+                  </span>
+                </>
               )}
               {(folder.bundlePrice ?? 0) > 0 && (
-                <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">
-                  {formatCurrency(folder.bundlePrice ?? 0, folder.currency || "RWF")}
-                </span>
+                <>
+                  <span aria-hidden="true">·</span>
+                  <span className="font-semibold tabular-nums text-fg">
+                    {formatCurrency(folder.bundlePrice ?? 0, folder.currency || "RWF")}
+                  </span>
+                </>
               )}
             </div>
-            <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
+            <h3 className="mt-1.5 text-body-lg font-bold text-fg">{folder.name}</h3>
+            {folder.description && (
+              <p className="mt-1 text-label text-muted-fg">{folder.description}</p>
+            )}
+            <p className="mt-2 line-clamp-2 text-caption text-muted-fg">
               {getProductNames(folder.productIds || [])}
             </p>
-            <div className="flex gap-2 mt-4">
-              <button
+            <div className="mt-auto flex gap-2 pt-4">
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => onEdit(folder)}
-                className="flex-1 py-2 text-xs font-bold border border-border-strong text-muted-foreground rounded-lg hover:bg-muted transition"
+                leadingIcon={<Edit className="size-3.5" aria-hidden="true" />}
+                className="flex-1"
               >
-                <Edit size={14} className="inline mr-1" /> Edit
-              </button>
-              <button
+                Edit
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label={`Delete folder ${folder.name}`}
                 onClick={() => onDelete(folder.id)}
-                className="flex-1 py-2 text-xs font-bold border border-red-100 text-red-500 rounded-lg hover:bg-red-50 transition"
+                className="border border-line text-danger hover:bg-danger-bg"
               >
-                <Trash2 size={14} className="inline mr-1" /> Delete
-              </button>
+                <Trash2 className="size-4" aria-hidden="true" />
+              </Button>
             </div>
           </div>
-        </div>
+        </Card>
       ))}
     </div>
   );

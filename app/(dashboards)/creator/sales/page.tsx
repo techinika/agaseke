@@ -1,17 +1,5 @@
-import { Metadata } from "next";
-import SalesPage from "@/components/pages/Dashboards/SalesPage";
-import React from "react";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  robots: { index: false, follow: false },
-};
-
-function page() {
-  return (
-    <div>
-      <SalesPage />
-    </div>
-  );
+export default function SalesRedirectPage() {
+  redirect("/creator/store?tab=sales");
 }
-
-export default page;

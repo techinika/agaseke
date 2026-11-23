@@ -51,7 +51,9 @@ export const verificationFeedback: EmailService = {
            ${data.reason ? `<p><strong>Reason:</strong><br>${data.reason as string}</p>` : ""}
            <p>Please submit a new verification request with corrected information.</p>`,
       ctaText: approved ? "Go to Dashboard" : "Re-submit Verification",
-      ctaUrl: approved ? `${data.appUrl}/creator` : `${data.appUrl}/creator/verify`,
+      ctaUrl: approved
+        ? `${data.appUrl}/creator`
+        : `${data.appUrl}/creator/settings?tab=verification`,
     };
   },
 };

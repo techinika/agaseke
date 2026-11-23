@@ -7,18 +7,18 @@ export default function TermsPage() {
   return (
     <article className="mx-auto max-w-3xl px-6 py-16 pb-20 text-fg">
         <header className="mb-12">
-          <h1 className="text-display font-bold mb-4">Terms of Service</h1>
+          <h1 className="font-display text-display font-bold tracking-tight mb-4">Terms of Service</h1>
           <p className="text-muted-fg font-medium">Last updated: {lastUpdated}</p>
         </header>
 
         <div className="max-w-none space-y-10">
           <section>
-            <h2 className="text-heading font-bold mb-4">1. Acceptance of Terms</h2>
+            <h2 className="font-display text-heading font-bold mb-4">1. Acceptance of Terms</h2>
             <p className="leading-relaxed text-muted-fg">
               By accessing or using Agaseke, you agree to be bound by these Terms of
               Service. Agaseke is a platform designed to facilitate community support for
-              Rwandan creators. If you do not agree to these terms, please do not use our
-              services.
+              creators across Africa and beyond. If you do not agree to these terms, please
+              do not use our services.
             </p>
           </section>
 
@@ -69,7 +69,7 @@ export default function TermsPage() {
               <li>Provide accurate information on their profiles.</li>
               <li>Fulfill any promises made during &quot;Gatherings&quot; (events).</li>
               <li>
-                Ensure all content uploaded respects Rwandan laws and intellectual
+                Ensure all content uploaded respects applicable laws and intellectual
                 property rights.
               </li>
             </ul>

@@ -15,10 +15,10 @@ export default function NotFoundContent() {
         <div className="mx-auto flex size-14 items-center justify-center rounded-card bg-brand-soft text-brand-strong">
           <Search className="size-6" aria-hidden="true" />
         </div>
-        <p className="mt-5 text-caption font-bold uppercase tracking-[0.16em] text-brand-strong">
+        <p className="mt-5 text-label font-semibold text-brand-strong">
           Error 404
         </p>
-        <h1 className="mt-2 text-heading font-black tracking-tight text-fg">
+        <h1 className="mt-2 font-display text-heading font-bold tracking-tight text-fg">
           Page not found
         </h1>
         <p className="mt-3 text-body leading-relaxed text-muted-fg">

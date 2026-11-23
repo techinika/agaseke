@@ -1,10 +1,5 @@
-import { Metadata } from "next";
-import { VerificationPage } from "@/components/pages/Dashboards/VerifyPage";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  robots: { index: false, follow: false },
-};
-
-export default function page() {
-  return <VerificationPage />;
+export default function VerifyRedirectPage() {
+  redirect("/creator/settings?tab=verification");
 }

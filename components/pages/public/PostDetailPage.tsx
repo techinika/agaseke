@@ -686,7 +686,7 @@ export default function PostDetailPage({
             </div>
 
             {post.title && (
-              <h1 className="mt-3 text-heading font-black tracking-tight text-fg sm:text-display">
+              <h1 className="mt-3 font-display text-heading font-bold tracking-tight text-fg [text-wrap:balance] sm:text-display">
                 {post.title}
               </h1>
             )}

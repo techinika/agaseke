@@ -1,17 +1,16 @@
 import { Metadata } from "next";
+import React, { Suspense } from "react";
 import SupportersPage from "@/components/pages/Dashboards/SupportersPage";
-import React from "react";
+import { LoadingState } from "@/components/ui/LoadingState";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-function page() {
+export default function SupportersRoutePage() {
   return (
-    <div>
+    <Suspense fallback={<LoadingState variant="page" />}>
       <SupportersPage />
-    </div>
+    </Suspense>
   );
 }
-
-export default page;

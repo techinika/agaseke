@@ -19,7 +19,7 @@ export function StepHeading({
           {icon}
         </span>
       )}
-      <h2 className="text-title font-bold text-fg">{title}</h2>
+      <h2 className="font-display text-title font-bold text-fg">{title}</h2>
       <p className="text-label leading-relaxed text-muted-fg">{description}</p>
     </header>
   );

@@ -75,14 +75,14 @@ export default function LoginPage({
           <Card className="w-full max-w-md p-6 shadow-card sm:p-8">
             <div className="text-center">
               <AgasekeMark className="mx-auto mb-4 size-14 shadow-sm" />
-              <h1 className="text-heading font-black tracking-tight text-fg [text-wrap:balance]">
+              <h1 className="font-display text-heading font-bold tracking-tight text-fg [text-wrap:balance]">
                 {t("auth.login.subheading")}
               </h1>
               <p className="mt-2 text-body text-muted-fg [text-wrap:balance]">
                 {t("auth.login.cardSubtitle")}
               </p>
               {reservedUsername && (
-                <p className="mt-2 text-label font-medium text-brand-strong">
+                <p className="mt-2 font-mono text-label font-medium text-brand-strong">
                   Claiming agaseke.me/{reservedUsername}
                 </p>
               )}
@@ -128,8 +128,8 @@ export default function LoginPage({
           </Card>
         </section>
 
-        <section className="hidden flex-col justify-center rounded-card border border-line bg-surface-sunken p-6 sm:p-10 lg:order-1 lg:col-span-7 lg:flex">
-          <h2 className="text-display font-black leading-tight text-fg sm:text-hero [text-wrap:balance]">
+        <section className="hidden flex-col justify-center rounded-card border border-line bg-surface p-6 sm:p-10 lg:order-1 lg:col-span-7 lg:flex">
+          <h2 className="font-display text-display font-bold leading-tight tracking-tight text-fg [text-wrap:balance] sm:text-hero">
             {t("auth.login.promise")}
           </h2>
 

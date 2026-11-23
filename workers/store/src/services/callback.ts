@@ -366,7 +366,7 @@ export async function handleStoreCallback(
         amount: totalAmount,
         creatorEarnings: creatorShare,
       },
-      link: "/creator/sales",
+      link: "/creator/store?tab=sales",
       actorName: (txData.buyerName as string) || undefined,
       actorId: buyerId || undefined,
     });

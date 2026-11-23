@@ -130,7 +130,7 @@ export function PublicFooter() {
 
           {GROUPS.map((group) => (
             <div key={group.titleKey}>
-              <h2 className="text-label font-bold uppercase tracking-wide text-fg">
+              <h2 className="font-display text-body font-bold text-fg">
                 {t(group.titleKey)}
               </h2>
               <ul className="mt-4 space-y-1">

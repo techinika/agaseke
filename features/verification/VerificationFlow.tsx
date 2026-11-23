@@ -29,15 +29,18 @@ export function VerificationFlow({
   otpBusy,
   onSendOtp,
   onVerifyOtp,
-}: VerificationFlowProps) {
-  return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+  embedded = false,
+}: VerificationFlowProps & { embedded?: boolean }) {
+  const content = (
+    <>
       <div id="recaptcha-anchor" />
-      <PageHeader
-        title={t("verification.title")}
-        description={t("verification.description")}
-      />
-      <div className="mt-6 flex flex-col gap-5">
+      {!embedded && (
+        <PageHeader
+          title={t("verification.title")}
+          description={t("verification.description")}
+        />
+      )}
+      <div className={embedded ? "flex flex-col gap-5" : "mt-6 flex flex-col gap-5"}>
         <VerificationStatusBanner status={status} onStartEditing={onStartEditing} />
         <Card className="p-5">
           <VerificationProgress
@@ -81,6 +84,14 @@ export function VerificationFlow({
           </div>
         </div>
       </div>
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      {content}
     </div>
   );
 }

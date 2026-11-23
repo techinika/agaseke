@@ -1,7 +1,27 @@
 import React, { useState } from "react";
-import { ShoppingCart, Search, Truck } from "lucide-react";
+import { ShoppingCart, Truck } from "lucide-react";
 import { Order } from "@/types/store";
 import { formatCurrency } from "@/types/currency";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  SearchInput,
+  Select,
+} from "@/components/ui";
+
+const STATUS_TONE: Record<
+  Order["status"],
+  "warning" | "success" | "info" | "brand" | "neutral" | "danger"
+> = {
+  pending: "warning",
+  paid: "success",
+  processing: "info",
+  shipped: "brand",
+  delivered: "neutral",
+  cancelled: "danger",
+};
 
 export default function OrdersList({
   orders,
@@ -17,52 +37,43 @@ export default function OrdersList({
 
   const filteredOrders = orders.filter((order) => {
     if (filter !== "all" && order.status !== filter) return false;
-    if (search && order.buyerName.toLowerCase().includes(search.toLowerCase()))
-      return false;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      const matchesName = order.buyerName?.toLowerCase().includes(q);
+      const matchesEmail = order.buyerEmail?.toLowerCase().includes(q);
+      const matchesItem = order.items?.some((item) =>
+        item.productName?.toLowerCase().includes(q),
+      );
+      if (!matchesName && !matchesEmail && !matchesItem) return false;
+    }
     return true;
   });
 
-  const statusColors: Record<string, string> = {
-    pending: "bg-yellow-100 text-yellow-700",
-    paid: "bg-green-100 text-green-700",
-    processing: "bg-blue-100 text-blue-700",
-    shipped: "bg-orange-100 text-orange-700",
-    delivered: "bg-border text-foreground",
-    cancelled: "bg-red-100 text-red-700",
-  };
-
   if (orders.length === 0) {
     return (
-      <div className="text-center py-20 bg-card rounded-lg border border-border">
-        <ShoppingCart size={48} className="mx-auto text-slate-200 mb-4" />
-        <p className="text-muted-foreground font-medium">No orders yet</p>
-        <p className="text-muted-foreground text-sm mt-2">
-          Orders will appear here when customers make purchases
-        </p>
-      </div>
+      <EmptyState
+        icon={<ShoppingCart className="size-6" aria-hidden="true" />}
+        title="No orders yet"
+        description="Customer store orders will appear here as soon as purchases come in."
+      />
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex gap-4 items-center">
-        <div className="relative flex-1 max-w-md">
-          <Search
-            size={18}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"
-          />
-          <input
-            type="text"
-            placeholder="Search orders..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-card border border-border-strong rounded-lg py-3 pl-12 pr-4 text-sm outline-none focus:ring-2 focus:ring-orange-100"
-          />
-        </div>
-        <select
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <SearchInput
+          aria-label="Search orders"
+          placeholder="Search buyer or product..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          containerClassName="flex-1 sm:max-w-md"
+        />
+        <Select
+          aria-label="Filter order status"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          className="bg-card border border-border-strong rounded-lg py-3 px-4 text-sm outline-none"
+          containerClassName="w-full sm:w-44"
         >
           <option value="all">All Orders</option>
           <option value="pending">Pending</option>
@@ -71,128 +82,139 @@ export default function OrdersList({
           <option value="shipped">Shipped</option>
           <option value="delivered">Delivered</option>
           <option value="cancelled">Cancelled</option>
-        </select>
+        </Select>
       </div>
 
-      <div className="bg-card rounded-lg border border-border overflow-hidden">
-        {filteredOrders.map((order) => (
-          <div
-            key={order.id}
-            className="p-6 border-b border-border last:border-0"
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h4 className="font-bold">{order.buyerName}</h4>
-                <p className="text-sm text-muted-foreground">{order.buyerEmail}</p>
+      {filteredOrders.length === 0 ? (
+        <EmptyState
+          icon={<ShoppingCart className="size-6" aria-hidden="true" />}
+          title="No matching orders"
+          description="Try clearing your search or choosing another status filter."
+        />
+      ) : (
+        <Card className="divide-y divide-line overflow-hidden">
+          {filteredOrders.map((order) => (
+            <div key={order.id} className="space-y-4 p-4 sm:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-body font-bold text-fg">{order.buyerName}</h3>
+                  {order.buyerEmail && (
+                    <p className="truncate text-label text-muted-fg">{order.buyerEmail}</p>
+                  )}
+                </div>
+                <Badge tone={STATUS_TONE[order.status] ?? "neutral"} className="capitalize">
+                  {order.status}
+                </Badge>
               </div>
-              <span
-                className={`text-[10px] font-bold px-3 py-1 rounded-full ${statusColors[order.status]}`}
-              >
-                {order.status.toUpperCase()}
-              </span>
-            </div>
 
-            <div className="bg-muted rounded-lg p-4 mb-4">
-              {order.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between text-sm">
+              <div className="space-y-2 rounded-control bg-surface-sunken p-4">
+                {order.items.map((item, idx) => (
+                  <div key={idx} className="flex justify-between gap-3 text-label">
+                    <span className="text-fg">
+                      <span className="tabular-nums font-semibold">{item.quantity}x</span>{" "}
+                      {item.productName}
+                    </span>
+                    <span className="shrink-0 font-semibold tabular-nums text-fg">
+                      {formatCurrency(item.price, currency)}
+                    </span>
+                  </div>
+                ))}
+                <div className="flex justify-between border-t border-line pt-2.5 text-body font-bold">
+                  <span>Total</span>
+                  <span className="tabular-nums">{formatCurrency(order.total, currency)}</span>
+                </div>
+              </div>
+
+              {order.shippingAddress && (
+                <div className="flex items-start gap-2.5 rounded-control bg-info-bg p-3 text-label text-info">
+                  <Truck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
                   <span>
-                    {item.quantity}x {item.productName}
-                  </span>
-                  <span className="font-medium">
-                    {formatCurrency(item.price, currency)}
+                    {order.shippingAddress.fullName}, {order.shippingAddress.address},{" "}
+                    {order.shippingAddress.city}
+                    {order.trackingNumber && (
+                      <span className="ml-2 font-mono font-bold">
+                        #{order.trackingNumber}
+                      </span>
+                    )}
                   </span>
                 </div>
-              ))}
-              <div className="border-t border-border-strong mt-3 pt-3 flex justify-between font-bold">
-                <span>Total</span>
-                <span>{formatCurrency(order.total, currency)}</span>
-              </div>
-            </div>
-
-            {order.shippingAddress && (
-              <div className="bg-blue-50 rounded-lg p-3 mb-4 text-sm">
-                <Truck size={14} className="inline mr-2 text-blue-600" />
-                <span className="text-blue-800">
-                  {order.shippingAddress.fullName},{" "}
-                  {order.shippingAddress.address}, {order.shippingAddress.city}
-                  {order.trackingNumber && (
-                    <span className="ml-2 font-bold">
-                      #{order.trackingNumber}
-                    </span>
-                  )}
-                </span>
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-2">
-              {order.status === "paid" && (
-                <button
-                  onClick={() => onUpdateStatus(order.id, "processing")}
-                  className="px-4 py-2 text-xs font-bold bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition"
-                >
-                  Start Processing
-                </button>
               )}
-              {order.status === "processing" && (
-                <>
-                  <button
-                    onClick={() => onUpdateStatus(order.id, "shipped")}
-                    className="px-4 py-2 text-xs font-bold bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition"
-                  >
-                    Mark as Shipped
-                  </button>
-                  <button
-                    onClick={() => onUpdateStatus(order.id, "paid")}
-                    className="px-4 py-2 text-xs font-bold border border-slate-300 text-muted-foreground rounded-lg hover:bg-card-hover transition"
-                  >
-                    Back to Paid
-                  </button>
-                </>
-              )}
-              {order.status === "shipped" && (
-                <>
-                  <button
-                    onClick={() => onUpdateStatus(order.id, "delivered")}
-                    className="px-4 py-2 text-xs font-bold bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-                  >
-                    Mark as Delivered
-                  </button>
-                  <button
+
+              <div className="flex flex-wrap gap-2">
+                {order.status === "paid" && (
+                  <Button
+                    size="sm"
                     onClick={() => onUpdateStatus(order.id, "processing")}
-                    className="px-4 py-2 text-xs font-bold border border-slate-300 text-muted-foreground rounded-lg hover:bg-card-hover transition"
                   >
-                    Back to Processing
-                  </button>
-                </>
-              )}
-              {order.status === "delivered" && (
-                <button
-                  onClick={() => onUpdateStatus(order.id, "shipped")}
-                  className="px-4 py-2 text-xs font-bold border border-slate-300 text-muted-foreground rounded-lg hover:bg-card-hover transition"
-                >
-                  Back to Shipped
-                </button>
-              )}
-              {order.status === "cancelled" && (
-                <button
-                  onClick={() => onUpdateStatus(order.id, "pending")}
-                  className="px-4 py-2 text-xs font-bold bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-                >
-                  Reopen Order
-                </button>
-              )}
-              {order.status !== "delivered" && order.status !== "cancelled" && (
-                <button
-                  onClick={() => onUpdateStatus(order.id, "cancelled")}
-                  className="px-4 py-2 text-xs font-bold border border-red-200 text-red-500 rounded-lg hover:bg-red-50 transition"
-                >
-                  Cancel
-                </button>
-              )}
+                    Start Processing
+                  </Button>
+                )}
+                {order.status === "processing" && (
+                  <>
+                    <Button
+                      size="sm"
+                      onClick={() => onUpdateStatus(order.id, "shipped")}
+                    >
+                      Mark as Shipped
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => onUpdateStatus(order.id, "paid")}
+                    >
+                      Back to Paid
+                    </Button>
+                  </>
+                )}
+                {order.status === "shipped" && (
+                  <>
+                    <Button
+                      size="sm"
+                      onClick={() => onUpdateStatus(order.id, "delivered")}
+                    >
+                      Mark as Delivered
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => onUpdateStatus(order.id, "processing")}
+                    >
+                      Back to Processing
+                    </Button>
+                  </>
+                )}
+                {order.status === "delivered" && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => onUpdateStatus(order.id, "shipped")}
+                  >
+                    Back to Shipped
+                  </Button>
+                )}
+                {order.status === "cancelled" && (
+                  <Button
+                    size="sm"
+                    onClick={() => onUpdateStatus(order.id, "pending")}
+                  >
+                    Reopen Order
+                  </Button>
+                )}
+                {order.status !== "delivered" && order.status !== "cancelled" && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onUpdateStatus(order.id, "cancelled")}
+                    className="border border-line text-danger hover:bg-danger-bg"
+                  >
+                    Cancel Order
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </Card>
+      )}
     </div>
   );
 }

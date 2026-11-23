@@ -2,6 +2,7 @@ import React from "react";
 import { Tag, Edit, Trash2 } from "lucide-react";
 import { Coupon } from "@/types/store";
 import { formatCurrency } from "@/types/currency";
+import { Badge, Button, Card, EmptyState } from "@/components/ui";
 
 export default function CouponsList({
   coupons,
@@ -16,66 +17,63 @@ export default function CouponsList({
 }) {
   if (coupons.length === 0) {
     return (
-      <div className="text-center py-20 bg-card rounded-lg border border-border">
-        <Tag size={48} className="mx-auto text-slate-200 mb-4" />
-        <p className="text-muted-foreground font-medium">No coupons yet</p>
-        <p className="text-muted-foreground text-sm mt-2">
-          Create discount coupons for your customers
-        </p>
-      </div>
+      <EmptyState
+        icon={<Tag className="size-6" aria-hidden="true" />}
+        title="No coupons yet"
+        description="Create discount codes to reward supporters or boost product launches."
+      />
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
       {coupons.map((coupon) => (
-        <div
-          key={coupon.id}
-          className="bg-card rounded-lg border border-border p-6"
-        >
-          <div className="flex items-start justify-between mb-4">
-            <div className="bg-orange-100 text-orange-600 px-3 py-1 rounded-lg font-bold text-lg">
+        <Card key={coupon.id} className="flex flex-col p-5">
+          <div className="mb-4 flex items-start justify-between gap-2">
+            <span className="rounded-control bg-brand-soft px-3 py-1 font-mono text-body font-bold text-brand-strong">
               {coupon.code}
-            </div>
-            <span
-              className={`text-[10px] font-bold px-2 py-1 rounded-full ${
-                coupon.active
-                  ? "bg-green-100 text-green-600"
-                  : "bg-border text-muted-foreground"
-              }`}
-            >
-              {coupon.active ? "ACTIVE" : "INACTIVE"}
             </span>
+            <Badge tone={coupon.active ? "success" : "neutral"}>
+              {coupon.active ? "Active" : "Inactive"}
+            </Badge>
           </div>
-          <p className="text-2xl font-bold text-foreground mb-2">
+          <p className="text-heading font-bold tabular-nums text-fg">
             {coupon.discountType === "percentage"
-              ? `${coupon.discountValue}% OFF`
-              : `${formatCurrency(coupon.discountValue, currency)} OFF`}
+              ? `${coupon.discountValue}% off`
+              : `${formatCurrency(coupon.discountValue, currency)} off`}
           </p>
-          {coupon.minPurchase && (
-            <p className="text-xs text-muted-foreground mb-2">
-              Min. purchase: {formatCurrency(coupon.minPurchase, currency)}
+          <div className="mt-2 space-y-1 text-caption text-muted-fg">
+            {Boolean(coupon.minPurchase) && (
+              <p className="tabular-nums">
+                Min. purchase: {formatCurrency(coupon.minPurchase ?? 0, currency)}
+              </p>
+            )}
+            <p className="tabular-nums">
+              Used {coupon.usedCount} times
+              {coupon.maxUses ? ` / ${coupon.maxUses}` : ""}
             </p>
-          )}
-          <p className="text-xs text-muted-foreground mb-4">
-            Used {coupon.usedCount} times
-            {coupon.maxUses ? ` / ${coupon.maxUses}` : ""}
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => onEdit(coupon)}
-              className="flex-1 py-2 text-xs font-bold border border-border-strong text-muted-foreground rounded-lg hover:bg-muted transition"
-            >
-              <Edit size={14} className="inline mr-1" /> Edit
-            </button>
-            <button
-              onClick={() => onDelete(coupon.id)}
-              className="flex-1 py-2 text-xs font-bold border border-red-100 text-red-500 rounded-lg hover:bg-red-50 transition"
-            >
-              <Trash2 size={14} className="inline mr-1" /> Delete
-            </button>
           </div>
-        </div>
+          <div className="mt-5 flex gap-2 pt-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => onEdit(coupon)}
+              leadingIcon={<Edit className="size-3.5" aria-hidden="true" />}
+              className="flex-1"
+            >
+              Edit
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={`Delete coupon ${coupon.code}`}
+              onClick={() => onDelete(coupon.id)}
+              className="border border-line text-danger hover:bg-danger-bg"
+            >
+              <Trash2 className="size-4" aria-hidden="true" />
+            </Button>
+          </div>
+        </Card>
       ))}
     </div>
   );

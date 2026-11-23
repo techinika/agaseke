@@ -1,17 +1,14 @@
-import { Metadata } from "next";
-import MessagesPage from "@/components/pages/Dashboards/MessagesPage";
-import React from "react";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  robots: { index: false, follow: false },
-};
-
-function page() {
-  return (
-    <div>
-      <MessagesPage />
-    </div>
-  );
+export default async function MessagesRedirectPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ chat?: string }>;
+}) {
+  const params = await searchParams;
+  const chat = params?.chat;
+  if (chat) {
+    redirect(`/creator/supporters?tab=messages&chat=${encodeURIComponent(chat)}`);
+  }
+  redirect("/creator/supporters?tab=messages");
 }
-
-export default page;

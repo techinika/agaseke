@@ -238,17 +238,16 @@ export default function ExplorePostsPage({
         : `/explore/posts/${item.id}`;
 
   return (
-    <div className="bg-canvas pb-12 text-fg">
-      <section className="border-b border-line bg-surface-sunken px-4 pb-10 pt-8 sm:px-6 sm:pb-12 sm:pt-12 lg:px-8">
+    <div className="bg-canvas pb-14 text-fg">
+      <section className="border-b border-line bg-canvas px-4 pb-10 pt-10 sm:px-6 sm:pb-12 sm:pt-14 lg:px-8">
         <div className="mx-auto w-full max-w-4xl">
           <div className="max-w-2xl">
-            <p className="text-caption font-semibold text-brand-strong">Public feed</p>
-            <h1 className="mt-2 text-display font-black tracking-tight text-fg sm:text-hero [text-wrap:balance]">
-              Posts & articles
+            <p className="text-label font-semibold text-brand-strong">Public feed</p>
+            <h1 className="mt-2 font-display text-display font-bold tracking-tight text-fg [text-wrap:balance] sm:text-hero">
+              Posts &amp; articles
             </h1>
             <p className="mt-3 text-body-lg text-muted-fg">
-              Essays, videos, photos, and updates shared openly by creators across
-              Agaseke.
+              Essays, videos, photos, and updates shared openly by creators.
             </p>
           </div>
 
@@ -415,10 +414,7 @@ export default function ExplorePostsPage({
                 return (
                   <Card
                     key={item.id}
-                    className={cn(
-                      "overflow-hidden p-5 sm:p-6",
-                      isArticle && "border-l-4 border-l-brand-strong",
-                    )}
+                    className="overflow-hidden p-5 transition-colors hover:border-line-strong sm:p-6"
                   >
                     <div className="mb-4 flex items-center gap-3">
                       <Link
@@ -582,7 +578,7 @@ export default function ExplorePostsPage({
 
                     {item.title && (
                       <Link href={postUrl} className="group block">
-                        <h3 className="text-title font-bold tracking-tight text-fg transition-colors group-hover:text-brand-strong">
+                        <h3 className="font-display text-title font-bold tracking-tight text-fg transition-colors group-hover:text-brand-strong">
                           {item.title}
                         </h3>
                       </Link>

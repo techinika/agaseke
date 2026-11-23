@@ -25,6 +25,7 @@ import {
   Calendar,
   ImageIcon,
   Users,
+  BadgeCheck,
 } from "lucide-react";
 import { db } from "@/db/firebase";
 import {
@@ -38,10 +39,11 @@ import {
 } from "firebase/firestore";
 import { Creator } from "@/types/creator";
 import { useAuth } from "@/auth/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { AiFillTikTok } from "react-icons/ai";
 import { uploadBase64Image } from "@/lib/uploadService";
+import { VerificationPage } from "./VerifyPage";
 import {
   Badge,
   Button,
@@ -57,18 +59,51 @@ import {
   Textarea,
 } from "@/components/ui";
 
+const SETTINGS_TABS = [
+  "profile",
+  "socials",
+  "location",
+  "perks",
+  "messaging",
+  "community",
+  "verification",
+] as const;
+
+type SettingsTabId = (typeof SETTINGS_TABS)[number];
+
 export default function CreatorSettings() {
   const { creator } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bannerFileInputRef = useRef<HTMLInputElement>(null);
+
+  const tabFromUrl = searchParams.get("tab");
+  const activeTab: SettingsTabId = SETTINGS_TABS.includes(tabFromUrl as SettingsTabId)
+    ? (tabFromUrl as SettingsTabId)
+    : "profile";
 
   const [creatorData, setCreatorData] = useState<Creator | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [activeTab, setActiveTab] = useState("profile");
   const [categories, setCategories] = useState<string[]>([]);
+
+  const handleTabChange = (nextTab: string) => {
+    const validTab = SETTINGS_TABS.includes(nextTab as SettingsTabId)
+      ? (nextTab as SettingsTabId)
+      : "profile";
+    const params = new URLSearchParams(searchParams.toString());
+    if (validTab === "profile") {
+      params.delete("tab");
+    } else {
+      params.set("tab", validTab);
+    }
+    const qs = params.toString();
+    router.replace(qs ? `/creator/settings?${qs}` : "/creator/settings", {
+      scroll: false,
+    });
+  };
 
   const [countries, setCountries] = useState<any[]>([]);
   const [currencies, setCurrencies] = useState<any[]>([]);
@@ -261,34 +296,45 @@ export default function CreatorSettings() {
 
   return (
     <div className="min-h-screen bg-canvas pb-20 text-fg">
-      <div className="mx-auto max-w-5xl px-6 pt-10">
-        <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
+      <div className="mx-auto max-w-5xl px-4 pt-6 sm:px-6 sm:pt-8">
+        <header className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-1">
-            <h1 className="text-display font-bold tracking-tight uppercase">Settings</h1>
+            <h1 className="font-display text-heading font-bold tracking-tight text-fg sm:text-display">
+              Settings
+            </h1>
             <p className="text-label font-medium text-muted-fg">
-              Customize your creator identity and supporter perks.
+              Customize your creator identity, perks, and payout verification.
             </p>
           </div>
-          <Button
-            onClick={saveSettings}
-            loading={saving}
-            disabled={uploading}
-            size="lg"
-            leadingIcon={<Save className="size-4" aria-hidden="true" />}
-          >
-            Save Changes
-          </Button>
+          {activeTab !== "verification" && (
+            <Button
+              onClick={saveSettings}
+              loading={saving}
+              disabled={uploading}
+              size="lg"
+              leadingIcon={<Save className="size-4" aria-hidden="true" />}
+              className="w-full sm:w-auto"
+            >
+              Save Changes
+            </Button>
+          )}
         </header>
 
         <Tabs
           ariaLabel="Settings sections"
           value={activeTab}
-          onChange={setActiveTab}
+          onChange={handleTabChange}
           items={[
             {
               id: "profile",
-              label: "Profile Info",
+              label: "Profile",
               icon: <User className="size-4" aria-hidden="true" />,
+            },
+            {
+              id: "verification",
+              label: "Verification",
+              icon: <BadgeCheck className="size-4" aria-hidden="true" />,
+              badge: creatorData?.verified ? "Verified" : undefined,
             },
             {
               id: "socials",
@@ -316,7 +362,7 @@ export default function CreatorSettings() {
               icon: <Users className="size-4" aria-hidden="true" />,
             },
           ]}
-          className="mb-8"
+          className="mb-6 sm:mb-8"
         />
 
         <div className="space-y-8">
@@ -518,7 +564,7 @@ export default function CreatorSettings() {
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => router.push("/creator/verify")}
+                    onClick={() => handleTabChange("verification")}
                   >
                     Verify Now
                   </Button>
@@ -527,9 +573,11 @@ export default function CreatorSettings() {
             </Card>
           )}
 
+          {activeTab === "verification" && <VerificationPage embedded />}
+
           {activeTab === "socials" && (
             <Card className="space-y-6 p-6 md:p-8">
-              <h3 className="text-title font-bold uppercase text-fg">
+              <h3 className="font-display text-title font-bold text-fg">
                 Connected Networks
               </h3>
               <div className="space-y-4">
@@ -600,7 +648,7 @@ export default function CreatorSettings() {
 
           {activeTab === "location" && (
             <Card className="space-y-6 p-6 md:p-8">
-              <h3 className="text-title font-bold uppercase text-fg">
+              <h3 className="font-display text-title font-bold text-fg">
                 Location & Currency
               </h3>
               <p className="text-label text-muted-fg">
@@ -696,7 +744,7 @@ export default function CreatorSettings() {
           {activeTab === "perks" && (
             <Card className="space-y-6 p-6 md:p-8">
               <div className="space-y-1">
-                <h3 className="text-title font-bold uppercase text-fg">
+                <h3 className="font-display text-title font-bold text-fg">
                   Supporter Perks
                 </h3>
                 <p className="text-label text-muted-fg">
@@ -904,7 +952,7 @@ export default function CreatorSettings() {
             <Card className="space-y-8 p-6 md:p-8">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="space-y-1">
-                  <h3 className="text-title font-bold uppercase text-fg">
+                  <h3 className="font-display text-title font-bold text-fg">
                     Direct Messaging
                   </h3>
                   <p className="text-label text-muted-fg">
@@ -947,7 +995,7 @@ export default function CreatorSettings() {
 
                     {!creatorData?.messagingAllowAll && (
                       <Input
-                        label="Minimum Support Amount (RWF)"
+                        label={`Minimum Support Amount (${creatorData?.currency || "RWF"})`}
                         type="number"
                         value={creatorData?.messagingMinAmount || 0}
                         onChange={(e) =>
@@ -955,7 +1003,7 @@ export default function CreatorSettings() {
                         }
                         placeholder="0"
                         hint="Only supporters who have given at least this amount can message you"
-                        containerClassName="md:w-48"
+                        containerClassName="md:w-56"
                       />
                     )}
 
@@ -1000,7 +1048,7 @@ export default function CreatorSettings() {
                     <Users className="size-6" aria-hidden="true" />
                   </div>
                   <div className="space-y-1">
-                    <h3 className="text-title font-bold uppercase text-fg">
+                    <h3 className="font-display text-title font-bold text-fg">
                       Community Tiers
                     </h3>
                     <p className="text-label text-muted-fg">

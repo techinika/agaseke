@@ -14,19 +14,16 @@ import LoginRedirectCapture from "@/auth/LoginRedirectCapture";
 const displayFont = Bricolage_Grotesque({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
 });
 
 const bodyFont = Plus_Jakarta_Sans({
   variable: "--font-sans-jakarta",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
 });
 
 const monoFont = JetBrains_Mono({
   variable: "--font-mono-jb",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
 });
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://agaseke.me";
