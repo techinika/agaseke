@@ -27,7 +27,7 @@ import { EmptyState } from "./payoutspage/index";
 import { getCurrencySymbol } from "@/types/currency";
 import { getCurrencyDefinition, type CurrencyCode } from "@/lib/money";
 import { maskPayoutNumber } from "@/lib/format/payout";
-import { fromMajor, toMajor } from "@/lib/money";
+import { fromMajor, toMajor, resolveHistoricalCurrency } from "@/lib/money";
 import { parsePayoutCurrency } from "@/lib/payouts/currency";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -485,11 +485,7 @@ export default function PayoutsPage() {
                         <div className="text-right">
                           <p className="text-label font-black text-fg tabular-nums">
                             -{tx.amount.toLocaleString()}{" "}
-                            {getCurrencySymbol(
-                              typeof tx.currency === "string"
-                                ? tx.currency
-                                : creatorCurrency,
-                            )}
+                            {getCurrencySymbol(resolveHistoricalCurrency(tx))}
                           </p>
                           <Badge tone="success" className="mt-1 uppercase">
                             Completed
@@ -529,11 +525,7 @@ export default function PayoutsPage() {
                       <div className="text-right">
                         <p className="text-label font-black text-fg tabular-nums">
                           {req.amount.toLocaleString()}{" "}
-                          {getCurrencySymbol(
-                            typeof req.currency === "string"
-                              ? req.currency
-                              : creatorCurrency,
-                          )}
+                          {getCurrencySymbol(resolveHistoricalCurrency(req))}
                         </p>
                         <Badge
                           tone={

@@ -26,6 +26,11 @@ import { toast } from "sonner";
 import { Profile } from "@/types/profile";
 import { BroadcastEmailModal } from "./supporterspage/index";
 import { getCurrencySymbol } from "@/types/currency";
+import {
+  getCurrencyDefinition,
+  isCurrencyCode,
+  resolveHistoricalCurrency,
+} from "@/lib/money";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
@@ -138,7 +143,7 @@ export default function SupportersPage() {
     const grouped = new Map<string, AggregatedSupporter>();
 
     supports.forEach((support) => {
-      const cur = support.currency || "";
+      const cur = resolveHistoricalCurrency(support as unknown as Record<string, unknown>);
       const origId = support.supporterId || "anonymous";
       const id = `${origId}_${cur}`;
       const existing = grouped.get(id);
@@ -168,7 +173,13 @@ export default function SupportersPage() {
   }, [supports]);
 
   const uniqueCurrencies = useMemo(() => {
-    return [...new Set(supports.map((s) => s.currency).filter(Boolean))] as string[];
+    return [
+      ...new Set(
+        supports
+          .map((s) => resolveHistoricalCurrency(s as unknown as Record<string, unknown>))
+          .filter(Boolean),
+      ),
+    ] as string[];
   }, [supports]);
 
   const [resolvedSupporters, setResolvedSupporters] = useState<AggregatedSupporter[]>([]);
@@ -212,6 +223,13 @@ export default function SupportersPage() {
   }, [aggregatedSupporters]);
 
   const filteredSupporters = useMemo(() => {
+    const isHighValue = (supporter: AggregatedSupporter) => {
+      const code = supporter.currency.toUpperCase();
+      const minorUnit = isCurrencyCode(code) ? getCurrencyDefinition(code).minorUnit : 0;
+      const threshold = minorUnit === 0 ? 5000 : 5;
+      return supporter.totalAmount >= threshold;
+    };
+
     return resolvedSupporters.filter((supporter) => {
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
@@ -221,8 +239,8 @@ export default function SupportersPage() {
         if (!matchesName && !matchesEmail) return false;
       }
 
-      if (filterAmount === "high" && supporter.totalAmount < 5000) return false;
-      if (filterAmount === "low" && supporter.totalAmount >= 5000) return false;
+      if (filterAmount === "high" && !isHighValue(supporter)) return false;
+      if (filterAmount === "low" && isHighValue(supporter)) return false;
 
       return true;
     });

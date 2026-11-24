@@ -199,23 +199,36 @@ export default function StorePage() {
     code: string;
     discountType: "percentage" | "fixed";
     discountValue: number;
+    currency: string;
     minPurchase: number;
     maxUses: number;
     productIds: string[];
     active: boolean;
   }) => {
     try {
-      await addDoc(collection(db, "storeCoupons"), {
-        ...couponData,
-        creatorId: creator?.uid,
-        usedCount: 0,
-        createdAt: serverTimestamp(),
-      });
-      toast.success("Coupon created!");
+      const normalizedCurrency =
+        couponData.currency || String(creator?.currency || "RWF").toUpperCase();
+      if (editingCoupon?.id) {
+        await updateDoc(doc(db, "storeCoupons", editingCoupon.id), {
+          ...couponData,
+          currency: normalizedCurrency,
+          updatedAt: serverTimestamp(),
+        });
+        toast.success("Coupon updated!");
+      } else {
+        await addDoc(collection(db, "storeCoupons"), {
+          ...couponData,
+          currency: normalizedCurrency,
+          creatorId: creator?.uid,
+          usedCount: 0,
+          createdAt: serverTimestamp(),
+        });
+        toast.success("Coupon created!");
+      }
       setEditingCoupon(null);
     } catch (error) {
-      console.error("Create coupon error:", error);
-      toast.error("Failed to create coupon");
+      console.error("Save coupon error:", error);
+      toast.error("Failed to save coupon");
     }
   };
 

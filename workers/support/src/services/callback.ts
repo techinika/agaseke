@@ -70,24 +70,22 @@ export async function handleSupportCallback(
   ];
 
   const supporterId = txData.supporterId as string | undefined;
-  const supportedCreatorId = supporterId && supporterId !== "anonymous"
-    ? `${supporterId}_${txData.creatorId}`
-    : undefined;
+  const isSignedInSupporter = Boolean(supporterId && supporterId !== "anonymous");
 
-  if (!supportedCreatorId) {
-    documents.push({
-      path: `supportedCreators/${safeRef}_anon`,
-      fields: {
-        creatorId: { stringValue: txData.creatorId as string },
-        amount: currencyNumberField(creditedTotal, currency),
-        supporterId: { nullValue: null },
-        supporterPhoneNumber: { stringValue: (txData.phone as string) || "" },
-        txRef: { stringValue: paymentRef },
-        currency: { stringValue: currency },
-        createdAt: { timestampValue: now },
-      },
-    });
-  }
+  documents.push({
+    path: `supportedCreators/${safeRef}_${isSignedInSupporter ? "support" : "anon"}`,
+    fields: {
+      creatorId: { stringValue: txData.creatorId as string },
+      amount: currencyNumberField(creditedTotal, currency),
+      supporterId: isSignedInSupporter
+        ? { stringValue: supporterId as string }
+        : { nullValue: null },
+      supporterPhoneNumber: { stringValue: (txData.phone as string) || "" },
+      txRef: { stringValue: paymentRef },
+      currency: { stringValue: currency },
+      createdAt: { timestampValue: now },
+    },
+  });
 
   if (includeReferral && txData.referralUid && referralShare > 0) {
     documents.push({
@@ -166,18 +164,6 @@ export async function handleSupportCallback(
       creatorShare,
     });
     return { received: true };
-  }
-
-  if (supportedCreatorId) {
-    await firestorePatch(env, `supportedCreators/${supportedCreatorId}`, {
-      creatorId: { stringValue: txData.creatorId as string },
-      amount: currencyNumberField(creditedTotal, currency),
-      supporterId: { stringValue: supporterId },
-      supporterPhoneNumber: { stringValue: (txData.phone as string) || "" },
-      txRef: { stringValue: paymentRef },
-      currency: { stringValue: currency },
-      createdAt: { timestampValue: now },
-    });
   }
 
   if (supporterId && supporterId !== "anonymous") {

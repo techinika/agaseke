@@ -2,18 +2,20 @@
 
 import React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Globe2, HandCoins, Link2, Tags } from "lucide-react";
+import { Globe2, HandCoins, Link2, Tags, Wrench } from "lucide-react";
 import { Tabs } from "@/components/ui";
 import AdminCurrenciesPage from "./AdminCurrenciesPage";
 import AdminCountriesPage from "./AdminCountriesPage";
 import AdminCountryCurrenciesPage from "./AdminCountryCurrenciesPage";
 import AdminCategoriesPage from "./AdminCategoriesPage";
+import AdminMaintenanceTab from "./AdminMaintenanceTab";
 
 const CONFIG_TABS = [
   "currencies",
   "countries",
   "country-currencies",
   "categories",
+  "maintenance",
 ] as const;
 
 type ConfigTabId = (typeof CONFIG_TABS)[number];
@@ -67,6 +69,7 @@ export default function AdminConfigHub() {
             { id: "countries", label: "Countries", icon: <Globe2 size={16} /> },
             { id: "country-currencies", label: "Currency Map", icon: <Link2 size={16} /> },
             { id: "categories", label: "Categories", icon: <Tags size={16} /> },
+            { id: "maintenance", label: "Scripts", icon: <Wrench size={16} /> },
           ]}
         />
 
@@ -74,6 +77,7 @@ export default function AdminConfigHub() {
         {activeTab === "countries" && <AdminCountriesPage embedded />}
         {activeTab === "country-currencies" && <AdminCountryCurrenciesPage embedded />}
         {activeTab === "categories" && <AdminCategoriesPage embedded />}
+        {activeTab === "maintenance" && <AdminMaintenanceTab />}
       </div>
     </div>
   );

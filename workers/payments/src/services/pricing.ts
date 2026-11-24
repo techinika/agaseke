@@ -411,12 +411,15 @@ async function resolveReferral(
   };
 }
 
+const PRE_MULTI_CURRENCY_CUTOFF_MS = Date.parse("2026-12-01T00:00:00.000Z");
+
 async function resolveCouponDiscount(
   repo: PaymentRepository,
   rawCode: unknown,
   creatorHandle: string,
   creatorUid: string,
   productTotal: number,
+  currency: CurrencyCode,
 ): Promise<{ discount: number; couponId?: string }> {
   const code = str(rawCode).toUpperCase();
   if (!code) return { discount: 0 };
@@ -437,11 +440,28 @@ async function resolveCouponDiscount(
     );
   }
 
+  const explicitCouponCurrency = str(coupon.currency).toUpperCase();
   const minPurchase = num(coupon.minPurchase);
+  const isPercentage = str(coupon.discountType) === "percentage";
+  let requiredCurrency = explicitCouponCurrency;
+  if (!requiredCurrency && (!isPercentage || minPurchase > 0)) {
+    const rawCreatedAt = str(coupon.createdAt);
+    const createdMs = rawCreatedAt ? Date.parse(rawCreatedAt) : NaN;
+    if (!rawCreatedAt || !Number.isFinite(createdMs) || createdMs < PRE_MULTI_CURRENCY_CUTOFF_MS) {
+      requiredCurrency = "RWF";
+    }
+  }
+  if (requiredCurrency && requiredCurrency !== currency) {
+    throw new PaymentRequestError(
+      "COUPON_CURRENCY_MISMATCH",
+      `This coupon is only valid for ${requiredCurrency} purchases`,
+    );
+  }
+
   if (minPurchase > 0 && productTotal < minPurchase) {
     throw new PaymentRequestError(
       "COUPON_MIN_PURCHASE",
-      `This coupon requires a minimum purchase of ${minPurchase}`,
+      `This coupon requires a minimum purchase of ${minPurchase} ${currency}`,
     );
   }
 
@@ -454,7 +474,7 @@ async function resolveCouponDiscount(
   }
 
   const rawDiscount =
-    str(coupon.discountType) === "percentage"
+    isPercentage
       ? (productTotal * num(coupon.discountValue)) / 100
       : num(coupon.discountValue);
 
@@ -857,6 +877,7 @@ export async function resolvePayment(
       creatorHandle,
       creatorUid,
       productsTotal,
+      currency,
     );
 
     const appliedDiscount = rawDiscount > 0 ? roundMoney(rawDiscount, currency) : 0;

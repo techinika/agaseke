@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { formatCurrency } from "@/types/currency";
+import { resolveHistoricalCurrency } from "@/lib/money/historicalCurrency";
 import {
   Avatar,
   Badge,
@@ -192,7 +193,7 @@ export function SalesAnalytics({ embedded = false }: { embedded?: boolean }) {
 
   const salesByCurrency = filteredSales.reduce(
     (groups: Record<string, { total: number; earnings: number }>, sale) => {
-      const cur = sale.currency || "";
+      const cur = resolveHistoricalCurrency(sale as unknown as Record<string, unknown>);
       if (!groups[cur]) groups[cur] = { total: 0, earnings: 0 };
       groups[cur].total += sale.totalAmount;
       groups[cur].earnings += sale.creatorEarnings || 0;
@@ -231,7 +232,7 @@ export function SalesAnalytics({ embedded = false }: { embedded?: boolean }) {
         currencies: {},
       };
     }
-    const cur = sale.currency || "";
+    const cur = resolveHistoricalCurrency(sale as unknown as Record<string, unknown>);
     productSales[sale.productId].total += sale.totalAmount;
     productSales[sale.productId].quantity += sale.quantity || 1;
     productSales[sale.productId].earnings += sale.creatorEarnings || 0;
@@ -450,10 +451,17 @@ export function SalesAnalytics({ embedded = false }: { embedded?: boolean }) {
                         </div>
                         <div className="shrink-0 text-right">
                           <p className="text-label font-bold tabular-nums text-fg">
-                            {formatCurrency(sale.totalAmount ?? 0, sale.currency || "")}
+                            {formatCurrency(
+                              sale.totalAmount ?? 0,
+                              resolveHistoricalCurrency(sale as unknown as Record<string, unknown>),
+                            )}
                           </p>
                           <p className="text-caption font-semibold tabular-nums text-success">
-                            +{formatCurrency(sale.creatorEarnings ?? 0, sale.currency || "")}
+                            +
+                            {formatCurrency(
+                              sale.creatorEarnings ?? 0,
+                              resolveHistoricalCurrency(sale as unknown as Record<string, unknown>),
+                            )}
                           </p>
                         </div>
                       </div>
@@ -555,12 +563,15 @@ export function SalesAnalytics({ embedded = false }: { embedded?: boolean }) {
                             {sale.quantity || 1}
                           </td>
                           <td className="px-4 py-3.5 text-right font-semibold tabular-nums text-fg">
-                            {formatCurrency(sale.totalAmount ?? 0, sale.currency || "")}
+                            {formatCurrency(
+                              sale.totalAmount ?? 0,
+                              resolveHistoricalCurrency(sale as unknown as Record<string, unknown>),
+                            )}
                           </td>
                           <td className="px-4 py-3.5 text-right font-semibold tabular-nums text-success">
                             {formatCurrency(
                               sale.creatorEarnings ?? 0,
-                              sale.currency || "",
+                              resolveHistoricalCurrency(sale as unknown as Record<string, unknown>),
                             )}
                           </td>
                           <td className="px-4 py-3.5">

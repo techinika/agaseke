@@ -7,6 +7,10 @@ const mockFirestoreGet = vi.fn();
 const mockFirestoreSet = vi.fn();
 const mockFirestoreUpdateFields = vi.fn();
 const mockFirestoreCreateIfAbsent = vi.fn();
+const mockFirestoreQuery = vi.fn();
+const mockFirestoreQueryAll = vi.fn();
+const mockInitiateCardPayment = vi.fn();
+const mockInitiateMomoPayment = vi.fn();
 
 vi.mock("../src/firestore", () => ({
   convertToFields: (obj: Record<string, unknown>) => obj,
@@ -15,9 +19,21 @@ vi.mock("../src/firestore", () => ({
   firestoreSet: (...args: unknown[]) => mockFirestoreSet(...args),
   firestoreUpdateFields: (...args: unknown[]) => mockFirestoreUpdateFields(...args),
   firestoreCreateIfAbsent: (...args: unknown[]) => mockFirestoreCreateIfAbsent(...args),
+  firestoreQuery: (...args: unknown[]) => mockFirestoreQuery(...args),
+  firestoreQueryAll: (...args: unknown[]) => mockFirestoreQueryAll(...args),
+}));
+
+vi.mock("../src/services/card", () => ({
+  initiateCardPayment: (...args: unknown[]) => mockInitiateCardPayment(...args),
+}));
+
+vi.mock("../src/services/momo", () => ({
+  initiateMomoPayment: (...args: unknown[]) => mockInitiateMomoPayment(...args),
 }));
 
 import { failAttempt } from "../src/services/idempotency";
+import { getUserTransactions } from "../src/services/transactions";
+import { retryTransaction } from "../src/services/retry";
 
 const minimalEnv = {
   FIREBASE_API_KEY: "test",
@@ -141,6 +157,88 @@ describe("money flow & idempotency regression fixes", () => {
     ).toBe(resolved.totalAmount);
   });
 
+  it("ignores mismatched-currency fixed/explicit coupons on USD store purchases while allowing matching or universal percentage coupons", async () => {
+    const repo = makeRepo({
+      "creators/alice": { uid: "uid-alice", currency: "USD" },
+      "profiles/uid-alice": {},
+      "storeProducts/p-usd": {
+        creatorUid: "uid-alice",
+        name: "USD Preset",
+        price: 50,
+        currency: "USD",
+        active: true,
+      },
+      "storeCoupons/cpn-rwf": {
+        creatorId: "alice",
+        code: "RWF500",
+        discountType: "fixed",
+        discountValue: 500,
+        currency: "RWF",
+        active: true,
+      },
+      "storeCoupons/cpn-legacy-fixed": {
+        creatorId: "alice",
+        code: "OLDFIXED",
+        discountType: "fixed",
+        discountValue: 500,
+        active: true,
+      },
+      "storeCoupons/cpn-usd": {
+        creatorId: "alice",
+        code: "USD10",
+        discountType: "fixed",
+        discountValue: 10,
+        currency: "USD",
+        active: true,
+      },
+    });
+
+    await expect(
+      resolvePayment(
+        minimalEnv,
+        {
+          creatorHandle: "alice",
+          type: "store",
+          productId: "p-usd",
+          couponCode: "RWF500",
+          currency: "USD",
+        } as unknown as InitRequest,
+        "buyer-1",
+        repo,
+      ),
+    ).rejects.toThrow(/only valid for RWF purchases/i);
+
+    await expect(
+      resolvePayment(
+        minimalEnv,
+        {
+          creatorHandle: "alice",
+          type: "store",
+          productId: "p-usd",
+          couponCode: "OLDFIXED",
+          currency: "USD",
+        } as unknown as InitRequest,
+        "buyer-1",
+        repo,
+      ),
+    ).rejects.toThrow(/only valid for RWF purchases/i);
+
+    const matchedUsd = await resolvePayment(
+      minimalEnv,
+      {
+        creatorHandle: "alice",
+        type: "store",
+        productId: "p-usd",
+        couponCode: "USD10",
+        currency: "USD",
+      } as unknown as InitRequest,
+      "buyer-1",
+      repo,
+    );
+    expect(matchedUsd.discount).toBe(10);
+    expect(matchedUsd.couponCode).toBe("USD10");
+  });
+
   it("falls back to legacy price when prices map is an empty object", async () => {
     const resolved = await resolvePayment(
       minimalEnv,
@@ -207,5 +305,94 @@ describe("money flow & idempotency regression fixes", () => {
       expect.objectContaining({ status: "failed", error: "gateway down" }),
     );
     expect(mockFirestoreSet).not.toHaveBeenCalled();
+  });
+
+  it("preserves USD and resolves pre-Dec-2026 missing currency to RWF in getUserTransactions", async () => {
+    mockFirestoreQueryAll
+      .mockResolvedValueOnce([
+        {
+          fields: {
+            ref: "TX-USD-PRE",
+            status: "successful",
+            currency: "USD",
+            amount: 15,
+            createdAt: "2026-06-01T12:00:00.000Z",
+          },
+        },
+        {
+          fields: {
+            ref: "TX-LEGACY-NO-CUR",
+            status: "successful",
+            amount: 5000,
+            createdAt: "2026-05-01T12:00:00.000Z",
+          },
+        },
+        {
+          fields: {
+            ref: "TX-POST-NO-CUR",
+            status: "pending",
+            amount: 20,
+            createdAt: "2026-12-10T12:00:00.000Z",
+          },
+        },
+      ])
+      .mockResolvedValueOnce([]);
+
+    const page = await getUserTransactions(minimalEnv, "user-1");
+    const byRef = Object.fromEntries(page.transactions.map((t) => [t.ref, t]));
+    expect(byRef["TX-USD-PRE"].currency).toBe("USD");
+    expect(byRef["TX-LEGACY-NO-CUR"].currency).toBe("RWF");
+    expect(byRef["TX-POST-NO-CUR"].currency).toBe("");
+  });
+
+  it("preserves USD on retry, defaults pre-Dec-2026 missing currency to RWF, and rejects post-cutoff missing currency", async () => {
+    mockFirestoreQuery.mockResolvedValueOnce([
+      {
+        name: "projects/test/databases/(default)/documents/transactions/tx-usd",
+        fields: {
+          ref: "TX-USD-RETRY",
+          supporterId: "user-1",
+          status: "failed",
+          paymentMethod: "card",
+          currency: "USD",
+          amount: 25,
+          creatorId: "alice",
+          createdAt: "2026-04-10T00:00:00.000Z",
+        },
+      },
+    ]);
+    mockInitiateCardPayment.mockResolvedValueOnce({
+      ref: "TX-USD-RETRY-2",
+      redirect_url: "https://pay.test/checkout",
+      merchant_reference: "TX-USD-RETRY-2",
+    });
+    mockFirestoreSet.mockResolvedValueOnce({ ok: true });
+
+    await retryTransaction(minimalEnv, "user-1", "TX-USD-RETRY");
+    expect(mockInitiateCardPayment).toHaveBeenCalledWith(
+      minimalEnv,
+      expect.objectContaining({ currency: "USD", amount: 25 }),
+      "user-1",
+      "retry_tx-usd_1",
+      expect.any(Object),
+    );
+
+    mockFirestoreQuery.mockResolvedValueOnce([
+      {
+        name: "projects/test/databases/(default)/documents/transactions/tx-post-missing",
+        fields: {
+          ref: "TX-POST-MISSING",
+          supporterId: "user-1",
+          status: "failed",
+          paymentMethod: "card",
+          amount: 25,
+          creatorId: "alice",
+          createdAt: "2026-12-05T00:00:00.000Z",
+        },
+      },
+    ]);
+    await expect(
+      retryTransaction(minimalEnv, "user-1", "TX-POST-MISSING"),
+    ).rejects.toThrow(/missing currency/i);
   });
 });

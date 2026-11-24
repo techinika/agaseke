@@ -16,20 +16,37 @@ export default function CreateOrderModal({
   const [formData, setFormData] = useState({
     customerName: "",
     customerEmail: "",
-    productIds: [] as { productId: string; quantity: number; price: number }[],
+    productIds: [] as {
+      productId: string;
+      quantity: number;
+      price: number;
+      currency: string;
+    }[],
     notes: "",
   });
   const [saving, setSaving] = useState(false);
 
+  const orderCurrency = formData.productIds[0]?.currency || "RWF";
+
   const addProduct = (productId: string) => {
     const product = products.find((p) => p.id === productId);
     if (!product) return;
+    const itemCurrency = getProductCurrency(product);
+    if (formData.productIds.length > 0 && itemCurrency !== orderCurrency) {
+      toast.error(`All items in an order must use the same currency (${orderCurrency})`);
+      return;
+    }
 
     setFormData((prev) => ({
       ...prev,
       productIds: [
         ...prev.productIds,
-        { productId, quantity: 1, price: getProductPrice(product) },
+        {
+          productId,
+          quantity: 1,
+          price: getProductPrice(product),
+          currency: itemCurrency,
+        },
       ],
     }));
   };
@@ -69,7 +86,7 @@ export default function CreateOrderModal({
       return;
     }
     setSaving(true);
-    await onSave(formData);
+    await onSave({ ...formData, currency: orderCurrency });
     setSaving(false);
   };
 
@@ -152,7 +169,7 @@ export default function CreateOrderModal({
                     <div className="flex-1">
                       <p className="font-medium">{product?.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {formatCurrency(product ? getProductPrice(product) : 0, product ? getProductCurrency(product) : "RWF")} each
+                        {formatCurrency(product ? getProductPrice(product) : 0, item.currency)} each
                       </p>
                     </div>
                     <input
@@ -165,7 +182,7 @@ export default function CreateOrderModal({
                       className="w-16 bg-card border border-border-strong rounded-lg px-2 py-1 text-center"
                     />
                     <p className="font-bold w-24 text-right">
-                      {formatCurrency(item.price * item.quantity, "RWF")}
+                      {formatCurrency(item.price * item.quantity, item.currency)}
                     </p>
                     <button
                       onClick={() => removeProduct(item.productId)}
@@ -183,7 +200,7 @@ export default function CreateOrderModal({
             <div className="p-4 bg-orange-50 rounded-lg flex justify-between items-center">
               <p className="font-bold">Total Amount</p>
               <p className="text-xl font-bold text-orange-600">
-                {formatCurrency(totalAmount, "RWF")}
+                {formatCurrency(totalAmount, orderCurrency)}
               </p>
             </div>
           )}

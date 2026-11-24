@@ -48,6 +48,18 @@ function toNumber(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+const PRE_MULTI_CURRENCY_CUTOFF_MS = Date.parse("2026-12-01T00:00:00.000Z");
+
+function resolveTxCurrency(t: Record<string, unknown>): string {
+  const explicit = toString(t.currency).trim().toUpperCase();
+  if (/^[A-Z]{3}$/.test(explicit)) return explicit;
+  const rawDate = toString(t.createdAt) || toString(t.successfulAt);
+  if (!rawDate) return "RWF";
+  const ms = Date.parse(rawDate);
+  if (!Number.isFinite(ms) || ms < PRE_MULTI_CURRENCY_CUTOFF_MS) return "RWF";
+  return "";
+}
+
 function toString(value: unknown): string {
   return value === null || value === undefined ? "" : String(value);
 }
@@ -111,7 +123,7 @@ export async function getUserTransactions(
       ref: toString(t.ref),
       type: toString(t.type) || "support",
       status: toString(t.status) || "pending",
-      currency: toString(t.currency),
+      currency: resolveTxCurrency(t),
       sourceCurrency: toString(t.sourceCurrency),
       sourceAmountMinor: toNumber(t.sourceAmountMinor),
       fxRate: toNumber(t.fxRate),

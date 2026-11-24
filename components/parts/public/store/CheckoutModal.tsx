@@ -18,6 +18,10 @@ import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService"
 import { CartItem, ShippingAddress } from "./types";
 import { formatMoney as formatCurrency } from "@/lib/format/money";
 import { isCurrencySupportedByMethod } from "@/lib/money/rails";
+import {
+  normalizeValidCurrency,
+  resolveHistoricalCurrency,
+} from "@/lib/money/historicalCurrency";
 
 const platformSharePercentage =
   Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.1;
@@ -102,6 +106,20 @@ export function CheckoutModal({
       }
 
       const coupon = snapshot.docs[0].data();
+      const targetCurrency = currency.trim().toUpperCase();
+      const explicitCurrency = normalizeValidCurrency(coupon.currency);
+      const hasMonetaryConstraint =
+        coupon.discountType === "fixed" || Number(coupon.minPurchase || 0) > 0;
+      const couponCurrency = explicitCurrency
+        ? explicitCurrency
+        : hasMonetaryConstraint
+          ? resolveHistoricalCurrency(coupon as Record<string, unknown>)
+          : "";
+      if (couponCurrency && couponCurrency !== targetCurrency) {
+        toast.error(`This coupon is only valid for ${couponCurrency} purchases`);
+        return;
+      }
+
       if (coupon.minPurchase && total < coupon.minPurchase) {
         toast.error(
           `Minimum purchase of ${formatCurrency(coupon.minPurchase, currency)} required`,

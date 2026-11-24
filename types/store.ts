@@ -60,6 +60,7 @@ export interface Order {
   discount: number;
   total: number;
   couponCode?: string;
+  currency?: string;
   status: "pending" | "paid" | "processing" | "shipped" | "delivered" | "cancelled";
   shippingAddress?: ShippingAddress;
   trackingNumber?: string;
@@ -72,6 +73,7 @@ export interface OrderItem {
   productName: string;
   quantity: number;
   price: number;
+  currency?: string;
   selectedSize?: string;
 }
 
@@ -89,6 +91,7 @@ export interface Coupon {
   code: string;
   discountType: "percentage" | "fixed";
   discountValue: number;
+  currency?: string;
   minPurchase?: number;
   maxUses?: number;
   usedCount: number;

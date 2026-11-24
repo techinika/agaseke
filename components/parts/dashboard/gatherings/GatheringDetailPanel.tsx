@@ -14,12 +14,14 @@ import {
 import Link from "next/link";
 import { EVENT_TYPE_LABELS_SHORT } from "./constants";
 import { getPrice, parsePriceCurrency } from "@/lib/priceMap";
+import { resolveHistoricalCurrency } from "@/lib/money/historicalCurrency";
 import { formatCurrency } from "@/types/currency";
 
 interface GatheringDetailPanelProps {
   activeEvent: any;
   attendees: any[];
   totalTicketRevenue: number;
+  ticketRevenueByCurrency?: Record<string, number>;
   totalTicketCount: number;
   onEdit: (event: any) => void;
   onDelete: (eventId: string) => void;
@@ -31,6 +33,7 @@ export default function GatheringDetailPanel({
   activeEvent,
   attendees,
   totalTicketRevenue,
+  ticketRevenueByCurrency,
   totalTicketCount,
   onEdit,
   onDelete,
@@ -46,15 +49,28 @@ export default function GatheringDetailPanel({
     );
   }
 
-  const selectedEventRevenue = attendees
-    .filter((a) => a.paid)
-    .reduce((sum, a) => sum + (a.amount || 0), 0);
+  const paidAttendees = attendees.filter((a) => a.paid);
+  const ticketCurrency =
+    parsePriceCurrency(activeEvent.currency) ||
+    resolveHistoricalCurrency(activeEvent as Record<string, unknown>);
+  const selectedRevenueByCurrency = paidAttendees.reduce(
+    (acc: Record<string, number>, a) => {
+      const cur =
+        resolveHistoricalCurrency(a as Record<string, unknown>, {
+          fallbackCurrency: ticketCurrency,
+        }) || ticketCurrency;
+      acc[cur] = (acc[cur] || 0) + Number(a.amount || 0);
+      return acc;
+    },
+    {},
+  );
   const platformSharePct = Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.1;
   const creatorSharePct = Number(process.env.NEXT_PUBLIC_CREATOR_SHARE) || 0.9;
-  const platformFee = selectedEventRevenue * platformSharePct;
-  const creatorNet = selectedEventRevenue * creatorSharePct;
   const ticketAmount = getPrice(activeEvent);
-  const ticketCurrency = (parsePriceCurrency(activeEvent.currency) || undefined) as any;
+  const revenueEntries = Object.entries(selectedRevenueByCurrency);
+  const primaryEventTotal = selectedRevenueByCurrency[ticketCurrency] ?? 0;
+  const platformFee = primaryEventTotal * platformSharePct;
+  const creatorNet = primaryEventTotal * creatorSharePct;
 
   return (
     <div className="w-full md:w-96 bg-card p-8 overflow-y-auto">
@@ -157,22 +173,53 @@ export default function GatheringDetailPanel({
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-emerald-700">Total collected</span>
-                    <span className="font-bold text-emerald-800">
-                      {formatCurrency(totalTicketRevenue, ticketCurrency)}
+                    <span className="font-bold text-emerald-800 tabular-nums">
+                      {revenueEntries.length > 0
+                        ? revenueEntries
+                            .map(([cur, amt]) => formatCurrency(amt, cur))
+                            .join(" · ")
+                        : formatCurrency(0, ticketCurrency)}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-emerald-700">Platform fee ({(platformSharePct * 100).toFixed(0)}%)</span>
-                    <span className="font-bold text-amber-600">
-                      -{formatCurrency(platformFee, ticketCurrency)}
+                    <span className="font-bold text-amber-600 tabular-nums">
+                      {revenueEntries.length > 1
+                        ? revenueEntries
+                            .map(([cur, amt]) => `-${formatCurrency(amt * platformSharePct, cur)}`)
+                            .join(" · ")
+                        : `-${formatCurrency(platformFee, ticketCurrency)}`}
                     </span>
                   </div>
                   <div className="border-t border-emerald-300 pt-2 flex justify-between">
                     <span className="font-bold text-emerald-800">You receive</span>
-                    <span className="font-bold text-emerald-900">
-                      {formatCurrency(creatorNet, ticketCurrency)}
+                    <span className="font-bold text-emerald-900 tabular-nums">
+                      {revenueEntries.length > 1
+                        ? revenueEntries
+                            .map(([cur, amt]) => formatCurrency(amt * creatorSharePct, cur))
+                            .join(" · ")
+                        : formatCurrency(creatorNet, ticketCurrency)}
                     </span>
                   </div>
+                  {totalTicketCount > 0 && ticketRevenueByCurrency && Object.keys(ticketRevenueByCurrency).length > 0 && (
+                    <div className="pt-1 flex justify-between text-xs text-emerald-700/90">
+                      <span>All events total ({totalTicketCount} tickets)</span>
+                      <span className="font-semibold tabular-nums">
+                        {Object.entries(ticketRevenueByCurrency)
+                          .map(([cur, amt]) => formatCurrency(amt, cur))
+                          .join(" · ")}
+                      </span>
+                    </div>
+                  )}
+                  {(!ticketRevenueByCurrency || Object.keys(ticketRevenueByCurrency).length === 0) &&
+                    totalTicketRevenue > 0 && (
+                      <div className="pt-1 flex justify-between text-xs text-emerald-700/90">
+                        <span>All events total</span>
+                        <span className="font-semibold tabular-nums">
+                          {formatCurrency(totalTicketRevenue, ticketCurrency)}
+                        </span>
+                      </div>
+                    )}
                 </div>
                 <Link
                   href="/creator/payouts"

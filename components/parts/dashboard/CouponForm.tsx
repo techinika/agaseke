@@ -16,6 +16,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { useRouter } from "next/navigation";
 import { Product, getProductCurrency, getProductPrice } from "@/types/store";
 import { formatCurrency } from "@/types/currency";
+import { CURRENCY_LIST } from "@/lib/money";
 
 export default function CouponForm() {
   const { creator } = useAuth();
@@ -25,6 +26,7 @@ export default function CouponForm() {
     code: "",
     discountType: "percentage" as "percentage" | "fixed",
     discountValue: 0,
+    currency: String(creator?.currency || "RWF").toUpperCase(),
     minPurchase: 0,
     maxUses: 0,
     productIds: [] as string[],
@@ -56,6 +58,7 @@ export default function CouponForm() {
     try {
       await addDoc(collection(db, "storeCoupons"), {
         ...formData,
+        currency: formData.currency || String(creator?.currency || "RWF").toUpperCase(),
         creatorId: creator.uid,
         usedCount: 0,
         createdAt: serverTimestamp(),
@@ -96,19 +99,39 @@ export default function CouponForm() {
         </div>
 
         <div className="bg-card rounded-2xl border border-border p-6 md:p-10 space-y-8">
-          <div>
-            <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
-              Coupon Code *
-            </label>
-            <input
-              type="text"
-              value={formData.code}
-              onChange={(e) =>
-                setFormData({ ...formData, code: e.target.value.toUpperCase() })
-              }
-              placeholder="e.g., SUMMER20"
-              className="w-full bg-muted p-4 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="sm:col-span-2">
+              <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
+                Coupon Code *
+              </label>
+              <input
+                type="text"
+                value={formData.code}
+                onChange={(e) =>
+                  setFormData({ ...formData, code: e.target.value.toUpperCase() })
+                }
+                placeholder="e.g., SUMMER20"
+                className="w-full bg-muted p-4 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
+                Currency
+              </label>
+              <select
+                value={formData.currency}
+                onChange={(e) =>
+                  setFormData({ ...formData, currency: e.target.value })
+                }
+                className="w-full bg-muted p-4 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
+              >
+                {CURRENCY_LIST.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -127,7 +150,7 @@ export default function CouponForm() {
                 className="w-full bg-muted p-4 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
               >
                 <option value="percentage">Percentage</option>
-                <option value="fixed">Fixed Amount</option>
+                <option value="fixed">Fixed Amount ({formData.currency})</option>
               </select>
             </div>
             <div>
@@ -140,7 +163,7 @@ export default function CouponForm() {
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    discountValue: parseInt(e.target.value) || 0,
+                    discountValue: Number(e.target.value) || 0,
                   })
                 }
                 className="w-full bg-muted p-4 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-orange-100"
@@ -151,7 +174,7 @@ export default function CouponForm() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
-                Min. Purchase ({String(creator?.currency || "RWF").toUpperCase()})
+                Min. Purchase ({formData.currency})
               </label>
               <input
                 type="number"
@@ -159,7 +182,7 @@ export default function CouponForm() {
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    minPurchase: parseInt(e.target.value) || 0,
+                    minPurchase: Number(e.target.value) || 0,
                   })
                 }
                 placeholder="0 for no minimum"

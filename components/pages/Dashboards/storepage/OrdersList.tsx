@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { ShoppingCart, Truck } from "lucide-react";
 import { Order } from "@/types/store";
 import { formatCurrency } from "@/types/currency";
+import { resolveHistoricalCurrency } from "@/lib/money/historicalCurrency";
 import {
   Badge,
   Button,
@@ -26,7 +27,6 @@ const STATUS_TONE: Record<
 export default function OrdersList({
   orders,
   onUpdateStatus,
-  currency = "RWF",
 }: {
   orders: Order[];
   onUpdateStatus: (id: string, status: Order["status"]) => void;
@@ -108,21 +108,40 @@ export default function OrdersList({
               </div>
 
               <div className="space-y-2 rounded-control bg-surface-sunken p-4">
-                {order.items.map((item, idx) => (
-                  <div key={idx} className="flex justify-between gap-3 text-label">
-                    <span className="text-fg">
-                      <span className="tabular-nums font-semibold">{item.quantity}x</span>{" "}
-                      {item.productName}
-                    </span>
-                    <span className="shrink-0 font-semibold tabular-nums text-fg">
-                      {formatCurrency(item.price, currency)}
-                    </span>
-                  </div>
-                ))}
-                <div className="flex justify-between border-t border-line pt-2.5 text-body font-bold">
-                  <span>Total</span>
-                  <span className="tabular-nums">{formatCurrency(order.total, currency)}</span>
-                </div>
+                {(() => {
+                  const orderCurrency = resolveHistoricalCurrency(
+                    order as unknown as Record<string, unknown>,
+                  );
+                  return (
+                    <>
+                      {order.items.map((item, idx) => {
+                        const itemCurrency = resolveHistoricalCurrency(
+                          item as unknown as Record<string, unknown>,
+                          { fallbackCurrency: orderCurrency },
+                        );
+                        return (
+                          <div key={idx} className="flex justify-between gap-3 text-label">
+                            <span className="text-fg">
+                              <span className="tabular-nums font-semibold">
+                                {item.quantity}x
+                              </span>{" "}
+                              {item.productName}
+                            </span>
+                            <span className="shrink-0 font-semibold tabular-nums text-fg">
+                              {formatCurrency(item.price, itemCurrency)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                      <div className="flex justify-between border-t border-line pt-2.5 text-body font-bold">
+                        <span>Total</span>
+                        <span className="tabular-nums">
+                          {formatCurrency(order.total, orderCurrency)}
+                        </span>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
 
               {order.shippingAddress && (

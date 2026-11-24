@@ -10,6 +10,10 @@ import {
 } from "firebase/firestore";
 import { db } from "@/db/firebase";
 import { formatMoney } from "@/lib/format/money";
+import {
+  normalizeValidCurrency,
+  resolveHistoricalCurrency,
+} from "@/lib/money/historicalCurrency";
 import type { Coupon } from "./types";
 
 export type CouponCheckResult =
@@ -36,7 +40,20 @@ export async function checkCoupon(
       return { ok: false, errorKey: "actions.checkout.couponInvalid" };
     }
 
-    const coupon = snapshot.docs[0].data() as Coupon;
+    const coupon = snapshot.docs[0].data() as Coupon & { currency?: string };
+    const normalizedCurrency = currency.trim().toUpperCase();
+    const explicitCouponCurrency = normalizeValidCurrency(coupon.currency);
+    const hasMonetaryConstraint =
+      coupon.discountType === "fixed" || Number(coupon.minPurchase || 0) > 0;
+    const requiredCurrency = explicitCouponCurrency
+      ? explicitCouponCurrency
+      : hasMonetaryConstraint
+        ? resolveHistoricalCurrency(coupon as unknown as Record<string, unknown>)
+        : "";
+    if (requiredCurrency && requiredCurrency !== normalizedCurrency) {
+      return { ok: false, errorKey: "actions.checkout.couponInvalid" };
+    }
+
     if (coupon.minPurchase && total < coupon.minPurchase) {
       return {
         ok: false,

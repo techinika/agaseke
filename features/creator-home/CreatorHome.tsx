@@ -31,6 +31,9 @@ export function CreatorHome() {
   const { creator, stats, supports, loading, error, refetch } = useCreatorHome();
   const unverified = creator && !creator.verified;
   const currency = stats?.currency || "";
+  const balances = stats?.perCurrencyBalances ?? [];
+  const pendingBalances = balances.filter((b) => b.pending > 0 || b.currency === currency);
+  const earningsBalances = balances.filter((b) => b.earnings > 0 || b.currency === currency);
 
   const shareCreatorLink = () => {
     if (typeof navigator !== "undefined" && navigator.share) {
@@ -125,12 +128,28 @@ export function CreatorHome() {
             </p>
             <Wallet className="size-5 text-success" aria-hidden="true" />
           </div>
-          <div className="mt-1">
-            <Money
-              value={stats?.pending ?? 0}
-              currency={currency}
-              className="text-body-lg font-bold text-fg tabular-nums"
-            />
+          <div className="mt-1 flex flex-col gap-0.5">
+            {pendingBalances.length > 0 ? (
+              pendingBalances.map((balance, index) => (
+                <Money
+                  key={balance.currency}
+                  value={balance.pending}
+                  currency={balance.currency}
+                  className={cn(
+                    "tabular-nums",
+                    index === 0
+                      ? "text-body-lg font-bold text-fg"
+                      : "text-label font-semibold text-muted-fg",
+                  )}
+                />
+              ))
+            ) : (
+              <Money
+                value={stats?.pending ?? 0}
+                currency={currency}
+                className="text-body-lg font-bold text-fg tabular-nums"
+              />
+            )}
           </div>
           <Link
             href="/creator/payouts"
@@ -151,12 +170,28 @@ export function CreatorHome() {
             </p>
             <TrendingUp className="size-5 text-brand-strong" aria-hidden="true" />
           </div>
-          <div className="mt-1">
-            <Money
-              value={stats?.totalEarnings ?? 0}
-              currency={currency}
-              className="text-body-lg font-bold text-fg tabular-nums"
-            />
+          <div className="mt-1 flex flex-col gap-0.5">
+            {earningsBalances.length > 0 ? (
+              earningsBalances.map((balance, index) => (
+                <Money
+                  key={balance.currency}
+                  value={balance.earnings}
+                  currency={balance.currency}
+                  className={cn(
+                    "tabular-nums",
+                    index === 0
+                      ? "text-body-lg font-bold text-fg"
+                      : "text-label font-semibold text-muted-fg",
+                  )}
+                />
+              ))
+            ) : (
+              <Money
+                value={stats?.totalEarnings ?? 0}
+                currency={currency}
+                className="text-body-lg font-bold text-fg tabular-nums"
+              />
+            )}
           </div>
           <Link
             href="/creator/payouts"

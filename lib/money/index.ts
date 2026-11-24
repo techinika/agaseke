@@ -125,3 +125,13 @@ export {
   type PaymentCreditInput,
   type WithdrawalInput,
 } from "./ledger";
+
+export {
+  PRE_MULTI_CURRENCY_CUTOFF_ISO,
+  PRE_MULTI_CURRENCY_CUTOFF_MS,
+  getRecordTimestampMs,
+  normalizeValidCurrency,
+  parseTimestampMs,
+  resolveHistoricalCurrency,
+} from "./historicalCurrency";
+

@@ -49,6 +49,7 @@ import {
   type PayoutCurrency,
 } from "@/lib/payouts/currency";
 import { PAYMENT_RAIL_PROVIDER_LIST } from "@/lib/money";
+import { resolveHistoricalCurrency } from "@/lib/money/historicalCurrency";
 import { formatCurrency } from "@/types/currency";
 import { cn } from "@/lib/cn";
 
@@ -75,9 +76,7 @@ function toDateSafe(value: any): Date | null {
 }
 
 function currencyCodeOf(raw: any): string {
-  return typeof raw?.currency === "string" && raw.currency.trim()
-    ? raw.currency.trim().toUpperCase()
-    : "RWF";
+  return resolveHistoricalCurrency(raw) || "UNKNOWN";
 }
 
 function formatCurrencyTotals(totals: Record<string, number>, empty = "0"): string {
@@ -771,6 +770,13 @@ export default function AdminDashboard() {
               className="inline-flex min-h-11 items-center gap-1.5 rounded-control border border-line bg-surface px-3.5 text-label font-semibold text-fg transition-colors hover:bg-surface-raised"
             >
               Users
+              <ArrowUpRight className="size-3.5 text-muted-fg" aria-hidden="true" />
+            </Link>
+            <Link
+              href="/admin/config?tab=maintenance"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-control border border-line bg-surface px-3.5 text-label font-semibold text-fg transition-colors hover:bg-surface-raised"
+            >
+              Scripts
               <ArrowUpRight className="size-3.5 text-muted-fg" aria-hidden="true" />
             </Link>
             <Button

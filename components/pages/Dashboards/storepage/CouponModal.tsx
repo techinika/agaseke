@@ -4,10 +4,14 @@ import { toast } from "sonner";
 import { Coupon, Product, getProductCurrency, getProductPrice } from "@/types/store";
 import { formatCurrency } from "@/types/currency";
 
+import { CURRENCY_LIST } from "@/lib/money";
+import { resolveHistoricalCurrency } from "@/lib/money/historicalCurrency";
+
 export type CouponFormValues = {
   code: string;
   discountType: "percentage" | "fixed";
   discountValue: number;
+  currency: string;
   minPurchase: number;
   maxUses: number;
   productIds: string[];
@@ -27,11 +31,17 @@ export default function CouponModal({
   onSave: (data: CouponFormValues) => void;
   currency?: string;
 }) {
+  const initialCurrency = coupon
+    ? resolveHistoricalCurrency(coupon as unknown as Record<string, unknown>, {
+        fallbackCurrency: currency,
+      }) || currency
+    : currency;
   const [formData, setFormData] = useState({
     code: coupon?.code || "",
     discountType:
       (coupon?.discountType as "percentage" | "fixed") || "percentage",
     discountValue: coupon?.discountValue || 0,
+    currency: initialCurrency,
     minPurchase: coupon?.minPurchase || 0,
     maxUses: coupon?.maxUses || 0,
     productIds: coupon?.productIds || ([] as string[]),
@@ -74,19 +84,39 @@ export default function CouponModal({
         </div>
 
         <div className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-bold text-foreground mb-2">
-              Coupon Code *
-            </label>
-            <input
-              type="text"
-              value={formData.code}
-              onChange={(e) =>
-                setFormData({ ...formData, code: e.target.value.toUpperCase() })
-              }
-              placeholder="e.g., SUMMER20"
-              className="w-full bg-muted border border-border-strong rounded-lg px-4 py-3 font-bold"
-            />
+          <div className="grid grid-cols-3 gap-4">
+            <div className="col-span-2">
+              <label className="block text-sm font-bold text-foreground mb-2">
+                Coupon Code *
+              </label>
+              <input
+                type="text"
+                value={formData.code}
+                onChange={(e) =>
+                  setFormData({ ...formData, code: e.target.value.toUpperCase() })
+                }
+                placeholder="e.g., SUMMER20"
+                className="w-full bg-muted border border-border-strong rounded-lg px-4 py-3 font-bold"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-foreground mb-2">
+                Currency
+              </label>
+              <select
+                value={formData.currency}
+                onChange={(e) =>
+                  setFormData({ ...formData, currency: e.target.value })
+                }
+                className="w-full bg-muted border border-border-strong rounded-lg px-3 py-3 font-bold"
+              >
+                {CURRENCY_LIST.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -105,7 +135,7 @@ export default function CouponModal({
                 className="w-full bg-muted border border-border-strong rounded-lg px-4 py-3"
               >
                 <option value="percentage">Percentage</option>
-                <option value="fixed">Fixed Amount</option>
+                <option value="fixed">Fixed Amount ({formData.currency})</option>
               </select>
             </div>
             <div>
@@ -118,7 +148,7 @@ export default function CouponModal({
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    discountValue: parseInt(e.target.value) || 0,
+                    discountValue: Number(e.target.value) || 0,
                   })
                 }
                 className="w-full bg-muted border border-border-strong rounded-lg px-4 py-3"
@@ -129,7 +159,7 @@ export default function CouponModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-bold text-foreground mb-2">
-                Min. Purchase ({currency})
+                Min. Purchase ({formData.currency})
               </label>
               <input
                 type="number"
@@ -137,7 +167,7 @@ export default function CouponModal({
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    minPurchase: parseInt(e.target.value) || 0,
+                    minPurchase: Number(e.target.value) || 0,
                   })
                 }
                 placeholder="0 for no minimum"

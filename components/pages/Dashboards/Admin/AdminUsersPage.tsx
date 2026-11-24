@@ -513,9 +513,13 @@ export default function AdminUsersPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="font-bold text-sm">
+                        <p className="font-bold text-sm tabular-nums">
                           {user.totalSupport > 0
-                            ? `${user.totalSupport.toLocaleString()} RWF`
+                            ? `${user.totalSupport.toLocaleString()}${
+                                typeof (user as any).currency === "string" && (user as any).currency
+                                  ? ` ${(user as any).currency.toUpperCase()}`
+                                  : ""
+                              }`
                             : "-"}
                         </p>
                       </td>
@@ -746,8 +750,11 @@ export default function AdminUsersPage() {
                   <p className="text-[10px] font-bold uppercase text-muted-foreground">
                     Total Supported
                   </p>
-                  <p className="text-xl font-bold mt-1">
-                    {selectedUser.totalSupport.toLocaleString()} RWF
+                  <p className="text-xl font-bold mt-1 tabular-nums">
+                    {selectedUser.totalSupport.toLocaleString()}
+                    {typeof (selectedUser as any).currency === "string" && (selectedUser as any).currency
+                      ? ` ${(selectedUser as any).currency.toUpperCase()}`
+                      : ""}
                   </p>
                 </div>
                 <div className="bg-muted rounded-lg p-4">

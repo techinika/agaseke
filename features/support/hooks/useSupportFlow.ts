@@ -212,10 +212,15 @@ export function useSupportFlow({
     };
   }, [open, creator.handle]);
 
-  useEffect(() => {
-    if (!open || !defaultMessage) return;
-    setMessage((prev) => (prev ? prev : defaultMessage));
-  }, [open, defaultMessage]);
+  const [prevOpenForDefault, setPrevOpenForDefault] = useState(open);
+  const [prevDefaultMessage, setPrevDefaultMessage] = useState(defaultMessage);
+  if (open !== prevOpenForDefault || defaultMessage !== prevDefaultMessage) {
+    setPrevOpenForDefault(open);
+    setPrevDefaultMessage(defaultMessage);
+    if (open && defaultMessage && !message) {
+      setMessage(defaultMessage);
+    }
+  }
 
   useEffect(() => {
     if (!open || isLoggedIn) return;

@@ -57,15 +57,15 @@ describe("Loading states", () => {
     expect(status).toHaveAttribute("aria-live", "polite");
   });
 
-  it("keeps creator store and sales navigation entries intact", () => {
-    const desktopIds = getNavItems({
+  it("keeps consolidated creator store and sales navigation entry intact", () => {
+    const desktopItems = getNavItems({
       surface: "creator",
       role: "creator",
       slot: "desktop",
       features: { store: true },
-    }).map((item) => item.id);
-
-    expect(desktopIds).toContain("creator-store");
-    expect(desktopIds).toContain("creator-sales");
+    });
+    const storeItem = desktopItems.find((item) => item.id === "creator-store");
+    expect(storeItem).toBeDefined();
+    expect(storeItem?.labelKey).toBe("nav.storeAndSales");
   });
 });

@@ -5,6 +5,7 @@ import {
   pendingPayoutField,
   type PayoutCurrency,
 } from "@/lib/payouts/currency";
+import { resolveHistoricalCurrency } from "@/lib/money/historicalCurrency";
 
 export interface CreatorDashboardBalance {
   currency: string;
@@ -59,10 +60,14 @@ export async function fetchCreatorDashboardData(creator: {
         limit(10),
       ),
     );
-    supports = supportSnap.docs.map((d) => ({
-      id: d.id,
-      ...(d.data() as Record<string, unknown>),
-    }));
+    supports = supportSnap.docs.map((d) => {
+      const data = d.data() as Record<string, unknown>;
+      return {
+        id: d.id,
+        ...data,
+        currency: resolveHistoricalCurrency(data),
+      };
+    });
   }
 
   const getPending = (code: PayoutCurrency) =>

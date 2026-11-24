@@ -77,7 +77,9 @@ async function main() {
       db,
       missingCurrency.map((doc) => doc.txRef).filter((ref) => typeof ref === "string"),
     );
-    const plan = planIncomeCurrencyDocs(docs, transactions);
+    const plan = planIncomeCurrencyDocs(docs, transactions, {
+      preCutoffRwfFallback: true,
+    });
     const byCurrency = summarizeIncomeCurrencyUpdates(plan.updates);
 
     report[name] = {

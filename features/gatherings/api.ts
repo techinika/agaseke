@@ -11,6 +11,7 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 import { db } from "@/db/firebase";
+import { resolveHistoricalCurrency } from "@/lib/money/historicalCurrency";
 
 export interface GatheringRecord extends Record<string, unknown> {
   id: string;
@@ -54,7 +55,11 @@ export function subscribeToGatheringAttendance(
 
 export function subscribeToCreatorTicketSales(
   creatorHandle: string,
-  onData: (summary: { revenue: number; count: number }) => void,
+  onData: (summary: {
+    revenue: number;
+    revenueByCurrency: Record<string, number>;
+    count: number;
+  }) => void,
 ): Unsubscribe {
   const q = query(
     collection(db, "ticketSales"),
@@ -62,10 +67,15 @@ export function subscribeToCreatorTicketSales(
   );
   return onSnapshot(q, (snapshot) => {
     let revenue = 0;
+    const revenueByCurrency: Record<string, number> = {};
     snapshot.docs.forEach((d) => {
-      revenue += ((d.data() as Record<string, unknown>).ticketAmount as number) || 0;
+      const data = d.data() as Record<string, unknown>;
+      const amount = Number(data.ticketAmount || 0);
+      const cur = resolveHistoricalCurrency(data) || "RWF";
+      revenue += amount;
+      revenueByCurrency[cur] = (revenueByCurrency[cur] || 0) + amount;
     });
-    onData({ revenue, count: snapshot.docs.length });
+    onData({ revenue, revenueByCurrency, count: snapshot.docs.length });
   });
 }
 

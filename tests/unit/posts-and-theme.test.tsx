@@ -29,7 +29,7 @@ describe("SSR content redaction", () => {
     });
 
     expect(serialized.isPrivate).toBe(true);
-    expect(serialized.title).toBe("Supporters-only post");
+    expect(serialized.title).toBe("Supporters only post");
     expect(serialized.description).toBe("");
     expect(serialized.content).toBe("");
     expect(serialized.shortDescription).toBe("");
@@ -69,7 +69,7 @@ describe("SSR content redaction", () => {
     });
 
     expect(serialized.isPrivate).toBe(true);
-    expect(serialized.title).toBe("Supporters-only article");
+    expect(serialized.title).toBe("Supporters only article");
     expect(serialized.shortDescription).toBe("");
     expect(serialized.htmlContent).toBe("");
     expect(serialized.coverUrl).toBe("");

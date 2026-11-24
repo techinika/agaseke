@@ -13,6 +13,7 @@ import { db } from "@/db/firebase";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { formatCurrency } from "@/types/currency";
 import { getCurrencyDefinition } from "@/lib/money/registry.generated";
+import { resolveHistoricalCurrency } from "@/lib/money/historicalCurrency";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/Card";
 import { Dialog } from "@/components/ui/Dialog";
@@ -553,7 +554,10 @@ export default function TransactionsPage() {
                     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
                       <div>
                         <p className="text-title font-bold text-fg tabular-nums">
-                          {formatCurrency(tx.amount, tx.currency)}
+                          {formatCurrency(
+                            tx.amount,
+                            resolveHistoricalCurrency(tx as unknown as Record<string, unknown>),
+                          )}
                         </p>
                         {hasOriginalCharge(tx) && (
                           <p className="mt-0.5 text-caption text-muted-fg">
@@ -649,7 +653,12 @@ export default function TransactionsPage() {
                 {transactionTitle(momoDialogTx.tx)}
               </p>
               <p className="mt-0.5 font-bold tabular-nums text-brand-strong">
-                {formatCurrency(momoDialogTx.tx.amount, momoDialogTx.tx.currency)}
+                {formatCurrency(
+                  momoDialogTx.tx.amount,
+                  resolveHistoricalCurrency(
+                    momoDialogTx.tx as unknown as Record<string, unknown>,
+                  ),
+                )}
               </p>
             </div>
             <Input

@@ -25,8 +25,20 @@ export interface RetryResult {
   merchant_reference: string;
 }
 
+const PRE_MULTI_CURRENCY_CUTOFF_MS = Date.parse("2026-12-01T00:00:00.000Z");
+
 function toString(value: unknown): string {
   return value === null || value === undefined ? "" : String(value);
+}
+
+function resolveRetryCurrency(tx: Record<string, unknown>, stored: Record<string, unknown>): string {
+  const explicit = (toString(stored.currency) || toString(tx.currency)).trim().toUpperCase();
+  if (explicit) return explicit;
+  const rawDate = toString(tx.createdAt) || toString(tx.successfulAt);
+  if (!rawDate) return "RWF";
+  const ms = Date.parse(rawDate);
+  if (!Number.isFinite(ms) || ms < PRE_MULTI_CURRENCY_CUTOFF_MS) return "RWF";
+  return "";
 }
 
 function extractDocId(name: string): string {
@@ -71,7 +83,7 @@ function buildPayload(tx: Record<string, unknown>): InitRequest {
       : {};
 
   const type = toString(stored.type) || toString(tx.type) || "support";
-  const currency = toString(stored.currency) || toString(tx.currency);
+  const currency = resolveRetryCurrency(tx, stored);
   if (!currency) {
     throw new RetryError("Transaction is missing currency and cannot be retried", 400);
   }
@@ -209,7 +221,7 @@ export async function retryTransaction(
     }
   }
 
-  const currency = toString(tx.currency);
+  const currency = resolveRetryCurrency(tx, {});
   if (!currency) {
     throw new RetryError("Transaction is missing currency and cannot be retried", 400);
   }

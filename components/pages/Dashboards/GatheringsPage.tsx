@@ -33,6 +33,9 @@ export default function GatheringsPage() {
   const [attendees, setAttendees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalTicketRevenue, setTotalTicketRevenue] = useState(0);
+  const [ticketRevenueByCurrency, setTicketRevenueByCurrency] = useState<
+    Record<string, number>
+  >({});
   const [totalTicketCount, setTotalTicketCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [checkingIn, setCheckingIn] = useState<string | null>(null);
@@ -68,8 +71,9 @@ export default function GatheringsPage() {
     if (!creator?.handle) return;
     const unsubscribe = subscribeToCreatorTicketSales(
       creator.handle,
-      ({ revenue, count }) => {
+      ({ revenue, revenueByCurrency, count }) => {
         setTotalTicketRevenue(revenue);
+        setTicketRevenueByCurrency(revenueByCurrency);
         setTotalTicketCount(count);
       },
     );
@@ -370,8 +374,12 @@ export default function GatheringsPage() {
               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                 Total Ticket Sales
               </p>
-              <p className="text-lg font-bold text-emerald-600">
-                {formatCurrency(totalTicketRevenue, creator?.currency || "RWF")}
+              <p className="text-lg font-bold text-emerald-600 tabular-nums">
+                {Object.keys(ticketRevenueByCurrency).length > 0
+                  ? Object.entries(ticketRevenueByCurrency)
+                      .map(([code, amt]) => formatCurrency(amt, code))
+                      .join(" · ")
+                  : formatCurrency(totalTicketRevenue, "RWF")}
               </p>
               <p className="text-[10px] text-muted-foreground">
                 {totalTicketCount} ticket{totalTicketCount !== 1 ? "s" : ""} sold
@@ -406,6 +414,7 @@ export default function GatheringsPage() {
           activeEvent={activeEvent}
           attendees={displayAttendees}
           totalTicketRevenue={totalTicketRevenue}
+          ticketRevenueByCurrency={ticketRevenueByCurrency}
           totalTicketCount={totalTicketCount}
           onEdit={startEdit}
           onDelete={setIsDeleting}
