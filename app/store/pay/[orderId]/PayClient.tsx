@@ -23,7 +23,7 @@ import { isCurrencySupportedByMethod } from "@/lib/money/rails";
 import type { CurrencyCode } from "@/lib/money/registry.generated";
 
 const platformSharePercentage =
-  Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
+  Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.1;
 
 interface StoreOrderItem {
   productId: string;
@@ -73,6 +73,13 @@ interface StoreProductRecord {
   platformFeePayer?: "buyer" | "creator";
 }
 
+function generateIdempotencyKey(prefix: string): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
+
 export default function PayClient() {
   const params = useParams();
   const router = useRouter();
@@ -93,6 +100,18 @@ export default function PayClient() {
   const [creatorHandle, setCreatorHandle] = useState("");
   const [creatorCurrency, setCreatorCurrency] = useState("");
   const unsubTxRef = useRef<(() => void) | null>(null);
+  const idempotencyKeyRef = useRef<string>("");
+
+  const getIdempotencyKey = () => {
+    if (!idempotencyKeyRef.current) {
+      idempotencyKeyRef.current = generateIdempotencyKey("store");
+    }
+    return idempotencyKeyRef.current;
+  };
+
+  const resetIdempotencyKey = () => {
+    idempotencyKeyRef.current = generateIdempotencyKey("store");
+  };
 
   useEffect(() => {
     return () => {
@@ -136,7 +155,11 @@ export default function PayClient() {
         setPhone((prev) => prev || String(shippingPhone));
       }
 
-      const orderItems: StoreOrderItem[] = data.items || [];
+      const rawItems =
+        data.items && data.items.length > 0
+          ? data.items
+          : ((data as unknown as { productIds?: StoreOrderItem[] }).productIds ?? []);
+      const orderItems: StoreOrderItem[] = rawItems;
       const map: Record<string, StoreProductRecord> = {};
       for (const item of orderItems) {
         if (item.productId && !map[item.productId]) {
@@ -147,6 +170,15 @@ export default function PayClient() {
               ...(pSnap.data() as Omit<StoreProductRecord, "id">),
             };
           }
+        }
+      }
+      if (data.productId && !map[data.productId]) {
+        const pSnap = await getDoc(doc(db, "storeProducts", data.productId));
+        if (pSnap.exists()) {
+          map[data.productId] = {
+            id: pSnap.id,
+            ...(pSnap.data() as Omit<StoreProductRecord, "id">),
+          };
         }
       }
       setProducts(map);
@@ -212,22 +244,58 @@ export default function PayClient() {
     return () => unsubOrder();
   }, [orderId]);
 
-  const items: StoreOrderItem[] = order?.items || [];
+  const rawOrderProductIds = (order as unknown as { productIds?: StoreOrderItem[] } | null)?.productIds;
+  const items: StoreOrderItem[] =
+    order?.items && order.items.length > 0 ? order.items : rawOrderProductIds || [];
 
-  let platformFee = 0;
+  const rawItemsSubtotal =
+    items.length > 0
+      ? items.reduce(
+          (sum, item) => sum + Number(item.price || 0) * Math.max(1, Number(item.quantity) || 1),
+          0,
+        )
+      : Number(order?.productPrice || 0) * Math.max(1, Number(order?.quantity) || 1);
+  const storedOrderTotal = Number(order?.total ?? order?.totalAmount ?? rawItemsSubtotal);
+  const discount = Math.max(0, Number((order as unknown as { discount?: number } | null)?.discount || 0));
+  const itemsSubtotal = rawItemsSubtotal > 0 ? rawItemsSubtotal : storedOrderTotal;
+  const netSubtotal =
+    items.length > 0 && discount > 0
+      ? Math.max(0, itemsSubtotal - discount)
+      : Math.max(0, storedOrderTotal);
+  const discountFactor = itemsSubtotal > 0 ? netSubtotal / itemsSubtotal : 1;
+
+  let rawPlatformFee = 0;
   let buyerPaysMore = false;
-  for (const item of items) {
-    const product = products[item.productId];
+  if (items.length > 0) {
+    for (const item of items) {
+      const product = products[item.productId];
+      const feePayer = product?.platformFeePayer || "buyer";
+      if (feePayer === "buyer") {
+        rawPlatformFee +=
+          Number(item.price || 0) * Math.max(1, Number(item.quantity) || 1) * platformSharePercentage;
+        buyerPaysMore = true;
+      }
+    }
+  } else if (order?.productId) {
+    const product = products[order.productId];
     const feePayer = product?.platformFeePayer || "buyer";
     if (feePayer === "buyer") {
-      platformFee += item.price * item.quantity * platformSharePercentage;
+      rawPlatformFee = itemsSubtotal * platformSharePercentage;
       buyerPaysMore = true;
     }
   }
 
-  const finalTotal = order?.total ?? order?.totalAmount ?? 0;
-  const totalWithPlatformFee = finalTotal + platformFee;
-  const amountToPay = buyerPaysMore ? totalWithPlatformFee : finalTotal;
+  const savedPlatformFee = (order as unknown as { platformFee?: number } | null)?.platformFee;
+  const platformFee =
+    savedPlatformFee != null ? Number(savedPlatformFee) : rawPlatformFee * discountFactor;
+  const finalTotal = netSubtotal;
+  const totalWithPlatformFee = finalTotal + (buyerPaysMore ? platformFee : 0);
+  const amountToPay =
+    order?.total != null && Number(order.total) > netSubtotal + 0.001
+      ? Number(order.total)
+      : buyerPaysMore
+        ? totalWithPlatformFee
+        : finalTotal;
 
   const currency = (
     order?.currency ||
@@ -249,10 +317,19 @@ export default function PayClient() {
         setPaymentPhase("confirmed");
         toast.success("Payment confirmed!");
         unsub();
-      } else if (tx.status === "failed") {
+      } else if (tx.status === "failed" || tx.status === "expired") {
         setPaymentPhase("failed");
-        setPaymentError("The payment was declined or cancelled.");
-        toast.error("Payment failed. Please try again.");
+        setPaymentError(
+          tx.status === "expired"
+            ? "The payment session expired. Please try again."
+            : "The payment was declined or cancelled.",
+        );
+        resetIdempotencyKey();
+        toast.error(
+          tx.status === "expired"
+            ? "Payment session expired. Please try again."
+            : "Payment failed. Please try again.",
+        );
         unsub();
       }
     });
@@ -309,7 +386,7 @@ export default function PayClient() {
         email: currentUser.email || order.buyerEmail || "",
         firstName: currentUser.displayName?.split(" ")[0] || "Customer",
         lastName: currentUser.displayName?.split(" ")[1] || "",
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey: getIdempotencyKey(),
       };
 
       if (activeMethod === "momo") {
@@ -324,7 +401,8 @@ export default function PayClient() {
         setPaymentPhase("waiting");
         watchTransaction(data.merchant_reference || data.ref);
         if (data.redirect_url) {
-          window.open(data.redirect_url, "_blank", "noopener,noreferrer");
+          const popup = window.open(data.redirect_url, "_blank", "noopener,noreferrer");
+          if (!popup) window.location.assign(data.redirect_url);
         }
       }
     } catch (error) {
@@ -426,12 +504,28 @@ export default function PayClient() {
                 </span>
               </div>
             )}
+            {discount > 0 && (
+              <div className="flex justify-between text-sm text-success">
+                <span>Discount</span>
+                <span className="font-medium tabular-nums">
+                  -{currency ? formatCurrency(discount, currency) : discount.toLocaleString()}
+                </span>
+              </div>
+            )}
+            {buyerPaysMore && platformFee > 0 && (
+              <div className="flex justify-between text-sm text-muted-fg">
+                <span>Platform fee</span>
+                <span className="font-medium tabular-nums">
+                  {currency ? formatCurrency(platformFee, currency) : platformFee.toLocaleString()}
+                </span>
+              </div>
+            )}
             <div className="border-t border-line pt-2 flex justify-between font-bold">
               <span>Total</span>
               <span className="tabular-nums">
                 {currency
-                  ? formatCurrency(finalTotal, currency)
-                  : finalTotal.toLocaleString()}
+                  ? formatCurrency(amountToPay, currency)
+                  : amountToPay.toLocaleString()}
               </span>
             </div>
           </div>
@@ -495,6 +589,7 @@ export default function PayClient() {
                   onClick={() => {
                     unsubTxRef.current?.();
                     unsubTxRef.current = null;
+                    resetIdempotencyKey();
                     setCardRedirectUrl(null);
                     setPaymentError("");
                     setPaymentPhase("idle");
@@ -524,7 +619,10 @@ export default function PayClient() {
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
-                      onClick={() => setPaymentMethod("momo")}
+                      onClick={() => {
+                        if (paymentMethod !== "momo") resetIdempotencyKey();
+                        setPaymentMethod("momo");
+                      }}
                       className={`py-3 px-4 rounded-control border-2 font-bold text-sm transition-all ${
                         paymentMethod === "momo"
                           ? "border-brand-strong bg-brand-soft text-brand-strong"
@@ -535,7 +633,10 @@ export default function PayClient() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setPaymentMethod("card")}
+                      onClick={() => {
+                        if (paymentMethod !== "card") resetIdempotencyKey();
+                        setPaymentMethod("card");
+                      }}
                       className={`py-3 px-4 rounded-control border-2 font-bold text-sm transition-all ${
                         paymentMethod === "card"
                           ? "border-brand-strong bg-brand-soft text-brand-strong"

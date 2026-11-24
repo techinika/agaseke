@@ -23,7 +23,7 @@ interface FeedbackItem {
   referralLikelihood?: number;
 }
 
-export default function AdminFeedbackPage() {
+export default function AdminFeedbackPage({ embedded = false }: { embedded?: boolean } = {}) {
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -57,9 +57,9 @@ export default function AdminFeedbackPage() {
         ).toFixed(1)
       : "0";
 
-  return (
-    <div className="min-h-screen bg-canvas pb-20 text-fg">
-      <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
+  const content = (
+    <>
+      {!embedded && (
         <header className="mb-8 border-b border-line pb-6">
           <p className="text-caption font-semibold text-brand-strong">Feedback</p>
           <h1 className="mt-1 text-heading font-black tracking-tight text-fg">
@@ -69,6 +69,7 @@ export default function AdminFeedbackPage() {
             Ratings and suggestions submitted from the studio.
           </p>
         </header>
+      )}
 
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="rounded-card border border-line bg-surface p-5">
@@ -160,7 +161,14 @@ export default function AdminFeedbackPage() {
             </div>
           )}
         </div>
-      </div>
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <div className="min-h-screen bg-canvas pb-20 text-fg">
+      <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">{content}</div>
     </div>
   );
 }

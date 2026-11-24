@@ -16,7 +16,7 @@ import { downloadProduct } from "@/lib/downloadProduct";
 import { formatMoney as formatCurrency } from "@/lib/format/money";
 
 const platformSharePercentage =
-  Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
+  Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.1;
 
 export function ProductDetailModal({
   product,

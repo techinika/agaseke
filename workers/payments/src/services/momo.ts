@@ -61,6 +61,8 @@ export async function initiateMomoPayment(
     };
   }
 
+  let providerInitiated = false;
+
   try {
     const authRes = await fetch(
       "https://payments.paypack.rw/api/auth/agents/authorize",
@@ -189,6 +191,9 @@ export async function initiateMomoPayment(
         txFields.orderId = resolved.orderId;
       }
       txFields.platformFeePayer = resolved.platformFeePayer || "buyer";
+      if (resolved.couponId) {
+        txFields.couponId = resolved.couponId;
+      }
       txFields.couponCode = resolved.couponCode || "";
       txFields.discount = resolved.discount || 0;
       txFields.buyerName = resolved.buyerName || "";
@@ -221,6 +226,7 @@ export async function initiateMomoPayment(
 
     if (!doc) {
       await finishAttempt(env, attempt.key, { ref: payData.ref });
+      providerInitiated = true;
       throw new PaymentRequestError(
         "TRANSACTION_PERSIST_FAILED",
         `Payment ${payData.ref} was initiated but could not be recorded. Contact support with this reference.`,
@@ -229,6 +235,7 @@ export async function initiateMomoPayment(
     }
 
     await finishAttempt(env, attempt.key, { ref: payData.ref });
+    providerInitiated = true;
 
     if (resolved.fx) {
       await consumeCheckoutQuote(env, resolved.fx.id, payData.ref);
@@ -254,7 +261,9 @@ export async function initiateMomoPayment(
 
     return { ref: payData.ref, status: "pending" };
   } catch (error) {
-    await abortAttempt(env, attempt.key, error);
+    if (!providerInitiated) {
+      await abortAttempt(env, attempt.key, error);
+    }
     throw error;
   }
 }

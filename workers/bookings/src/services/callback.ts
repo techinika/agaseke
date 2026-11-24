@@ -1,5 +1,5 @@
 import type { Env } from "../types";
-import { firestorePatch, firestoreApplyPayment } from "../firestore";
+import { firestoreGet, firestorePatch, firestoreApplyPayment, extractFirestoreDocument } from "../firestore";
 import { logActivity } from "../logger";
 import { createNotification } from "../adminNotifications";
 import { currencyNumberField, roundCurrencyAmount } from "../money/amount";
@@ -35,6 +35,21 @@ export async function handleBookingCallback(
     console.error("Booking callback: No bookingId in txData");
     await logActivity(env, "error", "booking", "Booking callback: No bookingId in txData", { paymentRef });
     return { received: false };
+  }
+
+  const bookingSnap = await firestoreGet(env, `bookingRequests/${bookingId}`);
+  if (bookingSnap?.fields) {
+    const existingBooking = extractFirestoreDocument(bookingSnap.fields as Record<string, unknown>);
+    const existingPayStatus = String(existingBooking.paymentStatus || "").toLowerCase();
+    const existingTxRef = String(existingBooking.txRef || "");
+    if (existingPayStatus === "paid" && existingTxRef && existingTxRef !== paymentRef) {
+      await logActivity(env, "warn", "booking", `Booking callback ignored: booking ${bookingId} already paid`, {
+        txRef: paymentRef,
+        existingTxRef,
+        bookingId,
+      });
+      return { received: true };
+    }
   }
 
   const now = new Date().toISOString();
@@ -90,12 +105,6 @@ export async function handleBookingCallback(
       fields: { [earningsField]: referralAmount, [payoutField]: referralAmount },
     });
   }
-
-  await firestorePatch(env, `bookingRequests/${bookingId}`, {
-    paymentStatus: { stringValue: "paid" },
-    status: { stringValue: "pending" },
-    updatedAt: { timestampValue: now },
-  });
 
   const buyerId = (txData.buyerId || txData.supporterId || "") as string;
   if (buyerId && buyerId !== "anonymous") {
@@ -155,7 +164,15 @@ export async function handleBookingCallback(
       bookingId,
       creatorShare,
     });
+    return { received: true };
   }
+
+  await firestorePatch(env, `bookingRequests/${bookingId}`, {
+    paymentStatus: { stringValue: "paid" },
+    status: { stringValue: "pending" },
+    txRef: { stringValue: paymentRef },
+    updatedAt: { timestampValue: now },
+  });
 
   if (txData.creatorUid) {
     await createNotification(env, {

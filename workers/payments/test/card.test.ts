@@ -244,4 +244,56 @@ describe("initiateCardPayment Pesapal resilience", () => {
     expect(Array.isArray(savedTx.items)).toBe(true);
     expect(savedTx.shippingAddress).toMatchObject({ city: "Kigali" });
   });
+
+  it("uses allowlisted requestOrigin for Pesapal callback_url and ignores untrusted origins", async () => {
+    const fetchCalls: Array<{ url: string; body: Record<string, unknown> }> = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        const body = init?.body ? JSON.parse(String(init.body)) : {};
+        fetchCalls.push({ url, body });
+        if (url.endsWith("/api/Auth/RequestToken")) {
+          return new Response(JSON.stringify({ token: "pesapal-jwt" }), { status: 200 });
+        }
+        if (url.endsWith("/api/URLSetup/RegisterIPN")) {
+          return new Response(JSON.stringify({ ipn_id: "live-ipn-1" }), { status: 200 });
+        }
+        if (url.endsWith("/api/Transactions/SubmitOrderRequest")) {
+          return new Response(
+            JSON.stringify({
+              redirect_url: "https://pesapal.example.com/pay/staging",
+              order_tracking_id: "track-staging",
+            }),
+            { status: 200 },
+          );
+        }
+        return new Response("Not Found", { status: 404 });
+      }),
+    );
+
+    await initiateCardPayment(
+      baseEnv,
+      { type: "booking", creatorHandle: "alice", bookingId: "bk-1" } as unknown as InitRequest,
+      "buyer-1",
+      "idem-staging-1",
+      { requestOrigin: "https://staging.agaseke.me" },
+    );
+    const stagingSubmit = fetchCalls.find((c) =>
+      c.url.endsWith("/api/Transactions/SubmitOrderRequest"),
+    );
+    expect(stagingSubmit?.body.callback_url).toBe("https://staging.agaseke.me/payment");
+
+    fetchCalls.length = 0;
+    await initiateCardPayment(
+      baseEnv,
+      { type: "booking", creatorHandle: "alice", bookingId: "bk-1" } as unknown as InitRequest,
+      "buyer-1",
+      "idem-evil-1",
+      { requestOrigin: "https://evil.example.com" },
+    );
+    const fallbackSubmit = fetchCalls.find((c) =>
+      c.url.endsWith("/api/Transactions/SubmitOrderRequest"),
+    );
+    expect(fallbackSubmit?.body.callback_url).toBe("https://agaseke.me/payment");
+  });
 });

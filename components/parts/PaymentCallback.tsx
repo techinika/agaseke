@@ -11,6 +11,7 @@ import {
   Calendar,
   Clock,
   MapPin,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { AgasekeLogo } from "@/components/brand/AgasekeLogo";
@@ -44,6 +45,7 @@ export default function PaymentCallback() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [status, setStatus] = useState<"verifying" | "success" | "error">("verifying");
+  const [errorReason, setErrorReason] = useState<"failed" | "expired" | "missing">("failed");
   const [txData, setTxData] = useState<any>(null);
   const [gatheringData, setGatheringData] = useState<any>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
@@ -82,7 +84,8 @@ export default function PaymentCallback() {
           setStatus("success");
           triggerConfetti();
           if (unsubscribeRef.current) unsubscribeRef.current();
-        } else if (data.status === "failed") {
+        } else if (data.status === "expired" || data.status === "failed") {
+          setErrorReason(data.status === "expired" ? "expired" : "failed");
           setStatus("error");
           if (unsubscribeRef.current) unsubscribeRef.current();
         }
@@ -96,6 +99,7 @@ export default function PaymentCallback() {
       listenToTransaction(merchantRef);
     } else {
       // eslint-disable-next-line react-hooks/set-state-in-effect
+      setErrorReason("missing");
       setStatus("error");
     }
 
@@ -106,6 +110,8 @@ export default function PaymentCallback() {
 
   const isGathering = txData?.type === "gathering";
   const isStore = txData?.type === "store";
+  const isBooking = txData?.type === "booking";
+  const isCommunity = txData?.type === "community";
 
   return (
     <div className="min-h-screen bg-surface-sunken flex flex-col items-center justify-center p-6">
@@ -123,14 +129,22 @@ export default function PaymentCallback() {
                     ? "Confirming your order payment..."
                     : isGathering
                       ? "Confirming your ticket purchase..."
-                      : "Confirming your gift..."}
+                      : isBooking
+                        ? "Confirming your booking payment..."
+                        : isCommunity
+                          ? "Confirming your membership..."
+                          : "Confirming your gift..."}
                 </h1>
                 <p className="text-muted-fg text-sm">
                   {isStore
                     ? "We're verifying your order payment with the bank. This won't take long."
                     : isGathering
                       ? "We're verifying your ticket payment with the bank. This won't take long."
-                      : "We're verifying your transaction with the bank. This won't take long."}
+                      : isBooking
+                        ? "We're verifying your booking payment with the bank. This won't take long."
+                        : isCommunity
+                          ? "We're verifying your membership payment with the bank. This won't take long."
+                          : "We're verifying your transaction with the bank. This won't take long."}
                 </p>
               </div>
               <div className="text-caption font-mono text-muted-fg uppercase tracking-widest">
@@ -220,10 +234,83 @@ export default function PaymentCallback() {
                   </div>
                   <div className="pt-4">
                     <Link
-                      href={`/${txData?.creatorId || ""}`}
+                      href={`/${txData?.creatorId || ""}/store`}
                       className="w-full bg-foreground text-background py-4 rounded-card font-bold flex items-center justify-center gap-2 hover:bg-brand-strong transition-all group"
                     >
                       Back to Store{" "}
+                      <ArrowRight
+                        size={18}
+                        className="group-hover:translate-x-1 transition-transform"
+                      />
+                    </Link>
+                  </div>
+                </>
+              ) : isBooking ? (
+                <>
+                  <div className="w-20 h-20 bg-success-bg text-success rounded-full flex items-center justify-center mx-auto ring-8 ring-success-bg/50">
+                    <Calendar size={40} />
+                  </div>
+                  <div className="space-y-2">
+                    <h1 className="text-3xl font-black text-fg">
+                      Booking Confirmed!
+                    </h1>
+                    <p className="text-muted-fg font-medium">
+                      Your booking payment of{" "}
+                      <span className="text-brand-strong font-bold">
+                        {formatCurrency(Number(txData?.amount || 0), txData?.currency || "")}
+                      </span>{" "}
+                      has been confirmed.
+                    </p>
+                    {originalChargeLabel(txData) && (
+                      <p className="text-xs text-muted-fg">
+                        {originalChargeLabel(txData)}
+                      </p>
+                    )}
+                    <p className="text-sm text-muted-fg">
+                      The creator will confirm your session schedule shortly.
+                    </p>
+                  </div>
+                  <div className="pt-4">
+                    <Link
+                      href={`/${txData?.creatorId || ""}/booking`}
+                      className="w-full bg-foreground text-background py-4 rounded-card font-bold flex items-center justify-center gap-2 hover:bg-brand-strong transition-all group"
+                    >
+                      View Booking{" "}
+                      <ArrowRight
+                        size={18}
+                        className="group-hover:translate-x-1 transition-transform"
+                      />
+                    </Link>
+                  </div>
+                </>
+              ) : isCommunity ? (
+                <>
+                  <div className="w-20 h-20 bg-brand-soft text-brand-strong rounded-full flex items-center justify-center mx-auto ring-8 ring-brand-soft/50">
+                    <Users size={40} />
+                  </div>
+                  <div className="space-y-2">
+                    <h1 className="text-3xl font-black text-fg">
+                      Welcome to the Community!
+                    </h1>
+                    <p className="text-muted-fg font-medium">
+                      Your membership payment of{" "}
+                      <span className="text-brand-strong font-bold">
+                        {formatCurrency(Number(txData?.amount || 0), txData?.currency || "")}
+                      </span>{" "}
+                      has been confirmed.
+                    </p>
+                    {originalChargeLabel(txData) && (
+                      <p className="text-xs text-muted-fg">
+                        {originalChargeLabel(txData)}
+                      </p>
+                    )}
+                  </div>
+                  <div className="pt-4">
+                    <Link
+                      href={`/${txData?.creatorId || ""}/community`}
+                      className="w-full bg-foreground text-background py-4 rounded-card font-bold flex items-center justify-center gap-2 hover:bg-brand-strong transition-all group"
+                    >
+                      Explore Community{" "}
                       <ArrowRight
                         size={18}
                         className="group-hover:translate-x-1 transition-transform"
@@ -274,10 +361,13 @@ export default function PaymentCallback() {
                 <XCircle size={40} />
               </div>
               <div className="space-y-2">
-                <h1 className="text-2xl font-bold text-fg">Payment Failed</h1>
+                <h1 className="text-2xl font-bold text-fg">
+                  {errorReason === "expired" ? "Payment Expired" : "Payment Failed"}
+                </h1>
                 <p className="text-muted-fg text-sm">
-                  We couldn&apos;t verify this transaction. It might have been cancelled
-                  or declined.
+                  {errorReason === "expired"
+                    ? "This payment session expired before completion. Go back to start a fresh payment."
+                    : "We couldn't verify this transaction. It might have been cancelled or declined."}
                 </p>
               </div>
               <button

@@ -51,11 +51,34 @@ function formatPesapalError(error: PesapalErrorPayload | undefined, fallback: st
   return msg || code || fallback;
 }
 
+function resolveCallbackBaseUrl(env: Env, requestOrigin?: string | null): string {
+  const appUrl = (env.APP_URL || "").trim().replace(/\/+$/, "");
+  const allowed = new Set<string>([
+    "https://agaseke.me",
+    "https://www.agaseke.me",
+    "https://staging.agaseke.me",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+  ]);
+  if (appUrl) {
+    try {
+      allowed.add(new URL(appUrl).origin);
+    } catch {}
+  }
+
+  const origin = (requestOrigin || "").trim().replace(/\/+$/, "");
+  if (origin && allowed.has(origin)) {
+    return origin;
+  }
+  return appUrl;
+}
+
 export async function initiateCardPayment(
   env: Env,
   body: InitRequest,
   uid: string,
   idempotencyKey?: string,
+  options: { requestOrigin?: string | null } = {},
 ): Promise<PaymentInitResult> {
   const repo = createPaymentRepository(env);
   const quote = await loadCheckoutQuote(repo, body.quoteId, uid, body);
@@ -114,7 +137,10 @@ export async function initiateCardPayment(
     );
   }
 
+  let providerInitiated = false;
+
   try {
+    const callbackBaseUrl = resolveCallbackBaseUrl(env, options.requestOrigin);
     const authRes = await fetch(`${pesapalUrl}/api/Auth/RequestToken`, {
       method: "POST",
       headers: {
@@ -243,7 +269,7 @@ export async function initiateCardPayment(
             resolved.creatorHandle,
             resolved.productName,
           ),
-          callback_url: `${appUrl}/payment`,
+          callback_url: `${callbackBaseUrl}/payment`,
           notification_id: notificationId,
           billing_address: {
             email_address: email,
@@ -360,6 +386,9 @@ export async function initiateCardPayment(
         txFields.orderId = resolved.orderId;
       }
       txFields.platformFeePayer = resolved.platformFeePayer || "buyer";
+      if (resolved.couponId) {
+        txFields.couponId = resolved.couponId;
+      }
       txFields.couponCode = resolved.couponCode || "";
       txFields.discount = resolved.discount || 0;
       txFields.buyerName = resolved.buyerName || "";
@@ -399,6 +428,7 @@ export async function initiateCardPayment(
         redirectUrl: payData.redirect_url,
         merchantReference: merchantRef,
       });
+      providerInitiated = true;
       throw new PaymentRequestError(
         "TRANSACTION_PERSIST_FAILED",
         `Payment ${merchantRef} was initiated but could not be recorded. Contact support with this reference.`,
@@ -411,6 +441,7 @@ export async function initiateCardPayment(
       redirectUrl: payData.redirect_url,
       merchantReference: merchantRef,
     });
+    providerInitiated = true;
 
     if (resolved.fx) {
       await consumeCheckoutQuote(env, resolved.fx.id, merchantRef);
@@ -441,7 +472,9 @@ export async function initiateCardPayment(
       status: "pending",
     };
   } catch (error) {
-    await abortAttempt(env, attempt.key, error);
+    if (!providerInitiated) {
+      await abortAttempt(env, attempt.key, error);
+    }
     throw error;
   }
 }

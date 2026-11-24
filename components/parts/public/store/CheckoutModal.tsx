@@ -20,7 +20,7 @@ import { formatMoney as formatCurrency } from "@/lib/format/money";
 import { isCurrencySupportedByMethod } from "@/lib/money/rails";
 
 const platformSharePercentage =
-  Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
+  Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.1;
 
 export function CheckoutModal({
   cart,
@@ -66,18 +66,20 @@ export function CheckoutModal({
     (item) => item.product.type === "physical",
   );
 
-  let platformFee = 0;
+  let rawPlatformFee = 0;
   let buyerPaysMore = false;
 
   for (const item of cart) {
     const feePayer = item.product.platformFeePayer || "buyer";
     if (feePayer === "buyer") {
-      platformFee += getItemPrice(item) * platformSharePercentage;
+      rawPlatformFee += getItemPrice(item) * platformSharePercentage;
       buyerPaysMore = true;
     }
   }
 
-  const finalTotal = total - couponDiscount;
+  const finalTotal = Math.max(0, total - couponDiscount);
+  const discountFactor = total > 0 ? finalTotal / total : 1;
+  const platformFee = rawPlatformFee * discountFactor;
   const totalWithPlatformFee = finalTotal + platformFee;
 
   const applyCoupon = async () => {
@@ -202,7 +204,8 @@ export function CheckoutModal({
       } else {
         const paymentData = await initiateCardPayment(productData);
         if (paymentData.redirect_url) {
-          window.open(paymentData.redirect_url, "_blank", "noopener,noreferrer");
+          const popup = window.open(paymentData.redirect_url, "_blank", "noopener,noreferrer");
+          if (!popup) window.location.assign(paymentData.redirect_url);
         }
         toast.success("Card checkout opened. Complete payment in the new tab.");
       }

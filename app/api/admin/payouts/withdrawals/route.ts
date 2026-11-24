@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { admin, adminDb } from "@/db/firebaseAdmin";
+import { admin, adminAuth, adminDb } from "@/db/firebaseAdmin";
 import { requireAdmin } from "@/lib/authMiddleware";
 import { fromMajor, MoneyError, toMajor } from "@/lib/money";
 import {
@@ -105,7 +105,10 @@ export async function POST(request: NextRequest) {
         rail: withdrawal.rail,
       });
 
-      const payoutAmount = fromMajor(payoutCurrency, withdrawal.amount as any);
+      const payoutAmount = fromMajor(
+        payoutCurrency,
+        withdrawal.amount as string | number,
+      );
       if (payoutAmount.amountMinor <= 0) {
         throw new ApiError(400, "INVALID_AMOUNT", "Withdrawal request has an invalid amount");
       }
@@ -124,11 +127,13 @@ export async function POST(request: NextRequest) {
 
       const plan = asPlan(withdrawal);
       const balanceRef = adminDb.collection("creatorBalances").doc(creatorHandle);
-      let balanceData: any = null;
+      let balanceData: { pendingWithdrawals?: Record<string, unknown> } | null = null;
       if (ledgerEnabled) {
         const balanceSnap = await transaction.get(balanceRef);
         if (!balanceSnap.exists) throw new ApiError(409, "LEDGER_BALANCE_NOT_FOUND", "Ledger balance is missing for this creator");
-        balanceData = balanceSnap.data() || {};
+        balanceData = (balanceSnap.data() || {}) as {
+          pendingWithdrawals?: Record<string, unknown>;
+        };
       }
 
       if (ledgerEnabled && held) {
@@ -202,7 +207,9 @@ export async function POST(request: NextRequest) {
         });
 
         // decrement per-source pending + held (major units legacy fields)
-        const creatorUpdates: Record<string, any> = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+        const creatorUpdates: Record<string, admin.firestore.FieldValue> = {
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
         for (const s of sourceSummary) {
           creatorUpdates[pendingPayoutField(s.currency as PayoutCurrency)] = admin.firestore.FieldValue.increment(-s.amountMajor);
           if (held) {
@@ -227,7 +234,7 @@ export async function POST(request: NextRequest) {
           });
         }
 
-        return { action, requestId, payoutId: payoutRef.id, creatorId: creatorUid, creatorName: String(withdrawal.creatorName || creatorSnap.data()?.name || ""), handle: creatorHandle, amount: amountMajor, currency: payoutCurrency, provider: route.provider, rail: route.rail, method, accountNumber, sourceDebits: sourceSummary };
+        return { action, requestId, payoutId: payoutRef.id, creatorId: creatorUid, creatorName: String(withdrawal.creatorName || creatorSnap.data()?.name || ""), creatorEmail: String(withdrawal.creatorEmail || ""), handle: creatorHandle, amount: amountMajor, currency: payoutCurrency, provider: route.provider, rail: route.rail, method, accountNumber, sourceDebits: sourceSummary };
       }
 
       // reject
@@ -252,7 +259,9 @@ export async function POST(request: NextRequest) {
       });
 
       if (held) {
-        const creatorUpdates: Record<string, any> = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
+        const creatorUpdates: Record<string, admin.firestore.FieldValue> = {
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        };
         for (const s of sourceSummary) {
           creatorUpdates[pendingWithdrawalsField(s.currency as PayoutCurrency)] = admin.firestore.FieldValue.increment(-s.amountMajor);
         }
@@ -275,10 +284,48 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      return { action, requestId, creatorId: creatorUid, creatorName: String(withdrawal.creatorName || creatorSnap.data()?.name || ""), handle: creatorHandle, amount: amountMajor, currency: payoutCurrency, provider: route.provider, rail: route.rail, method, accountNumber, sourceDebits: sourceSummary };
+      return { action, requestId, creatorId: creatorUid, creatorName: String(withdrawal.creatorName || creatorSnap.data()?.name || ""), creatorEmail: String(withdrawal.creatorEmail || ""), handle: creatorHandle, amount: amountMajor, currency: payoutCurrency, provider: route.provider, rail: route.rail, method, accountNumber, sourceDebits: sourceSummary };
     });
 
-    return NextResponse.json({ success: true, ...result });
+    let creatorEmail = result.creatorEmail;
+    if (!creatorEmail && result.creatorId) {
+      try {
+        const profileSnap = await adminDb.collection("profiles").doc(result.creatorId).get();
+        creatorEmail = String(profileSnap.data()?.email || "");
+      } catch {
+        // ignore lookup failure
+      }
+      if (!creatorEmail) {
+        try {
+          const userRecord = await adminAuth.getUser(result.creatorId);
+          creatorEmail = userRecord.email || "";
+        } catch {
+          // ignore lookup failure
+        }
+      }
+    }
+
+    if (result.creatorId) {
+      try {
+        const formattedAmount = `${result.amount.toLocaleString()} ${result.currency}`;
+        await adminDb.collection("notifications").add({
+          userId: result.creatorId,
+          type: result.action === "approve" ? "payout_approved" : "payout_rejected",
+          title: result.action === "approve" ? "Payout Processed" : "Withdrawal Rejected",
+          message:
+            result.action === "approve"
+              ? `Your withdrawal of ${formattedAmount} via ${result.method} has been approved and sent.`
+              : `Your withdrawal request of ${formattedAmount} was rejected and the held balance has been restored.`,
+          link: "/creator/payouts",
+          read: false,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      } catch (notifyErr) {
+        console.warn("Failed to create creator withdrawal notification:", notifyErr);
+      }
+    }
+
+    return NextResponse.json({ success: true, ...result, creatorEmail });
   } catch (error) {
     return errorResponse(error);
   }

@@ -1,10 +1,5 @@
-import { Metadata } from "next";
-import AdminCountriesPage from "@/components/pages/Dashboards/Admin/AdminCountriesPage";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  robots: { index: false, follow: false },
-};
-
-export default function Page() {
-  return <AdminCountriesPage />;
+export default function AdminCountriesRedirectPage() {
+  redirect("/admin/config?tab=countries");
 }

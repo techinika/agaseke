@@ -223,6 +223,7 @@ export default {
             body,
             auth.uid,
             request.headers.get("idempotency-key") ?? undefined,
+            { requestOrigin: origin },
           );
           return json(result, 200, origin);
         }
@@ -239,6 +240,7 @@ export default {
           try {
             const result = await retryTransaction(env, auth.uid, body.ref || "", {
               phone: body.phone,
+              requestOrigin: origin,
             });
             return json(result, 200, origin);
           } catch (err) {
@@ -262,6 +264,7 @@ export default {
             const result = await retryTransaction(env, auth.uid, body.ref || "", {
               allowPending: true,
               phone: body.phone,
+              requestOrigin: origin,
             });
             return json(result, 200, origin);
           } catch (err) {

@@ -264,7 +264,8 @@ export async function renewSubscription(
     paymentMethod: method,
     phone: method === "momo" ? phone : (sub.phone as string) || "",
     paymentRef: payData.ref || "",
-    status: "pending",
+    status: sub.status === "active" ? "active" : "pending",
+    renewalStatus: "pending",
     lastRenewalAttemptAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }));
@@ -320,10 +321,19 @@ export async function handlePaymentCallback(
   }
 
   const sub = convertFromFields(doc.fields as Record<string, unknown>);
-  if (sub.status === "active") return;
+  if (sub.lastPaymentRef === paymentRef) return;
 
-  const now = new Date().toISOString();
-  const periodEnd = new Date();
+  const nowDate = new Date();
+  const now = nowDate.toISOString();
+  const existingExpiresAt = sub.expiresAt ? new Date(sub.expiresAt as string) : null;
+  const baseDate =
+    sub.status === "active" &&
+    existingExpiresAt &&
+    Number.isFinite(existingExpiresAt.getTime()) &&
+    existingExpiresAt > nowDate
+      ? existingExpiresAt
+      : nowDate;
+  const periodEnd = new Date(baseDate);
   if (sub.interval === "yearly") {
     periodEnd.setFullYear(periodEnd.getFullYear() + 1);
   } else {
@@ -441,12 +451,17 @@ export async function handlePaymentCallback(
     convertToFields({
       ...sub,
       status: "active",
-      currentPeriodStart: now,
+      renewalStatus: "active",
+      currentPeriodStart:
+        sub.status === "active" && sub.currentPeriodStart ? sub.currentPeriodStart : now,
       currentPeriodEnd: periodEnd.toISOString(),
       expiresAt: periodEnd.toISOString(),
+      amount: totalAmount,
       lastPaymentRef: paymentRef,
       lastPaymentAt: now,
       renewedAt: now,
+      renewalEmailSent: false,
+      expiryEmailSent: false,
       updatedAt: now,
     }),
   );
@@ -628,7 +643,8 @@ export async function processRenewals(env: Env): Promise<void> {
         await firestoreSet(env, `communitySubscriptions/${subId}`, convertToFields({
           ...sub,
           paymentRef: payData.ref || "",
-          status: "pending",
+          status: sub.status === "active" ? "active" : "pending",
+          renewalStatus: "pending",
           lastRenewalAttemptAt: now.toISOString(),
           updatedAt: now.toISOString(),
         }));

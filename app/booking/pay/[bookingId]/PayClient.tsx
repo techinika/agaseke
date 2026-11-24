@@ -46,6 +46,13 @@ interface BookingRecord {
   bookerPhone?: string;
 }
 
+function generateIdempotencyKey(prefix: string): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
+
 export default function BookingPayClient() {
   const params = useParams();
   const router = useRouter();
@@ -63,6 +70,18 @@ export default function BookingPayClient() {
   const [paymentMethod, setPaymentMethod] = useState<"momo" | "card">("momo");
   const [phone, setPhone] = useState("");
   const unsubTxRef = useRef<(() => void) | null>(null);
+  const idempotencyKeyRef = useRef<string>("");
+
+  const getIdempotencyKey = () => {
+    if (!idempotencyKeyRef.current) {
+      idempotencyKeyRef.current = generateIdempotencyKey("booking");
+    }
+    return idempotencyKeyRef.current;
+  };
+
+  const resetIdempotencyKey = () => {
+    idempotencyKeyRef.current = generateIdempotencyKey("booking");
+  };
 
   useEffect(() => {
     return () => {
@@ -134,10 +153,19 @@ export default function BookingPayClient() {
         setBooking((prev) => (prev ? { ...prev, paymentStatus: "paid" } : prev));
         toast.success("Booking payment confirmed!");
         unsub();
-      } else if (tx.status === "failed") {
+      } else if (tx.status === "failed" || tx.status === "expired") {
         setPaymentPhase("failed");
-        setPaymentError("The payment was declined or cancelled.");
-        toast.error("Payment failed. Please try again.");
+        setPaymentError(
+          tx.status === "expired"
+            ? "The payment session expired. Please try again."
+            : "The payment was declined or cancelled.",
+        );
+        resetIdempotencyKey();
+        toast.error(
+          tx.status === "expired"
+            ? "Payment session expired. Please try again."
+            : "Payment failed. Please try again.",
+        );
         unsub();
       }
     });
@@ -171,7 +199,7 @@ export default function BookingPayClient() {
         buyerName: currentUser.displayName || booking.bookerName || "Customer",
         buyerEmail: currentUser.email || booking.bookerEmail || "",
         currency,
-        idempotencyKey: crypto.randomUUID(),
+        idempotencyKey: getIdempotencyKey(),
       };
 
       if (activeMethod === "momo") {
@@ -186,8 +214,12 @@ export default function BookingPayClient() {
         setPaymentPhase("waiting");
         watchTransaction(data.merchant_reference || data.ref);
         if (data.redirect_url) {
-          window.open(data.redirect_url, "_blank", "noopener,noreferrer");
-          toast.success("Payment page opened in a new tab");
+          const popup = window.open(data.redirect_url, "_blank", "noopener,noreferrer");
+          if (!popup) {
+            window.location.assign(data.redirect_url);
+          } else {
+            toast.success("Payment page opened in a new tab");
+          }
         }
       }
     } catch (error) {
@@ -364,11 +396,25 @@ export default function BookingPayClient() {
                     href={cardRedirectUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-brand-strong hover:underline"
+                    className="mt-2 inline-flex min-h-11 items-center gap-1.5 text-xs font-bold text-brand-strong hover:underline"
                   >
                     Open checkout page <ExternalLink size={14} />
                   </a>
                 )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    unsubTxRef.current?.();
+                    unsubTxRef.current = null;
+                    resetIdempotencyKey();
+                    setCardRedirectUrl(null);
+                    setPaymentError("");
+                    setPaymentPhase("idle");
+                  }}
+                  className="mt-2 block min-h-11 text-xs font-semibold text-muted-fg underline hover:text-fg"
+                >
+                  Change payment method or retry
+                </button>
               </div>
             </div>
           ) : (
@@ -390,7 +436,10 @@ export default function BookingPayClient() {
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
-                      onClick={() => setPaymentMethod("momo")}
+                      onClick={() => {
+                        if (paymentMethod !== "momo") resetIdempotencyKey();
+                        setPaymentMethod("momo");
+                      }}
                       className={`py-3 px-4 rounded-control border-2 font-bold text-sm transition-all ${
                         paymentMethod === "momo"
                           ? "border-brand-strong bg-brand-soft text-brand-strong"
@@ -401,7 +450,10 @@ export default function BookingPayClient() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setPaymentMethod("card")}
+                      onClick={() => {
+                        if (paymentMethod !== "card") resetIdempotencyKey();
+                        setPaymentMethod("card");
+                      }}
                       className={`py-3 px-4 rounded-control border-2 font-bold text-sm transition-all ${
                         paymentMethod === "card"
                           ? "border-brand-strong bg-brand-soft text-brand-strong"

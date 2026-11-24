@@ -1,10 +1,5 @@
-import { Metadata } from "next";
-import AdminFeedbackPage from "@/components/pages/Dashboards/Admin/AdminFeedbackPage";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  robots: { index: false, follow: false },
-};
-
-export default function Page() {
-  return <AdminFeedbackPage />;
+export default function AdminFeedbackRedirectPage() {
+  redirect("/admin/comms?tab=feedback");
 }

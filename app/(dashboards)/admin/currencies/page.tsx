@@ -1,10 +1,5 @@
-import { Metadata } from "next";
-import AdminCurrenciesPage from "@/components/pages/Dashboards/Admin/AdminCurrenciesPage";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  robots: { index: false, follow: false },
-};
-
-export default function Page() {
-  return <AdminCurrenciesPage />;
+export default function AdminCurrenciesRedirectPage() {
+  redirect("/admin/config");
 }

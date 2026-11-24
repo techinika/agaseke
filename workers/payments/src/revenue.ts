@@ -12,30 +12,33 @@ export function calculateRevenue(
   env: Env
 ): RevenueSplit {
   const platformSharePercentage = includeReferral
-    ? Number(env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL || 0.15)
-    : Number(env.NEXT_PUBLIC_PLATFORM_SHARE || 0.15);
-  const creatorSharePercentage = Number(env.NEXT_PUBLIC_CREATOR_SHARE || 0.80);
+    ? Number(env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL || 0.09)
+    : Number(env.NEXT_PUBLIC_PLATFORM_SHARE || 0.1);
+  const creatorSharePercentage = Number(env.NEXT_PUBLIC_CREATOR_SHARE || 0.9);
   const referralSharePercentage = Number(env.NEXT_PUBLIC_REFERRAL_SHARE || 0.01);
 
   return {
     platformShare: totalAmount * platformSharePercentage,
     creatorShare: totalAmount * creatorSharePercentage,
-    referralShare: totalAmount * referralSharePercentage,
+    referralShare: includeReferral ? totalAmount * referralSharePercentage : 0,
   };
 }
 
 export function calculateStoreRevenue(
   productTotal: number,
   platformFeePayer: string,
-  env: Env
+  env: Env,
+  includeReferral = false,
 ): {
   platformFee: number;
   creatorEarnings: number;
   referralEarnings: number;
   totalAmount: number;
 } {
-  const platformSharePercentage = Number(env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
-  const referralSharePercentage = Number(env.NEXT_PUBLIC_REFERRAL_SHARE || 0.01);
+  const platformSharePercentage = Number(env.NEXT_PUBLIC_PLATFORM_SHARE || 0.1);
+  const referralSharePercentage = includeReferral
+    ? Number(env.NEXT_PUBLIC_REFERRAL_SHARE || 0.01)
+    : 0;
 
   const platformFee = productTotal * platformSharePercentage;
   const referralEarnings = productTotal * referralSharePercentage;

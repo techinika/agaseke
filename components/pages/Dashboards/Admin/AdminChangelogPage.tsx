@@ -56,7 +56,7 @@ const priorityColors: Record<string, string> = {
   low: "bg-blue-100 text-blue-700",
 };
 
-export default function AdminChangelogPage() {
+export default function AdminChangelogPage({ embedded = false }: { embedded?: boolean } = {}) {
   const [entries, setEntries] = useState<ChangelogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -175,9 +175,9 @@ export default function AdminChangelogPage() {
     return <LoadingState variant="list" />;
   }
 
-  return (
-    <div className="min-h-screen bg-background text-foreground pb-20">
-      <div className="max-w-7xl mx-auto px-6 mt-12">
+  const content = (
+    <>
+      {!embedded ? (
         <header className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground uppercase">
@@ -188,12 +188,27 @@ export default function AdminChangelogPage() {
             </p>
           </div>
           <button
+            type="button"
             onClick={() => setShowForm(true)}
-            className="inline-flex items-center gap-2 bg-orange-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-orange-700 transition shadow-sm"
+            className="inline-flex min-h-11 items-center gap-2 bg-orange-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-orange-700 transition shadow-sm"
           >
             <Plus size={16} /> Add Entry
           </button>
         </header>
+      ) : (
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <p className="text-label text-muted-fg">
+            Manage current features and plan future features.
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowForm(true)}
+            className="inline-flex min-h-11 items-center gap-2 bg-brand-strong text-on-brand px-5 py-2.5 rounded-control text-label font-semibold hover:bg-brand transition whitespace-nowrap shrink-0"
+          >
+            <Plus size={16} /> Add Entry
+          </button>
+        </div>
+      )}
 
         <div className="mb-6 flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2 bg-card rounded-xl border border-border p-1">
@@ -548,7 +563,6 @@ export default function AdminChangelogPage() {
             )}
           </div>
         </div>
-      </div>
       <ConfirmModal
         isOpen={deleteConfirm !== null}
         onClose={() => setDeleteConfirm(null)}
@@ -558,6 +572,14 @@ export default function AdminChangelogPage() {
         confirmText="Delete"
         variant="danger"
       />
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <div className="min-h-screen bg-background text-foreground pb-20">
+      <div className="max-w-7xl mx-auto px-6 mt-12">{content}</div>
     </div>
   );
 }

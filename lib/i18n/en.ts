@@ -90,6 +90,7 @@ export const en = {
     categories: "Categories",
     changelog: "Changelog",
     broadcast: "Broadcast",
+    commsHub: "Comms & Feedback",
     feedback: "Feedback",
     publicNavigation: "Public navigation",
     supporterNavigation: "Supporter navigation",

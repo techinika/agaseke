@@ -1,10 +1,5 @@
-import { Metadata } from "next";
-import AdminCategoriesPage from "@/components/pages/Dashboards/Admin/AdminCategoriesPage";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  robots: { index: false, follow: false },
-};
-
-export default function Page() {
-  return <AdminCategoriesPage />;
+export default function AdminCategoriesRedirectPage() {
+  redirect("/admin/config?tab=categories");
 }

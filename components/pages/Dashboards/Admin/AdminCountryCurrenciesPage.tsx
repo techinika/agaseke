@@ -15,7 +15,7 @@ import {
   type CurrencyRecord,
 } from "@/lib/adminConfigService";
 
-export default function AdminCountryCurrenciesPage() {
+export default function AdminCountryCurrenciesPage({ embedded = false }: { embedded?: boolean } = {}) {
   const [countries, setCountries] = useState<CountryRecord[]>([]);
   const [currencies, setCurrencies] = useState<CurrencyRecord[]>([]);
   const [mappings, setMappings] = useState<CountryCurrencyRecord[]>([]);
@@ -116,14 +116,14 @@ export default function AdminCountryCurrenciesPage() {
 
   if (loading)
     return (
-      <div className="min-h-screen bg-background text-foreground p-8 flex justify-center pt-20">
+      <div className={embedded ? "flex justify-center py-12" : "min-h-screen bg-background text-foreground p-8 flex justify-center pt-20"}>
         <Loader2 className="animate-spin text-muted-foreground" size={24} />
       </div>
     );
 
-  return (
-    <div className="min-h-screen bg-background text-foreground p-8">
-      <div className="max-w-4xl mx-auto">
+  const content = (
+    <>
+      {!embedded && (
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold uppercase">Country Currencies</h1>
@@ -133,6 +133,7 @@ export default function AdminCountryCurrenciesPage() {
             </p>
           </div>
         </div>
+      )}
 
         <div className="bg-card border border-border rounded-lg p-6 mb-8 space-y-4">
           <h3 className="font-bold text-sm uppercase tracking-widest text-muted-foreground">
@@ -267,8 +268,10 @@ export default function AdminCountryCurrenciesPage() {
                           </div>
                         ) : (
                           <button
+                            type="button"
                             onClick={() => setConfirmDelete(m.id)}
-                            className="p-2 text-muted-foreground hover:text-red-500 transition opacity-0 group-hover:opacity-100"
+                            aria-label={`Remove ${m.currencyCode} from ${m.countryCode}`}
+                            className="p-2 text-muted-foreground hover:text-red-500 transition sm:opacity-0 sm:group-hover:opacity-100"
                           >
                             <Trash2 size={16} />
                           </button>
@@ -281,7 +284,14 @@ export default function AdminCountryCurrenciesPage() {
             ))}
           </div>
         )}
-      </div>
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <div className="min-h-screen bg-background text-foreground p-8">
+      <div className="max-w-4xl mx-auto">{content}</div>
     </div>
   );
 }

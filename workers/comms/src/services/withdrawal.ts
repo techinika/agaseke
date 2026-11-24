@@ -21,7 +21,7 @@ export const withdrawalRequest: EmailService = {
                <tr><td style="padding:6px 0;color:#888;">Account</td><td style="padding:6px 0;">${data.accountNumber as string}</td></tr>
              </table>`,
       ctaText: "Review in Admin",
-      ctaUrl: `${data.appUrl}/admin`,
+      ctaUrl: `${data.appUrl}/admin/payouts`,
     };
   },
 };

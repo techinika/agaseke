@@ -2,6 +2,7 @@ import type { Env, InitRequest } from "../types";
 import {
   convertFromFields,
   convertToFields,
+  firestoreGet,
   firestoreQuery,
   firestoreSet,
 } from "../firestore";
@@ -103,6 +104,7 @@ function buildPayload(tx: Record<string, unknown>): InitRequest {
 export interface RetryOptions {
   allowPending?: boolean;
   phone?: string;
+  requestOrigin?: string | null;
 }
 
 export async function retryTransaction(
@@ -157,6 +159,56 @@ export async function retryTransaction(
     };
   }
 
+  // Prevent spawning duplicate pending/settled payments for an already-retried or already-settled transaction.
+  const previousRetriedRef = toString(tx.retriedRef);
+  if (previousRetriedRef) {
+    const retriedDocs = await firestoreQuery(env, "transactions", "ref", {
+      stringValue: previousRetriedRef,
+    }, 1);
+    const retriedDoc = retriedDocs[0];
+    if (retriedDoc?.fields) {
+      const retriedTx = convertFromFields(retriedDoc.fields);
+      const retriedStatus = toString(retriedTx.status);
+      if (retriedStatus === "successful" || retriedStatus === "success") {
+        throw new RetryError("This transaction already completed", 409);
+      }
+      if (
+        options.allowPending &&
+        retriedStatus === "pending" &&
+        toString(retriedTx.paymentMethod) === "card" &&
+        toString(retriedTx.redirectUrl)
+      ) {
+        return {
+          ref: toString(retriedTx.ref),
+          method: "card",
+          redirect_url: toString(retriedTx.redirectUrl),
+          merchant_reference: toString(retriedTx.orderTrackingId || retriedTx.ref),
+        };
+      }
+    }
+  }
+
+  const txType = toString(tx.type);
+  if (txType === "booking" && toString(tx.bookingId)) {
+    const bookingDoc = await firestoreGet(env, `bookingRequests/${toString(tx.bookingId)}`);
+    if (bookingDoc?.fields) {
+      const booking = convertFromFields(bookingDoc.fields);
+      if (toString(booking.paymentStatus).toLowerCase() === "paid") {
+        throw new RetryError("This booking has already been paid", 409);
+      }
+    }
+  }
+  if (txType === "store" && toString(tx.orderId)) {
+    const orderDoc = await firestoreGet(env, `storeOrders/${toString(tx.orderId)}`);
+    if (orderDoc?.fields) {
+      const order = convertFromFields(orderDoc.fields);
+      const orderStatus = toString(order.status).toLowerCase();
+      if (["paid", "processing", "shipped", "delivered", "completed"].includes(orderStatus)) {
+        throw new RetryError("This order has already been paid", 409);
+      }
+    }
+  }
+
   const currency = toString(tx.currency);
   if (!currency) {
     throw new RetryError("Transaction is missing currency and cannot be retried", 400);
@@ -191,7 +243,9 @@ export async function retryTransaction(
     result = await initiateMomoPayment(env, payload, uid, idempotencyKey);
   } else {
     if (!payload.email) payload.email = "supporter@agaseke.me";
-    result = await initiateCardPayment(env, payload, uid, idempotencyKey);
+    result = await initiateCardPayment(env, payload, uid, idempotencyKey, {
+      requestOrigin: options.requestOrigin,
+    });
   }
 
   await firestoreSet(

@@ -255,12 +255,21 @@ export async function createBooking(
     { fieldPath: "status", op: "IN", value: ["pending", "accepted"] },
   ]);
 
+  const THIRTY_MINUTES_MS = 30 * 60 * 1000;
   if (conflictingDocs) {
     for (const doc of conflictingDocs) {
       const fields = (doc as { fields?: Record<string, unknown> }).fields;
       if (!fields) continue;
 
-      const existingPrefTime = (fields as Record<string, { stringValue?: string }>).preferredTime?.stringValue;
+      const existing = extractFirestoreDocument(fields);
+      if (existing.status === "pending" && existing.paymentStatus === "pending") {
+        const createdMs = Date.parse(String(existing.createdAt || ""));
+        if (Number.isFinite(createdMs) && Date.now() - createdMs > THIRTY_MINUTES_MS) {
+          continue;
+        }
+      }
+
+      const existingPrefTime = typeof existing.preferredTime === "string" ? existing.preferredTime : "";
       if (!existingPrefTime) continue;
 
       const existingRange = parseTimeRange(existingPrefTime);

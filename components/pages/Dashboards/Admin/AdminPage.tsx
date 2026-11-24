@@ -592,7 +592,7 @@ export default function AdminDashboard() {
 
     try {
       let userEmail = "";
-      const profileId = category === "withdrawal" ? target.handle : target.uid;
+      const profileId = category === "withdrawal" ? (target.creatorId || target.handle) : target.uid;
       if (profileId) {
         const profileSnap = await getDoc(doc(db, "profiles", profileId));
         if (profileSnap.exists()) {
@@ -625,6 +625,7 @@ export default function AdminDashboard() {
           method?: string;
           accountNumber?: string;
           creatorName?: string;
+          creatorEmail?: string;
         };
         if (!response.ok) {
           throw new Error(payload.error || "Withdrawal action failed");
@@ -635,10 +636,11 @@ export default function AdminDashboard() {
         const approvedMethod = String(payload.method || target.method || "MoMo");
         const approvedAccount = String(payload.accountNumber || target.accountNumber || "");
         const creatorName = String(payload.creatorName || target.creatorName || "");
+        const creatorEmail = String(payload.creatorEmail || target.creatorEmail || userEmail || "");
 
         if (type === "approve") {
           await sendCommsEmail("payout_processed", {
-            creatorEmail: userEmail,
+            creatorEmail,
             creatorName,
             amount: approvedAmount,
             currency: approvedCurrency,

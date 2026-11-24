@@ -1,5 +1,5 @@
 import type { Env } from "../types";
-import { firestorePost, firestorePatch, firestoreApplyPayment } from "../firestore";
+import { firestorePatch, firestoreApplyPayment } from "../firestore";
 import { logActivity } from "../logger";
 import { createNotification } from "../adminNotifications";
 import { currencyNumberField, roundCurrencyAmount } from "../money/amount";
@@ -74,18 +74,9 @@ export async function handleSupportCallback(
     ? `${supporterId}_${txData.creatorId}`
     : undefined;
 
-  if (supportedCreatorId) {
-    await firestorePatch(env, `supportedCreators/${supportedCreatorId}`, {
-      creatorId: { stringValue: txData.creatorId as string },
-      amount: currencyNumberField(creditedTotal, currency),
-      supporterId: { stringValue: supporterId },
-      supporterPhoneNumber: { stringValue: (txData.phone as string) || "" },
-      txRef: { stringValue: paymentRef },
-      currency: { stringValue: currency },
-      createdAt: { timestampValue: now },
-    });
-  } else {
-    await firestorePost(env, "supportedCreators", {
+  if (!supportedCreatorId) {
+    documents.push({
+      path: `supportedCreators/${safeRef}_anon`,
       fields: {
         creatorId: { stringValue: txData.creatorId as string },
         amount: currencyNumberField(creditedTotal, currency),
@@ -95,12 +86,6 @@ export async function handleSupportCallback(
         currency: { stringValue: currency },
         createdAt: { timestampValue: now },
       },
-    });
-  }
-
-  if (supporterId && supporterId !== "anonymous") {
-    await firestorePatch(env, `creators/${txData.creatorId}`, {
-      [`supporterUids.${supporterId}`]: { booleanValue: true },
     });
   }
 
@@ -180,8 +165,26 @@ export async function handleSupportCallback(
       creatorId: txData.creatorId,
       creatorShare,
     });
+    return { received: true };
   }
 
+  if (supportedCreatorId) {
+    await firestorePatch(env, `supportedCreators/${supportedCreatorId}`, {
+      creatorId: { stringValue: txData.creatorId as string },
+      amount: currencyNumberField(creditedTotal, currency),
+      supporterId: { stringValue: supporterId },
+      supporterPhoneNumber: { stringValue: (txData.phone as string) || "" },
+      txRef: { stringValue: paymentRef },
+      currency: { stringValue: currency },
+      createdAt: { timestampValue: now },
+    });
+  }
+
+  if (supporterId && supporterId !== "anonymous") {
+    await firestorePatch(env, `creators/${txData.creatorId}`, {
+      [`supporterUids.${supporterId}`]: { booleanValue: true },
+    });
+  }
 
   if (txData.creatorUid) {
     const isAnonymous = !supporterId || supporterId === "anonymous";

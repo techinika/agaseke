@@ -52,7 +52,7 @@ describe("checkout sheet", () => {
   it("computes the buyer-paid platform fee once per line total", () => {
     const result = checkoutPlatformFee([cartItem()], getItemPrice);
     expect(result.buyerPaysMore).toBe(true);
-    expect(result.fee).toBe(1500);
+    expect(result.fee).toBe(1000);
   });
 
   it("moves from review to shipping and payment", () => {

@@ -16,7 +16,7 @@ import { formatMoney as formatCurrency } from "@/lib/format/money";
 import { CheckoutSheet } from "@/features/store";
 import { downloadProduct } from "@/lib/downloadProduct";
 
-const platformSharePercentage = Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
+const platformSharePercentage = Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.1;
 const PAID_ORDER_STATUSES = new Set(["paid", "processing", "shipped", "delivered"]);
 
 export default function ProductDetailPage({ username, productId }: { username: string; productId: string }) {

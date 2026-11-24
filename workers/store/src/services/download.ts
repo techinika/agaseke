@@ -24,12 +24,33 @@ export async function handleDownload(
   }
 
   const orders = await firestoreRunQuery(env, "storeOrders", [
-    { fieldPath: "productId", op: "EQUAL", value: productId },
     { fieldPath: "buyerId", op: "EQUAL", value: uid },
-    { fieldPath: "status", op: "EQUAL", value: "paid" },
   ]);
 
-  if (!orders || orders.length === 0) {
+  const paidStatuses = new Set(["paid", "processing", "shipped", "delivered", "completed"]);
+  const hasPaidOrder = (orders || []).some((doc) => {
+    const fields = (doc as { fields?: Record<string, unknown> }).fields;
+    if (!fields) return false;
+    const order = extractFirestoreDocument(fields);
+    const status = String(order.status || "").toLowerCase();
+    const paymentStatus = String(order.paymentStatus || "").toLowerCase();
+    if (!paidStatuses.has(status) && paymentStatus !== "paid") return false;
+    if (String(order.productId || "") === productId) return true;
+    if (Array.isArray(order.items)) {
+      return order.items.some((entry) => {
+        if (!entry || typeof entry !== "object") return false;
+        const item = entry as Record<string, unknown>;
+        const nestedProductId =
+          item.product && typeof item.product === "object"
+            ? (item.product as Record<string, unknown>).id
+            : undefined;
+        return String(item.productId || nestedProductId || "") === productId;
+      });
+    }
+    return false;
+  });
+
+  if (!hasPaidOrder) {
     await logActivity(env, "warn", "store", `Download denied: no paid order for product=${productId}`, {
       uid,
       productId,

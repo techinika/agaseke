@@ -40,7 +40,7 @@ describe("DashboardMobileNav", () => {
 
     const sheet = screen.getByRole("dialog", { name: "More destinations" });
     expect(sheet).toHaveAttribute("aria-modal", "true");
-    expect(screen.getByRole("link", { name: "Store" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Store & Sales" })).toHaveAttribute(
       "href",
       "/creator/store",
     );
@@ -58,22 +58,30 @@ describe("DashboardMobileNav", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "More" }));
 
-    expect(screen.queryByRole("link", { name: "Store" })).toBeNull();
-    expect(screen.getByRole("link", { name: "Supporters" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Store & Sales" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Supporters & Messages" })).toBeInTheDocument();
   });
 
-  it("renders admin destinations in the More sheet", () => {
+  it("renders consolidated admin destinations in the More sheet", () => {
     render(<DashboardMobileNav surface="admin" role="admin" />);
 
     fireEvent.click(screen.getByRole("button", { name: "More" }));
 
+    expect(screen.getByRole("link", { name: "Comms & Feedback" })).toHaveAttribute(
+      "href",
+      "/admin/comms",
+    );
+    expect(screen.getByRole("link", { name: "Configuration" })).toHaveAttribute(
+      "href",
+      "/admin/config",
+    );
     expect(screen.getByRole("link", { name: "Activity logs" })).toHaveAttribute(
       "href",
       "/admin/logs",
     );
   });
 
-  it("exposes Feed, Explore, Library, Notices, and all account destinations in supporter mobile nav", () => {
+  it("exposes Feed, Explore, Posts, and all account destinations without Notices in supporter mobile nav", () => {
     render(<DashboardMobileNav surface="supporter" role="supporter" />);
 
     expect(screen.getByRole("link", { name: "Feed" })).toHaveAttribute(
@@ -84,14 +92,11 @@ describe("DashboardMobileNav", () => {
       "href",
       "/explore",
     );
-    expect(screen.getByRole("link", { name: "Library" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Posts" })).toHaveAttribute(
       "href",
       "/explore/posts",
     );
-    expect(screen.getByRole("link", { name: "Notices" })).toHaveAttribute(
-      "href",
-      "/supporter/notices",
-    );
+    expect(screen.queryByRole("link", { name: "Notices" })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "More" }));
 
@@ -144,7 +149,7 @@ describe("Sidebar", () => {
     expect(screen.getAllByText("Settings")[0].tagName).toBe("P");
   });
 
-  it("includes every supporter workspace page in the supporter desktop sidebar", () => {
+  it("includes every supporter workspace page in the supporter desktop sidebar without notices", () => {
     const items = getNavItems({
       surface: "supporter",
       role: "supporter",
@@ -158,17 +163,38 @@ describe("Sidebar", () => {
       "/supporter",
       "/explore",
       "/explore/posts",
-      "/supporter/notices",
+      "/articles",
       "/community/manage",
       "/bookings",
       "/transactions",
       "/profile",
     ]);
+    expect(hrefs).not.toContain("/supporter/notices");
+  });
+
+  it("exposes consolidated Comms and Configuration entries in the admin desktop sidebar", () => {
+    const items = getNavItems({
+      surface: "admin",
+      role: "admin",
+      slot: "desktop",
+    });
+    const hrefs = items
+      .map((item) => ("href" in item ? item.href : undefined))
+      .filter(Boolean);
+
+    expect(hrefs).toEqual([
+      "/admin",
+      "/admin/users",
+      "/admin/payouts",
+      "/admin/comms",
+      "/admin/config",
+      "/admin/logs",
+    ]);
   });
 });
 
 describe("Public navigation simplification", () => {
-  it("exposes Explore, Posts, and Help without audience marketing links for guests", () => {
+  it("exposes Explore, Posts, and Articles without audience marketing links for guests", () => {
     const desktop = getNavItems({
       surface: "public",
       role: "guest",
@@ -178,7 +204,7 @@ describe("Public navigation simplification", () => {
       .map((item) => ("href" in item ? item.href : undefined))
       .filter(Boolean);
 
-    expect(hrefs).toEqual(["/explore", "/explore/posts", "/help-center"]);
+    expect(hrefs).toEqual(["/explore", "/explore/posts", "/articles"]);
     expect(hrefs).not.toContain("/for-creators");
     expect(hrefs).not.toContain("/for-supporters");
     expect(hrefs).not.toContain("/for-brands");
@@ -198,7 +224,7 @@ describe("Public navigation simplification", () => {
       "/supporter",
       "/explore",
       "/explore/posts",
-      "/help-center",
+      "/articles",
     ]);
   });
 });

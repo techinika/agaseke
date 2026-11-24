@@ -1,8 +1,6 @@
 import type { Env } from "../types";
 import {
   firestoreGet,
-  firestorePost,
-  firestorePatch,
   extractFirestoreDocument,
   firestoreApplyPayment,
 } from "../firestore";
@@ -118,6 +116,29 @@ export async function handleStoreCallback(
   const productId = items[0]?.productId || (txData.productId as string | undefined);
   const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0) || (Number(txData.quantity) || 1);
 
+  const existingOrderId = typeof txData.orderId === "string" ? txData.orderId.trim() : "";
+  const existingOrderSnap = existingOrderId
+    ? await firestoreGet(env, `storeOrders/${existingOrderId}`)
+    : null;
+
+  if (existingOrderSnap?.fields) {
+    const existingOrder = extractFirestoreDocument(existingOrderSnap.fields as Record<string, unknown>);
+    const existingStatus = String(existingOrder.status || "").toLowerCase();
+    const existingTxRef = String(existingOrder.txRef || "");
+    if (
+      ["paid", "processing", "shipped", "delivered", "completed"].includes(existingStatus) &&
+      existingTxRef &&
+      existingTxRef !== paymentRef
+    ) {
+      await logActivity(env, "warn", "store", `Store callback ignored: order ${existingOrderId} already paid`, {
+        txRef: paymentRef,
+        existingTxRef,
+        orderId: existingOrderId,
+      });
+      return { received: true };
+    }
+  }
+
   const uniqueProductIds = Array.from(new Set(items.map((item) => item.productId)));
   const productMap = new Map<string, Record<string, unknown>>();
   for (const id of uniqueProductIds) {
@@ -130,6 +151,60 @@ export async function handleStoreCallback(
   const now = new Date().toISOString();
   const safeRef = paymentRef.replace(/[^A-Za-z0-9_-]/g, "_");
   const includeReferral = referralShare > 0 && !!txData.referralUid;
+  const shippingField = toShippingField(txData.shippingAddress);
+  const couponId = typeof txData.couponId === "string" ? txData.couponId.trim() : "";
+  const couponCode = typeof txData.couponCode === "string" ? txData.couponCode.trim() : "";
+  const discount = Number(txData.discount || 0);
+
+  const targetOrderPath = existingOrderId
+    ? `storeOrders/${existingOrderId}`
+    : `storeOrders/${safeRef}_order`;
+
+  const newOrderFields: Record<string, unknown> = {
+    txRef: { stringValue: paymentRef },
+    buyerId: { stringValue: (txData.buyerId as string) || "" },
+    buyerName: { stringValue: (txData.buyerName as string) || "" },
+    buyerEmail: { stringValue: (txData.buyerEmail as string) || "" },
+    creatorId: { stringValue: txData.creatorId as string },
+    creatorUid: { stringValue: txData.creatorUid as string },
+    productId: { stringValue: productId || "" },
+    productName: { stringValue: (txData.productName as string) || items[0]?.productName || "" },
+    selectedSize: { stringValue: (txData.selectedSize as string) || items[0]?.selectedSize || "" },
+    quantity: { integerValue: String(totalQuantity) },
+    productPrice: numberValue(txData.productPrice ?? items[0]?.productPrice ?? 0),
+    items: toOrderItemsField(items, currency),
+    ...(shippingField ? { shippingAddress: shippingField } : {}),
+    ...(couponCode ? { couponCode: { stringValue: couponCode } } : {}),
+    ...(discount > 0 ? { discount: numberValue(discount) } : {}),
+    platformFee: numberValue(platformShare),
+    total: numberValue(totalAmount),
+    totalAmount: numberValue(totalAmount),
+    platformFeePayer: { stringValue: (txData.platformFeePayer as string) || "buyer" },
+    status: { stringValue: "paid" },
+    paymentStatus: { stringValue: "paid" },
+    paymentMethod: { stringValue: paymentMethod },
+    currency: { stringValue: currency },
+    createdAt: { timestampValue: now },
+    updatedAt: { timestampValue: now },
+  };
+
+  const mergedOrderFields: Record<string, unknown> = existingOrderSnap?.fields
+    ? {
+        ...(existingOrderSnap.fields as Record<string, unknown>),
+        txRef: { stringValue: paymentRef },
+        status: { stringValue: "paid" },
+        paymentStatus: { stringValue: "paid" },
+        paymentMethod: { stringValue: paymentMethod },
+        platformFee: numberValue(platformShare),
+        total: numberValue(totalAmount),
+        totalAmount: numberValue(totalAmount),
+        currency: { stringValue: currency },
+        updatedAt: { timestampValue: now },
+        ...(shippingField ? { shippingAddress: shippingField } : {}),
+        ...(couponCode ? { couponCode: { stringValue: couponCode } } : {}),
+        ...(discount > 0 ? { discount: numberValue(discount) } : {}),
+      }
+    : newOrderFields;
 
   const documents: Array<{ path: string; fields: Record<string, unknown> }> = [
     {
@@ -152,6 +227,38 @@ export async function handleStoreCallback(
         txRef: { stringValue: paymentRef },
         reason: { stringValue: "product_sale" },
         productId: { stringValue: productId || "" },
+        createdAt: { timestampValue: now },
+      },
+    },
+    {
+      path: targetOrderPath,
+      fields: mergedOrderFields,
+    },
+    {
+      path: `sales/${safeRef}_sale`,
+      fields: {
+        txRef: { stringValue: paymentRef },
+        orderId: { stringValue: existingOrderId || `${safeRef}_order` },
+        buyerId: { stringValue: (txData.buyerId as string) || "" },
+        buyerName: { stringValue: (txData.buyerName as string) || "" },
+        buyerEmail: { stringValue: (txData.buyerEmail as string) || "" },
+        creatorId: { stringValue: txData.creatorId as string },
+        creatorUid: { stringValue: txData.creatorUid as string },
+        productId: { stringValue: productId || "" },
+        productName: { stringValue: (txData.productName as string) || items[0]?.productName || "" },
+        quantity: { integerValue: String(totalQuantity) },
+        productPrice: numberValue(txData.productPrice ?? items[0]?.productPrice ?? 0),
+        items: toOrderItemsField(items, currency),
+        ...(couponCode ? { couponCode: { stringValue: couponCode } } : {}),
+        ...(discount > 0 ? { discount: numberValue(discount) } : {}),
+        totalAmount: numberValue(totalAmount),
+        platformFee: numberValue(platformShare),
+        creatorEarnings: numberValue(creatorShare),
+        referralEarnings: numberValue(referralShare),
+        referralUid: { stringValue: (txData.referralUid as string) || "" },
+        status: { stringValue: "completed" },
+        paymentMethod: { stringValue: paymentMethod },
+        currency: { stringValue: currency },
         createdAt: { timestampValue: now },
       },
     },
@@ -183,105 +290,12 @@ export async function handleStoreCallback(
     });
   }
 
-  const shippingField = toShippingField(txData.shippingAddress);
-  const existingOrderId = typeof txData.orderId === "string" ? txData.orderId.trim() : "";
-
-  if (existingOrderId) {
-    const existingOrder = await firestoreGet(env, `storeOrders/${existingOrderId}`);
-    if (existingOrder) {
-      await firestorePatch(env, `storeOrders/${existingOrderId}`, {
-        txRef: { stringValue: paymentRef },
-        status: { stringValue: "paid" },
-        paymentStatus: { stringValue: "paid" },
-        paymentMethod: { stringValue: paymentMethod },
-        platformFee: numberValue(platformShare),
-        total: numberValue(totalAmount),
-        totalAmount: numberValue(totalAmount),
-        currency: { stringValue: currency },
-        updatedAt: { timestampValue: now },
-        ...(shippingField ? { shippingAddress: shippingField } : {}),
-      });
-    } else {
-      await firestorePost(env, "storeOrders", {
-        fields: {
-          txRef: { stringValue: paymentRef },
-          buyerId: { stringValue: (txData.buyerId as string) || "" },
-          buyerName: { stringValue: (txData.buyerName as string) || "" },
-          buyerEmail: { stringValue: (txData.buyerEmail as string) || "" },
-          creatorId: { stringValue: txData.creatorId as string },
-          creatorUid: { stringValue: txData.creatorUid as string },
-          productId: { stringValue: productId || "" },
-          productName: { stringValue: (txData.productName as string) || items[0]?.productName || "" },
-          selectedSize: { stringValue: (txData.selectedSize as string) || items[0]?.selectedSize || "" },
-          quantity: { integerValue: String(totalQuantity) },
-          productPrice: numberValue(txData.productPrice ?? items[0]?.productPrice ?? 0),
-          items: toOrderItemsField(items, currency),
-          ...(shippingField ? { shippingAddress: shippingField } : {}),
-          platformFee: numberValue(platformShare),
-          total: numberValue(totalAmount),
-          totalAmount: numberValue(totalAmount),
-          platformFeePayer: { stringValue: (txData.platformFeePayer as string) || "buyer" },
-          status: { stringValue: "paid" },
-          paymentMethod: { stringValue: paymentMethod },
-          currency: { stringValue: currency },
-          createdAt: { timestampValue: now },
-          updatedAt: { timestampValue: now },
-        },
-      });
-    }
-  } else {
-    await firestorePost(env, "storeOrders", {
-      fields: {
-        txRef: { stringValue: paymentRef },
-        buyerId: { stringValue: (txData.buyerId as string) || "" },
-        buyerName: { stringValue: (txData.buyerName as string) || "" },
-        buyerEmail: { stringValue: (txData.buyerEmail as string) || "" },
-        creatorId: { stringValue: txData.creatorId as string },
-        creatorUid: { stringValue: txData.creatorUid as string },
-        productId: { stringValue: productId || "" },
-        productName: { stringValue: (txData.productName as string) || items[0]?.productName || "" },
-        selectedSize: { stringValue: (txData.selectedSize as string) || items[0]?.selectedSize || "" },
-        quantity: { integerValue: String(totalQuantity) },
-        productPrice: numberValue(txData.productPrice ?? items[0]?.productPrice ?? 0),
-        items: toOrderItemsField(items, currency),
-        ...(shippingField ? { shippingAddress: shippingField } : {}),
-        platformFee: numberValue(platformShare),
-        total: numberValue(totalAmount),
-        totalAmount: numberValue(totalAmount),
-        platformFeePayer: { stringValue: (txData.platformFeePayer as string) || "buyer" },
-        status: { stringValue: "paid" },
-        paymentMethod: { stringValue: paymentMethod },
-        currency: { stringValue: currency },
-        createdAt: { timestampValue: now },
-        updatedAt: { timestampValue: now },
-      },
+  if (couponId) {
+    increments.push({
+      path: `storeCoupons/${couponId}`,
+      fields: { usedCount: 1 },
     });
   }
-
-  await firestorePost(env, "sales", {
-    fields: {
-      txRef: { stringValue: paymentRef },
-      buyerId: { stringValue: (txData.buyerId as string) || "" },
-      buyerName: { stringValue: (txData.buyerName as string) || "" },
-      buyerEmail: { stringValue: (txData.buyerEmail as string) || "" },
-      creatorId: { stringValue: txData.creatorId as string },
-      creatorUid: { stringValue: txData.creatorUid as string },
-      productId: { stringValue: productId || "" },
-      productName: { stringValue: (txData.productName as string) || items[0]?.productName || "" },
-      quantity: { integerValue: String(totalQuantity) },
-      productPrice: numberValue(txData.productPrice ?? items[0]?.productPrice ?? 0),
-      items: toOrderItemsField(items, currency),
-      totalAmount: numberValue(totalAmount),
-      platformFee: numberValue(platformShare),
-      creatorEarnings: numberValue(creatorShare),
-      referralEarnings: numberValue(referralShare),
-      referralUid: { stringValue: (txData.referralUid as string) || "" },
-      status: { stringValue: "completed" },
-      paymentMethod: { stringValue: paymentMethod },
-      currency: { stringValue: currency },
-      createdAt: { timestampValue: now },
-    },
-  });
 
   const qtyByProduct = new Map<string, number>();
   for (const item of items) {
@@ -350,6 +364,7 @@ export async function handleStoreCallback(
       productId: productId || "",
       creatorShare,
     });
+    return { received: true };
   }
 
   if (txData.creatorUid) {

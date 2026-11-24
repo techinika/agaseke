@@ -5,6 +5,7 @@ import {
   firestoreCreateIfAbsent,
   firestoreGet,
   firestoreSet,
+  firestoreUpdateFields,
 } from "../firestore";
 import { PaymentRequestError } from "./pricing";
 
@@ -113,11 +114,30 @@ export async function failAttempt(
   key: string,
   error: unknown,
 ): Promise<void> {
+  const existing = await getAttempt(env, key);
+  if (existing && (existing.status === "initiated" || Boolean(existing.ref))) {
+    return;
+  }
+
   const message = error instanceof Error ? error.message : String(error);
+  const updated = convertToFields({
+    status: "failed",
+    error: message.slice(0, 500),
+    updatedAt: new Date().toISOString(),
+  });
+
+  const patched = await firestoreUpdateFields(
+    env,
+    `paymentAttempts/${key}`,
+    updated,
+  );
+  if (patched.ok) return;
+
   await firestoreSet(
     env,
     `paymentAttempts/${key}`,
     convertToFields({
+      ...(existing || { idempotencyKey: key }),
       status: "failed",
       error: message.slice(0, 500),
       updatedAt: new Date().toISOString(),

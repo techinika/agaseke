@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, onSnapshot } from "firebase/firestore";
 import { auth, db } from "@/db/firebase";
 import { sendCommsEmail } from "@/lib/commsService";
 import {
@@ -20,25 +20,39 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { getCurrencySymbol } from "@/types/currency";
 
 type ActionType = "approve" | "reject";
+type PayoutTab = "pending" | "history";
 
 function formatAmount(amount: unknown, currency: string) {
   const n = Number(amount || 0);
   return `${n.toLocaleString()} ${currency ? getCurrencySymbol(currency) : ""}`.trim();
 }
 
+function toTimestampMs(val: any): number {
+  if (!val) return 0;
+  if (typeof val.toMillis === "function") return val.toMillis();
+  if (typeof val.seconds === "number") return val.seconds * 1000;
+  const parsed = Date.parse(String(val));
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
 export default function AdminPayouts() {
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<PayoutTab>("pending");
   const [search, setSearch] = useState("");
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ action: ActionType; req: any } | null>(null);
 
   useEffect(() => {
-    const q = query(collection(db, "withdrawRequests"), where("status", "==", "pending"));
     const unsubscribe = onSnapshot(
-      q,
+      collection(db, "withdrawRequests"),
       (snapshot) => {
-        setRequests(snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) })));
+        const items = snapshot.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as Record<string, unknown>),
+        }));
+        items.sort((a, b) => toTimestampMs((b as any).createdAt) - toTimestampMs((a as any).createdAt));
+        setRequests(items);
         setLoading(false);
       },
       () => setLoading(false),
@@ -46,25 +60,37 @@ export default function AdminPayouts() {
     return () => unsubscribe();
   }, []);
 
+  const pendingRequests = useMemo(
+    () => requests.filter((r) => r.status === "pending"),
+    [requests],
+  );
+
+  const historyRequests = useMemo(
+    () => requests.filter((r) => r.status !== "pending"),
+    [requests],
+  );
+
+  const activeList = tab === "pending" ? pendingRequests : historyRequests;
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return requests;
-    return requests.filter((r) => {
+    if (!term) return activeList;
+    return activeList.filter((r) => {
       const name = String(r.creatorName || "").toLowerCase();
       const handle = String(r.handle || "").toLowerCase();
       const account = String(r.accountNumber || "").toLowerCase();
       return name.includes(term) || handle.includes(term) || account.includes(term);
     });
-  }, [requests, search]);
+  }, [activeList, search]);
 
   const totalsByCurrency = useMemo(() => {
     const totals: Record<string, number> = {};
-    for (const r of requests) {
+    for (const r of pendingRequests) {
       const currency = String(r.payoutCurrency || r.currency || "UNKNOWN");
       totals[currency] = (totals[currency] || 0) + Number(r.amount || 0);
     }
     return totals;
-  }, [requests]);
+  }, [pendingRequests]);
 
   const handleAction = async () => {
     if (!confirm) return;
@@ -120,7 +146,7 @@ export default function AdminPayouts() {
 
   return (
     <div className="min-h-screen bg-muted/50 p-4 md:p-8">
-      <div className="max-w-6xl mx-auto space-y-8">
+      <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground tracking-tight">Payout Management</h1>
@@ -134,7 +160,7 @@ export default function AdminPayouts() {
             </div>
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Pending Liability</p>
-              <div className="space-y-0.5">
+              <div className="space-y-0.5 tabular-nums">
                 {Object.keys(totalsByCurrency).length === 0 ? (
                   <p className="text-lg font-black text-foreground">0</p>
                 ) : (
@@ -149,13 +175,38 @@ export default function AdminPayouts() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="inline-flex border-b border-border gap-6">
+            <button
+              type="button"
+              onClick={() => setTab("pending")}
+              className={`min-h-11 pb-2.5 text-sm font-semibold border-b-2 transition-colors ${
+                tab === "pending"
+                  ? "border-orange-600 text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Pending ({pendingRequests.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("history")}
+              className={`min-h-11 pb-2.5 text-sm font-semibold border-b-2 transition-colors ${
+                tab === "history"
+                  ? "border-orange-600 text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              History ({historyRequests.length})
+            </button>
+          </div>
+
+          <div className="relative flex-1 sm:max-w-sm">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
             <input
               type="text"
               placeholder="Search creator, handle, or account..."
-              className="w-full bg-card border border-border py-3 pl-12 pr-4 rounded-lg outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+              className="w-full min-h-11 bg-card border border-border py-2.5 pl-12 pr-4 rounded-lg outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -173,7 +224,9 @@ export default function AdminPayouts() {
               <div className="bg-muted w-16 h-16 rounded-lg flex items-center justify-center mx-auto text-muted-foreground">
                 <CheckCircle2 size={32} />
               </div>
-              <p className="text-muted-foreground font-medium">No pending withdrawal requests.</p>
+              <p className="text-muted-foreground font-medium">
+                {tab === "pending" ? "No pending withdrawal requests." : "No processed withdrawals yet."}
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -183,23 +236,29 @@ export default function AdminPayouts() {
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Creator</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Payout</th>
                     <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Destination</th>
-                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-right">Actions</th>
+                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-right">
+                      {tab === "pending" ? "Actions" : "Status"}
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {filtered.map((req) => {
                     const payoutCurrency = String(req.payoutCurrency || req.currency || "");
                     const isProcessing = processingId === req.id;
+                    const reqStatus = String(req.status || "pending");
+                    const reviewedAtMs = toTimestampMs(req.reviewedAt || req.updatedAt);
                     return (
                       <tr key={req.id} className="hover:bg-muted/50 transition-colors">
                         <td className="px-6 py-5">
                           <p className="font-bold text-foreground">{req.creatorName || "Creator"}</p>
                           <p className="text-xs text-muted-foreground font-medium">@{req.handle || req.creatorId || "unknown"}</p>
-                          <span className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-600 text-[10px] font-bold uppercase tracking-wider w-fit">
-                            <Clock size={12} /> Pending
-                          </span>
+                          {reqStatus === "pending" && (
+                            <span className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-600 text-[10px] font-bold uppercase tracking-wider w-fit">
+                              <Clock size={12} /> Pending
+                            </span>
+                          )}
                         </td>
-                        <td className="px-6 py-5">
+                        <td className="px-6 py-5 tabular-nums">
                           <p className="font-black text-foreground">{formatAmount(req.amount, payoutCurrency)}</p>
                           {Array.isArray(req.sourceDebits) && req.sourceDebits.length > 0 && (
                             <p className="text-xs text-muted-foreground mt-1">
@@ -216,22 +275,48 @@ export default function AdminPayouts() {
                           <p className="text-xs text-muted-foreground font-mono">{req.accountNumber || "—"}</p>
                         </td>
                         <td className="px-6 py-5 text-right">
-                          <div className="flex gap-2 justify-end">
-                            <button
-                              onClick={() => setConfirm({ action: "approve", req })}
-                              disabled={isProcessing}
-                              className="bg-foreground text-background px-4 py-2.5 rounded-lg text-xs font-bold hover:bg-orange-600 transition-all disabled:opacity-50 inline-flex items-center gap-2"
-                            >
-                              {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <><ArrowUpRight size={14} /> Approve</>}
-                            </button>
-                            <button
-                              onClick={() => setConfirm({ action: "reject", req })}
-                              disabled={isProcessing}
-                              className="px-4 py-2.5 rounded-lg text-xs font-bold border border-border hover:bg-muted transition-all disabled:opacity-50 inline-flex items-center gap-2"
-                            >
-                              <XCircle size={14} /> Reject
-                            </button>
-                          </div>
+                          {tab === "pending" ? (
+                            <div className="flex gap-2 justify-end">
+                              <button
+                                type="button"
+                                onClick={() => setConfirm({ action: "approve", req })}
+                                disabled={isProcessing}
+                                className="min-h-11 bg-foreground text-background px-4 py-2 rounded-lg text-xs font-bold hover:bg-orange-600 transition-all disabled:opacity-50 inline-flex items-center gap-2"
+                              >
+                                {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <><ArrowUpRight size={14} /> Approve</>}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirm({ action: "reject", req })}
+                                disabled={isProcessing}
+                                className="min-h-11 px-4 py-2 rounded-lg text-xs font-bold border border-border hover:bg-muted transition-all disabled:opacity-50 inline-flex items-center gap-2"
+                              >
+                                <XCircle size={14} /> Reject
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="inline-flex flex-col items-end gap-1">
+                              <span
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
+                                  reqStatus === "completed" || reqStatus === "approved"
+                                    ? "bg-emerald-50 text-emerald-700"
+                                    : "bg-red-50 text-red-700"
+                                }`}
+                              >
+                                {reqStatus === "completed" || reqStatus === "approved" ? (
+                                  <CheckCircle2 size={12} />
+                                ) : (
+                                  <XCircle size={12} />
+                                )}
+                                {reqStatus}
+                              </span>
+                              {reviewedAtMs > 0 && (
+                                <span className="text-[11px] text-muted-foreground tabular-nums">
+                                  {new Date(reviewedAtMs).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );

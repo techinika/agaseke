@@ -11,7 +11,7 @@ import {
   type CategoryRecord,
 } from "@/lib/adminConfigService";
 
-export default function AdminCategoriesPage() {
+export default function AdminCategoriesPage({ embedded = false }: { embedded?: boolean } = {}) {
   const [categories, setCategories] = useState<CategoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState("");
@@ -89,9 +89,9 @@ export default function AdminCategoriesPage() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-background text-foreground p-8">
-      <div className="max-w-3xl mx-auto">
+  const content = (
+    <>
+      {!embedded && (
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold uppercase">Categories</h1>
@@ -100,6 +100,7 @@ export default function AdminCategoriesPage() {
             </p>
           </div>
         </div>
+      )}
 
         <div className="bg-card border border-border rounded-lg p-6 mb-8">
           <div className="flex items-center gap-3">
@@ -191,15 +192,19 @@ export default function AdminCategoriesPage() {
                       </button>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                    <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition">
                       <button
+                        type="button"
                         onClick={() => startEdit(cat)}
+                        aria-label={`Edit ${cat.name}`}
                         className="p-2 text-muted-foreground hover:text-orange-500 transition"
                       >
                         <Pencil size={16} />
                       </button>
                       <button
+                        type="button"
                         onClick={() => setConfirmDelete(cat.id)}
+                        aria-label={`Delete ${cat.name}`}
                         className="p-2 text-muted-foreground hover:text-red-500 transition"
                       >
                         <Trash2 size={16} />
@@ -210,7 +215,14 @@ export default function AdminCategoriesPage() {
             ))}
           </div>
         )}
-      </div>
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <div className="min-h-screen bg-background text-foreground p-8">
+      <div className="max-w-3xl mx-auto">{content}</div>
     </div>
   );
 }

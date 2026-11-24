@@ -15,7 +15,7 @@ import type { CartItem, ShippingAddress } from "../types";
 import { isCurrencySupportedByMethod } from "@/lib/money/rails";
 import { DEFAULT_CURRENCY } from "@/types/currency";
 
-const platformSharePercentage = Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
+const platformSharePercentage = Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.1;
 
 type CheckoutStep = "info" | "shipping" | "payment";
 
@@ -106,8 +106,10 @@ export function CheckoutSheet({
     clearCouponError,
   } = useCoupon(creatorId, total, currency);
   const hasPhysicalProducts = cart.some((item) => item.product.type === "physical");
-  const { fee: platformFee, buyerPaysMore } = checkoutPlatformFee(cart, getItemPrice);
+  const { fee: rawPlatformFee, buyerPaysMore } = checkoutPlatformFee(cart, getItemPrice);
   const finalTotal = Math.max(0, total - couponDiscount);
+  const discountFactor = total > 0 ? finalTotal / total : 1;
+  const platformFee = rawPlatformFee * discountFactor;
   const totalWithPlatformFee = finalTotal + platformFee;
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const method = momoSupported ? paymentMethod : "card";

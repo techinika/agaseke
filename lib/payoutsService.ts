@@ -176,6 +176,7 @@ export async function submitWithdrawRequest(params: {
   const payload = (await response.json().catch(() => null)) as {
     error?: string;
     rail?: string;
+    accountNumber?: string;
   } | null;
   if (!response.ok) {
     throw new Error(payload?.error || `Withdrawal request failed (${response.status})`);
@@ -193,7 +194,7 @@ export async function submitWithdrawRequest(params: {
       amount: params.amount,
       currency: params.currency,
       method: payload?.rail === "bank_transfer" ? "Bank" : "MoMo",
-      accountNumber: "",
+      accountNumber: payload?.accountNumber || "",
     });
   } catch (error) {
     console.warn("Withdrawal request created but admin email failed:", error);

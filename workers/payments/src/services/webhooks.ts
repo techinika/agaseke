@@ -184,9 +184,9 @@ async function forwardToDomainWorker(
 ): Promise<boolean> {
   const includeReferral = !!txData.includeReferral;
   const platformSharePercentage = includeReferral
-    ? Number(env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL || 0.15)
-    : Number(env.NEXT_PUBLIC_PLATFORM_SHARE || 0.15);
-  const creatorSharePercentage = Number(env.NEXT_PUBLIC_CREATOR_SHARE || 0.8);
+    ? Number(env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL || 0.09)
+    : Number(env.NEXT_PUBLIC_PLATFORM_SHARE || 0.1);
+  const creatorSharePercentage = Number(env.NEXT_PUBLIC_CREATOR_SHARE || 0.9);
   const referralSharePercentage = Number(env.NEXT_PUBLIC_REFERRAL_SHARE || 0.01);
 
   const platformShare = Number(
@@ -271,9 +271,9 @@ async function handleGatheringPayment(
   const earningsField = currency === "RWF" ? "totalEarnings" : `totalEarnings${currency}`;
   const includeReferral = !!txData.includeReferral;
   const platformSharePercentage = includeReferral
-    ? Number(env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL || 0.15)
-    : Number(env.NEXT_PUBLIC_PLATFORM_SHARE || 0.15);
-  const creatorSharePercentage = Number(env.NEXT_PUBLIC_CREATOR_SHARE || 0.8);
+    ? Number(env.NEXT_PUBLIC_PLATFORM_SHARE_WITH_REFERRAL || 0.09)
+    : Number(env.NEXT_PUBLIC_PLATFORM_SHARE || 0.1);
+  const creatorSharePercentage = Number(env.NEXT_PUBLIC_CREATOR_SHARE || 0.9);
   const referralSharePercentage = Number(env.NEXT_PUBLIC_REFERRAL_SHARE || 0.01);
 
   const platformShare = Number(

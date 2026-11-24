@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-export default function AdminComms() {
+export default function AdminComms({ embedded = false }: { embedded?: boolean } = {}) {
   const [target, setTarget] = useState<"all" | "creators" | "verified" | "not-verified">(
     "all",
   );
@@ -73,9 +73,9 @@ export default function AdminComms() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-canvas pb-20 text-fg">
-      <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
+  const content = (
+    <>
+      {!embedded ? (
         <div className="mb-8 flex flex-col justify-between gap-4 border-b border-line pb-6 md:flex-row md:items-end">
           <div>
             <p className="text-caption font-semibold text-brand-strong">Communication</p>
@@ -92,6 +92,17 @@ export default function AdminComms() {
             <span>Use [NAME] or [HANDLE] to personalize messages.</span>
           </div>
         </div>
+      ) : (
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <p className="text-label text-muted-fg">
+            Draft and dispatch platform-wide notices and emails.
+          </p>
+          <div className="hidden sm:flex items-center gap-2 rounded-control border border-line bg-surface px-3.5 py-2 text-caption text-muted-fg">
+            <Info size={16} className="shrink-0 text-info" aria-hidden="true" />
+            <span>Use [NAME] or [HANDLE] to personalize messages.</span>
+          </div>
+        </div>
+      )}
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
           <div className="lg:col-span-8">
@@ -211,8 +222,6 @@ export default function AdminComms() {
             </div>
           </div>
         </div>
-      </div>
-
       {preview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
           <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-card border border-line bg-surface p-6 shadow-float">
@@ -249,6 +258,14 @@ export default function AdminComms() {
           </div>
         </div>
       )}
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <div className="min-h-screen bg-canvas pb-20 text-fg">
+      <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">{content}</div>
     </div>
   );
 }

@@ -12,7 +12,12 @@ export function createPaymentRepository(env: Env): PaymentRepository {
     async get(path: string): Promise<Record<string, unknown> | null> {
       const doc = await firestoreGet(env, path);
       if (!doc || !doc.fields) return null;
-      return convertFromFields(doc.fields as Record<string, unknown>);
+      const docName = typeof doc.name === "string" ? doc.name : "";
+      const docId = docName ? docName.split("/").pop() : undefined;
+      return {
+        ...(docId ? { _id: docId } : {}),
+        ...convertFromFields(doc.fields as Record<string, unknown>),
+      };
     },
 
     async query(
@@ -23,9 +28,14 @@ export function createPaymentRepository(env: Env): PaymentRepository {
     ): Promise<Record<string, unknown>[]> {
       const encoded = convertToFields({ value }).value as Record<string, unknown>;
       const docs = await firestoreQuery(env, collection, field, encoded, limit);
-      return docs.map((doc) =>
-        convertFromFields(doc.fields as Record<string, unknown>),
-      );
+      return docs.map((doc) => {
+        const docName = typeof doc.name === "string" ? doc.name : "";
+        const docId = docName ? docName.split("/").pop() : undefined;
+        return {
+          ...(docId ? { _id: docId } : {}),
+          ...convertFromFields(doc.fields as Record<string, unknown>),
+        };
+      });
     },
   };
 }

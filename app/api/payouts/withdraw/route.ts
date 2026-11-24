@@ -59,9 +59,9 @@ function availableMinorFor(fresh: Record<string, unknown>, code: PayoutCurrency)
   const pendingMajor = code === "RWF" ? fresh.pendingPayout : fresh[pendingPayoutField(code)];
   const heldMajor = heldMap[code];
   const pendingMinor = pendingMajor === undefined || pendingMajor === null || pendingMajor === ""
-    ? 0 : fromMajor(code, pendingMajor as any).amountMinor;
+    ? 0 : fromMajor(code, pendingMajor as string | number).amountMinor;
   const heldMinor = heldMajor === undefined || heldMajor === null || heldMajor === ""
-    ? 0 : fromMajor(code, heldMajor as any).amountMinor;
+    ? 0 : fromMajor(code, heldMajor as string | number).amountMinor;
   return pendingMinor - heldMinor;
 }
 
@@ -119,7 +119,11 @@ export async function POST(request: NextRequest) {
     if (currencyQuery.empty) {
       throw new ApiError(400, "CURRENCY_NOT_CONFIGURED", `${payoutCurrency} is not configured for withdrawals`);
     }
-    const currencyPolicy = currencyQuery.docs[0].data() as any;
+    const currencyPolicy = currencyQuery.docs[0].data() as {
+      payoutThreshold?: string | number;
+      payoutProvider?: unknown;
+      payoutRail?: unknown;
+    };
     const threshold = currencyPolicy.payoutThreshold;
 
     const route = resolvePayoutRoute(payoutCurrency, {
@@ -132,6 +136,7 @@ export async function POST(request: NextRequest) {
     const quoteRef = quoteId ? adminDb.collection("withdrawalQuotes").doc(quoteId) : null;
     const ledgerEnabled = isMoneyLedgerEnabled();
     let duplicate = false;
+    let resolvedAccountNumber = accountNumber;
 
     await adminDb.runTransaction(async (transaction) => {
       const existing = await transaction.get(requestRef);
@@ -161,11 +166,14 @@ export async function POST(request: NextRequest) {
       if (quoteRef) {
         const quoteSnap = await transaction.get(quoteRef);
         if (!quoteSnap.exists) throw new ApiError(404, "QUOTE_NOT_FOUND", "Withdrawal quote not found");
-        const q = quoteSnap.data() as any;
+        const q = quoteSnap.data() as WithdrawalConversionPlan & {
+          status?: string;
+          creatorUid?: string;
+        };
         if (q.status !== "active") throw new ApiError(409, "QUOTE_CONSUMED", "Withdrawal quote already used");
         if (q.creatorUid !== authUser.uid) throw new ApiError(403, "QUOTE_OWNER_MISMATCH", "Quote belongs to another account");
         if (q.payoutCurrency !== payoutCurrency) throw new ApiError(400, "QUOTE_MISMATCH", "Quote payout currency mismatch");
-        plan = q as WithdrawalConversionPlan;
+        plan = q;
         if (!isWithdrawalPlanUsable(plan)) throw new ApiError(410, "QUOTE_EXPIRED", "Withdrawal quote expired");
 
         // revalidate available per source atomically
@@ -178,7 +186,7 @@ export async function POST(request: NextRequest) {
 
         // threshold check on payout amount
         const thresholdMinor = threshold === undefined || threshold === null || threshold === ""
-          ? 0 : fromMajor(payoutCurrency, threshold as any).amountMinor;
+          ? 0 : fromMajor(payoutCurrency, threshold).amountMinor;
         if (thresholdMinor > 0 && plan.requestedPayoutAmountMinor < thresholdMinor) {
           throw new WithdrawalError("WITHDRAWAL_BELOW_THRESHOLD", `Minimum withdrawal is ${threshold} ${payoutCurrency}`);
         }
@@ -200,7 +208,7 @@ export async function POST(request: NextRequest) {
           currency: payoutCurrency,
           amount: body.amount,
           pending: fresh[pendingPayoutField(payoutCurrency)],
-          held: (fresh.pendingWithdrawals as any)?.[payoutCurrency],
+          held: (fresh.pendingWithdrawals as Record<string, unknown> | undefined)?.[payoutCurrency],
           threshold,
         });
         amountMajorPayout = validated.amountMajor;
@@ -234,7 +242,9 @@ export async function POST(request: NextRequest) {
         if (!balanceSnap.exists) {
           throw new ApiError(409, "LEDGER_BALANCE_NOT_FOUND", "Ledger balance is missing for this creator");
         }
-        const bal = (balanceSnap.data() || {}) as any;
+        const bal = (balanceSnap.data() || {}) as {
+          available?: Record<string, unknown>;
+        };
         if (plan) {
           for (const source of plan.sources) {
             const available = Number(bal?.available?.[source.currency] ?? 0);
@@ -250,9 +260,12 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      resolvedAccountNumber = String(fresh.payoutNumber || "").trim();
+
       transaction.set(requestRef, {
         creatorId: authUser.uid,
         creatorName: String(fresh.name || authUser.email || fresh.handle || ""),
+        creatorEmail: String(authUser.email || fresh.email || ""),
         handle: creatorDoc.id,
         amount: amountMajorPayout,
         amountMinor: amountMinorPayout,
@@ -315,7 +328,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(
-      { success: true, requestId: idempotencyKey, duplicate, amount: body.amount, currency: payoutCurrency, provider: route.provider, rail: route.rail, ledger: ledgerEnabled, quoteId: quoteId || null },
+      { success: true, requestId: idempotencyKey, duplicate, amount: body.amount, currency: payoutCurrency, provider: route.provider, rail: route.rail, accountNumber: resolvedAccountNumber, ledger: ledgerEnabled, quoteId: quoteId || null },
       { status: duplicate ? 200 : 201 },
     );
   } catch (error) {

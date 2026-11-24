@@ -67,7 +67,7 @@ interface StoreTabProps {
 }
 
 const platformSharePercentage =
-  Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.15;
+  Number(process.env.NEXT_PUBLIC_PLATFORM_SHARE) || 0.1;
 
 export const StoreTab = ({
   creatorId,

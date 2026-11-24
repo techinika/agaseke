@@ -135,6 +135,7 @@ export interface ResolvedPayment {
   shippingAddress?: ResolvedShippingAddress;
   orderId?: string;
   platformFeePayer?: string;
+  couponId?: string;
   couponCode?: string;
   discount?: number;
   bookingId?: string;
@@ -170,7 +171,7 @@ function resolveStoredPrice(
   legacyPrimaryField: string,
 ): number {
   const prices = record.prices;
-  if (prices && typeof prices === "object") {
+  if (prices && typeof prices === "object" && Object.keys(prices).length > 0) {
     const v = (prices as Record<string, unknown>)[currency];
     return v != null && v !== "" ? num(v) : 0;
   }
@@ -416,9 +417,9 @@ async function resolveCouponDiscount(
   creatorHandle: string,
   creatorUid: string,
   productTotal: number,
-): Promise<number> {
+): Promise<{ discount: number; couponId?: string }> {
   const code = str(rawCode).toUpperCase();
-  if (!code) return 0;
+  if (!code) return { discount: 0 };
 
   const coupons = await repo.query("storeCoupons", "code", code, 20);
   const coupon = coupons.find((c) => {
@@ -457,7 +458,9 @@ async function resolveCouponDiscount(
       ? (productTotal * num(coupon.discountValue)) / 100
       : num(coupon.discountValue);
 
-  return Math.min(productTotal, Math.max(0, rawDiscount));
+  const discount = Math.min(productTotal, Math.max(0, rawDiscount));
+  const couponId = str(coupon._id) || str(coupon.id) || undefined;
+  return { discount, ...(discount > 0 && couponId ? { couponId } : {}) };
 }
 
 function withRevenue(
@@ -797,11 +800,8 @@ export async function resolvePayment(
     if (!quote) assertRequestedCurrency(body.currency, currency);
 
     const resolvedItems: ResolvedStoreItem[] = [];
+    const lineSummaries: Array<{ lineSubtotal: number; feePayer: "buyer" | "creator" }> = [];
     let productsTotal = 0;
-    let totalPlatformFee = 0;
-    let totalCreatorEarningsBeforeCoupon = 0;
-    let totalReferralEarnings = 0;
-    let totalAmountBeforeCoupon = 0;
     let totalQuantity = 0;
 
     for (const item of parsedItems) {
@@ -834,16 +834,10 @@ export async function resolvePayment(
       const effectiveUnitPrice = roundMoney(lineSubtotal / item.quantity, currency);
       const feePayer: "buyer" | "creator" =
         str(product.platformFeePayer) === "creator" ? "creator" : "buyer";
-      const itemRevenue = calculateStoreRevenue(lineSubtotal, feePayer, env);
 
       productsTotal += lineSubtotal;
-      totalPlatformFee += roundMoney(itemRevenue.platformFee, currency);
-      totalCreatorEarningsBeforeCoupon += roundMoney(itemRevenue.creatorEarnings, currency);
-      if (referral.includeReferral) {
-        totalReferralEarnings += roundMoney(itemRevenue.referralEarnings, currency);
-      }
-      totalAmountBeforeCoupon += roundMoney(itemRevenue.totalAmount, currency);
       totalQuantity += item.quantity;
+      lineSummaries.push({ lineSubtotal, feePayer });
 
       resolvedItems.push({
         productId: item.productId,
@@ -857,7 +851,7 @@ export async function resolvePayment(
     }
 
     productsTotal = roundMoney(productsTotal, currency);
-    const discount = await resolveCouponDiscount(
+    const { discount: rawDiscount, couponId } = await resolveCouponDiscount(
       repo,
       body.couponCode,
       creatorHandle,
@@ -865,16 +859,45 @@ export async function resolvePayment(
       productsTotal,
     );
 
-    const totalAmount = roundMoney(
-      Math.max(0, totalAmountBeforeCoupon - discount),
+    const appliedDiscount = rawDiscount > 0 ? roundMoney(rawDiscount, currency) : 0;
+    const discountedProductsTotal = roundMoney(
+      Math.max(0, productsTotal - appliedDiscount),
       currency,
     );
-    if (totalAmount <= 0) {
+    if (discountedProductsTotal <= 0) {
       throw new PaymentRequestError(
         "INVALID_AMOUNT",
         "The discounted total is not payable",
       );
     }
+
+    const discountFactor = productsTotal > 0 ? discountedProductsTotal / productsTotal : 0;
+    let totalPlatformFee = 0;
+    let totalReferralEarnings = 0;
+    let totalAmount = 0;
+
+    for (const line of lineSummaries) {
+      const discountedLine = roundMoney(line.lineSubtotal * discountFactor, currency);
+      const itemRevenue = calculateStoreRevenue(
+        discountedLine,
+        line.feePayer,
+        env,
+        referral.includeReferral,
+      );
+      totalPlatformFee += roundMoney(itemRevenue.platformFee, currency);
+      if (referral.includeReferral) {
+        totalReferralEarnings += roundMoney(itemRevenue.referralEarnings, currency);
+      }
+      totalAmount += roundMoney(itemRevenue.totalAmount, currency);
+    }
+
+    totalPlatformFee = roundMoney(totalPlatformFee, currency);
+    totalReferralEarnings = roundMoney(totalReferralEarnings, currency);
+    totalAmount = roundMoney(totalAmount, currency);
+    const totalCreatorEarnings = roundMoney(
+      Math.max(0, totalAmount - totalPlatformFee - totalReferralEarnings),
+      currency,
+    );
 
     const orderId = str(body.orderId);
     if (orderId) {
@@ -928,12 +951,9 @@ export async function resolvePayment(
       creatorUid,
       currency,
       totalAmount,
-      platformFee: roundMoney(totalPlatformFee, currency),
-      creatorEarnings: roundMoney(
-        Math.max(0, totalCreatorEarningsBeforeCoupon - discount),
-        currency,
-      ),
-      referralEarnings: roundMoney(totalReferralEarnings, currency),
+      platformFee: totalPlatformFee,
+      creatorEarnings: totalCreatorEarnings,
+      referralEarnings: totalReferralEarnings,
       processorCost: roundMoney(
         totalAmount * (num(env.PROCESSOR_FEE_PERCENT) / 100),
         currency,
@@ -948,8 +968,9 @@ export async function resolvePayment(
       ...(shippingAddress ? { shippingAddress } : {}),
       ...(orderId ? { orderId } : {}),
       platformFeePayer: combinedFeePayer,
-      couponCode: discount > 0 ? str(body.couponCode).toUpperCase() : undefined,
-      discount: discount > 0 ? roundMoney(discount, currency) : undefined,
+      ...(couponId && appliedDiscount > 0 ? { couponId } : {}),
+      couponCode: appliedDiscount > 0 ? str(body.couponCode).toUpperCase() : undefined,
+      discount: appliedDiscount > 0 ? appliedDiscount : undefined,
       buyerName: str(body.buyerName) || shippingAddress?.fullName || "",
       buyerEmail: str(body.buyerEmail) || str(body.email),
     }, quote, body.currency, env);
