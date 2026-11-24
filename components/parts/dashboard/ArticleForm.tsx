@@ -70,11 +70,17 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
   const [uploadedVisibility, setUploadedVisibility] =
     useState<AssetVisibility | null>(null);
   const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [isDraggingCover, setIsDraggingCover] = useState(false);
+  const [isUploadingEditorMedia, setIsUploadingEditorMedia] = useState(false);
   const [status, setStatus] = useState<"draft" | "published">("draft");
   const [saving, setSaving] = useState<"draft" | "publish" | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(Boolean(articleId));
   const [copiedLink, setCopiedLink] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
+  const coverFileRef = useRef<File | null>(null);
+  const coverUploadPromiseRef = useRef<
+    Promise<{ url: string; visibility: AssetVisibility } | null> | null
+  >(null);
 
   useEffect(() => {
     return () => {
@@ -111,6 +117,7 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
         );
         const storedCover = data.coverUrl || data.contentUrl || "";
         setCoverPreview(null);
+        coverFileRef.current = null;
         setCoverUrl(storedCover);
         setUploadedVisibility(storedAssetVisibility(storedCover));
         setStatus(data.status === "draft" ? "draft" : "published");
@@ -129,31 +136,65 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [articleId]);
 
+  const uploadCoverFile = (
+    file: File,
+    targetPrivate: boolean = isPrivate,
+  ): Promise<{ url: string; visibility: AssetVisibility } | null> => {
+    if (!creator?.handle) {
+      toast.error("Please wait for your creator profile to load.");
+      return Promise.resolve(null);
+    }
+    if (!file.type.startsWith("image/")) {
+      toast.error("Cover must be an image file.");
+      return Promise.resolve(null);
+    }
+
+    coverFileRef.current = file;
+    const previewUrl = URL.createObjectURL(file);
+    setCoverPreview(previewUrl);
+    setIsUploadingCover(true);
+
+    let run: Promise<{ url: string; visibility: AssetVisibility } | null> | null =
+      null;
+    run = (async () => {
+      try {
+        const data = await uploadFile(
+          file,
+          "post_image",
+          creator.handle,
+          undefined,
+          targetPrivate ? "private" : "public",
+        );
+        const stored = storedAssetValue(data);
+        if (!stored) throw new Error("Upload failed");
+        setCoverUrl(stored);
+        setUploadedVisibility(data.visibility);
+        toast.success("Cover image uploaded!");
+        return { url: stored, visibility: data.visibility };
+      } catch (err) {
+        console.error("Upload error:", err);
+        toast.error(
+          err instanceof Error ? err.message : "Failed to upload cover image",
+        );
+        setCoverPreview(null);
+        return null;
+      } finally {
+        setIsUploadingCover(false);
+        if (coverUploadPromiseRef.current === run) {
+          coverUploadPromiseRef.current = null;
+        }
+      }
+    })();
+
+    coverUploadPromiseRef.current = run;
+    return run;
+  };
+
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !creator?.handle) return;
-    setIsUploadingCover(true);
-    try {
-      const data = await uploadFile(
-        file,
-        "post_image",
-        creator.handle,
-        undefined,
-        isPrivate ? "private" : "public",
-      );
-      const stored = storedAssetValue(data);
-      if (!stored) throw new Error("Upload failed");
-      setCoverPreview(URL.createObjectURL(file));
-      setCoverUrl(stored);
-      setUploadedVisibility(data.visibility);
-      toast.success("Cover image uploaded!");
-    } catch (err) {
-      console.error("Upload error:", err);
-      toast.error(err instanceof Error ? err.message : "Failed to upload cover image");
-    } finally {
-      setIsUploadingCover(false);
-      e.target.value = "";
-    }
+    e.target.value = "";
+    if (!file) return;
+    await uploadCoverFile(file);
   };
 
   const handleSubmit = async (publish: boolean) => {
@@ -171,13 +212,8 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
       return;
     }
 
-    const storedVisibility = uploadedVisibility ?? storedAssetVisibility(coverUrl);
-    if (isPrivate && coverUrl && storedVisibility !== "private") {
-      toast.error("Re-upload the cover now that the article has restricted access.");
-      return;
-    }
-    if (!isPrivate && storedVisibility === "private") {
-      toast.error("Re-upload the cover now that the article is public.");
+    if (isUploadingEditorMedia) {
+      toast.info("Please wait for editor image uploads to finish.");
       return;
     }
 
@@ -185,6 +221,35 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
     if (publish && !cleanBody) {
       toast.error("Article content cannot be empty");
       return;
+    }
+
+    let activeCoverUrl = coverUrl;
+    let activeCoverVisibility = uploadedVisibility ?? storedAssetVisibility(coverUrl);
+
+    if (coverUploadPromiseRef.current) {
+      const uploaded = await coverUploadPromiseRef.current;
+      if (uploaded) {
+        activeCoverUrl = uploaded.url;
+        activeCoverVisibility = uploaded.visibility;
+      }
+    }
+
+    if (
+      (isPrivate && activeCoverUrl && activeCoverVisibility !== "private") ||
+      (!isPrivate && activeCoverVisibility === "private")
+    ) {
+      if (coverFileRef.current) {
+        const reuploaded = await uploadCoverFile(coverFileRef.current, isPrivate);
+        if (!reuploaded) return;
+        activeCoverUrl = reuploaded.url;
+        activeCoverVisibility = reuploaded.visibility;
+      } else if (isPrivate) {
+        toast.error("Re-upload the cover now that the article has restricted access.");
+        return;
+      } else {
+        toast.error("Re-upload the cover now that the article is public.");
+        return;
+      }
     }
 
     const desc = shortDescription.trim()
@@ -208,8 +273,8 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
           description: desc,
           shortDescription: desc,
           htmlContent: cleanBody,
-          coverUrl: coverUrl || null,
-          contentUrl: coverUrl || null,
+          coverUrl: activeCoverUrl || null,
+          contentUrl: activeCoverUrl || null,
           isPrivate,
           visibility,
           requiredTierIds: visibility === "tier" ? requiredTierIds : [],
@@ -277,8 +342,8 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
         description: desc,
         shortDescription: desc,
         htmlContent: cleanBody,
-        coverUrl: coverUrl || null,
-        contentUrl: coverUrl || null,
+        coverUrl: activeCoverUrl || null,
+        contentUrl: activeCoverUrl || null,
         isPrivate,
         visibility,
         requiredTierIds: visibility === "tier" ? requiredTierIds : [],
@@ -406,8 +471,9 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
               Cancel
             </button>
             <button
+              type="button"
               onClick={() => handleSubmit(false)}
-              disabled={!!saving}
+              disabled={!!saving || isUploadingCover || isUploadingEditorMedia}
               className="inline-flex items-center gap-2 px-4 py-2.5 border-2 border-border rounded-xl font-bold text-sm hover:bg-muted transition disabled:opacity-50"
               title="Saves a private draft that only you can see and edit"
             >
@@ -419,8 +485,14 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
               {saving === "draft" ? "Saving..." : "Save Draft"}
             </button>
             <button
+              type="button"
               onClick={() => handleSubmit(true)}
-              disabled={!title.trim() || !!saving}
+              disabled={
+                !title.trim() ||
+                !!saving ||
+                isUploadingCover ||
+                isUploadingEditorMedia
+              }
               className="inline-flex items-center gap-2 bg-orange-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-orange-600 transition-all disabled:opacity-50"
             >
               {saving === "publish" ? (
@@ -464,13 +536,14 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
                   Article Content <span className="text-red-500">*</span>
                 </label>
                 <span className="text-[11px] text-muted-foreground normal-case tracking-normal">
-                  Images &amp; videos upload through Agaseke
+                  Drag &amp; drop or use toolbar to upload images
                 </span>
               </div>
               <RichTextEditor
                 content={bodyHtml}
                 onChange={setBodyHtml}
-                placeholder="Write your article... Use the toolbar to add headings, quotes, links, and media."
+                onUploadingChange={setIsUploadingEditorMedia}
+                placeholder="Write your article... Drag & drop images or use the toolbar for headings, quotes, links, and media."
               />
             </div>
 
@@ -557,8 +630,23 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
                 <label className="text-xs font-bold uppercase text-muted-foreground tracking-widest mb-2 block">
                   Cover Image
                 </label>
-                {coverUrl ? (
-                  <div className="relative rounded-xl overflow-hidden border border-border">
+                {coverUrl || coverPreview ? (
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDraggingCover(true);
+                    }}
+                    onDragLeave={() => setIsDraggingCover(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDraggingCover(false);
+                      const file = e.dataTransfer?.files?.[0];
+                      if (file) void uploadCoverFile(file);
+                    }}
+                    className={`relative rounded-xl overflow-hidden border transition ${
+                      isDraggingCover ? "border-orange-500 ring-2 ring-orange-200" : "border-border"
+                    }`}
+                  >
                     {coverPreview ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -586,9 +674,17 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
                         className="w-full max-h-72 object-cover"
                       />
                     )}
+                    {isUploadingCover && (
+                      <div className="absolute inset-0 bg-black/50 flex flex-col items-center justify-center gap-2 text-white text-xs font-semibold">
+                        <Loader className="animate-spin" size={22} />
+                        <span>Uploading cover...</span>
+                      </div>
+                    )}
                     <button
+                      type="button"
                       onClick={() => {
                         if (coverPreview) URL.revokeObjectURL(coverPreview);
+                        coverFileRef.current = null;
                         setCoverPreview(null);
                         setCoverUrl("");
                         setUploadedVisibility(null);
@@ -602,7 +698,22 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
                 ) : (
                   <div
                     onClick={() => coverInputRef.current?.click()}
-                    className="border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center cursor-pointer hover:border-orange-400 transition bg-muted/40"
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDraggingCover(true);
+                    }}
+                    onDragLeave={() => setIsDraggingCover(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDraggingCover(false);
+                      const file = e.dataTransfer?.files?.[0];
+                      if (file) void uploadCoverFile(file);
+                    }}
+                    className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center cursor-pointer transition ${
+                      isDraggingCover
+                        ? "border-orange-500 bg-orange-50/60 dark:bg-orange-950/30"
+                        : "border-border hover:border-orange-400 bg-muted/40"
+                    }`}
                   >
                     <input
                       type="file"
@@ -617,7 +728,7 @@ export default function ArticleForm({ articleId }: ArticleFormProps) {
                       <>
                         <ImagePlus size={24} className="text-muted-foreground mb-2" />
                         <p className="text-sm text-muted-foreground text-center">
-                          Upload a cover image (used for previews &amp; SEO)
+                          Click or drop a cover image (used for previews &amp; SEO)
                         </p>
                       </>
                     )}
