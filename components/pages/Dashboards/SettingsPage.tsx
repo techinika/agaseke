@@ -27,7 +27,7 @@ import {
   Users,
   BadgeCheck,
 } from "lucide-react";
-import { db } from "@/db/firebase";
+import { auth, db } from "@/db/firebase";
 import {
   doc,
   onSnapshot,
@@ -43,6 +43,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { AiFillTikTok } from "react-icons/ai";
 import { uploadBase64Image } from "@/lib/uploadService";
+import { evaluateLocationUpdateCooldown } from "@/lib/creator/locationPolicy";
 import { VerificationPage } from "./VerifyPage";
 import {
   Badge,
@@ -109,12 +110,23 @@ export default function CreatorSettings() {
   const [currencies, setCurrencies] = useState<any[]>([]);
   const [countryCurrencies, setCountryCurrencies] = useState<any[]>([]);
   const [availableCurrencies, setAvailableCurrencies] = useState<any[]>([]);
+  const [savedLocationState, setSavedLocationState] = useState<{
+    country: string;
+    currency: string;
+    locationUpdatedAt: unknown;
+  }>({ country: "", currency: "", locationUpdatedAt: null });
 
   useEffect(() => {
     if (!creator) return;
-    const unsubscribe = onSnapshot(doc(db, "creators", creator.handle), (doc) => {
-      if (doc.exists()) {
-        setCreatorData(doc.data() as Creator);
+    const unsubscribe = onSnapshot(doc(db, "creators", creator.handle), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data() as Creator;
+        setCreatorData(data);
+        setSavedLocationState({
+          country: (data.country || "").toUpperCase(),
+          currency: (data.currency || "").toUpperCase(),
+          locationUpdatedAt: data.locationUpdatedAt ?? data.countryUpdatedAt ?? null,
+        });
       }
       setLoading(false);
     });
@@ -239,14 +251,44 @@ export default function CreatorSettings() {
 
     setSaving(true);
     try {
+      const nextCountry = (creatorData.country || "").trim().toUpperCase();
+      const nextCurrency = (creatorData.currency || "").trim().toUpperCase();
+      const locationChanged = nextCountry !== savedLocationState.country;
+      const currencyChanged = nextCurrency !== savedLocationState.currency;
+
+      if (locationChanged || currencyChanged) {
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+          toast.error("Please sign in again to update location or currency");
+          return;
+        }
+        const token = await currentUser.getIdToken();
+        const res = await fetch("/api/creators/location-currency", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            ...(locationChanged && nextCountry ? { country: nextCountry } : {}),
+            ...(currencyChanged && nextCurrency ? { currency: nextCurrency } : {}),
+          }),
+        });
+        const payload = (await res.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        if (!res.ok) {
+          toast.error(payload?.error || "Failed to update location or currency");
+          return;
+        }
+      }
+
       const updateData: Record<string, any> = {
         name: creatorData.name || "",
         bio: creatorData.bio || "",
         bannerURL: creatorData.bannerURL || "",
         profilePicture: creatorData.profilePicture || "",
         socials: creatorData.socials || {},
-        country: creatorData.country || null,
-        currency: creatorData.currency || null,
         messagingEnabled: creatorData.messagingEnabled ?? false,
         messagingAllowAll: creatorData.messagingAllowAll ?? true,
         messagingMinAmount: creatorData.messagingMinAmount ?? 0,
@@ -646,100 +688,129 @@ export default function CreatorSettings() {
             </Card>
           )}
 
-          {activeTab === "location" && (
-            <Card className="space-y-6 p-6 md:p-8">
-              <h3 className="font-display text-title font-bold text-fg">
-                Location & Currency
-              </h3>
-              <p className="text-label text-muted-fg">
-                Your country and currency were set during onboarding and cannot be
-                changed.
-              </p>
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  {creatorData?.country ? (
-                    <FormField id="country-locked" label="Your Country">
-                      <div className="flex min-h-12 w-full items-center gap-2 rounded-control border border-line bg-surface-sunken px-4 text-body font-semibold text-muted-fg opacity-60">
-                        {countries.find((c: any) => c.code === creatorData.country)
-                          ?.flag || ""}{" "}
-                        {countries.find((c: any) => c.code === creatorData.country)
-                          ?.name || creatorData.country}
-                      </div>
-                    </FormField>
-                  ) : (
-                    <Select
-                      label="Your Country"
-                      value={creatorData?.country || ""}
-                      onChange={(e) => handleUpdate("country", e.target.value)}
-                    >
-                      <option value="">Select country...</option>
-                      {countries.map((c: any) => (
-                        <option key={c.id} value={c.code}>
-                          {c.flag || ""} {c.name}
-                        </option>
-                      ))}
-                    </Select>
-                  )}
-                  {creatorData?.country && (
-                    <p className="text-caption font-semibold text-warning">
-                      ⚠ Country cannot be changed once set.
-                    </p>
-                  )}
+          {activeTab === "location" && (() => {
+            const locationCooldown = evaluateLocationUpdateCooldown(
+              savedLocationState.locationUpdatedAt,
+            );
+            const isCountryInCooldown =
+              Boolean(savedLocationState.country) && !locationCooldown.allowed;
+            const mappedCodes = new Set(availableCurrencies.map((c: any) => c.code));
+            const otherCurrencies = currencies.filter(
+              (c: any) => !mappedCodes.has(c.code),
+            );
+            const selectedCountryObj = countries.find(
+              (c: any) => c.code === creatorData?.country,
+            );
+
+            return (
+              <Card className="space-y-6 p-6 md:p-8">
+                <div>
+                  <h3 className="font-display text-title font-bold text-fg">
+                    Location & Currency
+                  </h3>
+                  <p className="mt-1 text-label text-muted-fg">
+                    Update your preferred currency anytime. Your country location can be
+                    updated once every month.
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  {creatorData?.currency ? (
-                    <FormField id="currency-locked" label="Preferred Currency">
-                      <div className="flex min-h-12 w-full items-center gap-2 rounded-control border border-line bg-surface-sunken px-4 text-body font-semibold text-muted-fg opacity-60">
-                        {creatorData.currency} -{" "}
-                        {currencies.find((c: any) => c.code === creatorData.currency)
-                          ?.name || ""}{" "}
-                        (
-                        {currencies.find((c: any) => c.code === creatorData.currency)
-                          ?.symbol || ""}
-                        )
-                      </div>
-                    </FormField>
-                  ) : (
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    {isCountryInCooldown ? (
+                      <FormField id="country-locked" label="Your Country">
+                        <div className="flex min-h-12 w-full items-center gap-2 rounded-control border border-line bg-surface-sunken px-4 text-body font-semibold text-muted-fg opacity-70">
+                          {selectedCountryObj?.flag || ""}{" "}
+                          {selectedCountryObj?.name || creatorData?.country}
+                        </div>
+                      </FormField>
+                    ) : (
+                      <Select
+                        label="Your Country"
+                        value={creatorData?.country || ""}
+                        onChange={(e) => handleUpdate("country", e.target.value)}
+                      >
+                        <option value="">Select country...</option>
+                        {countries.map((c: any) => (
+                          <option key={c.id} value={c.code}>
+                            {c.flag || ""} {c.name}
+                          </option>
+                        ))}
+                      </Select>
+                    )}
+                    {isCountryInCooldown ? (
+                      <p className="text-caption font-semibold text-warning">
+                        Location can be updated once every month. Next update available on{" "}
+                        {locationCooldown.nextAllowedAt?.toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                        })}
+                        .
+                      </p>
+                    ) : (
+                      <p className="text-caption text-muted-fg">
+                        {locationCooldown.lastUpdatedAt
+                          ? `Last location update: ${locationCooldown.lastUpdatedAt.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}. Changing it starts a new 1-month window.`
+                          : "You can update your location once every month."}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
                     <Select
                       label="Preferred Currency"
                       value={creatorData?.currency || ""}
                       onChange={(e) => handleUpdate("currency", e.target.value)}
-                      disabled={!creatorData?.country}
                     >
                       <option value="">Select currency...</option>
-                      {availableCurrencies.map((c: any) => (
-                        <option key={c.code} value={c.code}>
-                          {c.code} - {c.name} ({c.symbol})
-                        </option>
-                      ))}
+                      {availableCurrencies.length > 0 && (
+                        <optgroup
+                          label={
+                            selectedCountryObj
+                              ? `Recommended for ${selectedCountryObj.name}`
+                              : "Recommended currencies"
+                          }
+                        >
+                          {availableCurrencies.map((c: any) => (
+                            <option key={c.code} value={c.code}>
+                              {c.code} - {c.name} ({c.symbol})
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {otherCurrencies.length > 0 && (
+                        <optgroup
+                          label={
+                            availableCurrencies.length > 0
+                              ? "Other supported currencies"
+                              : "Supported currencies"
+                          }
+                        >
+                          {otherCurrencies.map((c: any) => (
+                            <option key={c.code} value={c.code}>
+                              {c.code} - {c.name} ({c.symbol})
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
                     </Select>
-                  )}
-                  {creatorData?.currency && (
-                    <p className="text-caption font-semibold text-warning">
-                      ⚠ Currency cannot be changed once set.
-                    </p>
-                  )}
-                  {creatorData?.country && availableCurrencies.length === 0 && (
-                    <p className="mt-2 rounded-control bg-warning-bg p-3 text-caption text-warning">
-                      No currencies configured for this country yet. Contact an admin to
-                      add currencies.
-                    </p>
-                  )}
-                </div>
-                {creatorData?.currency && (
-                  <div className="rounded-control border border-line bg-brand-soft p-4">
-                    <p className="text-label font-bold text-brand-strong">
-                      All transactions will be processed in {creatorData.currency}
-                    </p>
-                    <p className="mt-1 text-caption text-brand-strong">
-                      Prices shown on your profile will use this currency. Existing
-                      transactions keep their original currency.
+                    <p className="text-caption text-muted-fg">
+                      You can change your preferred currency at any time.
                     </p>
                   </div>
-                )}
-              </div>
-            </Card>
-          )}
+                  {creatorData?.currency && (
+                    <div className="rounded-control border border-line bg-brand-soft p-4">
+                      <p className="text-label font-bold text-brand-strong">
+                        All transactions will be processed in {creatorData.currency}
+                      </p>
+                      <p className="mt-1 text-caption text-brand-strong">
+                        Prices shown on your profile will use this currency. Existing
+                        transactions keep their original currency.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            );
+          })()}
 
           {activeTab === "perks" && (
             <Card className="space-y-6 p-6 md:p-8">

@@ -118,6 +118,20 @@ export async function POST(request: NextRequest) {
           .get()
       : null;
 
+    const fallbackPendingDoc = !targetRequestSnap?.exists ? pendingSnap?.docs[0] ?? null : null;
+    const effectiveRequestData = (
+      targetRequestSnap?.exists
+        ? requestData
+        : (fallbackPendingDoc?.data() || {})
+    ) as Record<string, unknown>;
+
+    const resolvedCreatorName =
+      cleanString(creatorData.name, 200) ||
+      cleanString(effectiveRequestData.creatorName, 200) ||
+      cleanString(effectiveRequestData.accountName, 200) ||
+      targetHandle ||
+      creatorName;
+
     const batch = adminDb.batch();
     const requestRefsToUpdate = new Map<string, FirebaseFirestore.DocumentReference>();
     if (targetRequestSnap?.exists && requestData.status === "pending") {
@@ -140,7 +154,7 @@ export async function POST(request: NextRequest) {
         updatedAt: reviewTimestamp,
         rejectionReason,
         ...(targetHandle ? { creatorHandle: targetHandle, handle: targetHandle } : {}),
-        ...(creatorName ? { creatorName } : {}),
+        ...(resolvedCreatorName ? { creatorName: resolvedCreatorName } : {}),
       });
     }
 
@@ -155,22 +169,35 @@ export async function POST(request: NextRequest) {
         updatedAt: reviewTimestamp,
       };
 
-      if (requestId) {
-        creatorUpdates.verificationRequestId = requestId;
+      const resolvedRequestId = requestId || targetRequestSnap?.id || fallbackPendingDoc?.id || "";
+      if (resolvedRequestId) {
+        creatorUpdates.verificationRequestId = resolvedRequestId;
       }
 
       if (isApprove) {
-        const reqPref = cleanString(requestData.payoutPreference, 40);
-        const reqAccountNum = cleanString(requestData.accountNumber, 80);
-        const reqBank = cleanString(requestData.bankName, 120);
-        if (!creatorData.payoutPreference && reqPref) {
+        const reqPref = cleanString(effectiveRequestData.payoutPreference, 40).toLowerCase();
+        const reqAccountNum = cleanString(effectiveRequestData.accountNumber, 80);
+        const reqAccountName = cleanString(effectiveRequestData.accountName, 200);
+        const reqBank = cleanString(effectiveRequestData.bankName, 120);
+        const reqSwift = cleanString(effectiveRequestData.swiftCode, 40);
+
+        if (reqPref) {
           creatorUpdates.payoutPreference = reqPref;
+          creatorUpdates.verifiedPayoutPreference = reqPref;
         }
-        if (!creatorData.payoutNumber && reqAccountNum) {
+        if (reqAccountNum) {
           creatorUpdates.payoutNumber = reqAccountNum;
+          creatorUpdates.verifiedAccountNumber = reqAccountNum;
         }
-        if (!creatorData.network && reqBank) {
+        if (reqAccountName) {
+          creatorUpdates.verifiedAccountName = reqAccountName;
+        }
+        if (reqBank) {
           creatorUpdates.network = reqBank;
+          creatorUpdates.verifiedBankName = reqBank;
+        }
+        if (reqSwift) {
+          creatorUpdates.verifiedSwiftCode = reqSwift;
         }
       }
 

@@ -10,6 +10,7 @@ import {
 } from "@/lib/payouts/currency";
 import { validateWithdrawalRequest, WithdrawalError } from "@/lib/payouts/withdrawals";
 import { PayoutRouteError, resolvePayoutRoute } from "@/lib/payouts/rails";
+import { resolveTargetPayoutAccount } from "@/lib/payouts/targetAccount";
 import {
   buildWithdrawalHoldLedger,
   buildWithdrawalHoldLedgerPlan,
@@ -22,6 +23,35 @@ import {
 } from "@/lib/payouts/withdrawalConversion";
 
 const IDEMPOTENCY_KEY = /^[A-Za-z0-9_-]{8,128}$/;
+
+function parseReqTimeMs(value: unknown): number {
+  if (!value) return 0;
+  if (typeof value === "string" || typeof value === "number") {
+    const ms = Date.parse(String(value));
+    return Number.isFinite(ms) ? ms : 0;
+  }
+  if (typeof value === "object") {
+    const r = value as { toMillis?: () => number; seconds?: number; _seconds?: number };
+    if (typeof r.toMillis === "function") return r.toMillis();
+    const s = typeof r.seconds === "number" ? r.seconds : r._seconds;
+    if (typeof s === "number") return s * 1000;
+  }
+  return 0;
+}
+
+function pickApprovedVerificationRequest(
+  docs: Array<{ id: string; data: () => Record<string, unknown> }>,
+): Record<string, unknown> | null {
+  if (docs.length === 0) return null;
+  const rows = docs
+    .map((d) => ({ id: d.id, ...(d.data() || {}) }) as Record<string, unknown>)
+    .sort((a, b) => parseReqTimeMs(b.createdAt) - parseReqTimeMs(a.createdAt));
+  return (
+    rows.find((r) => String(r.status || "").toLowerCase() === "approved") ??
+    rows.find((r) => String(r.status || "").toLowerCase() !== "rejected") ??
+    null
+  );
+}
 
 class ApiError extends Error {
   readonly status: number;
@@ -110,8 +140,17 @@ export async function POST(request: NextRequest) {
     if (creator.verified !== true) {
       throw new ApiError(403, "CREATOR_NOT_VERIFIED", "Identity verification is required before requesting a withdrawal");
     }
-    const accountNumber = String(creator.payoutNumber || "").trim();
-    if (!accountNumber) {
+
+    const verifQuery = await adminDb
+      .collection("verificationRequests")
+      .where("uid", "==", authUser.uid)
+      .limit(10)
+      .get();
+    const approvedVerif = pickApprovedVerificationRequest(
+      verifQuery.docs as Array<{ id: string; data: () => Record<string, unknown> }>,
+    );
+    const initialTarget = resolveTargetPayoutAccount(creator, approvedVerif);
+    if (!initialTarget.accountNumber) {
       throw new ApiError(400, "PAYOUT_DESTINATION_MISSING", "Add a payout destination before requesting a withdrawal");
     }
 
@@ -129,14 +168,18 @@ export async function POST(request: NextRequest) {
     const route = resolvePayoutRoute(payoutCurrency, {
       provider: currencyPolicy.payoutProvider,
       rail: currencyPolicy.payoutRail,
-      payoutPreference: creator.payoutPreference,
+      payoutPreference: initialTarget.payoutPreference,
     });
 
     const requestRef = adminDb.collection("withdrawRequests").doc(idempotencyKey);
     const quoteRef = quoteId ? adminDb.collection("withdrawalQuotes").doc(quoteId) : null;
     const ledgerEnabled = isMoneyLedgerEnabled();
     let duplicate = false;
-    let resolvedAccountNumber = accountNumber;
+    let resolvedAccountNumber = initialTarget.accountNumber;
+    let resolvedMethodLabel =
+      route.rail === "bank_transfer"
+        ? initialTarget.bankName || "Bank"
+        : initialTarget.providerLabel || "MoMo";
 
     await adminDb.runTransaction(async (transaction) => {
       const existing = await transaction.get(requestRef);
@@ -154,7 +197,8 @@ export async function POST(request: NextRequest) {
       if (fresh.verified !== true) {
         throw new ApiError(403, "CREATOR_NOT_VERIFIED", "Identity verification is required before requesting a withdrawal");
       }
-      if (!String(fresh.payoutNumber || "").trim()) {
+      const freshTarget = resolveTargetPayoutAccount(fresh, approvedVerif);
+      if (!freshTarget.accountNumber) {
         throw new ApiError(400, "PAYOUT_DESTINATION_MISSING", "Add a payout destination before requesting a withdrawal");
       }
 
@@ -260,7 +304,11 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      resolvedAccountNumber = String(fresh.payoutNumber || "").trim();
+      resolvedAccountNumber = freshTarget.accountNumber;
+      resolvedMethodLabel =
+        route.rail === "bank_transfer"
+          ? freshTarget.bankName || "Bank"
+          : freshTarget.bankName || String(fresh.network || "MoMo");
 
       transaction.set(requestRef, {
         creatorId: authUser.uid,
@@ -275,8 +323,12 @@ export async function POST(request: NextRequest) {
         rail: route.rail,
         status: "pending",
         held: true,
-        method: route.rail === "bank_transfer" ? "Bank" : String(fresh.network || "MoMo"),
-        accountNumber: String(fresh.payoutNumber || ""),
+        method: resolvedMethodLabel,
+        accountNumber: freshTarget.accountNumber,
+        accountName: freshTarget.accountName,
+        bankName: freshTarget.bankName,
+        ...(freshTarget.swiftCode ? { swiftCode: freshTarget.swiftCode } : {}),
+        payoutPreference: freshTarget.payoutPreference,
         idempotencyKey,
         ledgerMode: ledgerEnabled ? "dual_write_v1" : "legacy",
         ledgerEntryIds: ledgerEntries.map((entry) => entry.id),
@@ -328,7 +380,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(
-      { success: true, requestId: idempotencyKey, duplicate, amount: body.amount, currency: payoutCurrency, provider: route.provider, rail: route.rail, accountNumber: resolvedAccountNumber, ledger: ledgerEnabled, quoteId: quoteId || null },
+      { success: true, requestId: idempotencyKey, duplicate, amount: body.amount, currency: payoutCurrency, provider: route.provider, rail: route.rail, method: resolvedMethodLabel, accountNumber: resolvedAccountNumber, ledger: ledgerEnabled, quoteId: quoteId || null },
       { status: duplicate ? 200 : 201 },
     );
   } catch (error) {

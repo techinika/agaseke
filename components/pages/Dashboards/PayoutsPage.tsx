@@ -29,6 +29,7 @@ import { getCurrencyDefinition, type CurrencyCode } from "@/lib/money";
 import { maskPayoutNumber } from "@/lib/format/payout";
 import { fromMajor, toMajor, resolveHistoricalCurrency } from "@/lib/money";
 import { parsePayoutCurrency } from "@/lib/payouts/currency";
+import { resolveTargetPayoutAccount } from "@/lib/payouts/targetAccount";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -62,17 +63,19 @@ export default function PayoutsPage() {
     (balance) => balance.currency === creatorCurrency,
   );
   const pendingAmount = activeBalance?.pending ?? 0;
+  const convertibleTotal = activeBalance?.convertiblePending ?? pendingAmount;
   const hasOtherCurrencyBalances = perCurrencyBalances.some(
     (b) => b.currency !== creatorCurrency && b.pending > 0,
   );
   const canWithdraw =
     withdrawThreshold !== null &&
-    (pendingAmount >= withdrawThreshold || hasOtherCurrencyBalances);
+    (pendingAmount >= withdrawThreshold || convertibleTotal >= withdrawThreshold);
   const isVerified = creator?.verified || false;
-  const payoutPref = String(verificationRequest?.payoutPreference ?? "").toLowerCase();
-
-  const prefLabel = payoutPref === "bank" ? "Bank Account" : "Mobile Money";
-  const prefShort = payoutPref === "bank" ? "BANK" : "MOMO";
+  const targetAccount = resolveTargetPayoutAccount(
+    creator as Record<string, unknown> | null,
+    verificationRequest,
+  );
+  const prefShort = targetAccount.payoutPreference === "bank" ? "BANK" : "MOMO";
 
   useEffect(() => {
     if (!creator?.uid) return;
@@ -126,7 +129,7 @@ export default function PayoutsPage() {
       toast.error(`Withdrawals are not configured for ${creatorCurrency}`);
       return;
     }
-    if (pendingAmount < withdrawThreshold && !hasOtherCurrencyBalances) {
+    if (pendingAmount < withdrawThreshold && convertibleTotal < withdrawThreshold) {
       toast.error(
         `Minimum withdraw is ${withdrawThreshold.toLocaleString()} ${getCurrencySymbol(creatorCurrency)}`,
       );
@@ -364,23 +367,23 @@ export default function PayoutsPage() {
                 <p className="mb-4 text-caption font-bold uppercase tracking-widest text-muted-fg">
                   Destination
                 </p>
-                {isVerified && verificationRequest ? (
+                {isVerified && (targetAccount.accountNumber || targetAccount.bankName || verificationRequest) ? (
                   <div className="flex items-center gap-3">
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-control bg-brand-soft text-caption font-black text-brand-strong">
                       {prefShort}
                     </div>
                     <div className="flex flex-col">
                       <span className="text-label font-bold text-fg">
-                        {verificationRequest.bankName || prefLabel}
+                        {targetAccount.providerLabel}
                       </span>
-                      {verificationRequest.accountName && (
+                      {targetAccount.accountName && (
                         <span className="text-caption text-muted-fg">
-                          {verificationRequest.accountName}
+                          {targetAccount.accountName}
                         </span>
                       )}
-                      {verificationRequest.accountNumber && (
+                      {targetAccount.accountNumber && (
                         <span className="font-mono text-caption text-muted-fg">
-                          {verificationRequest.accountNumber}
+                          {maskPayoutNumber(targetAccount.accountNumber) || targetAccount.accountNumber}
                         </span>
                       )}
                     </div>
@@ -402,10 +405,11 @@ export default function PayoutsPage() {
                 Progress to Payout Threshold
               </p>
               {perCurrencyBalances.map((b) => {
+                const effective = b.convertiblePending ?? b.pending;
                 const progress =
                   b.threshold === null
                     ? 0
-                    : Math.min((b.pending / b.threshold) * 100, 100);
+                    : Math.min((effective / b.threshold) * 100, 100);
                 return (
                   <div key={b.currency}>
                     <div className="mb-2 flex items-center justify-between gap-3">
@@ -437,7 +441,9 @@ export default function PayoutsPage() {
                         ? "Withdrawals are not configured for this currency."
                         : b.pending >= b.threshold
                           ? "You've reached the payout threshold! You can now request a withdrawal."
-                          : `You need ${(b.threshold - b.pending).toLocaleString()} ${getCurrencySymbol(b.currency)} more to reach the payout threshold.`}
+                          : effective >= b.threshold
+                            ? `Combined balances (~${effective.toLocaleString()} ${getCurrencySymbol(b.currency)}) meet the payout threshold with a conversion quote.`
+                            : `You need ${Math.max(0, b.threshold - effective).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${getCurrencySymbol(b.currency)} more to reach the payout threshold.`}
                     </p>
                   </div>
                 );
@@ -670,13 +676,28 @@ export default function PayoutsPage() {
                   )}
                 </div>
 
-                <div className="border-y border-line py-6">
-                  <p className="mb-1 text-center text-caption font-bold uppercase tracking-widest text-muted-fg">
+                <div className="border-y border-line py-6 text-center">
+                  <p className="mb-1 text-caption font-bold uppercase tracking-widest text-muted-fg">
                     Target Account
                   </p>
-                  <p className="text-center font-black text-fg">
-                    {maskPayoutNumber(creator?.payoutNumber || "")} ({creator?.network})
-                  </p>
+                  {targetAccount.accountNumber ? (
+                    <>
+                      <p className="font-black text-fg">
+                        {maskPayoutNumber(targetAccount.accountNumber) ||
+                          targetAccount.accountNumber}{" "}
+                        ({targetAccount.providerLabel})
+                      </p>
+                      {targetAccount.accountName && (
+                        <p className="mt-1 text-caption text-muted-fg">
+                          {targetAccount.accountName}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="font-semibold text-warning">
+                      No payout destination set
+                    </p>
+                  )}
                 </div>
 
                 <Button

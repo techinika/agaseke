@@ -28,6 +28,7 @@ export interface UserTransaction {
   communityInterval: string;
   communitySubscriptionId: string;
   redirectUrl: string;
+  redirectUrlGeneratedAt: string;
   phone: string;
 }
 
@@ -119,15 +120,26 @@ export async function getUserTransactions(
 
   const transactions = page.map((t) => {
     const creatorUid = toString(t.creatorUid);
+    const ref = toString(t.ref);
+    const explicitMethod = toString(t.paymentMethod);
+    const inferredMethod =
+      explicitMethod ||
+      (toString(t.paymentProvider) === "pesapal" ||
+      ref.startsWith("AGS-CARD-") ||
+      Boolean(toString(t.redirectUrl))
+        ? "card"
+        : toString(t.type) === "gathering"
+          ? "momo"
+          : "");
     return {
-      ref: toString(t.ref),
+      ref,
       type: toString(t.type) || "support",
       status: toString(t.status) || "pending",
       currency: resolveTxCurrency(t),
       sourceCurrency: toString(t.sourceCurrency),
       sourceAmountMinor: toNumber(t.sourceAmountMinor),
       fxRate: toNumber(t.fxRate),
-      paymentMethod: toString(t.paymentMethod) || (toString(t.type) === "gathering" ? "momo" : ""),
+      paymentMethod: inferredMethod,
       amount: toNumber(t.amount),
       createdAt: toString(t.createdAt),
       successfulAt: toString(t.successfulAt),
@@ -146,6 +158,7 @@ export async function getUserTransactions(
       communityInterval: toString(t.communityInterval),
       communitySubscriptionId: toString(t.communitySubscriptionId),
       redirectUrl: toString(t.redirectUrl),
+      redirectUrlGeneratedAt: toString(t.redirectUrlGeneratedAt),
       phone: toString(t.phone),
     };
   });

@@ -54,4 +54,12 @@ export interface Creator {
   focus?: string[];
   country?: string;
   currency?: string;
+  locationUpdatedAt?: any;
+  countryUpdatedAt?: any;
+  currencyUpdatedAt?: any;
+  verifiedPayoutPreference?: string;
+  verifiedAccountNumber?: string;
+  verifiedAccountName?: string;
+  verifiedBankName?: string;
+  verifiedSwiftCode?: string;
 }

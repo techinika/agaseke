@@ -328,6 +328,7 @@ export async function initiateCardPayment(
       ref: merchantRef,
       orderTrackingId: payData.order_tracking_id || "",
       redirectUrl: payData.redirect_url,
+      redirectUrlGeneratedAt: now,
       amount: resolved.totalAmount,
       currency: resolved.currency,
       creatorId: resolved.creatorHandle,

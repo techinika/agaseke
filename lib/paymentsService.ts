@@ -101,6 +101,7 @@ export interface UserTransaction {
   communityInterval: string;
   communitySubscriptionId: string;
   redirectUrl?: string;
+  redirectUrlGeneratedAt?: string;
   phone?: string;
 }
 
@@ -232,31 +233,65 @@ export async function getUserTransactions(
   return (await res.json()) as TransactionsResponse;
 }
 
-export async function retryTransaction(
+async function postTransactionRecovery(
+  endpoint: "retry" | "resume",
   ref: string,
   phone?: string,
 ): Promise<RetryTransactionResponse> {
   const headers = await getAuthHeaders();
+  const body = JSON.stringify({ ref, ...(phone ? { phone } : {}) });
+  const fallbackMsg =
+    endpoint === "resume" ? "Failed to resume payment" : "Failed to retry payment";
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 25000);
 
   try {
-    const res = await fetch(`${PAYMENTS_WORKER_URL}/api/payments/transactions/retry`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ ref, ...(phone ? { phone } : {}) }),
-      signal: controller.signal,
-    });
-
-    if (!res.ok) {
-      throw new Error(await parseError(res, "Failed to retry payment"));
+    let workerRes: Response | null = null;
+    try {
+      workerRes = await fetch(
+        `${PAYMENTS_WORKER_URL}/api/payments/transactions/${endpoint}`,
+        {
+          method: "POST",
+          headers,
+          body,
+          signal: controller.signal,
+        },
+      );
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        throw err;
+      }
+      workerRes = null;
     }
 
-    return (await res.json()) as Promise<RetryTransactionResponse>;
+    if (workerRes && workerRes.ok) {
+      return (await workerRes.json()) as RetryTransactionResponse;
+    }
+
+    // Fall back to the Next.js server route when the worker does not serve this
+    // endpoint yet (404), cannot find the transaction, or is unreachable.
+    if (!workerRes || workerRes.status === 404 || workerRes.status >= 500) {
+      const localRes = await fetch(`/api/payments/transactions/${endpoint}`, {
+        method: "POST",
+        headers,
+        body,
+        signal: controller.signal,
+      });
+      if (localRes.ok) {
+        return (await localRes.json()) as RetryTransactionResponse;
+      }
+      throw new Error(await parseError(localRes, fallbackMsg));
+    }
+
+    throw new Error(await parseError(workerRes, fallbackMsg));
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") {
-      throw new Error("Retry request timed out. Check your connection and try again.");
+      throw new Error(
+        endpoint === "retry"
+          ? "Retry request timed out. Check your connection and try again."
+          : "Request timed out. Check your connection and try again.",
+      );
     }
     throw err;
   } finally {
@@ -264,34 +299,16 @@ export async function retryTransaction(
   }
 }
 
+export async function retryTransaction(
+  ref: string,
+  phone?: string,
+): Promise<RetryTransactionResponse> {
+  return postTransactionRecovery("retry", ref, phone);
+}
+
 export async function resumeTransaction(
   ref: string,
   phone?: string,
 ): Promise<RetryTransactionResponse> {
-  const headers = await getAuthHeaders();
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 25000);
-
-  try {
-    const res = await fetch(`${PAYMENTS_WORKER_URL}/api/payments/transactions/resume`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ ref, ...(phone ? { phone } : {}) }),
-      signal: controller.signal,
-    });
-
-    if (!res.ok) {
-      throw new Error(await parseError(res, "Failed to resume payment"));
-    }
-
-    return (await res.json()) as Promise<RetryTransactionResponse>;
-  } catch (err) {
-    if (err instanceof DOMException && err.name === "AbortError") {
-      throw new Error("Request timed out. Check your connection and try again.");
-    }
-    throw err;
-  } finally {
-    clearTimeout(timeout);
-  }
+  return postTransactionRecovery("resume", ref, phone);
 }

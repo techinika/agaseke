@@ -218,6 +218,9 @@ export async function initiateSubscription(
   await firestoreSet(env, `communitySubscriptions/${subscriptionId}`, convertToFields({
     ...subFields,
     paymentRef: payData.ref || "",
+    ...(payData.redirect_url
+      ? { paymentUrl: payData.redirect_url, paymentUrlGeneratedAt: new Date().toISOString() }
+      : {}),
   }));
 
   return {
@@ -259,15 +262,19 @@ export async function renewSubscription(
     data.request,
   );
 
+  const updatedAt = new Date().toISOString();
   await firestoreSet(env, `communitySubscriptions/${data.subscriptionId}`, convertToFields({
     ...sub,
     paymentMethod: method,
     phone: method === "momo" ? phone : (sub.phone as string) || "",
     paymentRef: payData.ref || "",
+    ...(payData.redirect_url
+      ? { paymentUrl: payData.redirect_url, paymentUrlGeneratedAt: updatedAt }
+      : {}),
     status: sub.status === "active" ? "active" : "pending",
     renewalStatus: "pending",
-    lastRenewalAttemptAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    lastRenewalAttemptAt: updatedAt,
+    updatedAt,
   }));
 
   return {

@@ -422,7 +422,8 @@ export const en = {
   },
   creatorHome: {
     availableBalance: "Available balance",
-    earningsThisMonth: "Earnings this month",
+    allTimeEarnings: "All-time earnings",
+    earningsThisMonth: "All-time earnings",
     supporters: "Supporters",
     nextPayout: "Next payout",
     viewDetails: "View details",

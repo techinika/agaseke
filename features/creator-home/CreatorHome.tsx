@@ -166,7 +166,7 @@ export function CreatorHome() {
         <Card className="flex flex-col p-4 border-brand-strong/20">
           <div className="flex items-center justify-between">
             <p className="text-label font-semibold text-muted-fg">
-              {t("creatorHome.earningsThisMonth")}
+              {t("creatorHome.allTimeEarnings")}
             </p>
             <TrendingUp className="size-5 text-brand-strong" aria-hidden="true" />
           </div>

@@ -128,6 +128,43 @@ function hasOriginalCharge(tx: UserTransaction): boolean {
   );
 }
 
+const CARD_LINK_FRESH_MS = 15 * 60 * 1000;
+
+function sanitizeCheckoutUrl(raw?: string): string {
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw.trim());
+    if (
+      parsed.protocol === "https:" ||
+      (parsed.protocol === "http:" &&
+        (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1"))
+    ) {
+      return parsed.toString();
+    }
+  } catch {
+    // ignore malformed URL
+  }
+  return "";
+}
+
+function isCardTransaction(tx: UserTransaction): boolean {
+  return (
+    tx.paymentMethod === "card" ||
+    tx.ref.startsWith("AGS-CARD-") ||
+    Boolean(tx.redirectUrl)
+  );
+}
+
+function isFreshCardLink(tx: UserTransaction): boolean {
+  const safeUrl = sanitizeCheckoutUrl(tx.redirectUrl);
+  if (!safeUrl) return false;
+  const tsRaw = tx.redirectUrlGeneratedAt || tx.createdAt;
+  if (!tsRaw) return false;
+  const tsMs = Date.parse(tsRaw);
+  if (!Number.isFinite(tsMs)) return false;
+  return Date.now() - tsMs < CARD_LINK_FRESH_MS;
+}
+
 interface ActiveRetry {
   oldRef: string;
   newRef: string;
@@ -266,18 +303,19 @@ export default function TransactionsPage() {
           : await retryTransaction(tx.ref, phone);
       newRef = result.ref;
       if (result.method === "card") {
+        const safeRedirect = sanitizeCheckoutUrl(result.redirect_url);
         setActiveRetry({
           oldRef: tx.ref,
           newRef: result.ref,
           method: "card",
-          redirectUrl: result.redirect_url,
+          redirectUrl: safeRedirect || undefined,
           phase: "confirming",
           message: "Complete your card payment in the checkout link below.",
         });
-        if (result.redirect_url && typeof window !== "undefined") {
-          window.open(result.redirect_url, "_blank", "noopener,noreferrer");
+        if (safeRedirect && typeof window !== "undefined") {
+          window.open(safeRedirect, "_blank", "noopener,noreferrer");
         }
-        listenForPayment(result.ref, tx.ref, "card", result.redirect_url);
+        listenForPayment(result.ref, tx.ref, "card", safeRedirect || undefined);
       } else {
         setActiveRetry({
           oldRef: tx.ref,
@@ -292,7 +330,7 @@ export default function TransactionsPage() {
       setActiveRetry({
         oldRef: tx.ref,
         newRef,
-        method: tx.paymentMethod || "momo",
+        method: isCardTransaction(tx) ? "card" : tx.paymentMethod || "momo",
         phase: "failed",
         message: err instanceof Error ? err.message : "Failed to process payment",
       });
@@ -301,21 +339,22 @@ export default function TransactionsPage() {
   };
 
   const handleActionClick = (tx: UserTransaction, mode: "resume" | "retry") => {
-    if (tx.paymentMethod === "card") {
-      if (mode === "resume" && tx.redirectUrl) {
+    if (isCardTransaction(tx)) {
+      const safeRedirect = sanitizeCheckoutUrl(tx.redirectUrl);
+      if (mode === "resume" && safeRedirect && isFreshCardLink(tx)) {
         stopListening();
         setActiveRetry({
           oldRef: tx.ref,
           newRef: tx.ref,
           method: "card",
-          redirectUrl: tx.redirectUrl,
+          redirectUrl: safeRedirect,
           phase: "confirming",
           message: "Complete your card payment in the checkout link below.",
         });
         if (typeof window !== "undefined") {
-          window.open(tx.redirectUrl, "_blank", "noopener,noreferrer");
+          window.open(safeRedirect, "_blank", "noopener,noreferrer");
         }
-        listenForPayment(tx.ref, tx.ref, "card", tx.redirectUrl);
+        listenForPayment(tx.ref, tx.ref, "card", safeRedirect);
         return;
       }
       void executeResumeOrRetry(tx, mode);
@@ -483,9 +522,9 @@ export default function TransactionsPage() {
                   </p>
                   {activeRetry.method === "card" &&
                     activeRetry.phase === "confirming" &&
-                    activeRetry.redirectUrl && (
+                    sanitizeCheckoutUrl(activeRetry.redirectUrl) && (
                       <a
-                        href={activeRetry.redirectUrl}
+                        href={sanitizeCheckoutUrl(activeRetry.redirectUrl)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="mt-2 inline-flex items-center gap-1.5 text-caption font-semibold text-brand-strong hover:underline"
@@ -522,6 +561,7 @@ export default function TransactionsPage() {
                   activeRetry !== null &&
                   activeRetry.oldRef === tx.ref &&
                   (activeRetry.phase === "initiating" || activeRetry.phase === "confirming");
+                const isCard = isCardTransaction(tx);
                 return (
                   <Card key={tx.ref} className="p-4 sm:p-5">
                     <div className="mb-2 flex items-start justify-between gap-3">
@@ -531,7 +571,7 @@ export default function TransactionsPage() {
                         </p>
                         <p className="mt-0.5 text-caption text-muted-fg">
                           {typeLabel(tx.type)}
-                          {tx.paymentMethod ? ` · ${tx.paymentMethod === "card" ? "Card" : "MoMo"}` : ""}
+                          {(isCard || tx.paymentMethod) ? ` · ${isCard ? "Card" : "MoMo"}` : ""}
                           {tx.attendeeName ? ` · ${tx.attendeeName}` : ""}
                           {tx.message ? ` · “${tx.message}”` : ""}
                         </p>
@@ -580,7 +620,7 @@ export default function TransactionsPage() {
                           }
                           loading={isRetryingThis}
                           leadingIcon={
-                            tx.paymentMethod === "card" ? (
+                            isCard ? (
                               <CreditCard className="size-4" aria-hidden="true" />
                             ) : (
                               <Smartphone className="size-4" aria-hidden="true" />

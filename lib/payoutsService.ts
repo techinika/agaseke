@@ -30,6 +30,32 @@ export async function fetchPayoutOverview(creator: {
 }): Promise<PayoutOverview | null> {
   if (!creator.handle) return null;
 
+  const currentUser = auth.currentUser;
+  if (currentUser && typeof currentUser.getIdToken === "function") {
+    try {
+      const token = await currentUser.getIdToken();
+      const res = await fetch("/api/payouts/overview", {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (res.ok) {
+        const data = (await res.json()) as PayoutOverview;
+        if (data && Array.isArray(data.perCurrencyBalances)) {
+          return {
+            creatorCurrency: data.creatorCurrency,
+            withdrawThreshold: data.withdrawThreshold,
+            perCurrencyBalances: data.perCurrencyBalances,
+          };
+        }
+      }
+    } catch {
+      // Fall back to direct Firestore reads when API route is unavailable
+    }
+  }
+
   const creatorRef = doc(db, "creators", creator.handle);
   const snap = await getDoc(creatorRef);
   if (!snap.exists()) return null;
@@ -84,14 +110,20 @@ export function subscribeToLatestVerificationRequest(
     collection(db, "verificationRequests"),
     where("uid", "==", uid),
     orderBy("createdAt", "desc"),
-    limit(1),
+    limit(10),
   );
   return onSnapshot(qVerification, (snap) => {
     if (snap.empty) {
       onData(null);
       return;
     }
-    onData({ id: snap.docs[0].id, ...(snap.docs[0].data() as Record<string, unknown>) });
+    const items = snap.docs.map(
+      (d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) }) as Record<string, unknown>,
+    );
+    const preferred =
+      items.find((item) => String(item.status || "").toLowerCase() === "approved") ??
+      items[0];
+    onData(preferred);
   });
 }
 
@@ -177,6 +209,7 @@ export async function submitWithdrawRequest(params: {
   const payload = (await response.json().catch(() => null)) as {
     error?: string;
     rail?: string;
+    method?: string;
     accountNumber?: string;
   } | null;
   if (!response.ok) {
@@ -194,7 +227,7 @@ export async function submitWithdrawRequest(params: {
       creatorEmail,
       amount: params.amount,
       currency: params.currency,
-      method: payload?.rail === "bank_transfer" ? "Bank" : "MoMo",
+      method: payload?.method || (payload?.rail === "bank_transfer" ? "Bank" : "MoMo"),
       accountNumber: payload?.accountNumber || "",
     });
   } catch (error) {

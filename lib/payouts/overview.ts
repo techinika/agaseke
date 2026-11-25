@@ -1,4 +1,14 @@
 import {
+  applySpreadMinor,
+  convertMinorUnits,
+  deriveCrossRate,
+  fromMajor,
+  money,
+  toMajor,
+  type CurrencyCode,
+  type FxSnapshot,
+} from "@/lib/money";
+import {
   normalizePayoutCurrency,
   PAYOUT_CURRENCIES,
   type PayoutCurrency,
@@ -12,6 +22,7 @@ export interface PayoutCurrencyPolicy {
 export interface CurrencyBalance {
   currency: PayoutCurrency;
   pending: number;
+  convertiblePending?: number;
   threshold: number | null;
   earnings: number;
 }
@@ -87,5 +98,52 @@ export function buildPayoutOverview(
       threshold: thresholdFor(code),
       earnings: earningsFor(code),
     })),
+  };
+}
+
+export function enrichPayoutOverviewWithFx(
+  overview: PayoutOverview,
+  snapshot: FxSnapshot | null,
+  spreadBps = 150,
+): PayoutOverview {
+  if (!snapshot) return overview;
+  const safeSpread = Math.max(0, Math.min(9999, Math.trunc(spreadBps)));
+
+  return {
+    ...overview,
+    perCurrencyBalances: overview.perCurrencyBalances.map((target) => {
+      let totalTargetMinor = 0;
+      for (const source of overview.perCurrencyBalances) {
+        if (!Number.isFinite(source.pending) || source.pending <= 0) continue;
+        try {
+          const sourceMoney = fromMajor(source.currency as CurrencyCode, source.pending);
+          if (sourceMoney.amountMinor <= 0) continue;
+          if (source.currency === target.currency) {
+            totalTargetMinor += sourceMoney.amountMinor;
+            continue;
+          }
+          const rate = deriveCrossRate(
+            snapshot,
+            source.currency as CurrencyCode,
+            target.currency as CurrencyCode,
+          );
+          const converted = convertMinorUnits(
+            sourceMoney.amountMinor,
+            source.currency as CurrencyCode,
+            target.currency as CurrencyCode,
+            rate,
+          );
+          totalTargetMinor += applySpreadMinor(converted, safeSpread, "withdrawal");
+        } catch {
+          // Skip source currency if conversion rate or precision is unavailable
+        }
+      }
+      return {
+        ...target,
+        convertiblePending: toMajor(
+          money(target.currency as CurrencyCode, totalTargetMinor),
+        ),
+      };
+    }),
   };
 }

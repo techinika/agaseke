@@ -46,6 +46,49 @@ function extractDocId(name: string): string {
   return parts[parts.length - 1];
 }
 
+const CARD_LINK_FRESH_MS = 15 * 60 * 1000;
+
+function isSafeHttpsUrl(raw: string): boolean {
+  try {
+    const parsed = new URL(raw);
+    return (
+      parsed.protocol === "https:" ||
+      (parsed.protocol === "http:" &&
+        (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1"))
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isFreshCardLink(tx: Record<string, unknown>, nowMs = Date.now()): boolean {
+  const url = toString(tx.redirectUrl).trim();
+  if (!url || !isSafeHttpsUrl(url)) return false;
+  const generatedRaw =
+    toString(tx.redirectUrlGeneratedAt) ||
+    toString(tx.updatedAt) ||
+    toString(tx.initiatedAt) ||
+    toString(tx.createdAt);
+  if (!generatedRaw) return false;
+  const generatedMs = Date.parse(generatedRaw);
+  if (!Number.isFinite(generatedMs)) return false;
+  return nowMs - generatedMs < CARD_LINK_FRESH_MS;
+}
+
+function inferMethod(tx: Record<string, unknown>): "momo" | "card" {
+  const method = toString(tx.paymentMethod).toLowerCase();
+  if (method === "card") return "card";
+  if (method === "momo") return "momo";
+  if (
+    toString(tx.paymentProvider).toLowerCase() === "pesapal" ||
+    toString(tx.ref).startsWith("AGS-CARD-") ||
+    Boolean(toString(tx.redirectUrl))
+  ) {
+    return "card";
+  }
+  return "momo";
+}
+
 const COPY_FIELDS = [
   "phone",
   "message",
@@ -130,7 +173,13 @@ export async function retryTransaction(
   const docs = await firestoreQuery(env, "transactions", "ref", {
     stringValue: ref,
   }, 1);
-  const doc = docs[0];
+  let doc = docs[0];
+  if (!doc) {
+    const directDoc = await firestoreGet(env, `transactions/${encodeURIComponent(ref)}`);
+    if (directDoc?.fields) {
+      doc = { name: directDoc.name || `transactions/${ref}`, fields: directDoc.fields };
+    }
+  }
   if (!doc) throw new RetryError("Transaction not found", 404);
 
   const docId = extractDocId(doc.name);
@@ -146,8 +195,7 @@ export async function retryTransaction(
     throw new RetryError("This transaction already completed", 409);
   }
 
-  const method: "momo" | "card" =
-    toString(tx.paymentMethod) === "card" ? "card" : "momo";
+  const method: "momo" | "card" = inferMethod(tx);
 
   if (status === "pending" && !options.allowPending) {
     throw new RetryError(
@@ -156,18 +204,18 @@ export async function retryTransaction(
     );
   }
 
-  // Pending card payment with an existing checkout link can be reopened directly.
+  // Pending card payment with a fresh checkout link can be reopened directly.
   if (
     options.allowPending &&
     status === "pending" &&
     method === "card" &&
-    toString(tx.redirectUrl)
+    isFreshCardLink(tx)
   ) {
     return {
-      ref: toString(tx.ref),
+      ref: toString(tx.ref) || docId,
       method: "card",
       redirect_url: toString(tx.redirectUrl),
-      merchant_reference: toString(tx.orderTrackingId || tx.ref),
+      merchant_reference: toString(tx.orderTrackingId || tx.ref || docId),
     };
   }
 
@@ -177,7 +225,19 @@ export async function retryTransaction(
     const retriedDocs = await firestoreQuery(env, "transactions", "ref", {
       stringValue: previousRetriedRef,
     }, 1);
-    const retriedDoc = retriedDocs[0];
+    let retriedDoc = retriedDocs[0];
+    if (!retriedDoc) {
+      const directRetried = await firestoreGet(
+        env,
+        `transactions/${encodeURIComponent(previousRetriedRef)}`,
+      );
+      if (directRetried?.fields) {
+        retriedDoc = {
+          name: directRetried.name || `transactions/${previousRetriedRef}`,
+          fields: directRetried.fields,
+        };
+      }
+    }
     if (retriedDoc?.fields) {
       const retriedTx = convertFromFields(retriedDoc.fields);
       const retriedStatus = toString(retriedTx.status);
@@ -187,14 +247,14 @@ export async function retryTransaction(
       if (
         options.allowPending &&
         retriedStatus === "pending" &&
-        toString(retriedTx.paymentMethod) === "card" &&
-        toString(retriedTx.redirectUrl)
+        inferMethod(retriedTx) === "card" &&
+        isFreshCardLink(retriedTx)
       ) {
         return {
-          ref: toString(retriedTx.ref),
+          ref: toString(retriedTx.ref) || previousRetriedRef,
           method: "card",
           redirect_url: toString(retriedTx.redirectUrl),
-          merchant_reference: toString(retriedTx.orderTrackingId || retriedTx.ref),
+          merchant_reference: toString(retriedTx.orderTrackingId || retriedTx.ref || previousRetriedRef),
         };
       }
     }
@@ -260,15 +320,19 @@ export async function retryTransaction(
     });
   }
 
+  const nowIso = new Date().toISOString();
   await firestoreSet(
     env,
     `transactions/${docId}`,
     convertToFields({
       ...tx,
       retried: true,
-      retriedAt: new Date().toISOString(),
+      retriedAt: nowIso,
       retriedRef: result.ref,
       retryCount: attemptNumber,
+      ...(result.redirect_url
+        ? { redirectUrl: result.redirect_url, redirectUrlGeneratedAt: nowIso }
+        : {}),
       ...(overridePhone ? { phone: overridePhone } : {}),
     }),
   );
