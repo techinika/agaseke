@@ -224,7 +224,7 @@ export default function AdminCountryCurrenciesPage({ embedded = false }: { embed
                   {items.map((m) => (
                     <div
                       key={m.id}
-                      className="px-6 py-4 flex items-center justify-between group"
+                      className="px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3 group"
                     >
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">

@@ -477,29 +477,29 @@ export function SalesAnalytics({ embedded = false }: { embedded?: boolean }) {
               </div>
 
               {/* Desktop table */}
-              <div className="hidden overflow-x-auto md:block">
-                <table className="w-full">
+              <div className="hidden min-w-0 overflow-x-auto md:block">
+                <table className="w-full min-w-[700px]">
                   <thead className="bg-surface-sunken">
                     <tr>
-                      <th className="px-4 py-3 text-left text-caption font-semibold text-muted-fg">
+                      <th className="px-3 py-3 text-left text-caption font-semibold text-muted-fg lg:px-4">
                         Product
                       </th>
-                      <th className="px-4 py-3 text-left text-caption font-semibold text-muted-fg">
+                      <th className="px-3 py-3 text-left text-caption font-semibold text-muted-fg lg:px-4">
                         Buyer
                       </th>
-                      <th className="px-4 py-3 text-right text-caption font-semibold text-muted-fg">
+                      <th className="whitespace-nowrap px-3 py-3 text-right text-caption font-semibold text-muted-fg lg:px-4">
                         Qty
                       </th>
-                      <th className="px-4 py-3 text-right text-caption font-semibold text-muted-fg">
+                      <th className="whitespace-nowrap px-3 py-3 text-right text-caption font-semibold text-muted-fg lg:px-4">
                         Total
                       </th>
-                      <th className="px-4 py-3 text-right text-caption font-semibold text-muted-fg">
+                      <th className="whitespace-nowrap px-3 py-3 text-right text-caption font-semibold text-muted-fg lg:px-4">
                         Earned
                       </th>
-                      <th className="px-4 py-3 text-left text-caption font-semibold text-muted-fg">
+                      <th className="whitespace-nowrap px-3 py-3 text-left text-caption font-semibold text-muted-fg lg:px-4">
                         Method
                       </th>
-                      <th className="px-4 py-3 text-right text-caption font-semibold text-muted-fg">
+                      <th className="whitespace-nowrap px-3 py-3 text-right text-caption font-semibold text-muted-fg lg:px-4">
                         Date
                       </th>
                     </tr>
@@ -518,7 +518,7 @@ export function SalesAnalytics({ embedded = false }: { embedded?: boolean }) {
                           key={sale.id}
                           className="transition-colors hover:bg-surface-sunken"
                         >
-                          <td className="px-4 py-3.5">
+                          <td className="max-w-52 px-3 py-3.5 lg:px-4">
                             <div className="flex items-center gap-3">
                               {product?.imageUrl ? (
                                 <MediaImage
@@ -544,9 +544,9 @@ export function SalesAnalytics({ embedded = false }: { embedded?: boolean }) {
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-3.5">
+                          <td className="max-w-52 px-3 py-3.5 lg:px-4">
                             <div className="flex items-center gap-2.5">
-                              <Avatar src={profile?.photoURL} name={buyerName} size="sm" />
+                              <Avatar src={profile?.photoURL} name={buyerName} size="sm" className="shrink-0" />
                               <div className="min-w-0">
                                 <p className="truncate text-label font-semibold text-fg">
                                   {buyerName}
@@ -559,27 +559,27 @@ export function SalesAnalytics({ embedded = false }: { embedded?: boolean }) {
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-3.5 text-right tabular-nums text-muted-fg">
+                          <td className="whitespace-nowrap px-3 py-3.5 text-right tabular-nums text-muted-fg lg:px-4">
                             {sale.quantity || 1}
                           </td>
-                          <td className="px-4 py-3.5 text-right font-semibold tabular-nums text-fg">
+                          <td className="whitespace-nowrap px-3 py-3.5 text-right font-semibold tabular-nums text-fg lg:px-4">
                             {formatCurrency(
                               sale.totalAmount ?? 0,
                               resolveHistoricalCurrency(sale as unknown as Record<string, unknown>),
                             )}
                           </td>
-                          <td className="px-4 py-3.5 text-right font-semibold tabular-nums text-success">
+                          <td className="whitespace-nowrap px-3 py-3.5 text-right font-semibold tabular-nums text-success lg:px-4">
                             {formatCurrency(
                               sale.creatorEarnings ?? 0,
                               resolveHistoricalCurrency(sale as unknown as Record<string, unknown>),
                             )}
                           </td>
-                          <td className="px-4 py-3.5">
+                          <td className="whitespace-nowrap px-3 py-3.5 lg:px-4">
                             <Badge>
                               {paymentMethods[sale.paymentMethod] || sale.paymentMethod}
                             </Badge>
                           </td>
-                          <td className="whitespace-nowrap px-4 py-3.5 text-right text-caption tabular-nums text-muted-fg">
+                          <td className="whitespace-nowrap px-3 py-3.5 text-right text-caption tabular-nums text-muted-fg lg:px-4">
                             {sale.createdAt
                               ? sale.createdAt.toDate
                                 ? new Date(sale.createdAt.toDate()).toLocaleDateString()

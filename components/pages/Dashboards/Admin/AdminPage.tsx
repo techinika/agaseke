@@ -939,7 +939,7 @@ export default function AdminDashboard() {
                 withdrawals.map((req) => (
                   <div
                     key={req.id}
-                    className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-surface-raised/60"
+                    className="flex flex-col gap-3 px-5 py-4 hover:bg-surface-raised/60 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-label font-bold text-fg">
@@ -1020,7 +1020,7 @@ export default function AdminDashboard() {
                 verifications.map((request) => (
                   <div
                     key={request.requestId}
-                    className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-surface-raised/60"
+                    className="flex flex-col gap-3 px-5 py-4 hover:bg-surface-raised/60 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <Avatar
@@ -1114,7 +1114,7 @@ export default function AdminDashboard() {
 
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
             {/* Platform income vs payouts chart */}
-            <div className="lg:col-span-5">
+            <div className="min-w-0 lg:col-span-5">
               <p className="mb-3 text-caption font-semibold text-muted-fg">
                 Platform fee vs Creator payouts ({activeCurrency})
               </p>
@@ -1164,87 +1164,189 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Transaction table */}
-            <div className="overflow-x-auto lg:col-span-7">
-              <table className="w-full text-label">
-                <thead>
-                  <tr className="border-b border-line text-caption font-semibold text-muted-fg">
-                    <th className="py-2.5 pr-4 text-left">Type</th>
-                    <th className="px-3 py-2.5 text-right text-success">Successful</th>
-                    <th className="px-3 py-2.5 text-right text-warning">Pending</th>
-                    <th className="px-3 py-2.5 text-right text-danger">Failed</th>
-                    <th className="py-2.5 pl-3 text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line">
-                  {(
-                    [
-                      { key: "support", label: "Support" },
-                      { key: "community", label: "Memberships" },
-                      { key: "store", label: "Store" },
-                      { key: "booking", label: "Bookings" },
-                      { key: "gathering", label: "Gatherings" },
-                    ] as const
-                  ).map((row) => {
-                    const data = txBreakdown[row.key];
-                    const total = data.successful + data.failed + data.pending;
-                    return (
-                      <tr key={row.key} className="hover:bg-surface-raised/50">
-                        <td className="py-3 pr-4 font-semibold text-fg">
-                          {row.label}
-                          <span className="ml-1.5 text-caption font-normal tabular-nums text-muted-fg">
-                            ({data.count})
-                          </span>
-                        </td>
-                        <td className="px-3 py-3 text-right font-semibold tabular-nums text-success">
-                          {formatCurrency(data.successful, activeCurrency)}
-                        </td>
-                        <td className="px-3 py-3 text-right font-semibold tabular-nums text-warning">
-                          {formatCurrency(data.pending, activeCurrency)}
-                        </td>
-                        <td className="px-3 py-3 text-right font-semibold tabular-nums text-danger">
-                          {formatCurrency(data.failed, activeCurrency)}
-                        </td>
-                        <td className="py-3 pl-3 text-right font-bold tabular-nums text-fg">
-                          {formatCurrency(total, activeCurrency)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t-2 border-line font-bold">
-                    <td className="py-3 pr-4 text-fg">All types</td>
-                    <td className="px-3 py-3 text-right tabular-nums text-success">
-                      {formatCurrency(
-                        Object.values(txBreakdown).reduce((s, r) => s + r.successful, 0),
-                        activeCurrency,
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums text-warning">
-                      {formatCurrency(
-                        Object.values(txBreakdown).reduce((s, r) => s + r.pending, 0),
-                        activeCurrency,
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums text-danger">
-                      {formatCurrency(
-                        Object.values(txBreakdown).reduce((s, r) => s + r.failed, 0),
-                        activeCurrency,
-                      )}
-                    </td>
-                    <td className="py-3 pl-3 text-right tabular-nums text-fg">
-                      {formatCurrency(
-                        Object.values(txBreakdown).reduce(
-                          (s, r) => s + r.successful + r.pending + r.failed,
-                          0,
-                        ),
-                        activeCurrency,
-                      )}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
+            {/* Transaction breakdown */}
+            <div className="min-w-0 lg:col-span-7">
+              {/* Mobile breakdown cards */}
+              <div className="space-y-3 md:hidden">
+                {(
+                  [
+                    { key: "support", label: "Support" },
+                    { key: "community", label: "Memberships" },
+                    { key: "store", label: "Store" },
+                    { key: "booking", label: "Bookings" },
+                    { key: "gathering", label: "Gatherings" },
+                  ] as const
+                ).map((row) => {
+                  const data = txBreakdown[row.key];
+                  const total = data.successful + data.failed + data.pending;
+                  return (
+                    <div
+                      key={row.key}
+                      className="rounded-control border border-line bg-surface-raised/40 p-3.5"
+                    >
+                      <div className="mb-2.5 flex items-center justify-between gap-2">
+                        <span className="text-label font-bold text-fg">{row.label}</span>
+                        <span className="text-caption tabular-nums text-muted-fg">
+                          {data.count} tx
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-caption">
+                        <div>
+                          <p className="text-muted-fg">Successful</p>
+                          <p className="font-semibold tabular-nums text-success">
+                            {formatCurrency(data.successful, activeCurrency)}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-muted-fg">Pending</p>
+                          <p className="font-semibold tabular-nums text-warning">
+                            {formatCurrency(data.pending, activeCurrency)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-muted-fg">Failed</p>
+                          <p className="font-semibold tabular-nums text-danger">
+                            {formatCurrency(data.failed, activeCurrency)}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-muted-fg">Total</p>
+                          <p className="font-bold tabular-nums text-fg">
+                            {formatCurrency(total, activeCurrency)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="rounded-control border border-line bg-surface-raised p-3.5">
+                  <p className="mb-2 text-label font-bold text-fg">All types</p>
+                  <div className="grid grid-cols-2 gap-2 text-caption">
+                    <div>
+                      <p className="text-muted-fg">Successful</p>
+                      <p className="font-bold tabular-nums text-success">
+                        {formatCurrency(
+                          Object.values(txBreakdown).reduce((s, r) => s + r.successful, 0),
+                          activeCurrency,
+                        )}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-muted-fg">Pending</p>
+                      <p className="font-bold tabular-nums text-warning">
+                        {formatCurrency(
+                          Object.values(txBreakdown).reduce((s, r) => s + r.pending, 0),
+                          activeCurrency,
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-fg">Failed</p>
+                      <p className="font-bold tabular-nums text-danger">
+                        {formatCurrency(
+                          Object.values(txBreakdown).reduce((s, r) => s + r.failed, 0),
+                          activeCurrency,
+                        )}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-muted-fg">Total</p>
+                      <p className="font-bold tabular-nums text-fg">
+                        {formatCurrency(
+                          Object.values(txBreakdown).reduce(
+                            (s, r) => s + r.successful + r.pending + r.failed,
+                            0,
+                          ),
+                          activeCurrency,
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full min-w-[540px] text-label">
+                  <thead>
+                    <tr className="border-b border-line text-caption font-semibold text-muted-fg">
+                      <th className="py-2.5 pr-4 text-left">Type</th>
+                      <th className="whitespace-nowrap px-3 py-2.5 text-right text-success">Successful</th>
+                      <th className="whitespace-nowrap px-3 py-2.5 text-right text-warning">Pending</th>
+                      <th className="whitespace-nowrap px-3 py-2.5 text-right text-danger">Failed</th>
+                      <th className="whitespace-nowrap py-2.5 pl-3 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {(
+                      [
+                        { key: "support", label: "Support" },
+                        { key: "community", label: "Memberships" },
+                        { key: "store", label: "Store" },
+                        { key: "booking", label: "Bookings" },
+                        { key: "gathering", label: "Gatherings" },
+                      ] as const
+                    ).map((row) => {
+                      const data = txBreakdown[row.key];
+                      const total = data.successful + data.failed + data.pending;
+                      return (
+                        <tr key={row.key} className="hover:bg-surface-raised/50">
+                          <td className="whitespace-nowrap py-3 pr-4 font-semibold text-fg">
+                            {row.label}
+                            <span className="ml-1.5 text-caption font-normal tabular-nums text-muted-fg">
+                              ({data.count})
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-3 text-right font-semibold tabular-nums text-success">
+                            {formatCurrency(data.successful, activeCurrency)}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-3 text-right font-semibold tabular-nums text-warning">
+                            {formatCurrency(data.pending, activeCurrency)}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-3 text-right font-semibold tabular-nums text-danger">
+                            {formatCurrency(data.failed, activeCurrency)}
+                          </td>
+                          <td className="whitespace-nowrap py-3 pl-3 text-right font-bold tabular-nums text-fg">
+                            {formatCurrency(total, activeCurrency)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-line font-bold">
+                      <td className="whitespace-nowrap py-3 pr-4 text-fg">All types</td>
+                      <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums text-success">
+                        {formatCurrency(
+                          Object.values(txBreakdown).reduce((s, r) => s + r.successful, 0),
+                          activeCurrency,
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums text-warning">
+                        {formatCurrency(
+                          Object.values(txBreakdown).reduce((s, r) => s + r.pending, 0),
+                          activeCurrency,
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums text-danger">
+                        {formatCurrency(
+                          Object.values(txBreakdown).reduce((s, r) => s + r.failed, 0),
+                          activeCurrency,
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap py-3 pl-3 text-right tabular-nums text-fg">
+                        {formatCurrency(
+                          Object.values(txBreakdown).reduce(
+                            (s, r) => s + r.successful + r.pending + r.failed,
+                            0,
+                          ),
+                          activeCurrency,
+                        )}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
             </div>
           </div>
         </section>

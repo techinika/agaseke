@@ -229,101 +229,205 @@ export default function AdminPayouts() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="bg-muted border-b border-border">
-                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Creator</th>
-                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Payout</th>
-                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Destination</th>
-                    <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-right">
-                      {tab === "pending" ? "Actions" : "Status"}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {filtered.map((req) => {
-                    const payoutCurrency = String(req.payoutCurrency || req.currency || "");
-                    const isProcessing = processingId === req.id;
-                    const reqStatus = String(req.status || "pending");
-                    const reviewedAtMs = toTimestampMs(req.reviewedAt || req.updatedAt);
-                    return (
-                      <tr key={req.id} className="hover:bg-muted/50 transition-colors">
-                        <td className="px-6 py-5">
-                          <p className="font-bold text-foreground">{req.creatorName || "Creator"}</p>
-                          <p className="text-xs text-muted-foreground font-medium">@{req.handle || req.creatorId || "unknown"}</p>
-                          {reqStatus === "pending" && (
-                            <span className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-600 text-[10px] font-bold uppercase tracking-wider w-fit">
-                              <Clock size={12} /> Pending
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-6 py-5 tabular-nums">
-                          <p className="font-black text-foreground">{formatAmount(req.amount, payoutCurrency)}</p>
-                          {Array.isArray(req.sourceDebits) && req.sourceDebits.length > 0 && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Sources: {req.sourceDebits.map((s: any) => {
-                                const src = `${Number(s.amountMajor || 0).toLocaleString()} ${s.currency || ""}`.trim();
-                                if (!s.currency || s.currency === payoutCurrency) return src;
-                                return `${src} → ${Number(s.payoutAmountMajor || 0).toLocaleString()} ${payoutCurrency}`;
-                              }).join(", ")}
-                            </p>
-                          )}
-                        </td>
-                        <td className="px-6 py-5">
-                          <p className="text-sm font-medium text-foreground">{req.method || "—"} {req.rail ? `• ${String(req.rail).replace("_", " ")}` : ""}</p>
-                          <p className="text-xs text-muted-foreground font-mono">{req.accountNumber || "—"}</p>
-                        </td>
-                        <td className="px-6 py-5 text-right">
-                          {tab === "pending" ? (
-                            <div className="flex gap-2 justify-end">
-                              <button
-                                type="button"
-                                onClick={() => setConfirm({ action: "approve", req })}
-                                disabled={isProcessing}
-                                className="min-h-11 bg-foreground text-background px-4 py-2 rounded-lg text-xs font-bold hover:bg-orange-600 transition-all disabled:opacity-50 inline-flex items-center gap-2"
-                              >
-                                {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <><ArrowUpRight size={14} /> Approve</>}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setConfirm({ action: "reject", req })}
-                                disabled={isProcessing}
-                                className="min-h-11 px-4 py-2 rounded-lg text-xs font-bold border border-border hover:bg-muted transition-all disabled:opacity-50 inline-flex items-center gap-2"
-                              >
-                                <XCircle size={14} /> Reject
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="inline-flex flex-col items-end gap-1">
-                              <span
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
-                                  reqStatus === "completed" || reqStatus === "approved"
-                                    ? "bg-emerald-50 text-emerald-700"
-                                    : "bg-red-50 text-red-700"
-                                }`}
-                              >
-                                {reqStatus === "completed" || reqStatus === "approved" ? (
-                                  <CheckCircle2 size={12} />
-                                ) : (
-                                  <XCircle size={12} />
-                                )}
-                                {reqStatus}
-                              </span>
-                              {reviewedAtMs > 0 && (
-                                <span className="text-[11px] text-muted-foreground tabular-nums">
-                                  {new Date(reviewedAtMs).toLocaleDateString()}
-                                </span>
+            <>
+              {/* Mobile cards */}
+              <div className="divide-y divide-border md:hidden">
+                {filtered.map((req) => {
+                  const payoutCurrency = String(req.payoutCurrency || req.currency || "");
+                  const isProcessing = processingId === req.id;
+                  const reqStatus = String(req.status || "pending");
+                  const reviewedAtMs = toTimestampMs(req.reviewedAt || req.updatedAt);
+                  return (
+                    <div key={req.id} className="space-y-3 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate font-bold text-foreground">
+                            {req.creatorName || "Creator"}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground font-medium">
+                            @{req.handle || req.creatorId || "unknown"}
+                          </p>
+                        </div>
+                        <p className="shrink-0 font-black text-foreground tabular-nums">
+                          {formatAmount(req.amount, payoutCurrency)}
+                        </p>
+                      </div>
+
+                      {Array.isArray(req.sourceDebits) && req.sourceDebits.length > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Sources:{" "}
+                          {req.sourceDebits
+                            .map((s: any) => {
+                              const src = `${Number(s.amountMajor || 0).toLocaleString()} ${s.currency || ""}`.trim();
+                              if (!s.currency || s.currency === payoutCurrency) return src;
+                              return `${src} → ${Number(s.payoutAmountMajor || 0).toLocaleString()} ${payoutCurrency}`;
+                            })
+                            .join(", ")}
+                        </p>
+                      )}
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div>
+                          <span className="font-medium text-foreground">
+                            {req.method || "—"} {req.rail ? `• ${String(req.rail).replace("_", " ")}` : ""}
+                          </span>
+                          <span className="ml-2 text-muted-foreground font-mono">
+                            {req.accountNumber || "—"}
+                          </span>
+                        </div>
+                        {tab !== "pending" && (
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
+                                reqStatus === "completed" || reqStatus === "approved"
+                                  ? "bg-emerald-50 text-emerald-700"
+                                  : "bg-red-50 text-red-700"
+                              }`}
+                            >
+                              {reqStatus === "completed" || reqStatus === "approved" ? (
+                                <CheckCircle2 size={12} />
+                              ) : (
+                                <XCircle size={12} />
                               )}
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                              {reqStatus}
+                            </span>
+                            {reviewedAtMs > 0 && (
+                              <span className="text-[11px] text-muted-foreground tabular-nums">
+                                {new Date(reviewedAtMs).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {tab === "pending" && (
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setConfirm({ action: "approve", req })}
+                            disabled={isProcessing}
+                            className="flex-1 min-h-11 bg-foreground text-background px-4 py-2 rounded-lg text-xs font-bold hover:bg-orange-600 transition-all disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                          >
+                            {isProcessing ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <>
+                                <ArrowUpRight size={14} /> Approve
+                              </>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirm({ action: "reject", req })}
+                            disabled={isProcessing}
+                            className="flex-1 min-h-11 px-4 py-2 rounded-lg text-xs font-bold border border-border hover:bg-muted transition-all disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                          >
+                            <XCircle size={14} /> Reject
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full min-w-[680px] text-left">
+                  <thead>
+                    <tr className="bg-muted border-b border-border">
+                      <th className="px-4 lg:px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Creator</th>
+                      <th className="whitespace-nowrap px-4 lg:px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Payout</th>
+                      <th className="px-4 lg:px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Destination</th>
+                      <th className="whitespace-nowrap px-4 lg:px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-right">
+                        {tab === "pending" ? "Actions" : "Status"}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filtered.map((req) => {
+                      const payoutCurrency = String(req.payoutCurrency || req.currency || "");
+                      const isProcessing = processingId === req.id;
+                      const reqStatus = String(req.status || "pending");
+                      const reviewedAtMs = toTimestampMs(req.reviewedAt || req.updatedAt);
+                      return (
+                        <tr key={req.id} className="hover:bg-muted/50 transition-colors">
+                          <td className="px-4 lg:px-6 py-5">
+                            <p className="font-bold text-foreground">{req.creatorName || "Creator"}</p>
+                            <p className="text-xs text-muted-foreground font-medium">@{req.handle || req.creatorId || "unknown"}</p>
+                            {reqStatus === "pending" && (
+                              <span className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-600 text-[10px] font-bold uppercase tracking-wider w-fit">
+                                <Clock size={12} /> Pending
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 lg:px-6 py-5 tabular-nums">
+                            <p className="whitespace-nowrap font-black text-foreground">{formatAmount(req.amount, payoutCurrency)}</p>
+                            {Array.isArray(req.sourceDebits) && req.sourceDebits.length > 0 && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Sources: {req.sourceDebits.map((s: any) => {
+                                  const src = `${Number(s.amountMajor || 0).toLocaleString()} ${s.currency || ""}`.trim();
+                                  if (!s.currency || s.currency === payoutCurrency) return src;
+                                  return `${src} → ${Number(s.payoutAmountMajor || 0).toLocaleString()} ${payoutCurrency}`;
+                                }).join(", ")}
+                              </p>
+                            )}
+                          </td>
+                          <td className="px-4 lg:px-6 py-5">
+                            <p className="text-sm font-medium text-foreground">{req.method || "—"} {req.rail ? `• ${String(req.rail).replace("_", " ")}` : ""}</p>
+                            <p className="text-xs text-muted-foreground font-mono">{req.accountNumber || "—"}</p>
+                          </td>
+                          <td className="whitespace-nowrap px-4 lg:px-6 py-5 text-right">
+                            {tab === "pending" ? (
+                              <div className="flex gap-2 justify-end">
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirm({ action: "approve", req })}
+                                  disabled={isProcessing}
+                                  className="min-h-11 bg-foreground text-background px-4 py-2 rounded-lg text-xs font-bold hover:bg-orange-600 transition-all disabled:opacity-50 inline-flex items-center gap-2"
+                                >
+                                  {isProcessing ? <Loader2 size={14} className="animate-spin" /> : <><ArrowUpRight size={14} /> Approve</>}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirm({ action: "reject", req })}
+                                  disabled={isProcessing}
+                                  className="min-h-11 px-4 py-2 rounded-lg text-xs font-bold border border-border hover:bg-muted transition-all disabled:opacity-50 inline-flex items-center gap-2"
+                                >
+                                  <XCircle size={14} /> Reject
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="inline-flex flex-col items-end gap-1">
+                                <span
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
+                                    reqStatus === "completed" || reqStatus === "approved"
+                                      ? "bg-emerald-50 text-emerald-700"
+                                      : "bg-red-50 text-red-700"
+                                  }`}
+                                >
+                                  {reqStatus === "completed" || reqStatus === "approved" ? (
+                                    <CheckCircle2 size={12} />
+                                  ) : (
+                                    <XCircle size={12} />
+                                  )}
+                                  {reqStatus}
+                                </span>
+                                {reviewedAtMs > 0 && (
+                                  <span className="text-[11px] text-muted-foreground tabular-nums">
+                                    {new Date(reviewedAtMs).toLocaleDateString()}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
 

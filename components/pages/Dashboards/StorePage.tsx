@@ -397,7 +397,7 @@ export default function StorePage() {
     <div className="min-h-screen bg-canvas pb-20 text-fg">
       <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-6 sm:pt-8">
         <PageHeader
-          title="Store & Sales"
+          title="Store"
           description="Manage your products, fulfill customer orders, and track store earnings."
           className="mb-6 [&_h1]:font-display [&_h1]:text-heading [&_h1]:sm:text-display"
           actions={
@@ -414,7 +414,7 @@ export default function StorePage() {
         />
 
         <Tabs
-          ariaLabel="Store and sales sections"
+          ariaLabel="Store sections"
           value={activeTab}
           onChange={handleTabChange}
           items={[

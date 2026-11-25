@@ -457,7 +457,7 @@ export default function PayoutsPage() {
                 onChange={setHistoryTab}
                 items={[
                   { id: "payouts", label: "Payouts" },
-                  { id: "requests", label: "Withdraw Requests" },
+                  { id: "requests", label: "Requests" },
                 ]}
                 className="bg-surface-raised/60 px-4 sm:px-6"
               />

@@ -570,40 +570,21 @@ export default function AdminUsersPage() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-muted border-b border-border">
-                    <th className="text-left px-6 py-4 text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
-                      User
-                    </th>
-                    <th className="text-left px-6 py-4 text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
-                      Type
-                    </th>
-                    <th className="text-left px-6 py-4 text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
-                      Total Support
-                    </th>
-                    <th className="text-left px-6 py-4 text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
-                      Joined
-                    </th>
-                    <th className="text-left px-6 py-4 text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUsers.map((user) => {
-                    const vState = getUserVerificationState(user);
-                    const uid = user.uid || user.id;
-                    return (
-                    <tr
+            <>
+              {/* Mobile cards */}
+              <div className="divide-y divide-border md:hidden">
+                {filteredUsers.map((user) => {
+                  const vState = getUserVerificationState(user);
+                  const uid = user.uid || user.id;
+                  return (
+                    <div
                       key={user.id}
                       onClick={() => setSelectedUser(user)}
-                      className="border-b border-border hover:bg-muted transition cursor-pointer"
+                      className="space-y-3 p-4 hover:bg-muted/60 transition cursor-pointer"
                     >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center text-sm font-bold overflow-hidden">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="w-10 h-10 shrink-0 bg-muted rounded-full flex items-center justify-center text-sm font-bold overflow-hidden">
                             {user.photoURL ? (
                               <img
                                 src={user.photoURL}
@@ -616,52 +597,17 @@ export default function AdminUsersPage() {
                                 "?")[0].toUpperCase()
                             )}
                           </div>
-                          <div>
-                            <p className="font-bold text-sm">
+                          <div className="min-w-0">
+                            <p className="truncate font-bold text-sm">
                               {user.displayName || "No name"}
                             </p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="truncate text-xs text-muted-foreground">
                               {user.username ? `@${user.username} · ` : ""}
                               {user.email || "No email"}
                             </p>
                           </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span
-                            className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
-                              user.type === "creator"
-                                ? "bg-orange-100 text-orange-600"
-                                : "bg-blue-100 text-blue-600"
-                            }`}
-                          >
-                            {user.type}
-                          </span>
-                          {user.type === "creator" && vState === "verified" && (
-                            <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">
-                              Verified
-                            </span>
-                          )}
-                          {user.type === "creator" && vState === "pending" && (
-                            <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-amber-100 text-amber-700">
-                              Pending Review
-                            </span>
-                          )}
-                          {user.type === "creator" && vState === "rejected" && (
-                            <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-red-100 text-red-700">
-                              Rejected
-                            </span>
-                          )}
-                          {user.isAdmin && (
-                            <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-orange-100 text-orange-600">
-                              Admin
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="font-bold text-sm tabular-nums">
+                        <p className="shrink-0 font-bold text-sm tabular-nums">
                           {user.totalSupport > 0
                             ? `${user.totalSupport.toLocaleString()}${
                                 typeof (user as any).currency === "string" && (user as any).currency
@@ -670,21 +616,51 @@ export default function AdminUsersPage() {
                               }`
                             : "-"}
                         </p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <p className="text-sm text-muted-foreground">
-                          {user.createdAt?.toDate().toLocaleDateString() ||
-                            "Unknown"}
-                        </p>
-                      </td>
-                      <td
-                        className="px-6 py-4"
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span
+                          className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                            user.type === "creator"
+                              ? "bg-orange-100 text-orange-600"
+                              : "bg-blue-100 text-blue-600"
+                          }`}
+                        >
+                          {user.type}
+                        </span>
+                        {user.type === "creator" && vState === "verified" && (
+                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                            Verified
+                          </span>
+                        )}
+                        {user.type === "creator" && vState === "pending" && (
+                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                            Pending Review
+                          </span>
+                        )}
+                        {user.type === "creator" && vState === "rejected" && (
+                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                            Rejected
+                          </span>
+                        )}
+                        {user.isAdmin && (
+                          <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-orange-100 text-orange-600">
+                            Admin
+                          </span>
+                        )}
+                      </div>
+
+                      <div
+                        className="flex flex-wrap items-center justify-between gap-2 pt-1"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground tabular-nums">
+                          Joined {user.createdAt?.toDate().toLocaleDateString() || "Unknown"}
+                        </span>
+                        <div className="flex flex-wrap items-center gap-1.5">
                           <button
                             onClick={() => setSelectedUser(user)}
-                            className="p-2 text-muted-foreground hover:text-muted-foreground hover:bg-muted rounded-lg transition"
+                            className="p-2 text-muted-foreground hover:bg-muted rounded-lg transition"
                             title="View Details"
                           >
                             <Eye size={16} />
@@ -720,7 +696,7 @@ export default function AdminUsersPage() {
                             <button
                               onClick={() => void openVerificationReview(user)}
                               disabled={loadingReviewUid === uid}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold bg-amber-100 text-amber-800 hover:bg-amber-200 rounded-lg transition"
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold bg-amber-100 text-amber-800 hover:bg-amber-200 rounded-lg transition"
                               title="Review Submitted Documents & Data"
                             >
                               {loadingReviewUid === uid ? (
@@ -736,24 +712,205 @@ export default function AdminUsersPage() {
                               href={`/${user.username || user.id}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="p-2 text-muted-foreground hover:text-muted-foreground hover:bg-muted rounded-lg transition"
+                              className="p-2 text-muted-foreground hover:bg-muted rounded-lg transition"
                               title="View Profile"
                             >
                               <ExternalLink size={16} />
                             </a>
                           )}
                         </div>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                })}
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full min-w-[680px]">
+                  <thead>
+                    <tr className="bg-muted border-b border-border">
+                      <th className="text-left px-4 lg:px-6 py-4 text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                        User
+                      </th>
+                      <th className="text-left px-4 lg:px-6 py-4 text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                        Type
+                      </th>
+                      <th className="whitespace-nowrap text-left px-4 lg:px-6 py-4 text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                        Total Support
+                      </th>
+                      <th className="whitespace-nowrap text-left px-4 lg:px-6 py-4 text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                        Joined
+                      </th>
+                      <th className="whitespace-nowrap text-left px-4 lg:px-6 py-4 text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.map((user) => {
+                      const vState = getUserVerificationState(user);
+                      const uid = user.uid || user.id;
+                      return (
+                      <tr
+                        key={user.id}
+                        onClick={() => setSelectedUser(user)}
+                        className="border-b border-border hover:bg-muted transition cursor-pointer"
+                      >
+                        <td className="max-w-xs px-4 lg:px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 shrink-0 bg-muted rounded-full flex items-center justify-center text-sm font-bold overflow-hidden">
+                              {user.photoURL ? (
+                                <img
+                                  src={user.photoURL}
+                                  alt={user.displayName || "User"}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                (user.displayName ||
+                                  user.email ||
+                                  "?")[0].toUpperCase()
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate font-bold text-sm">
+                                {user.displayName || "No name"}
+                              </p>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {user.username ? `@${user.username} · ` : ""}
+                                {user.email || "No email"}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 lg:px-6 py-4">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span
+                              className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
+                                user.type === "creator"
+                                  ? "bg-orange-100 text-orange-600"
+                                  : "bg-blue-100 text-blue-600"
+                              }`}
+                            >
+                              {user.type}
+                            </span>
+                            {user.type === "creator" && vState === "verified" && (
+                              <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">
+                                Verified
+                              </span>
+                            )}
+                            {user.type === "creator" && vState === "pending" && (
+                              <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-amber-100 text-amber-700">
+                                Pending Review
+                              </span>
+                            )}
+                            {user.type === "creator" && vState === "rejected" && (
+                              <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-red-100 text-red-700">
+                                Rejected
+                              </span>
+                            )}
+                            {user.isAdmin && (
+                              <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-orange-100 text-orange-600">
+                                Admin
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-4 lg:px-6 py-4">
+                          <p className="font-bold text-sm tabular-nums">
+                            {user.totalSupport > 0
+                              ? `${user.totalSupport.toLocaleString()}${
+                                  typeof (user as any).currency === "string" && (user as any).currency
+                                    ? ` ${(user as any).currency.toUpperCase()}`
+                                    : ""
+                                }`
+                              : "-"}
+                          </p>
+                        </td>
+                        <td className="whitespace-nowrap px-4 lg:px-6 py-4">
+                          <p className="text-sm text-muted-foreground tabular-nums">
+                            {user.createdAt?.toDate().toLocaleDateString() ||
+                              "Unknown"}
+                          </p>
+                        </td>
+                        <td
+                          className="whitespace-nowrap px-4 lg:px-6 py-4"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setSelectedUser(user)}
+                              className="p-2 text-muted-foreground hover:text-muted-foreground hover:bg-muted rounded-lg transition"
+                              title="View Details"
+                            >
+                              <Eye size={16} />
+                            </button>
+                            {!user.isAdmin ? (
+                              <button
+                                onClick={() => toggleAdmin(user)}
+                                disabled={makingAdmin === user.id}
+                                className="p-2 text-orange-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition"
+                                title="Make Admin"
+                              >
+                                {makingAdmin === user.id ? (
+                                  <Loader size={16} className="animate-spin" />
+                                ) : (
+                                  <ShieldCheck size={16} />
+                                )}
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => toggleAdmin(user)}
+                                disabled={makingAdmin === user.id}
+                                className="p-2 text-orange-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition"
+                                title="Remove Admin"
+                              >
+                                {makingAdmin === user.id ? (
+                                  <Loader size={16} className="animate-spin" />
+                                ) : (
+                                  <ShieldOff size={16} />
+                                )}
+                              </button>
+                            )}
+                            {user.type === "creator" && vState === "pending" && (
+                              <button
+                                onClick={() => void openVerificationReview(user)}
+                                disabled={loadingReviewUid === uid}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold bg-amber-100 text-amber-800 hover:bg-amber-200 rounded-lg transition"
+                                title="Review Submitted Documents & Data"
+                              >
+                                {loadingReviewUid === uid ? (
+                                  <Loader size={14} className="animate-spin" />
+                                ) : (
+                                  <FileSearch size={14} />
+                                )}
+                                Review
+                              </button>
+                            )}
+                            {user.type === "creator" && (
+                              <a
+                                href={`/${user.username || user.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-2 text-muted-foreground hover:text-muted-foreground hover:bg-muted rounded-lg transition"
+                                title="View Profile"
+                              >
+                                <ExternalLink size={16} />
+                              </a>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
 
           {/* Pagination */}
-          <div className="flex items-center justify-between px-6 py-4 border-t border-border">
+          <div className="flex flex-col gap-3 px-4 py-4 border-t border-border sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <p className="text-sm text-muted-foreground">Page {page + 1}</p>
             <div className="flex items-center gap-2">
               <button

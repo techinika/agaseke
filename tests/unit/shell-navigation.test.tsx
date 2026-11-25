@@ -3,7 +3,8 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { DashboardMobileNav } from "@/components/shell/DashboardMobileNav";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { NotificationBellButton } from "@/components/ui/NotificationBellButton";
-import { getNavItems } from "@/config/navigation";
+import { getNavItems, NAV_ITEMS } from "@/config/navigation";
+import { t } from "@/lib/i18n";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/creator",
@@ -40,7 +41,7 @@ describe("DashboardMobileNav", () => {
 
     const sheet = screen.getByRole("dialog", { name: "More destinations" });
     expect(sheet).toHaveAttribute("aria-modal", "true");
-    expect(screen.getByRole("link", { name: "Store & Sales" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Store" })).toHaveAttribute(
       "href",
       "/creator/store",
     );
@@ -58,8 +59,8 @@ describe("DashboardMobileNav", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "More" }));
 
-    expect(screen.queryByRole("link", { name: "Store & Sales" })).toBeNull();
-    expect(screen.getByRole("link", { name: "Supporters & Messages" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Store" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Supporters" })).toBeInTheDocument();
   });
 
   it("renders consolidated admin destinations in the More sheet", () => {
@@ -67,15 +68,15 @@ describe("DashboardMobileNav", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "More" }));
 
-    expect(screen.getByRole("link", { name: "Comms & Feedback" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Comms" })).toHaveAttribute(
       "href",
       "/admin/comms",
     );
-    expect(screen.getByRole("link", { name: "Configuration" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Config" })).toHaveAttribute(
       "href",
       "/admin/config",
     );
-    expect(screen.getByRole("link", { name: "Activity logs" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Logs" })).toHaveAttribute(
       "href",
       "/admin/logs",
     );
@@ -172,7 +173,7 @@ describe("Sidebar", () => {
     expect(hrefs).not.toContain("/supporter/notices");
   });
 
-  it("exposes consolidated Comms and Configuration entries in the admin desktop sidebar", () => {
+  it("exposes consolidated Comms and Config entries in the admin desktop sidebar", () => {
     const items = getNavItems({
       surface: "admin",
       role: "admin",
@@ -190,6 +191,14 @@ describe("Sidebar", () => {
       "/admin/config",
       "/admin/logs",
     ]);
+  });
+
+  it("keeps every navigation item title short and avoids combined labels", () => {
+    for (const item of NAV_ITEMS) {
+      const label = t(item.labelKey);
+      expect(label).not.toMatch(/\s*(&|\/|and)\s+/i);
+      expect(label.length).toBeLessThanOrEqual(16);
+    }
   });
 });
 

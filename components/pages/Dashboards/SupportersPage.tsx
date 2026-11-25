@@ -318,7 +318,7 @@ export default function SupportersPage() {
     <div className="min-h-screen bg-canvas pb-20 text-fg">
       <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-6 sm:pt-8">
         <PageHeader
-          title="Supporters & Messages"
+          title="Supporters"
           description="Track your backers, send email updates, and reply to direct messages."
           className="mb-6 [&_h1]:font-display [&_h1]:text-heading [&_h1]:sm:text-display"
           actions={
@@ -398,7 +398,7 @@ export default function SupportersPage() {
         </div>
 
         <Tabs
-          ariaLabel="Supporters and messages"
+          ariaLabel="Supporters sections"
           value={activeTab}
           onChange={handleTabChange}
           items={[
@@ -528,22 +528,22 @@ export default function SupportersPage() {
                 {/* Desktop table */}
                 <Card className="hidden overflow-hidden md:block">
                   <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="w-full min-w-[640px]">
                       <thead>
                         <tr className="border-b border-line bg-surface-sunken">
-                          <th className="px-5 py-3.5 text-left text-caption font-semibold text-muted-fg">
+                          <th className="px-4 py-3.5 text-left text-caption font-semibold text-muted-fg lg:px-5">
                             Supporter
                           </th>
-                          <th className="px-5 py-3.5 text-right text-caption font-semibold text-muted-fg">
+                          <th className="whitespace-nowrap px-4 py-3.5 text-right text-caption font-semibold text-muted-fg lg:px-5">
                             Total Support
                           </th>
-                          <th className="px-5 py-3.5 text-right text-caption font-semibold text-muted-fg">
+                          <th className="whitespace-nowrap px-4 py-3.5 text-right text-caption font-semibold text-muted-fg lg:px-5">
                             Contributions
                           </th>
-                          <th className="px-5 py-3.5 text-right text-caption font-semibold text-muted-fg">
+                          <th className="whitespace-nowrap px-4 py-3.5 text-right text-caption font-semibold text-muted-fg lg:px-5">
                             Last Supported
                           </th>
-                          <th className="px-5 py-3.5 text-right text-caption font-semibold text-muted-fg">
+                          <th className="whitespace-nowrap px-4 py-3.5 text-right text-caption font-semibold text-muted-fg lg:px-5">
                             Actions
                           </th>
                         </tr>
@@ -556,13 +556,13 @@ export default function SupportersPage() {
                               key={supporter.supporterId}
                               className="transition-colors hover:bg-surface-sunken"
                             >
-                              <td className="px-5 py-4">
+                              <td className="max-w-xs px-4 py-4 lg:px-5">
                                 <div className="flex items-center gap-3">
                                   <Avatar
                                     src={supporter.photoURL}
                                     name={supporter.displayName || supporter.email}
                                     size="md"
-                                    className="size-10"
+                                    className="size-10 shrink-0"
                                   />
                                   <div className="min-w-0">
                                     <p className="truncate text-label font-bold text-fg">
@@ -576,17 +576,17 @@ export default function SupportersPage() {
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-5 py-4 text-right font-bold tabular-nums text-fg">
+                              <td className="whitespace-nowrap px-4 py-4 text-right font-bold tabular-nums text-fg lg:px-5">
                                 {supporter.totalAmount.toLocaleString()}{" "}
                                 <span className="text-caption font-semibold text-muted-fg">
                                   {supporter.currency}
                                 </span>
                               </td>
-                              <td className="px-5 py-4 text-right text-label tabular-nums text-muted-fg">
+                              <td className="whitespace-nowrap px-4 py-4 text-right text-label tabular-nums text-muted-fg lg:px-5">
                                 {supporter.supportCount} time
                                 {supporter.supportCount !== 1 ? "s" : ""}
                               </td>
-                              <td className="whitespace-nowrap px-5 py-4 text-right text-caption tabular-nums text-muted-fg">
+                              <td className="whitespace-nowrap px-4 py-4 text-right text-caption tabular-nums text-muted-fg lg:px-5">
                                 {supporter.lastSupported?.toDate?.()
                                   ? supporter.lastSupported
                                       .toDate()
@@ -597,7 +597,7 @@ export default function SupportersPage() {
                                       })
                                   : "Unknown"}
                               </td>
-                              <td className="px-5 py-4 text-right">
+                              <td className="whitespace-nowrap px-4 py-4 text-right lg:px-5">
                                 {supporter.email && !isAnon && (
                                   <a
                                     href={`mailto:${supporter.email}`}

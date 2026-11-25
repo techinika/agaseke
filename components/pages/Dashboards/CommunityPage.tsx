@@ -466,69 +466,120 @@ export default function CommunityPage() {
                   className="border-0 py-12"
                 />
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-label">
-                    <thead>
-                      <tr className="border-b border-line bg-surface-sunken">
-                        <th className="p-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
-                          Member
-                        </th>
-                        <th className="p-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
-                          Tier
-                        </th>
-                        <th className="p-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
-                          Status
-                        </th>
-                        <th className="p-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
-                          Amount
-                        </th>
-                        <th className="p-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
-                          Expires
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {members.map((m) => (
-                        <tr
-                          key={m.subscriptionId}
-                          className="border-b border-line last:border-0"
-                        >
-                          <td className="p-4">
-                            <p className="font-medium">{m.userName || m.userEmail}</p>
-                          </td>
-                          <td className="p-4 text-muted-fg">{m.tierName}</td>
-                          <td className="p-4">
-                            <Badge
-                              tone={
-                                m.status === "active"
-                                  ? "success"
-                                  : m.status === "cancelled"
-                                    ? "warning"
-                                    : "neutral"
-                              }
-                              className="uppercase"
-                            >
-                              {m.status}
-                            </Badge>
-                          </td>
-                          <td className="p-4 font-medium">
+                <>
+                  {/* Mobile list */}
+                  <div className="divide-y divide-line md:hidden">
+                    {members.map((m) => (
+                      <div key={m.subscriptionId} className="space-y-2.5 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-label font-bold text-fg">
+                              {m.userName || m.userEmail}
+                            </p>
+                            <p className="truncate text-caption text-muted-fg">
+                              {m.tierName}
+                            </p>
+                          </div>
+                          <Badge
+                            tone={
+                              m.status === "active"
+                                ? "success"
+                                : m.status === "cancelled"
+                                  ? "warning"
+                                  : "neutral"
+                            }
+                            className="shrink-0 uppercase"
+                          >
+                            {m.status}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between gap-2 text-caption">
+                          <span className="font-semibold tabular-nums text-fg">
                             {m.currency
                               ? formatCurrency(m.amount, m.currency as any)
                               : m.amount}
-                            <span className="ml-1 text-caption text-muted-fg">
+                            <span className="ml-1 font-normal text-muted-fg">
                               /{m.interval === "yearly" ? "yr" : "mo"}
                             </span>
-                          </td>
-                          <td className="p-4 text-caption text-muted-fg">
+                          </span>
+                          <span className="tabular-nums text-muted-fg">
+                            Expires{" "}
                             {m.expiresAt
                               ? new Date(m.expiresAt).toLocaleDateString()
                               : "-"}
-                          </td>
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Desktop table */}
+                  <div className="hidden overflow-x-auto md:block">
+                    <table className="w-full min-w-[580px] text-label">
+                      <thead>
+                        <tr className="border-b border-line bg-surface-sunken">
+                          <th className="p-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
+                            Member
+                          </th>
+                          <th className="p-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
+                            Tier
+                          </th>
+                          <th className="whitespace-nowrap p-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
+                            Status
+                          </th>
+                          <th className="whitespace-nowrap p-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
+                            Amount
+                          </th>
+                          <th className="whitespace-nowrap p-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
+                            Expires
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {members.map((m) => (
+                          <tr
+                            key={m.subscriptionId}
+                            className="border-b border-line last:border-0"
+                          >
+                            <td className="max-w-xs p-4">
+                              <p className="truncate font-medium">
+                                {m.userName || m.userEmail}
+                              </p>
+                            </td>
+                            <td className="p-4 text-muted-fg">{m.tierName}</td>
+                            <td className="whitespace-nowrap p-4">
+                              <Badge
+                                tone={
+                                  m.status === "active"
+                                    ? "success"
+                                    : m.status === "cancelled"
+                                      ? "warning"
+                                      : "neutral"
+                                }
+                                className="uppercase"
+                              >
+                                {m.status}
+                              </Badge>
+                            </td>
+                            <td className="whitespace-nowrap p-4 font-medium tabular-nums">
+                              {m.currency
+                                ? formatCurrency(m.amount, m.currency as any)
+                                : m.amount}
+                              <span className="ml-1 text-caption text-muted-fg">
+                                /{m.interval === "yearly" ? "yr" : "mo"}
+                              </span>
+                            </td>
+                            <td className="whitespace-nowrap p-4 text-caption tabular-nums text-muted-fg">
+                              {m.expiresAt
+                                ? new Date(m.expiresAt).toLocaleDateString()
+                                : "-"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
             </Card>
           )}

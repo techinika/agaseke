@@ -509,17 +509,62 @@ export default function AdminMaintenanceTab() {
               </div>
             </div>
 
-            <div className="overflow-x-auto rounded-control border border-line">
-              <table className="w-full text-left text-caption">
+            {/* Mobile cards */}
+            <div className="space-y-3 md:hidden">
+              {currencyResult.collections.map((row) => {
+                const currencySummary = Object.entries(row.byCurrency)
+                  .map(([cur, count]) => `${cur}: ${count}`)
+                  .join(", ");
+                return (
+                  <div
+                    key={row.collection}
+                    className="rounded-control border border-line bg-surface-raised/50 p-3.5 text-caption"
+                  >
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="font-bold text-fg">{row.collection}</span>
+                      <span className="text-muted-fg">
+                        {currencySummary || "—"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 tabular-nums">
+                      <div>
+                        <p className="text-muted-fg">Scanned</p>
+                        <p className="font-semibold text-fg">{row.scanned}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-fg">Kept</p>
+                        <p className="font-semibold text-fg">{row.alreadyStamped}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-fg">Planned</p>
+                        <p className="font-semibold text-fg">{row.updatesPlanned}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-fg">Written</p>
+                        <p className="font-semibold text-success">{row.written}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-fg">Unresolved</p>
+                        <p className="font-semibold text-fg">{row.unresolved.length}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden overflow-x-auto rounded-control border border-line md:block">
+              <table className="w-full min-w-[640px] text-left text-caption">
                 <thead className="border-b border-line bg-surface-raised text-muted-fg">
                   <tr>
-                    <th className="px-3 py-2.5 font-semibold">Collection</th>
-                    <th className="px-3 py-2.5 text-right font-semibold">Scanned</th>
-                    <th className="px-3 py-2.5 text-right font-semibold">Kept</th>
-                    <th className="px-3 py-2.5 text-right font-semibold">Planned</th>
-                    <th className="px-3 py-2.5 text-right font-semibold">Written</th>
-                    <th className="px-3 py-2.5 font-semibold">Target Currencies</th>
-                    <th className="px-3 py-2.5 text-right font-semibold">Unresolved</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 font-semibold">Collection</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 text-right font-semibold">Scanned</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 text-right font-semibold">Kept</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 text-right font-semibold">Planned</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 text-right font-semibold">Written</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 font-semibold">Target Currencies</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 text-right font-semibold">Unresolved</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
@@ -529,25 +574,25 @@ export default function AdminMaintenanceTab() {
                       .join(", ");
                     return (
                       <tr key={row.collection} className="hover:bg-surface-raised/60">
-                        <td className="px-3 py-2.5 font-semibold text-fg">
+                        <td className="whitespace-nowrap px-3 py-2.5 font-semibold text-fg">
                           {row.collection}
                         </td>
-                        <td className="px-3 py-2.5 text-right tabular-nums text-muted-fg">
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-muted-fg">
                           {row.scanned}
                         </td>
-                        <td className="px-3 py-2.5 text-right tabular-nums text-muted-fg">
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-muted-fg">
                           {row.alreadyStamped}
                         </td>
-                        <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-fg">
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right font-semibold tabular-nums text-fg">
                           {row.updatesPlanned}
                         </td>
-                        <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-success">
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right font-semibold tabular-nums text-success">
                           {row.written}
                         </td>
                         <td className="px-3 py-2.5 text-muted-fg">
                           {currencySummary || "—"}
                         </td>
-                        <td className="px-3 py-2.5 text-right tabular-nums text-muted-fg">
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-muted-fg">
                           {row.unresolved.length}
                         </td>
                       </tr>
@@ -826,31 +871,70 @@ export default function AdminMaintenanceTab() {
               </Badge>
             </div>
 
-            <div className="overflow-x-auto rounded-control border border-line">
-              <table className="w-full text-left text-caption">
+            {/* Mobile cards */}
+            <div className="space-y-3 md:hidden">
+              {enablementResult.currencies.map((cur) => (
+                <div
+                  key={cur.code}
+                  className="rounded-control border border-line bg-surface-raised/50 p-3.5 text-caption"
+                >
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <span className="font-bold text-fg">{cur.code}</span>{" "}
+                      <span className="text-muted-fg">{cur.name}</span>
+                    </div>
+                    <span className="tabular-nums text-muted-fg">
+                      Minor unit: <strong className="text-fg">{cur.minorUnit}</strong>
+                    </span>
+                  </div>
+                  <p className="mb-2.5 text-muted-fg">
+                    Rails:{" "}
+                    <span className="font-medium text-fg">
+                      {cur.rails.length > 0 ? cur.rails.join(", ") : "None"}
+                    </span>
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {!cur.policyConfigured ? (
+                      <Badge tone="warning">Unconfigured</Badge>
+                    ) : cur.policyEnabled ? (
+                      <Badge tone="success">Enabled</Badge>
+                    ) : (
+                      <Badge tone="danger">Disabled</Badge>
+                    )}
+                    <Badge tone={cur.hasFxRate ? "success" : "warning"}>
+                      {cur.hasFxRate ? "FX Covered" : "FX Missing"}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden overflow-x-auto rounded-control border border-line md:block">
+              <table className="w-full min-w-[560px] text-left text-caption">
                 <thead className="border-b border-line bg-surface-raised text-muted-fg">
                   <tr>
-                    <th className="px-3 py-2.5 font-semibold">Currency</th>
-                    <th className="px-3 py-2.5 text-right font-semibold">Minor Unit</th>
-                    <th className="px-3 py-2.5 font-semibold">Rails</th>
-                    <th className="px-3 py-2.5 font-semibold">Policy</th>
-                    <th className="px-3 py-2.5 font-semibold">FX Coverage</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 font-semibold">Currency</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 text-right font-semibold">Minor Unit</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 font-semibold">Rails</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 font-semibold">Policy</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 font-semibold">FX Coverage</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
                   {enablementResult.currencies.map((cur) => (
                     <tr key={cur.code} className="hover:bg-surface-raised/60">
-                      <td className="px-3 py-2.5">
+                      <td className="whitespace-nowrap px-3 py-2.5">
                         <span className="font-bold text-fg">{cur.code}</span>{" "}
                         <span className="text-muted-fg">{cur.name}</span>
                       </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-muted-fg">
+                      <td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-muted-fg">
                         {cur.minorUnit}
                       </td>
                       <td className="px-3 py-2.5 text-muted-fg">
                         {cur.rails.length > 0 ? cur.rails.join(", ") : "None"}
                       </td>
-                      <td className="px-3 py-2.5">
+                      <td className="whitespace-nowrap px-3 py-2.5">
                         {!cur.policyConfigured ? (
                           <Badge tone="warning">Unconfigured</Badge>
                         ) : cur.policyEnabled ? (
@@ -859,7 +943,7 @@ export default function AdminMaintenanceTab() {
                           <Badge tone="danger">Disabled</Badge>
                         )}
                       </td>
-                      <td className="px-3 py-2.5">
+                      <td className="whitespace-nowrap px-3 py-2.5">
                         <Badge tone={cur.hasFxRate ? "success" : "warning"}>
                           {cur.hasFxRate ? "Covered" : "Missing"}
                         </Badge>

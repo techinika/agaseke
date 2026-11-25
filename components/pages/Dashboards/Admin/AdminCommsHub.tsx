@@ -41,9 +41,9 @@ export default function AdminCommsHub() {
     <div className="min-h-screen bg-canvas pb-20 text-fg">
       <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
         <header className="mb-6">
-          <p className="text-caption font-semibold text-brand-strong">Communication & Feedback</p>
+          <p className="text-caption font-semibold text-brand-strong">Outreach</p>
           <h1 className="mt-1 text-heading font-black tracking-tight text-fg">
-            Comms & Feedback
+            Comms
           </h1>
           <p className="mt-1 text-label text-muted-fg">
             Send platform broadcasts, maintain the product changelog, and review creator feedback.
@@ -51,7 +51,7 @@ export default function AdminCommsHub() {
         </header>
 
         <Tabs
-          ariaLabel="Communication and feedback sections"
+          ariaLabel="Comms sections"
           variant="underline"
           className="mb-8"
           value={activeTab}

@@ -380,17 +380,17 @@ export default function CreatorSettings() {
             },
             {
               id: "socials",
-              label: "Social Links",
+              label: "Socials",
               icon: <Share2 className="size-4" aria-hidden="true" />,
             },
             {
               id: "location",
-              label: "Location & Currency",
+              label: "Region",
               icon: <Globe className="size-4" aria-hidden="true" />,
             },
             {
               id: "perks",
-              label: "Supporter Perks",
+              label: "Perks",
               icon: <ShieldCheck className="size-4" aria-hidden="true" />,
             },
             {

@@ -151,7 +151,7 @@ export default function AdminLogsPage() {
           <div>
             <p className="text-caption font-semibold text-brand-strong">Audit</p>
             <h1 className="mt-1 text-heading font-black tracking-tight text-fg">
-              Activity logs
+              Logs
             </h1>
             <p className="mt-1 text-label text-muted-fg">
               Monitor platform activities, payment events, and moderation actions.

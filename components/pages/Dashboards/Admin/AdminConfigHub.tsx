@@ -51,7 +51,7 @@ export default function AdminConfigHub() {
         <header className="mb-6">
           <p className="text-caption font-semibold text-brand-strong">Platform Settings</p>
           <h1 className="mt-1 text-heading font-black tracking-tight text-fg">
-            Configuration
+            Config
           </h1>
           <p className="mt-1 text-label text-muted-fg">
             Manage supported currencies, countries, currency mappings, and creator categories.
@@ -67,7 +67,7 @@ export default function AdminConfigHub() {
           items={[
             { id: "currencies", label: "Currencies", icon: <HandCoins size={16} /> },
             { id: "countries", label: "Countries", icon: <Globe2 size={16} /> },
-            { id: "country-currencies", label: "Currency Map", icon: <Link2 size={16} /> },
+            { id: "country-currencies", label: "Mappings", icon: <Link2 size={16} /> },
             { id: "categories", label: "Categories", icon: <Tags size={16} /> },
             { id: "maintenance", label: "Scripts", icon: <Wrench size={16} /> },
           ]}

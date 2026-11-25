@@ -245,7 +245,7 @@ export default function AdminCurrenciesPage({ embedded = false }: { embedded?: b
             {currencies.map((cur) => (
               <div
                 key={cur.id}
-                className="bg-card border border-border rounded-lg p-4 flex items-center justify-between group"
+                className="bg-card border border-border rounded-lg p-4 flex flex-wrap items-center justify-between gap-3 group"
               >
                 {editingId === cur.id ? (
                   <div className="flex items-center gap-2 flex-1 mr-3 flex-wrap">
