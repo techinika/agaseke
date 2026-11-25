@@ -118,8 +118,36 @@ export async function getUserTransactions(
     })
   );
 
+  const missingCreatorHandles = [
+    ...new Set(
+      raw
+        .filter((t) => {
+          const uidKey = toString(t.creatorUid);
+          return (!uidKey || !nameByUid[uidKey]) && Boolean(toString(t.creatorId));
+        })
+        .map((t) => toString(t.creatorId)),
+    ),
+  ];
+  const nameByHandle: Record<string, string> = {};
+  if (missingCreatorHandles.length > 0) {
+    await Promise.all(
+      missingCreatorHandles.map(async (handle) => {
+        const creatorDoc = await firestoreGet(
+          env,
+          `creators/${encodeURIComponent(handle)}`,
+        );
+        if (creatorDoc && creatorDoc.fields) {
+          const creator = convertFromFields(creatorDoc.fields as Record<string, unknown>);
+          const creatorFullName = toString(creator.name);
+          if (creatorFullName) nameByHandle[handle] = creatorFullName;
+        }
+      }),
+    );
+  }
+
   const transactions = page.map((t) => {
     const creatorUid = toString(t.creatorUid);
+    const creatorHandle = toString(t.creatorId);
     const ref = toString(t.ref);
     const explicitMethod = toString(t.paymentMethod);
     const inferredMethod =
@@ -144,9 +172,13 @@ export async function getUserTransactions(
       createdAt: toString(t.createdAt),
       successfulAt: toString(t.successfulAt),
       message: toString(t.message),
-      creatorId: toString(t.creatorId),
+      creatorId: creatorHandle,
       creatorUid,
-      creatorName: nameByUid[creatorUid] || "",
+      creatorName:
+        nameByUid[creatorUid] ||
+        nameByHandle[creatorHandle] ||
+        toString(t.creatorName) ||
+        "",
       productId: toString(t.productId),
       productName: toString(t.productName),
       quantity: toNumber(t.quantity),

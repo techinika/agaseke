@@ -9,8 +9,12 @@ import {
   retryTransaction,
   type UserTransaction,
 } from "@/lib/paymentsService";
+import {
+  downloadSuccessfulTransactionsPdf,
+  isSuccessfulStatus,
+} from "@/lib/payments/transactionPdf";
 import { db } from "@/db/firebase";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, doc, getDoc, query, where, onSnapshot } from "firebase/firestore";
 import { formatCurrency } from "@/types/currency";
 import { getCurrencyDefinition } from "@/lib/money/registry.generated";
 import { resolveHistoricalCurrency } from "@/lib/money/historicalCurrency";
@@ -32,6 +36,8 @@ import {
   XCircle,
   ChevronDown,
   ExternalLink,
+  Download,
+  FileText,
 } from "lucide-react";
 
 const PAGE_SIZE = 20;
@@ -175,7 +181,7 @@ interface ActiveRetry {
 }
 
 export default function TransactionsPage() {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, user, profile } = useAuth();
   const [transactions, setTransactions] = useState<UserTransaction[]>([]);
   const [total, setTotal] = useState(0);
   const [counts, setCounts] = useState<Record<string, number>>({
@@ -188,6 +194,8 @@ export default function TransactionsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [downloadingRef, setDownloadingRef] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   const [activeRetry, setActiveRetry] = useState<ActiveRetry | null>(null);
@@ -234,6 +242,96 @@ export default function TransactionsPage() {
       // keep existing rows visible
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const resolveMissingCreatorNames = async (
+    items: UserTransaction[],
+  ): Promise<Record<string, string>> => {
+    const missingHandles = [
+      ...new Set(
+        items
+          .filter((tx) => isSuccessfulStatus(tx.status) && !tx.creatorName && tx.creatorId)
+          .map((tx) => tx.creatorId),
+      ),
+    ];
+    const resolved: Record<string, string> = {};
+    if (missingHandles.length === 0) return resolved;
+
+    await Promise.all(
+      missingHandles.map(async (handle) => {
+        try {
+          const snap = await getDoc(doc(db, "creators", handle));
+          if (snap.exists()) {
+            const creatorName = snap.data()?.name;
+            if (typeof creatorName === "string" && creatorName.trim()) {
+              resolved[handle] = creatorName.trim();
+            }
+          }
+        } catch {
+          // ignore lookup failure and fall back to handle
+        }
+      }),
+    );
+    return resolved;
+  };
+
+  const handleDownloadSummaryPdf = async () => {
+    setExportingPdf(true);
+    try {
+      let allItems = [...transactions];
+      if (allItems.length < total) {
+        let offset = allItems.length;
+        while (offset < total) {
+          const page = await getUserTransactions(50, offset);
+          if (page.transactions.length === 0) break;
+          allItems = [...allItems, ...page.transactions];
+          offset += page.transactions.length;
+        }
+      }
+
+      const successfulItems = allItems.filter((tx) => isSuccessfulStatus(tx.status));
+      if (successfulItems.length === 0) {
+        toast.error("No successful transactions to export.");
+        return;
+      }
+
+      const creatorNames = await resolveMissingCreatorNames(successfulItems);
+      const { count } = await downloadSuccessfulTransactionsPdf(successfulItems, {
+        supporterName: profile?.displayName || user?.displayName || "",
+        supporterEmail: profile?.email || user?.email || "",
+        creatorNames,
+      });
+      toast.success(
+        `Downloaded PDF summary for ${count} successful transaction${count === 1 ? "" : "s"}.`,
+      );
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to generate PDF summary",
+      );
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
+  const handleDownloadSingleReceipt = async (tx: UserTransaction) => {
+    setDownloadingRef(tx.ref);
+    try {
+      const creatorNames = await resolveMissingCreatorNames([tx]);
+      await downloadSuccessfulTransactionsPdf([tx], {
+        supporterName: profile?.displayName || user?.displayName || "",
+        supporterEmail: profile?.email || user?.email || "",
+        creatorNames,
+        title: "Successful Transaction Receipt",
+        filenamePrefix: `agaseke-receipt-${tx.ref}`,
+      });
+      toast.success("Downloaded transaction receipt PDF.");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to generate receipt PDF",
+      );
+    } finally {
+      setDownloadingRef(null);
     }
   };
 
@@ -406,17 +504,30 @@ export default function TransactionsPage() {
           </p>
         </div>
         {isLoggedIn && !loading && !error && (
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={refreshTransactions}
-            loading={refreshing}
-            aria-label="Refresh transactions"
-            leadingIcon={<RefreshCw className="size-4" aria-hidden="true" />}
-            className="shrink-0 min-w-11 px-0 sm:px-3"
-          >
-            <span className="hidden sm:inline">Refresh</span>
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleDownloadSummaryPdf}
+              loading={exportingPdf}
+              disabled={(counts.successful || 0) === 0}
+              aria-label="Download PDF summary of successful transactions"
+              leadingIcon={<Download className="size-4" aria-hidden="true" />}
+            >
+              <span>Download PDF</span>
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={refreshTransactions}
+              loading={refreshing}
+              aria-label="Refresh transactions"
+              leadingIcon={<RefreshCw className="size-4" aria-hidden="true" />}
+              className="min-w-11 px-0 sm:px-3"
+            >
+              <span className="hidden sm:inline">Refresh</span>
+            </Button>
+          </div>
         )}
       </div>
 
@@ -608,7 +719,17 @@ export default function TransactionsPage() {
                           {formatDate(tx.createdAt)} · {tx.ref}
                         </p>
                       </div>
-                      {(tx.status === "failed" || tx.status === "pending") && (
+                      {isSuccessfulStatus(tx.status) ? (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => void handleDownloadSingleReceipt(tx)}
+                          loading={downloadingRef === tx.ref}
+                          leadingIcon={<FileText className="size-4" aria-hidden="true" />}
+                        >
+                          Receipt PDF
+                        </Button>
+                      ) : (tx.status === "failed" || tx.status === "pending") && (
                         <Button
                           size="sm"
                           variant={tx.status === "pending" ? "secondary" : "primary"}
