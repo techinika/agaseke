@@ -15,7 +15,6 @@ import {
   where,
   onSnapshot,
   doc,
-  updateDoc,
   addDoc,
   serverTimestamp,
 } from "firebase/firestore";
@@ -50,6 +49,12 @@ import {
 } from "@/lib/payouts/currency";
 import { PAYMENT_RAIL_PROVIDER_LIST } from "@/lib/money";
 import { resolveHistoricalCurrency } from "@/lib/money/historicalCurrency";
+import {
+  filterPendingVerificationQueue,
+  normalizeVerificationRequest,
+  type NormalizedVerificationRequest,
+} from "@/lib/verificationSchema";
+import { VerificationReviewDialog } from "./VerificationReviewDialog";
 import { formatCurrency } from "@/types/currency";
 import { cn } from "@/lib/cn";
 
@@ -141,9 +146,12 @@ export default function AdminDashboard() {
   >([]);
   const [topViewed, setTopViewed] = useState<any[]>([]);
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
-  const [verifications, setVerifications] = useState<any[]>([]);
+  const [verifications, setVerifications] = useState<NormalizedVerificationRequest[]>([]);
+  const [reviewingVerification, setReviewingVerification] =
+    useState<NormalizedVerificationRequest | null>(null);
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [fxHealth, setFxHealth] = useState<any>(null);
+  const [fxRefreshing, setFxRefreshing] = useState(false);
 
   const [growthFilter, setGrowthFilter] = useState<"7d" | "weekly" | "monthly" | "annual">("7d");
   const [rawProfiles, setRawProfiles] = useState<any[]>([]);
@@ -155,7 +163,7 @@ export default function AdminDashboard() {
   const [modal, setModal] = useState<{
     type: "approve" | "reject";
     target: any;
-    category: "withdrawal" | "verification";
+    category: "withdrawal";
   } | null>(null);
 
   const availableCurrencies = useMemo(() => {
@@ -530,33 +538,35 @@ export default function AdminDashboard() {
     const unsubVerifications = onSnapshot(verificationQuery, (snap) => {
       Promise.all(
         snap.docs.map(async (d) => {
-          const data = d.data();
-          let creatorData: any = {};
-          if (data.uid) {
-            const creatorSnap = await getDocs(
-              query(collection(db, "creators"), where("uid", "==", data.uid), limit(1)),
-            );
+          const data = d.data() as Record<string, unknown>;
+          let creatorData: Record<string, unknown> | null = null;
+          let profileData: Record<string, unknown> | null = null;
+
+          if (typeof data.uid === "string" && data.uid) {
+            const [creatorSnap, profileSnap] = await Promise.all([
+              getDocs(
+                query(collection(db, "creators"), where("uid", "==", data.uid), limit(1)),
+              ),
+              getDoc(doc(db, "profiles", data.uid)),
+            ]);
             if (!creatorSnap.empty) {
               const c = creatorSnap.docs[0];
-              creatorData = {
-                id: c.id,
-                name: c.data().name || "",
-                handle: c.id,
-                profilePicture: c.data().profilePicture || "",
-              };
+              creatorData = { id: c.id, ...(c.data() as Record<string, unknown>) };
+            }
+            if (profileSnap.exists()) {
+              profileData = profileSnap.data() as Record<string, unknown>;
+            }
+          } else if (typeof data.creatorHandle === "string" && data.creatorHandle) {
+            const cSnap = await getDoc(doc(db, "creators", data.creatorHandle));
+            if (cSnap.exists()) {
+              creatorData = { id: cSnap.id, ...(cSnap.data() as Record<string, unknown>) };
             }
           }
-          return { id: d.id, ...data, ...creatorData };
+
+          return normalizeVerificationRequest(d.id, data, creatorData, profileData);
         }),
       ).then((items) => {
-        const seen = new Set<string>();
-        setVerifications(
-          items.filter((item) => {
-            if (!item.uid || seen.has(item.uid)) return false;
-            seen.add(item.uid);
-            return true;
-          }),
-        );
+        setVerifications(filterPendingVerificationQueue(items));
       });
     });
 
@@ -591,7 +601,7 @@ export default function AdminDashboard() {
 
     try {
       let userEmail = "";
-      const profileId = category === "withdrawal" ? (target.creatorId || target.handle) : target.uid;
+      const profileId = target.creatorId || target.handle;
       if (profileId) {
         const profileSnap = await getDoc(doc(db, "profiles", profileId));
         if (profileSnap.exists()) {
@@ -599,120 +609,77 @@ export default function AdminDashboard() {
         }
       }
 
-      if (category === "withdrawal") {
-        if (!auth.currentUser) {
-          throw new Error("You must be signed in to review withdrawals");
-        }
-        const token = await auth.currentUser.getIdToken();
-        const response = await fetch("/api/admin/payouts/withdrawals", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            requestId: target.id,
-            action: type,
-            method: target.method,
-            accountNumber: target.accountNumber,
-          }),
-        });
-        const payload = (await response.json().catch(() => ({}))) as {
-          error?: string;
-          amount?: number;
-          currency?: PayoutCurrency;
-          method?: string;
-          accountNumber?: string;
-          creatorName?: string;
-          creatorEmail?: string;
-        };
-        if (!response.ok) {
-          throw new Error(payload.error || "Withdrawal action failed");
-        }
-
-        const approvedAmount = Number(payload.amount ?? target.amount);
-        const approvedCurrency = (payload.currency || target.currency) as PayoutCurrency;
-        const approvedMethod = String(payload.method || target.method || "MoMo");
-        const approvedAccount = String(payload.accountNumber || target.accountNumber || "");
-        const creatorName = String(payload.creatorName || target.creatorName || "");
-        const creatorEmail = String(payload.creatorEmail || target.creatorEmail || userEmail || "");
-
-        if (type === "approve") {
-          await sendCommsEmail("payout_processed", {
-            creatorEmail,
-            creatorName,
-            amount: approvedAmount,
-            currency: approvedCurrency,
-            method: approvedMethod,
-            accountNumber: approvedAccount,
-          });
-        } else {
-          const adminsSnap = await getDocs(
-            query(collection(db, "profiles"), where("isAdmin", "==", true)),
-          );
-          for (const adminDoc of adminsSnap.docs) {
-            await addDoc(collection(db, "notifications"), {
-              userId: adminDoc.id,
-              type: category,
-              title: "Withdrawal Rejected",
-              message: `Withdrawal of ${approvedAmount.toLocaleString()} ${approvedCurrency} for ${creatorName} was rejected`,
-              read: false,
-              createdAt: serverTimestamp(),
-            });
-          }
-        }
-
-        await logActivity({
-          level: type === "approve" ? "success" : "warning",
-          category: "payout",
-          message: `Withdrawal ${type === "approve" ? "approved" : "rejected"}: ${target.amount?.toLocaleString()} ${target.currency ?? ""} for ${target.creatorName}`,
-          creatorId: target.creatorId,
-          creatorHandle: target.creatorHandle,
-        });
-
-        toast.success(`Withdrawal ${type === "approve" ? "approved" : "rejected"}`);
-      } else {
-        const isApprove = type === "approve";
-        await updateDoc(doc(db, "creators", target.handle || target.id), {
-          verified: isApprove,
-          verificationStatus: isApprove ? "approved" : "rejected",
-        });
-
-        const pendingSnap = await getDocs(
-          query(
-            collection(db, "verificationRequests"),
-            where("uid", "==", target.uid),
-            where("status", "==", "pending"),
-          ),
-        );
-        await Promise.all(
-          pendingSnap.docs.map((d) =>
-            updateDoc(doc(db, "verificationRequests", d.id), {
-              status: isApprove ? "approved" : "rejected",
-              updatedAt: serverTimestamp(),
-            }),
-          ),
-        );
-
-        await sendCommsEmail("verification_feedback", {
-          email: userEmail,
-          name: target.name,
-          approved: isApprove,
-          reason: isApprove ? "" : rejectionReason,
-          creatorUid: target.uid,
-          handle: target.handle,
-        });
-
-        await logActivity({
-          level: isApprove ? "success" : "warning",
-          category: "verification",
-          message: `Verification ${type}: ${target.name} (@${target.handle})`,
-          creatorId: target.uid,
-          creatorHandle: target.handle,
-        });
-
-        toast.success(`Verification ${isApprove ? "approved" : "rejected"}`);
+      if (!auth.currentUser) {
+        throw new Error("You must be signed in to review withdrawals");
       }
+      const token = await auth.currentUser.getIdToken();
+      const response = await fetch("/api/admin/payouts/withdrawals", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          requestId: target.id,
+          action: type,
+          method: target.method,
+          accountNumber: target.accountNumber,
+        }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        amount?: number;
+        currency?: PayoutCurrency;
+        method?: string;
+        accountNumber?: string;
+        creatorName?: string;
+        creatorEmail?: string;
+      };
+      if (!response.ok) {
+        throw new Error(payload.error || "Withdrawal action failed");
+      }
+
+      const approvedAmount = Number(payload.amount ?? target.amount);
+      const approvedCurrency = (payload.currency || target.currency) as PayoutCurrency;
+      const approvedMethod = String(payload.method || target.method || "MoMo");
+      const approvedAccount = String(payload.accountNumber || target.accountNumber || "");
+      const creatorName = String(payload.creatorName || target.creatorName || "");
+      const creatorEmail = String(payload.creatorEmail || target.creatorEmail || userEmail || "");
+
+      if (type === "approve") {
+        await sendCommsEmail("payout_processed", {
+          creatorEmail,
+          creatorName,
+          amount: approvedAmount,
+          currency: approvedCurrency,
+          method: approvedMethod,
+          accountNumber: approvedAccount,
+        });
+      } else {
+        const adminsSnap = await getDocs(
+          query(collection(db, "profiles"), where("isAdmin", "==", true)),
+        );
+        for (const adminDoc of adminsSnap.docs) {
+          await addDoc(collection(db, "notifications"), {
+            userId: adminDoc.id,
+            type: category,
+            title: "Withdrawal Rejected",
+            message: `Withdrawal of ${approvedAmount.toLocaleString()} ${approvedCurrency} for ${creatorName} was rejected`,
+            read: false,
+            createdAt: serverTimestamp(),
+          });
+        }
+      }
+
+      await logActivity({
+        level: type === "approve" ? "success" : "warning",
+        category: "payout",
+        message: `Withdrawal ${type === "approve" ? "approved" : "rejected"}: ${target.amount?.toLocaleString()} ${target.currency ?? ""} for ${target.creatorName}`,
+        creatorId: target.creatorId,
+        creatorHandle: target.creatorHandle,
+      });
+
+      toast.success(`Withdrawal ${type === "approve" ? "approved" : "rejected"}`);
 
       setModal(null);
       setRejectionReason("");
@@ -722,6 +689,45 @@ export default function AdminDashboard() {
       toast.error(error instanceof Error ? error.message : "Action failed");
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const handleRefreshFxRates = async () => {
+    setFxRefreshing(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("Admin authentication required");
+
+      const res = await fetch("/api/admin/fx/refresh", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const payload = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+        source?: string;
+        rateCount?: number;
+      } | null;
+      if (!res.ok || !payload?.ok) {
+        throw new Error(payload?.error || "Failed to refresh FX rates");
+      }
+
+      toast.success(
+        `FX rates refreshed from ${payload.source || "frankfurter.dev"} (${payload.rateCount ?? 0} pairs)`,
+      );
+
+      const healthRes = await fetch("/api/admin/fx/health", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (healthRes.ok) {
+        setFxHealth(await healthRes.json());
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to refresh FX rates",
+      );
+    } finally {
+      setFxRefreshing(false);
     }
   };
 
@@ -1011,23 +1017,26 @@ export default function AdminDashboard() {
                   No pending verification requests.
                 </p>
               ) : (
-                verifications.map((creator) => (
+                verifications.map((request) => (
                   <div
-                    key={creator.id}
+                    key={request.requestId}
                     className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-surface-raised/60"
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <Avatar
-                        src={creator.profilePicture}
-                        name={creator.name || creator.handle || "Creator"}
+                        src={request.creatorProfilePicture}
+                        name={request.creatorName || request.creatorHandle || "Creator"}
                         size="md"
                       />
                       <div className="min-w-0">
                         <p className="truncate text-label font-bold text-fg">
-                          {creator.name || "Creator"}
+                          {request.creatorName || "Creator"}
                         </p>
                         <p className="truncate text-caption text-muted-fg">
-                          @{creator.handle}
+                          {request.creatorHandle ? `@${request.creatorHandle}` : request.uid}
+                          {" · "}
+                          <span className="uppercase">{request.payoutPreference || "KYC"}</span>
+                          {request.country ? ` · ${request.country}` : ""}
                         </p>
                       </div>
                     </div>
@@ -1035,28 +1044,9 @@ export default function AdminDashboard() {
                       <Button
                         size="sm"
                         variant="primary"
-                        onClick={() =>
-                          setModal({
-                            type: "approve",
-                            target: creator,
-                            category: "verification",
-                          })
-                        }
+                        onClick={() => setReviewingVerification(request)}
                       >
-                        Approve
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() =>
-                          setModal({
-                            type: "reject",
-                            target: creator,
-                            category: "verification",
-                          })
-                        }
-                      >
-                        Reject
+                        Review
                       </Button>
                     </div>
                   </div>
@@ -1346,17 +1336,28 @@ export default function AdminDashboard() {
               <div>
                 <h2 className="text-body font-bold text-fg">FX health &amp; exposure</h2>
                 <p className="text-caption text-muted-fg">
-                  Exchange snapshot &amp; pending withdrawal exposure
+                  Frankfurter exchange snapshot &amp; pending withdrawal exposure
                 </p>
               </div>
-              <span
-                className={cn(
-                  "text-caption font-semibold capitalize",
-                  fxHealth?.ok ? "text-success" : "text-danger",
-                )}
-              >
-                {fxHealth ? String(fxHealth.status || "unknown") : "Loading"}
-              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  loading={fxRefreshing}
+                  onClick={() => void handleRefreshFxRates()}
+                  leadingIcon={<RefreshCw className="size-3.5" />}
+                >
+                  Refresh
+                </Button>
+                <span
+                  className={cn(
+                    "text-caption font-semibold capitalize",
+                    fxHealth?.ok ? "text-success" : "text-danger",
+                  )}
+                >
+                  {fxHealth ? String(fxHealth.status || "unknown") : "Loading"}
+                </span>
+              </div>
             </div>
 
             {!fxHealth ? (
@@ -1566,6 +1567,15 @@ export default function AdminDashboard() {
           </div>
         )}
       </Dialog>
+
+      <VerificationReviewDialog
+        request={reviewingVerification}
+        onClose={() => setReviewingVerification(null)}
+        onReviewed={({ uid }) => {
+          setVerifications((prev) => prev.filter((item) => item.uid !== uid));
+          void fetchData(false);
+        }}
+      />
     </div>
   );
 }

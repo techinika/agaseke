@@ -45,8 +45,75 @@ function readRate(
 }
 
 /**
+ * Frankfurter FX API v2 (https://frankfurter.dev/): free open-source exchange-rate
+ * feed with central bank & global coverage, no API key required. Primary source.
+ */
+export const FRANKFURTER_API_SOURCE: DailyRateSource = {
+  id: "frankfurter-dev",
+  name: "Frankfurter FX API",
+  license: "MIT / Open Central Bank Rates",
+  homepage: "https://frankfurter.dev/",
+  url: (base) => `https://api.frankfurter.dev/v2/rates?base=${base}`,
+  parse: (payload, base, quotes) => {
+    if (!Array.isArray(payload) || payload.length === 0) {
+      throw new Error("Frankfurter API returned an invalid or empty payload");
+    }
+
+    const table = new Map<string, number>();
+    let latestDate = "";
+
+    for (const item of payload) {
+      if (!isRecord(item)) continue;
+      const itemBase = typeof item.base === "string" ? item.base.toUpperCase() : base;
+      if (itemBase !== base) continue;
+
+      const quote = typeof item.quote === "string" ? item.quote.toUpperCase() : "";
+      const rate = item.rate;
+      const date = typeof item.date === "string" ? item.date : "";
+
+      if (
+        quote &&
+        typeof rate === "number" &&
+        Number.isFinite(rate) &&
+        rate > 0
+      ) {
+        table.set(quote, rate);
+      }
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date) && date > latestDate) {
+        latestDate = date;
+      }
+    }
+
+    if (!latestDate) {
+      throw new Error("Frankfurter API payload is missing a valid rate date");
+    }
+
+    const asOf = `${latestDate}T00:00:00.000Z`;
+    const expiresAt = dailyExpiry(latestDate);
+
+    return quotes.map((quote) => {
+      const rate = table.get(quote);
+      if (typeof rate !== "number" || !Number.isFinite(rate) || rate <= 0) {
+        throw new Error(`Frankfurter API is missing a valid ${quote} rate`);
+      }
+
+      return {
+        base,
+        quote,
+        rate,
+        asOf,
+        source: "frankfurter-dev",
+        sourceUrl: "https://frankfurter.dev/",
+        license: "MIT / Open Central Bank Rates",
+        expiresAt,
+      };
+    });
+  },
+};
+
+/**
  * fawazahmed0/currency-api: open-source (MIT), daily rates, 300+ currencies,
- * served from jsDelivr. This is the primary display-rate source.
+ * served from jsDelivr. Fallback source.
  */
 export const CURRENCY_API_SOURCE: DailyRateSource = {
   id: "fawazahmed0-currency-api",
@@ -87,8 +154,7 @@ export const CURRENCY_API_SOURCE: DailyRateSource = {
 };
 
 /**
- * ExchangeRate-API's free open-access endpoint. It is a fallback, not an
- * open-source project; review its attribution terms before production use.
+ * ExchangeRate-API's free open-access endpoint. Tertiary fallback source.
  */
 export const OPEN_ER_API_SOURCE: DailyRateSource = {
   id: "open-er-api",
@@ -145,6 +211,7 @@ export const OPEN_ER_API_SOURCE: DailyRateSource = {
 };
 
 export const DEFAULT_RATE_SOURCES: readonly DailyRateSource[] = [
+  FRANKFURTER_API_SOURCE,
   CURRENCY_API_SOURCE,
   OPEN_ER_API_SOURCE,
 ];
@@ -173,7 +240,7 @@ export interface FetchDailyRatesResult {
 }
 
 /**
- * Fetch daily display rates server-side, with a fallback source.
+ * Fetch daily display rates server-side, with fallback sources.
  *
  * This is for display and cached read models only. Withdrawals must use a
  * locked quote with an id and never a rate fetched opportunistically at payout.

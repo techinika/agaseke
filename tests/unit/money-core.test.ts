@@ -25,6 +25,8 @@ import {
 import { convertForDisplay, formatDisplayAmount, type FxRate } from "@/lib/money/display";
 import {
   CURRENCY_API_SOURCE,
+  DEFAULT_RATE_SOURCES,
+  FRANKFURTER_API_SOURCE,
   FxRateError,
   OPEN_ER_API_SOURCE,
   fetchDailyRates,
@@ -366,6 +368,65 @@ describe("daily display-rate sources", () => {
     expect(result.source.id).toBe("fawazahmed0-currency-api");
     expect(result.rates).toHaveLength(1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("parses Frankfurter v2 rates as the primary daily source", () => {
+    expect(DEFAULT_RATE_SOURCES[0].id).toBe("frankfurter-dev");
+    const frankfurterPayload = [
+      { date: "2026-11-25", base: "USD", quote: "RWF", rate: 1478.21 },
+      { date: "2026-11-25", base: "USD", quote: "KES", rate: 129.98 },
+    ];
+    const rates = FRANKFURTER_API_SOURCE.parse(frankfurterPayload, "USD", [
+      "RWF",
+      "KES",
+    ]);
+
+    expect(rates).toHaveLength(2);
+    expect(rates[0]).toMatchObject({
+      base: "USD",
+      quote: "RWF",
+      rate: 1478.21,
+      source: "frankfurter-dev",
+      sourceUrl: "https://frankfurter.dev/",
+      asOf: "2026-11-25T00:00:00.000Z",
+    });
+  });
+
+  it("rejects missing Frankfurter quotes and falls back cleanly", async () => {
+    expect(() =>
+      FRANKFURTER_API_SOURCE.parse(
+        [{ date: "2026-11-25", base: "USD", quote: "KES", rate: 129.98 }],
+        "USD",
+        ["RWF"],
+      ),
+    ).toThrow();
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("api.frankfurter.dev")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => [
+            { date: "2026-11-25", base: "USD", quote: "RWF", rate: 1478.21 },
+          ],
+        } as Response;
+      }
+      return { ok: false, status: 500, json: async () => ({}) } as Response;
+    });
+
+    const result = await fetchDailyRates({
+      base: "USD",
+      quotes: ["RWF"],
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+
+    expect(result.source.id).toBe("frankfurter-dev");
+    expect(result.rates[0].rate).toBe(1478.21);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0][0])).toContain(
+      "https://api.frankfurter.dev/v2/rates?base=USD",
+    );
   });
 
   it("falls back when the first source fails", async () => {

@@ -1,9 +1,10 @@
 import type { EmailService } from "../types";
+import { resolveAdminRecipient } from "./adminRecipient";
 
 export const withdrawalRequest: EmailService = {
   purpose: "withdrawal_request",
-  async resolveRecipients(data) {
-    return { to: data.adminEmail as string };
+  async resolveRecipients(data, env) {
+    return { to: resolveAdminRecipient(data, env) };
   },
   buildSubject(data) {
     return `New Withdrawal Request: ${data.creatorName as string}`;

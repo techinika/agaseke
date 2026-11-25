@@ -40,6 +40,7 @@ export interface Env {
   AWS_ACCESS_KEY_ID: string;
   AWS_SECRET_ACCESS_KEY: string;
   AWS_REGION?: string;
+  ADMIN_EMAIL?: string;
   INTERNAL_AUTH_SECRET: string;
   AGASEKE_EMAIL_QUEUE: Queue<EmailQueueMessage>;
 }

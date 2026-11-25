@@ -28,4 +28,5 @@ export interface VerificationFlowProps {
   otpBusy: "send" | "verify" | null;
   onSendOtp: () => void;
   onVerifyOtp: () => void;
+  rejectionReason?: string | null;
 }

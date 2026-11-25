@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "@/db/firebase";
 import { sendCommsEmail } from "@/lib/commsService";
+import { getClientAdminEmail } from "@/lib/comms/adminEmail";
 import {
   buildPayoutOverview,
   type CurrencyBalance,
@@ -188,7 +189,7 @@ export async function submitWithdrawRequest(params: {
 
   try {
     await sendCommsEmail("withdrawal_request", {
-      adminEmail: process.env.NEXT_PUBLIC_ADMIN_EMAIL || "agasekeforcreators@gmail.com",
+      adminEmail: getClientAdminEmail(),
       creatorName: params.creatorName,
       creatorEmail,
       amount: params.amount,

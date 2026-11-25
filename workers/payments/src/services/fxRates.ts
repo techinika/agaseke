@@ -32,6 +32,38 @@ interface ParsedRates {
   rates: Record<string, number>;
 }
 
+function parseFrankfurterV2(payload: unknown, base: CurrencyCode): ParsedRates {
+  if (!Array.isArray(payload) || payload.length === 0) {
+    throw new Error("Frankfurter API returned an invalid or empty payload");
+  }
+
+  const table: Record<string, unknown> = {};
+  let hasDate = false;
+
+  for (const item of payload) {
+    if (!isRecord(item)) continue;
+    const itemBase = typeof item.base === "string" ? item.base.toUpperCase() : base;
+    if (itemBase !== base) continue;
+    const quote = typeof item.quote === "string" ? item.quote.toUpperCase() : "";
+    if (!quote) continue;
+    if (typeof item.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(item.date)) {
+      hasDate = true;
+    }
+    if (typeof item.rate === "number" && Number.isFinite(item.rate) && item.rate > 0) {
+      table[quote] = item.rate;
+    }
+  }
+
+  if (!hasDate) {
+    throw new Error("Frankfurter API payload is missing its rate date");
+  }
+
+  return {
+    source: "frankfurter.dev",
+    rates: collectRates(table, base),
+  };
+}
+
 function parseCurrencyApi(payload: unknown, base: CurrencyCode): ParsedRates {
   if (!isRecord(payload)) throw new Error("Currency API returned an invalid payload");
   const table = payload[base.toLowerCase()];
@@ -86,6 +118,10 @@ async function fetchRates(
   fetchImpl: typeof fetch,
 ): Promise<ParsedRates> {
   const sources: Array<{ url: string; parse: (payload: unknown) => ParsedRates }> = [
+    {
+      url: `https://api.frankfurter.dev/v2/rates?base=${base}`,
+      parse: (payload) => parseFrankfurterV2(payload, base),
+    },
     {
       url: `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/${base.toLowerCase()}.min.json`,
       parse: (payload) => parseCurrencyApi(payload, base),

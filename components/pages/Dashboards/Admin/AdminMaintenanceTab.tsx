@@ -147,6 +147,7 @@ export default function AdminMaintenanceTab() {
   );
   const [enablementResult, setEnablementResult] =
     useState<EnablementCheckResult | null>(null);
+  const [fxRefreshing, setFxRefreshing] = useState(false);
 
   const getToken = useCallback(async () => {
     const token = await auth.currentUser?.getIdToken();
@@ -297,6 +298,31 @@ export default function AdminMaintenanceTab() {
       toast.error(err instanceof Error ? err.message : "Failed to run script");
     } finally {
       setRunningScript(null);
+    }
+  };
+
+  const refreshFxFromFrankfurter = async () => {
+    setFxRefreshing(true);
+    try {
+      const token = await getToken();
+      const res = await fetch("/api/admin/fx/refresh", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) {
+        throw new Error(data?.error || "Failed to refresh FX rates");
+      }
+      toast.success(
+        `Refreshed ${data.rateCount ?? 0} FX pairs from ${data.source || "frankfurter.dev"}`,
+      );
+      await executeScript("enablement_check", "dry-run");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to refresh FX rates",
+      );
+    } finally {
+      setFxRefreshing(false);
     }
   };
 
@@ -751,16 +777,28 @@ export default function AdminMaintenanceTab() {
               coverage, and live FX snapshot freshness.
             </p>
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            loading={runningScript === "enablement_check:dry-run"}
-            disabled={runningScript !== null}
-            onClick={() => void executeScript("enablement_check", "dry-run")}
-            leadingIcon={<Play className="size-4" />}
-          >
-            Run Readiness Check
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              loading={fxRefreshing}
+              disabled={runningScript !== null || fxRefreshing}
+              onClick={() => void refreshFxFromFrankfurter()}
+              leadingIcon={<RefreshCw className="size-4" />}
+            >
+              Refresh FX (Frankfurter)
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              loading={runningScript === "enablement_check:dry-run"}
+              disabled={runningScript !== null || fxRefreshing}
+              onClick={() => void executeScript("enablement_check", "dry-run")}
+              leadingIcon={<Play className="size-4" />}
+            >
+              Run Readiness Check
+            </Button>
+          </div>
         </div>
 
         {enablementResult && (

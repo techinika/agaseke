@@ -29,13 +29,16 @@ const STATUS = {
 export function VerificationStatusBanner({
   status,
   onStartEditing,
+  rejectionReason,
 }: {
   status: VerificationStatus;
   onStartEditing: () => void;
+  rejectionReason?: string | null;
 }) {
   if (!status) return null;
   const config = STATUS[status];
   const Icon = config.icon;
+  const cleanReason = typeof rejectionReason === "string" ? rejectionReason.trim() : "";
 
   return (
     <Card className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -49,6 +52,11 @@ export function VerificationStatusBanner({
             <Badge tone={config.tone}>{config.title}</Badge>
           </div>
           <p className="mt-1 text-label text-muted-fg">{config.body}</p>
+          {status === "rejected" && cleanReason && (
+            <p className="mt-2 text-label font-medium text-danger">
+              Reason: {cleanReason}
+            </p>
+          )}
         </div>
       </div>
       <Button variant="secondary" onClick={onStartEditing}>

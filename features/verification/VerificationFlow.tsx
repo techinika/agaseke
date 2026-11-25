@@ -29,6 +29,7 @@ export function VerificationFlow({
   otpBusy,
   onSendOtp,
   onVerifyOtp,
+  rejectionReason,
   embedded = false,
 }: VerificationFlowProps & { embedded?: boolean }) {
   const content = (
@@ -41,7 +42,11 @@ export function VerificationFlow({
         />
       )}
       <div className={embedded ? "flex flex-col gap-5" : "mt-6 flex flex-col gap-5"}>
-        <VerificationStatusBanner status={status} onStartEditing={onStartEditing} />
+        <VerificationStatusBanner
+          status={status}
+          onStartEditing={onStartEditing}
+          rejectionReason={rejectionReason}
+        />
         <Card className="p-5">
           <VerificationProgress
             phoneVerified={phoneVerified}

@@ -8,7 +8,6 @@ import React, {
   useCallback,
   useRef,
 } from "react";
-import { sendCommsEmail } from "@/lib/commsService";
 import {
   Search,
   Users,
@@ -23,12 +22,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  FileSearch,
 } from "lucide-react";
 import { auth, db } from "@/db/firebase";
 import {
   doc,
-  updateDoc,
-  arrayUnion,
   collection,
   getDocs,
   query,
@@ -40,9 +38,16 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { toast } from "sonner";
-import { logActivity } from "@/lib/logger";
 import { LoadingState } from "@/components/ui/LoadingState";
 import Link from "next/link";
+import {
+  isCreatorAlreadyVerified,
+  normalizeVerificationRequest,
+  resolveVerificationBadgeState,
+  type NormalizedVerificationRequest,
+  type VerificationBadgeState,
+} from "@/lib/verificationSchema";
+import { VerificationReviewDialog } from "./VerificationReviewDialog";
 
 interface UserProfile {
   id: string;
@@ -68,10 +73,20 @@ export default function AdminUsersPage() {
   const [typeFilter, setTypeFilter] = useState<
     "all" | "creator" | "supporter" | "admin"
   >("all");
+  const [verificationFilter, setVerificationFilter] = useState<
+    "all" | "verified" | "pending" | "unverified"
+  >("all");
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [makingAdmin, setMakingAdmin] = useState<string | null>(null);
-  const [verifyingUser, setVerifyingUser] = useState<UserProfile | null>(null);
-  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [reviewingRequest, setReviewingRequest] =
+    useState<NormalizedVerificationRequest | null>(null);
+  const [loadingReviewUid, setLoadingReviewUid] = useState<string | null>(null);
+  const [creatorsByUid, setCreatorsByUid] = useState<
+    Record<string, Record<string, unknown>>
+  >({});
+  const [pendingByUid, setPendingByUid] = useState<
+    Record<string, NormalizedVerificationRequest>
+  >({});
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const lastDocsRef = useRef<(any | null)[]>([null]);
@@ -93,11 +108,78 @@ export default function AdminUsersPage() {
         limit(PAGE_SIZE),
       );
     }
-    const snapshot = await getDocs(q);
+    const [snapshot, pendingSnap] = await Promise.all([
+      getDocs(q),
+      getDocs(
+        query(
+          collection(db, "verificationRequests"),
+          where("status", "==", "pending"),
+        ),
+      ),
+    ]);
+
     const userData = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     })) as UserProfile[];
+
+    // Resolve creators for this page (by handle and/or uid)
+    const creatorRecords: Record<string, Record<string, unknown>> = {};
+    const creatorUsers = userData.filter((u) => u.type === "creator");
+    await Promise.all(
+      creatorUsers.map(async (u) => {
+        const uid = u.uid || u.id;
+        try {
+          if (u.username) {
+            const cSnap = await getDoc(doc(db, "creators", u.username));
+            if (cSnap.exists()) {
+              creatorRecords[uid] = {
+                id: cSnap.id,
+                ...(cSnap.data() as Record<string, unknown>),
+              };
+              return;
+            }
+          }
+          const byUid = await getDocs(
+            query(collection(db, "creators"), where("uid", "==", uid), limit(1)),
+          );
+          if (!byUid.empty) {
+            const c = byUid.docs[0];
+            creatorRecords[uid] = {
+              id: c.id,
+              ...(c.data() as Record<string, unknown>),
+            };
+          }
+        } catch {
+          // ignore per-user creator fetch failures
+        }
+      }),
+    );
+
+    const profileByUid = new Map<string, UserProfile>();
+    for (const u of userData) {
+      profileByUid.set(u.uid || u.id, u);
+    }
+
+    const pendingMap: Record<string, NormalizedVerificationRequest> = {};
+    for (const d of pendingSnap.docs) {
+      const raw = d.data() as Record<string, unknown>;
+      const reqUid = typeof raw.uid === "string" ? raw.uid : "";
+      if (!reqUid) continue;
+      const cData = creatorRecords[reqUid] ?? null;
+      if (isCreatorAlreadyVerified(cData)) continue;
+      const pData = (profileByUid.get(reqUid) as Record<string, unknown> | undefined) ?? null;
+      const normalized = normalizeVerificationRequest(d.id, raw, cData, pData);
+      const existing = pendingMap[reqUid];
+      const existingMs = existing?.submittedAtIso ? Date.parse(existing.submittedAtIso) : 0;
+      const nextMs = normalized.submittedAtIso ? Date.parse(normalized.submittedAtIso) : 0;
+      if (!existing || nextMs >= existingMs) {
+        pendingMap[reqUid] = normalized;
+      }
+    }
+
+    setCreatorsByUid(creatorRecords);
+    setPendingByUid(pendingMap);
     setUsers(userData);
     setHasMore(snapshot.docs.length === PAGE_SIZE);
     if (snapshot.docs.length > 0) {
@@ -140,29 +222,62 @@ export default function AdminUsersPage() {
     });
   }, [selectedUser]);
 
+  const getUserVerificationState = useCallback(
+    (user: UserProfile): VerificationBadgeState => {
+      if (user.type !== "creator") return "unverified";
+      const uid = user.uid || user.id;
+      const creatorData = creatorsByUid[uid] ?? null;
+      const pendingReq = pendingByUid[uid] ?? null;
+      return resolveVerificationBadgeState(
+        creatorData,
+        pendingReq ? { status: pendingReq.status } : null,
+      );
+    },
+    [creatorsByUid, pendingByUid],
+  );
+
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
-      if (typeFilter !== "all" && user.type !== typeFilter) return false;
+      if (typeFilter === "admin" && !user.isAdmin) return false;
+      if (typeFilter !== "all" && typeFilter !== "admin" && user.type !== typeFilter) {
+        return false;
+      }
+      if (verificationFilter !== "all") {
+        if (user.type !== "creator") return false;
+        const vState = getUserVerificationState(user);
+        if (verificationFilter === "verified" && vState !== "verified") return false;
+        if (verificationFilter === "pending" && vState !== "pending") return false;
+        if (
+          verificationFilter === "unverified" &&
+          vState !== "unverified" &&
+          vState !== "rejected"
+        ) {
+          return false;
+        }
+      }
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
         return (
           user.email?.toLowerCase().includes(search) ||
           user.displayName?.toLowerCase().includes(search) ||
+          user.username?.toLowerCase().includes(search) ||
           user.id.toLowerCase().includes(search)
         );
       }
       return true;
     });
-  }, [users, typeFilter, searchTerm]);
+  }, [users, typeFilter, verificationFilter, searchTerm, getUserVerificationState]);
 
   const stats = useMemo(() => {
     return {
       total: users.length,
       creators: users.filter((u) => u.type === "creator").length,
-      supporters: users.filter((u) => u.type === "supporter").length,
+      verifiedCreators: users.filter(
+        (u) => u.type === "creator" && getUserVerificationState(u) === "verified",
+      ).length,
       admins: users.filter((u) => u.isAdmin === true).length,
     };
-  }, [users]);
+  }, [users, getUserVerificationState]);
 
   const toggleAdmin = async (user: UserProfile) => {
     setMakingAdmin(user.id);
@@ -201,60 +316,59 @@ export default function AdminUsersPage() {
     }
   };
 
-  const verifyUser = async () => {
-    if (!verifyingUser) return;
-    setVerifyLoading(true);
+  const openVerificationReview = async (
+    user: UserProfile,
+    explicitCreatorData?: Record<string, unknown> | null,
+  ) => {
+    const uid = user.uid || user.id;
+    const cachedPending = pendingByUid[uid];
+    if (cachedPending) {
+      setReviewingRequest(cachedPending);
+      return;
+    }
 
+    setLoadingReviewUid(uid);
     try {
-      await updateDoc(
-        doc(db, "creators", verifyingUser.username || verifyingUser.id),
-        {
-          verified: true,
-          verificationStatus: "approved",
-        },
+      const creatorData = explicitCreatorData ?? creatorsByUid[uid] ?? null;
+      const reqSnap = await getDocs(
+        query(collection(db, "verificationRequests"), where("uid", "==", uid)),
       );
+      if (reqSnap.empty) {
+        if (!creatorData && !user.username) {
+          toast.info("No verification submission found for this user.");
+          return;
+        }
+        setReviewingRequest(
+          normalizeVerificationRequest(
+            "",
+            { uid, status: isCreatorAlreadyVerified(creatorData) ? "approved" : "pending" },
+            creatorData,
+            user as unknown as Record<string, unknown>,
+          ),
+        );
+        return;
+      }
 
-      const uid = verifyingUser.uid || verifyingUser.id;
-      const pendingQ = query(
-        collection(db, "verificationRequests"),
-        where("uid", "==", uid),
-        where("status", "==", "pending"),
-      );
-      const pendingSnap = await getDocs(pendingQ);
-      await Promise.all(
-        pendingSnap.docs.map((d) =>
-          updateDoc(doc(db, "verificationRequests", d.id), {
-            status: "approved",
-            updatedAt: new Date(),
-          }),
+      const sortedDocs = [...reqSnap.docs].sort((a, b) => {
+        const aTs = a.data()?.createdAt?.toMillis?.() ?? 0;
+        const bTs = b.data()?.createdAt?.toMillis?.() ?? 0;
+        return bTs - aTs;
+      });
+      const pendingDoc = sortedDocs.find((d) => d.data()?.status === "pending");
+      const targetDoc = pendingDoc ?? sortedDocs[0];
+      setReviewingRequest(
+        normalizeVerificationRequest(
+          targetDoc.id,
+          targetDoc.data() as Record<string, unknown>,
+          creatorData,
+          user as unknown as Record<string, unknown>,
         ),
       );
-
-      await sendCommsEmail("verification_feedback", {
-        email: verifyingUser.email,
-        name: verifyingUser.displayName,
-        approved: true,
-        reason: "",
-        creatorUid: uid,
-        handle: verifyingUser.username || verifyingUser.id,
-      });
-
-      await logActivity({
-        level: "success",
-        category: "verification",
-        message: `Verified by admin: ${verifyingUser.displayName || verifyingUser.email}`,
-        userId: verifyingUser.id,
-        userEmail: verifyingUser.email || undefined,
-        userName: verifyingUser.displayName || undefined,
-      });
-
-      toast.success("User verified successfully");
-      setVerifyingUser(null);
     } catch (error) {
-      console.error("Error verifying user:", error);
-      toast.error("Failed to verify user");
+      console.error("Failed to load verification submission:", error);
+      toast.error("Failed to load verification details");
     } finally {
-      setVerifyLoading(false);
+      setLoadingReviewUid(null);
     }
   };
 
@@ -367,11 +481,11 @@ export default function AdminUsersPage() {
             <div className="flex items-center gap-2">
               <DollarSign size={16} className="text-blue-600" />
               <p className="text-[10px] font-bold uppercase text-blue-600 tracking-wider">
-                Supporters
+                Verified Creators
               </p>
             </div>
             <p className="text-2xl font-bold text-blue-700 mt-1">
-              {stats.supporters.toLocaleString()}
+              {stats.verifiedCreators.toLocaleString()}
             </p>
           </div>
           <div className="bg-orange-50 rounded-xl border border-orange-100 p-4">
@@ -389,7 +503,7 @@ export default function AdminUsersPage() {
 
         {/* Filters */}
         <div className="bg-card rounded-xl border border-border p-4 mb-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider block mb-2">
                 Search
@@ -401,7 +515,7 @@ export default function AdminUsersPage() {
                 />
                 <input
                   type="text"
-                  placeholder="Search by name or email..."
+                  placeholder="Search by name, handle, or email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-100"
@@ -421,6 +535,21 @@ export default function AdminUsersPage() {
                 <option value="creator">Creators</option>
                 <option value="supporter">Supporters</option>
                 <option value="admin">Admins</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider block mb-2">
+                Verification Status
+              </label>
+              <select
+                value={verificationFilter}
+                onChange={(e) => setVerificationFilter(e.target.value as any)}
+                className="w-full px-4 py-2 bg-muted border border-border rounded-lg text-sm outline-none"
+              >
+                <option value="all">All Statuses</option>
+                <option value="verified">Verified</option>
+                <option value="pending">Pending Review</option>
+                <option value="unverified">Unverified / Rejected</option>
               </select>
             </div>
           </div>
@@ -463,7 +592,10 @@ export default function AdminUsersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredUsers.map((user) => (
+                  {filteredUsers.map((user) => {
+                    const vState = getUserVerificationState(user);
+                    const uid = user.uid || user.id;
+                    return (
                     <tr
                       key={user.id}
                       onClick={() => setSelectedUser(user)}
@@ -489,13 +621,14 @@ export default function AdminUsersPage() {
                               {user.displayName || "No name"}
                             </p>
                             <p className="text-xs text-muted-foreground">
+                              {user.username ? `@${user.username} · ` : ""}
                               {user.email || "No email"}
                             </p>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span
                             className={`text-[10px] font-bold uppercase px-2 py-1 rounded-full ${
                               user.type === "creator"
@@ -505,6 +638,21 @@ export default function AdminUsersPage() {
                           >
                             {user.type}
                           </span>
+                          {user.type === "creator" && vState === "verified" && (
+                            <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">
+                              Verified
+                            </span>
+                          )}
+                          {user.type === "creator" && vState === "pending" && (
+                            <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-amber-100 text-amber-700">
+                              Pending Review
+                            </span>
+                          )}
+                          {user.type === "creator" && vState === "rejected" && (
+                            <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-red-100 text-red-700">
+                              Rejected
+                            </span>
+                          )}
                           {user.isAdmin && (
                             <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-orange-100 text-orange-600">
                               Admin
@@ -529,7 +677,10 @@ export default function AdminUsersPage() {
                             "Unknown"}
                         </p>
                       </td>
-                      <td className="px-6 py-4">
+                      <td
+                        className="px-6 py-4"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => setSelectedUser(user)}
@@ -565,13 +716,19 @@ export default function AdminUsersPage() {
                               )}
                             </button>
                           )}
-                          {user.type === "creator" && (
+                          {user.type === "creator" && vState === "pending" && (
                             <button
-                              onClick={() => setVerifyingUser(user)}
-                              className="p-2 text-emerald-500 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition"
-                              title="Verify User"
+                              onClick={() => void openVerificationReview(user)}
+                              disabled={loadingReviewUid === uid}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold bg-amber-100 text-amber-800 hover:bg-amber-200 rounded-lg transition"
+                              title="Review Submitted Documents & Data"
                             >
-                              <ShieldCheck size={16} />
+                              {loadingReviewUid === uid ? (
+                                <Loader size={14} className="animate-spin" />
+                              ) : (
+                                <FileSearch size={14} />
+                              )}
+                              Review
                             </button>
                           )}
                           {user.type === "creator" && (
@@ -588,7 +745,8 @@ export default function AdminUsersPage() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -619,69 +777,35 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
-      {/* Verify User Modal */}
-      {verifyingUser && (
-        <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-          <div className="bg-card w-full max-w-md rounded-2xl overflow-hidden shadow-2xl">
-            <div className="p-6 border-b border-border flex justify-between items-center">
-              <h2 className="text-xl font-bold">Verify User</h2>
-              <button
-                onClick={() => setVerifyingUser(null)}
-                className="p-2 hover:bg-muted rounded-full"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-6">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center text-xl font-bold overflow-hidden">
-                  {verifyingUser.photoURL ? (
-                    <img
-                      src={verifyingUser.photoURL}
-                      alt={verifyingUser.displayName || "User"}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    (verifyingUser.displayName ||
-                      verifyingUser.email ||
-                      "?")[0].toUpperCase()
-                  )}
-                </div>
-                <div>
-                  <p className="font-bold text-lg">
-                    {verifyingUser.displayName || "No name"}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {verifyingUser.email}
-                  </p>
-                </div>
-              </div>
-              <p className="text-muted-foreground mb-6">
-                Are you sure you want to verify this user? They will receive an
-                email notification confirming their verification status.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setVerifyingUser(null)}
-                  className="flex-1 py-3 bg-muted text-foreground rounded-lg font-bold text-sm hover:bg-border-strong transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={verifyUser}
-                  disabled={verifyLoading}
-                  className="flex-1 py-3 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition flex items-center justify-center gap-2"
-                >
-                  {verifyLoading && (
-                    <Loader size={16} className="animate-spin" />
-                  )}
-                  Confirm Verification
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Shared KYC Verification Review Dialog */}
+      <VerificationReviewDialog
+        request={reviewingRequest}
+        onClose={() => setReviewingRequest(null)}
+        onReviewed={({ uid, verified }) => {
+          setCreatorsByUid((prev) => ({
+            ...prev,
+            [uid]: {
+              ...(prev[uid] || {}),
+              verified,
+              verificationStatus: verified ? "approved" : "rejected",
+            },
+          }));
+          setPendingByUid((prev) => {
+            const next = { ...prev };
+            delete next[uid];
+            return next;
+          });
+          setCreatorProfile((prev: any) =>
+            prev && prev.uid === uid
+              ? {
+                  ...prev,
+                  verified,
+                  verificationStatus: verified ? "approved" : "rejected",
+                }
+              : prev,
+          );
+        }}
+      />
 
       {/* User Details Side Panel */}
       {selectedUser && (
@@ -879,17 +1003,64 @@ export default function AdminUsersPage() {
 
               {/* Actions */}
               <div className="flex flex-col gap-3">
-                {selectedUser.type === "creator" && (
-                  <button
-                    onClick={() => {
-                      setVerifyingUser(selectedUser);
-                      setSelectedUser(null);
-                    }}
-                    className="w-full py-3 bg-emerald-600 text-white rounded-lg font-bold text-sm hover:bg-emerald-700 transition"
-                  >
-                    Verify User
-                  </button>
-                )}
+                {selectedUser.type === "creator" &&
+                  (() => {
+                    const drawerState = resolveVerificationBadgeState(
+                      creatorProfile ?? creatorsByUid[selectedUser.uid || selectedUser.id] ?? null,
+                      pendingByUid[selectedUser.uid || selectedUser.id]
+                        ? { status: "pending" }
+                        : null,
+                    );
+                    if (drawerState === "pending") {
+                      return (
+                        <button
+                          onClick={() => {
+                            const targetUser = selectedUser;
+                            const cData = creatorProfile;
+                            setSelectedUser(null);
+                            void openVerificationReview(targetUser, cData);
+                          }}
+                          className="w-full py-3 bg-amber-600 text-white rounded-lg font-bold text-sm hover:bg-amber-700 transition flex items-center justify-center gap-2"
+                        >
+                          <FileSearch size={16} />
+                          Review Verification Request
+                        </button>
+                      );
+                    }
+                    if (drawerState === "verified") {
+                      return (
+                        <button
+                          onClick={() => {
+                            const targetUser = selectedUser;
+                            const cData = creatorProfile;
+                            setSelectedUser(null);
+                            void openVerificationReview(targetUser, cData);
+                          }}
+                          className="w-full py-3 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg font-bold text-sm hover:bg-emerald-100 transition flex items-center justify-center gap-2"
+                        >
+                          <ShieldCheck size={16} />
+                          Verified · View KYC Record
+                        </button>
+                      );
+                    }
+                    if (drawerState === "rejected") {
+                      return (
+                        <button
+                          onClick={() => {
+                            const targetUser = selectedUser;
+                            const cData = creatorProfile;
+                            setSelectedUser(null);
+                            void openVerificationReview(targetUser, cData);
+                          }}
+                          className="w-full py-3 bg-red-50 text-red-700 border border-red-200 rounded-lg font-bold text-sm hover:bg-red-100 transition flex items-center justify-center gap-2"
+                        >
+                          <FileSearch size={16} />
+                          Rejected · View Last Submission
+                        </button>
+                      );
+                    }
+                    return null;
+                  })()}
                 {!selectedUser.isAdmin ? (
                   <button
                     onClick={() => {

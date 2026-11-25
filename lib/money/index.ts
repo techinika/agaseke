@@ -91,6 +91,7 @@ export {
 export {
   CURRENCY_API_SOURCE,
   DEFAULT_RATE_SOURCES,
+  FRANKFURTER_API_SOURCE,
   FxRateError,
   OPEN_ER_API_SOURCE,
   fetchDailyRates,
