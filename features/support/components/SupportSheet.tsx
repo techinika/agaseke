@@ -148,8 +148,10 @@ export function SupportSheet({
           error={flow.error}
           cardRedirectUrl={flow.cardRedirectUrl}
           checking={flow.checking}
+          cancelling={flow.cancelling}
           checkHint={flow.checkHint}
           onCheck={() => void flow.checkNow()}
+          onCancelPayment={() => void flow.cancelPayment()}
           onRetry={flow.retry}
           onClose={flow.close}
         />

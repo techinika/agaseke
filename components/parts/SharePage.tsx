@@ -222,11 +222,12 @@ export default function SharePageModal({ isOpen, onClose }: ShareModalProps) {
               </div>
 
               <div className="flex-1 flex flex-col items-center justify-center px-8 pb-6 pt-2">
-                <div className="bg-muted p-4 rounded-lg border border-border">
+                <div className="bg-white p-4 rounded-lg border border-border">
                   <QRCodeCanvas
                     value={shareUrl}
                     size={130}
                     level={"H"}
+                    bgColor="#ffffff"
                     fgColor="#000000"
                     marginSize={1}
                   />

@@ -5,6 +5,7 @@ import type { User } from "firebase/auth";
 import { toast } from "@/components/ui/Toast";
 import { isValidRwandaPhone, normalizeRwandaPhone } from "@/lib/format/phone";
 import { t } from "@/lib/i18n";
+import { cancelTransaction } from "@/lib/paymentsService";
 import {
   fetchSupportConfig,
   pollSupportTransaction,
@@ -168,6 +169,7 @@ export function useSupportFlow({
     initial.cardRedirectUrl,
   );
   const [submitting, setSubmitting] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
   const [checking, setChecking] = useState(false);
   const [checkHint, setCheckHint] = useState<string | null>(null);
@@ -299,11 +301,11 @@ export function useSupportFlow({
   const goToPay = useCallback(() => {
     setError(null);
     if (!amountValid) {
-      setError(t("support.amount.invalid", { min: minAmount }));
+      setError(t("support.amount.invalid", { min: `${minAmount} ${config.currency}` }));
       return;
     }
     setStep("pay");
-  }, [amountValid, minAmount]);
+  }, [amountValid, config.currency, minAmount]);
 
   const backToAmount = useCallback(() => {
     setError(null);
@@ -336,7 +338,7 @@ export function useSupportFlow({
     }
 
     if (!amountValid) {
-      setError(t("support.amount.invalid", { min: minAmount }));
+      setError(t("support.amount.invalid", { min: `${minAmount} ${config.currency}` }));
       return;
     }
 
@@ -356,7 +358,7 @@ export function useSupportFlow({
       creatorHandle: creator.handle,
       amount: breakdown.total,
       currency: config.currency,
-      phone,
+      phone: normalizePhoneForSubmit(phone),
       message,
       idempotencyKey: keyRef.current,
       user,
@@ -430,6 +432,31 @@ export function useSupportFlow({
     setStep("pay");
   }, []);
 
+  const cancelPayment = useCallback(async () => {
+    if (cancelling) return;
+    setCancelling(true);
+    try {
+      if (reference) {
+        await cancelTransaction(reference);
+      }
+      settledRef.current = true;
+      keyRef.current = newKey();
+      clearPendingSupport();
+      setStatus("idle");
+      setError(null);
+      setReference(null);
+      setCardRedirectUrl(null);
+      setWaitingLong(false);
+      setCheckHint(null);
+      setStep("pay");
+      toast.success(t("support.status.cancelled"));
+    } catch (caught) {
+      toast.error(friendlyError(caught));
+    } finally {
+      if (mountedRef.current) setCancelling(false);
+    }
+  }, [cancelling, reference]);
+
   const checkNow = useCallback(async () => {
     if (!reference || checking) return;
     setChecking(true);
@@ -494,6 +521,7 @@ export function useSupportFlow({
     reference,
     cardRedirectUrl,
     submitting,
+    cancelling,
     signingIn,
     checking,
     checkHint,
@@ -515,6 +543,7 @@ export function useSupportFlow({
     backToAmount,
     pay,
     retry,
+    cancelPayment,
     checkNow,
     signIn,
     close,

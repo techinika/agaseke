@@ -33,6 +33,7 @@ export interface SupporterActionSheetProps {
   waitingReference?: string;
   waitingPrimaryAction?: ActionSheetAction;
   waitingSecondaryAction?: ActionSheetAction;
+  waitingCancelAction?: ActionSheetAction;
 }
 
 export function SupporterActionSheet({
@@ -54,6 +55,7 @@ export function SupporterActionSheet({
   waitingReference,
   waitingPrimaryAction,
   waitingSecondaryAction,
+  waitingCancelAction,
 }: SupporterActionSheetProps) {
   const resolvedFooter = (() => {
     if (status === "success") {
@@ -105,6 +107,7 @@ export function SupporterActionSheet({
           reference={waitingReference ?? undefined}
           primaryAction={waitingPrimaryAction}
           secondaryAction={waitingSecondaryAction}
+          tertiaryAction={waitingCancelAction}
         />
       ) : (
         <div className="space-y-4">

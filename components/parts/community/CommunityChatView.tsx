@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 import { Input } from "@/components/ui/Input";
 import { LinkifyText } from "@/components/ui/LinkifyText";
+import { CustomVideoPlayer } from "@/components/media/CustomVideoPlayer";
 import { MediaPreview } from "./MediaPreview";
 import {
   addCommunityChatMessage,
@@ -294,15 +295,13 @@ export function CommunityChatView({
                           />
                         </button>
                       ) : isVideoType(att.mimeType) ? (
-                        <video
+                        <CustomVideoPlayer
                           src={att.url}
-                          controls
-                          controlsList="nodownload"
-                          className="w-full rounded-control max-h-64"
-                          preload="metadata"
-                        >
-                          <source src={att.url} type={att.mimeType} />
-                        </video>
+                          title={att.originalName}
+                          compact
+                          allowReelOnMobile={false}
+                          className="max-h-64 w-full"
+                        />
                       ) : (
                         <a
                           href={att.url}

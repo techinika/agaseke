@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { X, Download, ZoomIn, ZoomOut } from "lucide-react";
+import { CustomVideoPlayer } from "@/components/media/CustomVideoPlayer";
 
 interface MediaPreviewProps {
   url: string;
@@ -151,13 +152,14 @@ export function MediaPreview({ url, mimeType, originalName, onClose }: MediaPrev
             />
           </div>
         ) : isVideo ? (
-          <video
-            src={url}
-            controls
-            controlsList="nodownload"
-            className="max-w-full max-h-full rounded-control"
-            autoPlay
-          />
+          <div className="w-full max-w-4xl">
+            <CustomVideoPlayer
+              src={url}
+              title={originalName}
+              autoPlay
+              className="max-h-[82vh] w-full"
+            />
+          </div>
         ) : isPDF ? (
           <iframe
             src={`https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`}

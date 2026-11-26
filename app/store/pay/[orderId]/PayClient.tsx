@@ -15,10 +15,17 @@ import { db } from "@/db/firebase";
 import { collection, doc, getDoc, getDocs, limit, onSnapshot, query, where } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
-import { initiateMomoPayment, initiateCardPayment, type PaymentInitRequest } from "@/lib/paymentsService";
+import {
+  cancelStoreOrder,
+  cancelTransaction,
+  initiateMomoPayment,
+  initiateCardPayment,
+  type PaymentInitRequest,
+} from "@/lib/paymentsService";
 import { subscribeToTransactionByRef } from "@/lib/transactions";
 import Link from "next/link";
 import { formatMoney as formatCurrency } from "@/lib/format/money";
+import { normalizeRwandaPhone } from "@/lib/format/phone";
 import { isCurrencySupportedByMethod } from "@/lib/money/rails";
 import type { CurrencyCode } from "@/lib/money/registry.generated";
 
@@ -95,6 +102,9 @@ export default function PayClient() {
   >("idle");
   const [paymentError, setPaymentError] = useState("");
   const [cardRedirectUrl, setCardRedirectUrl] = useState<string | null>(null);
+  const [activeTxRef, setActiveTxRef] = useState<string | null>(null);
+  const [cancellingTx, setCancellingTx] = useState(false);
+  const [cancellingOrder, setCancellingOrder] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"momo" | "card">("momo");
   const [phone, setPhone] = useState("");
   const [creatorHandle, setCreatorHandle] = useState("");
@@ -211,8 +221,14 @@ export default function PayClient() {
           if (!cQuerySnap.empty) {
             resolvedHandle = cQuerySnap.docs[0].id;
             resolvedCurrency = String(cQuerySnap.docs[0].data()?.currency || "");
-          } else if (uid.length < 20) {
-            resolvedHandle = uid;
+          } else {
+            const directCreator = await getDoc(doc(db, "creators", uid));
+            if (directCreator.exists()) {
+              resolvedHandle = directCreator.id;
+              resolvedCurrency = String(directCreator.data()?.currency || "");
+            } else if (uid.length < 20) {
+              resolvedHandle = uid;
+            }
           }
         } else {
           const cSnap = await getDoc(doc(db, "creators", resolvedHandle));
@@ -369,6 +385,7 @@ export default function PayClient() {
               ]
             : [];
 
+      const cleanedPhone = normalizeRwandaPhone(phone) || phone.replace(/\s/g, "");
       const payload: PaymentInitRequest = {
         type: "store",
         orderId: order.id,
@@ -382,7 +399,7 @@ export default function PayClient() {
         ...(order.couponCode ? { couponCode: order.couponCode } : {}),
         buyerEmail: currentUser.email || order.buyerEmail || "",
         buyerName: currentUser.displayName || order.buyerName || "Customer",
-        phone: phone.replace(/\s/g, ""),
+        phone: cleanedPhone,
         email: currentUser.email || order.buyerEmail || "",
         firstName: currentUser.displayName?.split(" ")[0] || "Customer",
         lastName: currentUser.displayName?.split(" ")[1] || "",
@@ -391,15 +408,18 @@ export default function PayClient() {
 
       if (activeMethod === "momo") {
         const res = await initiateMomoPayment(payload);
+        setActiveTxRef(res.ref);
         setCardRedirectUrl(null);
         setPaymentPhase("waiting");
         watchTransaction(res.ref);
         toast.success("Payment prompt sent! Confirm on your phone.");
       } else {
         const data = await initiateCardPayment(payload);
+        const ref = data.merchant_reference || data.ref;
+        setActiveTxRef(ref);
         setCardRedirectUrl(data.redirect_url || null);
         setPaymentPhase("waiting");
-        watchTransaction(data.merchant_reference || data.ref);
+        watchTransaction(ref);
         if (data.redirect_url) {
           const popup = window.open(data.redirect_url, "_blank", "noopener,noreferrer");
           if (!popup) window.location.assign(data.redirect_url);
@@ -414,6 +434,46 @@ export default function PayClient() {
       toast.error(message);
     } finally {
       setPaying(false);
+    }
+  };
+
+  const handleCancelPendingPayment = async () => {
+    if (cancellingTx) return;
+    setCancellingTx(true);
+    try {
+      if (activeTxRef) {
+        await cancelTransaction(activeTxRef);
+      }
+      unsubTxRef.current?.();
+      unsubTxRef.current = null;
+      resetIdempotencyKey();
+      setActiveTxRef(null);
+      setCardRedirectUrl(null);
+      setPaymentError("");
+      setPaymentPhase("idle");
+      toast.success("Payment cancelled.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to cancel payment");
+    } finally {
+      setCancellingTx(false);
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    if (!order || cancellingOrder) return;
+    setCancellingOrder(true);
+    try {
+      await cancelStoreOrder(order.id);
+      unsubTxRef.current?.();
+      unsubTxRef.current = null;
+      setActiveTxRef(null);
+      setCardRedirectUrl(null);
+      setOrder((prev) => (prev ? { ...prev, status: "cancelled" } : prev));
+      toast.success("Order cancelled.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to cancel order");
+    } finally {
+      setCancellingOrder(false);
     }
   };
 
@@ -445,6 +505,9 @@ export default function PayClient() {
     paymentPhase === "confirmed" ||
     order.status === "paid" ||
     order.paymentStatus === "paid";
+  const isCancelledOrder =
+    String(order.status || "").toLowerCase() === "cancelled" ||
+    String(order.status || "").toLowerCase() === "canceled";
 
   return (
     <div className="min-h-[60vh] bg-surface-sunken/30">
@@ -464,15 +527,20 @@ export default function PayClient() {
             <div>
               <h1 className="text-xl font-bold">Order Details</h1>
               <p className="text-sm text-muted-fg">
-                Order #{order.id.slice(0, 8)}
+                Order #{order.id.slice(0, 8)} · Charging in {currency}
               </p>
             </div>
-            {isConfirmed && (
+            {isConfirmed ? (
               <span className="inline-flex items-center gap-1.5 text-xs font-bold text-success">
                 <Check size={14} />
                 Paid
               </span>
-            )}
+            ) : isCancelledOrder ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-danger">
+                <XCircle size={14} />
+                Cancelled
+              </span>
+            ) : null}
           </div>
 
           <div className="bg-surface-sunken rounded-control p-4 space-y-2">
@@ -559,6 +627,18 @@ export default function PayClient() {
                 </p>
               </div>
             </div>
+          ) : isCancelledOrder ? (
+            <div className="bg-danger-bg rounded-control p-4 flex items-start gap-3">
+              <XCircle size={20} className="text-danger mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-bold text-danger">
+                  Order Cancelled
+                </p>
+                <p className="text-xs text-danger mt-1">
+                  This order was cancelled and no payment is required.
+                </p>
+              </div>
+            </div>
           ) : paymentPhase === "waiting" ? (
             <div className="bg-warning-bg rounded-control p-4 flex items-start gap-3">
               <Loader
@@ -586,17 +666,11 @@ export default function PayClient() {
                 )}
                 <button
                   type="button"
-                  onClick={() => {
-                    unsubTxRef.current?.();
-                    unsubTxRef.current = null;
-                    resetIdempotencyKey();
-                    setCardRedirectUrl(null);
-                    setPaymentError("");
-                    setPaymentPhase("idle");
-                  }}
-                  className="mt-2 block min-h-11 text-xs font-semibold text-muted-fg underline hover:text-fg"
+                  onClick={() => void handleCancelPendingPayment()}
+                  disabled={cancellingTx}
+                  className="mt-2 block min-h-11 text-xs font-semibold text-muted-fg underline hover:text-fg disabled:opacity-50"
                 >
-                  Change payment method or retry
+                  {cancellingTx ? "Cancelling..." : "Cancel payment & try again"}
                 </button>
               </div>
             </div>
@@ -690,27 +764,37 @@ export default function PayClient() {
                 </div>
               )}
 
-              <button
-                type="button"
-                onClick={handlePay}
-                disabled={paying || (activeMethod === "momo" && !phone.trim())}
-                className="w-full bg-success text-on-success py-4 rounded-control font-bold hover:bg-success transition disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {paying ? (
-                  <>
-                    <Loader className="animate-spin" size={20} />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Check size={20} />
-                    Pay{" "}
-                    {currency
-                      ? formatCurrency(amountToPay, currency)
-                      : amountToPay.toLocaleString()}
-                  </>
-                )}
-              </button>
+              <div className="space-y-2.5">
+                <button
+                  type="button"
+                  onClick={handlePay}
+                  disabled={paying || (activeMethod === "momo" && !phone.trim())}
+                  className="w-full min-h-12 bg-success text-on-success py-3.5 px-4 rounded-control font-bold hover:bg-success transition disabled:opacity-50 flex items-center justify-center gap-2 whitespace-nowrap"
+                >
+                  {paying ? (
+                    <>
+                      <Loader className="animate-spin" size={20} />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Check size={20} />
+                      Pay{" "}
+                      {currency
+                        ? formatCurrency(amountToPay, currency)
+                        : amountToPay.toLocaleString()}
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleCancelOrder()}
+                  disabled={cancellingOrder || paying}
+                  className="w-full min-h-11 py-3 px-4 rounded-control border border-line text-sm font-semibold text-muted-fg hover:text-fg hover:bg-surface-sunken transition disabled:opacity-50"
+                >
+                  {cancellingOrder ? "Cancelling order..." : "Cancel Order"}
+                </button>
+              </div>
             </>
           )}
         </div>

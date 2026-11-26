@@ -426,6 +426,7 @@ export const StoreTab = ({
         folderTotal={getFolderTotal(activeFolder)}
         folderPlatformFee={getFolderPlatformFee(activeFolder)}
         currency={getProductCurrency(folderProducts[0] || {})}
+        creatorHandle={creatorHandle}
       />
     );
   }
@@ -513,6 +514,13 @@ export const StoreTab = ({
         orders={userOrders}
         products={products}
         uid={currentUser?.uid}
+        onOrderCancelled={(orderId) =>
+          setUserOrders((prev) =>
+            prev.map((o) =>
+              o.id === orderId ? { ...o, status: "cancelled" } : o,
+            ),
+          )
+        }
         onClose={() => setShowOrderTracking(false)}
       />
     );
@@ -553,6 +561,7 @@ export const StoreTab = ({
                   product={product}
                   onAddToCart={addToCart}
                   onSelectProduct={setSelectedProduct}
+                  creatorHandle={creatorHandle}
                   isLoggedIn={isLoggedIn}
                   isPurchased={purchasedProductIds.has(product.id)}
                   fileUrl={product.fileUrl}

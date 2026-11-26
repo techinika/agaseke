@@ -249,6 +249,7 @@ export default function CreatorPage({
             uid={creator.uid}
             communityEnabled={creator.communityEnabled === true}
             communityTiers={creator.communityTiers ?? []}
+            activeCommunityTierIds={data.activeCommunityTierIds}
             onSubscribe={setJoinTier}
           />
         );
@@ -348,6 +349,7 @@ export default function CreatorPage({
         shareOpen={shareOpen}
         onCloseShare={() => setShareOpen(false)}
         isLoggedIn={isLoggedIn}
+        isCommunityMember={data.isCommunityMember}
         showCreateBanner={!isCreator}
       >
         {tabContent}
@@ -366,7 +368,10 @@ export default function CreatorPage({
           initialTierId={joinTier.id}
           user={user}
           displayName={data.profile?.displayName}
-          onJoined={() => setCommunityVersion((version) => version + 1)}
+          onJoined={() => {
+            setCommunityVersion((version) => version + 1);
+            data.retry();
+          }}
         />
       )}
 

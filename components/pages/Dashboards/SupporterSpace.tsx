@@ -629,15 +629,17 @@ export default function SupporterSpace() {
                             )}
 
                           {item.type === "video" && item.contentUrl && (
-                            <div className="mb-4 overflow-hidden rounded-control bg-black">
+                            <div className="mb-4">
                               <MediaAsset
                                 postId={item.id}
                                 isPrivate={gated}
                                 url={item.contentUrl}
                                 as="video"
-                                controls
-                                controlsList="nodownload"
-                                className="aspect-video w-full"
+                                poster={item.coverUrl}
+                                title={item.title}
+                                creatorName={item.authorName || handle}
+                                creatorHandle={handle}
+                                postHref={postHref}
                               />
                             </div>
                           )}

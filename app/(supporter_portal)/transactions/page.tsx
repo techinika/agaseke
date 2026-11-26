@@ -4,11 +4,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/auth/AuthContext";
 import {
+  cancelTransaction,
   getUserTransactions,
   resumeTransaction,
   retryTransaction,
   type UserTransaction,
 } from "@/lib/paymentsService";
+import { normalizeRwandaPhone } from "@/lib/format/phone";
 import {
   downloadSuccessfulTransactionsPdf,
   isSuccessfulStatus,
@@ -78,6 +80,8 @@ function statusTone(status: string): string {
       return "text-warning";
     case "failed":
       return "text-danger";
+    case "cancelled":
+      return "text-muted-fg";
     default:
       return "text-muted-fg";
   }
@@ -91,12 +95,14 @@ function statusLabel(status: string): string {
       return "Pending";
     case "failed":
       return "Failed";
+    case "cancelled":
+      return "Cancelled";
     default:
       return status.charAt(0).toUpperCase() + status.slice(1);
   }
 }
 
-const FILTERS = ["all", "successful", "pending", "failed"] as const;
+const FILTERS = ["all", "successful", "pending", "failed", "cancelled"] as const;
 type Filter = (typeof FILTERS)[number];
 
 const FILTER_LABELS: Record<Filter, string> = {
@@ -104,6 +110,7 @@ const FILTER_LABELS: Record<Filter, string> = {
   successful: "Successful",
   pending: "Pending",
   failed: "Failed",
+  cancelled: "Cancelled",
 };
 
 function transactionTitle(tx: UserTransaction): string {
@@ -205,6 +212,7 @@ export default function TransactionsPage() {
   } | null>(null);
   const [momoPhone, setMomoPhone] = useState("");
   const [submittingMomoDialog, setSubmittingMomoDialog] = useState(false);
+  const [cancellingRef, setCancellingRef] = useState<string | null>(null);
   const unsubscribeRetryRef = useRef<(() => void) | null>(null);
 
   const stopListening = () => {
@@ -470,16 +478,55 @@ export default function TransactionsPage() {
       toast.error("Enter a valid Mobile Money phone number");
       return;
     }
+    const normalized = normalizeRwandaPhone(cleaned) || cleaned;
     setSubmittingMomoDialog(true);
     const { tx, mode } = momoDialogTx;
     setMomoDialogTx(null);
-    await executeResumeOrRetry(tx, mode, cleaned);
+    await executeResumeOrRetry(tx, mode, normalized);
     setSubmittingMomoDialog(false);
   };
 
-  const cancelRetry = () => {
+  const handleCancelTransaction = async (refToCancel: string) => {
+    if (!refToCancel || cancellingRef) return;
+    setCancellingRef(refToCancel);
+    try {
+      await cancelTransaction(refToCancel);
+      if (
+        activeRetry &&
+        (activeRetry.oldRef === refToCancel || activeRetry.newRef === refToCancel)
+      ) {
+        stopListening();
+        setActiveRetry(null);
+      }
+      setTransactions((prev) =>
+        prev.map((item) =>
+          item.ref === refToCancel ? { ...item, status: "cancelled" } : item,
+        ),
+      );
+      setCounts((prev) => ({
+        ...prev,
+        pending: Math.max(0, (prev.pending || 0) - 1),
+        cancelled: (prev.cancelled || 0) + 1,
+      }));
+      toast.success("Pending payment cancelled.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to cancel transaction");
+    } finally {
+      setCancellingRef(null);
+    }
+  };
+
+  const cancelRetry = async () => {
+    const refToCancel =
+      activeRetry &&
+      (activeRetry.phase === "initiating" || activeRetry.phase === "confirming")
+        ? activeRetry.newRef || activeRetry.oldRef
+        : "";
     stopListening();
     setActiveRetry(null);
+    if (refToCancel) {
+      await handleCancelTransaction(refToCancel);
+    }
   };
 
   const filtered = useMemo(
@@ -646,10 +693,12 @@ export default function TransactionsPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={cancelRetry}
+                  onClick={() => void cancelRetry()}
                   className="ml-auto shrink-0 text-caption font-semibold text-muted-fg hover:text-fg"
                 >
-                  {activeRetry.phase === "success" || activeRetry.phase === "failed" ? "Dismiss" : "Cancel"}
+                  {activeRetry.phase === "success" || activeRetry.phase === "failed"
+                    ? "Dismiss"
+                    : "Cancel payment"}
                 </button>
               </div>
             </div>
@@ -730,30 +779,43 @@ export default function TransactionsPage() {
                           Receipt PDF
                         </Button>
                       ) : (tx.status === "failed" || tx.status === "pending") && (
-                        <Button
-                          size="sm"
-                          variant={tx.status === "pending" ? "secondary" : "primary"}
-                          onClick={() =>
-                            handleActionClick(
-                              tx,
-                              tx.status === "pending" ? "resume" : "retry",
-                            )
-                          }
-                          loading={isRetryingThis}
-                          leadingIcon={
-                            isCard ? (
-                              <CreditCard className="size-4" aria-hidden="true" />
-                            ) : (
-                              <Smartphone className="size-4" aria-hidden="true" />
-                            )
-                          }
-                        >
-                          {isRetryingThis
-                            ? "Processing…"
-                            : tx.status === "pending"
-                              ? "Complete payment"
-                              : "Pay again"}
-                        </Button>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {tx.status === "pending" && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              loading={cancellingRef === tx.ref}
+                              disabled={isRetryingThis}
+                              onClick={() => void handleCancelTransaction(tx.ref)}
+                            >
+                              Cancel
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant={tx.status === "pending" ? "secondary" : "primary"}
+                            onClick={() =>
+                              handleActionClick(
+                                tx,
+                                tx.status === "pending" ? "resume" : "retry",
+                              )
+                            }
+                            loading={isRetryingThis}
+                            leadingIcon={
+                              isCard ? (
+                                <CreditCard className="size-4" aria-hidden="true" />
+                              ) : (
+                                <Smartphone className="size-4" aria-hidden="true" />
+                              )
+                            }
+                          >
+                            {isRetryingThis
+                              ? "Processing…"
+                              : tx.status === "pending"
+                                ? "Complete payment"
+                                : "Pay again"}
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </Card>
@@ -788,16 +850,18 @@ export default function TransactionsPage() {
         description="Confirm or enter the Mobile Money number where you want to receive the payment prompt."
         size="sm"
         footer={
-          <div className="flex gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <Button
               variant="secondary"
-              className="flex-1"
+              fullWidth
+              className="whitespace-nowrap"
               onClick={() => setMomoDialogTx(null)}
             >
               Cancel
             </Button>
             <Button
-              className="flex-1"
+              fullWidth
+              className="whitespace-nowrap"
               loading={submittingMomoDialog}
               onClick={() => void submitMomoDialog()}
               disabled={!momoPhone.trim()}
@@ -819,7 +883,13 @@ export default function TransactionsPage() {
                   resolveHistoricalCurrency(
                     momoDialogTx.tx as unknown as Record<string, unknown>,
                   ),
-                )}
+                )}{" "}
+                <span className="text-caption font-semibold text-muted-fg">
+                  · Charging in{" "}
+                  {resolveHistoricalCurrency(
+                    momoDialogTx.tx as unknown as Record<string, unknown>,
+                  )}
+                </span>
               </p>
             </div>
             <Input

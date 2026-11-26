@@ -643,14 +643,14 @@ export default function ContentManager() {
                 </div>
               )}
               {selectedPost.type === "video" && selectedPost.contentUrl && (
-                <div className="aspect-video bg-black">
+                <div>
                   <MediaAsset
                     postId={selectedPost.id}
                     isPrivate={!!selectedPost.isPrivate}
                     url={selectedPost.contentUrl}
                     as="video"
-                    controls
-                    className="w-full h-full"
+                    poster={selectedPost.coverUrl}
+                    title={selectedPost.title}
                   />
                 </div>
               )}

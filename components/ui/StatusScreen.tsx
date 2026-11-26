@@ -21,6 +21,7 @@ export interface StatusScreenProps {
   reference?: string;
   primaryAction?: StatusAction;
   secondaryAction?: StatusAction;
+  tertiaryAction?: StatusAction;
   className?: string;
 }
 
@@ -32,6 +33,7 @@ export function StatusScreen({
   reference,
   primaryAction,
   secondaryAction,
+  tertiaryAction,
   className,
 }: StatusScreenProps) {
   const defaults: Record<StatusKind, { title: string; description: string }> = {
@@ -88,7 +90,7 @@ export function StatusScreen({
         </p>
       )}
 
-      {(primaryAction || secondaryAction) && (
+      {(primaryAction || secondaryAction || tertiaryAction) && (
         <div className="mt-2 flex w-full flex-col gap-2">
           {primaryAction && (
             <Button
@@ -107,6 +109,16 @@ export function StatusScreen({
               loading={secondaryAction.loading}
             >
               {secondaryAction.label}
+            </Button>
+          )}
+          {tertiaryAction && (
+            <Button
+              fullWidth
+              variant="ghost"
+              onClick={tertiaryAction.onClick}
+              loading={tertiaryAction.loading}
+            >
+              {tertiaryAction.label}
             </Button>
           )}
         </div>

@@ -260,13 +260,20 @@ export function CheckoutSheet({
   const footer = (() => {
     if (step === "payment") {
       return (
-        <div className="flex gap-2">
-          <Button variant="secondary" size="lg" onClick={goBack}>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            fullWidth
+            variant="secondary"
+            size="lg"
+            className="whitespace-nowrap"
+            onClick={goBack}
+          >
             {t("common.back")}
           </Button>
           <Button
             fullWidth
             size="lg"
+            className="whitespace-nowrap"
             loading={payment.submitting}
             disabled={!currentUser || (method === "momo" && !phoneValid)}
             onClick={() => void placeOrder()}
@@ -280,13 +287,19 @@ export function CheckoutSheet({
     }
 
     return (
-      <div className="flex gap-2">
+      <div className={step !== "info" ? "grid grid-cols-2 gap-2" : "flex"}>
         {step !== "info" && (
-          <Button variant="secondary" size="lg" onClick={goBack}>
+          <Button
+            fullWidth
+            variant="secondary"
+            size="lg"
+            className="whitespace-nowrap"
+            onClick={goBack}
+          >
             {t("common.back")}
           </Button>
         )}
-        <Button fullWidth size="lg" onClick={goNext}>
+        <Button fullWidth size="lg" className="whitespace-nowrap" onClick={goNext}>
           {t("common.next")}
         </Button>
       </div>
@@ -324,6 +337,13 @@ export function CheckoutSheet({
             }
           : undefined
       }
+      waitingCancelAction={{
+        label: payment.cancelling
+          ? t("support.status.cancelling")
+          : t("support.status.cancelPayment"),
+        onClick: () => void payment.cancelPayment(),
+        loading: payment.cancelling,
+      }}
       footer={footer}
     >
       <div className="space-y-4">
@@ -355,9 +375,14 @@ export function CheckoutSheet({
         {step === "info" && (
           <div className="space-y-4">
             <div className="space-y-3 rounded-control border border-line bg-surface p-4">
-              <p className="text-label font-bold uppercase tracking-wide text-muted-fg">
-                {t("actions.checkout.summary")}
-              </p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-label font-bold uppercase tracking-wide text-muted-fg">
+                  {t("actions.checkout.summary")}
+                </p>
+                <span className="text-caption font-semibold text-fg">
+                  {t("support.method.payingIn", { currency })}
+                </span>
+              </div>
               {cart.map((item) => (
                 <div
                   key={`${item.product.id}-${item.selectedSize ?? ""}`}
@@ -513,9 +538,12 @@ export function CheckoutSheet({
                 </div>
               )}
               <div className="flex justify-between border-t border-line pt-2 text-body font-bold">
-                <span>{t("actions.checkout.total")}</span>
-                <span>{formatMoney(totalWithPlatformFee, currency)}</span>
+                <span>{t("actions.checkout.total")} ({currency})</span>
+                <span className="tabular-nums">{formatMoney(totalWithPlatformFee, currency)}</span>
               </div>
+              <p className="text-caption text-muted-fg">
+                {t("support.method.payingIn", { currency })}
+              </p>
             </div>
 
             <div className="space-y-2">

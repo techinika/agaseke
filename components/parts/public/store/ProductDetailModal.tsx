@@ -71,6 +71,7 @@ export function ProductDetailModal({
               <img
                 src={product.imageUrl}
                 alt={product.name}
+                referrerPolicy="no-referrer"
                 className="w-full h-full object-cover"
               />
             ) : (
@@ -81,26 +82,22 @@ export function ProductDetailModal({
           </div>
 
           <div className="md:w-1/2 p-6 space-y-4">
-            <div className="flex items-center gap-2 flex-wrap-reverse justify-between">
-              <span
-                className={`text-caption font-bold px-2 py-1 rounded-full ${
-                  product.type === "digital"
-                    ? "bg-brand-soft text-brand-strong"
-                    : "bg-info-bg text-info"
-                }`}
-              >
-                {product.type === "digital"
-                  ? "Digital Product"
-                  : "Physical Product"}
-              </span>
-              {isPurchased && (
-                <span className="bg-success-bg text-success text-caption font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                  <Check size={10} /> Owned
+            <div className="flex items-center gap-2 flex-wrap justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-caption font-bold uppercase tracking-wider text-brand-strong">
+                  {product.type === "digital"
+                    ? "Digital Product"
+                    : "Physical Product"}
                 </span>
-              )}
+                {isPurchased && (
+                  <span className="text-success text-caption font-bold flex items-center gap-1">
+                    <Check size={12} /> Owned
+                  </span>
+                )}
+              </div>
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-surface-raised rounded-full transition"
+                className="p-2 hover:bg-surface-raised rounded-control transition"
               >
                 <X size={20} />
               </button>

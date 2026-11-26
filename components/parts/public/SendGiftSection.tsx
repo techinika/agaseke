@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   Calendar,
   CheckCircle2,
@@ -11,6 +12,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { db } from "@/db/firebase";
+import { isSubscriptionActive } from "@/lib/contentAccess";
 import { SocialPill } from "../profile/SocialPill";
 import { getIcon } from "../profile/GetLink";
 
@@ -50,6 +54,37 @@ export const SendGiftSection = ({
   communityEnabled?: boolean;
 }) => {
   const pathname = usePathname();
+  const [isMember, setIsMember] = useState(false);
+
+  useEffect(() => {
+    const uid = currentUser?.uid;
+    if (!communityEnabled || !uid || !handle) {
+      return;
+    }
+    let cancelled = false;
+    getDocs(
+      query(
+        collection(db, "communitySubscriptions"),
+        where("userId", "==", uid),
+      ),
+    )
+      .then((snap) => {
+        if (cancelled) return;
+        const active = snap.docs.some((docSnap) => {
+          const d = docSnap.data() as Record<string, unknown>;
+          return d.creatorHandle === handle && isSubscriptionActive(d);
+        });
+        setIsMember(active);
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [communityEnabled, currentUser?.uid, handle]);
+
+  const showExploreCommunity = Boolean(communityEnabled && currentUser?.uid && handle) && isMember;
+
   return (
     <div className="relative">
       <div
@@ -158,7 +193,9 @@ export const SendGiftSection = ({
             className="w-full mt-3 py-3 px-4 bg-success text-on-success rounded-control font-bold text-sm hover:bg-success transition-all flex items-center justify-center gap-2 shadow-lg shadow-success"
           >
             <Users size={16} />
-            Join {name.split(" ")[0]}&apos;s Community
+            {showExploreCommunity
+              ? "Explore Community"
+              : `Join ${name.split(" ")[0]}'s Community`}
           </Link>
         )}
 

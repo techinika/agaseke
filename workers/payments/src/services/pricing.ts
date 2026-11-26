@@ -253,6 +253,55 @@ async function resolveCurrency(
   return currency;
 }
 
+const LEGACY_CURRENCY_CUTOFF_MS = Date.parse("2026-12-01T00:00:00.000Z");
+
+function isLegacyPreMultiCurrencyRecord(record: Record<string, unknown>): boolean {
+  const rawDate = str(record.createdAt) || str(record.updatedAt);
+  if (!rawDate) return true;
+  const ms = Date.parse(rawDate);
+  return !Number.isFinite(ms) || ms < LEGACY_CURRENCY_CUTOFF_MS;
+}
+
+async function resolveRecordCurrency(
+  repo: PaymentRepository,
+  record: Record<string, unknown>,
+  creatorCurrency: unknown,
+  requestedCurrency?: unknown,
+): Promise<CurrencyCode> {
+  const explicit = str(record.currency).toUpperCase();
+  if (explicit) {
+    return resolveCurrency(repo, explicit, creatorCurrency);
+  }
+
+  const prices = record.prices;
+  if (prices && typeof prices === "object" && !Array.isArray(prices)) {
+    const validCodes = Object.entries(prices as Record<string, unknown>)
+      .filter(([code, v]) => isCurrencyCode(code.toUpperCase()) && v != null && v !== "" && num(v) > 0)
+      .map(([code]) => code.toUpperCase() as CurrencyCode);
+
+    if (validCodes.length > 0) {
+      const req = str(requestedCurrency).toUpperCase();
+      if (req && isCurrencyCode(req) && validCodes.includes(req)) {
+        return resolveCurrency(repo, req, creatorCurrency);
+      }
+      const fallback = str(creatorCurrency).toUpperCase();
+      if (fallback && isCurrencyCode(fallback) && validCodes.includes(fallback)) {
+        return resolveCurrency(repo, fallback, creatorCurrency);
+      }
+      if (validCodes.includes("RWF")) {
+        return resolveCurrency(repo, "RWF", creatorCurrency);
+      }
+      return resolveCurrency(repo, validCodes[0], creatorCurrency);
+    }
+  }
+
+  if (isLegacyPreMultiCurrencyRecord(record)) {
+    return resolveCurrency(repo, "RWF", creatorCurrency);
+  }
+
+  return resolveCurrency(repo, undefined, creatorCurrency);
+}
+
 function assertRequestedCurrency(raw: unknown, storedCurrency: string): void {
   const requested = str(raw).toUpperCase();
   if (requested && requested !== storedCurrency) {
@@ -794,7 +843,12 @@ export async function resolvePayment(
     let cartCurrency: CurrencyCode | null = null;
     for (const [id, totalProductQty] of qtyByProduct.entries()) {
       const product = productCache.get(id)!;
-      const itemCurrency = await resolveCurrency(repo, product.currency, creator.currency);
+      const itemCurrency = await resolveRecordCurrency(
+        repo,
+        product,
+        creator.currency,
+        quote ? undefined : body.currency,
+      );
       if (!cartCurrency) {
         cartCurrency = itemCurrency;
       } else if (cartCurrency !== itemCurrency) {
@@ -1103,7 +1157,12 @@ export async function resolvePayment(
       );
     }
 
-    const currency = await resolveCurrency(repo, gathering.currency, creator.currency);
+    const currency = await resolveRecordCurrency(
+      repo,
+      gathering,
+      creator.currency,
+      quote ? undefined : body.currency,
+    );
     if (!quote) assertRequestedCurrency(body.currency, currency);
     const price = resolveStoredPrice(gathering, currency, "ticketPrice");
     if (price <= 0) {
@@ -1155,7 +1214,12 @@ export async function resolvePayment(
     );
   }
 
-  const currency = await resolveCurrency(repo, tier.currency, creator.currency);
+  const currency = await resolveRecordCurrency(
+    repo,
+    tier,
+    creator.currency,
+    quote ? undefined : body.currency,
+  );
   if (!quote) assertRequestedCurrency(body.currency, currency);
   const price = resolveStoredPrice(tier, currency, "price");
   if (price <= 0) {

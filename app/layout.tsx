@@ -6,6 +6,7 @@ import {
 } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/auth/AuthContext";
+import { MediaPlaybackProvider } from "@/components/media/MediaPlaybackContext";
 import { ToastViewport } from "@/components/ui/Toast";
 import DeferredAnalytics from "@/components/parts/DeferredAnalytics";
 import PwaRegister from "@/components/parts/PwaRegister";
@@ -141,10 +142,12 @@ export default function RootLayout({
         className={`${displayFont.variable} ${bodyFont.variable} ${monoFont.variable} antialiased`}
       >
         <AuthProvider>
-          <ToastViewport />
-          {children}
-          <PwaRegister />
-          <LoginRedirectCapture />
+          <MediaPlaybackProvider>
+            <ToastViewport />
+            {children}
+            <PwaRegister />
+            <LoginRedirectCapture />
+          </MediaPlaybackProvider>
         </AuthProvider>
         {process.env.NODE_ENV === "production" && <DeferredAnalytics />}
       </body>

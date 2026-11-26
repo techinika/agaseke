@@ -15,6 +15,7 @@ export function FolderExplorer({
   folderTotal,
   folderPlatformFee,
   currency = "RWF",
+  creatorHandle,
 }: {
   folder: FolderData;
   products: Product[];
@@ -27,6 +28,7 @@ export function FolderExplorer({
   folderTotal: number;
   folderPlatformFee: number;
   currency?: string;
+  creatorHandle?: string;
 }) {
   const unpurchased = products.filter((p) => !purchasedProductIds.has(p.id));
   const totalWithFee = folderTotal + folderPlatformFee;
@@ -98,6 +100,7 @@ export function FolderExplorer({
               product={product}
               onAddToCart={onAddToCart}
               onSelectProduct={onSelectProduct}
+              creatorHandle={creatorHandle}
               isLoggedIn={isLoggedIn}
               isPurchased={purchasedProductIds.has(product.id)}
               fileUrl={product.fileUrl}

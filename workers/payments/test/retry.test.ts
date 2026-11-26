@@ -23,7 +23,7 @@ vi.mock("../src/services/momo", () => ({
   initiateMomoPayment: (...args: unknown[]) => mockInitiateMomo(...args),
 }));
 
-import { retryTransaction } from "../src/services/retry";
+import { cancelTransaction, retryTransaction } from "../src/services/retry";
 
 const env = {} as Env;
 
@@ -89,5 +89,68 @@ describe("worker retryTransaction card link resilience", () => {
     expect(mockInitiateCard).toHaveBeenCalledTimes(1);
     expect(res.ref).toBe("AGS-CARD-FRESH");
     expect(res.redirect_url).toBe("https://pay.pesapal.com/fresh");
+  });
+});
+
+describe("worker cancelTransaction", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockFirestoreSet.mockResolvedValue({});
+  });
+
+  it("cancels a pending transaction owned by the caller", async () => {
+    mockFirestoreQuery.mockResolvedValue([
+      {
+        name: "projects/test/databases/(default)/documents/transactions/TX-PENDING-1",
+        fields: {
+          ref: "TX-PENDING-1",
+          supporterId: "uid-1",
+          status: "pending",
+        },
+      },
+    ]);
+
+    const res = await cancelTransaction(env, "uid-1", "TX-PENDING-1");
+    expect(res).toEqual({ ref: "TX-PENDING-1", status: "cancelled" });
+    expect(mockFirestoreSet).toHaveBeenCalledTimes(1);
+    const saved = mockFirestoreSet.mock.calls[0][2] as Record<string, unknown>;
+    expect(saved.status).toBe("cancelled");
+    expect(saved.cancelledBy).toBe("user");
+  });
+
+  it("rejects cancellation of another user's transaction", async () => {
+    mockFirestoreQuery.mockResolvedValue([
+      {
+        name: "projects/test/databases/(default)/documents/transactions/TX-OTHER",
+        fields: {
+          ref: "TX-OTHER",
+          supporterId: "uid-2",
+          status: "pending",
+        },
+      },
+    ]);
+
+    await expect(cancelTransaction(env, "uid-1", "TX-OTHER")).rejects.toThrow(
+      "You can only cancel your own transactions",
+    );
+    expect(mockFirestoreSet).not.toHaveBeenCalled();
+  });
+
+  it("rejects cancellation of already-completed transactions", async () => {
+    mockFirestoreQuery.mockResolvedValue([
+      {
+        name: "projects/test/databases/(default)/documents/transactions/TX-PAID",
+        fields: {
+          ref: "TX-PAID",
+          supporterId: "uid-1",
+          status: "successful",
+        },
+      },
+    ]);
+
+    await expect(cancelTransaction(env, "uid-1", "TX-PAID")).rejects.toThrow(
+      "Completed transactions cannot be cancelled",
+    );
+    expect(mockFirestoreSet).not.toHaveBeenCalled();
   });
 });

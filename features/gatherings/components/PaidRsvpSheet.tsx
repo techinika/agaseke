@@ -126,6 +126,13 @@ export function PaidRsvpSheet({
             }
           : undefined
       }
+      waitingCancelAction={{
+        label: payment.cancelling
+          ? t("support.status.cancelling")
+          : t("support.status.cancelPayment"),
+        onClick: () => void payment.cancelPayment(),
+        loading: payment.cancelling,
+      }}
       footer={footer}
     >
       <div className="space-y-4">
@@ -157,7 +164,14 @@ export function PaidRsvpSheet({
         </div>
 
         <div className="space-y-2">
-          <p className="text-label font-semibold text-fg">{t("support.method.title")}</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-label font-semibold text-fg">{t("support.method.title")}</p>
+            {currency && (
+              <span className="text-caption font-semibold text-brand-strong">
+                {t("support.method.payingIn", { currency })}
+              </span>
+            )}
+          </div>
           {requiresCard ? (
             <p className="rounded-control bg-surface-raised p-3 text-label text-muted-fg">
               {t("actions.ticket.cardOnly")}

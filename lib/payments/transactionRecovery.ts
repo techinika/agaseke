@@ -560,3 +560,60 @@ export async function recoverUserTransaction(params: {
     merchant_reference: momo.ref,
   };
 }
+
+export async function cancelUserTransaction(params: {
+  uid: string;
+  ref: string;
+}): Promise<{ ref: string; status: "cancelled" }> {
+  const cleanRef = toStr(params.ref).trim();
+  if (!cleanRef) {
+    throw new TransactionRecoveryError("Transaction reference is required", 400);
+  }
+
+  const found = await findTransactionByRef(cleanRef);
+  if (!found) {
+    throw new TransactionRecoveryError("Transaction not found", 404);
+  }
+
+  const { docId, data: tx } = found;
+  const owner = toStr(tx.supporterId || tx.initiatedBy || tx.buyerId);
+  if (!owner || owner !== params.uid) {
+    throw new TransactionRecoveryError("You can only cancel your own transactions", 403);
+  }
+
+  const status = toStr(tx.status).toLowerCase() || "pending";
+  if (["successful", "success", "completed", "paid"].includes(status)) {
+    throw new TransactionRecoveryError("Completed transactions cannot be cancelled", 409);
+  }
+
+  const resolvedRef = toStr(tx.ref) || docId;
+  if (status === "cancelled" || status === "canceled") {
+    return { ref: resolvedRef, status: "cancelled" };
+  }
+
+  const nowIso = new Date().toISOString();
+  await adminDb.collection("transactions").doc(docId).update({
+    status: "cancelled",
+    cancelledAt: nowIso,
+    cancelledBy: "user",
+    updatedAt: nowIso,
+  });
+
+  const retriedRef = toStr(tx.retriedRef);
+  if (retriedRef && retriedRef !== resolvedRef) {
+    const retried = await findTransactionByRef(retriedRef);
+    if (retried) {
+      const rStatus = toStr(retried.data.status).toLowerCase() || "pending";
+      if (rStatus === "pending") {
+        await adminDb.collection("transactions").doc(retried.docId).update({
+          status: "cancelled",
+          cancelledAt: nowIso,
+          cancelledBy: "user",
+          updatedAt: nowIso,
+        });
+      }
+    }
+  }
+
+  return { ref: resolvedRef, status: "cancelled" };
+}

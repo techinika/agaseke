@@ -18,6 +18,7 @@ import { initiateMomoPayment, initiateCardPayment } from "@/lib/paymentsService"
 import { CartItem, ShippingAddress } from "./types";
 import { formatMoney as formatCurrency } from "@/lib/format/money";
 import { isCurrencySupportedByMethod } from "@/lib/money/rails";
+import { normalizeRwandaPhone } from "@/lib/format/phone";
 import {
   normalizeValidCurrency,
   resolveHistoricalCurrency,
@@ -177,7 +178,8 @@ export function CheckoutModal({
 
     setProcessing(true);
     try {
-      const phone = shippingAddress.phone.replace(/\s/g, "");
+      const cleanedRaw = shippingAddress.phone.replace(/\s/g, "");
+      const phone = normalizeRwandaPhone(cleanedRaw) || cleanedRaw;
 
       const firstItem = cart[0];
       const items = cart.map((item) => ({
@@ -416,10 +418,15 @@ export function CheckoutModal({
           {step === "payment" && (
             <div className="space-y-4">
               <div className="bg-surface-sunken rounded-control p-4 space-y-2">
-                <h4 className="font-bold">Final Total</h4>
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="font-bold">Final Total</h4>
+                  <span className="text-xs font-semibold text-muted-fg">
+                    Charging in {currency}
+                  </span>
+                </div>
                 <div className="flex justify-between text-2xl font-bold text-brand-strong">
-                  <span>Total</span>
-                  <span>
+                  <span>Total ({currency})</span>
+                  <span className="tabular-nums">
                     {formatCurrency(buyerPaysMore ? totalWithPlatformFee : finalTotal, currency)}
                   </span>
                 </div>
@@ -508,31 +515,46 @@ export function CheckoutModal({
         </div>
 
         <div className="p-6 border-t border-line">
-          <div className="flex gap-3">
+          <div className={step !== "info" ? "grid grid-cols-2 gap-3" : "flex"}>
             {step !== "info" && (
               <button
+                type="button"
                 onClick={() =>
-                  setStep(step === "shipping" ? "info" : "shipping")
+                  setStep(
+                    step === "payment"
+                      ? hasPhysicalProducts
+                        ? "shipping"
+                        : "info"
+                      : "info",
+                  )
                 }
-                className="flex-1 py-4 border border-line rounded-control font-bold hover:bg-surface-sunken transition"
+                className="w-full min-h-11 py-3 px-4 border border-line rounded-control font-bold whitespace-nowrap hover:bg-surface-sunken transition"
               >
                 Back
               </button>
             )}
             {step !== "payment" ? (
               <button
+                type="button"
                 onClick={() =>
-                  setStep(step === "info" ? "shipping" : "payment")
+                  setStep(
+                    step === "info"
+                      ? hasPhysicalProducts
+                        ? "shipping"
+                        : "payment"
+                      : "payment",
+                  )
                 }
-                className="flex-1 py-4 bg-brand-strong text-on-brand rounded-control font-bold hover:bg-brand-strong transition"
+                className="w-full min-h-11 py-3 px-4 bg-brand-strong text-on-brand rounded-control font-bold whitespace-nowrap hover:bg-brand-strong transition"
               >
                 Continue
               </button>
             ) : (
               <button
+                type="button"
                 onClick={placeOrder}
                 disabled={processing}
-                className="flex-1 py-4 bg-success text-on-success rounded-control font-bold hover:bg-success transition flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full min-h-11 py-3 px-4 bg-success text-on-success rounded-control font-bold whitespace-nowrap hover:bg-success transition flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {processing ? (
                   <Loader size={18} className="animate-spin" />

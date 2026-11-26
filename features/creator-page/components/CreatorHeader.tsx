@@ -27,6 +27,7 @@ export interface CreatorHeaderProps {
   socials: Record<string, string | null | undefined>;
   isLoggedIn: boolean;
   communityEnabled?: boolean;
+  isCommunityMember?: boolean;
   bookingEnabled?: boolean;
   onShare: () => void;
   onSupport: () => void;
@@ -42,6 +43,7 @@ export function CreatorHeader({
   socials,
   isLoggedIn,
   communityEnabled = false,
+  isCommunityMember = false,
   bookingEnabled = false,
   onShare,
   onSupport,
@@ -146,7 +148,9 @@ export function CreatorHeader({
               })}
             >
               <Users className="size-5" aria-hidden="true" />
-              {t("creator.community")}
+              {isCommunityMember
+                ? t("creator.exploreCommunity")
+                : t("creator.community")}
             </Link>
           )}
           {bookingEnabled && (

@@ -11,7 +11,7 @@ import {
 import { PaymentRequestError } from "./services/pricing";
 import { WebhookError } from "./services/webhookVerify";
 import { getUserTransactions } from "./services/transactions";
-import { retryTransaction, RetryError } from "./services/retry";
+import { cancelTransaction, retryTransaction, RetryError } from "./services/retry";
 import { logActivity } from "./logger";
 import { checkRateLimit } from "./rateLimit";
 import { drainPending, flushPending } from "./audit";
@@ -266,6 +266,26 @@ export default {
               phone: body.phone,
               requestOrigin: origin,
             });
+            return json(result, 200, origin);
+          } catch (err) {
+            if (err instanceof RetryError) {
+              return json({ error: err.message }, err.statusCode, origin);
+            }
+            throw err;
+          }
+        }
+
+        if (path === "/api/payments/transactions/cancel") {
+          const limited = isRateLimited(
+            request,
+            20,
+            60000,
+            `${auth.uid}:${getClientIp(request)}`,
+          );
+          if (limited) return limited;
+          const body = await parseJsonBody<{ ref?: string }>(request);
+          try {
+            const result = await cancelTransaction(env, auth.uid, body.ref || "");
             return json(result, 200, origin);
           } catch (err) {
             if (err instanceof RetryError) {

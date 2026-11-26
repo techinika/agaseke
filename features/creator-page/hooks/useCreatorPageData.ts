@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/auth/AuthContext";
 import {
   countCreatorView,
+  fetchActiveCommunityTierIds,
   fetchCreatorRecord,
   fetchFeaturedPartners,
   fetchPrivatePosts,
@@ -33,6 +34,7 @@ export function useCreatorPageData(username: string, initial: CreatorPageInitial
   const [privatePosts, setPrivatePosts] = useState<CreatorPagePost[]>([]);
   const [partners, setPartners] = useState<CreatorPagePartner[]>(initial.partners ?? []);
   const [isSupporter, setIsSupporter] = useState(false);
+  const [activeCommunityTierIds, setActiveCommunityTierIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(!initial.creator);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -98,15 +100,22 @@ export function useCreatorPageData(username: string, initial: CreatorPageInitial
       }
 
       if (!isLoggedIn || !currentUser?.uid) {
-        if (!cancelled) setIsSupporter(false);
+        if (!cancelled) {
+          setIsSupporter(false);
+          setActiveCommunityTierIds([]);
+        }
         return;
       }
 
       try {
-        const supporting = await isSupportingCreator(currentUser.uid, username);
+        const [supporting, tierIds] = await Promise.all([
+          isSupportingCreator(currentUser.uid, username),
+          fetchActiveCommunityTierIds(currentUser.uid, creatorHandle).catch(() => []),
+        ]);
         if (cancelled) return;
         setIsSupporter(supporting);
-        if (!supporting) return;
+        setActiveCommunityTierIds(tierIds);
+        if (!supporting && tierIds.length === 0) return;
 
         const posts = await fetchPrivatePosts(creatorHandle, uid);
         if (!cancelled) {
@@ -188,6 +197,8 @@ export function useCreatorPageData(username: string, initial: CreatorPageInitial
     privatePosts,
     partners,
     isSupporter,
+    activeCommunityTierIds,
+    isCommunityMember: activeCommunityTierIds.length > 0,
     loading,
     error,
     referralId,

@@ -24,10 +24,13 @@ import { Card } from "@/components/ui/Card";
 import { Dialog } from "@/components/ui/Dialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/auth/AuthContext";
+import { collection, getDocs, query, where } from "firebase/firestore";
+import { db } from "@/db/firebase";
 import { getMySubscriptions } from "@/lib/communityService";
 import {
   canViewerAccessPost,
   formatVisibilityLabel,
+  isSubscriptionActive,
   resolvePostVisibility,
 } from "@/lib/contentAccess";
 import { estimateReadingMinutes } from "@/lib/readingTime";
@@ -67,6 +70,7 @@ interface CommunityTabProps {
   uid?: string;
   communityEnabled?: boolean;
   communityTiers?: CommunityTier[];
+  activeCommunityTierIds?: string[];
   onSubscribe?: (tier: CommunityTier) => void;
 }
 
@@ -125,6 +129,7 @@ export const CommunityTab = ({
   uid = "",
   communityEnabled = false,
   communityTiers = [],
+  activeCommunityTierIds = [],
   onSubscribe,
 }: CommunityTabProps) => {
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set());
@@ -144,9 +149,21 @@ export const CommunityTab = ({
   const [documentIndex, setDocumentIndex] = useState<Record<string, number>>({});
   const [supportItem, setSupportItem] = useState<any>(null);
   const { user, isLoggedIn } = useAuth();
-  const [subscribedTierIds, setSubscribedTierIds] = useState<Set<string>>(new Set());
+  const [fetchedTierIds, setFetchedTierIds] = useState<string[]>([]);
   const viewedPosts = useRef<Set<string>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const subscribedTierIds = useMemo(
+    () => new Set<string>([...activeCommunityTierIds, ...fetchedTierIds]),
+    [activeCommunityTierIds, fetchedTierIds],
+  );
+  const firstSubscribedTierId = useMemo(
+    () =>
+      communityTiers.find((tier) => subscribedTierIds.has(tier.id))?.id ||
+      Array.from(subscribedTierIds)[0] ||
+      null,
+    [communityTiers, subscribedTierIds],
+  );
 
   const toggleExpand = (postId: string) => {
     setExpandedPosts((prev) => {
@@ -160,20 +177,54 @@ export const CommunityTab = ({
   useEffect(() => {
     if (!user || !communityEnabled || communityTiers.length === 0) return;
     let cancelled = false;
-    getMySubscriptions()
-      .then((subs) => {
-        if (cancelled) return;
-        setSubscribedTierIds(
-          new Set(
-            subs
-              .filter((s) => s.status === "active" && (!s.creatorHandle || s.creatorHandle === username))
-              .map((s) => s.tierId),
+
+    async function loadSubscriptions() {
+      const merged = new Set<string>();
+      const [workerResult, firestoreResult] = await Promise.allSettled([
+        getMySubscriptions(),
+        getDocs(
+          query(
+            collection(db, "communitySubscriptions"),
+            where("userId", "==", user!.uid),
           ),
-        );
-      })
-      .catch((err) => {
-        console.error("Failed to fetch subscriptions", err);
-      });
+        ),
+      ]);
+
+      if (cancelled) return;
+
+      if (workerResult.status === "fulfilled") {
+        for (const s of workerResult.value) {
+          if (
+            isSubscriptionActive(s as unknown as Record<string, unknown>) &&
+            (!s.creatorHandle || s.creatorHandle === username) &&
+            s.tierId
+          ) {
+            merged.add(s.tierId);
+          }
+        }
+      }
+
+      if (firestoreResult.status === "fulfilled") {
+        for (const docSnap of firestoreResult.value.docs) {
+          const d = docSnap.data() as Record<string, unknown>;
+          if (
+            isSubscriptionActive(d) &&
+            (!d.creatorHandle || d.creatorHandle === username) &&
+            typeof d.tierId === "string" &&
+            d.tierId
+          ) {
+            merged.add(d.tierId);
+          }
+        }
+      }
+
+      setFetchedTierIds(Array.from(merged));
+    }
+
+    void loadSubscriptions().catch((err) => {
+      console.error("Failed to fetch subscriptions", err);
+    });
+
     return () => {
       cancelled = true;
     };
@@ -232,11 +283,25 @@ export const CommunityTab = ({
     <div className="space-y-6">
       {communityEnabled && communityTiers.length > 0 && (
         <section aria-labelledby="membership-heading" className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Crown className="size-4 text-brand-strong" aria-hidden="true" />
-            <h3 id="membership-heading" className="text-title font-bold text-fg">
-              Membership
-            </h3>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Crown className="size-4 text-brand-strong" aria-hidden="true" />
+              <h3 id="membership-heading" className="text-title font-bold text-fg">
+                Membership
+              </h3>
+            </div>
+            {firstSubscribedTierId && (
+              <Link
+                href={`/${username}/community/chat/${firstSubscribedTierId}`}
+                className={buttonClasses({
+                  variant: "secondary",
+                  size: "sm",
+                })}
+              >
+                <MessageCircle className="size-4" aria-hidden="true" />
+                Explore Community
+              </Link>
+            )}
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {communityTiers.map((tier) => {
@@ -290,7 +355,7 @@ export const CommunityTab = ({
                         })}
                       >
                         <MessageCircle className="size-4" aria-hidden="true" />
-                        Open Chat
+                        Explore Community
                       </Link>
                     ) : (
                       <Button
@@ -466,15 +531,17 @@ export const CommunityTab = ({
               )}
 
               {item.type === "video" && item.contentUrl && (
-                <div className="mb-4 overflow-hidden rounded-control bg-black">
+                <div className="mb-4">
                   <MediaAsset
                     postId={item.id}
                     isPrivate={!!item.isPrivate}
                     url={item.contentUrl}
                     as="video"
-                    controls
-                    controlsList="nodownload"
-                    className="aspect-video w-full"
+                    poster={item.coverUrl}
+                    title={item.title}
+                    creatorName={name}
+                    creatorHandle={username}
+                    postHref={postHref}
                   />
                 </div>
               )}

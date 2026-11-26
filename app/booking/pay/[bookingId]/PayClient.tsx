@@ -20,8 +20,14 @@ import { db } from "@/db/firebase";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { useAuth } from "@/auth/AuthContext";
 import { toast } from "sonner";
-import { initiateMomoPayment, initiateCardPayment, type PaymentInitRequest } from "@/lib/paymentsService";
+import {
+  cancelTransaction,
+  initiateMomoPayment,
+  initiateCardPayment,
+  type PaymentInitRequest,
+} from "@/lib/paymentsService";
 import { subscribeToTransactionByRef } from "@/lib/transactions";
+import { normalizeRwandaPhone } from "@/lib/format/phone";
 import { isCurrencySupportedByMethod } from "@/lib/money/rails";
 import Link from "next/link";
 import { PublicHeader as Navbar } from "@/components/shell/PublicHeader";
@@ -67,8 +73,11 @@ export default function BookingPayClient() {
   >("idle");
   const [paymentError, setPaymentError] = useState("");
   const [cardRedirectUrl, setCardRedirectUrl] = useState<string | null>(null);
+  const [activeTxRef, setActiveTxRef] = useState<string | null>(null);
+  const [cancellingTx, setCancellingTx] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"momo" | "card">("momo");
   const [phone, setPhone] = useState("");
+  const [fallbackCurrency, setFallbackCurrency] = useState("RWF");
   const unsubTxRef = useRef<(() => void) | null>(null);
   const idempotencyKeyRef = useRef<string>("");
 
@@ -121,7 +130,15 @@ export default function BookingPayClient() {
       if (data.bookerPhone) {
         setPhone((prev) => prev || String(data.bookerPhone));
       }
-      const derivedCurrency = String(data.currency || "RWF").toUpperCase();
+      let resolvedCurr = data.currency ? String(data.currency).toUpperCase() : "";
+      if (!resolvedCurr && data.creatorHandle) {
+        const creatorSnap = await getDoc(doc(db, "creators", String(data.creatorHandle)));
+        if (creatorSnap.exists() && creatorSnap.data()?.currency) {
+          resolvedCurr = String(creatorSnap.data().currency).toUpperCase();
+        }
+      }
+      const derivedCurrency = resolvedCurr || "RWF";
+      setFallbackCurrency(derivedCurrency);
       if (!isCurrencySupportedByMethod("momo", derivedCurrency)) {
         setPaymentMethod("card");
       }
@@ -140,7 +157,7 @@ export default function BookingPayClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingId]);
 
-  const currency = String(booking?.currency || "RWF").toUpperCase();
+  const currency = String(booking?.currency || fallbackCurrency || "RWF").toUpperCase();
   const momoSupported = isCurrencySupportedByMethod("momo", currency);
   const activeMethod = momoSupported ? paymentMethod : "card";
 
@@ -187,11 +204,12 @@ export default function BookingPayClient() {
     setPaymentError("");
 
     try {
+      const cleanedPhone = normalizeRwandaPhone(phone) || phone.replace(/\s/g, "");
       const payload: PaymentInitRequest = {
         type: "booking",
         creatorHandle: booking.creatorHandle,
         bookingId: booking.id,
-        phone: phone.replace(/\s/g, ""),
+        phone: cleanedPhone,
         email: currentUser.email || booking.bookerEmail || "",
         firstName:
           currentUser.displayName?.split(" ")[0] || booking.bookerName || "Customer",
@@ -204,15 +222,18 @@ export default function BookingPayClient() {
 
       if (activeMethod === "momo") {
         const res = await initiateMomoPayment(payload);
+        setActiveTxRef(res.ref);
         setCardRedirectUrl(null);
         setPaymentPhase("waiting");
         watchTransaction(res.ref);
         toast.success("Payment initiated! Check your phone to complete.");
       } else {
         const data = await initiateCardPayment(payload);
+        const ref = data.merchant_reference || data.ref;
+        setActiveTxRef(ref);
         setCardRedirectUrl(data.redirect_url || null);
         setPaymentPhase("waiting");
-        watchTransaction(data.merchant_reference || data.ref);
+        watchTransaction(ref);
         if (data.redirect_url) {
           const popup = window.open(data.redirect_url, "_blank", "noopener,noreferrer");
           if (!popup) {
@@ -299,7 +320,7 @@ export default function BookingPayClient() {
             <div>
               <h1 className="text-xl font-bold">Complete Payment</h1>
               <p className="text-sm text-muted-fg">
-                Booking with {booking.creatorName || handle}
+                Booking with {booking.creatorName || handle} · Charging in {currency}
               </p>
             </div>
             {isPaid && (
@@ -403,17 +424,28 @@ export default function BookingPayClient() {
                 )}
                 <button
                   type="button"
-                  onClick={() => {
-                    unsubTxRef.current?.();
-                    unsubTxRef.current = null;
-                    resetIdempotencyKey();
-                    setCardRedirectUrl(null);
-                    setPaymentError("");
-                    setPaymentPhase("idle");
+                  disabled={cancellingTx}
+                  onClick={async () => {
+                    setCancellingTx(true);
+                    try {
+                      if (activeTxRef) await cancelTransaction(activeTxRef);
+                      unsubTxRef.current?.();
+                      unsubTxRef.current = null;
+                      resetIdempotencyKey();
+                      setActiveTxRef(null);
+                      setCardRedirectUrl(null);
+                      setPaymentError("");
+                      setPaymentPhase("idle");
+                      toast.success("Payment cancelled.");
+                    } catch (err) {
+                      toast.error(err instanceof Error ? err.message : "Failed to cancel payment");
+                    } finally {
+                      setCancellingTx(false);
+                    }
                   }}
-                  className="mt-2 block min-h-11 text-xs font-semibold text-muted-fg underline hover:text-fg"
+                  className="mt-2 block min-h-11 text-xs font-semibold text-muted-fg underline hover:text-fg disabled:opacity-50"
                 >
-                  Change payment method or retry
+                  {cancellingTx ? "Cancelling..." : "Cancel payment & try again"}
                 </button>
               </div>
             </div>

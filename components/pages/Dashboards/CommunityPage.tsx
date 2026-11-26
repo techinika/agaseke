@@ -1,9 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useAuth } from "@/auth/AuthContext";
-import { doc, onSnapshot } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDocs,
+  onSnapshot,
+  query,
+  where,
+} from "firebase/firestore";
 import { db } from "@/db/firebase";
 import Link from "next/link";
 import {
@@ -27,6 +34,7 @@ import {
   type MemberInfo,
 } from "@/lib/communityService";
 import { formatCurrency } from "@/types/currency";
+import { resolveHistoricalCurrency } from "@/lib/money/historicalCurrency";
 import {
   buildPriceMap,
   getPrice,
@@ -53,6 +61,31 @@ interface CommunitySettings {
   tiers: CommunityTier[];
 }
 
+interface CommunityEarningRecord {
+  id: string;
+  txRef: string;
+  supporterName: string;
+  tierName: string;
+  interval: string;
+  grossAmount: number;
+  netAmount: number;
+  currency: string;
+  paymentMethod: string;
+  createdAtMs: number;
+  createdAtLabel: string;
+  status: string;
+}
+
+function toTimestampMs(value: any): number {
+  if (!value) return 0;
+  if (typeof value?.toMillis === "function") return value.toMillis();
+  if (typeof value?.toDate === "function") return value.toDate().getTime();
+  if (typeof value?.seconds === "number") return value.seconds * 1000;
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  const parsed = Date.parse(String(value));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function emptyTier(defaultCurrency: CurrencyCode): CommunityTier {
   return {
     id: `tier-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -77,6 +110,8 @@ export default function CommunityPage() {
     tiers: [],
   });
   const [members, setMembers] = useState<MemberInfo[]>([]);
+  const [earnings, setEarnings] = useState<CommunityEarningRecord[]>([]);
+  const [loadingEarnings, setLoadingEarnings] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"settings" | "members" | "earnings">(
@@ -117,14 +152,268 @@ export default function CommunityPage() {
     return () => unsub();
   }, [creator?.handle]);
 
+  const creatorHandle = creator?.handle;
+  const creatorUid = creator?.uid;
+
   useEffect(() => {
-    if (!creator?.handle || !settings.enabled) return;
-    getCommunityMembers(creator.handle)
-      .then(setMembers)
-      .catch((err) => {
-        console.error("Failed to fetch community members", err);
-      });
-  }, [creator?.handle, settings.enabled]);
+    if (!creatorHandle || !settings.enabled) return;
+    const handle = creatorHandle;
+    const uid = creatorUid;
+    let cancelled = false;
+
+    async function loadCommunityData() {
+      setLoadingEarnings(true);
+
+      try {
+        const [workerMembersResult, firestoreSubsResult, incomeResult, txByUidResult, txByHandleResult] =
+          await Promise.allSettled([
+            getCommunityMembers(handle),
+            getDocs(
+              query(
+                collection(db, "communitySubscriptions"),
+                where("creatorHandle", "==", handle),
+              ),
+            ),
+            uid
+              ? getDocs(
+                  query(
+                    collection(db, "creatorIncome"),
+                    where("creatorUid", "==", uid),
+                  ),
+                )
+              : Promise.resolve(null),
+            uid
+              ? getDocs(
+                  query(
+                    collection(db, "transactions"),
+                    where("creatorUid", "==", uid),
+                  ),
+                )
+              : Promise.resolve(null),
+            getDocs(
+              query(
+                collection(db, "transactions"),
+                where("creatorId", "==", handle),
+              ),
+            ),
+          ]);
+
+        if (cancelled) return;
+
+        // 1. Merge members from community worker + Firestore communitySubscriptions fallback
+        const memberMap = new Map<string, MemberInfo & { paymentRef?: string; lastPaymentRef?: string }>();
+        const subByPaymentRef = new Map<string, Record<string, any>>();
+
+        if (workerMembersResult.status === "fulfilled") {
+          for (const m of workerMembersResult.value) {
+            memberMap.set(m.subscriptionId, {
+              ...m,
+              currency: resolveHistoricalCurrency(m as unknown as Record<string, unknown>),
+            });
+          }
+        }
+
+        if (firestoreSubsResult.status === "fulfilled" && firestoreSubsResult.value) {
+          for (const docSnap of firestoreSubsResult.value.docs) {
+            const d = docSnap.data();
+            const existing = memberMap.get(docSnap.id);
+            const currency = resolveHistoricalCurrency(d);
+            const merged: MemberInfo & { paymentRef?: string; lastPaymentRef?: string } = {
+              subscriptionId: docSnap.id,
+              userId: String(d.userId || existing?.userId || ""),
+              userEmail: String(d.userEmail || existing?.userEmail || ""),
+              userName: String(d.userName || existing?.userName || ""),
+              tierId: String(d.tierId || existing?.tierId || ""),
+              tierName: String(d.tierName || existing?.tierName || ""),
+              status: String(d.status || existing?.status || "pending"),
+              creatorHandle: String(d.creatorHandle || existing?.creatorHandle || handle),
+              subscribedAt: String(d.subscribedAt || existing?.subscribedAt || ""),
+              expiresAt: String(d.expiresAt || existing?.expiresAt || ""),
+              amount: Number(d.amount ?? existing?.amount ?? 0),
+              currency: currency || existing?.currency,
+              interval: String(d.interval || existing?.interval || "monthly"),
+              autoRenew: typeof d.autoRenew === "boolean" ? d.autoRenew : !!existing?.autoRenew,
+              paymentRef: typeof d.paymentRef === "string" ? d.paymentRef : undefined,
+              lastPaymentRef:
+                typeof d.lastPaymentRef === "string" ? d.lastPaymentRef : undefined,
+            };
+            memberMap.set(docSnap.id, merged);
+            if (typeof d.paymentRef === "string" && d.paymentRef) {
+              subByPaymentRef.set(d.paymentRef, d);
+            }
+            if (typeof d.lastPaymentRef === "string" && d.lastPaymentRef) {
+              subByPaymentRef.set(d.lastPaymentRef, d);
+            }
+          }
+        }
+
+        const mergedMembers = Array.from(memberMap.values()).sort(
+          (a, b) => toTimestampMs(b.subscribedAt) - toTimestampMs(a.subscribedAt),
+        );
+        setMembers(mergedMembers);
+
+        // 2. Collect successful community transactions indexed by ref
+        const txByRef = new Map<string, Record<string, any> & { id: string }>();
+        const ingestTxSnapshot = (snap: any) => {
+          if (!snap) return;
+          for (const docSnap of snap.docs) {
+            const d = docSnap.data();
+            const isCommunityTx =
+              d.type === "community" ||
+              Boolean(d.communitySubscriptionId) ||
+              Boolean(d.communityTierId);
+            const isSucceeded = d.status === "successful" || d.status === "success";
+            if (!isCommunityTx || !isSucceeded) continue;
+            const ref = String(d.ref || d.txRef || docSnap.id);
+            txByRef.set(ref, { id: docSnap.id, ...d });
+          }
+        };
+
+        if (txByUidResult.status === "fulfilled") ingestTxSnapshot(txByUidResult.value);
+        if (txByHandleResult.status === "fulfilled") ingestTxSnapshot(txByHandleResult.value);
+
+        const tierLookup = new Map(
+          settings.tiers.map((t) => [t.id, t]),
+        );
+
+        // 3. Build unified earnings list from creatorIncome + any missing successful transactions
+        const recordsByRef = new Map<string, CommunityEarningRecord>();
+
+        if (incomeResult.status === "fulfilled" && incomeResult.value) {
+          for (const docSnap of incomeResult.value.docs) {
+            const d = docSnap.data();
+            if (d.reason !== "community_subscription") continue;
+            const ref = String(d.txRef || docSnap.id);
+            const tx = txByRef.get(ref);
+            const sub =
+              subByPaymentRef.get(ref) ||
+              (d.subscriptionId
+                ? (memberMap.get(String(d.subscriptionId)) as Record<string, any> | undefined)
+                : undefined);
+            const currency =
+              resolveHistoricalCurrency(d) ||
+              resolveHistoricalCurrency(tx) ||
+              "RWF";
+            const netAmount = Number(d.amount || 0);
+            const grossAmount = Number(tx?.amount ?? sub?.amount ?? netAmount);
+            const tierId = String(d.tierId || tx?.communityTierId || sub?.tierId || "");
+            const tierName =
+              String(d.tierName || sub?.tierName || tierLookup.get(tierId)?.name || "Membership");
+            const supporterName =
+              String(
+                tx?.supporterName ||
+                  tx?.buyerName ||
+                  sub?.userName ||
+                  sub?.userEmail ||
+                  tx?.buyerEmail ||
+                  "Community Member",
+              );
+            const createdAtMs =
+              toTimestampMs(d.createdAt) ||
+              toTimestampMs(tx?.successfulAt) ||
+              toTimestampMs(tx?.createdAt);
+            const createdAtLabel = createdAtMs
+              ? new Date(createdAtMs).toLocaleDateString()
+              : "-";
+
+            recordsByRef.set(ref, {
+              id: docSnap.id,
+              txRef: ref,
+              supporterName,
+              tierName,
+              interval: String(tx?.communityInterval || sub?.interval || "monthly"),
+              grossAmount,
+              netAmount,
+              currency,
+              paymentMethod: String(tx?.paymentMethod || sub?.paymentMethod || "-"),
+              createdAtMs,
+              createdAtLabel,
+              status: "Paid",
+            });
+          }
+        }
+
+        for (const [ref, tx] of txByRef.entries()) {
+          if (recordsByRef.has(ref)) continue;
+          const sub =
+            subByPaymentRef.get(ref) ||
+            (tx.communitySubscriptionId
+              ? (memberMap.get(String(tx.communitySubscriptionId)) as Record<string, any> | undefined)
+              : undefined);
+          const currency = resolveHistoricalCurrency(tx) || "RWF";
+          const grossAmount = Number(tx.amount || 0);
+          const netAmount = Number(
+            tx.creatorEarnings ?? Math.round(grossAmount * 0.9 * 100) / 100,
+          );
+          const tierId = String(tx.communityTierId || sub?.tierId || "");
+          const tierName =
+            String(sub?.tierName || tierLookup.get(tierId)?.name || "Membership");
+          const supporterName =
+            String(
+              tx.supporterName ||
+                tx.buyerName ||
+                sub?.userName ||
+                sub?.userEmail ||
+                tx.buyerEmail ||
+                "Community Member",
+            );
+          const createdAtMs =
+            toTimestampMs(tx.successfulAt) || toTimestampMs(tx.createdAt);
+          const createdAtLabel = createdAtMs
+            ? new Date(createdAtMs).toLocaleDateString()
+            : "-";
+
+          recordsByRef.set(ref, {
+            id: tx.id,
+            txRef: ref,
+            supporterName,
+            tierName,
+            interval: String(tx.communityInterval || sub?.interval || "monthly"),
+            grossAmount,
+            netAmount,
+            currency,
+            paymentMethod: String(tx.paymentMethod || sub?.paymentMethod || "-"),
+            createdAtMs,
+            createdAtLabel,
+            status: "Paid",
+          });
+        }
+
+        const sortedEarnings = Array.from(recordsByRef.values()).sort(
+          (a, b) => b.createdAtMs - a.createdAtMs,
+        );
+        setEarnings(sortedEarnings);
+      } catch (err) {
+        console.error("Failed to fetch community members/earnings", err);
+      } finally {
+        if (!cancelled) setLoadingEarnings(false);
+      }
+    }
+
+    void loadCommunityData();
+    return () => {
+      cancelled = true;
+    };
+  }, [creatorHandle, creatorUid, settings.enabled, settings.tiers]);
+
+  const earningsByCurrency = useMemo(() => {
+    return earnings.reduce<Record<string, { net: number; gross: number; count: number }>>(
+      (acc, row) => {
+        const cur = row.currency || "RWF";
+        if (!acc[cur]) acc[cur] = { net: 0, gross: 0, count: 0 };
+        acc[cur].net += row.netAmount;
+        acc[cur].gross += row.grossAmount;
+        acc[cur].count += 1;
+        return acc;
+      },
+      {},
+    );
+  }, [earnings]);
+
+  const activeMembersCount = useMemo(
+    () => members.filter((m) => m.status === "active").length,
+    [members],
+  );
 
   const updateTier = (index: number, field: string, value: any) => {
     setSettings((prev) => {
@@ -474,7 +763,7 @@ export default function CommunityPage() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="truncate text-label font-bold text-fg">
-                              {m.userName || m.userEmail}
+                              {m.userName || m.userEmail || m.userId || "Member"}
                             </p>
                             <p className="truncate text-caption text-muted-fg">
                               {m.tierName}
@@ -495,9 +784,11 @@ export default function CommunityPage() {
                         </div>
                         <div className="flex items-center justify-between gap-2 text-caption">
                           <span className="font-semibold tabular-nums text-fg">
-                            {m.currency
-                              ? formatCurrency(m.amount, m.currency as any)
-                              : m.amount}
+                            {formatCurrency(
+                              m.amount,
+                              (resolveHistoricalCurrency(m as unknown as Record<string, unknown>) ||
+                                defaultCurrency) as any,
+                            )}
                             <span className="ml-1 font-normal text-muted-fg">
                               /{m.interval === "yearly" ? "yr" : "mo"}
                             </span>
@@ -543,7 +834,7 @@ export default function CommunityPage() {
                           >
                             <td className="max-w-xs p-4">
                               <p className="truncate font-medium">
-                                {m.userName || m.userEmail}
+                                {m.userName || m.userEmail || m.userId || "Member"}
                               </p>
                             </td>
                             <td className="p-4 text-muted-fg">{m.tierName}</td>
@@ -562,9 +853,11 @@ export default function CommunityPage() {
                               </Badge>
                             </td>
                             <td className="whitespace-nowrap p-4 font-medium tabular-nums">
-                              {m.currency
-                                ? formatCurrency(m.amount, m.currency as any)
-                                : m.amount}
+                              {formatCurrency(
+                                m.amount,
+                                (resolveHistoricalCurrency(m as unknown as Record<string, unknown>) ||
+                                  defaultCurrency) as any,
+                              )}
                               <span className="ml-1 text-caption text-muted-fg">
                                 /{m.interval === "yearly" ? "yr" : "mo"}
                               </span>
@@ -585,15 +878,152 @@ export default function CommunityPage() {
           )}
 
           {activeTab === "earnings" && (
-            <Card className="p-12 text-center">
-              <DollarSign
-                className="mx-auto mb-3 size-10 text-muted-fg"
-                aria-hidden="true"
-              />
-              <p className="text-label text-muted-fg">
-                Community earnings will appear here once subscriptions start rolling in.
-              </p>
-            </Card>
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {Object.keys(earningsByCurrency).length === 0 ? (
+                  <Card className="p-5">
+                    <p className="text-caption font-bold uppercase tracking-widest text-muted-fg">
+                      Community earnings
+                    </p>
+                    <p className="mt-2 text-heading font-bold tabular-nums text-fg">
+                      {formatCurrency(0, defaultCurrency as any)}
+                    </p>
+                  </Card>
+                ) : (
+                  Object.entries(earningsByCurrency).map(([cur, group]) => (
+                    <Card key={cur} className="p-5">
+                      <p className="text-caption font-bold uppercase tracking-widest text-muted-fg">
+                        Net earnings ({cur})
+                      </p>
+                      <p className="mt-2 text-heading font-bold tabular-nums text-brand-strong">
+                        {formatCurrency(group.net, cur as any)}
+                      </p>
+                      <p className="mt-1 text-caption tabular-nums text-muted-fg">
+                        {group.count} subscription {group.count === 1 ? "payment" : "payments"}
+                      </p>
+                    </Card>
+                  ))
+                )}
+
+                <Card className="p-5">
+                  <p className="text-caption font-bold uppercase tracking-widest text-muted-fg">
+                    Active members
+                  </p>
+                  <p className="mt-2 text-heading font-bold tabular-nums text-fg">
+                    {activeMembersCount}
+                  </p>
+                  <p className="mt-1 text-caption tabular-nums text-muted-fg">
+                    {members.length} total subscribed
+                  </p>
+                </Card>
+              </div>
+
+              <Card className="overflow-hidden">
+                {loadingEarnings ? (
+                  <div className="flex items-center justify-center py-12" role="status">
+                    <Loader className="size-6 animate-spin text-brand-strong" aria-hidden="true" />
+                  </div>
+                ) : earnings.length === 0 ? (
+                  <EmptyState
+                    icon={<DollarSign className="size-6" aria-hidden="true" />}
+                    title="No subscription earnings yet"
+                    description="Community earnings will appear here once supporters subscribe to a tier."
+                    className="border-0 py-12"
+                  />
+                ) : (
+                  <>
+                    {/* Mobile list */}
+                    <div className="divide-y divide-line md:hidden">
+                      {earnings.map((row) => (
+                        <div key={row.id} className="space-y-2 p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-label font-bold text-fg">
+                                {row.supporterName}
+                              </p>
+                              <p className="truncate text-caption text-muted-fg">
+                                {row.tierName} · {row.createdAtLabel}
+                              </p>
+                            </div>
+                            <Badge tone="success" className="shrink-0 uppercase">
+                              {row.status}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center justify-between gap-2 text-caption">
+                            <span className="font-bold tabular-nums text-brand-strong">
+                              {formatCurrency(row.netAmount, row.currency as any)} net
+                            </span>
+                            <span className="truncate font-mono text-muted-fg">
+                              {row.txRef}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Desktop table */}
+                    <div className="hidden overflow-x-auto md:block">
+                      <table className="w-full min-w-[600px] text-label">
+                        <thead>
+                          <tr className="border-b border-line bg-surface-sunken">
+                            <th className="p-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
+                              Member
+                            </th>
+                            <th className="p-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
+                              Tier
+                            </th>
+                            <th className="whitespace-nowrap p-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
+                              Net earnings
+                            </th>
+                            <th className="whitespace-nowrap p-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
+                              Method
+                            </th>
+                            <th className="whitespace-nowrap p-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
+                              Date
+                            </th>
+                            <th className="whitespace-nowrap p-4 text-left text-caption font-bold uppercase tracking-widest text-muted-fg">
+                              Status
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {earnings.map((row) => (
+                            <tr
+                              key={row.id}
+                              className="border-b border-line last:border-0"
+                            >
+                              <td className="max-w-xs p-4">
+                                <p className="truncate font-medium text-fg">
+                                  {row.supporterName}
+                                </p>
+                                <p className="truncate font-mono text-caption text-muted-fg">
+                                  {row.txRef}
+                                </p>
+                              </td>
+                              <td className="p-4 text-muted-fg">{row.tierName}</td>
+                              <td className="whitespace-nowrap p-4 font-bold tabular-nums text-brand-strong">
+                                {formatCurrency(row.netAmount, row.currency as any)}
+                              </td>
+                              <td className="whitespace-nowrap p-4 uppercase text-caption text-muted-fg">
+                                {row.paymentMethod}
+                              </td>
+                              <td className="whitespace-nowrap p-4 text-caption tabular-nums text-muted-fg">
+                                {row.createdAtLabel}
+                              </td>
+                              <td className="whitespace-nowrap p-4">
+                                <Badge tone="success" className="uppercase">
+                                  {row.status}
+                                </Badge>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+              </Card>
+            </div>
           )}
         </>
       )}

@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "@/components/ui/Toast";
 import { t } from "@/lib/i18n";
+import { cancelTransaction } from "@/lib/paymentsService";
 import { normalizeTransactionStatus } from "@/features/support/utils";
 import { pollSupportTransaction, watchSupportTransaction } from "@/features/support/api";
 import type { SupportStatus, TransactionSnapshot } from "@/features/support/types";
@@ -31,6 +33,7 @@ export function useTransactionPayment({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [checkHint, setCheckHint] = useState<string | null>(null);
   const [waitingLong, setWaitingLong] = useState(false);
 
@@ -164,6 +167,30 @@ export function useTransactionPayment({
     }
   }, [applyTransaction, checking, reference]);
 
+  const cancelPayment = useCallback(async () => {
+    if (!reference || cancelling) return;
+    setCancelling(true);
+    try {
+      await cancelTransaction(reference);
+      settledRef.current = true;
+      if (mountedRef.current) {
+        setStatus("idle");
+        setError(null);
+        setReference(null);
+        setCardRedirectUrl(null);
+        setCheckHint(null);
+        setWaitingLong(false);
+      }
+      toast.success(t("support.status.cancelled"));
+    } catch (caught) {
+      toast.error(
+        caught instanceof Error && caught.message ? caught.message : t("error.body"),
+      );
+    } finally {
+      if (mountedRef.current) setCancelling(false);
+    }
+  }, [cancelling, reference]);
+
   const openCardPage = useCallback(() => {
     if (cardRedirectUrl) {
       window.open(cardRedirectUrl, "_blank", "noopener,noreferrer");
@@ -177,11 +204,13 @@ export function useTransactionPayment({
     submitting,
     error,
     checking,
+    cancelling,
     checkHint,
     waitingLong,
     startPayment,
     retry,
     checkNow,
+    cancelPayment,
     openCardPage,
   };
 }

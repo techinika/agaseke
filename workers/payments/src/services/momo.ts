@@ -13,15 +13,30 @@ import {
   finishAttempt,
 } from "./initiate";
 
-function requirePhone(body: InitRequest): string {
-  const phone = typeof body.phone === "string" ? body.phone.trim() : "";
-  if (!phone) {
+function normalizeMomoPhone(raw: unknown): string {
+  const input = typeof raw === "string" ? raw.trim() : "";
+  if (!input) {
     throw new PaymentRequestError(
       "MISSING_PHONE",
       "Phone number is required for MoMo payments",
     );
   }
-  return phone;
+  const digits = input.replace(/\D/g, "");
+  let local = "";
+  if (/^07[2389]\d{7}$/.test(digits)) {
+    local = digits;
+  } else if (/^2507[2389]\d{7}$/.test(digits)) {
+    local = `0${digits.slice(3)}`;
+  } else if (/^7[2389]\d{7}$/.test(digits)) {
+    local = `0${digits}`;
+  }
+  if (!local) {
+    throw new PaymentRequestError(
+      "INVALID_PHONE",
+      "Enter a valid Rwanda Mobile Money number (e.g. 078 000 0000)",
+    );
+  }
+  return local;
 }
 
 export async function initiateMomoPayment(
@@ -30,7 +45,7 @@ export async function initiateMomoPayment(
   uid: string,
   idempotencyKey?: string,
 ): Promise<PaymentInitResult> {
-  const phone = requirePhone(body);
+  const phone = normalizeMomoPhone(body.phone);
   const repo = createPaymentRepository(env);
   const quote = await loadCheckoutQuote(repo, body.quoteId, uid, body);
   const resolved = await resolvePayment(env, body, uid, repo, { quote });
@@ -41,6 +56,14 @@ export async function initiateMomoPayment(
     throw new PaymentRequestError(
       "UNSUPPORTED_METHOD",
       `Mobile Money cannot charge ${resolved.currency}. Use card payment instead.`,
+    );
+  }
+
+  const chargeAmount = Math.round(resolved.totalAmount);
+  if (!Number.isFinite(chargeAmount) || chargeAmount < 100) {
+    throw new PaymentRequestError(
+      "AMOUNT_OUT_OF_RANGE",
+      "Minimum Mobile Money payment is 100 RWF",
     );
   }
 
@@ -64,28 +87,40 @@ export async function initiateMomoPayment(
   let providerInitiated = false;
 
   try {
-    const authRes = await fetch(
-      "https://payments.paypack.rw/api/auth/agents/authorize",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
+    let authRes: Response;
+    try {
+      authRes = await fetch(
+        "https://payments.paypack.rw/api/auth/agents/authorize",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            client_id: env.PAYPACK_CLIENT_ID,
+            client_secret: env.PAYPACK_CLIENT_SECRET,
+          }),
         },
-        body: JSON.stringify({
-          client_id: env.PAYPACK_CLIENT_ID,
-          client_secret: env.PAYPACK_CLIENT_SECRET,
-        }),
-      },
-    );
+      );
+    } catch (networkErr) {
+      await logActivity(env, "error", "payment", "Momo pay: Paypack auth network failure", {
+        error: networkErr instanceof Error ? networkErr.message : String(networkErr),
+      }).catch(() => {});
+      throw new PaymentRequestError(
+        "PROVIDER_AUTH_FAILED",
+        "Could not reach Mobile Money provider. Please try again.",
+        502,
+      );
+    }
 
     if (!authRes.ok) {
-      const errText = await authRes.text();
+      const errText = await authRes.text().catch(() => "");
       console.error("Paypack auth error:", authRes.status, errText);
       await logActivity(env, "error", "payment", "Momo pay: Paypack auth failed", {
         status: authRes.status,
         error: errText.slice(0, 500),
-      });
+      }).catch(() => {});
       throw new PaymentRequestError(
         "PROVIDER_AUTH_FAILED",
         "Paypack authentication failed",
@@ -93,22 +128,44 @@ export async function initiateMomoPayment(
       );
     }
 
-    const { access } = (await authRes.json()) as { access: string };
+    const authJson = (await authRes.json().catch(() => ({}))) as { access?: string };
+    const access = authJson.access;
+    if (!access) {
+      throw new PaymentRequestError(
+        "PROVIDER_AUTH_FAILED",
+        "Paypack authentication did not return an access token",
+        502,
+      );
+    }
 
-    const payRes = await fetch(
-      "https://payments.paypack.rw/api/transactions/cashin",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${access}`,
-          "X-Webhook-Mode": "production",
+    let payRes: Response;
+    try {
+      payRes = await fetch(
+        "https://payments.paypack.rw/api/transactions/cashin",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${access}`,
+            "X-Webhook-Mode": "production",
+          },
+          body: JSON.stringify({ amount: chargeAmount, number: phone }),
         },
-        body: JSON.stringify({ amount: resolved.totalAmount, number: phone }),
-      },
-    );
+      );
+    } catch (networkErr) {
+      await logActivity(env, "error", "payment", "Momo pay: Paypack cashin network failure", {
+        amount: chargeAmount,
+        creatorHandle: resolved.creatorHandle,
+        error: networkErr instanceof Error ? networkErr.message : String(networkErr),
+      }).catch(() => {});
+      throw new PaymentRequestError(
+        "PROVIDER_INITIATION_FAILED",
+        "Could not reach Mobile Money provider to start payment. Please try again.",
+        502,
+      );
+    }
 
-    const payRawText = await payRes.text();
+    const payRawText = await payRes.text().catch(() => "");
     let payData: { ref?: string; message?: string; error?: string } = {};
     try {
       payData = JSON.parse(payRawText) as typeof payData;
@@ -117,14 +174,14 @@ export async function initiateMomoPayment(
     if (!payRes.ok || !payData.ref) {
       const detail = payData.message || payData.error || payRawText || "No ref returned";
       await logActivity(env, "error", "payment", "Momo pay: Initiation failed", {
-        amount: resolved.totalAmount,
+        amount: chargeAmount,
         creatorHandle: resolved.creatorHandle,
         status: payRes.status,
         error: detail.slice(0, 500),
-      });
+      }).catch(() => {});
       throw new PaymentRequestError(
         "PROVIDER_INITIATION_FAILED",
-        "Payment failed to initiate with Paypack",
+        "Payment failed to initiate with Paypack. Check the phone number and try again.",
         502,
       );
     }
@@ -132,7 +189,7 @@ export async function initiateMomoPayment(
     const now = new Date().toISOString();
     const txFields: Record<string, unknown> = {
       ref: payData.ref,
-      amount: resolved.totalAmount,
+      amount: chargeAmount,
       currency: resolved.currency,
       phone,
       creatorId: resolved.creatorHandle,
@@ -225,7 +282,7 @@ export async function initiateMomoPayment(
     });
 
     if (!doc) {
-      await finishAttempt(env, attempt.key, { ref: payData.ref });
+      await finishAttempt(env, attempt.key, { ref: payData.ref }).catch(() => {});
       providerInitiated = true;
       throw new PaymentRequestError(
         "TRANSACTION_PERSIST_FAILED",
@@ -234,11 +291,11 @@ export async function initiateMomoPayment(
       );
     }
 
-    await finishAttempt(env, attempt.key, { ref: payData.ref });
     providerInitiated = true;
+    await finishAttempt(env, attempt.key, { ref: payData.ref }).catch(() => {});
 
     if (resolved.fx) {
-      await consumeCheckoutQuote(env, resolved.fx.id, payData.ref);
+      await consumeCheckoutQuote(env, resolved.fx.id, payData.ref).catch(() => {});
     }
 
     const txTypeLabel =
@@ -255,14 +312,14 @@ export async function initiateMomoPayment(
     await notifyAdmins(
       env,
       "New Transaction",
-      `${txTypeLabel} of ${resolved.totalAmount.toLocaleString()} ${resolved.currency} initiated`,
+      `${txTypeLabel} of ${chargeAmount.toLocaleString()} ${resolved.currency} initiated`,
       "/admin/payouts",
-    );
+    ).catch(() => {});
 
     return { ref: payData.ref, status: "pending" };
   } catch (error) {
     if (!providerInitiated) {
-      await abortAttempt(env, attempt.key, error);
+      await abortAttempt(env, attempt.key, error).catch(() => {});
     }
     throw error;
   }

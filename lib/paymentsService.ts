@@ -312,3 +312,60 @@ export async function resumeTransaction(
 ): Promise<RetryTransactionResponse> {
   return postTransactionRecovery("resume", ref, phone);
 }
+
+export interface CancelTransactionResponse {
+  ref: string;
+  status: "cancelled";
+}
+
+export async function cancelTransaction(
+  ref: string,
+): Promise<CancelTransactionResponse> {
+  const headers = await getAuthHeaders();
+  const body = JSON.stringify({ ref });
+  const fallbackMsg = "Failed to cancel payment";
+
+  let workerRes: Response | null = null;
+  try {
+    workerRes = await fetch(`${PAYMENTS_WORKER_URL}/api/payments/transactions/cancel`, {
+      method: "POST",
+      headers,
+      body,
+    });
+  } catch {
+    workerRes = null;
+  }
+
+  if (workerRes && workerRes.ok) {
+    return (await workerRes.json()) as CancelTransactionResponse;
+  }
+
+  if (!workerRes || workerRes.status === 404 || workerRes.status >= 500) {
+    const localRes = await fetch("/api/payments/transactions/cancel", {
+      method: "POST",
+      headers,
+      body,
+    });
+    if (localRes.ok) {
+      return (await localRes.json()) as CancelTransactionResponse;
+    }
+    throw new Error(await parseError(localRes, fallbackMsg));
+  }
+
+  throw new Error(await parseError(workerRes, fallbackMsg));
+}
+
+export async function cancelStoreOrder(
+  orderId: string,
+): Promise<{ orderId: string; status: "cancelled" }> {
+  const headers = await getAuthHeaders();
+  const res = await fetch("/api/store/orders/cancel", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ orderId }),
+  });
+  if (!res.ok) {
+    throw new Error(await parseError(res, "Failed to cancel order"));
+  }
+  return (await res.json()) as { orderId: string; status: "cancelled" };
+}

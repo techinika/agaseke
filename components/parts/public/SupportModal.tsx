@@ -11,7 +11,9 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { getCurrencySymbol } from "@/types/currency";
+import { normalizeRwandaPhone } from "@/lib/format/phone";
 import {
+  cancelTransaction,
   initiateMomoPayment,
   initiateCardPayment,
   getPaymentMethods,
@@ -42,6 +44,8 @@ export function SupportModal({
   const [availableCurrencies, setAvailableCurrencies] = useState<string[]>([]);
   const [methods, setMethods] = useState<PaymentMethodOption[]>([]);
   const [loadingMethods, setLoadingMethods] = useState(false);
+  const [activeTxRef, setActiveTxRef] = useState<string | null>(null);
+  const [cancellingTx, setCancellingTx] = useState(false);
 
   const CREATOR_SHARE = Number(process.env.NEXT_PUBLIC_CREATOR_SHARE) || 0.9;
 
@@ -178,16 +182,19 @@ export function SupportModal({
     if (!selectedCurrency || paymentMethod !== "momo") return;
     setStep("processing");
     setErrorMessage("");
+    setActiveTxRef(null);
     try {
+      const cleanedPhone = normalizeRwandaPhone(phone) || phone.replace(/\s+/g, "");
       const data = await initiateMomoPayment({
         type: "support",
         creatorHandle: creatorId,
         amount: numericAmount,
-        phone,
+        phone: cleanedPhone,
         message: message ?? "",
         currency: selectedCurrency,
         idempotencyKey: crypto.randomUUID(),
       });
+      setActiveTxRef(data.ref);
       listenToTransaction(data.ref);
       supportTimeoutRef.current = setTimeout(() => {
         if (unsubscribeRef.current) {
@@ -233,6 +240,7 @@ export function SupportModal({
         idempotencyKey: crypto.randomUUID(),
       });
       setRedirectUrl(data.redirect_url);
+      setActiveTxRef(data.merchant_reference);
       const newWindow = window.open(data.redirect_url, "_blank");
       if (!newWindow || newWindow.closed || typeof newWindow.closed === "undefined") {
         setPopupBlocked(true);
@@ -369,7 +377,9 @@ export function SupportModal({
                     className="w-full bg-brand-strong text-on-brand py-4 sm:py-6 rounded-control font-bold text-base sm:text-xl shadow-xl shadow-brand-strong hover:bg-brand-strong transition-all flex items-center justify-center gap-4 active:scale-95 disabled:opacity-50"
                   >
                     {isSubmitting ? <Loader className="w-5 h-5 sm:w-6 sm:h-6 rounded-full animate-spin" /> : (
-                      paymentMethod === "momo" ? "Support with MoMo" : "Support with Card"
+                      paymentMethod === "momo"
+                        ? `Support with MoMo (${selectedCurrency})`
+                        : `Support with Card (${selectedCurrency})`
                     )}
                   </button>
                 </>
@@ -381,16 +391,44 @@ export function SupportModal({
             <div className="py-8 sm:py-12 text-center space-y-4 sm:space-y-6">
               <div className="relative mx-auto w-16 h-16 sm:w-20 sm:h-20">
                 <div className="absolute inset-0 border-4 border-line rounded-full" />
-                <div className="absolute inset-0 border-4 border-t-orange-600 rounded-full animate-spin" />
+                <div className="absolute inset-0 border-4 border-t-brand-strong rounded-full animate-spin" />
               </div>
               <h4 className="text-lg sm:text-xl font-bold">Verifying Payment...</h4>
               <p className="text-muted-fg font-medium leading-relaxed text-sm sm:text-base">
                 {paymentMethod === "momo" ? (
-                  <>We sent a MoMo prompt to <b>{phone}</b>.<br />Enter your PIN on your phone to finish.</>
+                  <>We sent a MoMo prompt to <b>{phone}</b> ({selectedCurrency}).<br />Enter your PIN on your phone to finish.</>
                 ) : (
-                  <>We are confirming your transaction. This usually takes a few seconds.</>
+                  <>We are confirming your {selectedCurrency} transaction. This usually takes a few seconds.</>
                 )}
               </p>
+              <button
+                type="button"
+                disabled={cancellingTx}
+                onClick={async () => {
+                  setCancellingTx(true);
+                  try {
+                    if (activeTxRef) await cancelTransaction(activeTxRef);
+                    if (unsubscribeRef.current) {
+                      unsubscribeRef.current();
+                      unsubscribeRef.current = null;
+                    }
+                    if (supportTimeoutRef.current) {
+                      clearTimeout(supportTimeoutRef.current);
+                      supportTimeoutRef.current = null;
+                    }
+                    setActiveTxRef(null);
+                    setStep("input");
+                    toast.success("Payment cancelled.");
+                  } catch (err: any) {
+                    toast.error(err?.message || "Failed to cancel payment");
+                  } finally {
+                    setCancellingTx(false);
+                  }
+                }}
+                className="inline-flex min-h-11 items-center justify-center rounded-control border border-line px-4 text-sm font-semibold text-muted-fg transition hover:bg-surface-raised hover:text-fg disabled:opacity-50"
+              >
+                {cancellingTx ? "Cancelling..." : "Cancel payment"}
+              </button>
             </div>
           )}
 

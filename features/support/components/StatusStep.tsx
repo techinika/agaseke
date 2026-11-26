@@ -18,8 +18,10 @@ export interface StatusStepProps {
   error?: string | null;
   cardRedirectUrl?: string | null;
   checking: boolean;
+  cancelling?: boolean;
   checkHint?: string | null;
   onCheck: () => void;
+  onCancelPayment?: () => void;
   onRetry: () => void;
   onClose: () => void;
 }
@@ -55,8 +57,10 @@ export function StatusStep({
   error,
   cardRedirectUrl,
   checking,
+  cancelling = false,
   checkHint,
   onCheck,
+  onCancelPayment,
   onRetry,
   onClose,
 }: StatusStepProps) {
@@ -131,14 +135,26 @@ export function StatusStep({
           label: t("support.status.done"),
           onClick: onClose,
         }}
+        tertiaryAction={
+          onCancelPayment
+            ? {
+                label: cancelling
+                  ? t("support.status.cancelling")
+                  : t("support.status.cancelPayment"),
+                onClick: onCancelPayment,
+                loading: cancelling,
+              }
+            : undefined
+        }
       />
 
       <div className="rounded-control bg-surface-raised p-3 text-center">
-        <p className="text-label font-semibold text-fg">
+        <p className="text-label font-semibold tabular-nums text-fg">
           {formatMoney(amount, currency)}
         </p>
         <p className="mt-1 text-caption text-muted-fg">
-          {t("support.trust.paying", { name: creatorName })}
+          {t("support.trust.paying", { name: creatorName })} ·{" "}
+          {t("support.method.payingIn", { currency })}
         </p>
       </div>
 

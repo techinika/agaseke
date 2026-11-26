@@ -118,6 +118,11 @@ export function useTicketPayment({
     payment.retry();
   }, [payment]);
 
+  const cancelPayment = useCallback(async () => {
+    keyRef.current = newKey();
+    await payment.cancelPayment();
+  }, [payment]);
+
   return {
     status: payment.status,
     method: activeMethod,
@@ -127,6 +132,7 @@ export function useTicketPayment({
     cardRedirectUrl: payment.cardRedirectUrl,
     submitting: payment.submitting,
     checking: payment.checking,
+    cancelling: payment.cancelling,
     checkHint: payment.checkHint,
     waitingLong: payment.waitingLong,
     canPay,
@@ -140,6 +146,7 @@ export function useTicketPayment({
     pay,
     retry,
     checkNow: payment.checkNow,
+    cancelPayment,
     openCardPage: payment.openCardPage,
   };
 }

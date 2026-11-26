@@ -3,7 +3,6 @@ import { corsHeaders } from "./cors";
 import type { Env } from "./types";
 import { handleStoreCallback } from "./services/callback";
 import { handleDownload } from "./services/download";
-import { logActivity } from "./logger";
 import { checkRateLimit } from "./rateLimit";
 import { drainPending } from "./audit";
 import type { ExecutionContext } from "@cloudflare/workers-types";
@@ -40,7 +39,7 @@ function json(data: unknown, status = 200, origin?: string | null): Response {
   });
 }
 
-export default {
+const storeWorker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     try {
       const origin = request.headers.get("origin");
@@ -117,9 +116,88 @@ export default {
         }
       }
 
+      if (url.pathname === "/api/store/orders/cancel" && request.method === "POST") {
+        const limited = isRateLimited(request, 20, 60000);
+        if (limited) return limited;
+        try {
+          const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
+          if (auth instanceof Response) return auth;
+          const body = (await request.json()) as { orderId?: string };
+          const orderId = typeof body.orderId === "string" ? body.orderId.trim() : "";
+          if (!orderId) {
+            return json({ error: "Order ID is required" }, 400, origin);
+          }
+          const {
+            firestoreGet,
+            firestorePatch,
+            firestoreRunQuery,
+            extractFirestoreDocument,
+            getDocumentId,
+          } = await import("./firestore");
+          const { toFirestoreFields } = await import("./convert");
+          const orderDoc = await firestoreGet(env, `storeOrders/${encodeURIComponent(orderId)}`);
+          if (!orderDoc?.fields) {
+            return json({ error: "Order not found" }, 404, origin);
+          }
+          const orderData = extractFirestoreDocument(orderDoc.fields as Record<string, unknown>);
+          if (String(orderData.buyerId || "") !== auth.uid) {
+            return json({ error: "You can only cancel your own orders" }, 403, origin);
+          }
+          const status = String(orderData.status || "pending").toLowerCase();
+          const paymentStatus = String(orderData.paymentStatus || "").toLowerCase();
+          if (
+            ["paid", "processing", "shipped", "delivered", "completed"].includes(status) ||
+            paymentStatus === "paid"
+          ) {
+            return json({ error: "Paid or fulfilled orders cannot be cancelled" }, 409, origin);
+          }
+          if (status !== "cancelled" && status !== "canceled") {
+            const nowIso = new Date().toISOString();
+            await firestorePatch(
+              env,
+              `storeOrders/${encodeURIComponent(orderId)}`,
+              toFirestoreFields({
+                status: "cancelled",
+                cancelledAt: nowIso,
+                cancelledBy: "buyer",
+                updatedAt: nowIso,
+              }),
+            );
+            const txDocs = await firestoreRunQuery(env, "transactions", [
+              { fieldPath: "orderId", op: "EQUAL", value: orderId },
+            ]);
+            if (txDocs && txDocs.length > 0) {
+              for (const txDoc of txDocs) {
+                const txId = getDocumentId(txDoc);
+                const txData = extractFirestoreDocument((txDoc.fields || {}) as Record<string, unknown>);
+                if (txId && String(txData.status || "pending").toLowerCase() === "pending") {
+                  await firestorePatch(
+                    env,
+                    `transactions/${encodeURIComponent(txId)}`,
+                    toFirestoreFields({
+                      status: "cancelled",
+                      cancelledAt: nowIso,
+                      cancelledBy: "buyer",
+                      updatedAt: nowIso,
+                    }),
+                  );
+                }
+              }
+            }
+          }
+          return json({ orderId, status: "cancelled" }, 200, origin);
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : "Internal error";
+          console.error("Cancel order error:", err);
+          return json({ error: message }, 500, origin);
+        }
+      }
+
       return json({ error: "Not found" }, 404, origin);
     } finally {
       drainPending(ctx);
     }
   },
 };
+
+export default storeWorker;

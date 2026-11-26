@@ -344,3 +344,82 @@ export async function retryTransaction(
     merchant_reference: result.merchant_reference || "",
   };
 }
+
+export async function cancelTransaction(
+  env: Env,
+  uid: string,
+  ref: string,
+): Promise<{ ref: string; status: "cancelled" }> {
+  const cleanRef = toString(ref).trim();
+  if (!cleanRef) throw new RetryError("Transaction reference is required", 400);
+
+  const docs = await firestoreQuery(env, "transactions", "ref", {
+    stringValue: cleanRef,
+  }, 1);
+  let doc = docs[0];
+  if (!doc) {
+    const directDoc = await firestoreGet(env, `transactions/${encodeURIComponent(cleanRef)}`);
+    if (directDoc?.fields) {
+      doc = { name: directDoc.name || `transactions/${cleanRef}`, fields: directDoc.fields };
+    }
+  }
+  if (!doc) throw new RetryError("Transaction not found", 404);
+
+  const docId = extractDocId(doc.name);
+  const tx = convertFromFields(doc.fields);
+
+  const owner = toString(tx.supporterId || tx.initiatedBy || tx.buyerId);
+  if (!owner || owner !== uid) {
+    throw new RetryError("You can only cancel your own transactions", 403);
+  }
+
+  const currentStatus = toString(tx.status).toLowerCase() || "pending";
+  if (["successful", "success", "completed", "paid"].includes(currentStatus)) {
+    throw new RetryError("Completed transactions cannot be cancelled", 409);
+  }
+
+  const resolvedRef = toString(tx.ref) || docId;
+  if (currentStatus === "cancelled" || currentStatus === "canceled") {
+    return { ref: resolvedRef, status: "cancelled" };
+  }
+
+  const nowIso = new Date().toISOString();
+  await firestoreSet(
+    env,
+    `transactions/${docId}`,
+    convertToFields({
+      ...tx,
+      status: "cancelled",
+      cancelledAt: nowIso,
+      cancelledBy: "user",
+      updatedAt: nowIso,
+    }),
+  );
+
+  const retriedRef = toString(tx.retriedRef);
+  if (retriedRef && retriedRef !== resolvedRef) {
+    const retriedDocs = await firestoreQuery(env, "transactions", "ref", {
+      stringValue: retriedRef,
+    }, 1);
+    const rDoc = retriedDocs[0];
+    if (rDoc?.fields) {
+      const rTx = convertFromFields(rDoc.fields);
+      const rStatus = toString(rTx.status).toLowerCase() || "pending";
+      if (rStatus === "pending") {
+        await firestoreSet(
+          env,
+          `transactions/${extractDocId(rDoc.name)}`,
+          convertToFields({
+            ...rTx,
+            status: "cancelled",
+            cancelledAt: nowIso,
+            cancelledBy: "user",
+            updatedAt: nowIso,
+          }),
+        );
+      }
+    }
+  }
+
+  return { ref: resolvedRef, status: "cancelled" };
+}

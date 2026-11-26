@@ -29,6 +29,7 @@ export interface CreatorPageViewProps {
   shareOpen: boolean;
   onCloseShare: () => void;
   isLoggedIn: boolean;
+  isCommunityMember?: boolean;
   showCreateBanner: boolean;
   children: ReactNode;
 }
@@ -49,6 +50,7 @@ export function CreatorPageView({
   shareOpen,
   onCloseShare,
   isLoggedIn,
+  isCommunityMember = false,
   showCreateBanner,
   children,
 }: CreatorPageViewProps) {
@@ -70,6 +72,7 @@ export function CreatorPageView({
         socials={socials}
         isLoggedIn={isLoggedIn}
         communityEnabled={creator.communityEnabled === true}
+        isCommunityMember={isCommunityMember}
         bookingEnabled={creator.bookingEnabled === true}
         onShare={onShare}
         onSupport={onSupport}

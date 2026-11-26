@@ -687,15 +687,17 @@ export default function PostDetailPage({
           )}
 
           {unlocked && post.type === "video" && post.contentUrl && (
-            <div className="overflow-hidden border-b border-line bg-black">
+            <div className="border-b border-line bg-black/5">
               <MediaAsset
                 postId={post.id}
                 isPrivate={!!post.isPrivate}
                 url={post.contentUrl}
                 as="video"
-                controls
-                controlsList="nodownload"
-                className="aspect-video w-full"
+                poster={post.coverUrl}
+                title={post.title}
+                creatorName={creatorName}
+                creatorHandle={creatorHandle}
+                className="rounded-none"
               />
             </div>
           )}

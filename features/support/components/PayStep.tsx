@@ -113,9 +113,14 @@ export function PayStep({
       )}
 
       <div>
-        <p className="mb-2 text-label font-semibold text-fg">
-          {t("support.method.title")}
-        </p>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <p className="text-label font-semibold text-fg">
+            {t("support.method.title")}
+          </p>
+          <span className="text-caption font-semibold text-brand-strong">
+            {t("support.method.payingIn", { currency })}
+          </span>
+        </div>
         <div className="grid gap-2">
           {OPTIONS.map((option) => {
             const Icon = option.icon;

@@ -15,6 +15,28 @@ function subDocId(docName: string): string {
   return parts[parts.length - 1];
 }
 
+async function resolveSubscriberProfile(
+  env: Env,
+  userId: string,
+): Promise<{ email: string; name: string }> {
+  if (!userId) return { email: "", name: "" };
+  const profileDoc = await firestoreGet(env, `profiles/${userId}`);
+  if (!profileDoc?.fields) return { email: "", name: "" };
+
+  const profile = convertFromFields(profileDoc.fields as Record<string, unknown>);
+  const email = typeof profile.email === "string" ? profile.email.trim() : "";
+  const fullName = [profile.firstName, profile.lastName]
+    .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+    .join(" ")
+    .trim();
+  const name =
+    (typeof profile.displayName === "string" && profile.displayName.trim()) ||
+    (typeof profile.name === "string" && profile.name.trim()) ||
+    fullName ||
+    email;
+  return { email, name };
+}
+
 async function resolveSubscriberEmail(
   env: Env,
   sub: Record<string, unknown>,
@@ -22,11 +44,8 @@ async function resolveSubscriberEmail(
   const stored = (sub.userEmail as string) || "";
   if (stored) return stored;
 
-  const profileDoc = await firestoreGet(env, `profiles/${sub.userId}`);
-  if (!profileDoc) return "";
-
-  const profile = convertFromFields(profileDoc.fields as Record<string, unknown>);
-  return (profile.email as string) || "";
+  const { email } = await resolveSubscriberProfile(env, String(sub.userId || ""));
+  return email;
 }
 
 async function sendRenewalEmail(
@@ -150,14 +169,23 @@ export async function initiateSubscription(
     periodEnd.setMonth(periodEnd.getMonth() + 1);
   }
 
+  const profile = await resolveSubscriberProfile(env, uid);
+  const fullNameFromRequest = [data.firstName, data.lastName]
+    .filter((v): v is string => typeof v === "string" && v.trim().length > 0)
+    .join(" ")
+    .trim();
+  const resolvedEmail = (data.email || "").trim() || profile.email;
+  const resolvedName = fullNameFromRequest || profile.name || resolvedEmail;
+
   const subFields = {
     id: subscriptionId,
     tierId: data.tierId,
     tierName: data.tierName,
     userId: uid,
-    userEmail: data.email || "",
-    userName: "",
+    userEmail: resolvedEmail,
+    userName: resolvedName,
     creatorId: data.creatorId,
+    creatorUid: data.creatorId,
     creatorHandle: data.creatorHandle,
     subscribedAt: now,
     expiresAt: periodEnd.toISOString(),
@@ -315,39 +343,77 @@ export async function handlePaymentCallback(
   creatorShare = 0,
   referralShare = 0,
 ): Promise<void> {
-  const subscriptionId = txData.communitySubscriptionId as string;
-  if (!subscriptionId) {
-    console.error("Community callback: no subscriptionId in txData");
+  let subscriptionId =
+    typeof txData.communitySubscriptionId === "string"
+      ? txData.communitySubscriptionId.trim()
+      : "";
+  let doc: Record<string, unknown> | null = subscriptionId
+    ? await firestoreGet(env, `communitySubscriptions/${subscriptionId}`)
+    : null;
+
+  if (!doc && paymentRef) {
+    const byPaymentRef = await firestoreQueryAll(
+      env,
+      "communitySubscriptions",
+      "paymentRef",
+      { stringValue: paymentRef },
+    );
+    if (byPaymentRef.length > 0) {
+      doc = byPaymentRef[0];
+      subscriptionId = subDocId(byPaymentRef[0].name);
+    }
+  }
+
+  const sub = doc?.fields
+    ? convertFromFields(doc.fields as Record<string, unknown>)
+    : null;
+
+  if (sub && sub.lastPaymentRef === paymentRef) return;
+
+  const creatorHandle = String(
+    (typeof txData.creatorId === "string" && txData.creatorId) ||
+      (sub?.creatorHandle as string) ||
+      "",
+  );
+  if (!creatorHandle) {
+    console.error(`Community callback: missing creatorHandle for ${paymentRef}`);
     return;
   }
 
-  const doc = await firestoreGet(env, `communitySubscriptions/${subscriptionId}`);
-  if (!doc) {
-    console.error(`Community callback: subscription ${subscriptionId} not found`);
-    return;
+  let creatorUid = String(
+    (typeof txData.creatorUid === "string" && txData.creatorUid) ||
+      (sub?.creatorUid as string) ||
+      (sub?.creatorId as string) ||
+      "",
+  );
+  if (!creatorUid) {
+    const creatorDoc = await firestoreGet(env, `creators/${creatorHandle}`);
+    if (creatorDoc?.fields) {
+      const creatorData = convertFromFields(creatorDoc.fields as Record<string, unknown>);
+      creatorUid = typeof creatorData.uid === "string" ? creatorData.uid : "";
+    }
   }
-
-  const sub = convertFromFields(doc.fields as Record<string, unknown>);
-  if (sub.lastPaymentRef === paymentRef) return;
 
   const nowDate = new Date();
   const now = nowDate.toISOString();
-  const existingExpiresAt = sub.expiresAt ? new Date(sub.expiresAt as string) : null;
+  const existingExpiresAt = sub?.expiresAt ? new Date(sub.expiresAt as string) : null;
   const baseDate =
+    sub &&
     sub.status === "active" &&
     existingExpiresAt &&
     Number.isFinite(existingExpiresAt.getTime()) &&
     existingExpiresAt > nowDate
       ? existingExpiresAt
       : nowDate;
+  const interval = String(sub?.interval || txData.communityInterval || "monthly");
   const periodEnd = new Date(baseDate);
-  if (sub.interval === "yearly") {
+  if (interval === "yearly") {
     periodEnd.setFullYear(periodEnd.getFullYear() + 1);
   } else {
     periodEnd.setMonth(periodEnd.getMonth() + 1);
   }
 
-  const currency = txData.currency as string;
+  const currency = String(txData.currency || sub?.currency || "");
   if (!currency) {
     throw new Error("Community callback missing currency");
   }
@@ -373,11 +439,15 @@ export async function handlePaymentCallback(
     {
       path: `creatorIncome/${safeRef}_creator`,
       fields: convertToFields({
-        creatorUid: txData.creatorUid as string,
+        creatorUid,
+        creatorHandle,
         amount: creatorAmount,
         currency,
         txRef: paymentRef,
         reason: "community_subscription",
+        subscriptionId: subscriptionId || "",
+        tierId: String(sub?.tierId || txData.communityTierId || ""),
+        tierName: String(sub?.tierName || ""),
         createdAt: now,
       }),
     },
@@ -385,7 +455,7 @@ export async function handlePaymentCallback(
 
   const increments: Array<{ path: string; fields: Record<string, number> }> = [
     {
-      path: `creators/${txData.creatorId}`,
+      path: `creators/${creatorHandle}`,
       fields: { [earningsField]: creatorAmount, [payoutField]: creatorAmount },
     },
   ];
@@ -415,8 +485,8 @@ export async function handlePaymentCallback(
         source: "community",
         currency,
         totalAmount,
-        creatorUid: txData.creatorUid as string,
-        creatorHandle: txData.creatorId as string,
+        creatorUid,
+        creatorHandle,
         creatorShare: creatorAmount,
         platformShare: platformAmount,
         referralShare: includeReferral ? referralAmount : 0,
@@ -437,7 +507,8 @@ export async function handlePaymentCallback(
     {
       txRef: { stringValue: paymentRef },
       worker: { stringValue: "community" },
-      creatorId: { stringValue: txData.creatorId as string },
+      creatorId: { stringValue: creatorHandle },
+      creatorUid: { stringValue: creatorUid },
       creatorShare: currencyNumberField(creatorAmount, currency),
       totalAmount: currencyNumberField(totalAmount, currency),
       currency: { stringValue: currency },
@@ -452,11 +523,38 @@ export async function handlePaymentCallback(
     throw new Error(`Community payment commit failed for ${paymentRef}`);
   }
 
+  if (!sub || !subscriptionId) {
+    console.warn(
+      `Community callback: income recorded for ${paymentRef}, but subscription ${subscriptionId || "(missing)"} not found`,
+    );
+    await logActivity(env, "warn", "community", `Community callback recorded income without subscription doc`, {
+      paymentRef,
+      subscriptionId,
+      creatorHandle,
+      creatorShare: creatorAmount,
+      currency,
+      credit,
+    });
+    return;
+  }
+
+  const subscriberId = String(sub.userId || txData.supporterId || "");
+  const profile = await resolveSubscriberProfile(env, subscriberId);
+  const userEmail = (sub.userEmail as string) || (txData.buyerEmail as string) || profile.email;
+  const userName = (sub.userName as string) || profile.name || userEmail || subscriberId;
+
   await firestoreSet(
     env,
     `communitySubscriptions/${subscriptionId}`,
     convertToFields({
       ...sub,
+      id: subscriptionId,
+      creatorId: (sub.creatorId as string) || creatorUid,
+      creatorUid,
+      creatorHandle,
+      userName,
+      userEmail,
+      currency,
       status: "active",
       renewalStatus: "active",
       currentPeriodStart:
@@ -464,6 +562,8 @@ export async function handlePaymentCallback(
       currentPeriodEnd: periodEnd.toISOString(),
       expiresAt: periodEnd.toISOString(),
       amount: totalAmount,
+      paymentMethod,
+      paymentRef: (sub.paymentRef as string) || paymentRef,
       lastPaymentRef: paymentRef,
       lastPaymentAt: now,
       renewedAt: now,
@@ -473,22 +573,17 @@ export async function handlePaymentCallback(
     }),
   );
 
-  const profileDoc = await firestoreGet(env, `profiles/${sub.userId}`);
-  const userName = profileDoc
-    ? (convertFromFields(profileDoc.fields as Record<string, unknown>).displayName as string) ||
-      (sub.userEmail as string) ||
-      ""
-    : (sub.userEmail as string) || "";
-
-  await addChatMember(
-    env,
-    sub.creatorHandle as string,
-    sub.tierId as string,
-    sub.userId as string,
-    userName,
-    "active",
-    sub.tierName as string,
-  );
+  if (subscriberId) {
+    await addChatMember(
+      env,
+      creatorHandle,
+      String(sub.tierId || txData.communityTierId || ""),
+      subscriberId,
+      userName,
+      "active",
+      (sub.tierName as string) || "",
+    );
+  }
 
   await logActivity(env, "info", "community", `Subscription ${subscriptionId} activated`, {
     paymentRef,

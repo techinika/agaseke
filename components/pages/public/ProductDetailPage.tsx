@@ -31,6 +31,7 @@ export default function ProductDetailPage({ username, productId }: { username: s
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkoutPaid, setCheckoutPaid] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -52,6 +53,7 @@ export default function ProductDetailPage({ username, productId }: { username: s
         const p = { id: prodSnap.id, ...prodSnap.data() } as Product;
         setProduct(p);
         setSelectedSize(p.sizes?.[0]);
+        setImgError(false);
 
         if (currentUser?.uid) {
           const ordersRef = collection(db, "storeOrders");
@@ -135,78 +137,139 @@ export default function ProductDetailPage({ username, productId }: { username: s
   const unitWithFee = basePrice + ((product.platformFeePayer || "buyer") === "buyer" ? basePrice * platformSharePercentage : 0);
   const isOutOfStock = product.type === "physical" && (product.stock ?? 0) <= 0;
   const maxQty = product.type === "physical" && (product.stock ?? 0) > 0 ? product.stock : undefined;
+  const activeDisplayTotal = quantity > 1 ? subtotal : basePrice;
+  const activeTotalWithFee = quantity > 1 ? priceWithFee : unitWithFee;
 
   return (
     <>
-      <div className="max-w-5xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <Link href={`/${username}/store`} className="flex min-h-11 items-center gap-2 text-muted-fg hover:text-fg transition">
-            <ArrowLeft size={20} />
-            <span className="font-medium">Back to Store</span>
+      <div className="mx-auto max-w-5xl px-4 py-6 pb-28 sm:px-6 sm:py-8 md:pb-12">
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <Link
+            href={`/${username}/store`}
+            className="flex min-h-11 items-center gap-2 text-label font-semibold text-muted-fg transition hover:text-fg"
+          >
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            <span>Back to Store</span>
+          </Link>
+          <Link
+            href={`/${username}`}
+            className="text-caption font-semibold text-brand-strong hover:underline"
+          >
+            @{username}
           </Link>
         </div>
 
-        <div className="bg-surface rounded-card overflow-hidden shadow-sm border border-line">
-          <div className="md:flex">
-            <div className="md:w-1/2 bg-surface-sunken aspect-square">
-              {product.imageUrl ? (
-                <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start lg:gap-8">
+          <div className="overflow-hidden rounded-card border border-line bg-surface-sunken lg:sticky lg:top-6 lg:col-span-6">
+            <div className="aspect-square w-full">
+              {product.imageUrl && !imgError ? (
+                <img
+                  src={product.imageUrl}
+                  alt={product.name}
+                  referrerPolicy="no-referrer"
+                  onError={() => setImgError(true)}
+                  className="h-full w-full object-cover"
+                />
               ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <Package size={80} className="text-muted-fg" />
+                <div className="flex h-full w-full items-center justify-center">
+                  <Package className="size-16 text-muted-fg" aria-hidden="true" />
                 </div>
               )}
             </div>
+          </div>
 
-            <div className="md:w-1/2 p-8 space-y-5">
-              <div className="flex items-center gap-2">
-                <span className={`text-caption font-bold uppercase tracking-wider px-2.5 py-1 rounded-control ${product.type === "digital" ? "bg-brand-soft text-brand-strong" : "bg-info-bg text-info"}`}>
+          <div className="rounded-card border border-line bg-surface p-5 sm:p-8 lg:col-span-6">
+            <div className="space-y-5">
+              <div className="flex flex-wrap items-center gap-2 text-caption font-semibold uppercase tracking-wider text-muted-fg">
+                <span className={product.type === "digital" ? "text-brand-strong" : "text-info"}>
                   {product.type === "digital" ? "Digital Product" : "Physical Product"}
                 </span>
+                {product.type === "physical" && (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span>
+                      {(product.stock ?? 0) > 0 ? `${product.stock} in stock` : "Out of stock"}
+                    </span>
+                  </>
+                )}
                 {isPurchased && (
-                  <span className="bg-success-bg text-success text-caption font-bold px-2.5 py-1 rounded-control flex items-center gap-1">
-                    <Check size={12} /> Owned
-                  </span>
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span className="inline-flex items-center gap-1 text-success">
+                      <Check className="size-3.5" aria-hidden="true" /> Owned
+                    </span>
+                  </>
                 )}
               </div>
 
-              <h1 className="text-3xl font-bold">{product.name}</h1>
-              <p className="text-muted-fg leading-relaxed">{product.description}</p>
-
               <div>
-                <div className="text-4xl font-bold tabular-nums">{formatCurrency(quantity > 1 ? subtotal : basePrice, productCurrency)}</div>
+                <h1 className="text-2xl font-bold tracking-tight text-fg sm:text-3xl">
+                  {product.name}
+                </h1>
+                <p className="mt-1 text-label text-muted-fg">
+                  By{" "}
+                  <Link href={`/${username}`} className="font-semibold text-fg hover:underline">
+                    {creatorData.name || `@${username}`}
+                  </Link>
+                </p>
+              </div>
+
+              <p className="whitespace-pre-line text-body leading-relaxed text-muted-fg">
+                {product.description}
+              </p>
+
+              <div className="rounded-control border border-line bg-surface-raised p-4">
+                <div className="flex items-baseline justify-between gap-3">
+                  <div className="text-3xl font-bold tabular-nums text-fg sm:text-4xl">
+                    {formatCurrency(activeDisplayTotal, productCurrency)}
+                  </div>
+                  <span className="text-caption font-semibold uppercase tracking-wider text-brand-strong">
+                    Charging in {productCurrency}
+                  </span>
+                </div>
                 {(product.platformFeePayer || "buyer") === "buyer" && (
-                  <p className="text-sm text-muted-fg mt-1 tabular-nums">
-                    {formatCurrency(quantity > 1 ? priceWithFee : unitWithFee, productCurrency)} with platform fee
+                  <p className="mt-1 text-label text-muted-fg tabular-nums">
+                    Total with fee:{" "}
+                    <span className="font-semibold text-fg">
+                      {formatCurrency(activeTotalWithFee, productCurrency)}
+                    </span>
                   </p>
                 )}
               </div>
 
               {product.discount?.enabled && (
-                <div className="bg-brand-soft text-brand-strong px-3 py-2 rounded-control text-sm font-bold inline-block">
-                  {product.discount.percentage}% discount applied
-                </div>
+                <p className="text-label font-semibold text-brand-strong">
+                  {product.discount.percentage}% discount included
+                </p>
               )}
 
               {product.bulkPricing && product.bulkPricing.length > 0 && (
-                <div className="bg-success-bg rounded-control p-4 space-y-1">
-                  <p className="text-xs font-bold text-success uppercase">Bulk Discounts</p>
+                <div className="space-y-1 rounded-control bg-success-bg p-4">
+                  <p className="text-caption font-bold uppercase tracking-wider text-success">
+                    Bulk Discounts
+                  </p>
                   {product.bulkPricing.map((bulk, idx) => (
-                    <p key={idx} className="text-sm text-success">Buy {bulk.minQuantity}+: {bulk.discountPercentage}% off</p>
+                    <p key={idx} className="text-label text-success">
+                      Buy {bulk.minQuantity}+: {bulk.discountPercentage}% off
+                    </p>
                   ))}
                 </div>
               )}
 
               {product.sizes && product.sizes.length > 0 && (
                 <div>
-                  <p className="text-sm font-bold mb-2">Select Size</p>
+                  <p className="mb-2 text-label font-bold text-fg">Select Size</p>
                   <div className="flex flex-wrap gap-2">
                     {product.sizes.map((size) => (
                       <button
                         key={size}
                         type="button"
                         onClick={() => setSelectedSize(size)}
-                        className={`min-h-11 px-4 py-2 font-bold rounded-control transition ${selectedSize === size ? "bg-brand-strong text-on-brand" : "bg-surface-sunken hover:bg-border-strong"}`}
+                        className={`min-h-11 rounded-control px-4 py-2 font-bold transition ${
+                          selectedSize === size
+                            ? "bg-brand-strong text-on-brand"
+                            : "bg-surface-sunken text-fg hover:bg-border-strong"
+                        }`}
                       >
                         {size}
                       </button>
@@ -215,7 +278,7 @@ export default function ProductDetailPage({ username, productId }: { username: s
                 </div>
               )}
 
-              <div className="pt-4 border-t border-line">
+              <div className="border-t border-line pt-4">
                 {isPurchased ? (
                   <div className="flex gap-3">
                     {product.type === "digital" && (
@@ -223,18 +286,22 @@ export default function ProductDetailPage({ username, productId }: { username: s
                         type="button"
                         disabled={downloading}
                         onClick={() => void handleDownload()}
-                        className="min-h-12 flex-1 py-3 bg-success text-on-success rounded-control font-bold hover:opacity-90 transition flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-control bg-success py-3 font-bold text-on-success transition hover:opacity-90 disabled:opacity-50"
                       >
-                        {downloading ? <Loader size={18} className="animate-spin" /> : <Download size={18} />}
+                        {downloading ? (
+                          <Loader className="size-4 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <Download className="size-4" aria-hidden="true" />
+                        )}
                         {downloading ? "Downloading..." : "Download"}
                       </button>
                     )}
                     {product.type === "physical" && (
                       <Link
                         href={`/${username}/store`}
-                        className="min-h-12 flex-1 py-3 bg-info-bg text-info rounded-control font-bold flex items-center justify-center gap-2 hover:opacity-90 transition"
+                        className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-control bg-info-bg py-3 font-bold text-info transition hover:opacity-90"
                       >
-                        <Truck size={18} /> Track in My Orders
+                        <Truck className="size-4" aria-hidden="true" /> Track in My Orders
                       </Link>
                     )}
                   </div>
@@ -243,39 +310,41 @@ export default function ProductDetailPage({ username, productId }: { username: s
                     href={`/login?referral=${username}&redirect=${encodeURIComponent(pathname)}`}
                     className="flex min-h-12 w-full items-center justify-center gap-2 rounded-control bg-brand-strong py-3 font-bold text-on-brand transition hover:opacity-90"
                   >
-                    <ShoppingCart size={18} /> Log in to Purchase
+                    <ShoppingCart className="size-4" aria-hidden="true" /> Log in to Purchase ({productCurrency})
                   </Link>
                 ) : (
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center bg-surface-sunken rounded-control">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="flex items-center rounded-control bg-surface-sunken">
                       <button
                         type="button"
                         aria-label="Decrease quantity"
                         onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                        className="min-h-11 min-w-11 flex items-center justify-center hover:bg-border-strong rounded-l-control transition"
+                        className="flex min-h-11 min-w-11 items-center justify-center rounded-l-control transition hover:bg-border-strong"
                       >
-                        <Minus size={16} />
+                        <Minus className="size-4" aria-hidden="true" />
                       </button>
-                      <span className="w-12 text-center font-bold tabular-nums">{quantity}</span>
+                      <span className="w-10 text-center font-bold tabular-nums sm:w-12">
+                        {quantity}
+                      </span>
                       <button
                         type="button"
                         aria-label="Increase quantity"
                         onClick={() =>
                           setQuantity(maxQty ? Math.min(maxQty, quantity + 1) : quantity + 1)
                         }
-                        className="min-h-11 min-w-11 flex items-center justify-center hover:bg-border-strong rounded-r-control transition"
+                        className="flex min-h-11 min-w-11 items-center justify-center rounded-r-control transition hover:bg-border-strong"
                       >
-                        <Plus size={16} />
+                        <Plus className="size-4" aria-hidden="true" />
                       </button>
                     </div>
                     <button
                       type="button"
                       onClick={handleBuyNow}
                       disabled={isOutOfStock}
-                      className="min-h-12 flex-1 py-3 bg-brand-strong text-on-brand rounded-control font-bold hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
+                      className="flex min-h-12 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-control bg-brand-strong px-4 py-3 font-bold text-on-brand transition hover:opacity-90 disabled:opacity-50"
                     >
-                      <ShoppingCart size={18} />
-                      {isOutOfStock ? "Out of Stock" : "Buy Now"}
+                      <ShoppingCart className="size-4" aria-hidden="true" />
+                      {isOutOfStock ? "Out of Stock" : `Buy Now (${productCurrency})`}
                     </button>
                   </div>
                 )}
@@ -284,6 +353,40 @@ export default function ProductDetailPage({ username, productId }: { username: s
           </div>
         </div>
       </div>
+
+      {/* Compact mobile sticky bar (single compact row <=15% viewport height) */}
+      {!isPurchased && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 px-4 py-2.5 backdrop-blur-sm md:hidden">
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-caption text-muted-fg">
+                Charging in {productCurrency}
+              </p>
+              <p className="text-body font-bold tabular-nums text-fg">
+                {formatCurrency(activeTotalWithFee, productCurrency)}
+              </p>
+            </div>
+            {!isLoggedIn ? (
+              <Link
+                href={`/login?referral=${username}&redirect=${encodeURIComponent(pathname)}`}
+                className="flex min-h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-control bg-brand-strong px-4 text-label font-bold text-on-brand"
+              >
+                Log in to Buy
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={handleBuyNow}
+                disabled={isOutOfStock}
+                className="flex min-h-11 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-control bg-brand-strong px-5 text-label font-bold text-on-brand disabled:opacity-50"
+              >
+                <ShoppingCart className="size-4" aria-hidden="true" />
+                {isOutOfStock ? "Out of Stock" : "Buy Now"}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {checkoutOpen && (
         <CheckoutSheet

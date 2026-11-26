@@ -1,6 +1,12 @@
 "use client";
 
-import type { AnchorHTMLAttributes, ImgHTMLAttributes, ReactNode, VideoHTMLAttributes } from "react";
+import type {
+  AnchorHTMLAttributes,
+  ImgHTMLAttributes,
+  ReactNode,
+  VideoHTMLAttributes,
+} from "react";
+import { CustomVideoPlayer } from "@/components/media/CustomVideoPlayer";
 import { usePostMediaSrc } from "@/lib/usePostMediaSrc";
 
 type BaseProps = {
@@ -10,7 +16,17 @@ type BaseProps = {
 };
 
 type ImgProps = BaseProps & { as?: "img" } & Omit<ImgHTMLAttributes<HTMLImageElement>, "src">;
-type VideoProps = BaseProps & { as: "video" } & Omit<VideoHTMLAttributes<HTMLVideoElement>, "src">;
+type VideoProps = BaseProps & {
+  as: "video";
+  poster?: string | null;
+  title?: string;
+  creatorName?: string;
+  creatorHandle?: string;
+  postHref?: string;
+  allowReelOnMobile?: boolean;
+  compact?: boolean;
+  nativeControls?: boolean;
+} & Omit<VideoHTMLAttributes<HTMLVideoElement>, "src">;
 
 /**
  * Renders post media without ever putting a bare asset URL for private content
@@ -25,7 +41,75 @@ export function MediaAsset(props: ImgProps | VideoProps) {
   if (!src) return null;
 
   if (as === "video") {
-    return <video src={src} {...(rest as VideoHTMLAttributes<HTMLVideoElement>)} />;
+    const {
+      poster,
+      title,
+      creatorName,
+      creatorHandle,
+      postHref,
+      allowReelOnMobile = true,
+      compact = false,
+      nativeControls = false,
+      autoPlay,
+      loop,
+      preload,
+      className,
+      onPlay,
+      onPause,
+      onEnded,
+      // Omit native <video> flags already handled by CustomVideoPlayer
+      controls: _controls,
+      controlsList: _controlsList,
+      ...videoRest
+    } = rest as Omit<VideoProps, keyof BaseProps | "as">;
+
+    void _controls;
+    void _controlsList;
+
+    if (nativeControls) {
+      return (
+        <video
+          src={src}
+          poster={poster || undefined}
+          controls
+          playsInline
+          autoPlay={autoPlay}
+          loop={loop}
+          preload={preload}
+          className={className}
+          onPlay={onPlay}
+          onPause={onPause}
+          onEnded={onEnded}
+          {...videoRest}
+        />
+      );
+    }
+
+    const resolvedPoster = poster ? mediaSrc(poster) ?? undefined : undefined;
+
+    return (
+      <CustomVideoPlayer
+        src={src}
+        poster={resolvedPoster}
+        title={title}
+        creatorName={creatorName}
+        creatorHandle={creatorHandle}
+        postHref={postHref}
+        autoPlay={Boolean(autoPlay)}
+        loop={loop}
+        preload={
+          preload === "none" || preload === "auto" || preload === "metadata"
+            ? preload
+            : "metadata"
+        }
+        allowReelOnMobile={allowReelOnMobile}
+        compact={compact}
+        className={className}
+        onPlay={onPlay}
+        onPause={onPause}
+        onEnded={onEnded}
+      />
+    );
   }
 
   const { alt, ...imgProps } = rest as ImgHTMLAttributes<HTMLImageElement>;

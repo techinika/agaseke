@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Headphones, Play } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
+import { CustomVideoPlayer } from "@/components/media/CustomVideoPlayer";
+import { useMediaPlayback } from "@/components/media/MediaPlaybackContext";
 import { MediaImage } from "./MediaImage";
 
 export type MediaKind = "video" | "audio";
@@ -15,6 +17,7 @@ export interface MediaPlayerProps {
   title?: string;
   sizeLabel?: string;
   className?: string;
+  allowReelOnMobile?: boolean;
 }
 
 export function MediaPlayer({
@@ -24,27 +27,43 @@ export function MediaPlayer({
   title,
   sizeLabel,
   className,
+  allowReelOnMobile = false,
 }: MediaPlayerProps) {
   const [loaded, setLoaded] = useState(false);
+  const audioId = useId();
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const { registerMedia, activateMedia, notifyPaused, pauseAll } = useMediaPlayback();
   const label = title ?? (kind === "video" ? t("media.video") : t("media.audio"));
+
+  useEffect(() => {
+    if (kind !== "audio" || !loaded) return;
+    const el = audioRef.current;
+    registerMedia(audioId, el);
+    return () => {
+      registerMedia(audioId, null);
+    };
+  }, [audioId, kind, loaded, registerMedia]);
 
   if (loaded) {
     return kind === "video" ? (
-      <video
+      <CustomVideoPlayer
         src={src}
-        controls
+        poster={poster}
+        title={label}
         autoPlay
-        playsInline
-        preload="metadata"
-        aria-label={label}
-        className={cn("w-full rounded-card bg-black", className)}
+        allowReelOnMobile={allowReelOnMobile}
+        className={cn("rounded-card", className)}
       />
     ) : (
       <audio
+        ref={audioRef}
         src={src}
         controls
         autoPlay
         preload="metadata"
+        onPlay={(e) => activateMedia(audioId, e.currentTarget)}
+        onPause={(e) => notifyPaused(audioId, e.currentTarget)}
+        onEnded={(e) => notifyPaused(audioId, e.currentTarget)}
         aria-label={label}
         className={cn("w-full", className)}
       />
@@ -54,7 +73,11 @@ export function MediaPlayer({
   return (
     <button
       type="button"
-      onClick={() => setLoaded(true)}
+      onClick={(e) => {
+        e.stopPropagation();
+        pauseAll();
+        setLoaded(true);
+      }}
       className={cn(
         "group relative flex w-full items-center justify-center overflow-hidden rounded-card bg-fg text-white outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
         kind === "video" ? "aspect-video" : "min-h-20 px-4 py-3",

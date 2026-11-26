@@ -135,7 +135,7 @@ export const en = {
       hint: "Most of your support goes to the creator.",
       custom: "Custom amount",
       continue: "Continue",
-      invalid: "Enter an amount of at least {min} RWF.",
+      invalid: "Enter an amount of at least {min}.",
       presets: "Quick amounts",
     },
     breakdown: {
@@ -175,6 +175,7 @@ export const en = {
         "This looks like a {detected} number. Switch to {detected} or check the number.",
       lastUsed: "Last used",
       secure: "Secure payment",
+      payingIn: "Charging in {currency}",
     },
     trust: {
       paying: "You are supporting {name}",
@@ -243,6 +244,9 @@ export const en = {
       shareCreator: "Share {name}",
       reference: "Reference",
       receipt: "Keep this reference for your receipt.",
+      cancelPayment: "Cancel payment",
+      cancelling: "Cancelling…",
+      cancelled: "Payment cancelled.",
     },
     error: {
       generic: "We could not start the payment. Check your connection and try again.",
@@ -335,6 +339,8 @@ export const en = {
       failedBody: "Nothing was charged. Check your details and try again.",
       signedOut: "Sign in to complete your purchase.",
       invalidPhone: "Enter a valid MTN or Airtel number, e.g. 078 000 0000.",
+      cancelOrder: "Cancel order",
+      cancellingOrder: "Cancelling…",
     },
     ticket: {
       title: "Ticket for {title}",
@@ -388,6 +394,7 @@ export const en = {
     supportName: "Support {name}",
     supportHint: "Creator receives {percent}%",
     community: "Community",
+    exploreCommunity: "Explore Community",
     store: "Store",
     giveaways: "Giveaways",
     events: "Events",

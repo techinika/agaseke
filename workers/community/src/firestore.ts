@@ -183,20 +183,30 @@ export async function firestoreQueryAll(
     if (!token) break;
 
     const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents:runQuery`;
-    const body: any = {
-      structuredQuery: {
-        from: [{ collectionId: collection }],
-        where: {
-          fieldFilter: {
-            field: { fieldPath: field },
-            op: "EQUAL",
-            value,
-          },
+    const structuredQuery: {
+      from: Array<{ collectionId: string }>;
+      where: {
+        fieldFilter: {
+          field: { fieldPath: string };
+          op: string;
+          value: Record<string, unknown>;
+        };
+      };
+      limit: number;
+      offset?: number;
+    } = {
+      from: [{ collectionId: collection }],
+      where: {
+        fieldFilter: {
+          field: { fieldPath: field },
+          op: "EQUAL",
+          value,
         },
-        limit: 300,
       },
+      limit: 300,
     };
-    if (pageToken) body.structuredQuery.offset = results.length;
+    if (pageToken) structuredQuery.offset = results.length;
+    const body = { structuredQuery };
 
     const res = await auditedFetch(env, "POST", `${collection}:runQuery`, url, {
       method: "POST",

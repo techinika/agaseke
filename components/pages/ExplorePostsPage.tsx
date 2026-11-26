@@ -22,6 +22,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { Skeleton, SkeletonText } from "@/components/ui/Skeleton";
+import { CustomVideoPlayer } from "@/components/media/CustomVideoPlayer";
 import { cn } from "@/lib/cn";
 import { estimateReadingMinutes } from "@/lib/readingTime";
 
@@ -489,12 +490,14 @@ export default function ExplorePostsPage({
                     )}
 
                     {item.type === "video" && item.contentUrl && (
-                      <div className="mb-4 overflow-hidden rounded-control bg-black">
-                        <video
+                      <div className="mb-4">
+                        <CustomVideoPlayer
                           src={item.contentUrl}
-                          controls
-                          controlsList="nodownload"
-                          className="aspect-video w-full"
+                          poster={item.coverUrl}
+                          title={item.title}
+                          creatorName={item.authorName}
+                          creatorHandle={item.authorHandle}
+                          postHref={postUrl}
                         />
                       </div>
                     )}

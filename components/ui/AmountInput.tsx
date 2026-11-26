@@ -35,7 +35,7 @@ export function AmountInput({
   const hintId = `${inputId}-hint`;
   const invalid =
     value !== "" && value > 0 && value < min
-      ? t("support.amount.invalid", { min })
+      ? t("support.amount.invalid", { min: `${min} ${currency}` })
       : undefined;
   const resolvedError = error ?? invalid;
   const describedBy =

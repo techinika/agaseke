@@ -117,6 +117,31 @@ export async function fetchFeaturedPartners(
   );
 }
 
+import { isSubscriptionActive } from "@/lib/contentAccess";
+
+export async function fetchActiveCommunityTierIds(
+  userId: string,
+  creatorHandle: string,
+): Promise<string[]> {
+  if (!userId || !creatorHandle) return [];
+  const database = requireDb();
+  const snapshot = await getDocs(
+    query(
+      collection(database, "communitySubscriptions"),
+      where("userId", "==", userId),
+    ),
+  );
+  const tierIds = new Set<string>();
+  for (const docSnap of snapshot.docs) {
+    const d = docSnap.data() as Record<string, unknown>;
+    if (d.creatorHandle !== creatorHandle) continue;
+    if (!isSubscriptionActive(d)) continue;
+    const tierId = typeof d.tierId === "string" ? d.tierId.trim() : "";
+    if (tierId) tierIds.add(tierId);
+  }
+  return Array.from(tierIds);
+}
+
 export async function countCreatorView(username: string): Promise<void> {
   const { trackView } = await import("@/lib/viewTracker");
   trackView("creator", username);

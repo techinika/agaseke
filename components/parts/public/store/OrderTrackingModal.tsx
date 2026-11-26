@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Timestamp } from "firebase/firestore";
 import { Order, Product, getProductCurrency } from "./types";
 import { downloadProduct } from "@/lib/downloadProduct";
+import { cancelStoreOrder } from "@/lib/paymentsService";
 import { formatMoney as formatCurrency } from "@/lib/format/money";
 
 const statusSteps = ["pending", "paid", "processing", "shipped", "delivered"];
@@ -28,15 +29,21 @@ export function OrderTrackingModal({
   orders,
   products = [],
   uid,
+  onOrderCancelled,
   onClose,
 }: {
   orders: Order[];
   products?: Product[];
   uid?: string;
+  onOrderCancelled?: (orderId: string) => void;
   onClose: () => void;
 }) {
   const [downloadingProduct, setDownloadingProduct] = useState<string | null>(
     null,
+  );
+  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
+  const [locallyCancelledIds, setLocallyCancelledIds] = useState<Set<string>>(
+    new Set(),
   );
 
   const currencyByProduct = new Map(
@@ -66,20 +73,41 @@ export function OrderTrackingModal({
     downloadTimeoutRef.current = setTimeout(() => setDownloadingProduct(null), 1000);
   };
 
+  const handleCancelOrder = async (orderId: string) => {
+    if (!orderId || cancellingOrderId) return;
+    setCancellingOrderId(orderId);
+    try {
+      await cancelStoreOrder(orderId);
+      setLocallyCancelledIds((prev) => {
+        const next = new Set(prev);
+        next.add(orderId);
+        return next;
+      });
+      onOrderCancelled?.(orderId);
+      toast.success("Order cancelled.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to cancel order");
+    } finally {
+      setCancellingOrderId(null);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-      <div className="bg-surface w-full max-w-2xl rounded-card overflow-hidden shadow-2xl animate-in zoom-in-95 max-h-[90vh] flex flex-col">
-        <div className="p-6 border-b border-line flex justify-between items-center">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-foreground/60 p-4 backdrop-blur-sm sm:p-6">
+      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-card bg-surface shadow-2xl animate-in zoom-in-95">
+        <div className="flex items-center justify-between border-b border-line p-4 sm:p-6">
           <h2 className="text-xl font-bold">My Orders</h2>
           <button
+            type="button"
+            aria-label="Close orders"
             onClick={onClose}
-            className="p-2 hover:bg-surface-sunken rounded-full transition"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-full transition hover:bg-surface-sunken"
           >
             <X size={20} />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:space-y-6 sm:p-6">
           {orders.length === 0 ? (
             <div className="text-center py-12">
               <Truck size={48} className="mx-auto text-border-strong mb-4" />
@@ -127,11 +155,17 @@ export function OrderTrackingModal({
               const orderCurrency =
                 explicitOrderCurrency ||
                 (orderCurrencies.length === 1 ? orderCurrencies[0] : null);
+              const effectiveStatus = locallyCancelledIds.has(order.id)
+                ? "cancelled"
+                : order.status;
               const isPaidOrder =
-                order.status === "paid" ||
-                order.status === "processing" ||
-                order.status === "shipped" ||
-                order.status === "delivered";
+                effectiveStatus === "paid" ||
+                effectiveStatus === "processing" ||
+                effectiveStatus === "shipped" ||
+                effectiveStatus === "delivered";
+              const canCancelOrder =
+                effectiveStatus === "pending" &&
+                (order as Order & { paymentStatus?: string }).paymentStatus !== "paid";
 
               const createdDate =
                 order.createdAt instanceof Timestamp
@@ -142,20 +176,20 @@ export function OrderTrackingModal({
                     : new Date(order.createdAt as unknown as string | number | Date);
 
               return (
-                <div key={order.id} className="bg-surface-sunken rounded-control p-6">
-                  <div className="flex justify-between items-start mb-4">
+                <div key={order.id} className="rounded-control bg-surface-sunken p-4 sm:p-6">
+                  <div className="mb-4 flex items-start justify-between gap-2">
                     <div>
-                      <p className="text-xs text-muted-fg">
+                      <p className="text-caption text-muted-fg">
                         Order #{order.id.slice(0, 8)}
                       </p>
-                      <p className="text-sm text-muted-fg">
+                      <p className="text-label text-muted-fg">
                         {createdDate.toLocaleDateString()}
                       </p>
                     </div>
                     <span
-                      className={`text-xs font-bold px-3 py-1 rounded-full ${statusColors[order.status] || "bg-surface-sunken text-fg"}`}
+                      className={`rounded-control px-2.5 py-1 text-caption font-bold ${statusColors[effectiveStatus] || "bg-surface-sunken text-fg"}`}
                     >
-                      {(order.status || "unknown").toUpperCase()}
+                      {(effectiveStatus || "unknown").toUpperCase()}
                     </span>
                   </div>
 
@@ -211,19 +245,19 @@ export function OrderTrackingModal({
                     })}
                   </div>
 
-                  {order.status !== "cancelled" && (
+                  {effectiveStatus !== "cancelled" && (
                     <div className="mb-4">
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="mb-2 flex items-center justify-between">
                         {statusSteps.map((step, idx) => (
                           <div key={step} className="flex items-center">
                             <div
-                              className={`w-8 h-8 rounded-full flex items-center justify-center text-caption font-bold ${
-                                getStatusIndex(order.status) >= idx
+                              className={`flex size-7 items-center justify-center rounded-full text-caption font-bold sm:size-8 ${
+                                getStatusIndex(effectiveStatus) >= idx
                                   ? "bg-brand-strong text-on-brand"
                                   : "bg-border-strong text-muted-fg"
                               }`}
                             >
-                              {getStatusIndex(order.status) > idx ? (
+                              {getStatusIndex(effectiveStatus) > idx ? (
                                 <Check size={14} />
                               ) : (
                                 idx + 1
@@ -231,8 +265,8 @@ export function OrderTrackingModal({
                             </div>
                             {idx < statusSteps.length - 1 && (
                               <div
-                                className={`w-8 h-0.5 ${
-                                  getStatusIndex(order.status) > idx
+                                className={`h-0.5 w-4 sm:w-8 ${
+                                  getStatusIndex(effectiveStatus) > idx
                                     ? "bg-brand-strong"
                                     : "bg-border-strong"
                                 }`}
@@ -260,20 +294,30 @@ export function OrderTrackingModal({
                     </div>
                   )}
 
-                  <div className="flex justify-between items-center mt-4 pt-4 border-t border-line-strong">
-                    <span className="font-bold">
+                  <div className="mt-4 flex flex-col gap-3 border-t border-line-strong pt-4 sm:flex-row sm:items-center sm:justify-between">
+                    <span className="font-bold tabular-nums">
                       Total:{" "}
                       {orderCurrency
                         ? formatCurrency(safeTotal, orderCurrency)
                         : `${safeTotal.toLocaleString()} (mixed currencies)`}
                     </span>
-                    {order.status === "pending" && (
-                      <Link
-                        href={`/store/pay/${order.id}`}
-                        className="px-4 py-2 bg-success text-on-success rounded-control font-bold text-sm hover:bg-success transition"
-                      >
-                        Pay Now
-                      </Link>
+                    {canCancelOrder && (
+                      <div className="grid grid-cols-2 gap-2.5 sm:w-auto sm:min-w-[240px]">
+                        <button
+                          type="button"
+                          disabled={cancellingOrderId === order.id}
+                          onClick={() => void handleCancelOrder(order.id)}
+                          className="flex min-h-11 items-center justify-center whitespace-nowrap rounded-control border border-danger/30 bg-danger-bg px-3 py-2 text-label font-bold text-danger transition hover:opacity-90 disabled:opacity-50"
+                        >
+                          {cancellingOrderId === order.id ? "Cancelling..." : "Cancel Order"}
+                        </button>
+                        <Link
+                          href={`/store/pay/${order.id}`}
+                          className="flex min-h-11 items-center justify-center whitespace-nowrap rounded-control bg-success px-3 py-2 text-label font-bold text-on-success transition hover:opacity-90"
+                        >
+                          Pay Now
+                        </Link>
+                      </div>
                     )}
                   </div>
                 </div>
