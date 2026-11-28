@@ -74,12 +74,18 @@ export function isValidSupportAmount(
   return value >= minAmount;
 }
 
+const PENDING_SUPPORT_TTL_MS = 15 * 60 * 1000;
+
 export function normalizeTransactionStatus(status: unknown): SupportStatus {
   const value = String(status ?? "").toLowerCase();
   if (["successful", "success", "completed", "paid"].includes(value)) {
     return "success";
   }
-  if (["failed", "cancelled", "canceled", "reversed", "declined"].includes(value)) {
+  if (
+    ["failed", "cancelled", "canceled", "reversed", "declined", "stalled", "stale", "expired"].includes(
+      value,
+    )
+  ) {
     return "failed";
   }
   return "waiting";
@@ -157,6 +163,13 @@ export function saveLastChoice(choice: LastSupportChoice): void {
 export function readPendingSupport(handle?: string): PendingSupport | null {
   const pending = readJson<PendingSupport>(storage(), SUPPORT_PENDING_KEY);
   if (!pending?.reference) return null;
+  if (
+    !Number.isFinite(pending.createdAt) ||
+    Date.now() - pending.createdAt >= PENDING_SUPPORT_TTL_MS
+  ) {
+    remove(storage(), SUPPORT_PENDING_KEY);
+    return null;
+  }
   if (handle && pending.handle !== handle) return null;
   return pending;
 }

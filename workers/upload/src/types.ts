@@ -103,6 +103,20 @@ export function getStoragePath(
   }
 }
 
+export interface MultipartUploadTicket {
+  uid: string;
+  key: string;
+  uploadId: string;
+  visibility: AssetVisibility;
+  assetType: AssetType;
+  creatorHandle: string;
+  mimeType: string;
+  fileSize: number;
+  originalName: string;
+  maxSizeBytes: number;
+  exp: number;
+}
+
 const MIME_EXT_MAP: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -110,15 +124,44 @@ const MIME_EXT_MAP: Record<string, string> = {
   "image/avif": "avif",
   "image/gif": "gif",
   "video/mp4": "mp4",
+  "video/mp4v-es": "mp4",
+  "video/x-m4v": "m4v",
   "video/quicktime": "mov",
   "video/x-msvideo": "avi",
   "video/webm": "webm",
+  "video/x-matroska": "mkv",
+  "video/3gpp": "3gp",
+  "video/3gpp2": "3g2",
+  "video/ogg": "ogv",
+  "video/mp2t": "ts",
+  "video/mpeg": "mpeg",
   "application/pdf": "pdf",
   "application/msword": "doc",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
     "docx",
 };
 
-export function extFromMime(mime: string): string {
-  return MIME_EXT_MAP[mime] || mime.split("/")[1] || "bin";
+export const VIDEO_EXTENSIONS =
+  /\.(mp4|mov|webm|m4v|mkv|avi|3gp|3g2|mpeg|mpg|ogv|ts)$/i;
+
+export function normalizeMimeType(mime: string): string {
+  return (mime || "").split(";")[0].trim().toLowerCase();
+}
+
+export function isVideoFileMeta(mime: string, fileName?: string): boolean {
+  const normalized = normalizeMimeType(mime);
+  if (normalized.startsWith("video/")) return true;
+  if (fileName && VIDEO_EXTENSIONS.test(fileName)) return true;
+  return false;
+}
+
+export function extFromMime(mime: string, fileName?: string): string {
+  const normalized = normalizeMimeType(mime);
+  if (MIME_EXT_MAP[normalized]) return MIME_EXT_MAP[normalized];
+  if (normalized && normalized !== "application/octet-stream") {
+    const subtype = normalized.split("/")[1]?.replace(/[^a-z0-9]/g, "");
+    if (subtype) return subtype;
+  }
+  const fileExt = fileName?.match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase();
+  return fileExt || "bin";
 }

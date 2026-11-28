@@ -26,19 +26,40 @@ describe("payout overview", () => {
     ]);
   });
 
-  it("includes dynamic currency balances present on creator", () => {
+  it("includes funded dynamic currencies and omits unfunded non-default currencies", () => {
     const overview = buildPayoutOverview(
       { currency: "USD", pendingPayoutUSD: 50, pendingPayoutKES: 200, totalEarningsKES: 500 },
-      [{ code: "RWF", payoutThreshold: 10000 }],
+      [
+        { code: "RWF", payoutThreshold: 10000 },
+        { code: "EUR", payoutThreshold: 20 },
+      ],
     );
 
     expect(overview.creatorCurrency).toBe("USD");
     expect(overview.withdrawThreshold).toBeNull();
     expect(overview.perCurrencyBalances).toEqual([
       { currency: "USD", pending: 50, threshold: null, earnings: 0 },
-      { currency: "RWF", pending: 0, threshold: 10000, earnings: 0 },
       { currency: "KES", pending: 200, threshold: null, earnings: 500 },
     ]);
+  });
+
+  it("omits non-default zero-balance currencies even when zero fields exist on creator", () => {
+    const overview = buildPayoutOverview(
+      {
+        currency: "RWF",
+        pendingPayout: 0,
+        pendingPayoutUSD: 0,
+        totalEarningsUSD: 0,
+        pendingPayoutKES: 1500,
+      },
+      [
+        { code: "RWF", payoutThreshold: 10000 },
+        { code: "USD", payoutThreshold: 20 },
+        { code: "KES", payoutThreshold: 1000 },
+      ],
+    );
+
+    expect(overview.perCurrencyBalances.map((b) => b.currency)).toEqual(["RWF", "KES"]);
   });
 
   it("does not invent a withdrawal threshold when configuration is missing", () => {

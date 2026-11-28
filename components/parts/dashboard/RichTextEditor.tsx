@@ -82,6 +82,7 @@ export default function RichTextEditor({
   const dragDepthRef = useRef(0);
   const [uploadCount, setUploadCount] = useState(0);
   const [uploadKind, setUploadKind] = useState<MediaKind | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [isDraggingFiles, setIsDraggingFiles] = useState(false);
   const [mediaModal, setMediaModal] = useState<MediaModalState | null>(null);
   const [savingMedia, setSavingMedia] = useState(false);
@@ -315,9 +316,12 @@ export default function RichTextEditor({
 
     const kind = uploadKind;
     setUploadCount((c) => c + 1);
+    setUploadProgress(0);
     try {
       const assetType = kind === "video" ? "post_video" : "post_image";
-      const data = await uploadFile(file, assetType, handle);
+      const data = await uploadFile(file, assetType, handle, undefined, "public", {
+        onProgress: (pct) => setUploadProgress(pct),
+      });
       if (!data.url) throw new Error("Upload failed");
 
       editor
@@ -350,6 +354,7 @@ export default function RichTextEditor({
     } finally {
       setUploadCount((c) => Math.max(0, c - 1));
       setUploadKind(null);
+      setUploadProgress(null);
       e.target.value = "";
     }
   };
@@ -638,7 +643,8 @@ export default function RichTextEditor({
           <Loader size={14} className="animate-spin" />
           Uploading{" "}
           {uploadCount > 1 ? `${uploadCount} images` : uploadKind || "image"} to
-          Agaseke...
+          Agaseke
+          {uploadProgress !== null ? ` (${uploadProgress}%)` : ""}...
         </div>
       )}
 

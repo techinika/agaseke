@@ -26,9 +26,60 @@ export interface RetryResult {
 }
 
 const PRE_MULTI_CURRENCY_CUTOFF_MS = Date.parse("2026-12-01T00:00:00.000Z");
+const STALL_TIMEOUT_MS = 15 * 60 * 1000;
 
 function toString(value: unknown): string {
   return value === null || value === undefined ? "" : String(value);
+}
+
+function isNonEmptyUid(value: unknown): value is string {
+  const s = toString(value).trim();
+  return s.length > 0 && s.toLowerCase() !== "anonymous";
+}
+
+function isTransactionOwner(
+  tx: Record<string, unknown>,
+  uid: string,
+  userEmail?: string | null,
+): boolean {
+  const uidCandidates = [
+    tx.supporterId,
+    tx.initiatedBy,
+    tx.buyerId,
+    tx.userId,
+    tx.uid,
+    tx.payerUid,
+  ].filter(isNonEmptyUid);
+
+  if (uidCandidates.some((candidate) => candidate === uid)) {
+    return true;
+  }
+
+  const normalizedEmail = toString(userEmail).trim().toLowerCase();
+  if (uidCandidates.length === 0 && normalizedEmail) {
+    const emailCandidates = [tx.email, tx.buyerEmail, tx.attendeeEmail]
+      .map((v) => toString(v).trim().toLowerCase())
+      .filter(Boolean);
+    if (emailCandidates.includes(normalizedEmail)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function resolveEffectiveStatus(tx: Record<string, unknown>, nowMs = Date.now()): string {
+  const raw = toString(tx.status).trim().toLowerCase() || "pending";
+  if (raw === "canceled") return "cancelled";
+  if (raw === "stale") return "stalled";
+  if (raw === "pending") {
+    const tsRaw = toString(tx.initiatedAt) || toString(tx.createdAt);
+    const tsMs = Date.parse(tsRaw);
+    if (Number.isFinite(tsMs) && nowMs - tsMs >= STALL_TIMEOUT_MS) {
+      return "stalled";
+    }
+  }
+  return raw;
 }
 
 function resolveRetryCurrency(tx: Record<string, unknown>, stored: Record<string, unknown>): string {
@@ -160,6 +211,7 @@ export interface RetryOptions {
   allowPending?: boolean;
   phone?: string;
   requestOrigin?: string | null;
+  userEmail?: string | null;
 }
 
 export async function retryTransaction(
@@ -185,13 +237,12 @@ export async function retryTransaction(
   const docId = extractDocId(doc.name);
   const tx = convertFromFields(doc.fields);
 
-  const owner = toString(tx.supporterId || tx.initiatedBy);
-  if (!owner || owner !== uid) {
+  if (!isTransactionOwner(tx, uid, options.userEmail)) {
     throw new RetryError("You can only retry your own transactions", 403);
   }
 
-  const status = toString(tx.status) || "pending";
-  if (status === "successful" || status === "success") {
+  const status = resolveEffectiveStatus(tx);
+  if (status === "successful" || status === "success" || status === "completed" || status === "paid") {
     throw new RetryError("This transaction already completed", 409);
   }
 
@@ -240,8 +291,13 @@ export async function retryTransaction(
     }
     if (retriedDoc?.fields) {
       const retriedTx = convertFromFields(retriedDoc.fields);
-      const retriedStatus = toString(retriedTx.status);
-      if (retriedStatus === "successful" || retriedStatus === "success") {
+      const retriedStatus = resolveEffectiveStatus(retriedTx);
+      if (
+        retriedStatus === "successful" ||
+        retriedStatus === "success" ||
+        retriedStatus === "completed" ||
+        retriedStatus === "paid"
+      ) {
         throw new RetryError("This transaction already completed", 409);
       }
       if (
@@ -349,6 +405,7 @@ export async function cancelTransaction(
   env: Env,
   uid: string,
   ref: string,
+  userEmail?: string | null,
 ): Promise<{ ref: string; status: "cancelled" }> {
   const cleanRef = toString(ref).trim();
   if (!cleanRef) throw new RetryError("Transaction reference is required", 400);
@@ -368,8 +425,7 @@ export async function cancelTransaction(
   const docId = extractDocId(doc.name);
   const tx = convertFromFields(doc.fields);
 
-  const owner = toString(tx.supporterId || tx.initiatedBy || tx.buyerId);
-  if (!owner || owner !== uid) {
+  if (!isTransactionOwner(tx, uid, userEmail)) {
     throw new RetryError("You can only cancel your own transactions", 403);
   }
 
@@ -405,7 +461,7 @@ export async function cancelTransaction(
     if (rDoc?.fields) {
       const rTx = convertFromFields(rDoc.fields);
       const rStatus = toString(rTx.status).toLowerCase() || "pending";
-      if (rStatus === "pending") {
+      if (rStatus === "pending" || rStatus === "stalled") {
         await firestoreSet(
           env,
           `transactions/${extractDocId(rDoc.name)}`,

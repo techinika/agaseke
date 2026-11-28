@@ -36,6 +36,7 @@
 		"PAYMENTS_WORKER_URL": "https://payments.api.agaseke.me",
 		"PAYPACK_CLIENT_ID": "a7862afa-b374-11f1-883e-deadd43720af",
 		"PESAPAL_URL": "https://pay.pesapal.com/v3",
+		"COMMUNITY_WORKER_URL": "https://community.api.agaseke.me",
 		"STORE_WORKER_URL": "https://store.api.agaseke.me",
 		"SUPPORT_WORKER_URL": "https://support.api.agaseke.me"
 	},

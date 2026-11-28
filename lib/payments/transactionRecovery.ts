@@ -20,6 +20,7 @@ export interface RecoveryResult {
 }
 
 const CARD_LINK_FRESH_MS = 15 * 60 * 1000;
+const STALL_TIMEOUT_MS = 15 * 60 * 1000;
 
 function toStr(value: unknown): string {
   return value === null || value === undefined ? "" : String(value);
@@ -28,6 +29,56 @@ function toStr(value: unknown): string {
 function toNum(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
+}
+
+function isNonEmptyUid(value: unknown): value is string {
+  const s = toStr(value).trim();
+  return s.length > 0 && s.toLowerCase() !== "anonymous";
+}
+
+function isTransactionOwner(
+  tx: Record<string, unknown>,
+  uid: string,
+  userEmail?: string | null,
+): boolean {
+  const uidCandidates = [
+    tx.supporterId,
+    tx.initiatedBy,
+    tx.buyerId,
+    tx.userId,
+    tx.uid,
+    tx.payerUid,
+  ].filter(isNonEmptyUid);
+
+  if (uidCandidates.some((candidate) => candidate === uid)) {
+    return true;
+  }
+
+  const normalizedEmail = toStr(userEmail).trim().toLowerCase();
+  if (uidCandidates.length === 0 && normalizedEmail) {
+    const emailCandidates = [tx.email, tx.buyerEmail, tx.attendeeEmail]
+      .map((v) => toStr(v).trim().toLowerCase())
+      .filter(Boolean);
+    if (emailCandidates.includes(normalizedEmail)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function resolveEffectiveStatus(tx: Record<string, unknown>, nowMs = Date.now()): string {
+  const raw = toStr(tx.status).trim().toLowerCase() || "pending";
+  if (raw === "canceled") return "cancelled";
+  if (raw === "stale") return "stalled";
+  if (raw === "pending") {
+    const tsRaw = toStr(tx.initiatedAt) || toStr(tx.createdAt);
+    const tsMs = Date.parse(tsRaw);
+    if (Number.isFinite(tsMs) && nowMs - tsMs >= STALL_TIMEOUT_MS) {
+      return "stalled";
+    }
+  }
+  return raw;
 }
 
 export function isSafeCheckoutUrl(raw: string): boolean {
@@ -357,13 +408,15 @@ export async function recoverUserTransaction(params: {
   }
 
   const { docId, data: tx } = found;
-  const owner = toStr(tx.supporterId || tx.initiatedBy || tx.buyerId);
-  if (!owner || owner !== params.uid) {
+  if (!isTransactionOwner(tx, params.uid, params.userEmail)) {
     throw new TransactionRecoveryError("You can only access your own transactions", 403);
   }
+  const owner =
+    [tx.supporterId, tx.initiatedBy, tx.buyerId, params.uid].find(isNonEmptyUid) ||
+    params.uid;
 
-  const status = toStr(tx.status).toLowerCase() || "pending";
-  if (status === "successful" || status === "success") {
+  const status = resolveEffectiveStatus(tx);
+  if (status === "successful" || status === "success" || status === "completed" || status === "paid") {
     throw new TransactionRecoveryError("This transaction already completed", 409);
   }
 
@@ -395,8 +448,13 @@ export async function recoverUserTransaction(params: {
     const retried = await findTransactionByRef(previousRetriedRef);
     if (retried) {
       const rTx = retried.data;
-      const rStatus = toStr(rTx.status).toLowerCase();
-      if (rStatus === "successful" || rStatus === "success") {
+      const rStatus = resolveEffectiveStatus(rTx);
+      if (
+        rStatus === "successful" ||
+        rStatus === "success" ||
+        rStatus === "completed" ||
+        rStatus === "paid"
+      ) {
         throw new TransactionRecoveryError("This transaction already completed", 409);
       }
       if (
@@ -563,6 +621,7 @@ export async function recoverUserTransaction(params: {
 
 export async function cancelUserTransaction(params: {
   uid: string;
+  userEmail?: string | null;
   ref: string;
 }): Promise<{ ref: string; status: "cancelled" }> {
   const cleanRef = toStr(params.ref).trim();
@@ -576,8 +635,7 @@ export async function cancelUserTransaction(params: {
   }
 
   const { docId, data: tx } = found;
-  const owner = toStr(tx.supporterId || tx.initiatedBy || tx.buyerId);
-  if (!owner || owner !== params.uid) {
+  if (!isTransactionOwner(tx, params.uid, params.userEmail)) {
     throw new TransactionRecoveryError("You can only cancel your own transactions", 403);
   }
 
@@ -604,7 +662,7 @@ export async function cancelUserTransaction(params: {
     const retried = await findTransactionByRef(retriedRef);
     if (retried) {
       const rStatus = toStr(retried.data.status).toLowerCase() || "pending";
-      if (rStatus === "pending") {
+      if (rStatus === "pending" || rStatus === "stalled") {
         await adminDb.collection("transactions").doc(retried.docId).update({
           status: "cancelled",
           cancelledAt: nowIso,

@@ -954,3 +954,62 @@ export async function drainDispatchOutbox(
 
   return summary;
 }
+
+const STALL_TIMEOUT_MS = 15 * 60 * 1000;
+
+/**
+ * Transitions pending transactions older than 15 minutes into "stalled" using an
+ * optimistic updateTime precondition so concurrent webhook updates are never overwritten.
+ */
+export async function expireStalePendingTransactions(
+  env: Env,
+  limit = 50,
+): Promise<{ checked: number; stalled: number }> {
+  const summary = { checked: 0, stalled: 0 };
+  const nowMs = Date.now();
+  const nowIso = new Date(nowMs).toISOString();
+
+  let docs: Array<{
+    name: string;
+    fields: Record<string, unknown>;
+    updateTime?: string;
+  }> = [];
+  try {
+    docs = await firestoreQuery(
+      env,
+      "transactions",
+      "status",
+      { stringValue: "pending" },
+      limit,
+    );
+  } catch (err) {
+    console.error("[stale-tx] query failed", err);
+    return summary;
+  }
+
+  for (const doc of docs) {
+    summary.checked += 1;
+    const tx = convertFromFields(doc.fields);
+    const tsRaw = String(tx.initiatedAt || tx.createdAt || "");
+    const tsMs = Date.parse(tsRaw);
+    if (!Number.isFinite(tsMs) || nowMs - tsMs < STALL_TIMEOUT_MS) continue;
+
+    const docId = extractDocId(doc.name);
+    const result = await firestoreUpdateWithPrecondition(
+      env,
+      `transactions/${docId}`,
+      convertToFields({
+        ...tx,
+        status: "stalled",
+        stalledAt: nowIso,
+        updatedAt: nowIso,
+      }),
+      doc.updateTime,
+    );
+    if (result.ok) {
+      summary.stalled += 1;
+    }
+  }
+
+  return summary;
+}

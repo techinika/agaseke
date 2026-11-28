@@ -5,6 +5,7 @@ import { initiateMomoPayment } from "./services/momo";
 import { initiateCardPayment } from "./services/card";
 import {
   drainDispatchOutbox,
+  expireStalePendingTransactions,
   handlePaypackWebhook,
   handlePesapalIPN,
 } from "./services/webhooks";
@@ -241,6 +242,7 @@ export default {
             const result = await retryTransaction(env, auth.uid, body.ref || "", {
               phone: body.phone,
               requestOrigin: origin,
+              userEmail: auth.email,
             });
             return json(result, 200, origin);
           } catch (err) {
@@ -265,6 +267,7 @@ export default {
               allowPending: true,
               phone: body.phone,
               requestOrigin: origin,
+              userEmail: auth.email,
             });
             return json(result, 200, origin);
           } catch (err) {
@@ -285,7 +288,12 @@ export default {
           if (limited) return limited;
           const body = await parseJsonBody<{ ref?: string }>(request);
           try {
-            const result = await cancelTransaction(env, auth.uid, body.ref || "");
+            const result = await cancelTransaction(
+              env,
+              auth.uid,
+              body.ref || "",
+              auth.email,
+            );
             return json(result, 200, origin);
           } catch (err) {
             if (err instanceof RetryError) {
@@ -343,6 +351,15 @@ export default {
       }
     } catch (err) {
       console.error("[dispatch-outbox] drain failed", err);
+    }
+
+    try {
+      const stale = await expireStalePendingTransactions(env);
+      if (stale.stalled > 0) {
+        console.log("[stale-tx] expired", stale);
+      }
+    } catch (err) {
+      console.error("[stale-tx] sweep failed", err);
     }
 
     try {

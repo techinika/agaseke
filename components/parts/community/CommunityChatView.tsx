@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { toast } from "sonner";
 import { useAuth } from "@/auth/AuthContext";
 import { uploadFile as uploadFileToWorker } from "@/lib/uploadService";
 import {
@@ -86,6 +87,7 @@ export function CommunityChatView({
   const [inputText, setInputText] = useState("");
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [previewMedia, setPreviewMedia] = useState<ChatAttachment | null>(null);
   const [memberCount, setMemberCount] = useState(0);
@@ -133,11 +135,15 @@ export function CommunityChatView({
   const handleFileUpload = useCallback(
     async (file: File): Promise<ChatAttachment | null> => {
       setUploading(true);
+      setUploadProgress(0);
       try {
         const result = await uploadFileToWorker(
           file,
           "message_attachment",
           creatorHandle,
+          undefined,
+          "public",
+          { onProgress: (pct) => setUploadProgress(pct) },
         );
         const r = result as { url?: string; publicId?: string; public_id?: string };
         return {
@@ -149,9 +155,11 @@ export function CommunityChatView({
         };
       } catch (err) {
         console.error("Upload failed:", err);
+        toast.error(err instanceof Error ? err.message : "Upload failed");
         return null;
       } finally {
         setUploading(false);
+        setUploadProgress(null);
       }
     },
     [creatorHandle],
@@ -341,9 +349,9 @@ export function CommunityChatView({
 
       <div className="sticky bottom-0 bg-surface border-t border-line p-3 shrink-0">
         {uploading && (
-          <div className="flex items-center gap-2 mb-2 text-xs text-muted-fg">
+          <div className="flex items-center gap-2 mb-2 text-caption text-muted-fg tabular-nums">
             <Loader className="animate-spin" size={14} />
-            Uploading...
+            Uploading{uploadProgress !== null ? ` (${uploadProgress}%)` : ""}...
           </div>
         )}
         <div className="flex items-end gap-2">

@@ -270,8 +270,13 @@ async function postTransactionRecovery(
     }
 
     // Fall back to the Next.js server route when the worker does not serve this
-    // endpoint yet (404), cannot find the transaction, or is unreachable.
-    if (!workerRes || workerRes.status === 404 || workerRes.status >= 500) {
+    // endpoint yet (404), rejects legacy anonymous ownership (403), or is unreachable.
+    if (
+      !workerRes ||
+      workerRes.status === 403 ||
+      workerRes.status === 404 ||
+      workerRes.status >= 500
+    ) {
       const localRes = await fetch(`/api/payments/transactions/${endpoint}`, {
         method: "POST",
         headers,
@@ -340,7 +345,12 @@ export async function cancelTransaction(
     return (await workerRes.json()) as CancelTransactionResponse;
   }
 
-  if (!workerRes || workerRes.status === 404 || workerRes.status >= 500) {
+  if (
+    !workerRes ||
+    workerRes.status === 403 ||
+    workerRes.status === 404 ||
+    workerRes.status >= 500
+  ) {
     const localRes = await fetch("/api/payments/transactions/cancel", {
       method: "POST",
       headers,

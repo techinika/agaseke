@@ -10,14 +10,16 @@ export type PaymentState =
   | "initiated"
   | "pending"
   | "processing"
+  | "stalled"
   | "successful"
   | "failed"
   | "expired";
 
 const ALLOWED_TRANSITIONS: Record<PaymentState, readonly PaymentState[]> = {
-  initiated: ["pending", "processing", "successful", "failed", "expired"],
-  pending: ["processing", "successful", "failed", "expired"],
-  processing: ["successful", "failed", "expired"],
+  initiated: ["pending", "processing", "stalled", "successful", "failed", "expired"],
+  pending: ["processing", "stalled", "successful", "failed", "expired"],
+  processing: ["stalled", "successful", "failed", "expired"],
+  stalled: ["pending", "processing", "successful", "failed", "expired"],
   successful: [],
   failed: [],
   expired: [],
@@ -32,6 +34,9 @@ export function normalizePaymentState(raw: unknown): PaymentState | "unknown" {
       return "pending";
     case "processing":
       return "processing";
+    case "stalled":
+    case "stale":
+      return "stalled";
     case "successful":
     case "success":
     case "completed":

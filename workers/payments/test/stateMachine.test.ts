@@ -14,14 +14,18 @@ describe("payment state machine", () => {
     expect(normalizePaymentState("paid")).toBe("successful");
     expect(normalizePaymentState("cancelled")).toBe("failed");
     expect(normalizePaymentState("reversed")).toBe("failed");
+    expect(normalizePaymentState("stalled")).toBe("stalled");
+    expect(normalizePaymentState("stale")).toBe("stalled");
     expect(normalizePaymentState("nonsense")).toBe("unknown");
     expect(normalizePaymentState(undefined)).toBe("unknown");
   });
 
   it("only allows forward transitions", () => {
     expect(canTransition("pending", "processing")).toBe(true);
+    expect(canTransition("pending", "stalled")).toBe(true);
     expect(canTransition("pending", "successful")).toBe(true);
     expect(canTransition("pending", "failed")).toBe(true);
+    expect(canTransition("stalled", "successful")).toBe(true);
     expect(canTransition("processing", "pending")).toBe(false);
     expect(canTransition("successful", "failed")).toBe(false);
     expect(canTransition("pending", "pending")).toBe(false);
@@ -33,6 +37,7 @@ describe("payment state machine", () => {
     expect(isTerminalState("failed")).toBe(true);
     expect(isTerminalState("expired")).toBe(true);
     expect(isTerminalState("pending")).toBe(false);
+    expect(isTerminalState("stalled")).toBe(false);
     expect(allowedTransitions("initiated")).toContain("pending");
     expect(allowedTransitions("successful")).toEqual([]);
   });
@@ -48,6 +53,7 @@ describe("payment state machine", () => {
       "initiated",
       "pending",
       "processing",
+      "stalled",
       "successful",
       "failed",
       "expired",
@@ -55,16 +61,24 @@ describe("payment state machine", () => {
     const allowed = new Set([
       "initiated:pending",
       "initiated:processing",
+      "initiated:stalled",
       "initiated:successful",
       "initiated:failed",
       "initiated:expired",
       "pending:processing",
+      "pending:stalled",
       "pending:successful",
       "pending:failed",
       "pending:expired",
+      "processing:stalled",
       "processing:successful",
       "processing:failed",
       "processing:expired",
+      "stalled:pending",
+      "stalled:processing",
+      "stalled:successful",
+      "stalled:failed",
+      "stalled:expired",
     ]);
 
     for (const from of states) {
@@ -82,6 +96,7 @@ describe("payment state machine", () => {
       for (const to of [
         "pending",
         "processing",
+        "stalled",
         "successful",
         "failed",
         "expired",

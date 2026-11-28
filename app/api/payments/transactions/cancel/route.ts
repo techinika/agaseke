@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
   try {
     const result = await cancelUserTransaction({
       uid: authUser.uid,
+      userEmail: authUser.email,
       ref: typeof body.ref === "string" ? body.ref : "",
     });
     return NextResponse.json(result);

@@ -3,6 +3,7 @@ import { db } from "@/db/firebase";
 import {
   normalizePayoutCurrency,
   pendingPayoutField,
+  totalEarningsField,
   type PayoutCurrency,
 } from "@/lib/payouts/currency";
 import { resolveHistoricalCurrency } from "@/lib/money/historicalCurrency";
@@ -70,19 +71,41 @@ export async function fetchCreatorDashboardData(creator: {
     });
   }
 
+  const selectedCurrency = mainCurrency ?? "RWF";
   const getPending = (code: PayoutCurrency) =>
     Number(source[pendingPayoutField(code)] ?? 0);
+  const getEarnings = (code: PayoutCurrency) =>
+    Number(source[totalEarningsField(code)] ?? 0);
+  const held =
+    source.pendingWithdrawals && typeof source.pendingWithdrawals === "object"
+      ? (source.pendingWithdrawals as Record<string, unknown>)
+      : {};
 
-  const displayedCodes = new Set<PayoutCurrency>();
-  if (mainCurrency) displayedCodes.add(mainCurrency);
+  const candidateCodes = new Set<PayoutCurrency>([selectedCurrency]);
   for (const key of Object.keys(source)) {
-    const match = key.match(/^pendingPayout([A-Z]{3})$/);
+    const match =
+      key.match(/^pendingPayout([A-Z]{3})$/) || key.match(/^totalEarnings([A-Z]{3})$/);
     const code = normalizePayoutCurrency(match?.[1]);
-    if (code) displayedCodes.add(code);
+    if (code) candidateCodes.add(code);
   }
-  if (source.pendingPayout !== undefined) displayedCodes.add("RWF");
+  for (const key of Object.keys(held)) {
+    const code = normalizePayoutCurrency(key);
+    if (code) candidateCodes.add(code);
+  }
+  if (source.pendingPayout !== undefined || source.totalEarnings !== undefined) {
+    candidateCodes.add("RWF");
+  }
 
-  const perCurrencyPayouts = Array.from(displayedCodes).map((code) => ({
+  const displayedCodes = Array.from(candidateCodes).filter((code) => {
+    if (code === selectedCurrency) return true;
+    return (
+      getPending(code) > 0 ||
+      getEarnings(code) > 0 ||
+      Number(held[code] ?? 0) > 0
+    );
+  });
+
+  const perCurrencyPayouts = displayedCodes.map((code) => ({
     currency: code,
     pending: getPending(code),
   }));

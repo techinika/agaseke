@@ -158,13 +158,22 @@ export async function handleBookingCallback(
     { documents, ledger },
   );
 
-  if (credit !== "applied") {
-    await logActivity(env, "warn", "booking", `Booking callback ${credit} for ref=${paymentRef}`, {
+  if (credit === "duplicate") {
+    await logActivity(env, "warn", "booking", `Booking callback duplicate for ref=${paymentRef}`, {
       txRef: paymentRef,
       bookingId,
       creatorShare,
     });
     return { received: true };
+  }
+
+  if (credit !== "applied") {
+    await logActivity(env, "error", "booking", `Booking callback commit failed for ref=${paymentRef}`, {
+      txRef: paymentRef,
+      bookingId,
+      creatorShare,
+    });
+    throw new Error(`Booking payment credit commit failed for ref=${paymentRef}`);
   }
 
   await firestorePatch(env, `bookingRequests/${bookingId}`, {

@@ -50,31 +50,32 @@ export function buildPayoutOverview(
   }
 
   const configuredCodes = PAYOUT_CURRENCIES.filter((code) => configured.has(code));
-  const displayedCodes: PayoutCurrency[] =
-    configuredCodes.length > 0
-      ? [...configuredCodes]
-      : creatorCurrency
-        ? [creatorCurrency]
-        : [...PAYOUT_CURRENCIES];
-  if (creatorCurrency && !displayedCodes.includes(creatorCurrency)) {
-    displayedCodes.unshift(creatorCurrency);
-  }
+  const selectedCurrency =
+    creatorCurrency ?? configuredCodes[0] ?? "RWF";
+
+  const candidateCodes = new Set<PayoutCurrency>([selectedCurrency]);
+  for (const code of configuredCodes) candidateCodes.add(code);
+  for (const code of PAYOUT_CURRENCIES) candidateCodes.add(code);
   for (const key of Object.keys(creator || {})) {
     const m = key.match(/^pendingPayout([A-Z]{3})$/) || key.match(/^totalEarnings([A-Z]{3})$/);
-    if (m && !displayedCodes.includes(m[1] as PayoutCurrency)) displayedCodes.push(m[1] as PayoutCurrency);
+    if (m) candidateCodes.add(m[1] as PayoutCurrency);
   }
 
   const held =
     creator.pendingWithdrawals && typeof creator.pendingWithdrawals === "object"
       ? (creator.pendingWithdrawals as Record<string, unknown>)
       : {};
-  const pendingFor = (code: PayoutCurrency) =>
-    Math.max(
-      0,
-      finiteNumber(
-        code === "RWF" ? creator.pendingPayout : creator[`pendingPayout${code}`],
-      ) - finiteNumber(held[code]),
+  for (const key of Object.keys(held)) {
+    const code = normalizePayoutCurrency(key);
+    if (code) candidateCodes.add(code);
+  }
+
+  const rawPendingFor = (code: PayoutCurrency) =>
+    finiteNumber(
+      code === "RWF" ? creator.pendingPayout : creator[`pendingPayout${code}`],
     );
+  const pendingFor = (code: PayoutCurrency) =>
+    Math.max(0, rawPendingFor(code) - finiteNumber(held[code]));
   const earningsFor = (code: PayoutCurrency) =>
     finiteNumber(
       code === "RWF" ? creator.totalEarnings : creator[`totalEarnings${code}`],
@@ -84,10 +85,15 @@ export function buildPayoutOverview(
     return Number.isFinite(value) && value > 0 ? value : null;
   };
 
-  const selectedCurrency =
-    creatorCurrency && displayedCodes.includes(creatorCurrency)
-      ? creatorCurrency
-      : displayedCodes[0];
+  // Show only currencies in which money was sent, plus the creator's preferred default currency.
+  const displayedCodes = Array.from(candidateCodes).filter((code) => {
+    if (code === selectedCurrency) return true;
+    return (
+      rawPendingFor(code) > 0 ||
+      earningsFor(code) > 0 ||
+      finiteNumber(held[code]) > 0
+    );
+  });
 
   return {
     creatorCurrency: selectedCurrency,

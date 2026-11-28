@@ -12,7 +12,9 @@
 	},
 	"vars": {
 		"MONEY_LEDGER_ENABLED": "false",
-		"FIREBASE_PROJECT_ID": "agaseke4creators"
+		"FIREBASE_PROJECT_ID": "agaseke4creators",
+		"APP_URL": "https://agaseke.me",
+		"COMMS_WORKER_URL": "https://comms.api.agaseke.me"
 	},
 	"routes": [
 		{

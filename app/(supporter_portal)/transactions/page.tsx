@@ -77,6 +77,7 @@ function statusTone(status: string): string {
     case "successful":
       return "text-success";
     case "pending":
+    case "stalled":
       return "text-warning";
     case "failed":
       return "text-danger";
@@ -93,6 +94,8 @@ function statusLabel(status: string): string {
       return "Successful";
     case "pending":
       return "Pending";
+    case "stalled":
+      return "Stalled";
     case "failed":
       return "Failed";
     case "cancelled":
@@ -102,13 +105,14 @@ function statusLabel(status: string): string {
   }
 }
 
-const FILTERS = ["all", "successful", "pending", "failed", "cancelled"] as const;
+const FILTERS = ["all", "successful", "pending", "stalled", "failed", "cancelled"] as const;
 type Filter = (typeof FILTERS)[number];
 
 const FILTER_LABELS: Record<Filter, string> = {
   all: "All",
   successful: "Successful",
   pending: "Pending",
+  stalled: "Stalled",
   failed: "Failed",
   cancelled: "Cancelled",
 };
@@ -187,6 +191,58 @@ interface ActiveRetry {
   message?: string;
 }
 
+const STALL_TIMEOUT_MS = 15 * 60 * 1000;
+
+function normalizeClientTxStatus(tx: UserTransaction, nowMs = Date.now()): string {
+  const raw = (tx.status || "").trim().toLowerCase() || "pending";
+  if (raw === "success" || raw === "completed" || raw === "paid") return "successful";
+  if (raw === "canceled") return "cancelled";
+  if (raw === "stale") return "stalled";
+  if (raw === "pending") {
+    const tsMs = Date.parse(tx.createdAt || "");
+    if (Number.isFinite(tsMs) && nowMs - tsMs >= STALL_TIMEOUT_MS) {
+      return "stalled";
+    }
+  }
+  return raw;
+}
+
+function normalizeTransactionsList(items: UserTransaction[]): UserTransaction[] {
+  const nowMs = Date.now();
+  return items.map((tx) => ({
+    ...tx,
+    status: normalizeClientTxStatus(tx, nowMs),
+  }));
+}
+
+function computeStatusCounts(
+  items: UserTransaction[],
+  serverCounts?: Record<string, number>,
+): Record<string, number> {
+  const next: Record<string, number> = {
+    all: serverCounts?.all ?? items.length,
+    successful: 0,
+    pending: 0,
+    stalled: 0,
+    failed: 0,
+    cancelled: 0,
+  };
+  for (const tx of items) {
+    const key = tx.status;
+    if (key in next && key !== "all") {
+      next[key] += 1;
+    }
+  }
+  if (serverCounts) {
+    for (const key of ["successful", "pending", "stalled", "failed", "cancelled"] as const) {
+      if (typeof serverCounts[key] === "number" && serverCounts[key] > next[key]) {
+        next[key] = serverCounts[key];
+      }
+    }
+  }
+  return next;
+}
+
 export default function TransactionsPage() {
   const { isLoggedIn, user, profile } = useAuth();
   const [transactions, setTransactions] = useState<UserTransaction[]>([]);
@@ -195,7 +251,9 @@ export default function TransactionsPage() {
     all: 0,
     successful: 0,
     pending: 0,
+    stalled: 0,
     failed: 0,
+    cancelled: 0,
   });
   const [filter, setFilter] = useState<Filter>("all");
   const [loading, setLoading] = useState(true);
@@ -228,18 +286,33 @@ export default function TransactionsPage() {
 
   const applyFirstPage = (limit: number) =>
     getUserTransactions(limit, 0).then((data) => {
-      setTransactions(data.transactions);
+      const normalized = normalizeTransactionsList(data.transactions);
+      setTransactions(normalized);
       setTotal(data.total);
-      setCounts(data.counts);
+      setCounts(computeStatusCounts(normalized, data.counts));
     });
 
   useEffect(() => {
     if (!isLoggedIn) return;
-    applyFirstPage(PAGE_SIZE)
+    let active = true;
+    getUserTransactions(PAGE_SIZE, 0)
+      .then((data) => {
+        if (!active) return;
+        const normalized = normalizeTransactionsList(data.transactions);
+        setTransactions(normalized);
+        setTotal(data.total);
+        setCounts(computeStatusCounts(normalized, data.counts));
+      })
       .catch((err: unknown) => {
+        if (!active) return;
         setError(err instanceof Error ? err.message : "Failed to load transactions");
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [isLoggedIn]);
 
   const refreshTransactions = async () => {
@@ -347,9 +420,13 @@ export default function TransactionsPage() {
     setLoadingMore(true);
     try {
       const data = await getUserTransactions(PAGE_SIZE, transactions.length);
-      setTransactions((prev) => [...prev, ...data.transactions]);
+      const next = normalizeTransactionsList(data.transactions);
+      setTransactions((prev) => {
+        const merged = [...prev, ...next];
+        setCounts(computeStatusCounts(merged, data.counts));
+        return merged;
+      });
       setTotal(data.total);
-      setCounts(data.counts);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to load more transactions");
     } finally {
@@ -498,6 +575,8 @@ export default function TransactionsPage() {
         stopListening();
         setActiveRetry(null);
       }
+      const existing = transactions.find((item) => item.ref === refToCancel);
+      const prevStatus = existing?.status || "pending";
       setTransactions((prev) =>
         prev.map((item) =>
           item.ref === refToCancel ? { ...item, status: "cancelled" } : item,
@@ -505,10 +584,12 @@ export default function TransactionsPage() {
       );
       setCounts((prev) => ({
         ...prev,
-        pending: Math.max(0, (prev.pending || 0) - 1),
-        cancelled: (prev.cancelled || 0) + 1,
+        ...(prevStatus !== "cancelled" && typeof prev[prevStatus] === "number"
+          ? { [prevStatus]: Math.max(0, prev[prevStatus] - 1) }
+          : {}),
+        cancelled: (prev.cancelled || 0) + (prevStatus === "cancelled" ? 0 : 1),
       }));
-      toast.success("Pending payment cancelled.");
+      toast.success("Transaction cancelled.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to cancel transaction");
     } finally {
@@ -778,9 +859,9 @@ export default function TransactionsPage() {
                         >
                           Receipt PDF
                         </Button>
-                      ) : (tx.status === "failed" || tx.status === "pending") && (
+                      ) : (tx.status === "failed" || tx.status === "pending" || tx.status === "stalled") && (
                         <div className="flex flex-wrap items-center gap-2">
-                          {tx.status === "pending" && (
+                          {(tx.status === "pending" || tx.status === "stalled") && (
                             <Button
                               size="sm"
                               variant="ghost"
@@ -813,7 +894,9 @@ export default function TransactionsPage() {
                               ? "Processing…"
                               : tx.status === "pending"
                                 ? "Complete payment"
-                                : "Pay again"}
+                                : tx.status === "stalled"
+                                  ? "Generate new payment"
+                                  : "Pay again"}
                           </Button>
                         </div>
                       )}

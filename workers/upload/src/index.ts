@@ -1,4 +1,3 @@
-/* eslint-disable import/no-anonymous-default-export */
 import { requireAuth, forbidden } from "./auth";
 import { corsHeaders } from "./cors";
 import {
@@ -8,8 +7,15 @@ import {
   AssetVisibility,
   getStoragePath,
   extFromMime,
+  isVideoFileMeta,
+  normalizeMimeType,
 } from "./types";
-import { timingSafeEqualString, verifyMediaKeySignature } from "./mediaSign";
+import {
+  timingSafeEqualString,
+  verifyMediaKeySignature,
+  signUploadTicket,
+  verifyUploadTicket,
+} from "./mediaSign";
 import { createAssetDocument } from "./firestore";
 import { checkRateLimit } from "./rateLimit";
 import { drainPending } from "./audit";
@@ -21,7 +27,12 @@ function getClientIp(request: Request): string {
     "unknown";
 }
 
-function isRateLimited(request: Request, maxRequests = 30, windowMs = 60000): Response | null {
+function isRateLimited(
+  request: Request,
+  maxRequests = 30,
+  windowMs = 60000,
+  origin?: string | null,
+): Response | null {
   const ip = getClientIp(request);
   const path = new URL(request.url).pathname;
   const result = checkRateLimit(`${ip}:${path}`, maxRequests, windowMs);
@@ -31,6 +42,7 @@ function isRateLimited(request: Request, maxRequests = 30, windowMs = 60000): Re
       headers: {
         "content-type": "application/json",
         "retry-after": String(Math.ceil((result.resetAt - Date.now()) / 1000)),
+        ...corsHeaders(origin || null),
       },
     });
   }
@@ -81,11 +93,76 @@ const IMAGE_MIMES = new Set([
   "image/gif",
 ]);
 
-// ── Upload handler ──────────────────────────────────────────
+function parsePositiveInt(raw: string | undefined, fallback: number): number {
+  const n = Number.parseInt(raw || "", 10);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
 
-async function handleUpload(request: Request, env: Env): Promise<Response> {
-  const origin = request.headers.get("origin");
+function inferMimeType(rawMime: string, ext: string, isVideo: boolean): string {
+  const normalized = normalizeMimeType(rawMime);
+  if (normalized && normalized !== "application/octet-stream") {
+    return normalized;
+  }
+  if (isVideo) {
+    switch (ext) {
+      case "mov":
+        return "video/quicktime";
+      case "webm":
+        return "video/webm";
+      case "mkv":
+        return "video/x-matroska";
+      case "avi":
+        return "video/x-msvideo";
+      case "3gp":
+        return "video/3gpp";
+      case "ogv":
+        return "video/ogg";
+      case "m4v":
+        return "video/x-m4v";
+      default:
+        return "video/mp4";
+    }
+  }
+  return normalized || "application/octet-stream";
+}
 
+function resolveAssetLimit(
+  env: Env,
+  assetType: AssetType,
+  mimeType: string,
+  fileName?: string,
+): { limitMB: number; maxSizeBytes: number; isVideo: boolean; resolvedMime: string } {
+  const normalizedMime = normalizeMimeType(mimeType);
+  const isImage = IMAGE_MIMES.has(normalizedMime);
+  const isVideo = assetType === "post_video" || isVideoFileMeta(normalizedMime, fileName);
+  const isDocument =
+    (assetType === "message_attachment" ||
+      assetType === "post_document" ||
+      assetType === "product_content") &&
+    !isImage &&
+    !isVideo;
+  const maxImageMB = parsePositiveInt(env.MAX_IMAGE_SIZE_MB, 20);
+  const maxVideoMB = parsePositiveInt(env.MAX_VIDEO_SIZE_MB, 100);
+  const maxDocMB = 25;
+  const limitMB = isVideo ? maxVideoMB : isDocument ? maxDocMB : maxImageMB;
+  const ext = extFromMime(normalizedMime, fileName);
+  return {
+    limitMB,
+    maxSizeBytes: limitMB * 1024 * 1024,
+    isVideo,
+    resolvedMime: inferMimeType(normalizedMime, ext, isVideo),
+  };
+}
+
+function getUploadTicketSecret(env: Env): string {
+  return env.MEDIA_SIGNING_SECRET || env.FIREBASE_PRIVATE_KEY || env.FIREBASE_API_KEY;
+}
+
+async function authenticateWithCors(
+  request: Request,
+  env: Env,
+  origin: string | null,
+) {
   const auth = await requireAuth(request, env.FIREBASE_API_KEY, env.FIREBASE_PROJECT_ID);
   if (auth instanceof Response) {
     return new Response(auth.body, {
@@ -93,10 +170,20 @@ async function handleUpload(request: Request, env: Env): Promise<Response> {
       statusText: auth.statusText,
       headers: {
         ...Object.fromEntries(auth.headers.entries()),
-        ...corsHeaders(origin), // This ensures your allowed origin goes back to the client!
+        ...corsHeaders(origin),
       },
     });
   }
+  return auth;
+}
+
+// ── Upload handler ──────────────────────────────────────────
+
+async function handleUpload(request: Request, env: Env): Promise<Response> {
+  const origin = request.headers.get("origin");
+
+  const auth = await authenticateWithCors(request, env, origin);
+  if (auth instanceof Response) return auth;
 
   const contentType = request.headers.get("content-type") || "";
 
@@ -205,31 +292,24 @@ async function handleFormDataUpload(
       );
     }
 
-    // Size limits
-    const isImage = IMAGE_MIMES.has(file.type);
-    const isVideo = file.type.startsWith("video/");
-    const isDocument = assetType === "message_attachment" && !isImage && !isVideo;
-    const maxImageMB = parseInt(env.MAX_IMAGE_SIZE_MB || "20");
-    const maxVideoMB = parseInt(env.MAX_VIDEO_SIZE_MB || "50");
-    const maxDocMB = 25;
-    const maxSize = isVideo
-      ? maxVideoMB * 1024 * 1024
-      : isDocument
-        ? maxDocMB * 1024 * 1024
-        : maxImageMB * 1024 * 1024;
+    const { limitMB, maxSizeBytes, resolvedMime } = resolveAssetLimit(
+      env,
+      assetType,
+      file.type,
+      file.name,
+    );
 
-    if (file.size > maxSize) {
-      const limit = isVideo ? maxVideoMB : isDocument ? maxDocMB : maxImageMB;
+    if (file.size > maxSizeBytes) {
       return json(
         {
-          error: `File too large. Maximum size is ${limit}MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB`,
+          error: `File too large. Maximum size is ${limitMB}MB. Your file is ${(file.size / (1024 * 1024)).toFixed(1)}MB`,
         },
         400,
         origin,
       );
     }
 
-    const ext = extFromMime(file.type);
+    const ext = extFromMime(file.type, file.name);
     const fileName = `upload.${ext}`;
     const storagePath = getStoragePath(
       assetType,
@@ -238,15 +318,15 @@ async function handleFormDataUpload(
       country,
       fileName,
     );
-    const bytes = await file.arrayBuffer();
-    const mimeType = file.type;
-    const fileSize = bytes.byteLength;
+    const mimeType = resolvedMime;
+    const fileSize = file.size;
 
     if (visibility === "private" && !env.UPLOADS_PRIVATE_BUCKET) {
       return json({ error: "Private media storage is not configured" }, 503, origin);
     }
 
-    await bucketFor(env, visibility).put(storagePath, bytes, {
+    // Stream the File/Blob directly to R2 to avoid buffering large videos in Worker RAM.
+    await bucketFor(env, visibility).put(storagePath, file, {
       httpMetadata: {
         contentType: mimeType,
         contentDisposition: `inline; filename="${fileName}"`,
@@ -541,9 +621,317 @@ function deriveBaseUrl(request: Request): string {
   return `${url.protocol}//${url.hostname}${url.port ? `:${url.port}` : ""}`;
 }
 
+// ── Multipart uploads (supports videos up to 100MB without edge 413 / Worker OOM) ──
+
+const MAX_MULTIPART_PART_BYTES = 25 * 1024 * 1024;
+
+async function handleMultipartInit(
+  request: Request,
+  env: Env,
+  origin: string | null,
+): Promise<Response> {
+  const auth = await authenticateWithCors(request, env, origin);
+  if (auth instanceof Response) return auth;
+
+  try {
+    const body = (await request.json().catch(() => ({}))) as {
+      fileName?: unknown;
+      mimeType?: unknown;
+      fileSize?: unknown;
+      assetType?: unknown;
+      creatorHandle?: unknown;
+      subType?: unknown;
+      country?: unknown;
+      visibility?: unknown;
+    };
+
+    const assetType = (typeof body.assetType === "string"
+      ? body.assetType
+      : "post_video") as AssetType;
+    if (!VALID_ASSET_TYPES.includes(assetType)) {
+      return json(
+        {
+          error: `Invalid assetType. Must be one of: ${VALID_ASSET_TYPES.join(", ")}`,
+        },
+        400,
+        origin,
+      );
+    }
+
+    const visibility = parseVisibility(body.visibility, origin);
+    if (visibility instanceof Response) return visibility;
+
+    if (visibility === "private" && !env.UPLOADS_PRIVATE_BUCKET) {
+      return json({ error: "Private media storage is not configured" }, 503, origin);
+    }
+
+    const rawFileName =
+      typeof body.fileName === "string" && body.fileName.trim()
+        ? body.fileName.trim().slice(0, 255)
+        : "upload";
+    const rawMime = typeof body.mimeType === "string" ? body.mimeType : "";
+    const fileSize = typeof body.fileSize === "number" ? body.fileSize : Number(body.fileSize);
+    if (!Number.isFinite(fileSize) || fileSize <= 0) {
+      return json({ error: "Valid fileSize is required" }, 400, origin);
+    }
+
+    const { limitMB, maxSizeBytes, resolvedMime } = resolveAssetLimit(
+      env,
+      assetType,
+      rawMime,
+      rawFileName,
+    );
+
+    if (fileSize > maxSizeBytes) {
+      return json(
+        {
+          error: `File too large. Maximum size is ${limitMB}MB. Your file is ${(fileSize / (1024 * 1024)).toFixed(1)}MB`,
+        },
+        400,
+        origin,
+      );
+    }
+
+    const creatorHandle =
+      typeof body.creatorHandle === "string" && body.creatorHandle.trim()
+        ? body.creatorHandle.trim()
+        : auth.uid;
+    const subType =
+      typeof body.subType === "string" && body.subType.trim()
+        ? body.subType.trim()
+        : "general";
+    const country =
+      typeof body.country === "string" && body.country.trim()
+        ? body.country.trim()
+        : "ANY";
+
+    const ext = extFromMime(rawMime, rawFileName);
+    const safeFileName = `upload.${ext}`;
+    const storagePath = getStoragePath(
+      assetType,
+      creatorHandle,
+      subType,
+      country,
+      safeFileName,
+    );
+    if (!isValidPrivateKey(storagePath)) {
+      return json({ error: "Invalid storage path" }, 400, origin);
+    }
+
+    const multipart = await bucketFor(env, visibility).createMultipartUpload(storagePath, {
+      httpMetadata: {
+        contentType: resolvedMime,
+        contentDisposition: `inline; filename="${safeFileName}"`,
+        cacheControl: cacheControlFor(visibility),
+      },
+      customMetadata: {
+        uploadedBy: auth.uid,
+        originalName: rawFileName,
+        assetType,
+        visibility,
+      },
+    });
+
+    const uploadToken = await signUploadTicket(getUploadTicketSecret(env), {
+      uid: auth.uid,
+      key: storagePath,
+      uploadId: multipart.uploadId,
+      visibility,
+      assetType,
+      creatorHandle,
+      mimeType: resolvedMime,
+      fileSize,
+      originalName: rawFileName,
+      maxSizeBytes,
+      exp: Math.floor(Date.now() / 1000) + 7200,
+    });
+
+    return json(
+      {
+        uploadId: multipart.uploadId,
+        key: storagePath,
+        uploadToken,
+        visibility,
+        assetType,
+      },
+      200,
+      origin,
+    );
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to initialize upload";
+    console.error("Multipart init error:", err);
+    return json({ error: message }, 500, origin);
+  }
+}
+
+async function handleMultipartPart(
+  request: Request,
+  env: Env,
+  url: URL,
+  origin: string | null,
+): Promise<Response> {
+  const auth = await authenticateWithCors(request, env, origin);
+  if (auth instanceof Response) return auth;
+
+  const uploadToken = url.searchParams.get("uploadToken") || "";
+  const partNumber = Number(url.searchParams.get("partNumber") || "");
+  if (!Number.isInteger(partNumber) || partNumber < 1 || partNumber > 10000) {
+    return json({ error: "Invalid partNumber" }, 400, origin);
+  }
+
+  const ticket = await verifyUploadTicket(getUploadTicketSecret(env), uploadToken);
+  if (!ticket || ticket.uid !== auth.uid || !isValidPrivateKey(ticket.key)) {
+    return json({ error: "Invalid or expired upload session" }, 403, origin);
+  }
+
+  try {
+    const chunk = await request.arrayBuffer();
+    if (chunk.byteLength === 0) {
+      return json({ error: "Empty part body" }, 400, origin);
+    }
+    if (chunk.byteLength > MAX_MULTIPART_PART_BYTES) {
+      return json({ error: "Part exceeds maximum chunk size" }, 400, origin);
+    }
+
+    const multipart = bucketFor(env, ticket.visibility).resumeMultipartUpload(
+      ticket.key,
+      ticket.uploadId,
+    );
+    const uploadedPart = await multipart.uploadPart(partNumber, chunk);
+
+    return json(
+      {
+        partNumber: uploadedPart.partNumber,
+        etag: uploadedPart.etag,
+      },
+      200,
+      origin,
+    );
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to upload part";
+    console.error("Multipart part error:", err);
+    return json({ error: message }, 500, origin);
+  }
+}
+
+async function handleMultipartComplete(
+  request: Request,
+  env: Env,
+  origin: string | null,
+): Promise<Response> {
+  const auth = await authenticateWithCors(request, env, origin);
+  if (auth instanceof Response) return auth;
+
+  try {
+    const body = (await request.json().catch(() => ({}))) as {
+      uploadToken?: unknown;
+      parts?: unknown;
+    };
+
+    const uploadToken = typeof body.uploadToken === "string" ? body.uploadToken : "";
+    const ticket = await verifyUploadTicket(getUploadTicketSecret(env), uploadToken);
+    if (!ticket || ticket.uid !== auth.uid || !isValidPrivateKey(ticket.key)) {
+      return json({ error: "Invalid or expired upload session" }, 403, origin);
+    }
+
+    const rawParts = Array.isArray(body.parts) ? body.parts : [];
+    const normalizedParts = rawParts
+      .filter(
+        (p): p is { partNumber: number; etag: string } =>
+          Boolean(p) &&
+          typeof p === "object" &&
+          Number.isInteger((p as { partNumber?: unknown }).partNumber) &&
+          ((p as { partNumber: number }).partNumber >= 1) &&
+          typeof (p as { etag?: unknown }).etag === "string" &&
+          (p as { etag: string }).etag.length > 0,
+      )
+      .sort((a, b) => a.partNumber - b.partNumber);
+
+    if (normalizedParts.length === 0) {
+      return json({ error: "parts[] is required" }, 400, origin);
+    }
+
+    const bucket = bucketFor(env, ticket.visibility);
+    const multipart = bucket.resumeMultipartUpload(ticket.key, ticket.uploadId);
+    const object = await multipart.complete(normalizedParts);
+
+    if (object.size > ticket.maxSizeBytes) {
+      await bucket.delete(ticket.key).catch(() => {});
+      const limitMB = Math.round(ticket.maxSizeBytes / (1024 * 1024));
+      return json(
+        {
+          error: `File too large. Maximum size is ${limitMB}MB. Uploaded ${(object.size / (1024 * 1024)).toFixed(1)}MB`,
+        },
+        400,
+        origin,
+      );
+    }
+
+    const baseUrl = env.ASSETS_BASE_URL || deriveBaseUrl(request);
+    const url = ticket.visibility === "public" ? `${baseUrl}/${ticket.key}` : "";
+
+    const assetId = await writeAssetDoc(env, {
+      url,
+      visibility: ticket.visibility,
+      publicId: ticket.key,
+      mimeType: ticket.mimeType,
+      fileSize: object.size,
+      assetType: ticket.assetType,
+      creatorId: ticket.uid,
+      creatorHandle: ticket.creatorHandle,
+      originalName: ticket.originalName,
+      metadata: {
+        originalSize: String(ticket.fileSize),
+        multipart: "true",
+      },
+    });
+
+    const result: UploadResult = {
+      url,
+      key: ticket.key,
+      visibility: ticket.visibility,
+      publicId: ticket.key,
+      assetType: ticket.assetType,
+    };
+    if (assetId) result.assetId = assetId;
+
+    return json(result, 200, origin);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to complete upload";
+    console.error("Multipart complete error:", err);
+    return json({ error: message }, 500, origin);
+  }
+}
+
+async function handleMultipartAbort(
+  request: Request,
+  env: Env,
+  origin: string | null,
+): Promise<Response> {
+  const auth = await authenticateWithCors(request, env, origin);
+  if (auth instanceof Response) return auth;
+
+  const body = (await request.json().catch(() => ({}))) as { uploadToken?: unknown };
+  const uploadToken = typeof body.uploadToken === "string" ? body.uploadToken : "";
+  const ticket = await verifyUploadTicket(getUploadTicketSecret(env), uploadToken);
+  if (!ticket || ticket.uid !== auth.uid || !isValidPrivateKey(ticket.key)) {
+    return json({ error: "Invalid or expired upload session" }, 403, origin);
+  }
+
+  try {
+    await bucketFor(env, ticket.visibility)
+      .resumeMultipartUpload(ticket.key, ticket.uploadId)
+      .abort();
+  } catch {
+    // Upload may already be aborted or completed
+  }
+
+  return json({ aborted: true }, 200, origin);
+}
+
 // ── Main fetch handler ──────────────────────────────────────
 
-export default {
+const uploadWorker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     try {
       const origin = request.headers.get("origin");
@@ -586,8 +974,32 @@ export default {
           return await handleMigratePrivate(request, env, auth, origin);
         }
 
+        if (request.method === "POST" && url.pathname === "/multipart/init") {
+          const limited = isRateLimited(request, 30, 60000, origin);
+          if (limited) return limited;
+          return await handleMultipartInit(request, env, origin);
+        }
+
+        if (request.method === "POST" && url.pathname === "/multipart/part") {
+          const limited = isRateLimited(request, 120, 60000, origin);
+          if (limited) return limited;
+          return await handleMultipartPart(request, env, url, origin);
+        }
+
+        if (request.method === "POST" && url.pathname === "/multipart/complete") {
+          const limited = isRateLimited(request, 30, 60000, origin);
+          if (limited) return limited;
+          return await handleMultipartComplete(request, env, origin);
+        }
+
+        if (request.method === "POST" && url.pathname === "/multipart/abort") {
+          const limited = isRateLimited(request, 30, 60000, origin);
+          if (limited) return limited;
+          return await handleMultipartAbort(request, env, origin);
+        }
+
         if (request.method === "POST") {
-          const limited = isRateLimited(request, 10, 60000);
+          const limited = isRateLimited(request, 10, 60000, origin);
           if (limited) return limited;
           return await handleUpload(request, env);
         }
@@ -609,3 +1021,5 @@ export default {
     }
   },
 };
+
+export default uploadWorker;

@@ -120,6 +120,7 @@ export function StepComposer() {
     null,
   );
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [visibility, setVisibility] = useState<PostVisibility>("public");
   const [requiredTierIds, setRequiredTierIds] = useState<string[]>([]);
@@ -181,6 +182,7 @@ export function StepComposer() {
     setFilePreview(null);
     setUploadedUrl("");
     setUploadedVisibility(null);
+    setUploadProgress(null);
     setUploadError(null);
     setVisibility("public");
     setRequiredTierIds([]);
@@ -477,6 +479,7 @@ export function StepComposer() {
                         setFilePreview(null);
                       }
                       setIsUploading(true);
+                      setUploadProgress(0);
                       setUploadError(null);
                       try {
                         const assetType =
@@ -491,6 +494,7 @@ export function StepComposer() {
                           creator?.handle || "",
                           undefined,
                           isGated ? "private" : "public",
+                          { onProgress: (pct) => setUploadProgress(pct) },
                         );
                         const stored = storedAssetValue(data);
                         if (stored) {
@@ -508,15 +512,21 @@ export function StepComposer() {
                         setUploadedVisibility(null);
                       } finally {
                         setIsUploading(false);
+                        setUploadProgress(null);
                       }
                     }}
                   />
                   {isUploading ? (
-                    <Loader
-                      className="animate-spin text-brand-strong"
-                      size={28}
-                      aria-hidden="true"
-                    />
+                    <div className="flex flex-col items-center gap-2">
+                      <Loader
+                        className="animate-spin text-brand-strong"
+                        size={28}
+                        aria-hidden="true"
+                      />
+                      <span className="text-caption font-semibold tabular-nums text-brand-strong">
+                        Uploading{uploadProgress !== null ? ` (${uploadProgress}%)` : "..."}
+                      </span>
+                    </div>
                   ) : uploadedUrl ? (
                     <div className="flex items-center gap-2 font-semibold text-success">
                       <UploadCloud className="size-5" aria-hidden="true" /> File ready
@@ -526,6 +536,13 @@ export function StepComposer() {
                       <UploadCloud className="size-7 text-muted-fg" aria-hidden="true" />
                       <p className="mt-2 text-label text-muted-fg">
                         Tap to add {type} media
+                      </p>
+                      <p className="mt-1 text-caption text-muted-fg">
+                        {type === "video"
+                          ? "Up to 100MB (MP4, MOV, WebM)"
+                          : type === "document"
+                            ? "Up to 25MB (PDF, DOC, DOCX)"
+                            : "Up to 20MB (JPG, PNG, WebP)"}
                       </p>
                     </>
                   )}

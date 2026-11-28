@@ -1,5 +1,10 @@
 import type { Env } from "../types";
-import { firestorePatch, firestoreApplyPayment } from "../firestore";
+import {
+  extractFirestoreDocument,
+  firestoreApplyPayment,
+  firestoreGet,
+  firestorePatch,
+} from "../firestore";
 import { logActivity } from "../logger";
 import { createNotification } from "../adminNotifications";
 import { currencyNumberField, roundCurrencyAmount } from "../money/amount";
@@ -71,6 +76,9 @@ export async function handleSupportCallback(
 
   const supporterId = txData.supporterId as string | undefined;
   const isSignedInSupporter = Boolean(supporterId && supporterId !== "anonymous");
+  const isAnonymous = !isSignedInSupporter || Boolean(txData.anonymous);
+  const rawSupporterName = String(txData.supporterName || txData.buyerName || "").trim();
+  const rawMessage = String(txData.message || "").trim();
 
   documents.push({
     path: `supportedCreators/${safeRef}_${isSignedInSupporter ? "support" : "anon"}`,
@@ -81,6 +89,11 @@ export async function handleSupportCallback(
         ? { stringValue: supporterId as string }
         : { nullValue: null },
       supporterPhoneNumber: { stringValue: (txData.phone as string) || "" },
+      ...(rawSupporterName && !isAnonymous
+        ? { supporterName: { stringValue: rawSupporterName } }
+        : {}),
+      anonymous: { booleanValue: isAnonymous },
+      ...(rawMessage ? { message: { stringValue: rawMessage } } : {}),
       txRef: { stringValue: paymentRef },
       currency: { stringValue: currency },
       createdAt: { timestampValue: now },
@@ -157,13 +170,22 @@ export async function handleSupportCallback(
     { documents, ledger },
   );
 
-  if (credit !== "applied") {
-    await logActivity(env, "warn", "support", `Support callback ${credit} for ref=${paymentRef}`, {
+  if (credit === "duplicate") {
+    await logActivity(env, "warn", "support", `Support callback duplicate for ref=${paymentRef}`, {
       txRef: paymentRef,
       creatorId: txData.creatorId,
       creatorShare,
     });
     return { received: true };
+  }
+
+  if (credit !== "applied") {
+    await logActivity(env, "error", "support", `Support callback commit failed for ref=${paymentRef}`, {
+      txRef: paymentRef,
+      creatorId: txData.creatorId,
+      creatorShare,
+    });
+    throw new Error(`Support payment credit commit failed for ref=${paymentRef}`);
   }
 
   if (supporterId && supporterId !== "anonymous") {
@@ -173,7 +195,6 @@ export async function handleSupportCallback(
   }
 
   if (txData.creatorUid) {
-    const isAnonymous = !supporterId || supporterId === "anonymous";
     await createNotification(env, {
       userId: txData.creatorUid as string,
       type: "support_received",
@@ -183,6 +204,70 @@ export async function handleSupportCallback(
       link: "/creator/supporters",
       actorId: isAnonymous ? undefined : supporterId,
     });
+  }
+
+  if (env.COMMS_WORKER_URL && env.INTERNAL_AUTH_SECRET) {
+    try {
+      let creatorEmail =
+        typeof txData.creatorEmail === "string" && txData.creatorEmail.trim()
+          ? txData.creatorEmail.trim()
+          : "";
+      if (!creatorEmail && txData.creatorUid) {
+        const profileDoc = await firestoreGet(env, `profiles/${String(txData.creatorUid)}`);
+        const profileFields = (profileDoc?.fields as Record<string, unknown> | undefined) || undefined;
+        const parsedProfile = profileFields ? extractFirestoreDocument(profileFields) : null;
+        if (typeof parsedProfile?.email === "string" && parsedProfile.email.trim()) {
+          creatorEmail = parsedProfile.email.trim();
+        }
+      }
+      if (!creatorEmail && txData.creatorId) {
+        const creatorDoc = await firestoreGet(env, `creators/${String(txData.creatorId)}`);
+        const creatorFields = (creatorDoc?.fields as Record<string, unknown> | undefined) || undefined;
+        const parsedCreator = creatorFields ? extractFirestoreDocument(creatorFields) : null;
+        if (typeof parsedCreator?.email === "string" && parsedCreator.email.trim()) {
+          creatorEmail = parsedCreator.email.trim();
+        }
+      }
+
+      if (creatorEmail) {
+        const emailRes = await fetch(`${env.COMMS_WORKER_URL}/api/emails/send`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Internal-Auth": env.INTERNAL_AUTH_SECRET,
+          },
+          body: JSON.stringify({
+            purpose: "support_received",
+            data: {
+              creatorEmail,
+              amount: `${creditedTotal.toLocaleString()} ${currency}`,
+              supporterName: isAnonymous
+                ? "An anonymous supporter"
+                : rawSupporterName || "A supporter",
+              message: rawMessage,
+            },
+          }),
+        });
+        if (!emailRes.ok) {
+          const text = await emailRes.text().catch(() => "");
+          await logActivity(env, "warn", "support", `Support email returned ${emailRes.status}`, {
+            txRef: paymentRef,
+            status: emailRes.status,
+            detail: text.slice(0, 300),
+          });
+        }
+      } else {
+        await logActivity(env, "warn", "support", `Skipped support email: creatorEmail missing`, {
+          txRef: paymentRef,
+          creatorId: txData.creatorId,
+        });
+      }
+    } catch (emailErr) {
+      await logActivity(env, "warn", "support", `Failed to send support email for ref=${paymentRef}`, {
+        txRef: paymentRef,
+        error: emailErr instanceof Error ? emailErr.message : String(emailErr),
+      });
+    }
   }
 
   await logActivity(env, "info", "support", `Support payment processed for ref=${paymentRef}`, {

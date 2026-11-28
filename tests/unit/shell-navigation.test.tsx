@@ -187,6 +187,7 @@ describe("Sidebar", () => {
       "/admin",
       "/admin/users",
       "/admin/payouts",
+      "/admin/transactions",
       "/admin/comms",
       "/admin/config",
       "/admin/logs",

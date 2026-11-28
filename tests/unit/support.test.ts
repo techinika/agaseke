@@ -76,6 +76,9 @@ describe("transaction status", () => {
     expect(normalizeTransactionStatus("failed")).toBe("failed");
     expect(normalizeTransactionStatus("cancelled")).toBe("failed");
     expect(normalizeTransactionStatus("reversed")).toBe("failed");
+    expect(normalizeTransactionStatus("stalled")).toBe("failed");
+    expect(normalizeTransactionStatus("stale")).toBe("failed");
+    expect(normalizeTransactionStatus("expired")).toBe("failed");
     expect(normalizeTransactionStatus("pending")).toBe("waiting");
     expect(normalizeTransactionStatus(undefined)).toBe("waiting");
   });
@@ -120,18 +123,26 @@ describe("perks and persistence", () => {
     expect(readLastChoice()).toEqual({ amount: 2000, method: "card" });
   });
 
-  it("round-trips pending support and clears it", () => {
+  it("round-trips pending support, expires entries after 15 minutes, and clears it", () => {
     const pending: PendingSupport = {
       handle: "aline",
       reference: "ref-1",
       amount: 1000,
       currency: "RWF",
       method: "momo",
-      createdAt: 123,
+      createdAt: Date.now(),
     };
     savePendingSupport(pending);
     expect(readPendingSupport("aline")).toEqual(pending);
     expect(readPendingSupport("other")).toBeNull();
+
+    savePendingSupport({
+      ...pending,
+      createdAt: Date.now() - 16 * 60 * 1000,
+    });
+    expect(readPendingSupport("aline")).toBeNull();
+
+    savePendingSupport(pending);
     clearPendingSupport();
     expect(readPendingSupport()).toBeNull();
   });

@@ -32,7 +32,7 @@ export default function PostForm() {
     isPrivate: true,
   });
   const [isUploading, setIsUploading] = useState(false);
-  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [uploadedUrl, setUploadedUrl] = useState("");
   const [uploadedVisibility, setUploadedVisibility] = useState<AssetVisibility | null>(null);
 
@@ -40,11 +40,8 @@ export default function PostForm() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.type.startsWith("image/")) {
-      setFilePreview(URL.createObjectURL(file));
-    }
-
     setIsUploading(true);
+    setUploadProgress(0);
     setUploadedUrl("");
 
     try {
@@ -55,6 +52,7 @@ export default function PostForm() {
         creator?.handle || "",
         undefined,
         newPost.isPrivate ? "private" : "public",
+        { onProgress: (pct) => setUploadProgress(pct) },
       );
       const stored = storedAssetValue(data);
       if (stored) {
@@ -67,16 +65,15 @@ export default function PostForm() {
     } catch (err: unknown) {
       console.error("Upload error:", err);
       toast.error(err instanceof Error ? err.message : "Failed to upload file");
-      setFilePreview(null);
       setUploadedUrl("");
     } finally {
       setIsUploading(false);
+      setUploadProgress(null);
     }
   };
 
   const resetForm = () => {
     setNewPost({ title: "", description: "", type: "text", isPrivate: true });
-    setFilePreview(null);
     setUploadedUrl("");
     setUploadedVisibility(null);
   };
@@ -136,7 +133,7 @@ export default function PostForm() {
 
       resetForm();
       router.push("/creator/content");
-    } catch (error) {
+    } catch {
       toast.error("Failed to save post.");
     } finally {
       setIsUploading(false);
@@ -186,13 +183,27 @@ export default function PostForm() {
                 accept={newPost.type === "image" ? "image/*" : newPost.type === "video" ? "video/*" : ".pdf,.doc,.docx"}
               />
               {isUploading ? (
-                <Loader className="animate-spin text-orange-500" size={24} />
+                <div className="flex flex-col items-center gap-1.5">
+                  <Loader className="animate-spin text-orange-500" size={24} />
+                  {uploadProgress !== null && (
+                    <span className="text-xs font-semibold tabular-nums text-orange-600">
+                      Uploading ({uploadProgress}%)
+                    </span>
+                  )}
+                </div>
               ) : uploadedUrl ? (
                 <div className="text-green-600 text-sm font-medium">File ready</div>
               ) : (
                 <>
                   <UploadCloud size={24} className="text-muted-foreground mb-2" />
                   <p className="text-sm text-muted-foreground">Click to upload {newPost.type}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {newPost.type === "video"
+                      ? "Up to 100MB"
+                      : newPost.type === "document"
+                        ? "Up to 25MB"
+                        : "Up to 20MB"}
+                  </p>
                 </>
               )}
             </div>

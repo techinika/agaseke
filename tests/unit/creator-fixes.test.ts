@@ -217,7 +217,7 @@ describe("Payouts USD threshold with other currency balances", () => {
   it("keeps USD withdrawal closed when other currency balance converts below USD threshold", () => {
     const overview = buildPayoutOverview(
       {
-        currency: "RWF",
+        currency: "USD",
         pendingPayout: 500,
         pendingPayoutUSD: 0,
       },
@@ -251,7 +251,7 @@ describe("Payouts USD threshold with other currency balances", () => {
   it("opens USD withdrawal when combined convertible balance meets USD threshold", () => {
     const overview = buildPayoutOverview(
       {
-        currency: "RWF",
+        currency: "USD",
         pendingPayout: 35000,
         pendingPayoutUSD: 0,
       },

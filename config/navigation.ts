@@ -423,6 +423,16 @@ export const NAV_ITEMS: NavItem[] = [
     slots: ["desktop", "mobile"],
   },
   {
+    id: "admin-transactions",
+    href: "/admin/transactions",
+    labelKey: "nav.transactions",
+    icon: Receipt,
+    roles: ["admin"],
+    surface: "admin",
+    slots: ["desktop", "more"],
+    group: "nav.transactions",
+  },
+  {
     id: "admin-more",
     labelKey: "nav.more",
     icon: MoreHorizontal,

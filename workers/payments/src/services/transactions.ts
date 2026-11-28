@@ -50,6 +50,7 @@ function toNumber(value: unknown): number {
 }
 
 const PRE_MULTI_CURRENCY_CUTOFF_MS = Date.parse("2026-12-01T00:00:00.000Z");
+const STALL_TIMEOUT_MS = 15 * 60 * 1000;
 
 function resolveTxCurrency(t: Record<string, unknown>): string {
   const explicit = toString(t.currency).trim().toUpperCase();
@@ -65,6 +66,21 @@ function toString(value: unknown): string {
   return value === null || value === undefined ? "" : String(value);
 }
 
+function normalizeReadStatus(t: Record<string, unknown>, nowMs: number): string {
+  const raw = toString(t.status).trim().toLowerCase() || "pending";
+  if (raw === "success" || raw === "completed" || raw === "paid") return "successful";
+  if (raw === "canceled") return "cancelled";
+  if (raw === "stale") return "stalled";
+  if (raw === "pending") {
+    const tsRaw = toString(t.initiatedAt) || toString(t.createdAt);
+    const tsMs = Date.parse(tsRaw);
+    if (Number.isFinite(tsMs) && nowMs - tsMs >= STALL_TIMEOUT_MS) {
+      return "stalled";
+    }
+  }
+  return raw;
+}
+
 export async function getUserTransactions(
   env: Env,
   uid: string,
@@ -78,13 +94,17 @@ export async function getUserTransactions(
 
   const seen = new Set<string>();
   const raw: Array<Record<string, unknown>> = [];
+  const nowMs = Date.now();
 
   for (const doc of [...bySupporter, ...byInitiator]) {
     const data = convertFromFields(doc.fields);
     const ref = toString(data.ref);
     if (!ref || seen.has(ref)) continue;
     seen.add(ref);
-    raw.push(data);
+    raw.push({
+      ...data,
+      __effectiveStatus: normalizeReadStatus(data, nowMs),
+    });
   }
 
   raw.sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
@@ -96,10 +116,12 @@ export async function getUserTransactions(
     all: raw.length,
     successful: 0,
     pending: 0,
+    stalled: 0,
     failed: 0,
+    cancelled: 0,
   };
   for (const t of raw) {
-    const status = toString(t.status);
+    const status = toString(t.__effectiveStatus);
     if (counts[status] !== undefined) counts[status] += 1;
   }
 
@@ -162,7 +184,7 @@ export async function getUserTransactions(
     return {
       ref,
       type: toString(t.type) || "support",
-      status: toString(t.status) || "pending",
+      status: toString(t.__effectiveStatus) || "pending",
       currency: resolveTxCurrency(t),
       sourceCurrency: toString(t.sourceCurrency),
       sourceAmountMinor: toNumber(t.sourceAmountMinor),

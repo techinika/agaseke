@@ -358,13 +358,22 @@ export async function handleStoreCallback(
     { documents, ledger },
   );
 
-  if (credit !== "applied") {
-    await logActivity(env, "warn", "store", `Store callback ${credit} for ref=${paymentRef}`, {
+  if (credit === "duplicate") {
+    await logActivity(env, "warn", "store", `Store callback duplicate for ref=${paymentRef}`, {
       txRef: paymentRef,
       productId: productId || "",
       creatorShare,
     });
     return { received: true };
+  }
+
+  if (credit !== "applied") {
+    await logActivity(env, "error", "store", `Store callback commit failed for ref=${paymentRef}`, {
+      txRef: paymentRef,
+      productId: productId || "",
+      creatorShare,
+    });
+    throw new Error(`Store payment credit commit failed for ref=${paymentRef}`);
   }
 
   if (txData.creatorUid) {
