@@ -1,5 +1,6 @@
 import { requireAuth } from "./auth";
 import { corsHeaders } from "./cors";
+import { handleHealthRequest } from "./health";
 import type { Env, InitRequest, PesapalIPNPayload } from "./types";
 import { initiateMomoPayment } from "./services/momo";
 import { initiateCardPayment } from "./services/card";
@@ -85,7 +86,7 @@ export default {
 
       try {
         if (path === "/health" && request.method === "GET") {
-          return json({ status: "ok" }, 200, origin);
+          return handleHealthRequest(request, env, "agaseke-payments");
         }
 
         if (path === "/api/payments/methods" && request.method === "GET") {

@@ -1,5 +1,6 @@
 import { requireAuth } from "./auth";
 import { corsHeaders } from "./cors";
+import { handleHealthRequest } from "./health";
 import { encrypt, decrypt, isEncrypted } from "./encryption";
 import { logError } from "./logger";
 import { firestorePost } from "./firestore";
@@ -63,7 +64,7 @@ export default {
 
       try {
         if (path === "/health" && request.method === "GET") {
-          return json({ status: "ok" }, 200, origin);
+          return handleHealthRequest(request, env, "agaseke-general");
         }
 
         if (path === "/api/general/encrypt" && request.method === "POST") {

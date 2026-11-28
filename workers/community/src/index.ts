@@ -1,5 +1,6 @@
 import { requireAuth } from "./auth";
 import { corsHeaders } from "./cors";
+import { handleHealthRequest } from "./health";
 import type { Env, TierData, SubscribeRequest, CallbackPayload } from "./types";
 import { getTiers, saveTiers } from "./services/tiers";
 import { getMembers, getMemberSubscriptions, getSubscriptionById } from "./services/members";
@@ -61,7 +62,7 @@ export default {
 
       try {
         if (path === "/health" && request.method === "GET") {
-          return json({ status: "ok" }, 200, origin);
+          return handleHealthRequest(request, env, "agaseke-community");
         }
 
         if (path === "/api/community/tiers" && request.method === "GET") {

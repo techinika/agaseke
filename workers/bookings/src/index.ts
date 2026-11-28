@@ -1,5 +1,6 @@
 import { requireAuth } from "./auth";
 import { corsHeaders } from "./cors";
+import { handleHealthRequest } from "./health";
 import type {
   Env,
   CreateBookingRequest,
@@ -63,7 +64,7 @@ export default {
       const url = new URL(request.url);
 
       if (url.pathname === "/health" && request.method === "GET") {
-        return json({ status: "ok" }, 200, origin);
+        return handleHealthRequest(request, env, "agaseke-bookings");
       }
 
       if (request.method !== "POST") {

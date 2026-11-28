@@ -48,7 +48,10 @@ async function getAccessToken(env: Env): Promise<string> {
   }
 
   const data = (await res.json()) as { access_token: string; expires_in: number };
-  cachedToken = { token: data.access_token, expiresAt: now + data.expires_in - 60 };
+  cachedToken = {
+    token: data.access_token,
+    expiresAt: Date.now() + (data.expires_in - 60) * 1000,
+  };
   return data.access_token;
 }
 

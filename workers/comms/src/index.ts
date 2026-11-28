@@ -1,5 +1,6 @@
 import { requireAuth } from "./auth";
 import { corsHeaders } from "./cors";
+import { handleHealthRequest } from "./health";
 import type { Env, CommsRequest, CommsResponse, EmailQueueMessage, EmailService, EmailPurpose } from "./types";
 import { getService } from "./services";
 import { renderEmailHtml, renderEmailText } from "./template";
@@ -335,6 +336,10 @@ export default {
 
       if (request.method === "OPTIONS") {
         return new Response(null, { status: 204, headers: corsHeaders(origin) });
+      }
+
+      if (url.pathname === "/health" && request.method === "GET") {
+        return handleHealthRequest(request, env, "agaseke-comms");
       }
 
       if (request.method !== "POST") {

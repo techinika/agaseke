@@ -19,6 +19,7 @@ export interface Env {
   MEDIA_SIGNING_SECRET?: string;
   /** Shared secret that lets the migration script call /migrate-private. */
   MIGRATION_TOKEN?: string;
+  INTERNAL_AUTH_SECRET?: string;
   FIREBASE_API_KEY: string;
   FIREBASE_PROJECT_ID: string;
   FIREBASE_CLIENT_EMAIL: string;

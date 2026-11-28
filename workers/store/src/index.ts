@@ -1,5 +1,6 @@
 import { requireAuth } from "./auth";
 import { corsHeaders } from "./cors";
+import { handleHealthRequest } from "./health";
 import type { Env } from "./types";
 import { handleStoreCallback } from "./services/callback";
 import { handleDownload } from "./services/download";
@@ -51,7 +52,7 @@ const storeWorker = {
       const url = new URL(request.url);
 
       if (url.pathname === "/health" && request.method === "GET") {
-        return json({ status: "ok" }, 200, origin);
+        return handleHealthRequest(request, env, "agaseke-store");
       }
 
       if (url.pathname === "/api/store/callback" && request.method === "POST") {

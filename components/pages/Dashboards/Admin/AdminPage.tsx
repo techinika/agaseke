@@ -55,6 +55,7 @@ import {
   type NormalizedVerificationRequest,
 } from "@/lib/verificationSchema";
 import { VerificationReviewDialog } from "./VerificationReviewDialog";
+import { WorkerFirestoreDiagnosticsPanel } from "./WorkerFirestoreDiagnosticsPanel";
 import { formatCurrency } from "@/types/currency";
 import { cn } from "@/lib/cn";
 
@@ -152,6 +153,7 @@ export default function AdminDashboard() {
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [fxHealth, setFxHealth] = useState<any>(null);
   const [fxRefreshing, setFxRefreshing] = useState(false);
+  const [diagnosticsRefreshKey, setDiagnosticsRefreshKey] = useState(0);
 
   const [growthFilter, setGrowthFilter] = useState<"7d" | "weekly" | "monthly" | "annual">("7d");
   const [rawProfiles, setRawProfiles] = useState<any[]>([]);
@@ -348,6 +350,7 @@ export default function AdminDashboard() {
     if (isManual) {
       setRefreshing(true);
       setLoadError(false);
+      setDiagnosticsRefreshKey((prev) => prev + 1);
     }
 
     try {
@@ -1507,6 +1510,8 @@ export default function AdminDashboard() {
             )}
           </div>
         </section>
+
+        <WorkerFirestoreDiagnosticsPanel refreshSignal={diagnosticsRefreshKey} />
 
         {/* Rankings & Recent Audit Trail */}
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">

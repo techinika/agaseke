@@ -1,5 +1,6 @@
 import { requireAuth, forbidden } from "./auth";
 import { corsHeaders } from "./cors";
+import { handleHealthRequest } from "./health";
 import {
   Env,
   UploadResult,
@@ -945,6 +946,10 @@ const uploadWorker = {
 
       try {
         const url = new URL(request.url);
+
+        if (url.pathname === "/health" && request.method === "GET") {
+          return await handleHealthRequest(request, env, "agaseke-upload");
+        }
 
         if (
           (request.method === "GET" || request.method === "HEAD") &&
