@@ -470,7 +470,9 @@ export default function SupporterSpace() {
                   </Link>
                 </div>
 
-                {feedScope === "discover" && discoverError && discoverPosts.length === 0 ? (
+                {feedScope === "discover" && loadingDiscover && discoverPosts.length === 0 ? (
+                  <LoadingState variant="feed" />
+                ) : feedScope === "discover" && discoverError && discoverPosts.length === 0 ? (
                   <ErrorState
                     title="Could not load public feed"
                     description="Something interrupted loading recent public posts. Try again in a moment."

@@ -25,27 +25,82 @@ let creatorCache: {
 
 function toIso(value: unknown): string | null {
   if (!value) return null;
-  if (typeof value === "object" && value !== null && "toDate" in value) {
-    const fn = (value as { toDate?: () => Date }).toDate;
-    if (typeof fn === "function") return fn().toISOString();
+  try {
+    if (value instanceof Date) {
+      return Number.isFinite(value.getTime()) ? value.toISOString() : null;
+    }
+    if (typeof value === "object" && value !== null) {
+      const record = value as {
+        toDate?: () => Date;
+        toMillis?: () => number;
+        seconds?: number;
+        _seconds?: number;
+      };
+      if (typeof record.toDate === "function") {
+        const d = record.toDate();
+        return d && Number.isFinite(d.getTime()) ? d.toISOString() : null;
+      }
+      if (typeof record.toMillis === "function") {
+        const ms = record.toMillis();
+        return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+      }
+      const secs =
+        typeof record.seconds === "number" ? record.seconds : record._seconds;
+      if (typeof secs === "number" && Number.isFinite(secs)) {
+        return new Date(secs * 1000).toISOString();
+      }
+    }
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return new Date(value).toISOString();
+    }
+    if (typeof value === "string") {
+      const parsed = Date.parse(value);
+      return Number.isFinite(parsed) ? new Date(parsed).toISOString() : value;
+    }
+  } catch {
+    return null;
   }
-  if (typeof value === "string") return value;
   return null;
 }
 
 function toMillis(value: unknown): number {
   if (!value) return 0;
-  if (typeof value === "object" && value !== null && "toMillis" in value) {
-    const fn = (value as { toMillis?: () => number }).toMillis;
-    if (typeof fn === "function") return fn();
-  }
-  if (typeof value === "object" && value !== null && "seconds" in value) {
-    const secs = (value as { seconds?: number }).seconds;
-    if (typeof secs === "number") return secs * 1000;
-  }
-  if (typeof value === "string" || typeof value === "number") {
-    const parsed = new Date(value).getTime();
-    return Number.isNaN(parsed) ? 0 : parsed;
+  try {
+    if (value instanceof Date) {
+      const ms = value.getTime();
+      return Number.isFinite(ms) ? ms : 0;
+    }
+    if (typeof value === "object" && value !== null) {
+      const record = value as {
+        toMillis?: () => number;
+        toDate?: () => Date;
+        seconds?: number;
+        _seconds?: number;
+      };
+      if (typeof record.toMillis === "function") {
+        const ms = record.toMillis();
+        return Number.isFinite(ms) ? ms : 0;
+      }
+      if (typeof record.toDate === "function") {
+        const d = record.toDate();
+        const ms = d?.getTime?.() ?? 0;
+        return Number.isFinite(ms) ? ms : 0;
+      }
+      const secs =
+        typeof record.seconds === "number" ? record.seconds : record._seconds;
+      if (typeof secs === "number" && Number.isFinite(secs)) {
+        return secs * 1000;
+      }
+    }
+    if (typeof value === "number") {
+      return Number.isFinite(value) ? value : 0;
+    }
+    if (typeof value === "string") {
+      const parsed = new Date(value).getTime();
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+  } catch {
+    return 0;
   }
   return 0;
 }
@@ -122,7 +177,46 @@ async function getCreatorDirectory(): Promise<{
   return creatorCache;
 }
 
-async function fetchPublicPostDocs(): Promise<FirebaseFirestore.QueryDocumentSnapshot[]> {
+function sortDocsByDateDesc(
+  docs: FirebaseFirestore.QueryDocumentSnapshot[],
+): FirebaseFirestore.QueryDocumentSnapshot[] {
+  return [...docs].sort((a, b) => {
+    const aData = a.data();
+    const bData = b.data();
+    const bTime = toMillis(bData.publishedAt) || toMillis(bData.createdAt);
+    const aTime = toMillis(aData.publishedAt) || toMillis(aData.createdAt);
+    return bTime - aTime;
+  });
+}
+
+async function fetchPublicPostDocs(
+  typeFilter: string,
+): Promise<FirebaseFirestore.QueryDocumentSnapshot[]> {
+  if (typeFilter === "articles") {
+    try {
+      const snap = await adminDb
+        .collection("creatorContent")
+        .where("type", "==", "article")
+        .where("isPrivate", "==", false)
+        .orderBy("createdAt", "desc")
+        .limit(300)
+        .get();
+      return snap.docs;
+    } catch {
+      try {
+        const fallbackArticles = await adminDb
+          .collection("creatorContent")
+          .where("type", "==", "article")
+          .where("isPrivate", "==", false)
+          .limit(300)
+          .get();
+        return sortDocsByDateDesc(fallbackArticles.docs);
+      } catch {
+        // Fall through to general public posts query
+      }
+    }
+  }
+
   try {
     const snap = await adminDb
       .collection("creatorContent")
@@ -137,13 +231,7 @@ async function fetchPublicPostDocs(): Promise<FirebaseFirestore.QueryDocumentSna
       .where("isPrivate", "==", false)
       .limit(300)
       .get();
-    return [...fallbackSnap.docs].sort((a, b) => {
-      const aData = a.data();
-      const bData = b.data();
-      const bTime = toMillis(bData.publishedAt) || toMillis(bData.createdAt);
-      const aTime = toMillis(aData.publishedAt) || toMillis(aData.createdAt);
-      return bTime - aTime;
-    });
+    return sortDocsByDateDesc(fallbackSnap.docs);
   }
 }
 
@@ -272,7 +360,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const allDocs = await fetchPublicPostDocs();
+    const allDocs = await fetchPublicPostDocs(typeFilter);
     const filtered = allDocs
       .filter((doc) => {
         const data = doc.data();

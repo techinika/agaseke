@@ -302,13 +302,23 @@ export async function getPublicArticles(
         const snap = await adminDb.collection("creators").doc(handle).get();
         if (snap.exists) {
           creatorCache.set(handle, { handle: snap.id, ...snap.data() });
+          return;
+        }
+        const byUid = await adminDb
+          .collection("creators")
+          .where("uid", "==", handle)
+          .limit(1)
+          .get();
+        if (!byUid.empty) {
+          const docSnap = byUid.docs[0];
+          creatorCache.set(handle, { handle: docSnap.id, ...docSnap.data() });
         }
       }),
     );
 
     return publicDocs.slice(0, limitCount).map((doc) => {
       const d = doc.data() as any;
-      const handle = String(d.creatorId || "");
+      const handle = String(d.creatorId || d.creatorUid || "");
       const creator = creatorCache.get(handle);
       const plainSummary = String(d.shortDescription || d.description || "")
         .replace(/<[^>]+>/g, " ")

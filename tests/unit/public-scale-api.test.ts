@@ -8,6 +8,26 @@ const mockIncrement = vi.fn((n: number) => ({ __increment: n }));
 
 let mockCreatorsDocs: Array<{ id: string; data: () => Record<string, unknown> }> = [];
 let mockPostsDocs: Array<{ id: string; data: () => Record<string, unknown> }> = [];
+let failOrderedPostQueries = false;
+
+class MockFirestoreTimestamp {
+  private readonly _seconds: number;
+  constructor(seconds: number) {
+    this._seconds = seconds;
+  }
+  toDate() {
+    if (!(this instanceof MockFirestoreTimestamp)) {
+      throw new TypeError("Cannot read properties of undefined (reading '_seconds')");
+    }
+    return new Date(this._seconds * 1000);
+  }
+  toMillis() {
+    if (!(this instanceof MockFirestoreTimestamp)) {
+      throw new TypeError("Cannot read properties of undefined (reading '_seconds')");
+    }
+    return this._seconds * 1000;
+  }
+}
 
 vi.mock("@/db/firebaseAdmin", () => ({
   admin: {
@@ -34,17 +54,22 @@ vi.mock("@/db/firebaseAdmin", () => ({
         };
       }
       if (name === "creatorContent") {
-        const makeQuery = (limitCount?: number) => ({
-          where: () => makeQuery(limitCount),
-          orderBy: () => makeQuery(limitCount),
-          offset: () => makeQuery(limitCount),
-          limit: (n: number) => makeQuery(n),
-          get: async () => ({
-            docs:
-              typeof limitCount === "number"
-                ? mockPostsDocs.slice(0, limitCount)
-                : mockPostsDocs,
-          }),
+        const makeQuery = (limitCount?: number, hasOrderBy = false) => ({
+          where: () => makeQuery(limitCount, hasOrderBy),
+          orderBy: () => makeQuery(limitCount, true),
+          offset: () => makeQuery(limitCount, hasOrderBy),
+          limit: (n: number) => makeQuery(n, hasOrderBy),
+          get: async () => {
+            if (failOrderedPostQueries && hasOrderBy) {
+              throw new Error("The query requires an index.");
+            }
+            return {
+              docs:
+                typeof limitCount === "number"
+                  ? mockPostsDocs.slice(0, limitCount)
+                  : mockPostsDocs,
+            };
+          },
         });
         return {
           doc: (id: string) => ({ path: `creatorContent/${id}`, update: mockDocUpdate }),
@@ -129,6 +154,7 @@ describe("/api/public/views", () => {
 describe("/api/public/explore", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    failOrderedPostQueries = false;
     mockCreatorsDocs = [
       {
         id: "aline",
@@ -239,5 +265,62 @@ describe("/api/public/explore", () => {
     };
     expect(htmlSearchRes.status).toBe(200);
     expect(htmlSearchJson.items.map((item) => item.id)).toEqual(["p1"]);
+  });
+
+  it("preserves Timestamp `this` binding for feed and filtered posts/articles including index fallback", async () => {
+    vi.resetModules();
+    failOrderedPostQueries = true;
+    mockPostsDocs = [
+      {
+        id: "post-older",
+        data: () => ({
+          creatorId: "keza",
+          title: "Older Studio Note",
+          type: "text",
+          isPrivate: false,
+          status: "published",
+          createdAt: new MockFirestoreTimestamp(1700000000),
+        }),
+      },
+      {
+        id: "article-newer",
+        data: () => ({
+          creatorId: "aline",
+          title: "Newer Essay",
+          type: "article",
+          slug: "newer-essay",
+          isPrivate: false,
+          status: "published",
+          createdAt: new MockFirestoreTimestamp(1750000000),
+          publishedAt: new MockFirestoreTimestamp(1750000500),
+        }),
+      },
+    ];
+
+    const { GET } = await import("@/app/api/public/explore/route");
+
+    const feedRes = await GET(
+      new NextRequest("http://localhost/api/public/explore?kind=posts&limit=10&offset=0"),
+    );
+    const feedJson = (await feedRes.json()) as {
+      items: Array<{ id: string; createdAt: string | null }>;
+    };
+    expect(feedRes.status).toBe(200);
+    expect(feedJson.items.map((i) => i.id)).toEqual(["article-newer", "post-older"]);
+    expect(feedJson.items[0].createdAt).toBe(new Date(1750000000 * 1000).toISOString());
+
+    const articlesRes = await GET(
+      new NextRequest("http://localhost/api/public/explore?kind=posts&type=articles&limit=10"),
+    );
+    const articlesJson = (await articlesRes.json()) as { items: Array<{ id: string }> };
+    expect(articlesRes.status).toBe(200);
+    expect(articlesJson.items.map((i) => i.id)).toEqual(["article-newer"]);
+
+    const postsOnlyRes = await GET(
+      new NextRequest("http://localhost/api/public/explore?kind=posts&type=posts&limit=10"),
+    );
+    const postsOnlyJson = (await postsOnlyRes.json()) as { items: Array<{ id: string }> };
+    expect(postsOnlyRes.status).toBe(200);
+    expect(postsOnlyJson.items.map((i) => i.id)).toEqual(["post-older"]);
   });
 });

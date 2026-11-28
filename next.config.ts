@@ -115,7 +115,6 @@ const nextConfig: NextConfig = {
       { source: "/for-creators", destination: "/", permanent: true },
       { source: "/for-brands", destination: "/", permanent: true },
       { source: "/for-supporters", destination: "/explore", permanent: true },
-      { source: "/articles", destination: "/explore/posts", permanent: true },
       {
         source: `/${profilePrefix}/community`,
         destination: "/:username?tab=community",
